@@ -47,7 +47,7 @@ export function CompassRose({
       <polygon points="50,18 53,47 82,50 53,53 50,82 47,53 18,50 47,47" fill={a} opacity="0.45" transform="rotate(45 50 50)" />
       <polygon points="50,6 56,44 94,50 56,56 50,94 44,56 6,50 44,44" fill={color} opacity="0.9" />
       <circle cx="50" cy="50" r="4" fill={a} />
-      <text x="50" y="15" textAnchor="middle" fontSize="13" fontFamily="'Share Tech Mono',monospace" fontWeight="bold" fill={a}>N</text>
+      <text x="50" y="15" textAnchor="middle" fontSize="13" fontFamily="var(--font-sans)" fontWeight="bold" fill={a}>N</text>
     </svg>
   );
 }
@@ -82,10 +82,10 @@ export function PamphletBanner({
         ...style,
       }}
     >
-      <div style={{ fontSize: '0.5rem', letterSpacing: '0.3em', color: `${color}aa`, fontFamily: "'Share Tech Mono',monospace" }}>
+      <div style={{ fontSize: '0.5rem', letterSpacing: '0.3em', color: `${color}aa`, fontFamily: "var(--font-sans)" }}>
         ★ {subtitle} ★
       </div>
-      <div style={{ fontSize: '0.78rem', letterSpacing: '0.22em', color, fontWeight: 700, fontFamily: "'Share Tech Mono',monospace" }}>
+      <div style={{ fontSize: '0.78rem', letterSpacing: '0.22em', color, fontWeight: 700, fontFamily: "var(--font-sans)" }}>
         {title}
       </div>
     </div>

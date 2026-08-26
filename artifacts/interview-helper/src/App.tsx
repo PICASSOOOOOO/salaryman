@@ -21,6 +21,7 @@ import { usePlan } from "@/hooks/use-plan";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
 import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
+import PabloTerminal from "@/pages/PabloTerminal";
 
 // Arm the iOS audio unlock listeners as soon as the bundle loads. They are
 // one-shot and detach themselves after the first user gesture, so this is
@@ -50,7 +51,6 @@ import {
 } from "@/lib/story-gate";
 
 const Home = lazy(() => import("@/pages/Home"));
-const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
@@ -221,7 +221,7 @@ const queryClient = new QueryClient({
 const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
-function CRTFallback() {
+function LoadingFallback() {
   return (
     <div
       style={{
@@ -315,7 +315,7 @@ function HomeOrCover() {
   // to /office. Guard on the actual path: only run the office-first funnel when
   // the user is genuinely on "/", so deep routes (e.g. /my-office) stay put.
   if (location.split("?")[0] !== "/") return null;
-  if (isLoading) return <CRTFallback />;
+  if (isLoading) return <LoadingFallback />;
   // Funnel — modeled like immigration, not a revolving door:
   //   1. Anonymous visitor → /pablo. Pablo tells the story, takes the
   //      passcode, asks for name + email, hands off to OAuth.
@@ -335,7 +335,7 @@ function HomeOrCover() {
   // A logged-out / first-time visitor lands on the wordless, scroll-driven
   // life cinematic (birth → work → death → an open position). It sits IN FRONT
   // of the app as the public SEO front door; its terminal powers on and routes
-  // into /console (the CRT terminal, which shows its own sign-in screen for
+   // into /console (which shows its own sign-in screen for
   // logged-out visitors and returns them there after auth). Authenticated users
   // keep the office-first funnel below — already-onboarded players still skip
   // straight to their /office.
@@ -345,7 +345,7 @@ function HomeOrCover() {
   // to /immigration before hydrateOnboardingStatus() flips the flag and skips
   // them straight to /office. The check resolves instantly when the local flag
   // is already set, so cleared users on their usual device never see a hold.
-  if (isAuthenticated && !onboardingResolved) return <CRTFallback />;
+  if (isAuthenticated && !onboardingResolved) return <LoadingFallback />;
   if (typeof window !== "undefined") {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
@@ -434,7 +434,7 @@ function AppShell() {
   const ANON_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/auth", "/api"];
   const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/immigration", "/legal", "/alpha", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
-  // (the CRT terminal), so an anonymous visitor must be allowed to reach EXACTLY
+   // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
   // bounced back to the nebula front door. We allow only the exact path, never
   // the /console/* subroutes (those tool deep-routes stay protected: guessing
@@ -525,7 +525,7 @@ function AppShell() {
 
   // Hold protected paths behind a loading screen until auth resolves (see
   // holdForAuth above) so a logged-out deep link can never flash the page.
-  if (holdForAuth) return <CRTFallback />;
+  if (holdForAuth) return <LoadingFallback />;
 
   return (
     <>
@@ -568,14 +568,14 @@ function AppShell() {
       {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
-        <Suspense fallback={isHome ? <CRTFallback /> : null}>
+        <Suspense fallback={isHome ? <LoadingFallback /> : null}>
           <div style={{ display: isHome ? "block" : "none" }}>
             <HomeOrCover />
           </div>
         </Suspense>
       </ErrorBoundary>
       <ErrorBoundary>
-        <Suspense fallback={isConsoleTerminal ? <CRTFallback /> : null}>
+        <Suspense fallback={isConsoleTerminal ? <LoadingFallback /> : null}>
           <div style={{ display: isConsoleTerminal ? "block" : "none" }}>
             <MemoConsole />
           </div>
@@ -585,7 +585,7 @@ function AppShell() {
       {/* Other routes — lazy-loaded */}
       {!isKeepAliveActive && (
         <ErrorBoundary>
-        <Suspense fallback={<CRTFallback />}>
+        <Suspense fallback={<LoadingFallback />}>
           <Switch>
             {/* Standalone routes */}
             <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>

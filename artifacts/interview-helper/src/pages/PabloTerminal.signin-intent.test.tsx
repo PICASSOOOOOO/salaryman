@@ -16,7 +16,7 @@
 // "how do I log in?" must NOT open the modal (it's a question, not an
 // intent to be signed in).
 //
-// PabloNebula3D / SceneFX (WebGL), the art kit, TTS, and audio are all
+// PabloNebula3D (WebGL), the art kit, TTS, and audio are all
 // stubbed so the terminal mounts in jsdom. speakWithTTS fires its done
 // callback synchronously, which drives the goLogin -> setAuthChoice
 // redirect the real component relies on.
@@ -64,7 +64,6 @@ vi.mock("@/components/PabloNebula3D", () => ({
   PABLO_VARIANT: {},
   MILA_VARIANT: {},
 }));
-vi.mock("@/components/SceneFX", () => ({ SceneFX: () => null }));
 vi.mock("@/components/HummingBirdAttachStrip", () => ({ HummingBirdAttachStrip: () => null }));
 vi.mock("@/components/VisionIntake", () => ({ VisionIntake: () => null }));
 vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));

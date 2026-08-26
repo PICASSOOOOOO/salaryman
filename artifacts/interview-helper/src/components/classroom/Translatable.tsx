@@ -4,7 +4,7 @@ import { getCurrentLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
 import { translateText } from '@/lib/translate';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 // Renders a passage of content with an inline "Translate" toggle. Reused for
 // lessons and assignment prompts so translation lives with the content, not as a

@@ -81,7 +81,7 @@ export function Scene6() {
         />
         <span
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(7px, 1vw, 11px)',
             letterSpacing: '0.3em',
             color: '#10b981',
@@ -144,7 +144,7 @@ export function Scene6() {
               background: 'rgba(6,8,13,0.92)',
               border: '1px solid rgba(244,114,182,0.5)',
               borderRadius: 4,
-              fontFamily: '"VT323", monospace',
+              fontFamily: "var(--font-sans)",
               fontSize: 'clamp(7px, 1.2vw, 11px)',
               color: '#f472b6',
               letterSpacing: '0.05em',
@@ -229,7 +229,7 @@ export function Scene6() {
                 border: `1px solid ${row.color}40`,
                 borderLeft: `2px solid ${row.color}`,
                 padding: 'clamp(3px, 0.4vw, 5px) clamp(5px, 0.7vw, 8px)',
-                fontFamily: '"Share Tech Mono", monospace',
+                fontFamily: "var(--font-sans)",
                 fontSize: 'clamp(4px, 0.6vw, 6px)',
                 color: row.color,
                 letterSpacing: '0.18em',
@@ -250,7 +250,7 @@ export function Scene6() {
       >
         <div
           style={{
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(11px, 2.2vw, 20px)',
             color: '#fff',
             letterSpacing: '0.06em',
@@ -261,7 +261,7 @@ export function Scene6() {
         </div>
         <div
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(5px, 0.75vw, 7px)',
             color: '#94a3b8',
             letterSpacing: '0.25em',

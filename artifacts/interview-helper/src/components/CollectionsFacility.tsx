@@ -226,7 +226,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
   if (!state) {
     return (
       <div style={ROOT_STYLE}>
-        <div style={{ color: '#f472b6', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', letterSpacing: '.3em', alignSelf: 'center', justifySelf: 'center', margin: 'auto' }}>
+        <div style={{ color: '#f472b6', fontFamily: "var(--font-sans)", fontSize: '.85rem', letterSpacing: '.3em', alignSelf: 'center', justifySelf: 'center', margin: 'auto' }}>
           PROCESSING INMATE…
         </div>
       </div>
@@ -235,18 +235,15 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
 
   return (
     <div style={ROOT_STYLE} data-testid="collections-facility">
-      <div style={SCANLINES_STYLE} />
-      <div style={FLICKER_STYLE} />
-
       {/* Header — DEBT.OS terminal */}
       <header style={HEADER_STYLE}>
-        <div style={{ color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.3em' }}>
+        <div style={{ color: '#ff2e63', fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.3em' }}>
           DEBT.OS v3.7 // COLLECTIONS FACILITY ▒ MINX CITY SUB-LEVEL 4
         </div>
         <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
           <div>
             <div style={LBL}>OUTSTANDING</div>
-            <div data-testid="cf-debt" style={{ color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '2.2rem', letterSpacing: '.08em', textShadow: '0 0 12px rgba(255,46,99,.7)' }}>
+            <div data-testid="cf-debt" style={{ color: '#ff2e63', fontFamily: "var(--font-sans)", fontSize: '2.2rem', letterSpacing: '.08em', textShadow: '0 0 12px rgba(255,46,99,.7)' }}>
               {formatF(state.debt)}
             </div>
           </div>
@@ -267,14 +264,14 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
 
       {/* Idle shame banner */}
       {idleSec >= 90 && !station && (
-        <div data-testid="idle-warning" style={{ position: 'absolute', top: 110, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,46,99,.1)', border: '1px solid rgba(255,46,99,.6)', padding: '8px 22px', color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.3em', animation: 'cfShame 1.2s steps(2) infinite', zIndex: 5 }}>
+        <div data-testid="idle-warning" style={{ position: 'absolute', top: 110, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,46,99,.1)', border: '1px solid rgba(255,46,99,.6)', padding: '8px 22px', color: '#ff2e63', fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.3em', animation: 'cfShame 1.2s steps(2) infinite', zIndex: 5 }}>
           ⚠ NO PROGRESS DETECTED · IDLE {idleSec}s · DEBT WILL NOT REDUCE ITSELF
         </div>
       )}
 
       {/* Toast */}
       {toast && (
-        <div data-testid="cf-toast" style={{ position: 'absolute', top: 70, right: 20, background: 'rgba(34,211,238,.1)', border: '1px solid rgba(34,211,238,.5)', padding: '6px 14px', color: '#22d3ee', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.2em', zIndex: 5 }}>
+        <div data-testid="cf-toast" style={{ position: 'absolute', top: 70, right: 20, background: 'rgba(34,211,238,.1)', border: '1px solid rgba(34,211,238,.5)', padding: '6px 14px', color: '#22d3ee', fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.2em', zIndex: 5 }}>
           {toast}
         </div>
       )}
@@ -411,7 +408,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
               <div style={{ marginTop: 18, height: 220, background: '#000', border: '1px solid rgba(34,211,238,.4)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10 }}>
                 {!adWatching ? (
                   <>
-                    <div style={{ color: '#22d3ee', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.4rem', letterSpacing: '.2em' }}>► PLAY AD</div>
+                    <div style={{ color: '#22d3ee', fontFamily: "var(--font-sans)", fontSize: '1.4rem', letterSpacing: '.2em' }}>► PLAY AD</div>
                     <div style={{ color: 'rgba(255,255,255,.4)', fontSize: '.7rem', letterSpacing: '.2em' }}>30 SECONDS · ƒ500</div>
                     <button data-testid="cf-ad-play" onClick={onAdWatch} disabled={busy || cooldownMs > 0} style={{ ...PRIMARY_BTN, marginTop: 12 }}>
                       {cooldownMs > 0 ? `COOLDOWN ${Math.ceil(cooldownMs / 1000)}s` : 'BEGIN VIEWING'}
@@ -419,7 +416,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
                   </>
                 ) : (
                   <>
-                    <div style={{ color: '#f472b6', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.6rem', letterSpacing: '.15em', textShadow: '0 0 18px rgba(244,114,182,.6)' }}>PABLO PRIME — $149/mo</div>
+                    <div style={{ color: '#f472b6', fontFamily: "var(--font-sans)", fontSize: '1.6rem', letterSpacing: '.15em', textShadow: '0 0 18px rgba(244,114,182,.6)' }}>PABLO PRIME — $149/mo</div>
                     <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.8rem', textAlign: 'center', maxWidth: 420 }}>The only frontend purchase. Cosmetics + vehicles in-game. Buy it. Stop being here.</div>
                     <div style={{ width: '70%', height: 6, background: '#0a0a0c', border: '1px solid rgba(34,211,238,.4)', marginTop: 16 }}>
                       <div style={{ width: `${adProgress * 100}%`, height: '100%', background: '#22d3ee', boxShadow: '0 0 8px rgba(34,211,238,.6)' }} />
@@ -439,7 +436,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
               <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px,1fr))', gap: 10 }}>
                 {SPONSORS.map((s) => (
                   <button key={s.id} data-testid={`cf-sponsor-${s.id}`} disabled={busy || cooldownMs > 0} onClick={() => onSponsorClick(s.id)} style={SPONSOR_BTN}>
-                    <div style={{ color: '#f472b6', fontFamily: "'Share Tech Mono',monospace", fontSize: '1rem', letterSpacing: '.2em', marginBottom: 4 }}>{s.name}</div>
+                    <div style={{ color: '#f472b6', fontFamily: "var(--font-sans)", fontSize: '1rem', letterSpacing: '.2em', marginBottom: 4 }}>{s.name}</div>
                     <div style={{ color: 'rgba(255,255,255,.55)', fontSize: '.7rem', lineHeight: 1.4 }}>{s.tag}</div>
                     <div style={{ color: 'rgba(34,211,238,.7)', fontSize: '.6rem', letterSpacing: '.25em', marginTop: 8 }}>+ƒ300 · CLICK</div>
                   </button>
@@ -455,7 +452,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
               <div style={PANEL_SUB}>Classify the example. ƒ250 per label. Wrong answers are fine — we'll average them.</div>
               <BenefitsBar label="PABLO CORP" color="#f472b6" />
               <div style={{ marginTop: 18, padding: 18, background: '#0a0a0c', border: '1px solid rgba(244,114,182,.3)' }}>
-                <div style={{ color: 'rgba(255,255,255,.85)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.95rem', lineHeight: 1.6 }}>{labelTask.prompt}</div>
+                <div style={{ color: 'rgba(255,255,255,.85)', fontFamily: "var(--font-sans)", fontSize: '.95rem', lineHeight: 1.6 }}>{labelTask.prompt}</div>
                 <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {labelTask.choices.map((c) => (
                     <button key={c} data-testid={`cf-label-${c}`} disabled={busy || cooldownMs > 0} onClick={() => onLabelChoose(c)} style={LABEL_BTN}>{c}</button>
@@ -543,17 +540,17 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
               <div style={PANEL_SUB}>All org-directed shifts you have worked. Your debt dropped; their project advanced.</div>
 
               {historyLoading && (
-                <div style={{ color: 'rgba(255,255,255,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.25em', marginTop: 20 }}>
+                <div style={{ color: 'rgba(255,255,255,.4)', fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.25em', marginTop: 20 }}>
                   LOADING RECORDS…
                 </div>
               )}
 
               {!historyLoading && laborHistory && laborHistory.count === 0 && (
                 <div style={{ marginTop: 20, padding: 18, background: '#0a0a0c', border: '1px solid rgba(244,114,182,.2)' }}>
-                  <div style={{ color: 'rgba(255,255,255,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', letterSpacing: '.2em', lineHeight: 1.6 }}>
+                  <div style={{ color: 'rgba(255,255,255,.5)', fontFamily: "var(--font-sans)", fontSize: '.75rem', letterSpacing: '.2em', lineHeight: 1.6 }}>
                     NO ORG-DIRECTED SHIFTS ON RECORD.
                   </div>
-                  <div style={{ color: 'rgba(255,255,255,.3)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.15em', marginTop: 8 }}>
+                  <div style={{ color: 'rgba(255,255,255,.3)', fontFamily: "var(--font-sans)", fontSize: '.6rem', letterSpacing: '.15em', marginTop: 8 }}>
                     Use the FOR HIRE or WORLD BUILDER stations to work shifts that benefit an org. Those will appear here.
                   </div>
                 </div>
@@ -581,7 +578,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
               )}
 
               {!historyLoading && !laborHistory && (
-                <div style={{ color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.2em', marginTop: 16 }}>
+                <div style={{ color: '#ff2e63', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.2em', marginTop: 16 }}>
                   FAILED TO LOAD RECORDS. TRY AGAIN.
                 </div>
               )}
@@ -600,17 +597,16 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
 
       {/* Footer — locked exit */}
       <footer style={FOOTER_STYLE}>
-        <div style={{ color: 'rgba(255,255,255,.35)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.3em' }}>
+        <div style={{ color: 'rgba(255,255,255,.35)', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.3em' }}>
           ⌧ EXIT SEALED · DEBT MUST REACH ƒ0 · NO EXCEPTIONS
         </div>
-        <div style={{ color: 'rgba(244,114,182,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.3em' }}>
+        <div style={{ color: 'rgba(244,114,182,.6)', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.3em' }}>
           ▒ PABLO CORP · MINX CITY ▒
         </div>
       </footer>
 
       <style>{`
         @keyframes cfShame { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
-        @keyframes cfFlicker { 0%,98%,100% { opacity:.04 } 99% { opacity:.16 } }
       `}</style>
     </div>
   );
@@ -637,7 +633,7 @@ function LaborHistoryRow({ entry }: { entry: LaborHistoryEntry }) {
   return (
     <div
       data-testid="cf-history-row"
-      style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '10px 14px', background: 'rgba(0,0,0,.5)', border: '1px solid rgba(244,114,182,.18)', fontFamily: "'Share Tech Mono',monospace" }}
+      style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '10px 14px', background: 'rgba(0,0,0,.5)', border: '1px solid rgba(244,114,182,.18)', fontFamily: "var(--font-sans)" }}
     >
       <div>
         <div style={{ color: '#f472b6', fontSize: '.7rem', letterSpacing: '.2em', marginBottom: 3 }}>
@@ -660,9 +656,9 @@ function LaborHistoryRow({ entry }: { entry: LaborHistoryEntry }) {
 function BenefitsBar({ label, color }: { label: string; color: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 0', padding: '4px 8px', background: `rgba(${color === '#22d3ee' ? '34,211,238' : '244,114,182'},.06)`, border: `1px solid ${color}33` }}>
-      <span style={{ color: 'rgba(255,255,255,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.15em' }}>THIS LABOR BENEFITS:</span>
-      <span style={{ color, fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', letterSpacing: '.15em', fontWeight: 'bold' }}>{label}</span>
-      <span style={{ color: 'rgba(255,255,255,.3)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginLeft: 'auto' }}>YOUR DEBT DROPS EITHER WAY ✓</span>
+      <span style={{ color: 'rgba(255,255,255,.4)', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.15em' }}>THIS LABOR BENEFITS:</span>
+      <span style={{ color, fontFamily: "var(--font-sans)", fontSize: '.55rem', letterSpacing: '.15em', fontWeight: 'bold' }}>{label}</span>
+      <span style={{ color: 'rgba(255,255,255,.3)', fontFamily: "var(--font-sans)", fontSize: '.45rem', marginLeft: 'auto' }}>YOUR DEBT DROPS EITHER WAY ✓</span>
     </div>
   );
 }
@@ -672,21 +668,21 @@ function StationCard({ id, title, sub, description, onClick, color, benefitsLabe
   onClick: () => void; color: string; benefitsLabel?: string; badge?: string;
 }) {
   return (
-    <button data-testid={`cf-station-${id}`} onClick={onClick} style={{ background: 'rgba(10,10,12,.85)', border: `1px solid ${color}55`, padding: 18, textAlign: 'left', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", color: '#fff', transition: 'all .15s', position: 'relative' }}
+    <button data-testid={`cf-station-${id}`} onClick={onClick} style={{ background: 'rgba(10,10,12,.85)', border: `1px solid ${color}55`, padding: 18, textAlign: 'left', cursor: 'pointer', fontFamily: "var(--font-sans)", color: '#fff', transition: 'all .15s', position: 'relative' }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = color; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 18px ${color}33`; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = `${color}55`; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}
     >
       <div style={{ color, fontSize: '.95rem', letterSpacing: '.2em', marginBottom: 4 }}>{title}</div>
       <div style={{ color: 'rgba(255,255,255,.55)', fontSize: '.65rem', letterSpacing: '.2em', marginBottom: 8 }}>{sub}</div>
       {benefitsLabel && (
-        <div style={{ color: 'rgba(255,255,255,.35)', fontSize: '.5rem', letterSpacing: '.18em', marginBottom: 8, fontFamily: "'Share Tech Mono',monospace" }}>
+        <div style={{ color: 'rgba(255,255,255,.35)', fontSize: '.5rem', letterSpacing: '.18em', marginBottom: 8, fontFamily: "var(--font-sans)" }}>
           BENEFITS: <span style={{ color }}>{benefitsLabel}</span>
         </div>
       )}
       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.75rem', lineHeight: 1.5 }}>{description}</div>
       <div style={{ position: 'absolute', top: 10, right: 12, color: `${color}99`, fontSize: '.55rem', letterSpacing: '.3em' }}>► ENTER</div>
       {badge && (
-        <div style={{ position: 'absolute', top: -6, left: 12, background: color, color: '#000', fontSize: '.45rem', fontFamily: "'Share Tech Mono',monospace", padding: '2px 6px', letterSpacing: '.15em' }}>{badge}</div>
+        <div style={{ position: 'absolute', top: -6, left: 12, background: color, color: '#000', fontSize: '.45rem', fontFamily: "var(--font-sans)", padding: '2px 6px', letterSpacing: '.15em' }}>{badge}</div>
       )}
     </button>
   );
@@ -698,15 +694,6 @@ const ROOT_STYLE: React.CSSProperties = {
   color: '#fff',
   overflow: 'hidden',
   display: 'flex', flexDirection: 'column',
-};
-const SCANLINES_STYLE: React.CSSProperties = {
-  position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
-  backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(255,255,255,.03) 2px, rgba(255,255,255,.03) 3px)',
-};
-const FLICKER_STYLE: React.CSSProperties = {
-  position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
-  background: 'rgba(244,114,182,.06)', mixBlendMode: 'screen',
-  animation: 'cfFlicker 4s steps(4) infinite',
 };
 const HEADER_STYLE: React.CSSProperties = {
   position: 'relative', zIndex: 4,
@@ -721,13 +708,13 @@ const FOOTER_STYLE: React.CSSProperties = {
   background: 'rgba(0,0,0,.7)',
   display: 'flex', justifyContent: 'space-between',
 };
-const LBL: React.CSSProperties = { color: 'rgba(255,255,255,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', letterSpacing: '.3em' };
-const VAL: React.CSSProperties = { color: '#22d3ee', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.1rem', letterSpacing: '.1em' };
-const PANEL_STYLE: React.CSSProperties = { background: 'rgba(10,10,12,.92)', border: '1px solid rgba(34,211,238,.3)', padding: 22, marginTop: 12, fontFamily: "'Share Tech Mono',monospace" };
+const LBL: React.CSSProperties = { color: 'rgba(255,255,255,.4)', fontFamily: "var(--font-sans)", fontSize: '.55rem', letterSpacing: '.3em' };
+const VAL: React.CSSProperties = { color: '#22d3ee', fontFamily: "var(--font-sans)", fontSize: '1.1rem', letterSpacing: '.1em' };
+const PANEL_STYLE: React.CSSProperties = { background: 'rgba(10,10,12,.92)', border: '1px solid rgba(34,211,238,.3)', padding: 22, marginTop: 12, fontFamily: "var(--font-sans)" };
 const PANEL_TITLE: React.CSSProperties = { color: '#22d3ee', fontSize: '.95rem', letterSpacing: '.25em', marginBottom: 6 };
 const PANEL_SUB: React.CSSProperties = { color: 'rgba(255,255,255,.55)', fontSize: '.7rem', letterSpacing: '.15em' };
-const BACK_BTN: React.CSSProperties = { alignSelf: 'flex-start', background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'rgba(255,255,255,.6)', padding: '5px 12px', fontSize: '.65rem', letterSpacing: '.25em', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", marginBottom: 10 };
-const PRIMARY_BTN: React.CSSProperties = { background: 'rgba(244,114,182,.12)', border: '1px solid rgba(244,114,182,.6)', color: '#f472b6', padding: '8px 18px', fontFamily: "'Share Tech Mono',monospace", fontSize: '.72rem', letterSpacing: '.2em', cursor: 'pointer' };
-const SPONSOR_BTN: React.CSSProperties = { background: 'rgba(0,0,0,.6)', border: '1px solid rgba(244,114,182,.35)', padding: 14, textAlign: 'left', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" };
-const LABEL_BTN: React.CSSProperties = { background: 'rgba(34,211,238,.1)', border: '1px solid rgba(34,211,238,.5)', color: '#22d3ee', padding: '8px 14px', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.15em', cursor: 'pointer' };
-const TEXTAREA_STYLE: React.CSSProperties = { width: '100%', height: 140, marginTop: 12, background: '#000', border: '1px solid rgba(244,114,182,.3)', color: '#fff', padding: 12, fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', resize: 'vertical' };
+const BACK_BTN: React.CSSProperties = { alignSelf: 'flex-start', background: 'transparent', border: '1px solid rgba(255,255,255,.2)', color: 'rgba(255,255,255,.6)', padding: '5px 12px', fontSize: '.65rem', letterSpacing: '.25em', cursor: 'pointer', fontFamily: "var(--font-sans)", marginBottom: 10 };
+const PRIMARY_BTN: React.CSSProperties = { background: 'rgba(244,114,182,.12)', border: '1px solid rgba(244,114,182,.6)', color: '#f472b6', padding: '8px 18px', fontFamily: "var(--font-sans)", fontSize: '.72rem', letterSpacing: '.2em', cursor: 'pointer' };
+const SPONSOR_BTN: React.CSSProperties = { background: 'rgba(0,0,0,.6)', border: '1px solid rgba(244,114,182,.35)', padding: 14, textAlign: 'left', cursor: 'pointer', fontFamily: "var(--font-sans)" };
+const LABEL_BTN: React.CSSProperties = { background: 'rgba(34,211,238,.1)', border: '1px solid rgba(34,211,238,.5)', color: '#22d3ee', padding: '8px 14px', fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.15em', cursor: 'pointer' };
+const TEXTAREA_STYLE: React.CSSProperties = { width: '100%', height: 140, marginTop: 12, background: '#000', border: '1px solid rgba(244,114,182,.3)', color: '#fff', padding: 12, fontFamily: "var(--font-sans)", fontSize: '.8rem', resize: 'vertical' };

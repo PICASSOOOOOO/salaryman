@@ -120,7 +120,7 @@ export default function PhoneSmsPage() {
     setSending(false);
   }
 
-  const mono = { fontFamily: "'Share Tech Mono', monospace" } as const;
+  const mono = { fontFamily: "var(--font-sans)" } as const;
   const inputStyle: React.CSSProperties = {
     width: '100%', background: crt(0.03), border: `1px solid ${crt(0.15)}`,
     borderRadius: 4, padding: '8px 10px', fontSize: '0.55rem', color: crt(0.9),

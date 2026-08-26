@@ -168,16 +168,16 @@ export function NetWorthHUD({
   return (
     <div
       ref={rootRef}
-      style={{ display: 'flex', flexDirection: 'column', gap: compact ? 2 : 3, minWidth: barW, fontFamily: "'Share Tech Mono',monospace", position: 'relative' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: compact ? 2 : 3, minWidth: barW, fontFamily: "var(--font-sans)", position: 'relative' }}
     >
       {/* Headline: net worth label + value */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{ fontSize: compact ? '.44rem' : '.5rem', color: 'rgba(255,215,0,.55)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>NET WORTH</span>
-        <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.85rem' : '.95rem', color: nwFlashColor ?? barColor, textShadow: `0 0 5px ${nwFlashColor ?? barGlow}`, letterSpacing: '.03em', transition: 'color .4s ease' }}>
+        <span style={{ fontFamily: "var(--font-sans)", fontSize: compact ? '.85rem' : '.95rem', color: nwFlashColor ?? barColor, textShadow: `0 0 5px ${nwFlashColor ?? barGlow}`, letterSpacing: '.03em', transition: 'color .4s ease' }}>
           {inDebt ? '-' : ''}ƒ{nwLabel}
         </span>
         {comboCount !== undefined && comboCount > 1 && (
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: '#ffcc44', textShadow: '0 0 3px rgba(255,204,68,.7)' }}>×{comboCount}</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '.65rem', color: '#ffcc44', textShadow: '0 0 3px rgba(255,204,68,.7)' }}>×{comboCount}</span>
         )}
       </div>
 
@@ -243,7 +243,7 @@ export function NetWorthHUD({
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ fontSize: compact ? '.55rem' : '.62rem', fontWeight: 700, color: staminaColor, letterSpacing: '.12em', textShadow: `0 0 5px ${staminaColor}66` }}>STAMINA</span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.82rem' : '1rem', lineHeight: 1, color: staminaFlashColor ?? staminaColor, textShadow: `0 0 5px ${staminaFlashColor ?? staminaColor}99`, transition: 'color .3s ease' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: compact ? '.82rem' : '1rem', lineHeight: 1, color: staminaFlashColor ?? staminaColor, textShadow: `0 0 5px ${staminaFlashColor ?? staminaColor}99`, transition: 'color .3s ease' }}>
               {Math.round(staminaValue)}%
             </span>
           </div>
@@ -266,7 +266,7 @@ export function NetWorthHUD({
       {showCredit && creditScore !== undefined && creditTier && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: '.44rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.08em' }}>CREDIT</span>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.72rem', color: tierColor, letterSpacing: '.04em' }}>{creditScore}</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '.72rem', color: tierColor, letterSpacing: '.04em' }}>{creditScore}</span>
           <span style={{ fontSize: '.42rem', color: tierColor, opacity: 0.85, letterSpacing: '.05em' }}>{creditTier}</span>
         </div>
       )}
@@ -279,7 +279,7 @@ function PopRow({ label, value, color, bold }: { label: string; value: string; c
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
       <span style={{ fontSize: '.42rem', color: 'rgba(255,255,255,.4)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>{label}</span>
       <span style={{
-        fontFamily: "'VT323',monospace", fontSize: '.78rem', color, letterSpacing: '.04em',
+        fontFamily: "var(--font-sans)", fontSize: '.78rem', color, letterSpacing: '.04em',
         fontWeight: bold ? 700 : 400,
       }}>{value}</span>
     </div>

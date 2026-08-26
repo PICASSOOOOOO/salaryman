@@ -25,15 +25,6 @@ export default function VideoTemplate() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#06080d]">
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.06] z-50"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.03) 1px, rgba(255,255,255,0.03) 2px)',
-          backgroundSize: '100% 2px',
-        }}
-      />
-
       <AnimatePresence mode="wait">
         {currentScene === 0 && <Scene1 key="intro" />}
         {currentScene === 1 && <Scene2 key="pitch" />}

@@ -3,9 +3,8 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
-import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier, isTourSeen, markTourSeen } from '@/lib/tutorial-progress';
+import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useOnboardingResolved } from '@/lib/onboarding-sync';
-import { IntroTour } from '@/components/IntroTour';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
 import { getCityById } from '@/lib/world-servers';
@@ -97,15 +96,7 @@ function persistHousing(out: HousingChargeResult): void {
 //               old immediate jump into the app, which dropped users
 //               straight onto a terminal screen with no transition.
 //   done      — handing off to the live app via navigate('/')
-//   tour      — vertical Pablo-narrated arrival tour (office + city footage)
-//               shown ONCE at the very start for brand-new arrivals, before
-//               intake. Skippable; never shown to returning/seen players.
-type Phase = 'tour' | 'intake' | 'stamping' | 'intro' | 'done';
-
-// New, unseen arrivals start with the tour; everyone else goes to intake.
-function initialPhase(): Phase {
-  return isTourSeen() ? 'intake' : 'tour';
-}
+type Phase = 'intake' | 'stamping' | 'intro' | 'done';
 
 interface StampLine {
   text: string;
@@ -117,7 +108,7 @@ export default function Immigration() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   const completedRef = useRef(false);
-  const [phase, setPhase] = useState<Phase>(initialPhase);
+  const [phase, setPhase] = useState<Phase>('intake');
   const [answers, setAnswers] = useState<OnboardingAnswers | null>(null);
   const [stampLines, setStampLines] = useState<StampLine[]>([]);
   const [showContinue, setShowContinue] = useState(false);
@@ -167,15 +158,6 @@ export default function Immigration() {
   // any shortfall to debt, dispatch tax collectors. We mirror it here as
   // teletype stamps so the user sees the exact same business onboarding,
   // then navigate home only after the fee receipt is on screen.
-  // Arrival tour finished (or skipped) → mark seen so it never replays, then
-  // hand straight to the registry intake. Guarded so a double-fire can't bounce
-  // the phase backwards.
-  const handleTourDone = () => {
-    if (phase !== 'tour') return;
-    markTourSeen();
-    setPhase('intake');
-  };
-
   const handleComplete = (a: OnboardingAnswers) => {
     if (completedRef.current) return;
     completedRef.current = true;
@@ -367,7 +349,7 @@ export default function Immigration() {
     markTutorialDone();
     // Powering on the terminal is the through-line of the whole funnel, so a
     // brand-new user who completes intake lands on the actual TERMINAL — the
-    // CRT console with the tools — instead of the office. This keeps the
+    // console with the tools — instead of the office. This keeps the
     // power-on → terminal promise consistent for first-time accounts too.
     navigate('/console', { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
@@ -384,7 +366,7 @@ export default function Immigration() {
         minHeight: '100vh', width: '100vw',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: '#04060a', color: 'rgba(56,189,248,.55)',
-        fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.2em',
+        fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.2em',
       }}>
         &gt; CONNECTING TO IMMIGRATION DESK...
       </div>
@@ -398,7 +380,6 @@ export default function Immigration() {
       overflow: 'hidden',
     }}>
       <ImmigrationBackdrop phase={phase} />
-      {phase === 'tour' && <IntroTour onDone={handleTourDone} />}
       {phase === 'intake' && (
         <PabloOnboarding
           charName={charName}
@@ -430,8 +411,8 @@ function StampingPanel({
   showContinue: boolean;
   onContinue: () => void;
 }) {
-  const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+  const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -541,8 +522,8 @@ function StampingPanel({
 }
 
 function ImmigrationBackdrop({ phase }: { phase: Phase }) {
-  const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+  const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'REGISTRY OPEN';
   const isMobile = useIsMobile();
   // Painted cinematic base — the border-control terminal in the game's
@@ -571,28 +552,11 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
       <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, rgba(3,6,12,.35) 0%, rgba(3,6,12,.78) 80%)' }} />
 
       <style>{`
-        @keyframes scanline-immig {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
-        }
         @keyframes badge-pulse {
           0%, 100% { box-shadow: 0 0 8px rgba(56,189,248,.25); }
           50% { box-shadow: 0 0 22px rgba(56,189,248,.55); }
         }
-        @keyframes stamp-flicker {
-          0%, 92%, 100% { opacity: .5; }
-          93%, 96% { opacity: .15; }
-        }
       `}</style>
-
-      {/* CRT scanline sweep */}
-      <div aria-hidden style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(rgba(56,189,248,.05), transparent)',
-        height: '4px',
-        animation: 'scanline-immig 6s linear infinite',
-        zIndex: 5,
-      }} />
 
       {/* Top stripe — "BORDER CONTROL" */}
       <div style={{
@@ -687,7 +651,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
         zIndex: 10,
       }}>
         <div>{isMobile ? 'FILING MANDATORY' : 'FILING IS MANDATORY · CITY ACCESS DENIED UNTIL CLEARED'}</div>
-        <div style={{ animation: 'stamp-flicker 3.2s linear infinite' }}>
+        <div>
           ● {stageLabel}
         </div>
       </div>

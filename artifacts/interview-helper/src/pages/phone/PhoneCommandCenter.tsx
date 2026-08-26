@@ -80,7 +80,7 @@ function ActiveCallCard({
         <div style={{
           fontSize: '1.1rem', color: crt(0.6),
           fontVariantNumeric: 'tabular-nums',
-          ...(boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+          ...(boomer ? {} : { fontFamily: "var(--font-sans)" }),
         }}>
           {formatDuration(call.elapsed)}
         </div>
@@ -307,7 +307,7 @@ export default function PhoneCommandCenter() {
               flex: 1, background: crt(0.04), border: `1px solid ${crt(0.15)}`,
               color: crt(0.9), padding: '12px 14px', fontSize: '1rem',
               borderRadius: 8, outline: 'none',
-              ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+              ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
             }}
           />
           <button

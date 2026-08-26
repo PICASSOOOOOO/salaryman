@@ -105,11 +105,7 @@ export default function BotBirthSequence({ botName, specialty, category, serial,
       aria-modal="true"
       aria-label={`${botName} replicant decant in progress`}
     >
-      {/* CRT scanlines + pink ambient bleed */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "repeating-linear-gradient(0deg, rgba(0,0,0,0.55) 0 1px, transparent 1px 3px)",
-        mixBlendMode: "multiply",
-      }} />
+      {/* Ambient light from the decant chamber. */}
       <div className="absolute inset-0 pointer-events-none" style={{
         background: "radial-gradient(circle at 50% 100%, rgba(236,72,153,0.16), transparent 55%)",
       }} />

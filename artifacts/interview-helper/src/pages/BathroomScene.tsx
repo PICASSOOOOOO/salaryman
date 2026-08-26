@@ -70,7 +70,7 @@ export default function BathroomScene() {
   const doorUrl = doorArt;
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#06070b] text-pink-100 overflow-hidden select-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+    <div className="fixed inset-0 z-40 bg-[#06070b] text-pink-100 overflow-hidden select-none" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Pro-baked background scene (fades in over CSS placeholder) */}
       {bathroomBgUrl && (
         <motion.img

@@ -3,10 +3,10 @@
  * player opens a terminal. Four visual variants, each tuned to where the
  * player is "physically" booting from in the game world:
  *
- *   - "office":   sit-down at a desk + monitor flicker on
+ *   - "office":   sit-down at a desk + monitor powers on
  *   - "mobile":   pull device from pocket + screen wakes
  *   - "kiosk":    stand at a public kiosk + coin-slot warm-up
- *   - "payphone": lift handset + dial-tone CRT
+ *   - "payphone": lift handset + dial tone
  *
  * Pure CSS / SVG, no images, no third-party deps beyond framer-motion which
  * the project already uses. Auto-completes after a short duration (~1.6s)
@@ -91,13 +91,12 @@ export function TerminalBootAnimation({ variant, onComplete, durationMs = 1600 }
             background: "radial-gradient(circle at center, #08111c 0%, #000 75%)",
             display: "flex", alignItems: "center", justifyContent: "center",
             overflow: "hidden", cursor: "pointer",
-            fontFamily: "'Share Tech Mono', monospace",
+            fontFamily: "var(--font-sans)",
           }}
           aria-label="Terminal boot animation. Tap or press ESC to skip."
         >
           <BootScene variant={variant} />
           <BootChrome variant={variant} />
-          <ScanlineOverlay accent={VARIANT_META[variant].accent} />
           <SkipHint />
         </motion.div>
       )}
@@ -116,7 +115,7 @@ function BootScene({ variant }: { variant: TerminalBootVariant }) {
   }
 }
 
-/** Office: desk + monitor swings up, screen flickers on. */
+/** Office: desk + monitor swings up, screen powers on. */
 function OfficeScene() {
   return (
     <div style={{ position: "relative", width: 360, height: 280 }}>
@@ -131,7 +130,7 @@ function OfficeScene() {
         transition={{ duration: 0.55, ease: "easeOut" }}
         style={{ position: "absolute", bottom: 50, left: "50%", width: 280, height: 200, transform: "translateX(-50%)", transformOrigin: "50% 100%", background: "#0a0f1a", border: "3px solid #1e293b", borderRadius: 6, overflow: "hidden" }}
       >
-        <ScreenFlicker accent="#38bdf8" lines={[
+        <BootScreen accent="#38bdf8" lines={[
           "MX-75 BIOS · v7.4",
           "POST OK · 16384 KB",
           "MOUNTING /home/u",
@@ -156,7 +155,7 @@ function MobileScene() {
       <div style={{ position: "absolute", inset: 0, background: "#111827", borderRadius: 26, border: "3px solid #1e293b", boxShadow: "0 0 60px rgba(167,139,250,0.35), inset 0 0 12px rgba(0,0,0,0.6)" }}>
         <div style={{ position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", width: 60, height: 6, background: "#0a0f1a", borderRadius: 3 }} />
         <div style={{ position: "absolute", top: 24, left: 8, right: 8, bottom: 24, borderRadius: 14, overflow: "hidden", background: "#000" }}>
-          <ScreenFlicker accent="#a78bfa" lines={[
+          <BootScreen accent="#a78bfa" lines={[
             "MX-75 mobile",
             "tower lock · OK",
             "PABLO online",
@@ -183,7 +182,7 @@ function KioskScene() {
           transition={{ duration: 0.5, delay: 0.15 }}
           style={{ position: "absolute", top: 18, left: 14, right: 14, height: 200, background: "#000", border: "1px solid #facc15", borderRadius: 4, overflow: "hidden" }}
         >
-          <ScreenFlicker accent="#facc15" lines={[
+          <BootScreen accent="#facc15" lines={[
             "CITY NET · KIOSK 14",
             "Free tier · 60 min/day",
             "PABLO online",
@@ -206,15 +205,15 @@ function KioskScene() {
   );
 }
 
-/** Payphone: handset lifts off cradle, dial tone CRT. */
+/** Payphone: handset lifts off cradle and the dial tone display powers on. */
 function PayphoneScene() {
   return (
     <div style={{ position: "relative", width: 240, height: 360 }}>
       {/* booth body */}
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#064e3b,#022c22)", border: "3px solid #34d399", borderRadius: 8, boxShadow: "0 0 40px rgba(52,211,153,0.3)" }}>
-        {/* small CRT */}
+        {/* status display */}
         <div style={{ position: "absolute", top: 24, left: 30, right: 30, height: 90, background: "#000", border: "2px solid #34d399", borderRadius: 4, overflow: "hidden" }}>
-          <ScreenFlicker accent="#34d399" lines={[
+          <BootScreen accent="#34d399" lines={[
             "TTC LINE",
             "DIAL TONE",
           ]} compact />
@@ -246,18 +245,11 @@ function PayphoneScene() {
 
 /* ── shared bits ────────────────────────────────────────────────────────── */
 
-function ScreenFlicker({ accent, lines, compact = false }: { accent: string; lines: string[]; compact?: boolean }) {
+function BootScreen({ accent, lines, compact = false }: { accent: string; lines: string[]; compact?: boolean }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: "#000", overflow: "hidden" }}>
-      {/* flicker frame */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.2, 1, 0.5, 1, 0.8, 1] }}
-        transition={{ duration: 0.5, times: [0, 0.1, 0.2, 0.35, 0.5, 0.7, 1] }}
-        style={{ position: "absolute", inset: 0, background: "#000" }}
-      />
       {/* boot lines */}
-      <div style={{ position: "absolute", inset: 0, padding: compact ? 6 : 10, color: accent, fontSize: compact ? 9 : 11, lineHeight: 1.4, fontFamily: "'Share Tech Mono', monospace" }}>
+      <div style={{ position: "absolute", inset: 0, padding: compact ? 6 : 10, color: accent, fontSize: compact ? 9 : 11, lineHeight: 1.4, fontFamily: "var(--font-sans)" }}>
         {lines.map((l, i) => (
           <motion.div
             key={i}
@@ -269,13 +261,6 @@ function ScreenFlicker({ accent, lines, compact = false }: { accent: string; lin
           </motion.div>
         ))}
       </div>
-      {/* sweep glow */}
-      <motion.div
-        initial={{ y: "-100%" }}
-        animate={{ y: "200%" }}
-        transition={{ duration: 1.0, ease: "linear" }}
-        style={{ position: "absolute", left: 0, right: 0, height: "30%", background: `linear-gradient(180deg, transparent, ${accent}33, transparent)`, pointerEvents: "none" }}
-      />
     </div>
   );
 }
@@ -294,18 +279,6 @@ function BootChrome({ variant }: { variant: TerminalBootVariant }) {
         {m.caption}
       </motion.div>
     </div>
-  );
-}
-
-function ScanlineOverlay({ accent }: { accent: string }) {
-  return (
-    <div
-      style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `repeating-linear-gradient(0deg, ${accent}0a 0px, ${accent}0a 1px, transparent 1px, transparent 3px)`,
-        mixBlendMode: "overlay", opacity: 0.6,
-      }}
-    />
   );
 }
 

@@ -74,30 +74,6 @@ export function markPabloPromoSeen(): void {
   } catch {}
 }
 
-// Tracks whether the user has seen the vertical Pablo-narrated intro tour
-// that plays at the very start of onboarding (before the registry intake).
-// Like the tutorial it's a ONE-TIME beat: once seen we skip straight to
-// intake so a refresh mid-onboarding (or a returning arrival) never replays
-// it. Distinct from tutorial-done so the tour can be shown to a brand-new
-// authed user who hasn't finished onboarding yet.
-const TOUR_SEEN_KEY = "salaryman_tour_seen";
-
-export function isTourSeen(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    return window.localStorage.getItem(TOUR_SEEN_KEY) === "1";
-  } catch {
-    return true;
-  }
-}
-
-export function markTourSeen(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(TOUR_SEEN_KEY, "1");
-  } catch {}
-}
-
 // Salaryman identity Pablo collects during the post-passcode intro. Email
 // is informational here — the actual login is OAuth — but we keep both so
 // the rest of the app can address the player by name without a round-trip.

@@ -585,13 +585,13 @@ export function PhoneDialer({
   const inputStyle = {
     background: 'rgba(0,20,0,0.8)', border: `1px solid ${crt(0.2)}`,
     color: crt(0.9), padding: '5px 8px', fontSize: '0.55rem',
-    ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), outline: 'none',
+    ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), outline: 'none',
   };
 
   const btnStyle = (color: (o: number) => string, active?: boolean) => ({
     background: color(active ? 0.2 : 0.08), border: `1px solid ${color(0.3)}`,
     color: color(0.8), cursor: 'pointer', padding: '4px 8px', fontSize: '0.45rem',
-    ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.08em',
+    ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), letterSpacing: '0.08em',
     display: 'flex', alignItems: 'center', gap: 3,
   });
 
@@ -618,7 +618,7 @@ export function PhoneDialer({
     <div style={{
       background: 'rgba(0,8,0,0.97)', border: `1px solid ${crt(0.3)}`,
       boxShadow: `0 0 30px ${crt(0.1)}, inset 0 0 30px rgba(0,0,0,0.5)`,
-      ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+      ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
       width: compact ? '340px' : '400px', maxWidth: 'calc(100vw - 16px)', maxHeight: '600px',
       display: 'flex', flexDirection: 'column', position: 'relative',
     }}>
@@ -647,7 +647,7 @@ export function PhoneDialer({
             background: tab === t.key ? crt(0.08) : 'transparent',
             border: 'none', borderBottom: tab === t.key ? `2px solid ${crt(0.6)}` : '2px solid transparent',
             color: tab === t.key ? crt(0.9) : crt(0.3), cursor: 'pointer',
-            fontSize: '0.42rem', letterSpacing: '0.08em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), position: 'relative',
+            fontSize: '0.42rem', letterSpacing: '0.08em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), position: 'relative',
           }}>
             {t.icon}{t.label}
             {t.badge !== undefined && t.badge > 0 && (
@@ -694,7 +694,7 @@ export function PhoneDialer({
             {selected.size > 0 && (
               <div style={{ padding: '6px 8px', borderTop: `1px solid ${crt(0.15)}`, background: crt(0.04), display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: '0.5rem', color: crt(0.6), flex: 1 }}>{selected.size} SELECTED</span>
-                <button onClick={blastSelected} disabled={blasting} style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4, background: blasting ? amber(0.15) : 'rgba(0,200,50,0.15)', border: `1px solid ${blasting ? amber(0.5) : 'rgba(0,200,50,0.5)'}`, color: blasting ? amber(0.9) : crt(0.95), cursor: blasting ? 'wait' : 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
+                <button onClick={blastSelected} disabled={blasting} style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4, background: blasting ? amber(0.15) : 'rgba(0,200,50,0.15)', border: `1px solid ${blasting ? amber(0.5) : 'rgba(0,200,50,0.5)'}`, color: blasting ? amber(0.9) : crt(0.95), cursor: blasting ? 'wait' : 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
                   {blasting ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
                   {blasting ? 'DIALING...' : `BLAST ${selected.size}`}
                 </button>
@@ -707,21 +707,21 @@ export function PhoneDialer({
           <div style={{ padding: '10px' }}>
             <div style={{ background: 'rgba(0,20,0,0.8)', border: `1px solid ${crt(0.2)}`, padding: '8px 10px', marginBottom: 8, display: 'flex', alignItems: 'center' }}>
               <input value={manualNumber} onChange={e => setManualNumber(e.target.value)} placeholder="Enter phone number..."
-                style={{ flex: 1, background: 'transparent', border: 'none', color: crt(0.9), fontSize: '0.9rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), outline: 'none', letterSpacing: '0.05em' }}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: crt(0.9), fontSize: '0.9rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), outline: 'none', letterSpacing: '0.05em' }}
                 onKeyDown={e => { if (e.key === 'Enter' && manualNumber.trim()) callSingle(manualNumber); }}
               />
               {manualNumber && <button onClick={() => setManualNumber('')} style={{ background: 'none', border: 'none', color: crt(0.3), cursor: 'pointer' }}><X size={12} /></button>}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: 8 }}>
               {['1','2','3','4','5','6','7','8','9','*','0','#'].map(key => (
-                <button key={key} onClick={() => setManualNumber(prev => prev + key)} style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.9rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
+                <button key={key} onClick={() => setManualNumber(prev => prev + key)} style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.9rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
                   {key}
                 </button>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => setManualNumber(prev => prev.slice(0, -1))} disabled={!manualNumber} style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: manualNumber ? crt(0.6) : crt(0.15), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.55rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>DEL</button>
-              <button onClick={() => { if (manualNumber.trim()) callSingle(manualNumber); }} disabled={!manualNumber.trim() || loading} style={{ flex: 2, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: manualNumber ? 'rgba(0,200,50,0.15)' : crt(0.04), border: `1px solid ${manualNumber ? 'rgba(0,200,50,0.5)' : crt(0.15)}`, color: manualNumber ? crt(0.95) : crt(0.2), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.6rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.1em' }}>
+              <button onClick={() => setManualNumber(prev => prev.slice(0, -1))} disabled={!manualNumber} style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: manualNumber ? crt(0.6) : crt(0.15), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.55rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>DEL</button>
+              <button onClick={() => { if (manualNumber.trim()) callSingle(manualNumber); }} disabled={!manualNumber.trim() || loading} style={{ flex: 2, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: manualNumber ? 'rgba(0,200,50,0.15)' : crt(0.04), border: `1px solid ${manualNumber ? 'rgba(0,200,50,0.5)' : crt(0.15)}`, color: manualNumber ? crt(0.95) : crt(0.2), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.6rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), letterSpacing: '0.1em' }}>
                 <Phone size={12} />{loading ? 'CALLING...' : 'CALL'}
               </button>
             </div>
@@ -775,7 +775,7 @@ export function PhoneDialer({
                 </div>
                 {liveCount > 0 && (
                   <div style={{ padding: '6px 8px', borderTop: `1px solid ${crt(0.15)}` }}>
-                    <button onClick={hangupAll} style={{ width: '100%', padding: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontWeight: 'bold' }}>
+                    <button onClick={hangupAll} style={{ width: '100%', padding: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), fontWeight: 'bold' }}>
                       <PhoneOff size={10} />HANG UP ALL ({liveCount})
                     </button>
                   </div>
@@ -835,8 +835,8 @@ export function PhoneDialer({
                           <input value={followupForm.title} onChange={e => setFollowupForm(f => ({ ...f, title: e.target.value }))} placeholder="Follow-up title..." style={{ ...inputStyle, width: '100%' }} />
                           <input type="datetime-local" value={followupForm.startAt} onChange={e => setFollowupForm(f => ({ ...f, startAt: e.target.value }))} style={{ ...inputStyle, width: '100%', colorScheme: 'dark' }} />
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button onClick={scheduleFollowup} disabled={!followupForm.title || !followupForm.startAt} style={{ flex: 1, padding: '4px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>SCHEDULE</button>
-                            <button onClick={() => setFollowupCallSid(null)} style={{ padding: '4px 8px', background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.6), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>CANCEL</button>
+                            <button onClick={scheduleFollowup} disabled={!followupForm.title || !followupForm.startAt} style={{ flex: 1, padding: '4px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>SCHEDULE</button>
+                            <button onClick={() => setFollowupCallSid(null)} style={{ padding: '4px 8px', background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.6), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>CANCEL</button>
                           </div>
                         </div>
                       </div>
@@ -900,7 +900,7 @@ export function PhoneDialer({
                       <div style={{ padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${crt(0.1)}` }}>
                         <Users size={10} style={{ color: crt(0.6) }} />
                         <span style={{ fontSize: '0.5rem', color: crt(0.8), flex: 1 }}>{conf.roomName}</span>
-                        <button onClick={() => endConference(conf.roomName)} style={{ background: red(0.1), border: `1px solid ${red(0.3)}`, color: red(0.7), cursor: 'pointer', padding: '2px 6px', fontSize: '0.4rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>END</button>
+                        <button onClick={() => endConference(conf.roomName)} style={{ background: red(0.1), border: `1px solid ${red(0.3)}`, color: red(0.7), cursor: 'pointer', padding: '2px 6px', fontSize: '0.4rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>END</button>
                       </div>
                       <div style={{ padding: '5px 8px' }}>
                         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
@@ -934,7 +934,7 @@ export function PhoneDialer({
             <div style={{ padding: '8px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: 10 }}>
                 {(['power', 'auto', 'predictive'] as const).map(mode => (
-                  <button key={mode} onClick={() => setDialingMode(mode)} style={{ padding: '8px 4px', textAlign: 'center', background: dialingMode === mode ? crt(0.12) : crt(0.04), border: `1px solid ${dialingMode === mode ? crt(0.5) : crt(0.15)}`, color: dialingMode === mode ? crt(0.9) : crt(0.4), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.08em' }}>
+                  <button key={mode} onClick={() => setDialingMode(mode)} style={{ padding: '8px 4px', textAlign: 'center', background: dialingMode === mode ? crt(0.12) : crt(0.04), border: `1px solid ${dialingMode === mode ? crt(0.5) : crt(0.15)}`, color: dialingMode === mode ? crt(0.9) : crt(0.4), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), letterSpacing: '0.08em' }}>
                     <div style={{ fontSize: '0.8rem', marginBottom: 3 }}>{mode === 'power' ? '⚡' : mode === 'auto' ? '🤖' : '🎯'}</div>
                     {mode.toUpperCase()}
                   </button>
@@ -953,7 +953,7 @@ export function PhoneDialer({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: '0.42rem', color: crt(0.5) }}>SIMULTANEOUS LINES</span>
-                      <span style={{ fontSize: '0.5rem', color: crt(0.9), ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), minWidth: 16, textAlign: 'right' }}>{dialConcurrency}</span>
+                      <span style={{ fontSize: '0.5rem', color: crt(0.9), ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), minWidth: 16, textAlign: 'right' }}>{dialConcurrency}</span>
                     </div>
                     <input type="range" min={2} max={5} step={1} value={dialConcurrency} onChange={e => setDialConcurrency(Number(e.target.value))} style={{ width: '100%', accentColor: crt(0.7), cursor: 'pointer' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.35), marginTop: 2 }}>
@@ -964,7 +964,7 @@ export function PhoneDialer({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: '0.42rem', color: crt(0.5) }}>DELAY BETWEEN CALLS</span>
-                      <span style={{ fontSize: '0.5rem', color: crt(0.9), ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), minWidth: 24, textAlign: 'right' }}>{dialDelay}s</span>
+                      <span style={{ fontSize: '0.5rem', color: crt(0.9), ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), minWidth: 24, textAlign: 'right' }}>{dialDelay}s</span>
                     </div>
                     <input type="range" min={0} max={30} step={1} value={dialDelay} onChange={e => setDialDelay(Number(e.target.value))} style={{ width: '100%', accentColor: crt(0.7), cursor: 'pointer' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.35), marginTop: 2 }}>
@@ -980,13 +980,13 @@ export function PhoneDialer({
                   <div style={{ fontSize: '0.42rem', color: amber(0.6) }}>
                     Progress: {dialingSession.dialed}/{dialingSession.total} dialed
                   </div>
-                  <button onClick={stopDialingSession} style={{ marginTop: 6, padding: '5px 12px', background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>STOP SESSION</button>
+                  <button onClick={stopDialingSession} style={{ marginTop: 6, padding: '5px 12px', background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>STOP SESSION</button>
                 </div>
               ) : (
                 <div>
                   <div style={{ fontSize: '0.45rem', color: crt(0.4), marginBottom: 6 }}>Select contacts from CONTACTS tab, then GO ACTIVE:</div>
                   <div style={{ fontSize: '0.45rem', color: crt(0.6), marginBottom: 8 }}>{selected.size} contacts selected</div>
-                  <button onClick={startDialingSession} disabled={selected.size === 0} style={{ width: '100%', padding: '8px', background: selected.size > 0 ? crt(0.1) : crt(0.04), border: `1px solid ${selected.size > 0 ? crt(0.4) : crt(0.1)}`, color: selected.size > 0 ? crt(0.9) : crt(0.2), cursor: selected.size > 0 ? 'pointer' : 'default', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  <button onClick={startDialingSession} disabled={selected.size === 0} style={{ width: '100%', padding: '8px', background: selected.size > 0 ? crt(0.1) : crt(0.04), border: `1px solid ${selected.size > 0 ? crt(0.4) : crt(0.1)}`, color: selected.size > 0 ? crt(0.9) : crt(0.2), cursor: selected.size > 0 ? 'pointer' : 'default', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                     <Radio size={11} />START {dialingMode.toUpperCase()} DIALING ({selected.size})
                   </button>
                 </div>
@@ -1072,7 +1072,7 @@ export function PhoneDialer({
                 <span style={{ fontSize: '0.5rem', color: crt(0.6), flex: 1 }}>SECRETARY AI ENABLED</span>
                 <button
                   onClick={() => setSecretaryForm(f => ({ ...f, isEnabled: !f.isEnabled }))}
-                  style={{ padding: '4px 12px', background: secretaryForm.isEnabled ? crt(0.15) : red(0.08), border: `1px solid ${secretaryForm.isEnabled ? crt(0.4) : red(0.3)}`, color: secretaryForm.isEnabled ? crt(0.9) : red(0.7), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
+                  style={{ padding: '4px 12px', background: secretaryForm.isEnabled ? crt(0.15) : red(0.08), border: `1px solid ${secretaryForm.isEnabled ? crt(0.4) : red(0.3)}`, color: secretaryForm.isEnabled ? crt(0.9) : red(0.7), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
                   {secretaryForm.isEnabled ? 'ON' : 'OFF'}
                 </button>
               </div>
@@ -1132,7 +1132,7 @@ export function PhoneDialer({
                 </select>
               </div>
 
-              <button onClick={saveSecretaryConfig} disabled={secretarySaving} style={{ padding: '8px', background: crt(0.1), border: `1px solid ${crt(0.35)}`, color: crt(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <button onClick={saveSecretaryConfig} disabled={secretarySaving} style={{ padding: '8px', background: crt(0.1), border: `1px solid ${crt(0.35)}`, color: crt(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                 {secretarySaving ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}SAVE CONFIGURATION
               </button>
 
@@ -1176,7 +1176,7 @@ export function PhoneDialer({
                 )}
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input value={numberSearch} onChange={e => setNumberSearch(e.target.value)} placeholder="Area code / digits (optional)..." style={{ ...inputStyle, flex: 1 }} />
-                  <button onClick={searchAvailableNumbers} disabled={!buyCountry || searchingNumbers} style={{ padding: '5px 8px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button onClick={searchAvailableNumbers} disabled={!buyCountry || searchingNumbers} style={{ padding: '5px 8px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', gap: 4 }}>
                     {searchingNumbers ? <Loader2 size={9} className="animate-spin" /> : <Search size={9} />}SEARCH
                   </button>
                 </div>
@@ -1187,7 +1187,7 @@ export function PhoneDialer({
                       <div style={{ fontSize: '0.5rem', color: crt(0.8) }}>{formatPhone(n.phoneNumber)}</div>
                       {(n.locality || n.region) && <div style={{ fontSize: '0.38rem', color: crt(0.3) }}>{[n.locality, n.region].filter(Boolean).join(', ')}</div>}
                     </div>
-                    <button onClick={() => purchaseNumber(n.phoneNumber)} disabled={!!purchasingNumber} style={{ padding: '3px 6px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <button onClick={() => purchaseNumber(n.phoneNumber)} disabled={!!purchasingNumber} style={{ padding: '3px 6px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', gap: 3 }}>
                       {purchasingNumber === n.phoneNumber ? <Loader2 size={8} className="animate-spin" /> : <Plus size={8} />}BUY
                     </button>
                   </div>
@@ -1204,7 +1204,7 @@ export function PhoneDialer({
                   <option value="secretary" style={{ background: '#030803' }}>Route to Secretary AI</option>
                   <option value="forward" style={{ background: '#030803' }}>Forward to Number</option>
                 </select>
-                <button onClick={addPhoneNumber} disabled={!newNumberForm.number || addingNumber} style={{ padding: '5px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <button onClick={addPhoneNumber} disabled={!newNumberForm.number || addingNumber} style={{ padding: '5px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                   {addingNumber ? <Loader2 size={9} className="animate-spin" /> : <Plus size={9} />}ADD NUMBER
                 </button>
               </div>
@@ -1223,7 +1223,7 @@ export function PhoneDialer({
                         <div style={{ fontSize: '0.4rem', color: crt(0.3) }}>{n.label} · {n.routingMode}{n.region ? ` · ${n.region}` : ''}</div>
                       </div>
                       {!n.isActive && (
-                        <button onClick={() => setActiveNumber(n.id)} title="Set as active number" style={{ background: amber(0.06), border: `1px solid ${amber(0.3)}`, color: amber(0.8), cursor: 'pointer', padding: '2px 5px', fontSize: '0.4rem', letterSpacing: '0.08em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', gap: 3 }}><Check size={8} />SET ACTIVE</button>
+                        <button onClick={() => setActiveNumber(n.id)} title="Set as active number" style={{ background: amber(0.06), border: `1px solid ${amber(0.3)}`, color: amber(0.8), cursor: 'pointer', padding: '2px 5px', fontSize: '0.4rem', letterSpacing: '0.08em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', gap: 3 }}><Check size={8} />SET ACTIVE</button>
                       )}
                       <button onClick={() => callSingle(n.number)} style={{ ...btnStyle(crt), padding: '2px 4px' }}><Phone size={9} /></button>
                       <button onClick={() => deletePhoneNumber(n.id)} style={{ background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.5), cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center' }}><Trash2 size={9} /></button>

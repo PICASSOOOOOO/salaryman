@@ -32,8 +32,8 @@ export function PrimeAdInterstitial() {
   const dismiss = () => { markSeen(); setOpen(false); };
   const upgrade = () => { markSeen(); setOpen(false); navigate('/upgrade'); };
 
-  const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+  const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
   return (
     <div
@@ -49,9 +49,6 @@ export function PrimeAdInterstitial() {
     >
       <style>{`
         @keyframes prime-ad-fade { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes prime-scan { 0% { transform: translateY(-100%) } 100% { transform: translateY(100%) } }
-        @keyframes prime-flicker { 0%,92%,100% { opacity: 1 } 93%,96% { opacity: .55 } }
-        @keyframes prime-static { 0% { background-position: 0 0 } 100% { background-position: 100% 100% } }
         @keyframes prime-pulse { 0%,100% { box-shadow: 0 0 18px rgba(244,114,182,.35) } 50% { box-shadow: 0 0 38px rgba(244,114,182,.65) } }
       `}</style>
 
@@ -62,23 +59,7 @@ export function PrimeAdInterstitial() {
         border: '2px solid rgba(244,114,182,.55)',
         boxShadow: '0 0 80px rgba(244,114,182,.25)',
         overflow: 'hidden',
-        animation: 'prime-flicker 4s linear infinite',
       }}>
-        {/* CRT static layer */}
-        <div aria-hidden style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none', opacity: .12,
-          background:
-            'repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 3px),' +
-            'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.85) 100%)',
-        }} />
-        {/* Scanline sweep */}
-        <div aria-hidden style={{
-          position: 'absolute', left: 0, right: 0, height: 6,
-          background: 'linear-gradient(rgba(244,114,182,.25), transparent)',
-          animation: 'prime-scan 4s linear infinite',
-          pointerEvents: 'none', zIndex: 2,
-        }} />
-
         {/* Channel header */}
         <div style={{
           padding: '.45rem .75rem',
@@ -108,10 +89,7 @@ export function PrimeAdInterstitial() {
             </div>
             <div aria-hidden style={{
               marginTop: '.7rem', width: 240, maxWidth: '70vw', height: 80,
-              background:
-                'repeating-linear-gradient(0deg, rgba(244,114,182,.12) 0 2px, transparent 2px 4px),' +
-                'repeating-linear-gradient(90deg, rgba(125,211,252,.08) 0 2px, transparent 2px 4px)',
-              animation: 'prime-static .15s steps(2) infinite',
+              background: 'radial-gradient(ellipse at center, rgba(244,114,182,.2), rgba(125,211,252,.06) 55%, transparent 72%)',
               border: '1px solid rgba(244,114,182,.25)',
             }} />
           </div>

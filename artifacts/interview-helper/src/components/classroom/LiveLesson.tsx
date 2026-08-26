@@ -6,7 +6,7 @@ import { useWebRTC } from '@/hooks/use-webrtc';
 import { useFeatureLabel } from '@/hooks/use-feature-label';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 function getWsBase(): string {
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';

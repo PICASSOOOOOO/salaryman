@@ -46,7 +46,7 @@ interface OverviewResponse {
   currencies: string[];
 }
 
-const mono = { fontFamily: "'Share Tech Mono', monospace" } as const;
+const mono = { fontFamily: "var(--font-sans)" } as const;
 
 function PlaidLinkButton({ linkToken, onSuccess, boomer }: { linkToken: string; onSuccess: (publicToken: string) => void; boomer: boolean }) {
   const { open, ready } = usePlaidLink({

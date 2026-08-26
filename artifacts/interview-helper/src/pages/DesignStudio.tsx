@@ -13,9 +13,8 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { apiFetch } from '@/lib/api-client';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 
-const CRT = '#38bdf8';
-const CRT_DIM = 'rgba(56,189,248,0.5)';
-const CRT_FAINT = 'rgba(56,189,248,0.08)';
+const ACCENT_CYAN = '#22d3ee';
+const MUTED_CYAN = 'rgba(34,211,238,0.6)';
 const ACCENT = '#f59e0b';
 
 type StudioTab = 'create' | 'designs' | 'nano' | 'settings';
@@ -74,25 +73,25 @@ function SettingsPanel({ canvaKey, setCanvaKey, nanoKey, setNanoKey, nanoUrl, se
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto' }}>
-      <h2 style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '1.1rem', color: CRT, letterSpacing: '.12em', marginBottom: 24 }}>
+      <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: ACCENT_CYAN, letterSpacing: '.12em', marginBottom: 24 }}>
         API CONFIGURATION
       </h2>
 
       <div style={{ marginBottom: 24, padding: 16, border: `1px solid rgba(56,189,248,0.15)`, background: 'rgba(255,255,255,0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: CRT, letterSpacing: '.1em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.85rem', color: ACCENT_CYAN, letterSpacing: '.1em' }}>
             CANVA CONNECT API
           </span>
           <span style={{
-            fontSize: '0.65rem', fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '0.65rem', fontFamily: "var(--font-sans)",
             padding: '2px 8px', border: `1px solid ${canvaKey ? 'rgba(34,197,94,0.4)' : 'rgba(245,158,11,0.4)'}`,
             color: canvaKey ? '#22c55e' : ACCENT,
           }}>
             {canvaKey ? 'CONNECTED' : 'NOT SET'}
           </span>
         </div>
-        <p style={{ fontSize: '0.72rem', color: 'rgba(228,228,231,0.5)', marginBottom: 10, fontFamily: "'Share Tech Mono', monospace" }}>
-          Get your API key from <a href="https://www.canva.com/developers/" target="_blank" rel="noopener" style={{ color: CRT, textDecoration: 'underline' }}>canva.com/developers</a>
+        <p style={{ fontSize: '0.72rem', color: 'rgba(228,228,231,0.5)', marginBottom: 10, fontFamily: "var(--font-sans)" }}>
+          Get your API key from <a href="https://www.canva.com/developers/" target="_blank" rel="noopener" style={{ color: ACCENT_CYAN, textDecoration: 'underline' }}>canva.com/developers</a>
         </p>
         <div style={{ position: 'relative' }}>
           <input
@@ -103,12 +102,12 @@ function SettingsPanel({ canvaKey, setCanvaKey, nanoKey, setNanoKey, nanoUrl, se
             style={{
               width: '100%', padding: '8px 40px 8px 12px', background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.8rem',
             }}
           />
           <button onClick={() => setShowCanva(!showCanva)} style={{
             position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', cursor: 'pointer', color: CRT_DIM,
+            background: 'none', border: 'none', cursor: 'pointer', color: MUTED_CYAN,
           }}>
             <Eye className="w-4 h-4" />
           </button>
@@ -117,11 +116,11 @@ function SettingsPanel({ canvaKey, setCanvaKey, nanoKey, setNanoKey, nanoUrl, se
 
       <div style={{ marginBottom: 24, padding: 16, border: `1px solid rgba(56,189,248,0.15)`, background: 'rgba(255,255,255,0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: CRT, letterSpacing: '.1em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.85rem', color: ACCENT_CYAN, letterSpacing: '.1em' }}>
             NANO BANANA API
           </span>
           <span style={{
-            fontSize: '0.65rem', fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '0.65rem', fontFamily: "var(--font-sans)",
             padding: '2px 8px', border: `1px solid ${nanoKey ? 'rgba(34,197,94,0.4)' : 'rgba(245,158,11,0.4)'}`,
             color: nanoKey ? '#22c55e' : ACCENT,
           }}>
@@ -136,7 +135,7 @@ function SettingsPanel({ canvaKey, setCanvaKey, nanoKey, setNanoKey, nanoUrl, se
           style={{
             width: '100%', padding: '8px 12px', marginBottom: 8, background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem',
+            fontFamily: "var(--font-sans)", fontSize: '0.8rem',
           }}
         />
         <input
@@ -146,21 +145,21 @@ function SettingsPanel({ canvaKey, setCanvaKey, nanoKey, setNanoKey, nanoUrl, se
           style={{
             width: '100%', padding: '8px 12px', background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem',
+            fontFamily: "var(--font-sans)", fontSize: '0.8rem',
           }}
         />
         <button onClick={() => setShowNano(!showNano)} style={{
           marginTop: 6, background: 'none', border: 'none', cursor: 'pointer',
-          color: CRT_DIM, fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem',
+          color: MUTED_CYAN, fontFamily: "var(--font-sans)", fontSize: '0.65rem',
         }}>
           {showNano ? 'HIDE KEYS' : 'SHOW KEYS'}
         </button>
       </div>
 
       <button onClick={save} style={{
-        fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '.1em',
-        padding: '10px 24px', border: `1px solid ${CRT}`, background: 'rgba(56,189,248,0.08)',
-        color: CRT, cursor: 'pointer',
+        fontFamily: "var(--font-sans)", fontSize: '0.8rem', letterSpacing: '.1em',
+        padding: '10px 24px', border: `1px solid ${ACCENT_CYAN}`, background: 'rgba(34,211,238,0.08)',
+        color: ACCENT_CYAN, cursor: 'pointer',
       }}>
         {saved || 'SAVE CONFIGURATION'}
       </button>
@@ -270,10 +269,10 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
         {CATEGORIES.map(c => (
           <button key={c.id} onClick={() => setCat(c.id)} style={{
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '.08em',
-            padding: '4px 10px', border: `1px solid ${cat === c.id ? CRT : 'rgba(56,189,248,0.15)'}`,
+            fontFamily: "var(--font-sans)", fontSize: '0.65rem', letterSpacing: '.08em',
+            padding: '4px 10px', border: `1px solid ${cat === c.id ? ACCENT_CYAN : 'rgba(34,211,238,0.15)'}`,
             background: cat === c.id ? 'rgba(56,189,248,0.12)' : 'transparent',
-            color: cat === c.id ? CRT : CRT_DIM, cursor: 'pointer',
+            color: cat === c.id ? ACCENT_CYAN : MUTED_CYAN, cursor: 'pointer',
           }}>
             {c.label}
           </button>
@@ -288,27 +287,26 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
           const previewW = Math.min(previewH * aspect, 120);
           return (
             <button key={t.id} onClick={() => setSelectedPreset(t.id)} style={{
-              padding: 10, border: `1px solid ${sel ? CRT : 'rgba(56,189,248,0.12)'}`,
+              padding: 10, border: `1px solid ${sel ? ACCENT_CYAN : 'rgba(34,211,238,0.12)'}`,
               background: sel ? 'rgba(56,189,248,0.08)' : 'rgba(255,255,255,0.02)',
               cursor: 'pointer', textAlign: 'center',
-              boxShadow: sel ? `0 0 12px rgba(56,189,248,0.15)` : 'none',
             }}>
               <div style={{
                 width: previewW, height: previewH, margin: '0 auto 8px',
-                border: `1px solid ${sel ? CRT : 'rgba(56,189,248,0.2)'}`,
+                border: `1px solid ${sel ? ACCENT_CYAN : 'rgba(34,211,238,0.2)'}`,
                 background: 'rgba(56,189,248,0.03)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Layout className="w-4 h-4" style={{ color: sel ? CRT : CRT_DIM }} />
+                <Layout className="w-4 h-4" style={{ color: sel ? ACCENT_CYAN : MUTED_CYAN }} />
               </div>
               <div style={{
-                fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem',
-                color: sel ? CRT : 'rgba(228,228,231,0.7)', letterSpacing: '.06em',
+                fontFamily: "var(--font-sans)", fontSize: '0.6rem',
+                color: sel ? ACCENT_CYAN : 'rgba(226,232,240,0.75)', letterSpacing: '.06em',
               }}>
                 {t.label}
               </div>
               <div style={{
-                fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem',
+                fontFamily: "var(--font-sans)", fontSize: '0.5rem',
                 color: 'rgba(228,228,231,0.35)', marginTop: 2,
               }}>
                 {t.w}×{t.h}px
@@ -320,19 +318,19 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
 
       {selectedPreset === 'custom' && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
-          <label style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: CRT_DIM }}>W:</label>
+          <label style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: MUTED_CYAN }}>W:</label>
           <input type="number" value={customW} onChange={e => setCustomW(+e.target.value)} min={100} max={4096}
             style={{
               width: 80, padding: '4px 8px', background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.75rem',
             }} />
-          <label style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: CRT_DIM }}>H:</label>
+          <label style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: MUTED_CYAN }}>H:</label>
           <input type="number" value={customH} onChange={e => setCustomH(+e.target.value)} min={100} max={4096}
             style={{
               width: 80, padding: '4px 8px', background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.75rem',
             }} />
         </div>
       )}
@@ -344,15 +342,15 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
         style={{
           width: '100%', padding: '8px 12px', marginBottom: 12, background: 'rgba(255,255,255,0.04)',
           border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-          fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem',
+          fontFamily: "var(--font-sans)", fontSize: '0.8rem',
         }}
       />
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <button onClick={createDesign} disabled={creating || !selectedPreset} style={{
-          fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', letterSpacing: '.08em',
-          padding: '8px 16px', border: `1px solid ${CRT}`, background: 'rgba(56,189,248,0.1)',
-          color: CRT, cursor: creating ? 'wait' : 'pointer', opacity: !selectedPreset ? 0.4 : 1,
+          fontFamily: "var(--font-sans)", fontSize: '0.75rem', letterSpacing: '.08em',
+          padding: '8px 16px', border: `1px solid ${ACCENT_CYAN}`, background: 'rgba(34,211,238,0.1)',
+          color: ACCENT_CYAN, cursor: creating ? 'wait' : 'pointer', opacity: !selectedPreset ? 0.4 : 1,
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
@@ -369,7 +367,7 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
           {result.error ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
-              <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#ef4444' }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: '#ef4444' }}>
                 {result.error}
               </span>
             </div>
@@ -377,15 +375,15 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <Check className="w-4 h-4" style={{ color: '#22c55e' }} />
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#22c55e' }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: '#22c55e' }}>
                   DESIGN CREATED
                 </span>
               </div>
               {result.url && (
                 <a href={result.url} target="_blank" rel="noopener" style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem',
-                  color: CRT, textDecoration: 'underline',
+                  fontFamily: "var(--font-sans)", fontSize: '0.7rem',
+                  color: ACCENT_CYAN, textDecoration: 'underline',
                 }}>
                   OPEN IN CANVA <ExternalLink className="w-3 h-3" />
                 </a>
@@ -398,11 +396,11 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
       <div style={{ borderTop: '1px solid rgba(56,189,248,0.12)', paddingTop: 20, marginTop: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Wand2 className="w-4 h-4" style={{ color: ACCENT }} />
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: ACCENT, letterSpacing: '.1em' }}>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.85rem', color: ACCENT, letterSpacing: '.1em' }}>
             NANO BANANA — AI GENERATION
           </span>
           {(!nanoKey || !nanoUrl) && (
-            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(245,158,11,0.6)' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.55rem', color: 'rgba(245,158,11,0.6)' }}>
               (SET KEY IN SETTINGS)
             </span>
           )}
@@ -415,17 +413,17 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
           style={{
             width: '100%', padding: '10px 12px', marginBottom: 10, background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(245,158,11,0.2)', color: '#e4e4e7', outline: 'none', resize: 'none',
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem',
+            fontFamily: "var(--font-sans)", fontSize: '0.8rem',
           }}
         />
         {selectedPreset && (
-          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(228,228,231,0.4)', marginBottom: 8 }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: 'rgba(228,228,231,0.4)', marginBottom: 8 }}>
             Output size: {selectedPreset === 'custom' ? `${customW}×${customH}` : `${chosen?.w}×${chosen?.h}`}px (capped at 2048)
           </p>
         )}
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={generateWithNano} disabled={generatingAi} style={{
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', letterSpacing: '.08em',
+            fontFamily: "var(--font-sans)", fontSize: '0.75rem', letterSpacing: '.08em',
             padding: '8px 16px', border: `1px solid ${ACCENT}`, background: 'rgba(245,158,11,0.08)',
             color: ACCENT, cursor: generatingAi ? 'wait' : 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
@@ -444,13 +442,13 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
             {aiResult.error ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#ef4444' }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: '#ef4444' }}>
                   {aiResult.error}
                 </span>
               </div>
             ) : (
               <div>
-                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#22c55e', marginBottom: 8 }}>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: '#22c55e', marginBottom: 8 }}>
                   GENERATION COMPLETE
                 </div>
                 {(aiResult.url || aiResult.image_url || aiResult.output?.image_url) && (
@@ -465,8 +463,8 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
                         href={aiResult.url || aiResult.image_url || aiResult.output?.image_url}
                         download
                         style={{
-                          fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem',
-                          padding: '4px 10px', border: `1px solid ${CRT}`, color: CRT,
+                          fontFamily: "var(--font-sans)", fontSize: '0.65rem',
+                          padding: '4px 10px', border: `1px solid ${ACCENT_CYAN}`, color: ACCENT_CYAN,
                           textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
                         }}
                       >
@@ -476,7 +474,7 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
                         <button
                           onClick={() => uploadToCanva(aiResult.url || aiResult.image_url || aiResult.output?.image_url)}
                           style={{
-                            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem',
+                            fontFamily: "var(--font-sans)", fontSize: '0.65rem',
                             padding: '4px 10px', border: `1px solid ${ACCENT}`, background: 'rgba(245,158,11,0.08)',
                             color: ACCENT, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           }}
@@ -489,7 +487,7 @@ function CreatePanel({ canvaKey, nanoKey, nanoUrl }: { canvaKey: string; nanoKey
                 )}
                 {!aiResult.url && !aiResult.image_url && !aiResult.output?.image_url && (
                   <pre style={{
-                    fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(228,228,231,0.6)',
+                    fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: 'rgba(228,228,231,0.6)',
                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                   }}>
                     {JSON.stringify(aiResult, null, 2)}
@@ -597,13 +595,13 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h3 style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.9rem', color: CRT, letterSpacing: '.1em' }}>
+        <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '0.9rem', color: ACCENT_CYAN, letterSpacing: '.1em' }}>
           YOUR CANVA DESIGNS
         </h3>
         <button onClick={loadDesigns} disabled={loading} style={{
-          fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem',
-          padding: '4px 10px', border: `1px solid ${CRT}`, background: 'rgba(56,189,248,0.08)',
-          color: CRT, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+          fontFamily: "var(--font-sans)", fontSize: '0.65rem',
+          padding: '4px 10px', border: `1px solid ${ACCENT_CYAN}`, background: 'rgba(34,211,238,0.08)',
+          color: ACCENT_CYAN, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
         }}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> REFRESH
         </button>
@@ -615,7 +613,7 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
           background: 'rgba(245,158,11,0.04)',
         }}>
           <Settings className="w-8 h-8" style={{ color: ACCENT, margin: '0 auto 8px' }} />
-          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: ACCENT }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: ACCENT }}>
             CONNECT YOUR CANVA ACCOUNT IN SETTINGS
           </p>
         </div>
@@ -623,14 +621,14 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
 
       {error && (
         <div style={{ padding: 10, marginBottom: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#ef4444' }}>{error}</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: '#ef4444' }}>{error}</span>
         </div>
       )}
 
       {loading && (
         <div style={{ textAlign: 'center', padding: 40 }}>
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: CRT, margin: '0 auto' }} />
-          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: CRT_DIM, marginTop: 8 }}>
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: ACCENT_CYAN, margin: '0 auto' }} />
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: MUTED_CYAN, marginTop: 8 }}>
             LOADING DESIGNS...
           </p>
         </div>
@@ -638,8 +636,8 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
 
       {!loading && designs.length === 0 && canvaKey && (
         <div style={{ textAlign: 'center', padding: 40 }}>
-          <Image className="w-8 h-8" style={{ color: CRT_DIM, margin: '0 auto 8px' }} />
-          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: CRT_DIM }}>
+          <Image className="w-8 h-8" style={{ color: MUTED_CYAN, margin: '0 auto 8px' }} />
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: MUTED_CYAN }}>
             NO DESIGNS FOUND
           </p>
         </div>
@@ -658,12 +656,12 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
                 width: '100%', height: 160, background: 'rgba(56,189,248,0.03)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Image className="w-8 h-8" style={{ color: CRT_DIM }} />
+                <Image className="w-8 h-8" style={{ color: MUTED_CYAN }} />
               </div>
             )}
             <div style={{ padding: 10 }}>
               <p style={{
-                fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#e4e4e7',
+                fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: '#e4e4e7',
                 marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {d.title || 'Untitled'}
@@ -671,25 +669,25 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {d.urls?.edit_url && (
                   <a href={d.urls.edit_url} target="_blank" rel="noopener" style={{
-                    fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
-                    padding: '2px 6px', border: `1px solid ${CRT}`, color: CRT,
+                    fontFamily: "var(--font-sans)", fontSize: '0.55rem',
+                    padding: '2px 6px', border: `1px solid ${ACCENT_CYAN}`, color: ACCENT_CYAN,
                     textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
                   }}>
                     <ExternalLink className="w-2.5 h-2.5" /> EDIT
                   </a>
                 )}
                 <button onClick={() => exportDesign(d.id, 'png')} disabled={exporting === d.id} style={{
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
+                  fontFamily: "var(--font-sans)", fontSize: '0.55rem',
                   padding: '2px 6px', border: '1px solid rgba(56,189,248,0.3)', background: 'none',
-                  color: CRT_DIM, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+                  color: MUTED_CYAN, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                 }}>
                   {exporting === d.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Download className="w-2.5 h-2.5" />}
                   PNG
                 </button>
                 <button onClick={() => exportDesign(d.id, 'pdf')} disabled={exporting === d.id} style={{
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
+                  fontFamily: "var(--font-sans)", fontSize: '0.55rem',
                   padding: '2px 6px', border: '1px solid rgba(56,189,248,0.3)', background: 'none',
-                  color: CRT_DIM, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+                  color: MUTED_CYAN, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                 }}>
                   <Download className="w-2.5 h-2.5" /> PDF
                 </button>
@@ -697,12 +695,12 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
               {exportResult?.id === d.id && (
                 <div style={{ marginTop: 6 }}>
                   {exportResult.error ? (
-                    <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: '#ef4444' }}>
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.55rem', color: '#ef4444' }}>
                       {exportResult.error}
                     </span>
                   ) : exportResult.url ? (
                     <a href={exportResult.url} download style={{
-                      fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: '#22c55e',
+                      fontFamily: "var(--font-sans)", fontSize: '0.55rem', color: '#22c55e',
                       textDecoration: 'underline',
                     }}>
                       DOWNLOAD READY
@@ -739,37 +737,30 @@ export default function DesignStudio() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030803', color: CRT }}>
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
-        <div style={{ marginBottom: 24, borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: 16 }}>
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: ACCENT_CYAN }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
+        <div style={{ marginBottom: 24, borderBottom: '1px solid rgba(34,211,238,0.15)', paddingBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
             <div style={{ marginLeft: 'auto', order: 99 }}>
               <HummingBirdAttachStrip toolKey="design-studio" buttonStyle="ghost" pickerTitle="ATTACH AUDIO" />
             </div>
             <div style={{
-              width: 36, height: 36, border: '1px solid rgba(56,189,248,0.5)',
-              background: 'rgba(255,255,255,0.05)',
+              width: 36, height: 36, border: '1px solid rgba(34,211,238,0.4)',
+              background: 'rgba(30,41,59,0.8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 12px rgba(56,189,248,0.1)',
             }}>
-              <Palette className="w-5 h-5" style={{ color: CRT }} />
+              <Palette className="w-5 h-5" style={{ color: ACCENT_CYAN }} />
             </div>
             <div>
               <h1 style={{
-                fontFamily: "'Share Tech Mono', monospace", fontSize: '1.4rem',
-                letterSpacing: '0.12em', color: CRT,
-                textShadow: '0 0 12px rgba(56,189,248,0.5)', lineHeight: 1,
+                fontFamily: "var(--font-sans)", fontSize: '1.4rem',
+                letterSpacing: '0.12em', color: ACCENT_CYAN, lineHeight: 1,
               }}>
                 {boomerMode ? 'DESIGN STUDIO' : 'DESIGN FORGE'}
               </h1>
               <p style={{
-                fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem',
-                color: 'rgba(56,189,248,0.35)', letterSpacing: '0.1em', marginTop: 4,
+                fontFamily: "var(--font-sans)", fontSize: '0.6rem',
+                color: 'rgba(34,211,238,0.45)', letterSpacing: '0.1em', marginTop: 4,
               }}>
                 {boomerMode
                   ? 'Create posters, flyers, and social graphics with Canva + Nano Banana AI'
@@ -780,14 +771,14 @@ export default function DesignStudio() {
 
           <div style={{ display: 'flex', gap: 4, marginTop: 12 }}>
             <span style={{
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.55rem',
               padding: '2px 6px', border: `1px solid ${canvaKey ? 'rgba(34,197,94,0.3)' : 'rgba(245,158,11,0.3)'}`,
               color: canvaKey ? '#22c55e' : ACCENT,
             }}>
               CANVA: {canvaKey ? 'LINKED' : 'NOT SET'}
             </span>
             <span style={{
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.55rem',
               padding: '2px 6px', border: `1px solid ${nanoKey ? 'rgba(34,197,94,0.3)' : 'rgba(245,158,11,0.3)'}`,
               color: nanoKey ? '#22c55e' : ACCENT,
             }}>
@@ -796,7 +787,7 @@ export default function DesignStudio() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: '1px solid rgba(56,189,248,0.15)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: '1px solid rgba(34,211,238,0.15)', flexWrap: 'wrap' }}>
           {tabs.map(t => {
             const active = activeTab === t.id;
             const Icon = t.icon;
@@ -804,10 +795,10 @@ export default function DesignStudio() {
               <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px',
-                fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', letterSpacing: '.08em',
-                color: active ? CRT : CRT_DIM,
-                background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
-                borderBottom: active ? `2px solid ${CRT}` : '2px solid transparent',
+                fontFamily: "var(--font-sans)", fontSize: '0.7rem', letterSpacing: '.08em',
+                color: active ? ACCENT_CYAN : MUTED_CYAN,
+                background: active ? 'rgba(34,211,238,0.08)' : 'transparent',
+                borderBottom: active ? `2px solid ${ACCENT_CYAN}` : '2px solid transparent',
                 border: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none',
                 cursor: 'pointer',
               }}>
@@ -898,7 +889,7 @@ function NanoBananaPanel({ nanoKey, nanoUrl, canvaKey }: { nanoKey: string; nano
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <Wand2 className="w-5 h-5" style={{ color: ACCENT }} />
-        <h3 style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '1rem', color: ACCENT, letterSpacing: '.1em' }}>
+        <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '1rem', color: ACCENT, letterSpacing: '.1em' }}>
           NANO BANANA AI GENERATOR
         </h3>
       </div>
@@ -909,7 +900,7 @@ function NanoBananaPanel({ nanoKey, nanoUrl, canvaKey }: { nanoKey: string; nano
           background: 'rgba(245,158,11,0.04)', textAlign: 'center',
         }}>
           <AlertTriangle className="w-6 h-6" style={{ color: ACCENT, margin: '0 auto 8px' }} />
-          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: ACCENT }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: ACCENT }}>
             SET YOUR NANO BANANA API KEY AND URL IN SETTINGS TO START GENERATING
           </p>
         </div>
@@ -923,43 +914,43 @@ function NanoBananaPanel({ nanoKey, nanoUrl, canvaKey }: { nanoKey: string; nano
         style={{
           width: '100%', padding: '12px', marginBottom: 10, background: 'rgba(255,255,255,0.04)',
           border: '1px solid rgba(245,158,11,0.2)', color: '#e4e4e7', outline: 'none', resize: 'vertical',
-          fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem',
+          fontFamily: "var(--font-sans)", fontSize: '0.8rem',
         }}
       />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         <div>
-          <label style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: CRT_DIM, display: 'block', marginBottom: 2 }}>STYLE</label>
+          <label style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: MUTED_CYAN, display: 'block', marginBottom: 2 }}>STYLE</label>
           <select value={style} onChange={e => setStyle(e.target.value)} style={{
             padding: '4px 8px', background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', cursor: 'pointer',
+            fontFamily: "var(--font-sans)", fontSize: '0.7rem', cursor: 'pointer',
           }}>
             {STYLES.map(s => <option key={s} value={s} style={{ background: '#111' }}>{s.toUpperCase()}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: CRT_DIM, display: 'block', marginBottom: 2 }}>WIDTH</label>
+          <label style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: MUTED_CYAN, display: 'block', marginBottom: 2 }}>WIDTH</label>
           <input type="number" value={width} onChange={e => setWidth(+e.target.value)} min={256} max={2048} step={64}
             style={{
               width: 80, padding: '4px 8px', background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.7rem',
             }} />
         </div>
         <div>
-          <label style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: CRT_DIM, display: 'block', marginBottom: 2 }}>HEIGHT</label>
+          <label style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: MUTED_CYAN, display: 'block', marginBottom: 2 }}>HEIGHT</label>
           <input type="number" value={height} onChange={e => setHeight(+e.target.value)} min={256} max={2048} step={64}
             style={{
               width: 80, padding: '4px 8px', background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.1)', color: '#e4e4e7', outline: 'none',
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem',
+              fontFamily: "var(--font-sans)", fontSize: '0.7rem',
             }} />
         </div>
       </div>
 
       <button onClick={generate} disabled={generating} style={{
-        fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '.1em',
+        fontFamily: "var(--font-sans)", fontSize: '0.8rem', letterSpacing: '.1em',
         padding: '10px 24px', border: `1px solid ${ACCENT}`, background: 'rgba(245,158,11,0.1)',
         color: ACCENT, cursor: generating ? 'wait' : 'pointer',
         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20,
@@ -970,13 +961,13 @@ function NanoBananaPanel({ nanoKey, nanoUrl, canvaKey }: { nanoKey: string; nano
 
       {error && (
         <div style={{ padding: 10, marginBottom: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#ef4444' }}>{error}</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: '#ef4444' }}>{error}</span>
         </div>
       )}
 
       {history.length > 0 && (
         <div>
-          <h4 style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: CRT_DIM, letterSpacing: '.08em', marginBottom: 12 }}>
+          <h4 style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: MUTED_CYAN, letterSpacing: '.08em', marginBottom: 12 }}>
             GENERATION HISTORY ({history.length})
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
@@ -994,14 +985,14 @@ function NanoBananaPanel({ nanoKey, nanoUrl, canvaKey }: { nanoKey: string; nano
                       width: '100%', height: 200, background: 'rgba(245,158,11,0.03)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <pre style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(228,228,231,0.4)', padding: 8, overflow: 'auto', maxHeight: 180 }}>
+                      <pre style={{ fontFamily: "var(--font-sans)", fontSize: '0.55rem', color: 'rgba(228,228,231,0.4)', padding: 8, overflow: 'auto', maxHeight: 180 }}>
                         {JSON.stringify(h.result, null, 2)}
                       </pre>
                     </div>
                   )}
                   <div style={{ padding: 10 }}>
                     <p style={{
-                      fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(228,228,231,0.6)',
+                      fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: 'rgba(228,228,231,0.6)',
                       marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis',
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any,
                     }}>
@@ -1011,15 +1002,15 @@ function NanoBananaPanel({ nanoKey, nanoUrl, canvaKey }: { nanoKey: string; nano
                       {imgUrl && (
                         <>
                           <a href={imgUrl} download style={{
-                            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
-                            padding: '2px 6px', border: `1px solid ${CRT}`, color: CRT,
+                            fontFamily: "var(--font-sans)", fontSize: '0.55rem',
+                            padding: '2px 6px', border: `1px solid ${ACCENT_CYAN}`, color: ACCENT_CYAN,
                             textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
                           }}>
                             <Download className="w-2.5 h-2.5" /> DL
                           </a>
                           {canvaKey && (
                             <button onClick={() => sendToCanva(imgUrl, h.prompt.slice(0, 50))} style={{
-                              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
+                              fontFamily: "var(--font-sans)", fontSize: '0.55rem',
                               padding: '2px 6px', border: `1px solid ${ACCENT}`, background: 'none',
                               color: ACCENT, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                             }}>

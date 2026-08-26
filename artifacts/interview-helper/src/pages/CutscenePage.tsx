@@ -114,7 +114,7 @@ export default function CutscenePage() {
   if (isBotId && error) {
     return (
       <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center px-6">
-        <div className="text-pink-400 tracking-[0.4em] mb-3" style={{ fontFamily: "'VT323', monospace", fontSize: "1.2rem" }}>
+        <div className="text-pink-400 tracking-[0.4em] mb-3" style={{ fontFamily: "var(--font-sans)", fontSize: "1.2rem" }}>
           ▌ NO ANSWER
         </div>
         <div className="text-zinc-500 text-sm mb-6">{error}</div>
@@ -134,7 +134,7 @@ export default function CutscenePage() {
   if (!scene) {
     return (
       <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center px-6 py-12">
-        <div className="text-pink-400 tracking-[0.4em] mb-3" style={{ fontFamily: "'VT323', monospace", fontSize: "1.2rem" }}>
+        <div className="text-pink-400 tracking-[0.4em] mb-3" style={{ fontFamily: "var(--font-sans)", fontSize: "1.2rem" }}>
           ▌ {id ? `SCENE NOT FOUND` : `CUTSCENE LIBRARY`}
         </div>
         {id && <div className="text-zinc-500 text-sm mb-6">No cutscene registered for "{id}".</div>}

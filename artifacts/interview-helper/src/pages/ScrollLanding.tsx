@@ -11,7 +11,7 @@
  *
  * The trailer ends on the existing "dormant terminal → power on" beat: a glowing
  * power button appears near the end of the scroll and, on tap, plays an "enter
- * the screen" transition and routes into /console (the CRT terminal; logged-out
+ * the terminal" transition and routes into /console (logged-out
  * visitors see the console's own sign-in screen there).
  *
  * Graceful by design: if the video can't load we fall back to an on-brand
@@ -121,13 +121,6 @@ function NeonFallback({ reduceMotion }: { reduceMotion: boolean }) {
         }}
         animate={reduceMotion ? undefined : { opacity: [0.6, 0.95, 0.6] }}
         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          background:
-            "repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 4px)",
-        }}
       />
     </div>
   );
@@ -316,7 +309,7 @@ export default function ScrollLanding() {
     }
     if (phase === "entering") {
       // Powering on the terminal lands the visitor on the actual TERMINAL —
-      // the CRT console screen with the tools — not the Pablo nebula orb
+       // the console screen with the tools — not the Pablo nebula orb
       // (which was a dead-end you got stuck on). Logged-out visitors see the
       // console's own sign-in screen there; the global gate allows /console
       // for anonymous visitors so they aren't bounced back to the nebula.
@@ -508,17 +501,6 @@ export default function ScrollLanding() {
               boxShadow: "0 0 80px 20px rgba(244,114,182,0.4)",
             }}
           />
-          {phase === "booting" && !reduceMotion && (
-            <motion.div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 3px)",
-              }}
-              animate={{ opacity: [0.2, 0.6, 0.2] }}
-              transition={{ duration: 0.4, repeat: Infinity }}
-            />
-          )}
           {phase === "entering" && (
             <motion.div
               className="absolute inset-0 bg-white"

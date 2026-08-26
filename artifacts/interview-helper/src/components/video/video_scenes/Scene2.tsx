@@ -29,7 +29,7 @@ export function Scene2() {
 
       <div className="relative z-10 flex flex-col items-center text-center px-[6%] w-full">
         <motion.div
-          style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.5em', color: '#ef4444' }}
+          style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.5em', color: '#ef4444' }}
           initial={{ opacity: 0, y: -15, scale: 0.8 }}
           animate={phase >= 1 ? { opacity: 0.8, y: 0, scale: 1 } : {}}
           transition={{ duration: 0.5, ease: 'backOut' }}
@@ -40,7 +40,7 @@ export function Scene2() {
         <div className="mt-4 space-y-1">
           {['9 AGENTS.', 'ONE SUBSCRIPTION.', 'ZERO EXCUSES.'].map((line, i) => (
             <motion.div key={i}
-              style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(18px, 4.5vw, 38px)', lineHeight: 1.2, color: i === 1 ? '#ef4444' : '#fff' }}
+              style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(18px, 4.5vw, 38px)', lineHeight: 1.2, color: i === 1 ? '#ef4444' : '#fff' }}
               initial={{ opacity: 0, x: -40, filter: 'blur(8px)' }}
               animate={phase >= 2 ? { opacity: 1, x: 0, filter: 'blur(0px)' } : {}}
               transition={{ delay: i * 0.18, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -75,7 +75,7 @@ export function Scene2() {
                   transition={{ delay: i * 0.06, duration: 0.3, ease: 'backOut' }}>
                   <span style={{ fontSize: 'clamp(6px, 0.9vw, 9px)', color: '#ef4444', opacity: 0.9 }}>{cat.icon}</span>
                   <span style={{
-                    fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(6px, 0.85vw, 9px)',
+                    fontFamily: "var(--font-sans)", fontSize: 'clamp(6px, 0.85vw, 9px)',
                     letterSpacing: '0.12em', color: '#ef4444', fontWeight: 600,
                   }}>
                     {cat.label}
@@ -90,7 +90,7 @@ export function Scene2() {
           <motion.div className="mt-5 flex items-center gap-2"
             initial={{ opacity: 0 }} animate={{ opacity: 0.35 }} transition={{ duration: 0.5 }}>
             <div className="h-[1px] w-[3vw] bg-gradient-to-r from-transparent to-white/20" />
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', letterSpacing: '0.3em', color: '#94a3b8' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(5px, 0.75vw, 7px)', letterSpacing: '0.3em', color: '#94a3b8' }}>
               $149/MO · PIXEL AGENTS SUBSCRIPTION
             </span>
             <div className="h-[1px] w-[3vw] bg-gradient-to-l from-transparent to-white/20" />

@@ -3,7 +3,7 @@ import { SpellCheck, Loader2 } from 'lucide-react';
 import { checkSpelling, type SpellMatch } from '@/lib/spellcheck';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 const baseInput: React.CSSProperties = {
   width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',

@@ -86,7 +86,7 @@ export function Scene4() {
           />
           <span
             style={{
-              fontFamily: '"Share Tech Mono", monospace',
+              fontFamily: "var(--font-sans)",
               fontSize: 'clamp(7px, 1vw, 11px)',
               letterSpacing: '0.3em',
               color: '#f472b6',
@@ -97,7 +97,7 @@ export function Scene4() {
         </div>
         <span
           style={{
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(8px, 1.3vw, 13px)',
             color: '#22d3ee',
             letterSpacing: '0.1em',
@@ -130,7 +130,7 @@ export function Scene4() {
                 border: `1px solid ${b.color}40`,
                 borderRadius: 3,
                 padding: 'clamp(3px, 0.4vw, 5px) clamp(5px, 0.7vw, 8px)',
-                fontFamily: '"Share Tech Mono", monospace',
+                fontFamily: "var(--font-sans)",
                 fontSize: 'clamp(4px, 0.55vw, 6px)',
                 color: b.color,
                 letterSpacing: '0.2em',
@@ -222,7 +222,7 @@ export function Scene4() {
                 background: 'rgba(6,8,13,0.85)',
                 border: `1px solid ${t.color}80`,
                 borderRadius: 3,
-                fontFamily: '"Share Tech Mono", monospace',
+                fontFamily: "var(--font-sans)",
                 fontSize: 'clamp(4px, 0.6vw, 6px)',
                 color: t.color,
                 letterSpacing: '0.25em',
@@ -254,7 +254,7 @@ export function Scene4() {
       >
         <div
           style={{
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(11px, 2.2vw, 20px)',
             color: '#fff',
             letterSpacing: '0.06em',
@@ -265,7 +265,7 @@ export function Scene4() {
         </div>
         <div
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(5px, 0.75vw, 7px)',
             color: '#94a3b8',
             letterSpacing: '0.25em',

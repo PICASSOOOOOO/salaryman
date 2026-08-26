@@ -65,7 +65,6 @@ const GAME_DEFAULTS = {
   nightLighting: true,
   cinematic: true,
   terminalBoot: true,
-  crtEffect: true,
   invertY: false,
   controlScheme: "wasd",
 } as const;
@@ -174,7 +173,7 @@ function setNativeValue(el: HTMLInputElement | HTMLSelectElement, value: string)
 beforeEach(() => {
   (globalThis as any).AudioContext = FakeAudioContext as any;
   localStorage.clear();
-  document.documentElement.classList.remove("low-gfx", "no-crt");
+  document.documentElement.classList.remove("low-gfx");
   // The audio store is a module-level singleton that survives between tests;
   // reset it to a clean baseline so each test starts from the defaults.
   setAudioSettings({ ...AUDIO_DEFAULTS });
@@ -207,7 +206,6 @@ describe("Settings 'RESET SETTINGS TO DEFAULTS' button", () => {
         nightLighting: false,
         cinematic: false,
         terminalBoot: false,
-        crtEffect: false,
         invertY: true,
         controlScheme: "arrows",
         // audio-store keys live in the SAME blob

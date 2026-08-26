@@ -4,8 +4,8 @@ import { useLocation } from "wouter";
 
 const C = "#a855f7";
 const C2 = "rgba(168,85,247,";
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+const MONO: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 type Props = {
   open: boolean;

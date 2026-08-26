@@ -690,7 +690,7 @@ export default function BattleArena({ descriptor, player, onOutcome }: BattleAre
       ctx.textAlign = "left";
       // title strip
       ctx.fillStyle = "rgba(56,189,248,0.9)";
-      ctx.font = "bold 16px 'VT323', monospace";
+      ctx.font = "bold 16px 'Fira Code', monospace";
       ctx.fillText(descriptor.title, 20, 30);
       ctx.fillStyle = "rgba(226,232,240,0.55)";
       ctx.font = "12px monospace";
@@ -709,7 +709,7 @@ export default function BattleArena({ descriptor, player, onOutcome }: BattleAre
       ctx.fillStyle = "#fbbf24"; ctx.fillRect(bx, sy2, barW * (stamina.current / COMBAT_CONSTANTS.STAMINA_MAX), 8);
       // combo
       if (combo.count > 1) {
-        ctx.fillStyle = "#f59e0b"; ctx.font = "bold 22px 'VT323', monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "#f59e0b"; ctx.font = "bold 22px 'Fira Code', monospace"; ctx.textAlign = "left";
         ctx.fillText(`${combo.count}x COMBO`, bx, by - 12);
       }
       // status chips
@@ -724,7 +724,7 @@ export default function BattleArena({ descriptor, player, onOutcome }: BattleAre
         ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bbx, bby, bw, 12);
         ctx.fillStyle = "#ef4444"; ctx.fillRect(bbx, bby, bw * Math.max(0, boss.hp / boss.maxHp), 12);
         ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(bbx, bby, bw, 12);
-        ctx.fillStyle = "#fca5a5"; ctx.font = "12px 'VT323',monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = "#fca5a5"; ctx.font = "12px 'Fira Code',monospace"; ctx.textAlign = "center";
         ctx.fillText(boss.def.name, cw / 2, bby - 4);
       }
 
@@ -733,10 +733,10 @@ export default function BattleArena({ descriptor, player, onOutcome }: BattleAre
         const t = (now - startTime) / INTRO_MS;
         ctx.fillStyle = `rgba(0,0,0,${0.6 * (1 - t)})`; ctx.fillRect(0, 0, cw, ch);
         ctx.textAlign = "center";
-        ctx.fillStyle = "#38bdf8"; ctx.font = "bold 40px 'VT323', monospace";
+        ctx.fillStyle = "#38bdf8"; ctx.font = "bold 40px 'Fira Code', monospace";
         ctx.fillText(descriptor.title, cw / 2, ch / 2 - 10);
         if (descriptor.subtitle) { ctx.fillStyle = "rgba(226,232,240,0.7)"; ctx.font = "16px monospace"; ctx.fillText(descriptor.subtitle, cw / 2, ch / 2 + 24); }
-        if (t > 0.7) { ctx.fillStyle = "#fbbf24"; ctx.font = "bold 28px 'VT323',monospace"; ctx.fillText("FIGHT!", cw / 2, ch / 2 + 70); }
+        if (t > 0.7) { ctx.fillStyle = "#fbbf24"; ctx.font = "bold 28px 'Fira Code',monospace"; ctx.fillText("FIGHT!", cw / 2, ch / 2 + 70); }
       }
       // outro card
       if (phase === "win" || phase === "lose" || phase === "flee") {
@@ -744,7 +744,7 @@ export default function BattleArena({ descriptor, player, onOutcome }: BattleAre
         ctx.textAlign = "center";
         const label = phase === "win" ? "VICTORY" : phase === "flee" ? "WITHDREW" : "DEFEATED";
         const col = phase === "win" ? "#22c55e" : phase === "flee" ? "#94a3b8" : "#ef4444";
-        ctx.fillStyle = col; ctx.font = "bold 48px 'VT323', monospace";
+        ctx.fillStyle = col; ctx.font = "bold 48px 'Fira Code', monospace";
         ctx.fillText(label, cw / 2, ch / 2);
       }
       // controls hint

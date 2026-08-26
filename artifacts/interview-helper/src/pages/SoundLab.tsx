@@ -17,8 +17,8 @@ const BG = '#0a0d0a';
 const CHASSIS = '#0d100d';
 const PANEL_BG = '#080b08';
 const BORDER = 'rgba(56,189,248,.18)';
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+const MONO: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 let _actx: AudioContext | null = null;
 function actx(): AudioContext {

@@ -107,7 +107,7 @@ export default function BotCommandCenter({
     } catch {}
   };
 
-  const mono = boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" };
+  const mono = boomerMode ? {} : { fontFamily: "var(--font-sans)" };
 
   return (
     <motion.div
@@ -275,10 +275,10 @@ function StatCard({ label, value, color }: { label: string; value: string; color
   };
   return (
     <div className="px-3 py-2.5 bg-card/30">
-      <div className={`text-lg font-bold ${colorMap[color] || 'text-foreground'}`} style={{ fontFamily: "'VT323', monospace" }}>
+      <div className={`text-lg font-bold ${colorMap[color] || 'text-foreground'}`} style={{ fontFamily: "var(--font-sans)" }}>
         {value}
       </div>
-      <div className="text-[8px] text-muted-foreground/40 font-bold tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+      <div className="text-[8px] text-muted-foreground/40 font-bold tracking-widest" style={{ fontFamily: "var(--font-sans)" }}>
         {label}
       </div>
     </div>

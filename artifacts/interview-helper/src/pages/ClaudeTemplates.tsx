@@ -160,7 +160,7 @@ export default function ClaudeTemplates() {
     return (
       <div className="min-h-screen flex flex-col bg-background items-center justify-center p-8">
         <Loader2 className="w-10 h-10 animate-spin text-emerald-400 mb-4" />
-        <p className="text-sm text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+        <p className="text-sm text-muted-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
           {boomerMode ? 'LOADING TEMPLATE CATALOG...' : 'SYNCING TEMPLATE DATABASE...'}
         </p>
       </div>
@@ -192,12 +192,12 @@ export default function ClaudeTemplates() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
+                  <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
                     {boomerMode ? 'CLAUDE CODE TEMPLATES' : 'CLAUDE CODE TEMPLATES // CCT'}
                   </h1>
                   <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-violet-500/15 text-violet-400 border border-violet-500/25">{totalCount.toLocaleString()} COMPONENTS</span>
                 </div>
-                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                   {boomerMode ? 'BROWSE AI AGENTS, COMMANDS, SKILLS, MCPs, HOOKS & MORE' : 'AGENTS · SKILLS · COMMANDS · MCPs · HOOKS · CONFIGS'}
                 </p>
               </div>
@@ -236,7 +236,7 @@ export default function ClaudeTemplates() {
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder={boomerMode ? `Search ${tc.label.toLowerCase()}...` : `SEARCH ${tc.codename}...`}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-emerald-500/40 transition-colors"
-                style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -300,7 +300,7 @@ export default function ClaudeTemplates() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                          <span className="font-bold text-foreground text-sm truncate" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                          <span className="font-bold text-foreground text-sm truncate" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                             {item.name}
                           </span>
                           {item.category && (
@@ -381,7 +381,7 @@ export default function ClaudeTemplates() {
                                     <span className="text-[9px] text-muted-foreground/20">{item.path || item.name}</span>
                                   </div>
                                   <pre className="p-3 text-[11px] text-muted-foreground/70 overflow-x-auto max-h-64 overflow-y-auto leading-relaxed whitespace-pre-wrap break-words"
-                                    style={{ fontFamily: "'Share Tech Mono', 'Fira Code', monospace" }}>
+                                     style={{ fontFamily: "'Fira Code', monospace" }}>
                                     {contentText.slice(0, 4000)}
                                     {contentText.length > 4000 && '\n\n... [truncated]'}
                                   </pre>

@@ -11,8 +11,6 @@ import { ensureOnboardingScore } from "@/lib/onboarding-score";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
-import { SceneFX } from "@/components/SceneFX";
-import { CinematicScene } from "@/components/CinematicScene";
 import { useLowGfx } from "@/lib/lowGfx";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
@@ -20,7 +18,6 @@ import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
-import { useArtAsset } from "@/lib/art";
 import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
@@ -808,21 +805,10 @@ const QUESTION_LINE = "I'm listening.";
 const NAME_PROMPT_LINE = "What should I call you?";
 
 export default function PabloTerminal() {
-  const { isLoading } = useAuth();
-  const [, navigateTop] = useLocation();
-  useEffect(() => {
-    // Pablo is now open to anonymous visitors. Sign-up is requested only
-    // when an action actually needs a persistent account (covered downstream
-    // by the email-verification deferral work).
-    void navigateTop;
-  }, [navigateTop]);
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
-        BOOTING…
-      </div>
-    );
-  }
+  // The public terminal is safe to paint while auth resolves. Waiting here
+  // used to flash a black BOOTING screen before the canonical nebula, defeating
+  // its role as the immediate front door. Auth-dependent actions remain gated
+  // by PabloTerminalAuthed's own isLoading checks.
   return <PabloTerminalAuthed />;
 }
 
@@ -865,7 +851,7 @@ function PabloTerminalAuthed() {
   // settings (the same toggle also lives in Profile for authed users).
   const [lowGfx, setLowGfxValue] = useLowGfx();
   // Boomer mode reskins the whole terminal into a simplified late-70s
-  // green-phosphor computer terminal (flat black CRT, monospace, no glow /
+  // high-contrast, spacious interface with accessibility-friendly sizing.
   // glass). Defaults ON for everyone, so this is the common look.
   const [boomerMode] = useBoomerMode();
   const [status, setStatus] = useState<Status>("idle");
@@ -894,13 +880,7 @@ function PabloTerminalAuthed() {
   // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
   const PERSONA_CACHE_KEY = "salaryman.persona";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
-  // The front-door scene opens with the welcome, then quietly yields to the
-  // normal nebula once a visitor starts an actual conversation.
-  const [frontDoorSceneActive, setFrontDoorSceneActive] = useState(true);
   const [storyIdx, setStoryIdx] = useState(0);
-  // Cinematic gateway plate baked by Nano Banana. Loads asynchronously;
-  // null until the CDN URL is ready.
-  const doorArtUrl = useArtAsset("prop_door");
   // (Removed Simon-says puzzle and its state. The puzzle was a guard that
   // ran post-passcode; with the passcode gone, the user goes directly
   // from the intro question to the inline employment / name / email
@@ -1367,7 +1347,6 @@ function PabloTerminalAuthed() {
     // in-flight greeting TTS so Pablo doesn't keep talking over the
     // intake response.
     storyCancelledRef.current = true;
-    setFrontDoorSceneActive(false);
     introScriptDoneRef.current = true;
     ttsRef.current?.cancel();
     ttsRef.current = null;
@@ -1789,7 +1768,6 @@ function PabloTerminalAuthed() {
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
-    if (showIntro) setFrontDoorSceneActive(false);
     // Returning visitor whose name + email are already on file: ANY
     // admittance intent ("let me in", "show you my papers", "open my
     // dashboard") should hand them STRAIGHT to the sign-in choice — we
@@ -2579,9 +2557,6 @@ function PabloTerminalAuthed() {
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      {showIntro && frontDoorSceneActive && (
-        <CinematicScene scene="front-door" testId="pablo-frontdoor-scene" />
-      )}
       {/* Free-flowing nebula — full-bleed living background. Sized to the
           viewport diagonal so its particle field actually overflows every
           edge instead of sitting in a centered box. The whole layer is a
@@ -2606,12 +2581,7 @@ function PabloTerminalAuthed() {
               left: "50%",
               top: "50%",
               transform: "translate(-50%, -50%)",
-              // The arrival plate sits behind Pablo. On 2D/WebGL-fallback
-              // browsers the oversized orb otherwise fills every pixel with
-              // violet and visually erases that scene, so the welcome starts
-              // as a layered composition instead of a purple void.
-              opacity: showIntro && frontDoorSceneActive ? 0.32 : 1,
-              transition: "opacity 900ms cubic-bezier(.22,1,.36,1)",
+              opacity: 1,
             }}
           >
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
@@ -2620,16 +2590,6 @@ function PabloTerminalAuthed() {
           </div>
         )}
       </button>
-
-      {/* Unified house grade — lays the same CRT scanline/grain/vignette skin
-          over the smooth 3D nebula so it reads as part of the same world as the
-          pixel office and cutscenes instead of a separate "spectral" layer.
-          Fixed + pointer-events-none so it never blocks the orb click target.
-          Always on now that the nebula always renders, so the orb reads as part
-          of the same world as the pixel office and cutscenes. */}
-      <div className="fixed inset-0 z-[1] pointer-events-none">
-        <SceneFX intensity="subtle" />
-      </div>
 
       {/* GFX quality toggle. Top-right corner, always reachable during the
           checkpoint / onboarding flow (and after) so visitors on weak GPUs
@@ -2643,7 +2603,7 @@ function PabloTerminalAuthed() {
         onClick={(e) => { e.stopPropagation(); setLowGfxValue(!lowGfx); }}
         className="fixed z-30 right-3 sm:right-4 pointer-events-auto px-2.5 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] tracking-[0.22em] text-pink-200 hover:text-pink-100 transition-colors"
         style={{
-          fontFamily: "'Share Tech Mono', monospace",
+          fontFamily: "'Inter', sans-serif",
           borderColor: lowGfx ? "rgba(236,72,153,0.55)" : "rgba(236,72,153,0.30)",
           boxShadow: lowGfx ? "0 0 12px rgba(236,72,153,0.25)" : "none",
           // Pull below iOS notch / Android status bar so the time + battery icons
@@ -3176,7 +3136,7 @@ function PabloTerminalAuthed() {
               }}
             >
               <div style={{
-                fontFamily: "'VT323', monospace", fontSize: "1.5rem", color: "#38bdf8",
+                fontFamily: "'Inter', sans-serif", fontSize: "1.5rem", color: "#38bdf8",
                 letterSpacing: "0.2em", marginBottom: "6px", textShadow: "0 0 15px rgba(56,189,248,0.3)",
               }}>
                 APPLY FOR A VISA
@@ -3186,7 +3146,7 @@ function PabloTerminalAuthed() {
                 background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)",
               }} />
               <div style={{
-                fontFamily: "'Share Tech Mono', monospace", fontSize: "0.62rem",
+                fontFamily: "'Inter', sans-serif", fontSize: "0.62rem",
                 color: "rgba(56,189,248,0.45)", letterSpacing: "0.08em", lineHeight: 1.7, marginBottom: "22px",
               }}>
                 Choose how you sign in. Connect Discord and we'll route you to your nearest SALARYMAN city server.
@@ -3201,7 +3161,7 @@ function PabloTerminalAuthed() {
                   window.location.href = `/api/login?returnTo=${ret}${hint}`;
                 }}
                 style={{
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.75rem", color: "#38bdf8",
+                  fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#38bdf8",
                   border: "1px solid rgba(56,189,248,0.5)", padding: "10px 32px",
                   background: "rgba(56,189,248,0.08)", cursor: "pointer", letterSpacing: "0.15em",
                   width: "100%", transition: "all 0.2s",
@@ -3220,7 +3180,7 @@ function PabloTerminalAuthed() {
                   loginWithDiscord(c.dest);
                 }}
                 style={{
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.72rem", color: "#fff",
+                  fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#fff",
                   border: "1px solid #5865F2", padding: "10px 32px", marginTop: "10px",
                   background: "#5865F2", cursor: "pointer", letterSpacing: "0.12em",
                   width: "100%", transition: "all 0.2s",
@@ -3244,7 +3204,7 @@ function PabloTerminalAuthed() {
                   loginWithGithub(c.dest);
                 }}
                 style={{
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.72rem", color: "#e6edf3",
+                  fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#e6edf3",
                   border: "1px solid rgba(230,237,243,0.4)", padding: "10px 32px", marginTop: "10px",
                   background: "rgba(230,237,243,0.08)", cursor: "pointer", letterSpacing: "0.12em",
                   width: "100%", transition: "all 0.2s",
@@ -3263,7 +3223,7 @@ function PabloTerminalAuthed() {
               <button
                 onClick={() => setAuthChoice(null)}
                 style={{
-                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.55rem",
+                  fontFamily: "'Inter', sans-serif", fontSize: "0.55rem",
                   color: "rgba(56,189,248,0.25)", background: "none", border: "none",
                   cursor: "pointer", marginTop: "16px", letterSpacing: "0.1em",
                   display: "block", width: "100%",

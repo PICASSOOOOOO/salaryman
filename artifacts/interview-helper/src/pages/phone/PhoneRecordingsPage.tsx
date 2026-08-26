@@ -209,7 +209,7 @@ export default function PhoneRecordingsPage() {
                 border: `1px solid ${filter === f.key ? crt(0.25) : crt(0.08)}`,
                 color: filter === f.key ? crt(0.8) : crt(0.3),
                 borderRadius: 4, cursor: 'pointer',
-                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
               }}
             >{f.label}</button>
           ))}
@@ -292,7 +292,7 @@ export default function PhoneRecordingsPage() {
                         padding: '5px 9px', fontSize: '0.45rem', letterSpacing: '0.1em',
                         color: crt(0.7), border: `1px solid ${crt(0.18)}`, borderRadius: 4,
                         textDecoration: 'none', background: crt(0.03),
-                        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                       }}
                     >
                       <Download size={11} />

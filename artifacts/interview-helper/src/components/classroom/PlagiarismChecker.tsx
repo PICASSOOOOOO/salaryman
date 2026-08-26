@@ -3,7 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { ScanText, Loader2, AlertTriangle, Upload } from 'lucide-react';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 interface CheckResult {
   aiLikelihood: number;

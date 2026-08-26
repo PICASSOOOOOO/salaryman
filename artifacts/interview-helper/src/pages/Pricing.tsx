@@ -66,7 +66,7 @@ export default function Pricing() {
             type="button"
             data-testid="pricing-maybe-later"
             onClick={() => navigate("/")}
-            style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 12, letterSpacing: "0.2em", color: "#94a3b8" }}
+            style={{ fontFamily: "var(--font-sans)", fontSize: 12, letterSpacing: "0.2em", color: "#94a3b8" }}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 hover:border-white/25 hover:text-white transition-colors"
           >
             ← MAYBE LATER
@@ -77,17 +77,17 @@ export default function Pricing() {
           initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-500/30 mb-6"
             style={{ background: "rgba(239,68,68,0.08)" }}>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, letterSpacing: "0.3em", color: "#ef4444" }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, letterSpacing: "0.3em", color: "#ef4444" }}>
               PRICING
             </span>
           </div>
-          <h1 style={{ fontFamily: '"VT323", monospace', fontSize: "clamp(36px, 8vw, 56px)", letterSpacing: "0.08em", color: "#fff", lineHeight: 1.1 }}>
+          <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "clamp(36px, 8vw, 56px)", letterSpacing: "0.08em", color: "#fff", lineHeight: 1.1 }}>
             PABLO PRIME
           </h1>
-          <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 13, color: "#94a3b8", letterSpacing: "0.15em", marginTop: 8 }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: 13, color: "#94a3b8", letterSpacing: "0.15em", marginTop: 8 }}>
             EVERY PREMIUM TOOL · ONE SUBSCRIPTION · $149/MO
           </p>
-          <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, color: "#64748b", letterSpacing: "0.1em", marginTop: 4 }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "#64748b", letterSpacing: "0.1em", marginTop: 4 }}>
             CUSTOMIZE YOUR OFFICE · YOUR BUSINESS · YOUR DIGITAL LIFE
           </p>
         </motion.div>
@@ -117,7 +117,7 @@ export default function Pricing() {
           <div className="relative z-10 p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-              <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 10, letterSpacing: "0.4em", color: "rgba(239,68,68,0.7)" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: 10, letterSpacing: "0.4em", color: "rgba(239,68,68,0.7)" }}>
                 FLAGSHIP PRODUCT
               </span>
               <div className="flex-1 h-px" style={{ background: "rgba(239,68,68,0.15)" }} />
@@ -130,7 +130,7 @@ export default function Pricing() {
                   <Bot className="w-7 h-7 text-red-400" />
                 </div>
                 <div>
-                  <h2 style={{ fontFamily: '"VT323", monospace', fontSize: 32, letterSpacing: "0.06em", color: "#ef4444", lineHeight: 1 }}>
+                  <h2 style={{ fontFamily: "var(--font-sans)", fontSize: 32, letterSpacing: "0.06em", color: "#ef4444", lineHeight: 1 }}>
                     PABLO PRIME
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
@@ -140,7 +140,7 @@ export default function Pricing() {
               </div>
               <div className="flex flex-col items-end shrink-0">
                 <div className="flex items-baseline gap-1">
-                  <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: '"VT323", monospace' }}>$149</span>
+                  <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: "var(--font-sans)" }}>$149</span>
                   <span style={{ fontSize: 13, color: "#64748b" }}>/MO</span>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default function Pricing() {
 
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
-                <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 10, letterSpacing: "0.3em", color: "rgba(239,68,68,0.6)" }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: 10, letterSpacing: "0.3em", color: "rgba(239,68,68,0.6)" }}>
                   CURATED WORKFORCE · 9 AGENTS · 4 TEAMS
                 </span>
               </div>
@@ -156,8 +156,8 @@ export default function Pricing() {
                 {BOT_CATEGORIES.map((cat) => (
                   <div key={cat.name} className="rounded-lg p-3"
                     style={{ background: `${cat.color}08`, border: `1px solid ${cat.color}20` }}>
-                    <div style={{ fontFamily: '"VT323", monospace', fontSize: 20, color: cat.color }}>{cat.count}</div>
-                    <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 9, color: cat.color, letterSpacing: "0.08em", opacity: 0.8 }}>{cat.name}</div>
+                    <div style={{ fontFamily: "var(--font-sans)", fontSize: 20, color: cat.color }}>{cat.count}</div>
+                    <div style={{ fontFamily: "var(--font-sans)", fontSize: 9, color: cat.color, letterSpacing: "0.08em", opacity: 0.8 }}>{cat.name}</div>
                     <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, lineHeight: 1.35 }}>{cat.agents}</div>
                   </div>
                 ))}
@@ -169,7 +169,7 @@ export default function Pricing() {
                 {PRIME_FEATURES.map((feat) => (
                   <div key={feat} className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                    <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, color: "#e2e8f0", letterSpacing: "0.05em" }}>{feat}</span>
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "#e2e8f0", letterSpacing: "0.05em" }}>{feat}</span>
                   </div>
                 ))}
               </div>
@@ -179,7 +179,7 @@ export default function Pricing() {
               {clawActive ? (
                 <div className="flex items-center gap-2">
                   <Check className="w-5 h-5 text-emerald-400" />
-                  <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 13, color: "#10b981", letterSpacing: "0.1em" }}>ACTIVE</span>
+                  <span style={{ fontFamily: "var(--font-sans)", fontSize: 13, color: "#10b981", letterSpacing: "0.1em" }}>ACTIVE</span>
                 </div>
               ) : (
                 <button
@@ -195,7 +195,7 @@ export default function Pricing() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               )}
-              <span style={{ fontSize: 10, color: "#64748b", fontFamily: '"Share Tech Mono", monospace', letterSpacing: "0.15em" }}>
+              <span style={{ fontSize: 10, color: "#64748b", fontFamily: "var(--font-sans)", letterSpacing: "0.15em" }}>
                 CANCEL ANYTIME · NO CONTRACTS
               </span>
             </div>
@@ -205,7 +205,7 @@ export default function Pricing() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
           className="rounded-xl p-6 mb-8"
           style={{ border: "1px solid #ffffff10", background: "#ffffff04" }}>
-          <h3 style={{ fontFamily: '"VT323", monospace', fontSize: 20, color: "#38bdf8", letterSpacing: "0.08em", marginBottom: 12 }}>
+          <h3 style={{ fontFamily: "var(--font-sans)", fontSize: 20, color: "#38bdf8", letterSpacing: "0.08em", marginBottom: 12 }}>
             FREE TIER — ALWAYS FREE
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -221,14 +221,14 @@ export default function Pricing() {
             ].map((perk) => (
               <div key={perk} className="flex items-center gap-2">
                 <Check className="w-3 h-3 text-sky-400/50 shrink-0" />
-                <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 10, color: "#94a3b8", letterSpacing: "0.05em" }}>{perk}</span>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: 10, color: "#94a3b8", letterSpacing: "0.05em" }}>{perk}</span>
               </div>
             ))}
           </div>
         </motion.div>
 
         <div className="text-center pb-8">
-          <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 10, color: "#475569", letterSpacing: "0.2em" }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: 10, color: "#475569", letterSpacing: "0.2em" }}>
             THE SALARYMAN PLATFORM · EARLY ALPHA PRICING
           </p>
         </div>

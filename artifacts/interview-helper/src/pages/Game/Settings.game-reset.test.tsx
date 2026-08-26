@@ -99,7 +99,7 @@ beforeEach(() => {
     STORE_KEY,
     JSON.stringify({ master: 0.3, music: 0.55, muted: true }),
   );
-  document.documentElement.classList.remove("low-gfx", "no-crt");
+  document.documentElement.classList.remove("low-gfx");
   document.documentElement.style.removeProperty("--game-ui-scale");
   changeCount = 0;
   window.addEventListener("sm-settings-changed", onChange);

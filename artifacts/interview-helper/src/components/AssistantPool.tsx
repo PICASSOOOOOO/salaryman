@@ -194,7 +194,7 @@ function AssistantSprite({
         {/* Tiny name tag, only on hover-friendly viewports */}
         <div
           className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[7px] tracking-[0.15em] text-cyan-100/80 whitespace-nowrap"
-          style={{ fontFamily: "'VT323', monospace", textShadow: "0 0 4px #000, 0 0 4px #000" }}
+          style={{ fontFamily: "var(--font-sans)", textShadow: "0 0 4px #000, 0 0 4px #000" }}
         >
           {a.name}
         </div>

@@ -460,11 +460,11 @@ export default function WorldMapPanel() {
                 <rect x={d.x} y={d.y} width={d.w} height={d.h}
                   fill={`${d.color}0a`} stroke={`${d.color}30`} strokeWidth={1} rx={2} />
                 <text x={d.x + d.w / 2} y={d.y + 16} textAnchor="middle"
-                  fill={`${d.color}70`} fontSize={9} fontFamily="Share Tech Mono" fontWeight="bold">
+                  fill={`${d.color}70`} fontSize={9} fontFamily="var(--font-sans)" fontWeight="bold">
                   {d.label}
                 </text>
                 <text x={d.x + d.w / 2} y={d.y + 28} textAnchor="middle"
-                  fill={`${d.color}35`} fontSize={6} fontFamily="Share Tech Mono">
+                  fill={`${d.color}35`} fontSize={6} fontFamily="var(--font-sans)">
                   {d.desc}
                 </text>
               </g>
@@ -487,7 +487,7 @@ export default function WorldMapPanel() {
                 <g key={`plot-${plot.id}`}>
                   <rect x={plot.x - 4} y={plot.y - 4} width={8} height={8} fill={fill} stroke={stroke} strokeWidth={0.8} rx={1} />
                   {zoom > 1.8 && (
-                    <text x={plot.x} y={plot.y - 7} textAnchor="middle" fill={stroke} fontSize={4} fontFamily="Share Tech Mono">
+                    <text x={plot.x} y={plot.y - 7} textAnchor="middle" fill={stroke} fontSize={4} fontFamily="var(--font-sans)">
                       {plot.title.slice(0, 16)}
                     </text>
                   )}
@@ -496,7 +496,7 @@ export default function WorldMapPanel() {
             })}
             {builtPlots.length === 0 && (
               <text x={(CITY_LEFT + CITY_RIGHT) / 2} y={CITY_BOTTOM - 30} textAnchor="middle"
-                fill="rgba(251,191,36,0.55)" fontSize={10} fontFamily="Share Tech Mono">
+                fill="rgba(251,191,36,0.55)" fontSize={10} fontFamily="var(--font-sans)">
                 EMPTY LOTS — VISIT REAL ESTATE OFFICE TO BUILD
               </text>
             )}
@@ -513,7 +513,7 @@ export default function WorldMapPanel() {
                   <rect x={lm.x - chipW / 2} y={lm.y - size / 2 - 19} width={chipW} height={14} rx={3}
                     fill="rgba(8,12,20,0.85)" stroke={`${guide.color}99`} strokeWidth={0.8} />
                   <text x={lm.x} y={lm.y - size / 2 - 9} textAnchor="middle"
-                    fill={guide.color} fontSize={8.5} fontFamily="Share Tech Mono" fontWeight="bold">
+                    fill={guide.color} fontSize={8.5} fontFamily="var(--font-sans)" fontWeight="bold">
                     {lm.label}
                   </text>
                 </g>
@@ -521,7 +521,7 @@ export default function WorldMapPanel() {
             })}
 
             {mapMode === 'world' && (
-              <g fontFamily="Share Tech Mono" pointerEvents="none">
+              <g fontFamily="var(--font-sans)" pointerEvents="none">
                 <text x={CITY_CX} y={CITY_CY - (GAS_INNER + GAS_OUTER) / 2} textAnchor="middle"
                   fill="rgba(180,255,70,0.55)" fontSize={150} fontWeight="bold" letterSpacing="14">P O I S O N   F O G</text>
                 <text x={CITY_CX} y={CITY_CY + (GAS_INNER + GAS_OUTER) / 2 + 40} textAnchor="middle"
@@ -567,10 +567,10 @@ export default function WorldMapPanel() {
                   <circle cx={p.x} cy={p.y} r={5} fill={`${classColor}66`} stroke={classColor} strokeWidth={1.5} />
                   <circle cx={p.x} cy={p.y} r={2} fill={classColor} />
                   {p.status === 'idle' && (
-                    <text x={p.x + 7} y={p.y + 2} fill="rgba(251,191,36,0.6)" fontSize={6} fontFamily="Share Tech Mono">z</text>
+                    <text x={p.x + 7} y={p.y + 2} fill="rgba(251,191,36,0.6)" fontSize={6} fontFamily="var(--font-sans)">z</text>
                   )}
                   {(zoom > 1.5 || isSelected) && (
-                    <text x={p.x} y={p.y - 9} textAnchor="middle" fill={classColor} fontSize={5} fontFamily="Share Tech Mono">
+                    <text x={p.x} y={p.y - 9} textAnchor="middle" fill={classColor} fontSize={5} fontFamily="var(--font-sans)">
                       {p.firstName || 'ANON'}
                     </text>
                   )}
@@ -604,7 +604,7 @@ export default function WorldMapPanel() {
                   <circle cx={bc.x} cy={bc.y} r={2} fill="#ff1e1e"
                     style={motionStyle} />
                   {zoom > 1.2 && (
-                    <text x={bc.x} y={bc.y - 10} textAnchor="middle" fill="#ff4444" fontSize={6} fontFamily="Share Tech Mono" fontWeight="bold"
+                    <text x={bc.x} y={bc.y - 10} textAnchor="middle" fill="#ff4444" fontSize={6} fontFamily="var(--font-sans)" fontWeight="bold"
                       style={textMotionStyle}>BO</text>
                   )}
                 </g>

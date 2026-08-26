@@ -18,7 +18,7 @@ const BLUE = (a: number) => `rgba(56,189,248,${a})`;
 const AMBER = (a: number) => `rgba(251,191,36,${a})`;
 const BG = "rgba(3,10,3,0.98)";
 const BORDER = (a: number) => `rgba(0,255,65,${a})`;
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 type Tab = "pablo" | "global" | "company" | "private";
 

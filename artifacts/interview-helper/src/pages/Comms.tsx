@@ -62,7 +62,7 @@ export default function Comms() {
     <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
       <div className="max-w-4xl mx-auto w-full">
         <div className="px-4 sm:px-6 pt-4 sm:pt-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
             <MessageSquare className="inline w-5 h-5 mr-2" />
             PAYPHONE TERMINAL
           </h1>
@@ -155,11 +155,11 @@ export default function Comms() {
               <div className="space-y-2">
                 {responders.map((r, i) => (
                   <div key={r.userId} className={`flex items-center gap-3 p-3 rounded-lg border ${i === 0 ? 'border-yellow-500/30 bg-yellow-500/5' : i === 1 ? 'border-cyan-400/20 bg-cyan-400/5' : i === 2 ? 'border-orange-500/20 bg-orange-500/5' : 'border-white/5 bg-white/2'}`}>
-                    <div className={`text-lg font-mono font-bold ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-cyan-300' : i === 2 ? 'text-orange-400' : 'text-cyan-400/40'}`} style={{ minWidth: 28, fontFamily: "'VT323',monospace", fontSize: '1.3rem' }}>
+                    <div className={`text-lg font-mono font-bold ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-cyan-300' : i === 2 ? 'text-orange-400' : 'text-cyan-400/40'}`} style={{ minWidth: 28, fontFamily: "var(--font-sans)", fontSize: '1.3rem' }}>
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[11px] text-cyan-200 tracking-widest truncate" style={{ fontFamily: "'VT323',monospace", fontSize: '1rem' }}>{r.name}</div>
+                      <div className="text-[11px] text-cyan-200 tracking-widest truncate" style={{ fontFamily: "var(--font-sans)", fontSize: '1rem' }}>{r.name}</div>
                       <div className="text-[9px] text-cyan-400/40 tracking-wider mt-0.5">
                         {r.responseCount} RESPONSE{r.responseCount !== 1 ? 'S' : ''}
                       </div>

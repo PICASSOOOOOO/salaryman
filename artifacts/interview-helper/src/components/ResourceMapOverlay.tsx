@@ -79,7 +79,7 @@ export default function ResourceMapOverlay({ visible, onToggle, style, children 
           color: visible ? "rgba(255,200,50,0.9)" : "rgba(255,255,255,0.5)",
           borderRadius: "3px",
           cursor: "pointer",
-          fontFamily: "'Share Tech Mono',monospace",
+          fontFamily: "var(--font-sans)",
           fontSize: "0.42rem",
           letterSpacing: "0.08em",
           padding: "2px 5px",

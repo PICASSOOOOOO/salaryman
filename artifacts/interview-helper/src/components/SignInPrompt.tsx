@@ -45,8 +45,8 @@ function useAuthProviders(): AuthProviders {
   return providers;
 }
 
-const FONT = "'Share Tech Mono', monospace";
-const FONT_VT = "'VT323', monospace";
+const FONT = "var(--font-sans)";
+const FONT_VT = "var(--font-sans)";
 
 function fontFor(boomer: boolean) {
   return boomer ? undefined : FONT;

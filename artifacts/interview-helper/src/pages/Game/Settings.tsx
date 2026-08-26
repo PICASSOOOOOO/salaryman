@@ -10,7 +10,6 @@ import { CurrencySelector } from "../../components/CurrencySelector";
 import { useAudioSettings } from "../../hooks/use-audio-settings";
 import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
 import { getActiveCityName, hydrateActiveCityFromSave } from "../../lib/city-defs";
-import { applyCrt } from "../../lib/display-prefs";
 import { useLowGfx } from "../../lib/lowGfx";
 import { resetPerfPromptDecision } from "../../lib/perf-watchdog";
 import { flushSettingsToServer } from "../../lib/settings-sync";
@@ -25,7 +24,7 @@ const STORE_KEY = "sm_game_settings_v1";
 // or it would clobber the volume keys the store writes.
 type GameSettings = {
   // Display
-  resolution: "auto" | "720p" | "1080p" | "1440p" | "2160p";
+  resolution: "auto" | "720p" | "1080p" | "1440p";
   uiScale: number;        // 0.8 – 1.4
   fpsCap: 30 | 60 | 120 | 0;
   cameraZoom: number;     // 1.6 – 4.0 — start zoom; read by WorldPlay's computeDefaultZoom
@@ -37,7 +36,6 @@ type GameSettings = {
   cinematic: boolean;
   // Terminal
   terminalBoot: boolean;  // boot-up flourish before a terminal opens
-  crtEffect: boolean;     // scanlines + grain grade over scene art (applied app-wide)
   // Game
   invertY: boolean;
   controlScheme: "wasd" | "arrows" | "touch";
@@ -61,7 +59,6 @@ const DEFAULTS: GameSettings = {
   nightLighting: true,
   cinematic: true,
   terminalBoot: true,
-  crtEffect: true,
   invertY: false,
   controlScheme: "wasd",
   obsHost: "localhost",
@@ -117,13 +114,13 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
     try {
       // Merge so we never clobber the audio keys written by the audio store.
       const raw = localStorage.getItem(STORE_KEY);
-      const existing = raw ? JSON.parse(raw) : {};
-      localStorage.setItem(STORE_KEY, JSON.stringify({ ...existing, ...s }));
+       const existing = raw ? JSON.parse(raw) : {};
+       // Retire the old visual-only preference while preserving shared audio keys.
+       const { crtEffect: _legacyCrtEffect, ...current } = existing;
+       localStorage.setItem(STORE_KEY, JSON.stringify({ ...current, ...s }));
     } catch {}
     // Apply UI scale immediately to the document so the user sees it
     document.documentElement.style.setProperty("--game-ui-scale", String(s.uiScale));
-    // CRT grade is global (used outside this page too) so apply it app-wide now.
-    applyCrt(s.crtEffect);
     // Let the live world renderer pick up the new quality prefs immediately
     // (same-tab 'storage' events don't fire). WorldPlay listens for this and
     // refreshes its cached gfx-quality ref. See readGfxQuality() in WorldPlay.
@@ -380,7 +377,6 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                     <option value="720p">720p</option>
                     <option value="1080p">1080p</option>
                     <option value="1440p">1440p</option>
-                    <option value="2160p">2160p / 4K</option>
                   </select>
                 </Row>
                 <Row label="UI scale" hint={`${Math.round(s.uiScale * 100)}%`}>
@@ -460,12 +456,8 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
               <Row label="Boot animation" hint="The brief power-on flourish when a terminal opens.">
                 <Toggle on={s.terminalBoot} onChange={(v) => setS({ ...s, terminalBoot: v })} />
               </Row>
-              <Row label="CRT / scanlines" hint="Scanline + grain grade over scene artwork.">
-                <Toggle on={s.crtEffect} onChange={(v) => setS({ ...s, crtEffect: v })} />
-              </Row>
               <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
-                Turn the boot animation off to jump straight into PABLO. The CRT
-                grade applies across the whole world, not just terminals.
+                Turn the boot animation off to jump straight into PABLO.
               </p>
             </Sec>
           )}

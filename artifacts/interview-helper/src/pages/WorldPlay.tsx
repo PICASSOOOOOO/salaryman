@@ -39,7 +39,6 @@ import {
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
 import { setLowGfx } from '@/lib/lowGfx';
-import { NEON_NOIR_PALETTE, NEON_NOIR_RGB } from '@/lib/visual-grade';
 import {
   perfPromptDecided, markPerfPromptDecided, pushFpsBucket, shouldOfferPerfPrompt,
   PERF_PROMPT_RESET_EVENT,
@@ -848,19 +847,19 @@ interface DebrisParticle { x: number; y: number; vx: number; vy: number; life: n
 const MAX_DEBRIS = 20;
 
 // ── Dystopian dressing — salvaged-tech signage ────────────────────────────────
-// Hand-built ad boards, CRT panels, and flyers wired together from scrap. They
+// Hand-built ad boards, wall displays, and flyers wired together from scrap. They
 // dress the city in a primitive-tech aesthetic AND quietly point new arrivals at
 // the things they can DO here: rent/buy land & office space (work) and find the
 // places people gather and network. Kept lightweight + viewport-culled so they
 // never tax the render loop.
 //   kind drives the visual variant:
 //     'board'  — big salvaged billboard on a strut (real-estate / office pitch)
-//     'crt'    — flickering CRT panel bolted to a wall (work boards, listings)
+//     'display' — wall-mounted information display (work boards, listings)
 //     'flyer'  — small stapled paper flyer (alley networking nudges)
 //     'banner' — sagging cloth banner strung between poles (hangout spots)
 interface DystopianSignDef {
   x: number; y: number;
-  kind: 'board' | 'crt' | 'flyer' | 'banner';
+  kind: 'board' | 'display' | 'flyer' | 'banner';
   color: string;
   lines: string[];
   w: number;
@@ -869,8 +868,8 @@ const DYSTOPIAN_SIGNS: DystopianSignDef[] = [
   // ── WORK: real-estate / land / office space ──
   { x: 6040, y: 6180, kind: 'board', color: '#ffb000', w: 96, lines: ['◤ MINX REALTY ◢', 'LAND · UNITS · LOTS', 'OWN A PIECE → CIVIC ROW'] },
   { x: 6760, y: 6200, kind: 'board', color: '#ff7a18', w: 92, lines: ['OFFICE SPACE 4 LEASE', 'CO-WORK FLR · ƒ/MIN', 'TERMINALS OPEN → HERE'] },
-  { x: 6520, y: 5980, kind: 'crt', color: '#22ff88', w: 60, lines: ['VACANCY BOARD', 'FLOORS AVAILABLE', 'CLAIM VIA ELEVATOR'] },
-  { x: 7180, y: 6060, kind: 'crt', color: '#28e0ff', w: 60, lines: ['LISTINGS LIVE', 'RENT IDX POSTED', 'ASK AT FRONT DESK'] },
+  { x: 6520, y: 5980, kind: 'display', color: '#22ff88', w: 60, lines: ['VACANCY BOARD', 'FLOORS AVAILABLE', 'CLAIM VIA ELEVATOR'] },
+  { x: 7180, y: 6060, kind: 'display', color: '#28e0ff', w: 60, lines: ['LISTINGS LIVE', 'RENT IDX POSTED', 'ASK AT FRONT DESK'] },
   { x: 5980, y: 6520, kind: 'flyer', color: '#d8d0b0', w: 30, lines: ['ROOM 4 RENT', 'CHEAP. ASK.'] },
   { x: 7060, y: 6520, kind: 'flyer', color: '#d8d0b0', w: 30, lines: ['LOT FOR SALE', 'SOUTH BLOCK'] },
   // ── GATHER / NETWORK: where people meet ──
@@ -878,11 +877,11 @@ const DYSTOPIAN_SIGNS: DystopianSignDef[] = [
   { x: 7340, y: 6300, kind: 'banner', color: '#aa66ff', w: 88, lines: ['NIGHTCLUB — AFTER HOURS NETWORK'] },
   { x: 6640, y: 6480, kind: 'flyer', color: '#ffd0e0', w: 30, lines: ['HOTEL LOUNGE', 'CONTACTS HERE'] },
   { x: 6840, y: 5920, kind: 'flyer', color: '#fff0c0', w: 30, lines: ['NOODLE HUT', 'TALK BIZ'] },
-  { x: 6440, y: 6200, kind: 'crt', color: '#ffaa00', w: 56, lines: ['JOB BOARD', 'CREWS HIRING', 'NETWORK ↗'] },
+  { x: 6440, y: 6200, kind: 'display', color: '#ffaa00', w: 56, lines: ['JOB BOARD', 'CREWS HIRING', 'NETWORK ↗'] },
 ];
 // Which salvaged-signage kinds have a real ground footprint and should block
 // the player. Strut-mounted boards and pole-strung banners are physical
-// objects you can walk into; wall-bolted CRT panels and stapled paper flyers
+// objects you can walk into; wall-mounted displays and stapled paper flyers
 // are flat dressing with no footprint (kept pass-through).
 const SOLID_SIGN_KINDS = new Set<DystopianSignDef['kind']>(['board', 'banner']);
 
@@ -4099,8 +4098,8 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
     onFinish();
   };
 
-  const VT: React.CSSProperties = { fontFamily: "'VT323', monospace" };
-  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono', monospace" };
+  const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+  const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
   return (
     <div style={{
@@ -4244,7 +4243,7 @@ interface ChannelBar { eventId: string; eventType: string; startedAt: number; du
 function drawSpeechBubble(ctx: CanvasRenderingContext2D, cx: number, topY: number, text: string, alpha = 1) {
   ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-  ctx.font = '11px "Share Tech Mono",monospace';
+  ctx.font = '11px "Fira Code",monospace';
   const maxW = 170;
   const words = text.split(' ');
   const lines: string[] = [];
@@ -4311,12 +4310,12 @@ function PwPrompt({ label, onOk, onCancel }: { label: string; onOk: (pw: string)
   return (
     <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
       <div style={{ width: 300, border: '1px solid rgba(56,189,248,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
-        <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.1em', marginBottom: '.25rem' }}>🔒 {label}</div>
+        <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.1em', marginBottom: '.25rem' }}>🔒 {label}</div>
         <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', marginBottom: '.8rem' }}>SECURITY CODE REQUIRED</div>
-        <input value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === 'Enter' && v.trim() && onOk(v.trim())} type="password" placeholder="••••••••" autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.9rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box', marginBottom: '.7rem' }} />
+        <input value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === 'Enter' && v.trim() && onOk(v.trim())} type="password" placeholder="••••••••" autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.9rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box', marginBottom: '.7rem' }} />
         <div style={{ display: 'flex', gap: '.5rem' }}>
-          <button onClick={() => v.trim() && onOk(v.trim())} style={{ flex: 1, padding: '.4rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>UNLOCK</button>
-          <button onClick={onCancel} style={{ padding: '.4rem .75rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>✕</button>
+          <button onClick={() => v.trim() && onOk(v.trim())} style={{ flex: 1, padding: '.4rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>UNLOCK</button>
+          <button onClick={onCancel} style={{ padding: '.4rem .75rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>✕</button>
         </div>
       </div>
     </div>
@@ -4354,16 +4353,14 @@ function ElevatorRideOverlay({ from, to, onDone }: { from: number; to: number; o
         @keyframes elevDoor { 0%{transform:translateX(0)} 14%{transform:translateX(0)} 80%{transform:translateX(0)} 100%{transform:translateX(var(--elev-open))} }
         @keyframes elevScan { 0%{transform:translateY(-100%)} 100%{transform:translateY(100%)} }
       `}</style>
-      {/* cab shaft scan lines for motion feel */}
-      <div style={{ position: 'absolute', inset: 0, opacity: .35, background: 'repeating-linear-gradient(0deg, rgba(0,200,255,.05) 0, rgba(0,200,255,.05) 2px, transparent 2px, transparent 7px)' }} />
       <div style={{ position: 'absolute', left: 0, right: 0, height: '60%', top: 0, animation: `elevScan ${Math.max(240, travelMs / Math.max(2, dist))}ms linear infinite`, background: 'linear-gradient(180deg, transparent, rgba(0,200,255,.10), transparent)' }} />
       {/* floor indicator */}
       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', zIndex: 2 }}>
-        <div style={{ fontFamily: "'VT323',monospace", color: 'rgba(0,200,255,.7)', fontSize: '.9rem', letterSpacing: '.4em' }}>{goingUp ? '▲ ASCENDING' : '▼ DESCENDING'}</div>
-        <div style={{ fontFamily: "'Share Tech Mono',monospace", color: '#7fe9ff', fontSize: '4rem', lineHeight: 1.1, textShadow: '0 0 22px rgba(0,200,255,.6)', letterSpacing: '.05em' }}>
+        <div style={{ fontFamily: "var(--font-sans)", color: 'rgba(0,200,255,.7)', fontSize: '.9rem', letterSpacing: '.4em' }}>{goingUp ? '▲ ASCENDING' : '▼ DESCENDING'}</div>
+        <div style={{ fontFamily: "var(--font-sans)", color: '#7fe9ff', fontSize: '4rem', lineHeight: 1.1, textShadow: '0 0 22px rgba(0,200,255,.6)', letterSpacing: '.05em' }}>
           {String(disp).padStart(2, '0')}
         </div>
-        <div style={{ fontFamily: "'VT323',monospace", color: 'rgba(0,200,255,.4)', fontSize: '.85rem', letterSpacing: '.3em' }}>
+        <div style={{ fontFamily: "var(--font-sans)", color: 'rgba(0,200,255,.4)', fontSize: '.85rem', letterSpacing: '.3em' }}>
           FL {String(from).padStart(2, '0')} → FL {String(to).padStart(2, '0')}
         </div>
       </div>
@@ -4457,7 +4454,7 @@ function MobileQuickBtn({ label, color, onTap }: { label: string; color: string;
       style={{
         width: 44, height: 38, borderRadius: 9,
         border: `1px solid ${color}59`, background: 'rgba(4,10,16,.72)', color,
-        fontFamily: "'VT323',monospace", fontSize: '.62rem', letterSpacing: '.04em',
+        fontFamily: "var(--font-sans)", fontSize: '.62rem', letterSpacing: '.04em',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
       }}
@@ -11413,7 +11410,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           });
         }
         // Hard stationary props (strut boards / pole banners). Flat wall decals
-        // (crt/flyer) and steam vents have no footprint and stay pass-through.
+        // (display/flyer) and steam vents have no footprint and stay pass-through.
         for (const ds of DYSTOPIAN_SIGNS) {
           if (!SOLID_SIGN_KINDS.has(ds.kind) || !nearPlayer(ds.x, ds.y)) continue;
           const hy = ds.kind === 'banner' ? 8 : (12 + ds.lines.length * 9) / 2;
@@ -12647,7 +12644,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           // Floor label burned into the banner
           ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.85)`;
-          ctx.font = 'bold 9px "Share Tech Mono", monospace';
+          ctx.font = 'bold 9px "Fira Code", monospace';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText((_iSignage ?? iDef.label).toUpperCase(), iDef.width / 2, _bannerY + _bannerH / 2);
@@ -12656,7 +12653,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // rendered on the sprite and never written back to their save.
           if (isOfficeBuilding(g.interior?.bid ?? '')) {
             const _dc = !isWorkAppropriate(g.appearance ?? defaultAppearance(char.class.toLowerCase()));
-            ctx.font = 'bold 5px "Share Tech Mono", monospace';
+            ctx.font = 'bold 5px "Fira Code", monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = _dc ? 'rgba(125,211,252,0.92)' : 'rgba(125,211,252,0.55)';
@@ -12728,7 +12725,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(220,40,30,${0.18 + _flickF * 0.18})`;
           ctx.fillRect(iDef.width / 2 - 60, _wallH + 4, 120, 11);
           ctx.fillStyle = `rgba(255,140,120,${0.45 + _flickF * 0.3})`;
-          ctx.font = 'bold 8px "Share Tech Mono", monospace';
+          ctx.font = 'bold 8px "Fira Code", monospace';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('● UTILITIES CUT — PAY BILL TO RESTORE', iDef.width / 2, _wallH + 9);
@@ -13164,7 +13161,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(osx + 4, osy + 4, 3, 3);
             ctx.fillStyle = `rgba(255,180,0,${doorPulse * 0.4})`;
             ctx.fillRect(osx + 4, osy + 10, 3, 3);
-            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillStyle = 'rgba(0,200,255,.7)';
             ctx.fillText('▲▼', osx + obj.w / 2, osy + obj.h - 3);
           } else if (obj.type === 'conference_table') {
@@ -13375,7 +13372,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.lineWidth = 1.2;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
             ctx.fillStyle = isHQLocked ? `rgba(255,100,60,${0.6 + dlPulse * 0.3})` : `rgba(0,220,130,${0.6 + dlPulse * 0.3})`;
-            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(isHQLocked ? '⬤ SECURED' : '⬤ OPEN ACCESS', osx + obj.w / 2, osy + obj.h / 2 + 2);
           } else if (obj.type === 'nightstand') {
             // Nightstand: wooden box with a tiny drawer and lamp
@@ -13460,11 +13457,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.lineWidth = 1.5;
               ctx.strokeRect(osx - 1, osy - 1, obj.w + 2, obj.h + 2);
               ctx.fillStyle = isOwn ? 'rgba(56,189,248,.7)' : 'rgba(255,60,40,.7)';
-              ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText(isOwn ? '● YOUR SESSION' : `● ${lock.ownerName}`, osx + obj.w / 2, osy - 3);
             } else {
               ctx.fillStyle = 'rgba(0,200,255,.5)';
-              ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText('ƒ50/min', osx + obj.w / 2, osy - 3);
             }
           }
@@ -13576,7 +13573,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineWidth = 0.8;
           ctx.strokeRect(fx, fy, fw_px, fh_px);
           ctx.fillStyle = 'rgba(220,210,190,0.7)';
-          ctx.font = `5px "Share Tech Mono"`;
+          ctx.font = `5px "Fira Code"`;
           ctx.textAlign = 'center';
           ctx.fillText(fDef.name, fx + fw_px / 2, fy + fh_px / 2 + 2);
           ctx.restore();
@@ -13611,12 +13608,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.lineWidth = 1.5;
             ctx.strokeRect(gx3, gy3, fw2px, fh2px);
             ctx.fillStyle = 'rgba(255,255,255,0.8)';
-            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(selItem.name, gx3 + fw2px / 2, gy3 + fh2px / 2 + 2);
           }
           const dmPulse = 0.4 + Math.sin(g.frame * 0.06) * 0.3;
           ctx.fillStyle = `rgba(56,189,248,${dmPulse * 0.9})`;
-          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('◆ DECORATION MODE — [O] catalog · [R] rotate · Click to place · [Del] remove · [F] exit', iDef.width / 2, -18);
         }
 
@@ -13686,7 +13683,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           else if (isWindow) prompt = '[E] LOOK OUT';
           if (prompt) {
             ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.4)';
-            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(prompt, npx, npy);
           }
         }
@@ -13698,7 +13695,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.strokeStyle = `rgba(56,189,248,${exitPulse * 0.6})`;
         ctx.lineWidth = 1; ctx.strokeRect(exX, exY, iDef.exitW, iDef.exitH);
         ctx.fillStyle = `rgba(56,189,248,${exitPulse * 0.8})`;
-        ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('EXIT', exX + iDef.exitW / 2, exY + iDef.exitH / 2 + 3);
 
         for (const obj of iDef.objects) {
@@ -13706,7 +13703,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
             if (Math.hypot(itr.px - ocx, itr.py - ocy) < 35) {
               ctx.fillStyle = g.blink ? 'rgba(255,0,255,.9)' : 'rgba(255,0,255,.3)';
-              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText(`[E] PLAY — 1 FIAT`, ocx, obj.y - 6);
             }
           }
@@ -13714,7 +13711,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
             if (Math.hypot(itr.px - ocx, itr.py - ocy) < 35) {
               ctx.fillStyle = g.blink ? 'rgba(0,200,255,.95)' : 'rgba(0,200,255,.35)';
-              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText(g.secretLab ? '[E] DESCEND TO THE LAB — 1999' : '[E] SECRET STAIRCASE — 500K', ocx, obj.y - 6);
             }
           }
@@ -13722,7 +13719,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
             if (Math.hypot(itr.px - ocx, itr.py - ocy) < 30) {
               ctx.fillStyle = g.blink ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.3)';
-              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText('[E] READ NEWSPAPER', ocx, obj.y - 6);
             }
           }
@@ -13730,7 +13727,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         if (g.near === '__interior_exit') {
           ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.3)';
-          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] EXIT', exX + iDef.exitW / 2, exY - 6);
         }
 
@@ -13831,25 +13828,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const prime2 = isPrime ?? (name === 'JEAN CLAW' || isPrimeName(name));
           if (prime2) {
             ctx.shadowColor = 'rgba(255,200,60,.85)'; ctx.shadowBlur = 6;
-            ctx.fillStyle = 'rgba(255,214,80,.97)'; ctx.font = '6px "Share Tech Mono"';
+            ctx.fillStyle = 'rgba(255,214,80,.97)'; ctx.font = '6px "Fira Code"';
             ctx.fillText(name, nx, labelY2);
             ctx.shadowBlur = 0;
-            ctx.fillStyle = 'rgba(255,214,80,.5)'; ctx.font = '4px "Share Tech Mono"';
+            ctx.fillStyle = 'rgba(255,214,80,.5)'; ctx.font = '4px "Fira Code"';
             ctx.fillText('PRIME', nx, labelY2 + 5);
           } else if (isHovered) {
             ctx.shadowColor = 'rgba(56,189,248,.95)'; ctx.shadowBlur = 7;
-            ctx.fillStyle = 'rgba(236,246,255,.98)'; ctx.font = '6px "Share Tech Mono"';
+            ctx.fillStyle = 'rgba(236,246,255,.98)'; ctx.font = '6px "Fira Code"';
             ctx.fillText(name, nx, labelY2);
             ctx.shadowBlur = 0;
-            ctx.fillStyle = 'rgba(56,189,248,.6)'; ctx.font = '4px "Share Tech Mono"';
+            ctx.fillStyle = 'rgba(56,189,248,.6)'; ctx.font = '4px "Fira Code"';
             ctx.fillText(serial ?? role, nx, labelY2 + 5);
           } else if (serial) {
             ctx.shadowColor = 'rgba(56,189,248,.5)'; ctx.shadowBlur = 4;
-            ctx.fillStyle = 'rgba(56,189,248,.88)'; ctx.font = '6px "Share Tech Mono"';
+            ctx.fillStyle = 'rgba(56,189,248,.88)'; ctx.font = '6px "Fira Code"';
             ctx.fillText(serial, nx, labelY2);
             ctx.shadowBlur = 0;
           } else {
-            ctx.fillStyle = 'rgba(150,170,190,.62)'; ctx.font = '5px "Share Tech Mono"';
+            ctx.fillStyle = 'rgba(150,170,190,.62)'; ctx.font = '5px "Fira Code"';
             ctx.fillText(role, nx, labelY2);
           }
           if (isForeman) {
@@ -13867,11 +13864,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const nearW = Math.hypot(itr.px - wx, itr.py - wy) < 30;
             if (nearW && w.hostile) {
               ctx.fillStyle = g.blink ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.3)';
-              ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText('⚠ HOSTILE', wx, wy + 14);
             } else if (nearW && !w.hostile) {
               ctx.fillStyle = g.blink ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.4)';
-              ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText('[E] TALK', wx, wy + 16);
             }
           }
@@ -13917,7 +13914,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           ctx.shadowColor = opCls2 === 'corporate' ? '#38bdf8' : opCls2 === 'outlaw' ? '#7dd3fc' : opCls2 === 'replicant' ? '#67e8f9' : '#44aaff';
           ctx.shadowBlur = 3;
-          ctx.fillStyle = 'rgba(0,200,255,.7)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(0,200,255,.7)'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(peer.name, opx, opy - 18);
           ctx.shadowBlur = 0;
         }
@@ -13932,7 +13929,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const playerDist = Math.hypot(ppx - inx, ppy - iny);
           if (playerDist < 30) {
             ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.4)';
-            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('[E] TALK', inx, iny + 16);
           }
         }
@@ -13954,11 +13951,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.shadowColor = '#2acccc'; ctx.shadowBlur = 6;
           drawPlayerSprite(ctx, milaAppearance(clothOutfitColor(g.mila.outfitId)), { px: mdx, py: mdy });
           ctx.shadowBlur = 0; ctx.restore();
-          ctx.fillStyle = '#67e8f9'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = '#67e8f9'; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(milaLabelRef.current, mdx, mdy - 20);
           if (Math.hypot(ppx - mdx, ppy - mdy) < 34) {
             ctx.fillStyle = g.blink ? 'rgba(106,232,249,.95)' : 'rgba(106,232,249,.45)';
-            ctx.font = '7px "Share Tech Mono"';
+            ctx.font = '7px "Fira Code"';
             ctx.fillText('[E] MILA', mdx, mdy + 22);
           }
         }
@@ -13989,7 +13986,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = headCol;
           ctx.fillRect(dx2 + 8, dy2 - 4 + Math.sin(g.frame * 0.15) * 2, 5, 2);
           ctx.globalAlpha = 1;
-          ctx.fillStyle = dog.injured ? '#ff4444' : '#ffaa44'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = dog.injured ? '#ff4444' : '#ffaa44'; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(dog.name, dx2, dy2 - 12);
         }
         if (g.catCompanion.active && (!g.catCompanion.stayAt || g.catCompanion.stayAt === itr.bid)) {
@@ -14014,7 +14011,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = headCatCol;
           ctx.fillRect(cx2 + 7, cy2 - 7 + Math.sin(g.frame * 0.13) * 2, 2, 6);
           ctx.globalAlpha = 1;
-          ctx.fillStyle = cat.injured ? '#ff4444' : '#aaccff'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = cat.injured ? '#ff4444' : '#aaccff'; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(cat.name, cx2, cy2 - 12);
         }
 
@@ -14144,12 +14141,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         ctx.fillStyle = iDef.accentColor;
-        ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText(iDef.label, iDef.width / 2, -8);
 
         if (iDef.ambientText) {
           ctx.fillStyle = 'rgba(56,189,248,.2)';
-          ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(iDef.ambientText, iDef.width / 2, iDef.height + 14);
         }
 
@@ -15809,18 +15806,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const inNeonStrip2 = wx >= CITY_LEFT + 600 && wy < CITY_TOP + 500;
           const inIndustrial2 = wx >= CITY_LEFT + 600 && wy >= CITY_TOP + 500;
           const inOldDistrict2 = wx < CITY_LEFT + 100;
-          // Restrained neo-noir ground grade. District identity comes from small
-          // shifts inside one slate/indigo family rather than unrelated hues.
+          // ── Neon-noir ground grade — cool cousins of the building palette ──
+          // Re-graded from the old warm grey/brown "daytime town" tones to the
+          // same indigo/slate/teal/plum noir key as the buildings, so the city
+          // surface reads as one cohesive world. Each district keeps a distinct
+          // hue (cool slate / indigo-plum / teal-steel / plum-slate) but all
+          // sit blue-dominant so amber-lit windows still pop. Colour-only.
           if (inDowntown2) {
-            r = NEON_NOIR_RGB.terrain[0] + n1 * 9 + n2 * 4; g3 = NEON_NOIR_RGB.terrain[1] + n1 * 9 + n2 * 4; b = NEON_NOIR_RGB.terrain[2] + n1 * 10 + n2 * 4;
+            r = 58 + n1 * 12 + n2 * 6; g3 = 62 + n1 * 11 + n2 * 4; b = 78 + n1 * 12 + n2 * 5;
           } else if (inNeonStrip2) {
-            r = NEON_NOIR_RGB.terrainIndigo[0] + n1 * 9 + n3 * 4; g3 = NEON_NOIR_RGB.terrainIndigo[1] + n1 * 8 + n3 * 4; b = NEON_NOIR_RGB.terrainIndigo[2] + n1 * 11 + n3 * 5;
+            r = 64 + n1 * 12 + n3 * 5; g3 = 56 + n1 * 10 + n3 * 4; b = 84 + n1 * 14 + n3 * 8;
           } else if (inIndustrial2) {
-            r = NEON_NOIR_RGB.terrainTeal[0] + n1 * 8 + n2 * 5; g3 = NEON_NOIR_RGB.terrainTeal[1] + n1 * 9 + n2 * 5; b = NEON_NOIR_RGB.terrainTeal[2] + n1 * 9 + n2 * 5;
+            r = 56 + n1 * 10 + n2 * 7; g3 = 72 + n1 * 11 + n2 * 7; b = 84 + n1 * 10 + n2 * 6;
           } else if (inOldDistrict2) {
-            r = NEON_NOIR_RGB.terrainPlum[0] + n1 * 10 + n3 * 5; g3 = NEON_NOIR_RGB.terrainPlum[1] + n1 * 8 + n3 * 4; b = NEON_NOIR_RGB.terrainPlum[2] + n1 * 10 + n3 * 5;
+            r = 78 + n1 * 14 + n3 * 7; g3 = 66 + n1 * 11 + n3 * 6; b = 88 + n1 * 12 + n3 * 6;
           } else {
-            r = NEON_NOIR_RGB.terrain[0] + n1 * 8 + n2 * 4; g3 = NEON_NOIR_RGB.terrain[1] + n1 * 8 + n2 * 4; b = NEON_NOIR_RGB.terrain[2] + n1 * 9 + n2 * 4;
+            r = 62 + n1 * 12 + n2 * 6; g3 = 66 + n1 * 10 + n2 * 5; b = 82 + n1 * 11 + n2 * 5;
           }
         } else {
           // Wasteland/open terrain base
@@ -16742,7 +16743,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.save();
           ctx.globalAlpha = alpha;
           ctx.fillStyle = color;
-          ctx.font = "bold 11px 'Share Tech Mono', monospace";
+          ctx.font = "bold 11px 'Fira Code', monospace";
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           // Subtle pulse so it reads as interactable rather than terrain.
@@ -16753,7 +16754,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!found && dist < sec.radius) {
             ctx.globalAlpha = 0.85;
             ctx.fillStyle = '#fef3c7';
-            ctx.font = "9px 'Share Tech Mono', monospace";
+            ctx.font = "9px 'Fira Code', monospace";
             ctx.fillText('[E] INVESTIGATE', 0, 14);
           }
           ctx.restore();
@@ -16793,11 +16794,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) ctx.fillRect(kx + 4 + c * 4, ky + 14 + r * 4, 2, 2);
         ctx.textAlign = 'center';
         ctx.fillStyle = nearAtm ? '#38bdf8' : 'rgba(56,189,248,.45)';
-        ctx.font = '6px "Share Tech Mono"';
+        ctx.font = '6px "Fira Code"';
         ctx.fillText('ATM', ax, ky - 3);
         if (nearAtm) {
           ctx.fillStyle = g.blink ? 'rgba(56,189,248,.95)' : 'rgba(56,189,248,.4)';
-          ctx.font = '7px "Share Tech Mono"';
+          ctx.font = '7px "Fira Code"';
           ctx.fillText('[E] BANCO OMBRA', ax, ky - 11);
         }
         ctx.textAlign = 'left';
@@ -16826,16 +16827,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0;
         // Nozzle / bolt glyph
         ctx.fillStyle = `rgba(${col},.85)`;
-        ctx.font = '8px "Share Tech Mono"';
+        ctx.font = '8px "Fira Code"';
         ctx.textAlign = 'center';
         ctx.fillText(isGas ? '⛽' : '⚡', ux, pyk + 20);
         // Label
         ctx.fillStyle = nearU ? `rgb(${col})` : `rgba(${col},.45)`;
-        ctx.font = '6px "Share Tech Mono"';
+        ctx.font = '6px "Fira Code"';
         ctx.fillText(isGas ? 'GAS' : 'CHRG', ux, pyk - 3);
         if (nearU) {
           ctx.fillStyle = g.blink ? `rgba(${col},.95)` : `rgba(${col},.4)`;
-          ctx.font = '7px "Share Tech Mono"';
+          ctx.font = '7px "Fira Code"';
           ctx.fillText(isGas ? '[E] GAS PUMP' : '[E] CHARGE', ux, pyk - 11);
         }
         ctx.textAlign = 'left';
@@ -16865,7 +16866,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(sbx, sby - 20, 6 + pulse * 8, -Math.PI * 0.85, -Math.PI * 0.15); ctx.stroke();
           if (live) {
             ctx.fillStyle = g.blink ? 'rgba(174,242,90,.9)' : 'rgba(174,242,90,.4)';
-            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('[E] MX-75', sbx, sby - 28);
           }
         }
@@ -16881,7 +16882,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(wx, wy, 14 + pulse * 6, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = `rgba(174,242,90,${0.7 + pulse * 0.3})`;
-          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(g.sceneRun.alleyReached ? 'CAMP' : 'VENT', wx, wy - 18);
           ctx.beginPath(); ctx.moveTo(wx - 5, wy - 6); ctx.lineTo(wx, wy); ctx.lineTo(wx + 5, wy - 6); ctx.stroke();
         }
@@ -16931,7 +16932,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const dist = Math.hypot(g.px - np.x, g.py - np.y);
         if (dist < 40) {
           ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.3)';
-          ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] READ NEWSPAPER', nx, ny - 8);
         }
       }
@@ -16950,7 +16951,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       const drawRoad = (x1:number,y1:number,x2:number,y2:number,w:number,alpha:number,dashed=false) => {
         const roadBr = dayBright;
-        const rGray = Math.floor(NEON_NOIR_RGB.road[0] * roadBr);
+        const rGray = Math.floor(55 * roadBr);
         const isHoriz = Math.abs(y2 - y1) < Math.abs(x2 - x1);
         // Per-city streetscape — Huda paves warm sandstone walks with jade lane lines.
         const _isHuda = getActiveCityId() === 'huda_city';
@@ -16964,11 +16965,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Sidewalk / curb behind road (wider, concrete color)
           const sidewalkW = w + 14;
           ctx.lineWidth = sidewalkW;
-          ctx.strokeStyle = `rgb(${Math.floor(NEON_NOIR_RGB.sidewalk[0] * roadBr)},${Math.floor(NEON_NOIR_RGB.sidewalk[1] * roadBr)},${Math.floor(NEON_NOIR_RGB.sidewalk[2] * roadBr)})`;
+          ctx.strokeStyle = _isHuda ? `rgb(${Math.floor(124 * roadBr)},${Math.floor(104 * roadBr)},${Math.floor(76 * roadBr)})` : `rgb(${Math.floor(110 * roadBr)},${Math.floor(106 * roadBr)},${Math.floor(100 * roadBr)})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           // Curb edge lines
           ctx.lineWidth = 2;
-          ctx.strokeStyle = `rgb(${Math.floor(82 * roadBr)},${Math.floor(96 * roadBr)},${Math.floor(104 * roadBr)})`;
+          ctx.strokeStyle = _isHuda ? `rgb(${Math.floor(146 * roadBr)},${Math.floor(122 * roadBr)},${Math.floor(86 * roadBr)})` : `rgb(${Math.floor(130 * roadBr)},${Math.floor(125 * roadBr)},${Math.floor(118 * roadBr)})`;
           if (isHoriz) {
             ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - sidewalkW/2); ctx.lineTo(x2+ox,y2+oy - sidewalkW/2); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + sidewalkW/2); ctx.lineTo(x2+ox,y2+oy + sidewalkW/2); ctx.stroke();
@@ -16978,7 +16979,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           // Asphalt body
           ctx.lineWidth = w;
-          ctx.strokeStyle = `rgb(${Math.floor(NEON_NOIR_RGB.road[0] * roadBr)},${Math.floor(NEON_NOIR_RGB.road[1] * roadBr)},${Math.floor(NEON_NOIR_RGB.road[2] * roadBr)})`;
+          ctx.strokeStyle = `rgb(${rGray},${rGray - 5},${rGray - 8})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           // Wet-reflection sheen — faint cyan/magenta streaks down the lanes at
           // night so the neutral asphalt picks up the buildings' neon glow. Fades
@@ -16987,13 +16988,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (_night > 0) {
             const _sheen = w * 0.22;
             ctx.lineWidth = Math.max(1, _sheen);
-            ctx.strokeStyle = `rgba(98,230,245,${0.055 * _night})`;
+            ctx.strokeStyle = `rgba(80,200,235,${0.06 * _night})`;
             if (isHoriz) {
               ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - w*0.22); ctx.lineTo(x2+ox,y2+oy - w*0.22); ctx.stroke();
             } else {
               ctx.beginPath(); ctx.moveTo(x1+ox - w*0.22,y1+oy); ctx.lineTo(x2+ox - w*0.22,y2+oy); ctx.stroke();
             }
-            ctx.strokeStyle = `rgba(255,110,170,${0.04 * _night})`;
+            ctx.strokeStyle = `rgba(220,90,200,${0.05 * _night})`;
             if (isHoriz) {
               ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + w*0.22); ctx.lineTo(x2+ox,y2+oy + w*0.22); ctx.stroke();
             } else {
@@ -17002,9 +17003,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           // Lane divider lines (2 lanes)
           ctx.setLineDash([14,9]); ctx.lineWidth = 1.5;
-          ctx.strokeStyle = _isHuda
-            ? `rgba(${Math.floor(117 * roadBr)},${Math.floor(224 * roadBr)},${Math.floor(192 * roadBr)},0.72)`
-            : `rgba(${Math.floor(255 * roadBr)},${Math.floor(209 * roadBr)},${Math.floor(102 * roadBr)},0.72)`;
+          ctx.strokeStyle = _isHuda ? `rgba(${Math.floor(90 * roadBr)},${Math.floor(210 * roadBr)},${Math.floor(150 * roadBr)},0.75)` : `rgba(${Math.floor(240 * roadBr)},${Math.floor(220 * roadBr)},${Math.floor(60 * roadBr)},0.7)`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
           // Edge white lines
@@ -17453,7 +17452,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Faint proximity hint so the metro still works when stood on
           if (isNear) {
             ctx.fillStyle = g.blink ? 'rgba(174,242,90,.85)' : 'rgba(174,242,90,.35)';
-            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('[E] METRO', scx, by - 6);
           }
           continue; // skip default building art — station is hidden in the fog
@@ -17496,7 +17495,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(cx, sealY, 17, 0, Math.PI * 2); ctx.stroke();
           ctx.beginPath(); ctx.arc(cx, sealY, 11, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = `rgba(120,230,255,${0.18 + beat * 0.1 * neon})`;
-          ctx.font = 'bold 9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = 'bold 9px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('PABLO', cx, sealY + 3);
           // Neon bollards at the plaza corners
           [[plX + 14, plY + plH - 14], [plX + plW - 14, plY + plH - 14], [plX + 14, plY + 14], [plX + plW - 14, plY + 14]].forEach((p, pi) => {
@@ -17579,7 +17578,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(255,60,200,${0.6 + beat * 0.4})`;
           ['シ', 'ャ', 'ド', 'ウ'].forEach((gl, gi) => ctx.fillText(gl, bx + b.w * 0.15, by + 22 + gi * 16));
           ctx.shadowColor = '#38bdf8';
-          ctx.font = 'bold 11px "Share Tech Mono"';
+          ctx.font = 'bold 11px "Fira Code"';
           ctx.fillStyle = `rgba(90,220,255,${0.55 + beat * 0.35})`;
           'PABLO'.split('').forEach((gl, gi) => ctx.fillText(gl, bx + b.w * 0.85, by + 20 + gi * 14));
           ctx.restore();
@@ -17671,7 +17670,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (fw.state === 'out') {
               const lines = ['TURN BACK — THE FOG IS LETHAL.', 'NO MASK? NO FUTURE. GO HOME.', 'THE GAS TOOK THIS CITY. DON\u2019T FEED IT.'];
               const msg = lines[Math.floor(fw.t / 140) % lines.length];
-              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'left';
+              ctx.font = '8px "Fira Code"'; ctx.textAlign = 'left';
               const tw2 = ctx.measureText(msg).width;
               const bxp = wsx - tw2 / 2 - 6, byp = wsy - 30, bw2 = tw2 + 12, bh2 = 15;
               ctx.fillStyle = 'rgba(8,12,6,0.92)'; ctx.fillRect(bxp, byp, bw2, bh2);
@@ -17686,7 +17685,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Label + interaction prompt — the name is only legible up close.
           ctx.textAlign = 'center';
           if (isNear) {
-            ctx.font = 'bold 10px "Share Tech Mono"';
+            ctx.font = 'bold 10px "Fira Code"';
             const nm = 'SHADOW TOWER';
             const npw = ctx.measureText(nm).width + 12;
             ctx.fillStyle = 'rgba(8,12,18,0.92)';
@@ -17696,7 +17695,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = '#38bdf8';
             ctx.fillText(nm, cx, groundY - 3);
             ctx.fillStyle = g.blink ? 'rgba(56,189,248,.95)' : 'rgba(56,189,248,.4)';
-            ctx.font = '8px "Share Tech Mono"';
+            ctx.font = '8px "Fira Code"';
             ctx.fillText('[E]', cx, groundY - dH - 6);
           } else {
             // From a distance the signage is unreadable — indistinct marks only.
@@ -17719,7 +17718,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.moveTo(cx2, cy2 - sz); ctx.lineTo(cx2 + sz * 0.6, cy2); ctx.lineTo(cx2, cy2 + sz); ctx.lineTo(cx2 - sz * 0.6, cy2); ctx.closePath(); ctx.fill();
           ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
           ctx.shadowBlur = 0;
-          ctx.fillStyle = `rgba(180,255,255,${0.4 + pulse2 * 0.4})`; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = `rgba(180,255,255,${0.4 + pulse2 * 0.4})`; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('SAVE', cx2, cy2 + sz + 8);
           if (isNear) { ctx.fillStyle = g.blink ? 'rgba(180,255,255,.9)' : 'rgba(180,255,255,.3)'; ctx.fillText('[E] SAVE', cx2, cy2 - sz - 6); }
           continue;
@@ -17737,10 +17736,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = `rgba(56,189,248,${0.15 + pulse2 * 0.1})`;
             ctx.fillRect(bx + b.w - 8, by + 4, 6, b.h - 8);
             ctx.fillStyle = `rgba(56,189,248,${0.5 + pulse2 * 0.3})`;
-            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('VAN', cx2, cy2 + 3);
             ctx.fillStyle = `rgba(56,189,248,${0.3 + pulse2 * 0.2})`;
-            ctx.font = '6px "Share Tech Mono"';
+            ctx.font = '6px "Fira Code"';
             ctx.fillText('TERMINAL', cx2, cy2 + 11);
           } else {
             ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 6 + pulse2 * 6;
@@ -17752,7 +17751,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = `rgba(56,189,248,${0.06 + pulse2 * 0.04})`;
             ctx.fillRect(cx2 - 6, scanY, 12, 1);
             ctx.fillStyle = `rgba(56,189,248,${0.4 + pulse2 * 0.4})`;
-            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('>', cx2, cy2);
             ctx.fillStyle = `rgba(0,80,40,${0.6})`;
             ctx.fillRect(cx2 - 3, cy2 + 5, 6, 3);
@@ -17760,10 +17759,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(cx2 - 5, cy2 + 8, 10, 2);
             ctx.shadowBlur = 0;
             ctx.fillStyle = `rgba(56,189,248,${0.5 + pulse2 * 0.3})`;
-            ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('TERMINAL', cx2, cy2 + 18);
           }
-          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E] TERMINAL', cx2, by - 6); }
+          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center'; ctx.fillText('[E] TERMINAL', cx2, by - 6); }
           ctx.shadowBlur = 0;
           continue;
         }
@@ -17775,31 +17774,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let wallR: number, wallG: number, wallB: number;
         let roofR: number, roofG: number, roofB: number;
         let accentR: number, accentG: number, accentB: number;
-        // Simplified material palette: one dark structural family with restrained
-        // indigo/teal/plum variation. Signal color belongs to lights and signage.
+        // ── Minx City neon-noir material palette ───────────────────────────
+        // Re-graded from the old earthy "generic town" tones (terracotta /
+        // concrete / ochre) to the cool jewel-toned noir key of the onboarding
+        // & Pledge concept art. Six buckets keep material variety (distinct
+        // hue + luminance) but unify around indigo/teal/slate/plum so the city
+        // reads as one cohesive world. Amber-lit windows (below) pop against
+        // these cool walls for the classic neon-noir read. Colour-only change —
+        // no geometry, texture, or window logic touched.
         if (isLocked) {
-          wallR = 89; wallG = 50; wallB = 61;
-          roofR = 62; roofG = 34; roofB = 43;
-          accentR = 255; accentG = 107; accentB = 122;
+          // Seized / locked — kept warm rust so the "claimed" signal still reads.
+          wallR = 128; wallG = 72; wallB = 52;
+          roofR = 98; roofG = 54; roofB = 38;
+          accentR = 172; accentG = 96; accentB = 60;
         } else if (bHash < 0.22) {
-          [wallR, wallG, wallB] = NEON_NOIR_RGB.wallIndigo;
-          roofR = 29; roofG = 33; roofB = 48;
-          accentR = 98; accentG = 230; accentB = 245;
+          // Indigo masonry
+          wallR = 84; wallG = 74; wallB = 116; roofR = 60; roofG = 52; roofB = 88;
+          accentR = 132; accentG = 108; accentB = 176;
         } else if (bHash < 0.44) {
-          [wallR, wallG, wallB] = NEON_NOIR_RGB.wall;
-          roofR = 30; roofG = 40; roofB = 50;
-          accentR = 116; accentG = 139; accentB = 153;
+          // Slate panel
+          wallR = 96; wallG = 104; wallB = 124; roofR = 70; roofG = 78; roofB = 98;
+          accentR = 128; accentG = 138; accentB = 162;
         } else if (bHash < 0.66) {
-          [wallR, wallG, wallB] = NEON_NOIR_RGB.wallTeal;
-          roofR = 24; roofG = 49; roofB = 56;
-          accentR = 98; accentG = 230; accentB = 245;
+          // Teal glass / steel
+          wallR = 60; wallG = 96; wallB = 116; roofR = 42; roofG = 74; roofB = 96;
+          accentR = 96; accentG = 156; accentB = 184;
         } else if (bHash < 0.82) {
-          [wallR, wallG, wallB] = NEON_NOIR_RGB.wallPlum;
-          roofR = 47; roofG = 34; roofB = 51;
-          accentR = 255; accentG = 110; accentB = 170;
+          // Plum plaster
+          wallR = 122; wallG = 82; wallB = 112; roofR = 92; roofG = 60; roofB = 86;
+          accentR = 174; accentG = 112; accentB = 156;
         } else {
-          wallR = 38; wallG = 48; wallB = 58; roofR = 25; roofG = 32; roofB = 40;
-          accentR = 97; accentG = 115; accentB = 128;
+          // Cool brutalist
+          wallR = 58; wallG = 62; wallB = 80; roofR = 42; roofG = 46; roofB = 62;
+          accentR = 86; accentG = 92; accentB = 116;
         }
 
         const isTower = b.w >= 50 || b.h >= 50;
@@ -17942,7 +17949,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const winPulse = isLitWin && isNight ? 0.8 + Math.sin(g.frame * 0.025 + wc + wr * 3) * 0.2 : 1;
             if (isLitWin) {
               if (isNight) {
-                ctx.fillStyle = `rgba(255,${Math.floor(209 * winPulse)},${Math.floor(102 * winPulse)},${0.88 * winPulse})`;
+                ctx.fillStyle = `rgba(255,${Math.floor(220 * winPulse)},${Math.floor(90 * winPulse)},${0.85 * winPulse})`;
               } else {
                 ctx.fillStyle = `rgb(${Math.floor(200 * bBr)},${Math.floor(225 * bBr)},${Math.floor(245 * bBr)})`;
               }
@@ -17964,9 +17971,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(wx + winW / 2 - 0.5, wy, 1, winH);
             // Night glow from lit windows
             if (isLitWin && isNight) {
-              ctx.shadowColor = `rgba(255,209,102,0.46)`;
+              ctx.shadowColor = `rgba(255,200,80,0.5)`;
               ctx.shadowBlur = 4;
-              ctx.fillStyle = `rgba(255,209,102,0.1)`;
+              ctx.fillStyle = `rgba(255,200,80,0.12)`;
               ctx.fillRect(wx - 2, wy - 2, winW + 4, winH + 4);
               ctx.shadowBlur = 0;
             }
@@ -17977,7 +17984,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doorW = 10, doorH = 14;
         const doorX = bx + b.w / 2 - doorW / 2, doorY = by + b.h - doorH;
         // Awning above door
-        const awningCol = isLocked ? NEON_NOIR_PALETTE.danger : `rgb(${Math.floor(accentR * bBr)},${Math.floor(accentG * bBr)},${Math.floor(accentB * bBr)})`;
+        const awningCol = isLocked ? '#aa5533' : `rgb(${Math.floor(accentR * bBr)},${Math.floor(accentG * bBr)},${Math.floor(accentB * bBr)})`;
         ctx.fillStyle = awningCol;
         ctx.beginPath();
         ctx.moveTo(doorX - 5, doorY - 3);
@@ -18005,7 +18012,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(doorX + doorW - 3, doorY + doorH / 2 - 2, 2, 4);
         // Building signage on awning
         ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#38bdf8' : 'rgba(56,189,248,.95)') : `rgb(${Math.floor(240 * bBr)},${Math.floor(230 * bBr)},${Math.floor(210 * bBr)})`;
-        ctx.font = `${b.bright ? 8 : 7}px "Share Tech Mono"`; ctx.textAlign = 'center';
+        ctx.font = `${b.bright ? 8 : 7}px "Fira Code"`; ctx.textAlign = 'center';
         {
           // Building NAMES are intentionally not rendered — places are recognised
           // by their art/signage silhouette, not floating text labels. A few
@@ -18254,7 +18261,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const tagX = bx + 4;
           const tagY = by + b.h - 16;
           ctx.fillStyle = `rgba(${Math.floor(240 * bBr)},${Math.floor(70 * bBr)},${Math.floor(110 * bBr)},.55)`;
-          ctx.font = 'bold 9px "Share Tech Mono"';
+          ctx.font = 'bold 9px "Fira Code"';
           ctx.textAlign = 'left';
           const tagNum = Math.floor(faceHash * 899) + 100;
           ctx.fillText(String(tagNum), tagX, tagY);
@@ -18284,23 +18291,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         const costLbl = BUILDING_COST_LABEL[b.id];
         if (costLbl && !isLocked) {
-          ctx.font = '7px "Share Tech Mono"';
+          ctx.font = '7px "Fira Code"';
           ctx.fillStyle = costLbl === 'FREE' ? '#66ff88' : costLbl === 'SHOP' ? '#ffcc44' : '#ffaa44';
           ctx.textAlign = 'center';
           ctx.fillText(costLbl, bx + b.w / 2, by - roofSkew - 4);
         }
         if (isLocked) {
-          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillStyle = '#ff8c3c';
           ctx.fillText('🔒', bx + b.w / 2, by + b.h / 2);
         }
-        if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
+        if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
         if (b.id === 'theater') {
           const theaterCount = [...g.peers.values()].filter(p => p.interiorBid === 'theater' || p.interiorBid === 'theater_screen').length;
           if (theaterCount > 0) {
             const pulse = 0.55 + Math.sin(g.frame * 0.07) * 0.35;
             ctx.save();
-            ctx.font = 'bold 7px "Share Tech Mono"';
+            ctx.font = 'bold 7px "Fira Code"';
             ctx.textAlign = 'center';
             ctx.shadowColor = `rgba(239,80,60,${pulse * 0.9})`;
             ctx.shadowBlur = 8;
@@ -18326,13 +18333,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const pulse = 0.5 + Math.sin(g.frame * 0.08) * 0.3;
         ctx.save();
         ctx.fillStyle = `rgba(239,68,68,${pulse})`;
-        ctx.font = 'bold 14px "Share Tech Mono"';
+        ctx.font = 'bold 14px "Fira Code"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('🔐', bx + b.w / 2, by - 22);
         if (isNear) {
           ctx.fillStyle = g.blink ? '#ef4444' : 'rgba(239,68,68,.5)';
-          ctx.font = '9px "Share Tech Mono"';
+          ctx.font = '9px "Fira Code"';
           ctx.fillText('[E] LOCKED', bx + b.w / 2, by - 8);
         }
         ctx.restore();
@@ -18607,12 +18614,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           drawVehicleSprite(spx, spy, pl.type, 'right');
           if (spNear && !g.vehicle) {
             ctx.fillStyle = g.blink ? 'rgba(0,255,204,.85)' : 'rgba(0,255,204,.3)';
-            ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '11px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('[E] RETRIEVE', spx, spy - 20);
           }
         } else if (spNear && g.vehicle) {
           ctx.fillStyle = g.blink ? 'rgba(0,255,204,.85)' : 'rgba(0,255,204,.3)';
-          ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '11px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[P] PARK HERE', spx, spy - 20);
         }
         // Parking-lot place name intentionally omitted — recognised by the
@@ -18631,7 +18638,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0;
         if (pvNear && !g.vehicle) {
           ctx.fillStyle = g.blink ? 'rgba(255,204,0,.85)' : 'rgba(255,204,0,.3)';
-          ctx.font = '12px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '12px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] STEAL', pvx, pvy - 14);
           ctx.fillStyle = 'rgba(255,204,0,.6)';
           ctx.fillText(getVehicleDef(pv.type).label, pvx, pvy - 26);
@@ -18649,7 +18656,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0;
         if (evNear && !g.vehicle) {
           ctx.fillStyle = g.blink ? 'rgba(0,255,200,.85)' : 'rgba(0,255,200,.3)';
-          ctx.font = '12px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '12px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] ENTER', evx, evy - 14);
         }
       }
@@ -18674,7 +18681,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0;
         if (evNearby && !channelBarRef.current && !frozenRef.current) {
           ctx.fillStyle = g.blink ? evCol : `${evCol}88`;
-          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
           ctx.fillText('[E] RESPOND', evwx, evwy - 26);
         }
         ctx.restore();
@@ -18694,12 +18701,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(cpx, cpy, 12, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#fff'; ctx.font = '10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('💀', cpx, cpy);
-          ctx.fillStyle = '#ff8888'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          ctx.fillStyle = '#ff8888'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
           ctx.fillText(cp.name, cpx, cpy - 18);
           const cpDist = Math.hypot(g.px - cp.x, g.py - cp.y);
           if (cpDist < 80 && !frozenRef.current) {
             ctx.fillStyle = g.blink ? '#ff5544' : 'rgba(255,85,68,.5)';
-            ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('[E] REVIVE', cpx, cpy - 28);
           }
           ctx.restore();
@@ -18728,21 +18735,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = ns.color;
         ctx.fillRect(nsx - ns.w / 2, nsy - 4, ns.w, 8);
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText(ns.text, nsx, nsy + 2);
         ctx.shadowBlur = 0;
         ctx.restore();
       }
 
-      // ── Dystopian dressing — salvaged ad boards / CRTs / flyers / banners ──
+      // ── Dystopian dressing — salvaged ad boards / displays / flyers / banners ──
       for (let dsi = 0; dsi < DYSTOPIAN_SIGNS.length; dsi++) {
         const ds = DYSTOPIAN_SIGNS[dsi];
         const dsx = ds.x + ox, dsy = ds.y + oy;
         if (dsx < -120 || dsx > cw + 120 || dsy < -120 || dsy > ch + 120) continue;
-        // Subtle per-sign flicker — old hardware never holds a steady current.
-        const dim = Math.sin(g.frame * 0.07 + ds.x * 0.05);
-        const flick = dim > -0.85 ? 1 : (Math.sin(g.frame * 0.6 + dsi) * 0.5 + 0.5);
-        const lit = flick * (isNight ? 1 : 0.62);
+        const lit = isNight ? 1 : 0.62;
         ctx.save();
         if (ds.kind === 'flyer') {
           // Stapled paper flyer — slight skew, no glow, hand-typed text.
@@ -18753,7 +18757,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(-ds.w / 2, -fh / 2, ds.w, fh);
           ctx.fillStyle = 'rgba(40,30,20,.75)';
           ctx.fillRect(-ds.w / 2, -fh / 2, ds.w, 2);
-          ctx.fillStyle = 'rgba(20,18,14,.9)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(20,18,14,.9)'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
           ds.lines.forEach((ln, li) => ctx.fillText(ln, 0, -fh / 2 + 9 + li * 7));
           // staples
           ctx.fillStyle = 'rgba(120,120,130,.7)';
@@ -18771,27 +18775,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineTo(dsx + ds.w / 2, dsy + 6); ctx.quadraticCurveTo(dsx, dsy + 6 + sag, dsx - ds.w / 2, dsy + 6);
           ctx.closePath(); ctx.fill();
           ctx.globalAlpha = lit; ctx.shadowColor = ds.color; ctx.shadowBlur = isNight ? 8 : 2;
-          ctx.fillStyle = ds.color; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = ds.color; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(ds.lines[0], dsx, dsy + 3 + sag * 0.5);
           ctx.shadowBlur = 0;
-        } else if (ds.kind === 'crt') {
-          // CRT panel bolted to a wall — scanlines, phosphor text, dangling wire.
+        } else if (ds.kind === 'display') {
+          // Wall-mounted information display with a salvaged metal housing.
           const ch2 = 10 + ds.lines.length * 8;
           // salvaged metal housing
           ctx.fillStyle = 'rgba(26,24,22,.95)';
           ctx.fillRect(dsx - ds.w / 2 - 3, dsy - ch2 / 2 - 3, ds.w + 6, ch2 + 6);
           ctx.fillStyle = 'rgba(8,10,8,.98)';
           ctx.fillRect(dsx - ds.w / 2, dsy - ch2 / 2, ds.w, ch2);
-          // screen glow
           ctx.globalAlpha = lit;
-          ctx.shadowColor = ds.color; ctx.shadowBlur = isNight ? 9 : 3;
-          ctx.fillStyle = ds.color; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = ds.color; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
           ds.lines.forEach((ln, li) => ctx.fillText(ln, dsx, dsy - ch2 / 2 + 9 + li * 8));
-          ctx.shadowBlur = 0;
-          // scanlines
-          ctx.globalAlpha = 0.18 * lit;
-          ctx.fillStyle = 'rgba(0,0,0,.9)';
-          for (let sl = 0; sl < ch2; sl += 2) ctx.fillRect(dsx - ds.w / 2, dsy - ch2 / 2 + sl, ds.w, 1);
           // dangling power wire
           ctx.globalAlpha = 0.9;
           ctx.strokeStyle = 'rgba(40,38,36,.9)'; ctx.lineWidth = 1;
@@ -18809,13 +18806,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(dsx - ds.w / 2 - 2, dsy - bh / 2 - 2, ds.w + 4, bh + 4);
           ctx.fillStyle = 'rgba(14,13,12,.98)';
           ctx.fillRect(dsx - ds.w / 2, dsy - bh / 2, ds.w, bh);
-          // flickering tube light frame
+          // tube light frame
           ctx.globalAlpha = lit;
           ctx.shadowColor = ds.color; ctx.shadowBlur = isNight ? 11 : 4;
           ctx.strokeStyle = ds.color; ctx.lineWidth = 1.5;
           ctx.strokeRect(dsx - ds.w / 2 + 1, dsy - bh / 2 + 1, ds.w - 2, bh - 2);
           // text
-          ctx.fillStyle = 'rgba(255,250,235,.92)'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(255,250,235,.92)'; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ds.lines.forEach((ln, li) => {
             ctx.fillStyle = li === 0 ? ds.color : 'rgba(255,250,235,.9)';
             ctx.fillText(ln, dsx, dsy - bh / 2 + 10 + li * 9);
@@ -18885,12 +18882,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(cx + 14, cy - 6, 8, 3);
         }
         ctx.fillStyle = 'rgba(255,200,80,.55)';
-        ctx.font = '10px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = '10px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('CAMPFIRE', cx, cy - 22);
         const campDist = Math.hypot(g.px - campsitePos.x, g.py - campsitePos.y);
         if (campDist < 80) {
           ctx.fillStyle = 'rgba(255,200,80,.7)';
-          ctx.font = '11px "Share Tech Mono"';
+          ctx.font = '11px "Fira Code"';
           ctx.fillText('[E] CAMP MENU', cx, cy + 22);
         }
       }
@@ -18903,7 +18900,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = `rgba(0,200,255,${arAlpha})`;
         ctx.fillRect(arx - 5, ary - 5, 10, 10);
         ctx.fillStyle = `rgba(0,200,255,${arAlpha * 0.7})`;
-        ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('♫', arx, ary - 8);
         if (arDist < 200) {
           sfxAmbientRadio(g.px, g.py, ar.x, ar.y);
@@ -19022,7 +19019,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
           ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           if (g.frame % 60 < 30) {
-            ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('...', nx2 + 8, ny2 - 12);
           }
         } else {
@@ -19105,7 +19102,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         if (isFleeing) {
-          ctx.fillStyle = 'rgba(255,68,68,.7)'; ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(255,68,68,.7)'; ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('!', nx2, ny2 - 16);
         }
         ctx.shadowBlur = 0;
@@ -19116,7 +19113,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const npcHover = !!(hoverMouseRef.current && Math.hypot(sPos.x - hoverMouseRef.current.x, sPos.y - hoverMouseRef.current.y) < 16);
           const reveal = npcPrime || npcHover || isNearNpc;
           const nm = reveal ? n.name : (n.role ?? 'civilian').replace(/_/g, ' ').toUpperCase();
-          ctx.font = `${reveal ? 'bold ' : ''}13px "Share Tech Mono"`;
+          ctx.font = `${reveal ? 'bold ' : ''}13px "Fira Code"`;
           ctx.textAlign = 'center';
           const tw = ctx.measureText(nm).width;
           ctx.fillStyle = 'rgba(0,0,0,.55)';
@@ -19132,7 +19129,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         if (isNearNpc && !nb) {
           ctx.fillStyle = g.blink ? 'rgba(56,189,248,.85)' : 'rgba(56,189,248,.3)';
-          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '13px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E]', nx2, ny2 - 32);
         }
         if (nDist < 120 && nDist > 40) {
@@ -19141,7 +19138,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const rumorAlpha = 0.5 + Math.sin(g.frame * 0.03 + ni) * 0.2;
             const rumorY = ny2 - 42 + Math.sin(g.frame * 0.02 + ni * 2) * 2;
             ctx.fillStyle = `rgba(255,220,100,${rumorAlpha})`;
-            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(`"${twText}"`, nx2, rumorY);
           } else if (g.rumorCooldown <= 0) {
             const gossip = getNearbyGossip(sPos.x, sPos.y, g.frame);
@@ -19169,7 +19166,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#00ccff';
         ctx.fillRect(ex - 3, ey - 18, 6, 4);
         ctx.restore();
-        ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         const empLabel = `${emp.name} [${emp.role}]`;
         const etw = ctx.measureText(empLabel).width;
         ctx.fillStyle = 'rgba(0,0,0,.6)';
@@ -19180,7 +19177,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText(empLabel, ex, ey - 20);
         if (isNearEmp) {
           ctx.fillStyle = g.blink ? 'rgba(0,200,255,.85)' : 'rgba(0,200,255,.3)';
-          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '13px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E]', ex, ey - 36);
         }
       }
@@ -19226,7 +19223,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.beginPath(); ctx.arc(px2, py2 - 6, radius, 0, Math.PI * 2); ctx.stroke();
           }
           ctx.fillStyle = '#00ffcc';
-          ctx.font = 'bold 9px "Share Tech Mono"';
+          ctx.font = 'bold 9px "Fira Code"';
           ctx.textAlign = 'center';
           ctx.fillText('\u266A', px2 + 10, py2 - 18);
         }
@@ -19239,7 +19236,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(100,200,255,${shieldPulse * 0.15})`;
           ctx.beginPath(); ctx.ellipse(px2, py2 - 4, 12, 16, 0, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.font = 'bold 13px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = 'bold 13px "Fira Code"'; ctx.textAlign = 'center';
         const opNm = op.name;
         const opTw = ctx.measureText(opNm).width;
         ctx.fillStyle = 'rgba(0,0,0,.55)';
@@ -19336,7 +19333,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         // Label when close enough to see
         if (boDist2 < 180) {
-          ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '11px "Fira Code"'; ctx.textAlign = 'center';
           const boLabel = g.interior ? 'STANDING BY' : 'BANCO OMBRA';
           const boTw = ctx.measureText(boLabel).width;
           ctx.fillStyle = 'rgba(0,0,0,.7)';
@@ -19368,7 +19365,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Label
         const pDist = Math.hypot(g.px - p.x, g.py - p.y);
         if (pDist < 100) {
-          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '13px "Fira Code"'; ctx.textAlign = 'center';
           const pTw = ctx.measureText('POLICE').width;
           ctx.fillStyle = 'rgba(0,0,0,.55)';
           ctx.beginPath(); ctx.roundRect(px2 - pTw / 2 - 5, py2 - 30, pTw + 10, 16, 4); ctx.fill();
@@ -19408,7 +19405,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const avgY = alive.reduce((s, m) => s + m.y, 0) / alive.length + oy;
           const bDist = Math.hypot(g.px - alive[0].x, g.py - alive[0].y);
           if (bDist < 180) {
-            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
             const bLabel = `${band.label} [${alive.length}]`;
             const btw = ctx.measureText(bLabel).width;
             ctx.fillStyle = 'rgba(0,0,0,.55)';
@@ -19435,7 +19432,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = ft % 2 === 0 ? '#ff8800' : '#ffcc00';
           ctx.beginPath(); ctx.moveTo(fmx, fmy); ctx.lineTo(fmx + 5, fby); ctx.lineTo(fmx - 5, fby); ctx.closePath(); ctx.fill();
         }
-        ctx.fillStyle = '#ff2200'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#ff2200'; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('🔥 FIRE', fbx + bld.w / 2, fby - 12);
       }
 
@@ -19465,11 +19462,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const lootDist = Math.hypot(g.px - body.x, g.py - body.y);
           const lootPulse = 0.5 + Math.sin(g.frame * 0.12) * 0.3;
           ctx.fillStyle = `rgba(255,221,68,${lootPulse})`;
-          ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(`ƒ${(body.bounty ?? 0).toLocaleString()}`, bx, by - 8);
           if (lootDist < 50) {
             ctx.fillStyle = `rgba(255,221,68,${lootPulse * 0.8})`;
-            ctx.font = '6px "Share Tech Mono"';
+            ctx.font = '6px "Fira Code"';
             ctx.fillText('[E] LOOT', bx, by - 16);
           }
         }
@@ -19507,7 +19504,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(tx, ty - 2, ringR, 0, Math.PI * 2); ctx.stroke();
           // Little "!" over the head, brighter as it nears strike.
           ctx.fillStyle = `rgba(255,${120 - prog * 80},${80 - prog * 60},${0.8 + prog * 0.2})`;
-          ctx.font = 'bold 9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = 'bold 9px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('!', tx, ty - 14);
         }
         ctx.fillStyle = 'rgba(0,0,0,.2)';
@@ -19553,10 +19550,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#6622aa'; ctx.fillRect(tx-8,ty-8,3,7); ctx.fillRect(tx+5,ty-8,3,7); // arms
           ctx.fillRect(tx-5,ty+1,4,6); ctx.fillRect(tx+1,ty+1,4,6); // legs
           ctx.fillStyle = '#ee88ff'; ctx.fillRect(tx-4,ty-7,8,2); // visor
-          ctx.fillStyle = '#cc44ff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = '#cc44ff'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('MC', tx, ty-17);
           if (chasing) {
-            ctx.fillStyle = '#cc44ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#cc44ff'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(getActiveCityDef().name, tx, ty - 22);
           }
         } else if (t.type === 'MUTANT') {
@@ -19573,7 +19570,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (chasing) {
             ctx.strokeStyle = '#ffffaa'; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.arc(tx, ty, 11, 0, Math.PI*2); ctx.stroke();
-            ctx.fillStyle = '#ffffaa'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffaa'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('!! SPY', tx, ty - 15);
           }
         } else if (t.type === 'PABLO_GUARD') {
@@ -19584,7 +19581,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(tx-4,ty,3,5); ctx.fillRect(tx+1,ty,3,5); // legs
           ctx.fillStyle = '#88aaff'; ctx.fillRect(tx-3,ty-6,6,2); // visor
           if (chasing) {
-            ctx.fillStyle = '#5599ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#5599ff'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('PABLO CORP GUARD', tx, ty - 15);
           }
         } else if (t.type === 'STRAY_DOG') {
@@ -19608,7 +19605,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const pDist = Math.hypot(g.px - t.x, g.py - t.y);
             if (pDist < 60) {
               ctx.fillStyle = g.blink ? '#ffaa44' : 'rgba(255,170,68,.4)';
-              ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText('[E] ADOPT', tx, ty - 10);
             }
           }
@@ -19635,7 +19632,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const pDist = Math.hypot(g.px - t.x, g.py - t.y);
             if (pDist < 60) {
               ctx.fillStyle = g.blink ? '#aaccff' : 'rgba(170,204,255,.4)';
-              ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
               ctx.fillText('[E] ADOPT', tx, ty - 10);
             }
           }
@@ -19674,10 +19671,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!PASSIVE_THREATS.has(t.type)) {
           if (t.behavior === 'SLEEPING') {
             const zOff = Math.sin(g.frame * 0.05) * 3;
-            ctx.fillStyle = 'rgba(100,150,255,.7)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(100,150,255,.7)'; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('z', tx + 8, ty - 10 + zOff);
             ctx.fillText('Z', tx + 14, ty - 16 + zOff * 0.7);
-            ctx.font = '10px "Share Tech Mono"';
+            ctx.font = '10px "Fira Code"';
             ctx.fillText('Z', tx + 20, ty - 22 + zOff * 0.5);
           } else if (t.behavior === 'CAMPING') {
             const flicker = Math.sin(g.frame * 0.15) * 2;
@@ -19688,7 +19685,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.shadowBlur = 0;
           } else if (t.behavior === 'SOCIALIZING') {
             const nearSocial = g.threats.some(o => o !== t && o.type === t.type && o.behavior === 'SOCIALIZING' && Math.hypot(o.x - t.x, o.y - t.y) < 60);
-            ctx.fillStyle = nearSocial ? 'rgba(255,255,100,.5)' : 'rgba(255,255,255,.35)'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = nearSocial ? 'rgba(255,255,100,.5)' : 'rgba(255,255,255,.35)'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             if (nearSocial) {
               const laughPhase = Math.sin(g.frame * 0.08 + t.ox * 0.1) > 0.5;
               ctx.fillText(laughPhase ? 'ha' : '...', tx + 10, ty - 8);
@@ -19705,7 +19702,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
         if (chasing) {
-          ctx.fillStyle = tc; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = tc; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(t.type.replace('_',' '), tx, ty - 12);
           const barW = 26, barH = 3;
           const bx2 = tx - barW / 2, by2 = ty - 10;
@@ -20174,7 +20171,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.ellipse(px, py2 - 4, 14, 18, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = `rgba(100,220,255,${shieldPulse * 0.12})`;
         ctx.beginPath(); ctx.ellipse(px, py2 - 4, 14, 18, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.font = 'bold 8px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillStyle = `rgba(100,220,255,${shieldPulse + 0.1})`;
         ctx.fillText('BREAK', px, py2 - 24);
       }
@@ -20462,7 +20459,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(px, py2 - 6, radius, 0, Math.PI * 2); ctx.stroke();
         }
         ctx.fillStyle = 'rgba(0,255,180,.7)';
-        ctx.font = 'bold 9px "Share Tech Mono"';
+        ctx.font = 'bold 9px "Fira Code"';
         ctx.textAlign = 'center';
         ctx.fillText('\u266A', px + 12, py2 - 20);
       }
@@ -20471,7 +20468,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {
         const meHover = !!(hoverMouseRef.current && Math.hypot(g.px - hoverMouseRef.current.x, g.py - hoverMouseRef.current.y) < 16);
         if (meHover) {
-          ctx.font = 'bold 14px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = 'bold 14px "Fira Code"'; ctx.textAlign = 'center';
           const pnTw = ctx.measureText(char.name).width;
           ctx.fillStyle = 'rgba(0,0,0,.55)';
           ctx.beginPath(); ctx.roundRect(px - pnTw / 2 - 5, py2 - 36, pnTw + 10, 18, 4); ctx.fill();
@@ -20520,10 +20517,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.restore();
           ctx.shadowBlur = 0; ctx.globalAlpha = 1;
           if (dog.injured) {
-            ctx.fillStyle = '#ff4444'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ff4444'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('INJURED', dx2, dy2 - 12);
           } else {
-            ctx.fillStyle = '#ffaa44'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffaa44'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(dog.name, dx2, dy2 - 12);
             const dhpPct = dog.hp / dog.maxHp;
             const barW2 = 22, barH2 = 2;
@@ -20533,8 +20530,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (dog.sleeping) {
               const zb = Math.sin(g.frame * 0.06) * 1.5;
               ctx.fillStyle = 'rgba(180,200,255,.85)'; ctx.textAlign = 'center';
-              ctx.font = '7px "Share Tech Mono"'; ctx.fillText('z', dx2 + 11, dy2 - 5 + zb);
-              ctx.font = '5px "Share Tech Mono"'; ctx.fillText('z', dx2 + 15, dy2 - 9 + zb);
+              ctx.font = '7px "Fira Code"'; ctx.fillText('z', dx2 + 11, dy2 - 5 + zb);
+              ctx.font = '5px "Fira Code"'; ctx.fillText('z', dx2 + 15, dy2 - 9 + zb);
             }
           }
         }
@@ -20579,10 +20576,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.restore();
           ctx.shadowBlur = 0; ctx.globalAlpha = 1;
           if (cat.injured) {
-            ctx.fillStyle = '#ff4444'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ff4444'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('INJURED', cx2, cy2 - 12);
           } else {
-            ctx.fillStyle = '#aaccff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#aaccff'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(cat.name, cx2, cy2 - 12);
             const chpPct = cat.hp / cat.maxHp;
             const barW3 = 22, barH3 = 2;
@@ -20606,7 +20603,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           drawPlayerSprite(ctx, milaAppearance(clothOutfitColor(g.mila.outfitId)), { px: mx2, py: my2 });
           ctx.shadowBlur = 0;
           ctx.globalAlpha = appear;
-          ctx.fillStyle = '#67e8f9'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = '#67e8f9'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(milaLabelRef.current, mx2, my2 - 20);
           ctx.restore();
         }
@@ -20629,11 +20626,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#1a3388'; ctx.fillRect(gx2-7,gy2-7,2,6); ctx.fillRect(gx2+5,gy2-7,2,6); // arms
         ctx.fillRect(gx2-4,gy2+1,3,5); ctx.fillRect(gx2+1,gy2+1,3,5); // legs
         // Corp logo (small P on chest)
-        ctx.fillStyle = '#88aaff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#88aaff'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('P', gx2, gy2-2);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         if (gdist2 < 90) {
-          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '13px "Fira Code"'; ctx.textAlign = 'center';
           const gTw = ctx.measureText('PABLO CORP').width;
           ctx.fillStyle = 'rgba(0,0,0,.55)';
           ctx.beginPath(); ctx.roundRect(gx2 - gTw / 2 - 5, gy2 - 32, gTw + 10, 16, 4); ctx.fill();
@@ -20656,12 +20653,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#00ffcc'; ctx.fillRect(vx-4, vy-11, 3, 3); ctx.fillRect(vx+1, vy-11, 3, 3);
         ctx.fillRect(vx-4, vy-7, 3, 3); ctx.fillRect(vx+1, vy-7, 3, 3); // products
         ctx.fillStyle = '#ff4444'; ctx.fillRect(vx-4, vy+2, 8, 2); // button strip
-        ctx.fillStyle = '#00ffcc'; ctx.font = '4px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#00ffcc'; ctx.font = '4px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('VendKing', vx, vy+8);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         // Proximity label
         if (Math.hypot(g.px - (bld.x + vp.x), g.py - (bld.y + bld.h/2 + vp.y)) < 55) {
-          ctx.fillStyle = '#00ffcc'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = '#00ffcc'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] VendKing $10', vx, vy - 18);
         }
       }
@@ -20696,26 +20693,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.drawImage(adImg, scrX + 2, scrY + 2, screenW - 4, screenH - 4);
           } else {
             ctx.fillStyle = `rgba(255,0,255,${pulse * 0.15})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
-            ctx.fillStyle = '#ff88ff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ff88ff'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('LOADING...', bx, scrY + 16);
           }
           if (bbData.adText) {
             ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(scrX + 2, scrY + screenH - 12, screenW - 4, 10);
-            ctx.fillStyle = '#ff88ff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ff88ff'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText(bbData.adText.slice(0, 12), bx, scrY + screenH - 4);
           }
         } else if (hasOwner && bbData.adText) {
           ctx.fillStyle = `rgba(255,0,255,${pulse * 0.15})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
-          ctx.fillStyle = '#ff88ff'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = '#ff88ff'; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           const lines = bbData.adText.match(/.{1,12}/g) || [bbData.adText];
           lines.slice(0, 3).forEach((line: string, i: number) => ctx.fillText(line, bx, scrY + 10 + i * 8));
         } else {
           const scanY = (g.frame * 0.5) % screenH;
           ctx.fillStyle = `rgba(0,200,255,${pulse * 0.08})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
           ctx.fillStyle = `rgba(0,200,255,0.06)`; ctx.fillRect(scrX + 2, scrY + scanY, screenW - 4, 2);
-          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.7})`; ctx.font = 'bold 7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.7})`; ctx.font = 'bold 7px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('PABLO', bx, scrY + 13);
-          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.4})`; ctx.font = '5px "Share Tech Mono"';
+          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.4})`; ctx.font = '5px "Fira Code"';
           ctx.fillText('AD SPACE', bx, scrY + 22);
         }
         ctx.restore();
@@ -20724,7 +20721,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // structure's art; the [E] interaction prompt below is kept.
         if (isNearBb) {
           ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)';
-          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] BILLBOARD', bx, scrY - 6);
         }
       }
@@ -20736,7 +20733,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.globalAlpha = alpha;
         ctx.shadowColor = fl.color; ctx.shadowBlur = 6;
         ctx.fillStyle = fl.color;
-        ctx.font = `bold ${8 + Math.round((1 - alpha) * 2)}px "Share Tech Mono"`;
+        ctx.font = `bold ${8 + Math.round((1 - alpha) * 2)}px "Fira Code"`;
         ctx.textAlign = 'center';
         ctx.fillText(fl.text, fx, fy);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
@@ -20881,9 +20878,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Player lantern — a warm pool that tracks the player.
           const psx = g.px + ox, psy = g.py + oy;
           const pl = ctx.createRadialGradient(psx, psy - 4, 6, psx, psy - 4, 150);
-          pl.addColorStop(0, `rgba(255,225,164,${0.2 * lume})`);
-          pl.addColorStop(0.5, `rgba(255,209,102,${0.07 * lume})`);
-          pl.addColorStop(1, 'rgba(255,209,102,0)');
+          pl.addColorStop(0, `rgba(255,224,176,${0.22 * lume})`);
+          pl.addColorStop(0.5, `rgba(255,206,150,${0.08 * lume})`);
+          pl.addColorStop(1, 'rgba(255,206,150,0)');
           ctx.fillStyle = pl;
           ctx.fillRect(psx - 150, psy - 154, 300, 300);
 
@@ -20908,9 +20905,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const rsx = psx + wob;
               const a = (0.16 - s * 0.06) * lume;
               const rg3 = ctx.createLinearGradient(rsx, psy, rsx, psy + refH);
-              rg3.addColorStop(0, `rgba(255,225,164,${a})`);
-              rg3.addColorStop(0.4, `rgba(255,209,102,${a * 0.45})`);
-              rg3.addColorStop(1, 'rgba(255,209,102,0)');
+              rg3.addColorStop(0, `rgba(255,222,170,${a})`);
+              rg3.addColorStop(0.4, `rgba(255,206,150,${a * 0.45})`);
+              rg3.addColorStop(1, 'rgba(255,206,150,0)');
               ctx.fillStyle = rg3;
               ctx.fillRect(rsx - sw / 2, psy, sw, refH);
             }
@@ -20924,9 +20921,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (bx < -80 || bx > cw + 80 || by < -80 || by > ch + 80) continue;
             const hsh = tileHash(b.x, b.y);
             const col =
-              hsh < 0.48 ? [98, 230, 245] :
-              hsh < 0.82 ? [255, 110, 170] :
-                           [255, 209, 102];
+              hsh < 0.30 ? [70, 200, 255] :
+              hsh < 0.55 ? [255, 80, 150] :
+              hsh < 0.78 ? [180, 110, 255] :
+                           [120, 255, 200];
             const flick = 0.84 + 0.16 * Math.sin(g.frame * 0.07 + b.x * 0.5);
             const inten = lume * flick * (0.5 + 0.5 * hsh);
             const R = 44 + hsh * 34;
@@ -20934,7 +20932,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             // player turns "Bloom / glow" off (Settings → Display → VISUAL).
             if (gq.bloom) {
               const gr = ctx.createRadialGradient(bx, by, 3, bx, by, R);
-              gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.12 * inten})`);
+              gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.17 * inten})`);
               gr.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
               ctx.fillStyle = gr;
               ctx.fillRect(bx - R, by - R, R * 2, R * 2);
@@ -20952,8 +20950,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (gq.groundGlow) {
               const gpR = b.w * 0.55 + 24 + hsh * 16;
               const gp = ctx.createRadialGradient(gpx, gpy, 2, gpx, gpy, gpR);
-              gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.1 * inten})`);
-              gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.04 * inten})`);
+              gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.15 * inten})`);
+              gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.06 * inten})`);
               gp.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
               ctx.save();
               ctx.translate(gpx, gpy);
@@ -20999,13 +20997,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // when that pass is turned off (or under low-graphics mode).
       if (gfxQualityRef.current.nightLighting) {
         if (isNight) {
-          ctx.fillStyle = `rgba(5,10,20,0.24)`;
+          ctx.fillStyle = `rgba(8,12,45,0.28)`;
           ctx.fillRect(0, 0, cw, ch);
         } else if (isDusk) {
           const duskT = (wt - 17) / 2;
-          ctx.fillStyle = `rgba(76,28,38,${0.06 + duskT * 0.12})`;
+          ctx.fillStyle = `rgba(60,20,10,${0.08 + duskT * 0.15})`;
           ctx.fillRect(0, 0, cw, ch);
-          ctx.fillStyle = `rgba(16,12,32,${duskT * 0.1})`;
+          ctx.fillStyle = `rgba(20,5,40,${duskT * 0.12})`;
           ctx.fillRect(0, 0, cw, ch);
         } else if (isDawn) {
           const dawnT = (wt - 5) / 2;
@@ -21142,7 +21140,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = rzGrad; ctx.fillRect(rzx, rzy, rz.w, rz.h);
         ctx.strokeStyle = `rgba(40,255,40,${0.12 * rz.intensity})`; ctx.lineWidth = 1; ctx.setLineDash([6, 8]);
         ctx.strokeRect(rzx, rzy, rz.w, rz.h); ctx.setLineDash([]);
-        ctx.fillStyle = `rgba(40,255,40,${0.15 * rz.intensity})`; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(40,255,40,${0.15 * rz.intensity})`; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText(`☢ ${rz.label}`, rcx, rzy + 12);
       }
 
@@ -21157,7 +21155,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const tcDist = Math.hypot(g.px - tc.x, g.py - tc.y);
         if (tcDist < 50) {
           ctx.fillStyle = g.blink ? '#FFD700' : 'rgba(255,215,0,.4)';
-          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText('[E] OPEN', tcx, tcy - 10);
         }
       }
@@ -21185,7 +21183,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const rnDist = Math.hypot(g.px - rn.worldX, g.py - rn.worldY);
         if (rnDist < 60 && !depleted) {
           ctx.fillStyle = g.blink ? '#67e8f9' : 'rgba(103,232,249,.55)';
-          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(`[E] ${rdef.name.toUpperCase()}`, rnx, rny - 10);
         }
         if (!depleted) {
@@ -21206,7 +21204,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const aoDist = Math.hypot(g.px - ASSAY_OFFICE_X, g.py - ASSAY_OFFICE_Y);
           if (aoDist < ASSAY_OFFICE_RANGE) {
             ctx.fillStyle = g.blink ? '#fbbf24' : 'rgba(251,191,36,.5)';
-            ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.font = '9px "Fira Code"'; ctx.textAlign = 'center';
             ctx.fillText('[E] ASSAY OFFICE', aox, aoy - 12);
           }
         }
@@ -21222,10 +21220,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = tunnelGrad;
         ctx.fillRect(0, 0, cw, ch);
         ctx.fillStyle = '#38bdf8';
-        ctx.font = '16px "VT323"';
+        ctx.font = '16px "Fira Code"';
         ctx.textAlign = 'center';
         ctx.fillText('TRAVERSING SEWER NETWORK...', cw/2, ch/2 - 20);
-        ctx.font = '10px "Share Tech Mono"';
+        ctx.font = '10px "Fira Code"';
         ctx.fillStyle = 'rgba(56,189,248,.4)';
         ctx.fillText('Dark water flows beneath Minx City.', cw/2, ch/2 + 10);
         const pipes = g.frame * 0.05;
@@ -21282,7 +21280,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.strokeRect(banX, banY, bannerW, bannerH);
             ctx.shadowColor = '#ff1111'; ctx.shadowBlur = 8 * boPulse * bannerFactor;
             ctx.fillStyle = `rgb(255,${Math.floor(48 + boPulse * 90)},48)`;
-            ctx.font = 'bold 10px "Share Tech Mono"';
+            ctx.font = 'bold 10px "Fira Code"';
             ctx.textAlign = 'center';
             ctx.fillText('⚠ BANCO OMBRA INCOMING', cw / 2, banY + 15);
             ctx.shadowBlur = 0;
@@ -21314,7 +21312,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.rotate(-boEdNearAngle);
             ctx.globalAlpha = 0.7 + boPulse * 0.3;
             ctx.fillStyle = `rgb(255,${Math.floor(100 + boPulse * 80)},100)`;
-            ctx.font = '7px "Share Tech Mono"';
+            ctx.font = '7px "Fira Code"';
             ctx.textAlign = 'center';
             ctx.fillText(`${Math.round(boEdNearDist)}u`, 0, 16);
 
@@ -21495,10 +21493,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           mctx.shadowBlur = 0;
 
           // Compass labels
-          mctx.fillStyle = 'rgba(56,189,248,.6)'; mctx.textAlign = 'center'; mctx.font = 'bold 10px "Share Tech Mono",monospace';
+          mctx.fillStyle = 'rgba(56,189,248,.6)'; mctx.textAlign = 'center'; mctx.font = 'bold 10px "Fira Code",monospace';
           mctx.fillText('N', mmCX, 14);
           mctx.fillText('S', mmCX, mmD - 6);
-          mctx.font = '9px "Share Tech Mono",monospace';
+          mctx.font = '9px "Fira Code",monospace';
           mctx.fillText('W', 10, mmCY + 3);
           mctx.fillText('E', mmD - 10, mmCY + 3);
         }
@@ -21510,9 +21508,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,.85)';
         ctx.fillRect(0, 0, cw, ch);
-        ctx.font = 'bold 24px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 24px "Fira Code"'; ctx.textAlign = 'center'; ctx.fillStyle = '#38bdf8';
         ctx.fillText('METRO IN TRANSIT', cw / 2, ch / 2 - 20);
-        ctx.font = '14px "Share Tech Mono"'; ctx.fillStyle = 'rgba(56,189,248,.6)';
+        ctx.font = '14px "Fira Code"'; ctx.fillStyle = 'rgba(56,189,248,.6)';
         const dest = g.subwayTransitDest?.label ?? '???';
         ctx.fillText(`Destination: ${dest}`, cw / 2, ch / 2 + 10);
         const dots = '.'.repeat((Math.floor(g.frame / 20) % 4) + 1);
@@ -21572,7 +21570,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ref={gameRef}
       tabIndex={0}
       onClick={() => gameRef.current?.focus()}
-      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d14', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none', ...(uiScale !== 1 ? { zoom: uiScale } : {}) }}
+      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d14', position: 'relative', fontFamily: "var(--font-sans)", outline: 'none', ...(uiScale !== 1 ? { zoom: uiScale } : {}) }}
     >
       <style>{`
         @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
@@ -21597,7 +21595,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showPerfPrompt && (
         <div
           data-testid="perf-prompt"
-          style={{ position: 'absolute', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 8500, maxWidth: 'min(92vw, 440px)', background: 'rgba(8,12,20,.94)', border: '1px solid rgba(56,189,248,.5)', boxShadow: '0 0 24px rgba(56,189,248,.18)', borderRadius: 8, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, fontFamily: "'Share Tech Mono',monospace" }}
+          style={{ position: 'absolute', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 8500, maxWidth: 'min(92vw, 440px)', background: 'rgba(8,12,20,.94)', border: '1px solid rgba(56,189,248,.5)', boxShadow: '0 0 24px rgba(56,189,248,.18)', borderRadius: 8, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, fontFamily: "var(--font-sans)" }}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '.7rem', letterSpacing: '.18em', color: '#38bdf8', marginBottom: 4 }}>RUNNING SLOW?</div>
@@ -21614,7 +21612,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setShowPerfPrompt(false);
                 gameRef.current?.focus();
               }}
-              style={{ background: 'rgba(56,189,248,.18)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', padding: '7px 14px', fontSize: '.62rem', letterSpacing: '.14em', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Share Tech Mono',monospace", borderRadius: 4 }}
+              style={{ background: 'rgba(56,189,248,.18)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', padding: '7px 14px', fontSize: '.62rem', letterSpacing: '.14em', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "var(--font-sans)", borderRadius: 4 }}
             >
               IMPROVE PERFORMANCE
             </button>
@@ -21625,7 +21623,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setShowPerfPrompt(false);
                 gameRef.current?.focus();
               }}
-              style={{ background: 'transparent', border: '1px solid rgba(148,163,184,.3)', color: 'rgba(148,163,184,.7)', padding: '6px 14px', fontSize: '.58rem', letterSpacing: '.14em', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Share Tech Mono',monospace", borderRadius: 4 }}
+              style={{ background: 'transparent', border: '1px solid rgba(148,163,184,.3)', color: 'rgba(148,163,184,.7)', padding: '6px 14px', fontSize: '.58rem', letterSpacing: '.14em', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "var(--font-sans)", borderRadius: 4 }}
             >
               NO THANKS
             </button>
@@ -21649,7 +21647,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {asleepAtDesk && gs.current.pabloOnboardingDone && !showIntroStory && !inCollectionsFacility && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 9000, background: 'rgba(0,4,10,.92)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace", color: 'rgba(244,114,182,.85)' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 9000, background: 'rgba(0,4,10,.92)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "var(--font-sans)", color: 'rgba(244,114,182,.85)' }}>
           <div style={{ fontSize: '5rem', letterSpacing: '.5em', textShadow: '0 0 24px rgba(244,114,182,.6), 0 0 48px rgba(56,189,248,.3)', animation: 'smblink 2s infinite' }}>z z z</div>
           <div style={{ marginTop: 16, fontSize: '.7rem', letterSpacing: '.3em', color: 'rgba(56,189,248,.6)' }}>
             ASLEEP AT TERMINAL — MINX CITY
@@ -21665,7 +21663,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setAsleepAtDesk(false);
                 gameRef.current?.focus();
               }}
-              style={{ background: 'rgba(56,189,248,.15)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}
+              style={{ background: 'rgba(56,189,248,.15)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "var(--font-sans)" }}
             >
               ▶ GO TO WORK
             </button>
@@ -21698,7 +21696,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   window.location.href = '/api/logout';
                 }
               }}
-              style={{ background: 'rgba(244,114,182,.08)', border: '1px solid rgba(244,114,182,.4)', color: 'rgba(244,114,182,.8)', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}
+              style={{ background: 'rgba(244,114,182,.08)', border: '1px solid rgba(244,114,182,.4)', color: 'rgba(244,114,182,.8)', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "var(--font-sans)" }}
             >
               ☾ SLEEP &amp; LOG OUT
             </button>
@@ -21726,7 +21724,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             background: 'rgba(0,20,30,.78)',
             border: '1px solid rgba(34,211,238,.45)',
             color: '#22d3ee',
-            fontFamily: "'Share Tech Mono',monospace",
+            fontFamily: "var(--font-sans)",
             fontSize: '.65rem',
             letterSpacing: '.18em',
             padding: '4px 10px',
@@ -21804,7 +21802,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 pointerEvents: 'none',
               }}
             />
-            <span style={{ position: 'absolute', left: '50%', bottom: -16, transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', color: 'rgba(56,189,248,.38)', letterSpacing: '.12em', pointerEvents: 'none' }}>
+            <span style={{ position: 'absolute', left: '50%', bottom: -16, transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontFamily: "var(--font-sans)", fontSize: '.48rem', color: 'rgba(56,189,248,.38)', letterSpacing: '.12em', pointerEvents: 'none' }}>
               MOVE · TAP WORLD TO WALK
             </span>
           </div>
@@ -21812,7 +21810,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           {/* Action Buttons — bottom-right */}
           <div style={{ position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', right: 'calc(24px + env(safe-area-inset-right, 0px))', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
             <button onTouchStart={(e) => { e.preventDefault(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' })); window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e' })), 200); }}
-              style={{ width: 60, height: 60, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
+              style={{ width: 60, height: 60, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "var(--font-sans)", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
               E
             </button>
             {!hudSuppressed && (
@@ -21820,7 +21818,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               onTouchStart={(e) => { e.preventDefault(); startMobileAttack(); }}
               onTouchEnd={(e) => { e.preventDefault(); stopMobileAttack(); }}
               onTouchCancel={() => stopMobileAttack()}
-              style={{ width: 76, height: 76, borderRadius: '50%', border: `2px solid rgba(239,68,68,${mobileAtkActive ? '.85' : '.45'})`, background: mobileAtkActive ? 'rgba(120,10,10,.85)' : 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '1.15rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileAtkActive ? '0 0 18px rgba(239,68,68,.5)' : '0 0 10px rgba(239,68,68,.15)', transform: mobileAtkActive ? 'scale(0.93)' : 'scale(1)', transition: 'transform .06s, box-shadow .1s, background .1s' }}>
+              style={{ width: 76, height: 76, borderRadius: '50%', border: `2px solid rgba(239,68,68,${mobileAtkActive ? '.85' : '.45'})`, background: mobileAtkActive ? 'rgba(120,10,10,.85)' : 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "var(--font-sans)", fontSize: '1.15rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileAtkActive ? '0 0 18px rgba(239,68,68,.5)' : '0 0 10px rgba(239,68,68,.15)', transform: mobileAtkActive ? 'scale(0.93)' : 'scale(1)', transition: 'transform .06s, box-shadow .1s, background .1s' }}>
               ATK
             </button>
             )}
@@ -21828,7 +21826,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               onTouchStart={(e) => { e.preventDefault(); setMobileSprintActive(true); }}
               onTouchEnd={(e) => { e.preventDefault(); setMobileSprintActive(false); }}
               onTouchCancel={() => setMobileSprintActive(false)}
-              style={{ width: 46, height: 46, borderRadius: '50%', border: `2px solid rgba(251,191,36,${mobileSprintActive ? '.7' : '.35'})`, background: mobileSprintActive ? 'rgba(251,191,36,.2)' : 'rgba(25,20,0,.7)', color: mobileSprintActive ? '#fbbf24' : 'rgba(251,191,36,.6)', fontFamily: "'VT323',monospace", fontSize: '.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileSprintActive ? '0 0 14px rgba(251,191,36,.3)' : 'none', transition: 'all .1s' }}>
+              style={{ width: 46, height: 46, borderRadius: '50%', border: `2px solid rgba(251,191,36,${mobileSprintActive ? '.7' : '.35'})`, background: mobileSprintActive ? 'rgba(251,191,36,.2)' : 'rgba(25,20,0,.7)', color: mobileSprintActive ? '#fbbf24' : 'rgba(251,191,36,.6)', fontFamily: "var(--font-sans)", fontSize: '.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileSprintActive ? '0 0 14px rgba(251,191,36,.3)' : 'none', transition: 'all .1s' }}>
               RUN
             </button>
             {/* Quick actions — the common gameplay shortcuts surfaced as a
@@ -21861,11 +21859,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           {/* Zoom Controls — left edge, middle (kept clear of the right-side action buttons) */}
           <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <button onClick={() => { targetZoomRef.current = Math.min(ISO_ZOOM_MAX, targetZoomRef.current + 0.3); }}
-              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
               +
             </button>
             <button onClick={() => { targetZoomRef.current = Math.max(ISO_ZOOM_MIN, targetZoomRef.current - 0.3); }}
-              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
               −
             </button>
           </div>
@@ -21883,15 +21881,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           flex: 1, padding: '8px 0', border: 'none', borderBottom: `2px solid ${active ? '#a855f7' : 'transparent'}`,
           background: active ? 'rgba(168,85,247,.08)' : 'transparent',
           color: active ? '#a855f7' : 'rgba(148,163,184,.5)',
-          fontFamily: "'VT323',monospace" as const, fontSize: '.85rem', letterSpacing: '.1em',
+          fontFamily: "var(--font-sans)" as const, fontSize: '.85rem', letterSpacing: '.1em',
           cursor: 'pointer', WebkitTapHighlightColor: 'transparent' as const, touchAction: 'manipulation' as const,
         });
         return (
           <div style={{ position: 'absolute', inset: 0, zIndex: 500, background: 'rgba(0,0,0,.94)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid rgba(168,85,247,.15)' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#a855f7', letterSpacing: '.1em' }}>DIRECTORY</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#a855f7', letterSpacing: '.1em' }}>DIRECTORY</div>
               <button onClick={() => setShowMobileBuildingDir(false)}
-                style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
+                style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "var(--font-sans)", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
                 CLOSE
               </button>
             </div>
@@ -21903,7 +21901,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {mobileDirTab === 'floors' ? (
                 <>
-                  <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(168,85,247,.4)', letterSpacing: '.08em', marginBottom: 2 }}>{bldLabel}</div>
+                  <div style={{ fontFamily: "var(--font-sans)", fontSize: '.65rem', color: 'rgba(168,85,247,.4)', letterSpacing: '.08em', marginBottom: 2 }}>{bldLabel}</div>
                   <button
                     onClick={() => {
                       if (currentFloor === 0) { setShowMobileBuildingDir(false); return; }
@@ -21920,7 +21918,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       border: `1px solid rgba(34,211,238,${currentFloor === 0 ? '.5' : '.15'})`,
                       background: currentFloor === 0 ? 'rgba(34,211,238,.1)' : 'rgba(0,10,20,.6)',
                       color: currentFloor === 0 ? '#22d3ee' : '#e2e8f0',
-                      fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
+                      fontFamily: "var(--font-sans)", fontSize: '.8rem', textAlign: 'left',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
                     }}>
@@ -21964,7 +21962,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           border: `1px solid ${isCurrent ? 'rgba(34,211,238,.5)' : isRestricted ? 'rgba(239,68,68,.2)' : 'rgba(56,189,248,.15)'}`,
                           background: isCurrent ? 'rgba(34,211,238,.1)' : isRestricted ? 'rgba(30,0,0,.4)' : 'rgba(0,10,20,.6)',
                           color: isCurrent ? '#22d3ee' : isRestricted ? 'rgba(239,68,68,.5)' : '#e2e8f0',
-                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
+                          fontFamily: "var(--font-sans)", fontSize: '.8rem', textAlign: 'left',
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
                           opacity: isRestricted ? 0.6 : 1,
@@ -21976,14 +21974,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </button>
                     );
                   }) : (
-                    <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(148,163,184,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem' }}>
+                    <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(148,163,184,.4)', fontFamily: "var(--font-sans)", fontSize: '.75rem' }}>
                       Single-floor building. Walk around to explore.
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: 2 }}>FAST TRAVEL — WALK TO ANOTHER BUILDING</div>
+                  <div style={{ fontFamily: "var(--font-sans)", fontSize: '.65rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: 2 }}>FAST TRAVEL — WALK TO ANOTHER BUILDING</div>
                   {BUILDINGS.filter(b => b.id !== bid && getInterior(b.id)).map(b => {
                     const isHome = g.hamletBuildingId === b.id;
                     return (
@@ -22005,7 +22003,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           border: `1px solid ${isHome ? 'rgba(168,85,247,.4)' : 'rgba(56,189,248,.15)'}`,
                           background: isHome ? 'rgba(168,85,247,.08)' : 'rgba(0,10,20,.6)',
                           color: '#e2e8f0',
-                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
+                          fontFamily: "var(--font-sans)", fontSize: '.8rem', textAlign: 'left',
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
                         }}>
@@ -22027,9 +22025,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showMobilePhone && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 500, background: 'rgba(0,0,0,.92)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(56,189,248,.2)' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#38bdf8', letterSpacing: '.1em' }}>TTC PHONE</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '1.2rem', color: '#38bdf8', letterSpacing: '.1em' }}>TTC PHONE</span>
             <button onClick={() => setShowMobilePhone(false)}
-              style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
+              style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "var(--font-sans)", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
               CLOSE
             </button>
           </div>
@@ -22044,12 +22042,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, zIndex: 650, pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 45%, rgba(24,14,46,.82), rgba(0,0,8,.97))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'smdream 2.8s ease-in-out forwards' }}>
           <CinematicBars />
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 40%, rgba(120,90,220,.22), transparent 55%), radial-gradient(circle at 70% 60%, rgba(60,120,200,.18), transparent 55%)', animation: 'smdrift 2.8s linear forwards' }} />
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '2.6rem', letterSpacing: '.45em', color: '#bda7ff', textShadow: '0 0 22px rgba(150,120,255,.8)', display: 'flex', gap: '.2em' }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '2.6rem', letterSpacing: '.45em', color: '#bda7ff', textShadow: '0 0 22px rgba(150,120,255,.8)', display: 'flex', gap: '.2em' }}>
             <span style={{ animation: 'smzzz 1.4s ease-in-out infinite' }}>z</span>
             <span style={{ animation: 'smzzz 1.4s ease-in-out infinite .25s' }}>Z</span>
             <span style={{ animation: 'smzzz 1.4s ease-in-out infinite .5s' }}>z</span>
           </div>
-          <div style={{ marginTop: 18, maxWidth: '72%', textAlign: 'center', fontFamily: "'VT323',monospace", fontSize: '1.15rem', lineHeight: 1.4, color: 'rgba(205,195,255,.78)', letterSpacing: '.06em', fontStyle: 'italic', textShadow: '0 0 12px rgba(120,90,220,.5)' }}>
+          <div style={{ marginTop: 18, maxWidth: '72%', textAlign: 'center', fontFamily: "var(--font-sans)", fontSize: '1.15rem', lineHeight: 1.4, color: 'rgba(205,195,255,.78)', letterSpacing: '.06em', fontStyle: 'italic', textShadow: '0 0 12px rgba(120,90,220,.5)' }}>
             {dreamText}
           </div>
         </div>
@@ -22076,7 +22074,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return proximityEvents.length > 0 ? (
           <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '8px', pointerEvents: 'none' }}>
             {proximityEvents.map((evt, i) => (
-              <div key={i} style={{ background: 'rgba(0,0,0,.92)', border: '1px solid rgba(255,80,80,.7)', padding: '.4rem .9rem', fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ff6644', letterSpacing: '.1em', textShadow: '0 0 12px rgba(255,80,0,.6)', whiteSpace: 'nowrap', boxShadow: '0 0 10px rgba(255,60,0,.2)' }}>
+              <div key={i} style={{ background: 'rgba(0,0,0,.92)', border: '1px solid rgba(255,80,80,.7)', padding: '.4rem .9rem', fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#ff6644', letterSpacing: '.1em', textShadow: '0 0 12px rgba(255,80,0,.6)', whiteSpace: 'nowrap', boxShadow: '0 0 10px rgba(255,60,0,.2)' }}>
                 {evt}
               </div>
             ))}
@@ -22189,7 +22187,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 width: 18, height: 12, borderRadius: 2,
                 background: low ? `${color}22` : 'rgba(0,8,0,.7)',
                 border: `1px solid ${color}`,
-                fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color,
+                fontFamily: "var(--font-sans)", fontSize: '.55rem', color,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 animation: low ? 'pulse 1s infinite' : 'none',
               }}>{label}</div>
@@ -22200,7 +22198,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               padding: '0 4px', height: 12, borderRadius: 2,
               background: gs.current.gasPoison ? 'rgba(120,220,40,.18)' : 'rgba(160,90,200,.18)',
               border: `1px solid ${gs.current.gasPoison ? '#aef25a' : '#b466e0'}`,
-              fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem',
+              fontFamily: "var(--font-sans)", fontSize: '.55rem',
               color: gs.current.gasPoison ? '#aef25a' : '#d8a0ff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               animation: 'pulse 1s infinite',
@@ -22211,37 +22209,37 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         {/* Armor indicator */}
         {gs.current.ownedItems.has('armor_plate') && (
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,180,255,.3)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(100,180,255,.6)' }}>🛡 ARMOR</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.6rem', color: 'rgba(100,180,255,.6)' }}>🛡 ARMOR</span>
             <div style={{ flex: 1, height: 5, background: 'rgba(100,180,255,.1)', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{ width: '85%', height: '100%', background: 'linear-gradient(90deg, #4488cc, #66aaee)', borderRadius: 2 }} />
             </div>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(100,180,255,.5)' }}>-15%</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.6rem', color: 'rgba(100,180,255,.5)' }}>-15%</span>
           </div>
         )}
         {/* Debt owed (formerly "bounty" / wanted level) */}
         {gs.current.wantedLevel > 0 && (
           <div style={{ background: 'rgba(40,20,0,.92)', border: '1px solid rgba(255,140,0,.5)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944', letterSpacing: '.06em' }}>DEBT</span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ff8844', letterSpacing: '.05em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.55rem', color: '#ff9944', letterSpacing: '.06em' }}>DEBT</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: '#ff8844', letterSpacing: '.05em' }}>
               ƒ{(gs.current.bountyAmount || 0).toLocaleString()}
             </span>
           </div>
         )}
         {gs.current.taxDebt > 0 && (
           <div style={{ background: 'rgba(40,20,0,.92)', border: '1px solid rgba(255,140,0,.3)', padding: '.1rem .4rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944' }}>TAX DEBT ƒ{gs.current.taxDebt.toLocaleString()}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.55rem', color: '#ff9944' }}>TAX DEBT ƒ{gs.current.taxDebt.toLocaleString()}</span>
           </div>
         )}
         {/* Gold + Fiat + Class row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.3)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
               {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {empLabel}{empLabel.startsWith('OWNER') && verifiedSalaryStatus?.awaitingVerification ? ' · VISA PENDING' : ''}
             </span>
           </div>
@@ -22255,47 +22253,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         {/* Zone + Weather compact row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone.startsWith('WASTELAND') ? 'rgba(170,255,68,.35)' : 'rgba(56,189,248,.3)'}`, padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: zone.startsWith('WASTELAND') ? '#7dd3fc' : '#38bdf8', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.95rem', color: zone.startsWith('WASTELAND') ? '#7dd3fc' : '#38bdf8', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,150,255,.3)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
             {weatherStr && weatherStr !== 'CLEAR' && (
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</span>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</span>
             )}
-            {weatherStr === 'CLEAR' && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(56,189,248,.5)' }}>CLEAR</span>}
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })() }}>
+            {weatherStr === 'CLEAR' && <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: 'rgba(56,189,248,.5)' }}>CLEAR</span>}
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })() }}>
               {(() => { const wt = gs.current.worldTime; const icon = (wt >= 6 && wt < 18) ? '☀' : '☾'; const hr12 = Math.floor(wt) % 12 || 12; const mins = Math.floor((wt % 1) * 60); const ampm = wt >= 12 && wt < 24 ? 'PM' : 'AM'; return `${icon} ${hr12}:${mins.toString().padStart(2,'0')} ${ampm}`; })()}
             </span>
-            <span title={`${quarterLabel(getRealQuarter())} · ${seasonStr} · ${weatherStr.replace('_', ' ')}`} style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#ffcc44', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem', letterSpacing: '.04em' }}>
+            <span title={`${quarterLabel(getRealQuarter())} · ${seasonStr} · ${weatherStr.replace('_', ' ')}`} style={{ fontFamily: "var(--font-sans)", fontSize: '.75rem', color: '#ffcc44', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem', letterSpacing: '.04em' }}>
               {quarterLabel(getRealQuarter())} · {seasonStr.slice(0,3)}
             </span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : 'rgba(56,189,248,.45)', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.75rem', color: tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : 'rgba(56,189,248,.45)', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem' }}>
               {tempC}°C
             </span>
           </div>
           {calendarStr && (
             <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.25)', padding: '.25rem .5rem' }}>
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.04em' }}>{calendarStr}</span>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.04em' }}>{calendarStr}</span>
             </div>
           )}
         </div>
         {/* Liberation progress compact HUD */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
-          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>LIB</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>LIB</span>
           <div style={{ width: 48, height: 4, background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.15)', borderRadius: 1, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', borderRadius: 1, transition: 'width 1s ease' }} />
           </div>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', minWidth: 28, textAlign: 'right' }}>{liberationProgress}%</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '.8rem', color: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', minWidth: 28, textAlign: 'right' }}>{liberationProgress}%</span>
         </div>
         {/* Gold Standard toggle */}
-        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(56,189,248,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(56,189,248,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
+        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(56,189,248,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(56,189,248,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.08em' }}>
           ⊕
         </button>
         {seasonPassLevel !== null && (
           <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${seasonPassIsPremium ? 'rgba(255,204,0,.45)' : 'rgba(255,204,0,.2)'}`, padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'default' }} title={seasonPassSeasonName}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: seasonPassIsPremium ? '#ffcc00' : 'rgba(255,204,0,.55)', letterSpacing: '.06em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.8rem', color: seasonPassIsPremium ? '#ffcc00' : 'rgba(255,204,0,.55)', letterSpacing: '.06em' }}>
               {seasonPassIsPremium ? '★' : '◆'} Q-PASS LVL {seasonPassLevel}
             </span>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,204,0,.3)', letterSpacing: '.04em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(255,204,0,.3)', letterSpacing: '.04em' }}>
               {seasonPassXp.toLocaleString()} XP
             </span>
           </div>
@@ -22314,7 +22312,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             background: 'rgba(0,8,12,.7)',
             border: `1px solid rgba(56,189,248,${hudOpen ? '.6' : '.25'})`,
             color: hudOpen ? '#22d3ee' : 'rgba(56,189,248,.55)',
-            fontFamily: "'VT323',monospace", fontSize: '.85rem',
+            fontFamily: "var(--font-sans)", fontSize: '.85rem',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: hudOpen ? '0 0 8px rgba(34,211,238,.4)' : 'none',
@@ -22340,19 +22338,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             background: chatOpen ? 'rgba(8,40,56,.85)' : 'rgba(0,8,12,.7)',
             border: `1px solid rgba(56,189,248,${chatOpen ? '.6' : '.3'})`,
             color: chatOpen ? '#22d3ee' : 'rgba(56,189,248,.7)',
-            fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.12em',
+            fontFamily: "var(--font-sans)", fontSize: '.6rem', letterSpacing: '.12em',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             display: 'flex', alignItems: 'center', gap: 5,
             boxShadow: chatOpen ? '0 0 8px rgba(34,211,238,.35)' : 'none',
             transition: 'all .15s',
           }}
         >
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>✉</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '.95rem' }}>✉</span>
           PAYPHONE
           {unread > 0 && (
             <span style={{
               minWidth: 14, height: 14, padding: '0 3px', borderRadius: 7,
-              background: '#ef4444', color: '#fff', fontFamily: "'VT323',monospace",
+              background: '#ef4444', color: '#fff', fontFamily: "var(--font-sans)",
               fontSize: '.62rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 0 6px rgba(239,68,68,.6)',
             }}>{unread > 9 ? '9+' : unread}</span>
@@ -22370,16 +22368,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           >
             <canvas ref={minimapRef} width={450} height={450} onClick={() => navigate('/game/map')} title="Open the Minx City visitor map" style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)', cursor: 'pointer', display: 'block' }} />
           </ResourceMapOverlay>
-          <button onClick={() => { if (!frozenRef.current || showResourceInventory) { setShowResourceInventory(v => !v); } }} title="Resource inventory [pack]" style={{ position: 'absolute', bottom: 2, left: 2, zIndex: 10, background: showResourceInventory ? 'rgba(103,232,249,.2)' : 'rgba(0,8,12,.7)', border: `1px solid ${showResourceInventory ? 'rgba(103,232,249,.5)' : 'rgba(56,189,248,.2)'}`, color: showResourceInventory ? '#67e8f9' : 'rgba(56,189,248,.4)', borderRadius: 3, cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.42rem', letterSpacing: '.08em', padding: '2px 5px', lineHeight: 1.4 }}>
+          <button onClick={() => { if (!frozenRef.current || showResourceInventory) { setShowResourceInventory(v => !v); } }} title="Resource inventory [pack]" style={{ position: 'absolute', bottom: 2, left: 2, zIndex: 10, background: showResourceInventory ? 'rgba(103,232,249,.2)' : 'rgba(0,8,12,.7)', border: `1px solid ${showResourceInventory ? 'rgba(103,232,249,.5)' : 'rgba(56,189,248,.2)'}`, color: showResourceInventory ? '#67e8f9' : 'rgba(56,189,248,.4)', borderRadius: 3, cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.42rem', letterSpacing: '.08em', padding: '2px 5px', lineHeight: 1.4 }}>
             ⛏ BAG
           </button>
         </div>
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44' }}>{dogName}</span>
-            {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / dogMaxHp) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{dogMaxHp}</span>}
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: 'rgba(255,170,68,.55)', letterSpacing: '.04em' }}>{getDogBreed(dogBreed).label}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44' }}>{dogName}</span>
+            {!dogInjured && <span style={{ fontFamily: "var(--font-sans)", fontSize: '.8rem', color: (dogHp / dogMaxHp) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{dogMaxHp}</span>}
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: 'rgba(255,170,68,.55)', letterSpacing: '.04em' }}>{getDogBreed(dogBreed).label}</span>
             {dogInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
             <button title={dogStay ? 'Call your dog back to your side' : 'Leave your dog to wait at your home or office'} onClick={() => {
               const g = gs.current; const d = g.dogCompanion;
@@ -22393,15 +22391,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               } else {
                 setNarr(`> Step inside your home or office first, then tap STAY to leave ${d.name || 'your dog'} there.`);
               }
-            }} style={{ marginLeft: 'auto', padding: '0 .4rem', cursor: 'pointer', background: dogStay ? 'rgba(255,170,68,.2)' : 'rgba(0,8,12,.7)', border: '1px solid rgba(255,170,68,.4)', color: '#ffaa44', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em', WebkitTapHighlightColor: 'transparent' }}>{dogStay ? 'COME' : 'STAY'}</button>
+            }} style={{ marginLeft: 'auto', padding: '0 .4rem', cursor: 'pointer', background: dogStay ? 'rgba(255,170,68,.2)' : 'rgba(0,8,12,.7)', border: '1px solid rgba(255,170,68,.4)', color: '#ffaa44', fontFamily: "var(--font-sans)", fontSize: '.75rem', letterSpacing: '.06em', WebkitTapHighlightColor: 'transparent' }}>{dogStay ? 'COME' : 'STAY'}</button>
           </div>
         )}
         {catActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${catInjured ? 'rgba(255,68,68,.4)' : 'rgba(170,204,255,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐈</span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: catInjured ? '#ff4444' : '#aaccff' }}>{catName}</span>
-            {!catInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (catHp / catMaxHp) > 0.5 ? '#aaccff' : '#ff4444' }}>{catHp}/{catMaxHp}</span>}
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: 'rgba(170,204,255,.55)', letterSpacing: '.04em' }}>{getCatBreed(catBreed).label}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: catInjured ? '#ff4444' : '#aaccff' }}>{catName}</span>
+            {!catInjured && <span style={{ fontFamily: "var(--font-sans)", fontSize: '.8rem', color: (catHp / catMaxHp) > 0.5 ? '#aaccff' : '#ff4444' }}>{catHp}/{catMaxHp}</span>}
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: 'rgba(170,204,255,.55)', letterSpacing: '.04em' }}>{getCatBreed(catBreed).label}</span>
             {catInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
             <button title={catStay ? 'Call your cat back to your side' : 'Leave your cat to wait at your home or office'} onClick={() => {
               const g = gs.current; const c = g.catCompanion;
@@ -22415,7 +22413,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               } else {
                 setNarr(`> Step inside your home or office first, then tap STAY to leave ${c.name || 'your cat'} there.`);
               }
-            }} style={{ marginLeft: 'auto', padding: '0 .4rem', cursor: 'pointer', background: catStay ? 'rgba(170,204,255,.2)' : 'rgba(0,8,12,.7)', border: '1px solid rgba(170,204,255,.4)', color: '#aaccff', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em', WebkitTapHighlightColor: 'transparent' }}>{catStay ? 'COME' : 'STAY'}</button>
+            }} style={{ marginLeft: 'auto', padding: '0 .4rem', cursor: 'pointer', background: catStay ? 'rgba(170,204,255,.2)' : 'rgba(0,8,12,.7)', border: '1px solid rgba(170,204,255,.4)', color: '#aaccff', fontFamily: "var(--font-sans)", fontSize: '.75rem', letterSpacing: '.06em', WebkitTapHighlightColor: 'transparent' }}>{catStay ? 'COME' : 'STAY'}</button>
           </div>
         )}
       </div>
@@ -22423,7 +22421,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* Vehicle exit prompt */}
       {gs.current.vehicle && (
         <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 160, pointerEvents: 'none' }}>
-          <div style={{ background: 'rgba(0,0,0,.85)', border: '1px solid rgba(0,255,200,.4)', padding: '.3rem .8rem', fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#00ffcc', letterSpacing: '.08em', textShadow: '0 0 8px rgba(0,255,200,.4)' }}>
+          <div style={{ background: 'rgba(0,0,0,.85)', border: '1px solid rgba(0,255,200,.4)', padding: '.3rem .8rem', fontFamily: "var(--font-sans)", fontSize: '.8rem', color: '#00ffcc', letterSpacing: '.08em', textShadow: '0 0 8px rgba(0,255,200,.4)' }}>
             Press [E] to exit vehicle
           </div>
         </div>
@@ -22447,7 +22445,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               padding: '.4rem .7rem', cursor: 'pointer',
               background: 'rgba(0,8,16,.92)', border: '1px solid rgba(56,189,248,.35)',
               color: 'rgba(56,189,248,.7)',
-              fontFamily: "'VT323',monospace", fontSize: isTouchDevice ? '.85rem' : '1rem', letterSpacing: '.08em',
+              fontFamily: "var(--font-sans)", fontSize: isTouchDevice ? '.85rem' : '1rem', letterSpacing: '.08em',
               display: 'flex', alignItems: 'center', gap: '.4rem',
               textShadow: '0 0 8px rgba(56,189,248,.3)',
               transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left',
@@ -22473,7 +22471,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               border: '1px solid rgba(255,200,50,.35)',
               color: 'rgba(255,200,50,.7)',
               cursor: 'pointer',
-              fontFamily: "'VT323',monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '1.1rem',
               letterSpacing: '.1em',
             }}
@@ -22498,7 +22496,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               border: `1px solid ${showTopMenu ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.25)'}`,
               color: showTopMenu ? '#38bdf8' : 'rgba(56,189,248,.55)',
               cursor: 'pointer',
-              fontFamily: "'VT323',monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '1.1rem',
               letterSpacing: '.1em',
             }}
@@ -22513,7 +22511,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               border: `1px solid ${showTranslatorOverlay ? 'rgba(236,72,153,.5)' : 'rgba(236,72,153,.25)'}`,
               color: showTranslatorOverlay ? '#ec4899' : 'rgba(236,72,153,.55)',
               cursor: 'pointer',
-              fontFamily: "'VT323',monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '1.1rem',
               letterSpacing: '.1em',
             }}
@@ -22529,7 +22527,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 border: `1px solid ${showSoundPanel ? 'rgba(0,200,255,.5)' : allMuted ? 'rgba(255,34,102,.35)' : 'rgba(0,200,255,.25)'}`,
                 color: allMuted ? '#ff2266' : voice ? (speaking ? '#00ffcc' : '#38bdf8') : showSoundPanel ? '#00c8ff' : 'rgba(0,200,255,.55)',
                 cursor: 'pointer',
-                fontFamily: "'VT323',monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '1.1rem',
                 letterSpacing: '.1em',
               }}
@@ -22539,54 +22537,54 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {showSoundPanel && (
               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,200,255,.35)', padding: '.4rem', zIndex: 200 }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>AUDIO & MIC</div>
-                <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.3rem .4rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.08)' : 'transparent', border: '1px solid rgba(0,200,255,.15)', color: allMuted ? '#ff2266' : 'rgba(0,200,255,.5)', cursor: 'pointer', fontSize: '.6rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
+                <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.3rem .4rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.08)' : 'transparent', border: '1px solid rgba(0,200,255,.15)', color: allMuted ? '#ff2266' : 'rgba(0,200,255,.5)', cursor: 'pointer', fontSize: '.6rem', fontFamily: "var(--font-sans)", letterSpacing: '.06em' }}>
                   {allMuted ? '🔇 UNMUTE ALL' : '🔊 MUTE ALL'}
                 </button>
                 <div style={{ borderTop: '1px solid rgba(0,200,255,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
                   <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>MUSIC</div>
                 </div>
-                <button onClick={() => { setAudioSettings({ ambianceEnabled: !getAmbianceEnabled() }); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.06)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.25)' : '1px solid rgba(0,200,255,.1)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                <button onClick={() => { setAudioSettings({ ambianceEnabled: !getAmbianceEnabled() }); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.06)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.25)' : '1px solid rgba(0,200,255,.1)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                   🎵 SCORE — {scoreOn ? 'ON' : 'OFF'}
                 </button>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.35)', fontFamily: "'Share Tech Mono',monospace" }}>SCORE VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(audioCfg.settings.music * 100)}%</span>
+                    <span style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.35)', fontFamily: "var(--font-sans)" }}>SCORE VOL</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.2)', fontFamily: "var(--font-sans)" }}>{Math.round(audioCfg.settings.music * 100)}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.music * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; audioCfg.set({ music: v }); }} style={{ width: '100%', accentColor: '#00c8ff', height: 3, cursor: 'pointer' }} />
                 </div>
-                <button onClick={() => { handleRadioToggle(); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: radioOn ? 'rgba(56,189,248,.06)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.25)' : '1px solid rgba(56,189,248,.1)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                <button onClick={() => { handleRadioToggle(); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: radioOn ? 'rgba(56,189,248,.06)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.25)' : '1px solid rgba(56,189,248,.1)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                   📻 PABLO RADIO — {radioOn ? 'ON' : 'OFF'}
                 </button>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "'Share Tech Mono',monospace" }}>PABLO RADIO VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(audioCfg.settings.soundtrack * 100)}%</span>
+                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "var(--font-sans)" }}>PABLO RADIO VOL</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "var(--font-sans)" }}>{Math.round(audioCfg.settings.soundtrack * 100)}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.soundtrack * 100)} onChange={e => { audioCfg.set({ soundtrack: parseInt(e.target.value) / 100 }); }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
                 </div>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(audioCfg.settings.sfx * 100)}%</span>
+                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "var(--font-sans)" }}>⚡ SFX VOL</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "var(--font-sans)" }}>{Math.round(audioCfg.settings.sfx * 100)}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.sfx * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; audioCfg.set({ sfx: v }); }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
                 </div>
                 <div style={{ borderTop: '1px solid rgba(0,200,255,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
                   <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>VOICE</div>
                 </div>
-                <button onClick={() => toggleVoice()} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: voice ? 'rgba(56,189,248,.06)' : 'transparent', border: `1px solid ${voice ? (speaking ? 'rgba(0,255,204,.3)' : 'rgba(56,189,248,.25)') : 'rgba(56,189,248,.1)'}`, color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#38bdf8') : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                <button onClick={() => toggleVoice()} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: voice ? 'rgba(56,189,248,.06)' : 'transparent', border: `1px solid ${voice ? (speaking ? 'rgba(0,255,204,.3)' : 'rgba(56,189,248,.25)') : 'rgba(56,189,248,.1)'}`, color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#38bdf8') : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                   🎙 {voice ? (micMuted ? '⊘ MIC MUTED' : speaking ? '● MIC LIVE' : '○ MIC ON') : 'MIC — OFF [V]'}
                 </button>
                 {voice && (
-                  <button onClick={() => toggleMicMute()} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.06)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.2)' : 'rgba(56,189,248,.1)'}`, color: micMuted ? '#ff8844' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                  <button onClick={() => toggleMicMute()} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.06)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.2)' : 'rgba(56,189,248,.1)'}`, color: micMuted ? '#ff8844' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                     {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
                   </button>
                 )}
                 <div style={{ padding: '0 .2rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "var(--font-sans)" }}>🎙 MIC VOL</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "var(--font-sans)" }}>{Math.round(micVolume * 100)}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: voice ? '#00ffcc' : '#38bdf8', height: 3, cursor: 'pointer' }} />
                 </div>
@@ -22601,29 +22599,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (!v) playTerminalBoot('mobile'); return !v; }); setShowTopMenu(false); }
               else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); setShowTopMenu(false); }
               else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
-            }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.04)', border: showPablo ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.25)', color: showPablo ? '#38bdf8' : (hasDevice && !deviceBroken) ? '#38bdf8' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.04)', border: showPablo ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.25)', color: showPablo ? '#38bdf8' : (hasDevice && !deviceBroken) ? '#38bdf8' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               🤖 PABLO [P] — FREE{deviceBroken ? ' ⚠' : ''}
             </button>
             <div style={{ borderTop: '1px solid rgba(56,189,248,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>QUICK ACCESS</div>
             </div>
-            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(56,189,248,.15)', color: showStats ? '#ffaa00' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(56,189,248,.15)', color: showStats ? '#ffaa00' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               📊 STATS & NET WORTH
             </button>
-            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(56,189,248,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(56,189,248,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
             </button>
-            <button onClick={() => { setShowAssignments(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showAssignments ? 'rgba(255,200,60,.08)' : 'transparent', border: showAssignments ? '1px solid rgba(255,200,60,.4)' : '1px solid rgba(56,189,248,.15)', color: showAssignments ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowAssignments(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showAssignments ? 'rgba(255,200,60,.08)' : 'transparent', border: showAssignments ? '1px solid rgba(255,200,60,.4)' : '1px solid rgba(56,189,248,.15)', color: showAssignments ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               🗂 ASSIGNMENTS {(() => { const q = getRealQuarter(); const done = countCompletedAssignments(gs.current.story, q); const tot = getQuarterAssignments(q).length; return tot > 0 ? `(${done}/${tot})` : ''; })()}
             </button>
-            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               👤 CLOTHES
             </button>
-            <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(56,189,248,.1)' : 'transparent', border: showMap ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: showMap ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(56,189,248,.1)' : 'transparent', border: showMap ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: showMap ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               🗺 MAP [M]
             </button>
             {isOwnerPlan && (
-              <button onClick={() => { setShowWorldDesigner(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(244,114,182,.3)', color: '#f472b6', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { setShowWorldDesigner(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(244,114,182,.3)', color: '#f472b6', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                 ◆ WORLD DESIGNER
               </button>
             )}
@@ -22642,23 +22640,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setNarr('> NO TERMINAL — You need a terminal or PABLO device to make video calls.');
               }
               setShowTopMenu(false);
-            }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: videoCallRoom ? 'rgba(56,189,248,.1)' : 'transparent', border: videoCallRoom ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: videoCallRoom ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: videoCallRoom ? 'rgba(56,189,248,.1)' : 'transparent', border: videoCallRoom ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: videoCallRoom ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               📹 CONFERENCE [C] {videoCallRoom ? '— LIVE' : '— OFF'}
             </button>
-            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(56,189,248,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: chatOpen ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
+            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(56,189,248,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: chatOpen ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left', position: 'relative' }}>
               💬 CHAT{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             </button>
-            <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
               🔧 CRAFTING
             </button>
             <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: 3, paddingTop: 5 }}>
-              <button onClick={() => { setShowTopMenu(false); navigate('/game/map'); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { setShowTopMenu(false); navigate('/game/map'); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                 🗺 CITY MAP
               </button>
-              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } doSaveRef.current(buildSaveData()); navigate('/pablo'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } doSaveRef.current(buildSaveData()); navigate('/pablo'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                 💾 SAVE & EXIT
               </button>
-              <button onClick={() => { doSaveRef.current(buildSaveData()); window.open(`${window.location.origin}${import.meta.env.BASE_URL}mobile`, '_blank'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginTop: 3, background: 'transparent', border: '1px solid rgba(0,180,255,.15)', color: 'rgba(0,180,255,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { doSaveRef.current(buildSaveData()); window.open(`${window.location.origin}${import.meta.env.BASE_URL}mobile`, '_blank'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginTop: 3, background: 'transparent', border: '1px solid rgba(0,180,255,.15)', color: 'rgba(0,180,255,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
                 📱 MOBILE TERMINAL
               </button>
             </div>
@@ -22678,22 +22676,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
         {showTranslatorOverlay && (
           <div style={{ width: 260, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(236,72,153,.35)', padding: '.5rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ec4899', letterSpacing: '.12em', marginBottom: '.4rem' }}>{PABLO_PRODUCTS.TRANSLATOR.short}</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: '#ec4899', letterSpacing: '.12em', marginBottom: '.4rem' }}>{PABLO_PRODUCTS.TRANSLATOR.short}</div>
             <div style={{ display: 'flex', gap: 4, marginBottom: '.3rem' }}>
-              <select value={translatorFrom} onChange={e => { setTranslatorFrom(e.target.value); localStorage.setItem('sm_xlat_from', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
+              <select value={translatorFrom} onChange={e => { setTranslatorFrom(e.target.value); localStorage.setItem('sm_xlat_from', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "var(--font-sans)", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
                 {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
                   <option key={code} value={code}>{name}</option>
                 ))}
               </select>
-              <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); localStorage.setItem('sm_xlat_from', translatorTo); localStorage.setItem('sm_xlat_to', translatorFrom); }} style={{ padding: '.2rem .4rem', background: 'rgba(236,72,153,.07)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>⇄</button>
-              <select value={translatorTo} onChange={e => { setTranslatorTo(e.target.value); localStorage.setItem('sm_xlat_to', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
+              <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); localStorage.setItem('sm_xlat_from', translatorTo); localStorage.setItem('sm_xlat_to', translatorFrom); }} style={{ padding: '.2rem .4rem', background: 'rgba(236,72,153,.07)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.75rem' }}>⇄</button>
+              <select value={translatorTo} onChange={e => { setTranslatorTo(e.target.value); localStorage.setItem('sm_xlat_to', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "var(--font-sans)", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
                 {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
                   <option key={code} value={code}>{name}</option>
                 ))}
               </select>
             </div>
             <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type text to translate..."
-              style={{ width: '100%', minHeight: 40, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.3rem', outline: 'none', resize: 'vertical', caretColor: '#ec4899', marginBottom: '.3rem' }} />
+              style={{ width: '100%', minHeight: 40, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "var(--font-sans)", fontSize: '.5rem', padding: '.3rem', outline: 'none', resize: 'vertical', caretColor: '#ec4899', marginBottom: '.3rem' }} />
             <button onClick={async () => {
               if (!translatorText.trim()) return;
               setTranslatorResult('Translating...');
@@ -22702,11 +22700,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const data = await res.json();
                 setTranslatorResult(data.responseData?.translatedText ?? 'Translation unavailable.');
               } catch { setTranslatorResult('Translation service unavailable.'); }
-            }} style={{ width: '100%', padding: '.25rem', background: 'rgba(236,72,153,.1)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', marginBottom: '.3rem' }}>
+            }} style={{ width: '100%', padding: '.25rem', background: 'rgba(236,72,153,.1)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.08em', marginBottom: '.3rem' }}>
               TRANSLATE ▶
             </button>
             {translatorResult && (
-              <div style={{ background: 'rgba(236,72,153,.05)', border: '1px solid rgba(236,72,153,.15)', padding: '.3rem', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(236,72,153,.8)', lineHeight: 1.5, wordBreak: 'break-word' }}>
+              <div style={{ background: 'rgba(236,72,153,.05)', border: '1px solid rgba(236,72,153,.15)', padding: '.3rem', fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(236,72,153,.8)', lineHeight: 1.5, wordBreak: 'break-word' }}>
                 {translatorResult}
               </div>
             )}
@@ -22716,14 +22714,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* BOTTOM-CENTER — controls hint (compact) */}
       <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 90, pointerEvents: 'none' }}>
-        <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>WASD · E enter · F attack · C chat · P terminal · ESC close</div>
+        <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.06em', fontFamily: "var(--font-sans)" }}>WASD · E enter · F attack · C chat · P terminal · ESC close</div>
       </div>
 
       {/* ── PROPERTY STATS PANEL ── */}
       {showStats && (
         <div style={{ position: 'absolute', bottom: 120, right: 70, width: 240, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(255,170,0,.3)', zIndex: 200 }}>
           <div style={{ padding: '.35rem .55rem', borderBottom: '1px solid rgba(255,170,0,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#ffaa00', letterSpacing: '.1em' }}>PROPERTY LEDGER</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: '#ffaa00', letterSpacing: '.1em' }}>PROPERTY LEDGER</span>
             <button onClick={() => setShowStats(false)} style={{ fontSize: '.55rem', color: 'rgba(255,170,0,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
           </div>
           <div style={{ padding: '.4rem .55rem', maxHeight: '30vh', overflowY: 'auto' }}>
@@ -22731,7 +22729,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.07em', padding: '.3rem 0' }}>No buildings claimed yet.</div>
             ) : Object.entries(ownerStats).sort((a, b) => b[1].count - a[1].count).map(([owner, data]) => (
               <div key={owner} style={{ borderBottom: '1px solid rgba(56,189,248,.07)', padding: '.3rem 0' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffaa00', letterSpacing: '.08em' }}>{owner}</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '.8rem', color: '#ffaa00', letterSpacing: '.08em' }}>{owner}</div>
                 {data.company && <div style={{ fontSize: '.45rem', color: 'rgba(255,170,0,.45)', letterSpacing: '.07em' }}>{data.company}</div>}
                 <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', marginTop: '2px' }}>{data.count} building{data.count !== 1 ? 's' : ''} claimed</div>
                 <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.05em', marginTop: '1px' }}>{data.buildings.join(', ')}</div>
@@ -22789,7 +22787,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         };
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.88)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.88)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "var(--font-sans)" }}>
             <div style={{ width: 'min(440px,92vw)', background: '#06080f', border: '2px solid #38bdf8', borderRadius: 10, padding: '24px 26px', boxShadow: '0 0 50px rgba(56,189,248,.3)' }}>
               <div style={{ fontSize: 10, letterSpacing: 4, color: '#7dd34f', marginBottom: 6, textTransform: 'uppercase' }}>// BORDER CONTROL — ENTRY DENIED</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: '#bde7ff', letterSpacing: 1, marginBottom: 14 }}>VISA REQUIRED</div>
@@ -22805,12 +22803,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <button
                   onClick={handleApply}
                   disabled={visaApplying}
-                  style={{ width: '100%', padding: '.55rem .7rem', background: visaApplying ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.12)', border: '1.5px solid #38bdf8', color: visaApplying ? '#5b9dbf' : '#bde7ff', cursor: visaApplying ? 'not-allowed' : 'pointer', fontSize: 13, letterSpacing: 1, fontFamily: "'Share Tech Mono',monospace", fontWeight: 700 }}>
+                  style={{ width: '100%', padding: '.55rem .7rem', background: visaApplying ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.12)', border: '1.5px solid #38bdf8', color: visaApplying ? '#5b9dbf' : '#bde7ff', cursor: visaApplying ? 'not-allowed' : 'pointer', fontSize: 13, letterSpacing: 1, fontFamily: "var(--font-sans)", fontWeight: 700 }}>
                   {visaApplying ? '▸ PROCESSING APPLICATION…' : '→ APPLY FOR VISA'}
                 </button>
                 <button
                   onClick={() => { setShowVisaRequired(false); frozenRef.current = false; navigate('/pablo'); }}
-                  style={{ width: '100%', padding: '.45rem .7rem', background: 'transparent', border: '1px solid #444', color: '#888', cursor: 'pointer', fontSize: 12, letterSpacing: 1, fontFamily: "'Share Tech Mono',monospace" }}>
+                  style={{ width: '100%', padding: '.45rem .7rem', background: 'transparent', border: '1px solid #444', color: '#888', cursor: 'pointer', fontSize: 12, letterSpacing: 1, fontFamily: "var(--font-sans)" }}>
                   ← BACK TO TERMINAL
                 </button>
               </div>
@@ -22821,8 +22819,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── DOG NAMING PROMPT ── */}
       {showDogName && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "'Share Tech Mono',monospace" }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#ffaa44', letterSpacing: '.15em', textShadow: '0 0 15px rgba(255,170,68,.4)' }}>ADOPT COMPANION</div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "var(--font-sans)" }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '2rem', color: '#ffaa44', letterSpacing: '.15em', textShadow: '0 0 15px rgba(255,170,68,.4)' }}>ADOPT COMPANION</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,170,68,.7)', letterSpacing: '.08em', maxWidth: 320, textAlign: 'center' }}>
             A stray {getDogBreed(dogAdoptTarget.current?.breed).label} looks up at you. {getDogBreed(dogAdoptTarget.current?.breed).blurb} Adoption fee: ƒ{DOG_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm. Names are unique across the city.
           </div>
@@ -22916,7 +22914,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             placeholder="Name your dog..."
             style={{
               background: 'rgba(0,10,0,.95)', border: '1px solid rgba(255,170,68,.5)',
-              color: '#ffaa44', fontFamily: "'VT323',monospace", fontSize: '1.5rem',
+              color: '#ffaa44', fontFamily: "var(--font-sans)", fontSize: '1.5rem',
               padding: '.5rem 1rem', width: 260, textAlign: 'center', outline: 'none',
               caretColor: '#ffaa44', letterSpacing: '.1em',
             }}
@@ -22925,8 +22923,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
       {showCatName && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "'Share Tech Mono',monospace" }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#aaccff', letterSpacing: '.15em', textShadow: '0 0 15px rgba(170,204,255,.4)' }}>ADOPT COMPANION</div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "var(--font-sans)" }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '2rem', color: '#aaccff', letterSpacing: '.15em', textShadow: '0 0 15px rgba(170,204,255,.4)' }}>ADOPT COMPANION</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(170,204,255,.7)', letterSpacing: '.08em', maxWidth: 320, textAlign: 'center' }}>
             A stray {getCatBreed(catAdoptTarget.current?.breed).label} regards you, then slow-blinks. {getCatBreed(catAdoptTarget.current?.breed).blurb} Approval, on its terms. Adoption fee: ƒ{CAT_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm. Names are unique across the city.
           </div>
@@ -23021,7 +23019,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             placeholder="Name your cat..."
             style={{
               background: 'rgba(0,4,10,.95)', border: '1px solid rgba(170,204,255,.5)',
-              color: '#aaccff', fontFamily: "'VT323',monospace", fontSize: '1.5rem',
+              color: '#aaccff', fontFamily: "var(--font-sans)", fontSize: '1.5rem',
               padding: '.5rem 1rem', width: 260, textAlign: 'center', outline: 'none',
               caretColor: '#aaccff', letterSpacing: '.1em',
             }}
@@ -23032,14 +23030,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showMila && (
         <div
           onClick={() => { setShowMila(false); frozenRef.current = false; }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.7rem', fontFamily: "'Share Tech Mono',monospace" }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.7rem', fontFamily: "var(--font-sans)" }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{ background: 'rgba(2,14,16,.97)', border: '1px solid rgba(60,200,200,.4)', boxShadow: '0 0 30px rgba(42,204,204,.18)', padding: '1.1rem 1.3rem', width: 360, maxWidth: '92vw', display: 'flex', flexDirection: 'column', gap: '.7rem' }}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#67e8f9', letterSpacing: '.12em', textShadow: '0 0 14px rgba(42,204,204,.4)' }}>MILA</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.7rem', color: '#67e8f9', letterSpacing: '.12em', textShadow: '0 0 14px rgba(42,204,204,.4)' }}>MILA</div>
               <div style={{ fontSize: '.55rem', color: 'rgba(103,232,249,.65)', letterSpacing: '.1em' }}>{milaLabelRef.current}</div>
             </div>
             <div style={{ fontSize: '.6rem', color: 'rgba(103,232,249,.7)', letterSpacing: '.05em', lineHeight: 1.5 }}>
@@ -23064,7 +23062,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     background: milaTaskUi === val ? 'rgba(42,204,204,.22)' : 'rgba(0,20,22,.7)',
                     border: `1px solid ${milaTaskUi === val ? 'rgba(103,232,249,.8)' : 'rgba(60,200,200,.3)'}`,
                     color: milaTaskUi === val ? '#9bf6ff' : 'rgba(103,232,249,.6)',
-                    fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.08em',
+                    fontFamily: "var(--font-sans)", fontSize: '.6rem', letterSpacing: '.08em',
                   }}
                 >{lbl}</button>
               ))}
@@ -23088,7 +23086,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       background: active ? 'rgba(42,204,204,.22)' : 'rgba(0,20,22,.7)',
                       border: `1px solid ${active ? 'rgba(103,232,249,.8)' : 'rgba(60,200,200,.25)'}`,
                       color: active ? '#9bf6ff' : 'rgba(103,232,249,.6)',
-                      fontFamily: "'Share Tech Mono',monospace",
+                      fontFamily: "var(--font-sans)",
                     }}
                   >
                     <span style={{ fontSize: '1rem', lineHeight: 1 }}>{item.icon}</span>
@@ -23105,7 +23103,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
             <button
               onClick={() => { setShowMila(false); frozenRef.current = false; }}
-              style={{ marginTop: '.3rem', padding: '.5rem', cursor: 'pointer', background: 'rgba(0,20,22,.7)', border: '1px solid rgba(60,200,200,.3)', color: 'rgba(103,232,249,.7)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em' }}
+              style={{ marginTop: '.3rem', padding: '.5rem', cursor: 'pointer', background: 'rgba(0,20,22,.7)', border: '1px solid rgba(60,200,200,.3)', color: 'rgba(103,232,249,.7)', fontFamily: "var(--font-sans)", fontSize: '.6rem', letterSpacing: '.1em' }}
             >CLOSE</button>
           </div>
         </div>
@@ -23115,7 +23113,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {chatOpen && (
         <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: 360, maxHeight: '42vh', background: 'rgba(0,5,0,.97)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.4)' : 'rgba(56,189,248,.3)'}`, display: 'flex', flexDirection: 'column', zIndex: 200 }}>
           <div style={{ padding: '.35rem .55rem', borderBottom: `1px solid ${dmTarget ? 'rgba(100,200,255,.2)' : 'rgba(56,189,248,.15)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: dmTarget ? '#66ccff' : '#38bdf8', letterSpacing: '.1em' }}>{dmTarget ? `PRIVATE MSG → ${dmTarget.name}` : 'WORLD CHAT'}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: dmTarget ? '#66ccff' : '#38bdf8', letterSpacing: '.1em' }}>{dmTarget ? `PRIVATE MSG → ${dmTarget.name}` : 'WORLD CHAT'}</span>
             <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
               <button onClick={() => setShowDmPicker(!showDmPicker)} style={{ fontSize: '.44rem', color: 'rgba(100,200,255,.6)', border: '1px solid rgba(100,200,255,.25)', background: showDmPicker ? 'rgba(100,200,255,.1)' : 'transparent', cursor: 'pointer', padding: '2px 6px', letterSpacing: '.05em' }}>PRIVATE MSG</button>
               {dmTarget && <button onClick={() => setDmTarget(null)} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>× DM</button>}
@@ -23127,7 +23125,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ fontSize: '.42rem', color: 'rgba(100,200,255,.4)', letterSpacing: '.1em', marginBottom: '.2rem' }}>SELECT PLAYER FOR PRIVATE MESSAGE</div>
               <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
                 {online.map(p => (
-                  <button key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setShowDmPicker(false); upsertCrmContact(p); }} style={{ fontSize: '.5rem', padding: '2px 7px', background: dmTarget?.id === p.id ? 'rgba(100,200,255,.12)' : 'transparent', border: dmTarget?.id === p.id ? '1px solid rgba(100,200,255,.5)' : '1px solid rgba(100,200,255,.2)', color: dmTarget?.id === p.id ? '#66ccff' : 'rgba(100,200,255,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+                  <button key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setShowDmPicker(false); upsertCrmContact(p); }} style={{ fontSize: '.5rem', padding: '2px 7px', background: dmTarget?.id === p.id ? 'rgba(100,200,255,.12)' : 'transparent', border: dmTarget?.id === p.id ? '1px solid rgba(100,200,255,.5)' : '1px solid rgba(100,200,255,.2)', color: dmTarget?.id === p.id ? '#66ccff' : 'rgba(100,200,255,.5)', cursor: 'pointer', fontFamily: "var(--font-sans)" }}>
                     {p.name}
                   </button>
                 ))}
@@ -23142,13 +23140,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ? <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.18)' }}>No messages yet.</div>
               : chatMsgs.slice(-40).map(m => (
                 <div key={m.id} style={{ fontSize: '.63rem', lineHeight: 1.5, color: m.from === 'SERVER' ? 'rgba(56,189,248,.28)' : m.dm ? 'rgba(100,200,255,.75)' : 'rgba(56,189,248,.65)', paddingLeft: m.dm ? '.3rem' : 0, borderLeft: m.dm ? '2px solid rgba(100,200,255,.25)' : 'none' }}>
-                  <span style={{ color: m.dm ? 'rgba(100,200,255,.5)' : 'rgba(56,189,248,.38)', fontFamily: "'VT323',monospace", fontSize: '.72rem' }}>{m.dm ? '[PM] ' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
+                  <span style={{ color: m.dm ? 'rgba(100,200,255,.5)' : 'rgba(56,189,248,.38)', fontFamily: "var(--font-sans)", fontSize: '.72rem' }}>{m.dm ? '[PM] ' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
                 </div>
               ))
             }
           </div>
           <div style={{ padding: '.32rem', borderTop: `1px solid ${dmTarget ? 'rgba(100,200,255,.15)' : 'rgba(56,189,248,.12)'}`, display: 'flex', gap: '.32rem' }}>
-            <input value={chatIn} onChange={e => setChatIn(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }}} placeholder={dmTarget ? `Private msg to ${dmTarget.name}...` : 'World chat...'} style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.25)' : 'rgba(56,189,248,.18)'}`, color: dmTarget ? '#66ccff' : '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: dmTarget ? '#66ccff' : '#38bdf8' }} />
+            <input value={chatIn} onChange={e => setChatIn(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }}} placeholder={dmTarget ? `Private msg to ${dmTarget.name}...` : 'World chat...'} style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.25)' : 'rgba(56,189,248,.18)'}`, color: dmTarget ? '#66ccff' : '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: dmTarget ? '#66ccff' : '#38bdf8' }} />
             <button onClick={() => { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }} style={{ background: dmTarget ? 'rgba(100,200,255,.08)' : 'rgba(56,189,248,.08)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.3)' : 'rgba(56,189,248,.28)'}`, color: dmTarget ? '#66ccff' : '#38bdf8', cursor: 'pointer', padding: '0 .4rem', fontSize: '.62rem' }}>↵</button>
           </div>
         </div>
@@ -23157,11 +23155,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── INCOMING CALL NOTIFICATION ── */}
       {phoneCall.status === 'incoming' && !showPablo && (
         <div style={{ position: 'absolute', top: 80, right: 16, width: 220, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(255,100,100,.5)', padding: '.5rem .6rem', zIndex: 250, boxShadow: '0 0 20px rgba(255,50,50,.15)' }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '.3rem' }}>INCOMING CALL</div>
-          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(255,100,100,.7)', marginBottom: '.35rem' }}>From: {phoneCall.peerName}</div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '.3rem' }}>INCOMING CALL</div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.55rem', color: 'rgba(255,100,100,.7)', marginBottom: '.35rem' }}>From: {phoneCall.peerName}</div>
           <div style={{ display: 'flex', gap: '.3rem' }}>
-            <button onClick={() => { phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>ACCEPT</button>
-            <button onClick={() => { phoneCall.peerId && handlePhoneCallDecline(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>DECLINE</button>
+            <button onClick={() => { phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.75rem' }}>ACCEPT</button>
+            <button onClick={() => { phoneCall.peerId && handlePhoneCallDecline(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.75rem' }}>DECLINE</button>
           </div>
         </div>
       )}
@@ -23169,9 +23167,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── ACTIVE CALL HUD ── */}
       {phoneCall.status === 'connected' && !showPablo && (
         <div style={{ position: 'absolute', top: 80, right: 16, width: 180, background: 'rgba(0,5,0,.95)', border: '1px solid rgba(56,189,248,.35)', padding: '.4rem .5rem', zIndex: 250 }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#38bdf8', letterSpacing: '.08em' }}>IN CALL</div>
-          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.5)' }}>{phoneCall.peerName}</div>
-          <button onClick={() => { handlePhoneCallEnd(); leaveVideoCall(); }} style={{ marginTop: '.3rem', width: '100%', padding: '.2rem', background: 'rgba(255,50,50,.08)', border: '1px solid rgba(255,50,50,.3)', color: '#ff4444', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.6rem' }}>END CALL</button>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: '#38bdf8', letterSpacing: '.08em' }}>IN CALL</div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(56,189,248,.5)' }}>{phoneCall.peerName}</div>
+          <button onClick={() => { handlePhoneCallEnd(); leaveVideoCall(); }} style={{ marginTop: '.3rem', width: '100%', padding: '.2rem', background: 'rgba(255,50,50,.08)', border: '1px solid rgba(255,50,50,.3)', color: '#ff4444', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.6rem' }}>END CALL</button>
         </div>
       )}
 
@@ -23246,7 +23244,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               background: 'rgba(8,12,18,.98)',
               border: '1px solid rgba(255,80,60,.45)',
               boxShadow: '0 0 30px rgba(255,80,60,.25)',
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "var(--font-sans)",
               color: '#fca5a5',
             }}>
               <div style={{ fontSize: '.55rem', letterSpacing: '.22em', color: '#ef4444', marginBottom: '.5rem' }}>▌ ACCESS CONTROL — KEYPAD</div>
@@ -23267,7 +23265,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   background: 'rgba(0,0,0,.6)',
                   border: '1px solid rgba(255,80,60,.35)',
                   color: '#fef3c7',
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '.95rem',
                   letterSpacing: '.18em',
                   textTransform: 'uppercase',
@@ -23285,7 +23283,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   background: worldLockPrompt.attempt.trim() ? 'rgba(255,80,60,.18)' : 'rgba(40,40,40,.4)',
                   border: '1px solid rgba(255,80,60,.5)',
                   color: '#fef3c7',
-                  fontFamily: "'VT323',monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '.95rem',
                   letterSpacing: '.12em',
                   cursor: worldLockPrompt.attempt.trim() ? 'pointer' : 'not-allowed',
@@ -23295,7 +23293,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   background: 'transparent',
                   border: '1px solid rgba(255,80,60,.2)',
                   color: 'rgba(252,165,165,.55)',
-                  fontFamily: "'VT323',monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '.95rem',
                   letterSpacing: '.12em',
                   cursor: 'pointer',
@@ -23315,7 +23313,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           border: `1px solid ${quadrantBanner.q.color}`,
           boxShadow: `0 0 24px ${quadrantBanner.q.color}55`,
           color: quadrantBanner.q.color,
-          fontFamily: "'Share Tech Mono', monospace",
+          fontFamily: "var(--font-sans)",
           fontSize: '.85rem',
           letterSpacing: '.22em',
           textAlign: 'center',
@@ -23405,8 +23403,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── TERMINAL HUB PANEL ── */}
       {showPablo && gs.current.pabloOnboardingDone && (() => {
         const g = gs.current;
-        const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-        const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+        const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const tabS = (active: boolean): React.CSSProperties => ({
           padding: '.3rem .6rem', border: active ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.12)',
           background: active ? 'rgba(56,189,248,.08)' : 'transparent',
@@ -23606,11 +23604,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             {crmEditId === contact.id && (
                               <div style={{ marginTop: '.3rem', display: 'flex', flexDirection: 'column', gap: '.25rem', borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.3rem' }}>
                                 <div style={{ display: 'flex', gap: '.2rem' }}>
-                                  <input value={crmTagInput} onChange={e => setCrmTagInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter' && crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} placeholder="Add tag..." style={{ flex: 1, background: 'rgba(0,8,0,.9)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.7)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace" }} />
+                                  <input value={crmTagInput} onChange={e => setCrmTagInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter' && crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} placeholder="Add tag..." style={{ flex: 1, background: 'rgba(0,8,0,.9)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.7)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "var(--font-sans)" }} />
                                   <button onClick={() => { if (crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} style={{ fontSize: '.38rem', background: 'rgba(100,200,255,.08)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.5)', cursor: 'pointer', padding: '1px 5px' }}>+TAG</button>
                                 </div>
-                                <input value={crmCatInput} onChange={e => setCrmCatInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, category: crmCatInput.trim() || 'general' } : c)); }} placeholder="Category..." style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(255,200,60,.15)', color: 'rgba(255,200,60,.6)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace" }} />
-                                <textarea value={crmNoteInput} onChange={e => setCrmNoteInput(e.target.value)} onKeyDown={e => e.stopPropagation()} onBlur={() => setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, notes: crmNoteInput } : c))} placeholder="Notes..." rows={2} style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontSize: '.42rem', padding: '3px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace", resize: 'none' }} />
+                                <input value={crmCatInput} onChange={e => setCrmCatInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, category: crmCatInput.trim() || 'general' } : c)); }} placeholder="Category..." style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(255,200,60,.15)', color: 'rgba(255,200,60,.6)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "var(--font-sans)" }} />
+                                <textarea value={crmNoteInput} onChange={e => setCrmNoteInput(e.target.value)} onKeyDown={e => e.stopPropagation()} onBlur={() => setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, notes: crmNoteInput } : c))} placeholder="Notes..." rows={2} style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontSize: '.42rem', padding: '3px 5px', outline: 'none', fontFamily: "var(--font-sans)", resize: 'none' }} />
                                 <button onClick={() => { if (confirm('Remove this contact?')) setCrmContacts(prev => prev.filter(c => c.id !== contact.id)); setCrmEditId(null); }} style={{ fontSize: '.38rem', color: '#ff4444', background: 'rgba(255,50,50,.06)', border: '1px solid rgba(255,50,50,.2)', padding: '2px 5px', cursor: 'pointer', alignSelf: 'flex-start' }}>REMOVE CONTACT</button>
                               </div>
                             )}
@@ -23649,7 +23647,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             <div key={mark} style={{ position: 'absolute', left: `${mark}%`, top: 0, width: 1, height: '100%', background: 'rgba(255,255,255,.2)' }} />
                           ))}
                         </div>
-                        <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', minWidth: 40, textAlign: 'right' }}>{liberationProgress}%</span>
+                        <span style={{ fontFamily: "var(--font-sans)", fontSize: '1rem', color: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', minWidth: 40, textAlign: 'right' }}>{liberationProgress}%</span>
                       </div>
                       <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.7 }}>
                         {liberationProgress < 25
@@ -23707,13 +23705,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>UNIVERSAL TRANSLATOR — FREE</div>
                     <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
-                      <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
+                      <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
                         {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
                           <option key={code} value={code}>{name}</option>
                         ))}
                       </select>
-                      <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }} style={{ padding: '.3rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem' }} title="Swap languages">⇄</button>
-                      <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
+                      <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }} style={{ padding: '.3rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.8rem' }} title="Swap languages">⇄</button>
+                      <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
                         {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
                           <option key={code} value={code}>{name}</option>
                         ))}
@@ -23744,11 +23742,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         recognition.onend = () => { setTranslatorListening(false); translatorRecRef.current = null; };
                         recognition.onerror = () => { setTranslatorListening(false); translatorRecRef.current = null; };
                         recognition.start();
-                      }} style={{ padding: '.3rem .6rem', background: translatorListening ? 'rgba(255,68,68,.12)' : 'rgba(56,189,248,.07)', border: `1px solid ${translatorListening ? 'rgba(255,68,68,.4)' : 'rgba(56,189,248,.3)'}`, color: translatorListening ? '#ff4444' : '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem' }}>
+                      }} style={{ padding: '.3rem .6rem', background: translatorListening ? 'rgba(255,68,68,.12)' : 'rgba(56,189,248,.07)', border: `1px solid ${translatorListening ? 'rgba(255,68,68,.4)' : 'rgba(56,189,248,.3)'}`, color: translatorListening ? '#ff4444' : '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.8rem' }}>
                         {translatorListening ? '⏹ STOP' : '🎙 SPEAK'}
                       </button>
                     </div>
-                    <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type or speak text to translate..." style={{ width: '100%', minHeight: 60, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.4rem', outline: 'none', resize: 'vertical', caretColor: '#38bdf8' }} />
+                    <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type or speak text to translate..." style={{ width: '100%', minHeight: 60, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.55rem', padding: '.4rem', outline: 'none', resize: 'vertical', caretColor: '#38bdf8' }} />
                     <button onClick={async () => {
                       if (!translatorText.trim()) return;
                       setTranslatorResult('Translating...');
@@ -23759,7 +23757,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       } catch {
                         setTranslatorResult('Translation service unavailable. Try again.');
                       }
-                    }} style={{ padding: '.4rem .6rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.08em' }}>
+                    }} style={{ padding: '.4rem .6rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.9rem', letterSpacing: '.08em' }}>
                       TRANSLATE ▶
                     </button>
                     {translatorResult && translatorResult !== 'Translating...' && (
@@ -23768,16 +23766,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>TRANSLATION OUTPUT</div>
                           <button onClick={() => {
                             speakWithTTS(translatorResult, () => {}, undefined);
-                          }} style={{ padding: '.2rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.7rem', letterSpacing: '.06em' }}>
+                          }} style={{ padding: '.2rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.06em' }}>
                             🔊 HEAR IT
                           </button>
                         </div>
-                        <div style={{ fontSize: '.65rem', color: '#38bdf8', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>{translatorResult}</div>
+                        <div style={{ fontSize: '.65rem', color: '#38bdf8', lineHeight: 1.6, fontFamily: "var(--font-sans)" }}>{translatorResult}</div>
                       </div>
                     )}
                     {translatorResult === 'Translating...' && (
                       <div style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', background: 'rgba(0,8,0,.95)', minHeight: 40 }}>
-                        <div style={{ fontSize: '.65rem', color: '#38bdf8', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>{translatorResult}</div>
+                        <div style={{ fontSize: '.65rem', color: '#38bdf8', lineHeight: 1.6, fontFamily: "var(--font-sans)" }}>{translatorResult}</div>
                       </div>
                     )}
                     <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.6, marginTop: '.2rem' }}>
@@ -23792,7 +23790,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginBottom: '.3rem' }}>
                       Share your screen or a URL with nearby salarymen. Content will be visible on the nearest display.
                     </div>
-                    <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Enter URL to share..." style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box' }} />
+                    <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Enter URL to share..." style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box' }} />
                     {screenShareUrl && /^https?:\/\//.test(screenShareUrl) && (
                       <div style={{ border: '1px solid rgba(56,189,248,.15)', background: 'rgba(5,12,22,.5)', padding: '.4rem' }}>
                         <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
@@ -23802,8 +23800,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '.4rem' }}>
-                      <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.1em', cursor: 'pointer' }}>BROADCAST</button>
-                      <button onClick={() => { setShowScreenShare(true); setShowPablo(false); }} style={{ padding: '.45rem .6rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.8)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>FULLSCREEN</button>
+                      <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.9rem', letterSpacing: '.1em', cursor: 'pointer' }}>BROADCAST</button>
+                      <button onClick={() => { setShowScreenShare(true); setShowPablo(false); }} style={{ padding: '.45rem .6rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.8)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>FULLSCREEN</button>
                     </div>
                     <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.15)', marginTop: '.15rem', lineHeight: 1.6 }}>
                       Screen share is available on all terminals — personal device and public kiosks. All shared content is logged by PABLO CORP.
@@ -23819,13 +23817,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.18)', lineHeight: 1.7, textAlign: 'center', maxWidth: '85%' }}>
                       Audio & mic controls are always available via the 🔊 AUDIO button in the top-right bar — no terminal required.
                     </div>
-                    <button onClick={() => { setShowSoundPanel(true); setShowPablo(false); }} style={{ padding: '.5rem 1.2rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
+                    <button onClick={() => { setShowSoundPanel(true); setShowPablo(false); }} style={{ padding: '.5rem 1.2rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "var(--font-sans)" }}>
                       🔊 OPEN AUDIO PANEL
                     </button>
                     <div style={{ display: 'flex', gap: '.6rem', marginTop: '.3rem' }}>
-                      <span style={{ fontSize: '.4rem', color: allMuted ? '#ff2266' : 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{allMuted ? '🔇 MUTED' : '🔊 ON'}</span>
-                      <span style={{ fontSize: '.4rem', color: voice ? '#00ffcc' : 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>🎙 {voice ? 'LIVE' : 'OFF'}</span>
-                      <span style={{ fontSize: '.4rem', color: scoreOn ? '#00c8ff' : 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>🎵 {scoreOn ? 'ON' : 'OFF'}</span>
+                      <span style={{ fontSize: '.4rem', color: allMuted ? '#ff2266' : 'rgba(56,189,248,.3)', fontFamily: "var(--font-sans)" }}>{allMuted ? '🔇 MUTED' : '🔊 ON'}</span>
+                      <span style={{ fontSize: '.4rem', color: voice ? '#00ffcc' : 'rgba(56,189,248,.2)', fontFamily: "var(--font-sans)" }}>🎙 {voice ? 'LIVE' : 'OFF'}</span>
+                      <span style={{ fontSize: '.4rem', color: scoreOn ? '#00c8ff' : 'rgba(56,189,248,.2)', fontFamily: "var(--font-sans)" }}>🎵 {scoreOn ? 'ON' : 'OFF'}</span>
                     </div>
                   </div>
                 )}
@@ -23906,20 +23904,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               onKeyDown={e => e.stopPropagation()}
                               placeholder="COMPANY NAME..."
                               maxLength={80}
-                              style={{ width: '100%', padding: '.4rem .6rem', marginBottom: '.3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', outline: 'none', boxSizing: 'border-box', caretColor: '#38bdf8' }}
+                              style={{ width: '100%', padding: '.4rem .6rem', marginBottom: '.3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.75rem', outline: 'none', boxSizing: 'border-box', caretColor: '#38bdf8' }}
                             />
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.3rem', marginBottom: '.3rem' }}>
-                              <select value={orgCreateIndustry} onChange={e => setOrgCreateIndustry(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
+                              <select value={orgCreateIndustry} onChange={e => setOrgCreateIndustry(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.6)', fontFamily: "var(--font-sans)", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
                                 <option value="">INDUSTRY...</option>
                                 {['Technology','Finance','Healthcare','Media','Legal','Real Estate','Logistics','Manufacturing','Retail','Other'].map(i => <option key={i} value={i}>{i}</option>)}
                               </select>
-                              <select value={orgCreateSize} onChange={e => setOrgCreateSize(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
+                              <select value={orgCreateSize} onChange={e => setOrgCreateSize(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.6)', fontFamily: "var(--font-sans)", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
                                 <option value="">SIZE...</option>
                                 {['1-10','11-50','51-200','201-500','500+'].map(s => <option key={s} value={s}>{s} employees</option>)}
                               </select>
                             </div>
                             {orgCreateError && <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', marginBottom: '.3rem' }}>⚠ {orgCreateError}</div>}
-                            <button onClick={handleCreateOrg} style={{ width: '100%', padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.12em' }}>
+                            <button onClick={handleCreateOrg} style={{ width: '100%', padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '1rem', letterSpacing: '.12em' }}>
                               REGISTER ORGANIZATION →
                             </button>
                           </div>
@@ -23977,7 +23975,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                             else { alert(d.error ?? 'Billing error'); }
                                           } catch { alert('Network error'); }
                                         }}
-                                        style={{ padding: '.2rem .4rem', background: alreadyActive ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.12)', border: `1px solid ${alreadyActive ? 'rgba(56,189,248,.2)' : 'rgba(56,189,248,.45)'}`, color: alreadyActive ? 'rgba(56,189,248,.3)' : '#38bdf8', cursor: alreadyActive ? 'default' : 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em' }}
+                                        style={{ padding: '.2rem .4rem', background: alreadyActive ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.12)', border: `1px solid ${alreadyActive ? 'rgba(56,189,248,.2)' : 'rgba(56,189,248,.45)'}`, color: alreadyActive ? 'rgba(56,189,248,.3)' : '#38bdf8', cursor: alreadyActive ? 'default' : 'pointer', fontFamily: "var(--font-sans)", fontSize: '.75rem', letterSpacing: '.06em' }}
                                       >
                                         {alreadyActive ? '✓ ' : '+'}{fk.replace(/_/g,' ').toUpperCase()}
                                       </button>
@@ -23998,9 +23996,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                     onChange={e => setOrgInviteInput(e.target.value)}
                                     onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') handleInvite(); }}
                                     placeholder="Email or username..."
-                                    style={{ flex: 1, padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', outline: 'none', caretColor: '#38bdf8' }}
+                                    style={{ flex: 1, padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.65rem', outline: 'none', caretColor: '#38bdf8' }}
                                   />
-                                  <button onClick={handleInvite} style={{ padding: '.3rem .6rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem' }}>INVITE</button>
+                                  <button onClick={handleInvite} style={{ padding: '.3rem .6rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.9rem' }}>INVITE</button>
                                 </div>
                                 {orgInviteResult && (
                                   <div style={{ marginTop: '.3rem', fontSize: '.45rem', color: orgInviteResult.startsWith('✓') ? '#38bdf8' : '#ff4444', lineHeight: 1.6, wordBreak: 'break-all' }}>
@@ -24018,20 +24016,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                     <div key={m.userId} style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.45rem .5rem', marginBottom: '.3rem', background: 'rgba(56,189,248,.02)' }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
                                         <div>
-                                          <div style={{ fontSize: '.55rem', color: '#38bdf8', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{m.userId.slice(0, 12)}{m.userId.length > 12 ? '…' : ''}</div>
+                                          <div style={{ fontSize: '.55rem', color: '#38bdf8', letterSpacing: '.06em', fontFamily: "var(--font-sans)" }}>{m.userId.slice(0, 12)}{m.userId.length > 12 ? '…' : ''}</div>
                                           <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em' }}>
                                             {m.role.toUpperCase()} · {m.department ?? 'NO DEPT'} · BILLING: {m.featureBilling.toUpperCase()}
                                           </div>
                                         </div>
                                         {m.userId !== orgData.org.ownerUserId && (
-                                          <button onClick={() => handleRemoveMember(m.userId)} style={{ padding: '.2rem .4rem', background: 'rgba(255,34,102,.06)', border: '1px solid rgba(255,34,102,.3)', color: '#ff2266', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.7rem' }}>REMOVE</button>
+                                          <button onClick={() => handleRemoveMember(m.userId)} style={{ padding: '.2rem .4rem', background: 'rgba(255,34,102,.06)', border: '1px solid rgba(255,34,102,.3)', color: '#ff2266', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.7rem' }}>REMOVE</button>
                                         )}
                                       </div>
                                       <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
                                         <select
                                           value={m.featureBilling}
                                           onChange={e => handleUpdateMember(m.userId, { featureBilling: e.target.value })}
-                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "var(--font-sans)", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                           <option value="individual">Individual Billing</option>
                                           <option value="company">Company Billing</option>
                                         </select>
@@ -24039,7 +24037,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                           <select
                                             value={m.role}
                                             onChange={e => handleUpdateMember(m.userId, { role: e.target.value })}
-                                            style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                            style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "var(--font-sans)", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                             <option value="employee">Employee</option>
                                             <option value="manager">Manager</option>
                                           </select>
@@ -24047,7 +24045,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                         <select
                                           value={m.department ?? ''}
                                           onChange={e => handleUpdateMember(m.userId, { department: e.target.value || '' })}
-                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "var(--font-sans)", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                           <option value="">DEPT: NONE</option>
                                           {['Engineering','Sales','Marketing','Operations','Finance','Legal','HR','Design','Support','Executive'].map(d => (
                                             <option key={d} value={d}>{d}</option>
@@ -24056,7 +24054,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                         <select
                                           value={m.spawnLocation ?? ''}
                                           onChange={e => handleUpdateMember(m.userId, { spawnLocation: e.target.value || '' })}
-                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "var(--font-sans)", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                           <option value="">LOCATION: ANY</option>
                                           {['Downtown','Harbor','Uptown','Financial District','Tech Quarter','Shadow Tower','Research Park'].map(loc => (
                                             <option key={loc} value={loc}>{loc}</option>
@@ -24208,11 +24206,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             position: 'fixed', inset: 0, zIndex: 600, cursor: 'pointer',
             background: 'radial-gradient(ellipse at center, rgba(2,10,6,.92) 0%, rgba(0,2,2,.98) 70%, #000 100%)',
             display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
-            fontFamily: "'VT323', monospace",
+            fontFamily: "var(--font-sans)",
           }}
         >
-          {/* scan-line overlay */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, rgba(56,189,248,0) 0, rgba(56,189,248,0) 3px, rgba(56,189,248,.035) 3px, rgba(56,189,248,.035) 4px)' }} />
           {/* top bar */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '.9rem', letterSpacing: '.25em', color: 'rgba(56,189,248,.45)', borderBottom: '1px solid rgba(56,189,248,.18)' }}>
             <span>▶ PABLO CORP TRANSMISSION</span>
@@ -24242,19 +24238,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showStore && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ width: 400, maxWidth: '90vw', border: '1px solid rgba(56,189,248,.55)', background: 'rgba(0,10,0,.98)', padding: '1.65rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#38bdf8', textShadow: '0 0 12px rgba(56,189,248,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO CORP DEVICE</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.7rem', color: '#38bdf8', textShadow: '0 0 12px rgba(56,189,248,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO CORP DEVICE</div>
             <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
               {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
                 <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(56,189,248,.15)' : '1px solid rgba(56,189,248,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.05)' : 'transparent' }}>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.45)' : '#38bdf8', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
+                  <div style={{ fontFamily: "var(--font-sans)", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.45)' : '#38bdf8', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
                   {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.32)' : 'rgba(56,189,248,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
-              <button onClick={() => { setShowStore(false); navigate('/pricing'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
-              <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(56,189,248,.18)', color: 'rgba(56,189,248,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
+              <button onClick={() => { setShowStore(false); navigate('/pricing'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(56,189,248,.18)', color: 'rgba(56,189,248,.38)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
             {orgData && (
               <div style={{ marginTop: '.65rem', padding: '.4rem .6rem', border: '1px solid rgba(56,189,248,.15)', background: 'rgba(56,189,248,.03)', fontSize: '.48rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7 }}>
@@ -24271,28 +24267,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(140,0,220,.45)', background: 'rgba(6,0,12,.99)', padding: '1.65rem' }}>
             {char.hasBusiness && char.bizType === 'real' && (
               <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(56,189,248,.25)', background: 'rgba(56,189,248,.04)', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>{getBusinessLocationLabel(gs.current.px, gs.current.py)} ENTERPRISE</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>{getBusinessLocationLabel(gs.current.px, gs.current.py)} ENTERPRISE</div>
                 <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em', marginTop: '.15rem' }}>{char.company} — {char.name}</div>
               </div>
             )}
             {char.hasBusiness && char.bizType === 'minx' && (
               <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(255,200,60,.25)', background: 'rgba(255,200,60,.04)', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: 'rgba(255,200,60,.7)', letterSpacing: '.12em' }}>MINX CITY BUSINESS — STOREFRONT REQUIRED</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: 'rgba(255,200,60,.7)', letterSpacing: '.12em' }}>MINX CITY BUSINESS — STOREFRONT REQUIRED</div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.08em', marginTop: '.15rem' }}>{char.company} — Visit a storefront location to set up operations</div>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.1rem' }}>
               <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#38bdf8', letterSpacing: '.14em' }}>SHADOW TOWER</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.7rem', color: '#38bdf8', letterSpacing: '.14em' }}>SHADOW TOWER</div>
                 <div style={{ fontSize: '.52rem', color: 'rgba(140,0,220,.7)', letterSpacing: '.08em', marginTop: '.15rem' }}>FLOORS 1–39 — REAL ENTERPRISE LEASE ONLY. FLOOR 40+ RESTRICTED.</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
                 {rentedOffice && (
-                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'SHADOW TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.22)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'SHADOW TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.22)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontFamily: "var(--font-sans)" }}>
                     {lockMap.get('pablo_tower') ? '🔒 LOCKED' : 'SET CODE'}
                   </button>
                 )}
-                <button onClick={() => setShowOffice(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.32)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>ESC</button>
+                <button onClick={() => setShowOffice(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.32)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.95rem' }}>ESC</button>
               </div>
             </div>
             {rentedOffice && <div style={{ marginBottom: '.85rem', padding: '.38rem .6rem', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.05)', fontSize: '.58rem', color: '#38bdf8' }}>▸ ACTIVE LEASE: {rentedOffice}</div>}
@@ -24302,9 +24298,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const canAfford = salary >= price;
                 return (
                   <div key={label} style={{ border: isRented ? '1px solid rgba(56,189,248,.65)' : '1px solid rgba(56,189,248,.16)', padding: '.7rem', background: isRented ? 'rgba(56,189,248,.06)' : 'transparent', position: 'relative' }}>
-                    {isRented && <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.45rem', color: '#38bdf8', fontFamily: "'VT323',monospace" }}>LEASED</div>}
-                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isRented ? '#38bdf8' : 'rgba(56,189,248,.62)', letterSpacing: '.07em', marginBottom: '.18rem' }}>{label}</div>
-                    <div style={{ fontSize: '.62rem', color: isRented ? '#38bdf8' : canAfford ? 'rgba(56,189,248,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>ƒ{price.toLocaleString()} FIAT</div>
+                    {isRented && <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.45rem', color: '#38bdf8', fontFamily: "var(--font-sans)" }}>LEASED</div>}
+                    <div style={{ fontFamily: "var(--font-sans)", fontSize: '.95rem', color: isRented ? '#38bdf8' : 'rgba(56,189,248,.62)', letterSpacing: '.07em', marginBottom: '.18rem' }}>{label}</div>
+                    <div style={{ fontSize: '.62rem', color: isRented ? '#38bdf8' : canAfford ? 'rgba(56,189,248,.52)' : 'rgba(255,100,100,.5)', fontFamily: "var(--font-sans)", marginBottom: '.28rem' }}>ƒ{price.toLocaleString()} FIAT</div>
                     <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.32)', lineHeight: 1.6 }}>{desc}</div>
                     <button onClick={() => {
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
@@ -24313,7 +24309,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const g = gs.current; g.salary -= price; setSalary(g.salary); recordBizRevenue('office_rent', price);
                       localStorage.setItem('sm_office', label); setRentedOffice(label);
                       setNarr(`> ${label} leased. ƒ${price.toLocaleString()} FIAT deducted. Set a security code from the lease panel.`);
-                    }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(56,189,248,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(56,189,248,.38)' : '1px solid rgba(56,189,248,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#38bdf8' : 'rgba(56,189,248,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
+                    }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(56,189,248,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(56,189,248,.38)' : '1px solid rgba(56,189,248,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#38bdf8' : 'rgba(56,189,248,.16)', fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
                       {isRented ? 'CANCEL' : char.bizType !== 'real' ? 'REAL BIZ REQUIRED' : canAfford ? 'RENT' : 'NO FUNDS'}
                     </button>
                   </div>
@@ -24337,19 +24333,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 420, maxWidth: '92vw', maxHeight: '80vh', border: '1px solid rgba(56,189,248,.5)', background: 'rgba(0,10,0,.98)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>WHITEBOARD</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>WHITEBOARD</div>
               <button onClick={() => setShowWhiteboard(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '.6rem', minHeight: 200, background: 'rgba(240,240,245,.95)' }}>
               {whiteboardLines.length === 0 && <div style={{ color: 'rgba(100,100,100,.5)', fontSize: '.7rem', fontStyle: 'italic', textAlign: 'center', paddingTop: '2rem' }}>Empty whiteboard. Start writing below.</div>}
               {whiteboardLines.map((line, i) => (
-                <div key={i} style={{ fontSize: '.75rem', color: '#1a1a2e', fontFamily: "'Share Tech Mono',monospace", lineHeight: 1.6, padding: '2px 4px', borderBottom: '1px solid rgba(200,60,60,.15)' }}>{line}</div>
+                <div key={i} style={{ fontSize: '.75rem', color: '#1a1a2e', fontFamily: "var(--font-sans)", lineHeight: 1.6, padding: '2px 4px', borderBottom: '1px solid rgba(200,60,60,.15)' }}>{line}</div>
               ))}
             </div>
             <div style={{ padding: '.5rem', borderTop: '1px solid rgba(56,189,248,.2)', display: 'flex', gap: '.4rem' }}>
-              <input value={whiteboardInput} onChange={e => setWhiteboardInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} placeholder="Write on the whiteboard..." autoFocus style={{ flex: 1, padding: '.4rem .5rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none' }} />
-              <button onClick={() => { if (whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} style={{ padding: '.4rem .7rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>POST</button>
-              <button onClick={() => setWhiteboardLines([])} style={{ padding: '.4rem .5rem', background: 'transparent', border: '1px solid rgba(255,60,60,.3)', color: 'rgba(255,60,60,.6)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CLEAR</button>
+              <input value={whiteboardInput} onChange={e => setWhiteboardInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} placeholder="Write on the whiteboard..." autoFocus style={{ flex: 1, padding: '.4rem .5rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.8rem', outline: 'none' }} />
+              <button onClick={() => { if (whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} style={{ padding: '.4rem .7rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>POST</button>
+              <button onClick={() => setWhiteboardLines([])} style={{ padding: '.4rem .5rem', background: 'transparent', border: '1px solid rgba(255,60,60,.3)', color: 'rgba(255,60,60,.6)', fontFamily: "var(--font-sans)", fontSize: '.8rem', cursor: 'pointer' }}>CLEAR</button>
             </div>
           </div>
         </div>
@@ -24359,11 +24355,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 440, maxWidth: '92vw', border: '1px solid rgba(56,189,248,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>SCREEN SHARE</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>SCREEN SHARE</div>
               <button onClick={() => setShowScreenShare(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
             </div>
             <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: '.6rem' }}>Share a URL or screen content with nearby salarymen</div>
-            <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Paste URL to share..." autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.6rem' }} />
+            <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Paste URL to share..." autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.6rem' }} />
             {screenShareUrl && (
               <div style={{ border: '1px solid rgba(56,189,248,.15)', background: 'rgba(5,12,22,.5)', padding: '.6rem', marginBottom: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
@@ -24377,8 +24373,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
             )}
             <div style={{ display: 'flex', gap: '.5rem' }}>
-              <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); setShowScreenShare(false); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>SHARE</button>
-              <button onClick={() => setShowScreenShare(false)} style={{ padding: '.45rem .7rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+              <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); setShowScreenShare(false); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>SHARE</button>
+              <button onClick={() => setShowScreenShare(false)} style={{ padding: '.45rem .7rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
             </div>
           </div>
         </div>
@@ -24387,7 +24383,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {elevatorPrompt && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 360, maxWidth: '90vw', border: '1px solid rgba(0,200,255,.5)', background: 'rgba(0,8,12,.98)', padding: '1.4rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,255,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>▲▼ ELEVATOR</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: 'rgba(0,200,255,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>▲▼ ELEVATOR</div>
             <div style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
               {BUILDINGS.find(b => b.id === elevatorPrompt.bid)?.label ?? elevatorPrompt.bid}
             </div>
@@ -24401,7 +24397,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   const lobbyDef = INTERIOR_DEFS[lobbyKey] ?? INTERIOR_DEFS['_lobby'];
                   g.interior = { bid: g.interior.bid, def: { ...lobbyDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — LOBBY` }, px: lobbyDef.exitX + lobbyDef.exitW / 2, py: lobbyDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
                   setCurrentFloor(0); setElevatorPrompt(null); setNarr('> Elevator — Returning to lobby.');
-                }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: currentFloor === 0 ? 'rgba(0,200,255,.06)' : 'transparent', border: `1px solid rgba(0,200,255,${currentFloor === 0 ? '.25' : '.15'})`, color: `rgba(0,200,255,${currentFloor === 0 ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>FL 01 — LOBBY {currentFloor === 0 ? '(current)' : ''}</button>
+                }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: currentFloor === 0 ? 'rgba(0,200,255,.06)' : 'transparent', border: `1px solid rgba(0,200,255,${currentFloor === 0 ? '.25' : '.15'})`, color: `rgba(0,200,255,${currentFloor === 0 ? '.8' : '.6'})`, fontFamily: "var(--font-sans)", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>FL 01 — LOBBY {currentFloor === 0 ? '(current)' : ''}</button>
                 {(() => {
                   const dir = BUILDING_FLOORS[elevatorPrompt.bid];
                   const dirFloors = dir ? dir.floors.filter(f => f.floor > 1).map(f => f.floor) : [2, 3, 4, 5];
@@ -24438,13 +24434,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             }
                             setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl}${bfloor ? ' — ' + bfloor.name : ' — Vacant office'}. Use elevator to claim with a password.`);
                           }
-                        }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : bfloor?.restricted ? 'rgba(255,40,40,.04)' : 'transparent', border: `1px solid ${bfloor?.restricted ? 'rgba(255,40,40,.3)' : `rgba(0,200,255,${isCurrent ? '.25' : '.15'})`}`, color: bfloor?.restricted ? 'rgba(255,80,80,.7)' : `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
+                        }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : bfloor?.restricted ? 'rgba(255,40,40,.04)' : 'transparent', border: `1px solid ${bfloor?.restricted ? 'rgba(255,40,40,.3)' : `rgba(0,200,255,${isCurrent ? '.25' : '.15'})`}`, color: bfloor?.restricted ? 'rgba(255,80,80,.7)' : `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "var(--font-sans)", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
                           FL {String(fl).padStart(2, '0')} {hasPw && flInfo?.label ? '— ' + flInfo.label.substring(0, 22) : bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? (isFloorOwner ? '🔒 YOUR OFFICE' : `🔒 ${flInfo?.ownerName ?? 'RENTED'}${flInfo?.company ? ' / ' + flInfo.company : ''}`) : isTowerExecFloor(elevatorPrompt.bid, fl) ? '🛡 EXEC SUITE' : 'VACANT'}
                         </button>
                         {!isCurrent && !hasPw && !bfloor?.restricted && !(isTowerExecFloor(elevatorPrompt.bid, fl) && !execAccess) && (
                           <button onClick={() => {
                             setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'set_pw' } : null); setElevatorPw(''); setElevatorPwError('');
-                          }} style={{ width: '100%', padding: '.3rem .6rem', marginBottom: '.3rem', marginTop: '-0.2rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', cursor: 'pointer', textAlign: 'center', letterSpacing: '.08em' }}>
+                          }} style={{ width: '100%', padding: '.3rem .6rem', marginBottom: '.3rem', marginTop: '-0.2rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.6)', fontFamily: "var(--font-sans)", fontSize: '.6rem', cursor: 'pointer', textAlign: 'center', letterSpacing: '.08em' }}>
                             CLAIM FL {String(fl).padStart(2, '0')}
                           </button>
                         )}
@@ -24452,7 +24448,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     );
                   });
                 })()}
-                <button onClick={() => setElevatorPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,255,.12)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CANCEL</button>
+                <button onClick={() => setElevatorPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,255,.12)', color: 'rgba(0,200,255,.3)', fontFamily: "var(--font-sans)", fontSize: '.8rem', cursor: 'pointer' }}>CANCEL</button>
               </div>
             )}
             {elevatorPrompt.mode === 'set_pw' && (
@@ -24466,7 +24462,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const bizLabel = char.company || '';
                     wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: bizLabel }));
                   }
-                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem' }}>
                   <button onClick={() => {
@@ -24474,8 +24470,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     if (err) { setElevatorPwError(err); return; }
                     const bizLabel = char.company || '';
                     wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: bizLabel }));
-                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>SET & ENTER</button>
-                  <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>SET & ENTER</button>
+                  <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                 </div>
               </div>
             )}
@@ -24487,13 +24483,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   if (e.key === 'Enter' && elevatorPw.trim()) {
                     wsRef.current?.send(JSON.stringify({ type: 'floor_lock_check', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim() }));
                   }
-                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem' }}>
                   <button onClick={() => {
                     wsRef.current?.send(JSON.stringify({ type: 'floor_lock_check', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim() }));
-                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
-                  <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
+                  <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                 </div>
               </div>
             )}
@@ -24509,11 +24505,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>🚪 LOBBY FRONT DOOR</div>
                   <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>The elevator bank is sealed. Concierge plaque reads: "EST. MCMLXXXVI." Enter the building's founding year to proceed.</div>
-                  <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} placeholder="CODE" autoFocus onKeyDown={e => { if (e.key === 'Enter' && elevatorPw.trim()) tryFront(); }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem', letterSpacing: '.3em' }} />
+                  <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} placeholder="CODE" autoFocus onKeyDown={e => { if (e.key === 'Enter' && elevatorPw.trim()) tryFront(); }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem', letterSpacing: '.3em' }} />
                   {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
                   <div style={{ display: 'flex', gap: '.4rem' }}>
-                    <button onClick={tryFront} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>OPEN</button>
-                    <button onClick={() => setElevatorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+                    <button onClick={tryFront} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>OPEN</button>
+                    <button onClick={() => setElevatorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
                   </div>
                 </div>
               );
@@ -24530,11 +24526,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(255,200,0,.7)', letterSpacing: '.08em', marginBottom: '.4rem' }}>🛡 EXECUTIVE CLEARANCE — FLOOR {elevatorPrompt.floor}</div>
                   <div style={{ fontSize: '.45rem', color: 'rgba(255,200,0,.4)', marginBottom: '.5rem' }}>Floors 60–66 are the executive suites. Restricted to clearance holders. Enter the executive passcode.</div>
-                  <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => { if (e.key === 'Enter' && elevatorPw.trim()) tryExec(); }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(12,9,0,.9)', border: '1px solid rgba(255,200,0,.3)', color: 'rgba(255,200,0,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem', letterSpacing: '.3em' }} />
+                  <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => { if (e.key === 'Enter' && elevatorPw.trim()) tryExec(); }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(12,9,0,.9)', border: '1px solid rgba(255,200,0,.3)', color: 'rgba(255,200,0,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem', letterSpacing: '.3em' }} />
                   {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
                   <div style={{ display: 'flex', gap: '.4rem' }}>
-                    <button onClick={tryExec} style={{ flex: 1, padding: '.4rem', background: 'rgba(255,200,0,.1)', border: '1px solid rgba(255,200,0,.5)', color: 'rgba(255,200,0,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>VERIFY</button>
-                    <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(255,200,0,.15)', color: 'rgba(255,200,0,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                    <button onClick={tryExec} style={{ flex: 1, padding: '.4rem', background: 'rgba(255,200,0,.1)', border: '1px solid rgba(255,200,0,.5)', color: 'rgba(255,200,0,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>VERIFY</button>
+                    <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(255,200,0,.15)', color: 'rgba(255,200,0,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                   </div>
                 </div>
               );
@@ -24550,16 +24546,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {doorLockPrompt && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 360, maxWidth: '90vw', border: '1px solid rgba(0,200,100,.5)', background: 'rgba(0,8,6,.98)', padding: '1.4rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,100,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🔒 DOOR LOCK</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: 'rgba(0,200,100,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🔒 DOOR LOCK</div>
             <div style={{ fontSize: '.5rem', color: 'rgba(0,200,100,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
               {BUILDINGS.find(b => b.id === doorLockPrompt.bid)?.label ?? doorLockPrompt.bid} — UNIT SECURITY
             </div>
             {doorLockPrompt.mode === 'menu' && (
               <div>
                 <div style={{ fontSize: '.55rem', color: 'rgba(0,200,100,.5)', marginBottom: '.5rem' }}>Your unit is currently LOCKED 🔒</div>
-                <button onClick={() => { setDoorLockPrompt(prev => prev ? { ...prev, mode: 'change_pw' } : null); setDoorLockPw(''); setDoorLockPwError(''); }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,100,.25)', color: 'rgba(0,200,100,.7)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>CHANGE PASSWORD</button>
-                <button onClick={() => { HOME_PASSWORDS.delete(doorLockPrompt.bid); setDoorLockPrompt(null); setNarr('> DOOR LOCK — Password removed. Unit is now unlocked.'); }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: 'transparent', border: '1px solid rgba(255,80,60,.25)', color: 'rgba(255,80,60,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>REMOVE LOCK</button>
-                <button onClick={() => setDoorLockPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,100,.12)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CLOSE</button>
+                <button onClick={() => { setDoorLockPrompt(prev => prev ? { ...prev, mode: 'change_pw' } : null); setDoorLockPw(''); setDoorLockPwError(''); }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,100,.25)', color: 'rgba(0,200,100,.7)', fontFamily: "var(--font-sans)", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>CHANGE PASSWORD</button>
+                <button onClick={() => { HOME_PASSWORDS.delete(doorLockPrompt.bid); setDoorLockPrompt(null); setNarr('> DOOR LOCK — Password removed. Unit is now unlocked.'); }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: 'transparent', border: '1px solid rgba(255,80,60,.25)', color: 'rgba(255,80,60,.6)', fontFamily: "var(--font-sans)", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>REMOVE LOCK</button>
+                <button onClick={() => setDoorLockPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,100,.12)', color: 'rgba(0,200,100,.3)', fontFamily: "var(--font-sans)", fontSize: '.8rem', cursor: 'pointer' }}>CLOSE</button>
               </div>
             )}
             {(doorLockPrompt.mode === 'set_pw' || doorLockPrompt.mode === 'change_pw') && (
@@ -24575,7 +24571,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setDoorLockPrompt(null);
                   }
                   if (e.key === 'Escape') setDoorLockPrompt(null);
-                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,100,.3)', color: 'rgba(0,200,100,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,100,.3)', color: 'rgba(0,200,100,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {doorLockPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{doorLockPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem' }}>
                   <button onClick={() => {
@@ -24584,8 +24580,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     HOME_PASSWORDS.set(doorLockPrompt.bid, doorLockPw.trim());
                     setNarr(`> DOOR LOCK — Password ${doorLockPrompt.mode === 'set_pw' ? 'set' : 'changed'}. Unit is now locked.`);
                     setDoorLockPrompt(null);
-                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>{doorLockPrompt.mode === 'set_pw' ? 'SET LOCK' : 'UPDATE'}</button>
-                  <button onClick={() => doorLockPrompt.mode === 'change_pw' ? setDoorLockPrompt(prev => prev ? { ...prev, mode: 'menu' } : null) : setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>{doorLockPrompt.mode === 'set_pw' ? 'SET LOCK' : 'UPDATE'}</button>
+                  <button onClick={() => doorLockPrompt.mode === 'change_pw' ? setDoorLockPrompt(prev => prev ? { ...prev, mode: 'menu' } : null) : setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                 </div>
               </div>
             )}
@@ -24605,7 +24601,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     }
                   }
                   if (e.key === 'Escape') setDoorLockPrompt(null);
-                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(255,80,60,.3)', color: 'rgba(0,200,100,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(255,80,60,.3)', color: 'rgba(0,200,100,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {doorLockPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{doorLockPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem' }}>
                   <button onClick={() => {
@@ -24617,8 +24613,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     } else {
                       setDoorLockPwError('ACCESS DENIED — Wrong password.');
                     }
-                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
-                  <button onClick={() => setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
+                  <button onClick={() => setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
                 </div>
               </div>
             )}
@@ -24630,7 +24626,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {orgDoorPrompt && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 380, maxWidth: '92vw', border: '1px solid rgba(0,200,120,.5)', background: 'rgba(0,8,6,.98)', padding: '1.4rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,120,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🛡 ACCESS LOCK</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.3rem', color: 'rgba(0,200,120,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🛡 ACCESS LOCK</div>
             <div style={{ fontSize: '.5rem', color: 'rgba(0,200,120,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
               {orgDoorPrompt.label} — ORG-CONTROLLED · {orgDoorPrompt.spaceType.toUpperCase()}
             </div>
@@ -24642,11 +24638,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <input value={orgDoorPw} onChange={e => setOrgDoorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus disabled={orgDoorBusy} onKeyDown={e => {
                   if (e.key === 'Enter' && orgDoorPw.trim() && !orgDoorBusy) submitOrgDoorEnter();
                   if (e.key === 'Escape') { setOrgDoorPrompt(null); }
-                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(255,80,60,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(255,80,60,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {orgDoorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{orgDoorPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem' }}>
-                  <button disabled={orgDoorBusy} onClick={submitOrgDoorEnter} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,120,.1)', border: '1px solid rgba(0,200,120,.5)', color: 'rgba(0,200,120,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>{orgDoorBusy ? '…' : 'UNLOCK'}</button>
-                  <button onClick={() => setOrgDoorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
+                  <button disabled={orgDoorBusy} onClick={submitOrgDoorEnter} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,120,.1)', border: '1px solid rgba(0,200,120,.5)', color: 'rgba(0,200,120,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>{orgDoorBusy ? '…' : 'UNLOCK'}</button>
+                  <button onClick={() => setOrgDoorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
                 </div>
               </div>
             )}
@@ -24657,7 +24653,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   {orgDoorPrompt.hasLock ? `This door requires ${orgDoorPrompt.minRole.toUpperCase()} clearance.` : 'This space is not locked.'}
                 </div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.3)', marginBottom: '.6rem' }}>Only organization managers and above can change the lock.</div>
-                <button onClick={() => setOrgDoorPrompt(null)} style={{ width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.4)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CLOSE</button>
+                <button onClick={() => setOrgDoorPrompt(null)} style={{ width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.4)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>CLOSE</button>
               </div>
             )}
 
@@ -24667,18 +24663,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   {orgDoorPrompt.hasLock ? 'This space is LOCKED 🔒' : 'This space is UNLOCKED'} — set a passcode and the minimum rank that may enter freely.
                 </div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.4)', letterSpacing: '.05em', marginBottom: '.2rem' }}>PASSCODE (min 6 chars, 1 number, 1 symbol)</div>
-                <input value={orgDoorPw} onChange={e => setOrgDoorPw(e.target.value)} type="password" placeholder={orgDoorPrompt.hasLock ? '•••••••• (leave blank to keep)' : '••••••••'} autoFocus disabled={orgDoorBusy} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,120,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.5rem' }} />
+                <input value={orgDoorPw} onChange={e => setOrgDoorPw(e.target.value)} type="password" placeholder={orgDoorPrompt.hasLock ? '•••••••• (leave blank to keep)' : '••••••••'} autoFocus disabled={orgDoorBusy} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,120,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "var(--font-sans)", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.5rem' }} />
                 <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.4)', letterSpacing: '.05em', marginBottom: '.2rem' }}>MINIMUM RANK FOR FREE ENTRY</div>
-                <select value={orgDoorMinRole} onChange={e => setOrgDoorMinRole(e.target.value)} disabled={orgDoorBusy} style={{ width: '100%', padding: '.4rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,120,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.5rem' }}>
+                <select value={orgDoorMinRole} onChange={e => setOrgDoorMinRole(e.target.value)} disabled={orgDoorBusy} style={{ width: '100%', padding: '.4rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,120,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "var(--font-sans)", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.5rem' }}>
                   {ORG_MIN_ROLE_OPTIONS.map(r => <option key={r} value={r} style={{ background: '#001008' }}>{r.toUpperCase()}</option>)}
                 </select>
                 {orgDoorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{orgDoorPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem', marginBottom: orgDoorPrompt.hasLock ? '.4rem' : 0 }}>
-                  <button disabled={orgDoorBusy} onClick={submitOrgDoorSave} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,120,.1)', border: '1px solid rgba(0,200,120,.5)', color: 'rgba(0,200,120,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>{orgDoorBusy ? '…' : (orgDoorPrompt.hasLock ? 'UPDATE LOCK' : 'SET LOCK')}</button>
-                  <button onClick={() => setOrgDoorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+                  <button disabled={orgDoorBusy} onClick={submitOrgDoorSave} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,120,.1)', border: '1px solid rgba(0,200,120,.5)', color: 'rgba(0,200,120,.9)', fontFamily: "var(--font-sans)", fontSize: '.9rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>{orgDoorBusy ? '…' : (orgDoorPrompt.hasLock ? 'UPDATE LOCK' : 'SET LOCK')}</button>
+                  <button onClick={() => setOrgDoorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.3)', fontFamily: "var(--font-sans)", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
                 </div>
                 {orgDoorPrompt.hasLock && (
-                  <button disabled={orgDoorBusy} onClick={submitOrgDoorRemove} style={{ width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(255,80,60,.25)', color: 'rgba(255,80,60,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>REMOVE LOCK</button>
+                  <button disabled={orgDoorBusy} onClick={submitOrgDoorRemove} style={{ width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(255,80,60,.25)', color: 'rgba(255,80,60,.6)', fontFamily: "var(--font-sans)", fontSize: '.7rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>REMOVE LOCK</button>
                 )}
               </div>
             )}
@@ -24689,11 +24685,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── FLOOR PANEL / ELEVATOR ── */}
       {floorPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 320 }}>
-          <div style={{ width: 'min(540px, 96vw)', border: '1px solid rgba(56,189,248,.35)', background: 'rgba(2,14,4,.97)', fontFamily: "'Share Tech Mono',monospace", color: '#38bdf8', padding: '1.8rem 2rem', maxHeight: '86vh', overflowY: 'auto' }}>
+          <div style={{ width: 'min(540px, 96vw)', border: '1px solid rgba(56,189,248,.35)', background: 'rgba(2,14,4,.97)', fontFamily: "var(--font-sans)", color: '#38bdf8', padding: '1.8rem 2rem', maxHeight: '86vh', overflowY: 'auto' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.2em' }}>{floorPanel.dir.label}</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.2em' }}>{floorPanel.dir.label}</div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.15em', marginTop: '.2rem' }}>BUILDING DIRECTORY · ELEVATOR PANEL</div>
               </div>
               <button onClick={() => setFloorPanel(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>✕ ESC</button>
@@ -24825,7 +24821,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         background: fl.restricted ? 'rgba(255,60,60,.08)' : 'rgba(56,189,248,.08)',
                         border: `1px solid ${fl.restricted ? 'rgba(255,60,60,.4)' : 'rgba(56,189,248,.4)'}`,
                         color: fl.restricted ? '#ff4444' : '#38bdf8',
-                        fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.12em',
+                        fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.12em',
                       }}
                     >
                       {fl.restricted ? '🔒 RESTRICTED' : `▸ VISIT FLOOR ${fl.floor}`}
@@ -24852,7 +24848,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               setNarr(`> FLOOR ${fl.floor} CLAIMED — "${unassignedBiz.companyName}" is now headquartered here. Key card issued.`);
                               setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null);
                             }}
-                            style={{ marginTop: '.3rem', width: '100%', padding: '.35rem', cursor: 'pointer', background: 'rgba(255,215,0,.08)', border: '1px solid rgba(255,215,0,.5)', color: '#FFD700', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.1em' }}
+                            style={{ marginTop: '.3rem', width: '100%', padding: '.35rem', cursor: 'pointer', background: 'rgba(255,215,0,.08)', border: '1px solid rgba(255,215,0,.5)', color: '#FFD700', fontFamily: "var(--font-sans)", fontSize: '.75rem', letterSpacing: '.1em' }}
                           >★ CLAIM FLOOR — {unassignedBiz.companyName}</button>
                         );
                       }
@@ -24872,7 +24868,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               setNarr(`> FLOOR ${fl.floor} — Lease surrendered. ${myBiz2?.companyName ?? 'Your business'} has vacated.`);
                               setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null);
                             }}
-                            style={{ marginTop: '.3rem', width: '100%', padding: '.35rem', cursor: 'pointer', background: 'rgba(255,60,0,.06)', border: '1px solid rgba(255,60,0,.3)', color: 'rgba(255,100,0,.8)', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.1em' }}
+                            style={{ marginTop: '.3rem', width: '100%', padding: '.35rem', cursor: 'pointer', background: 'rgba(255,60,0,.06)', border: '1px solid rgba(255,60,0,.3)', color: 'rgba(255,100,0,.8)', fontFamily: "var(--font-sans)", fontSize: '.75rem', letterSpacing: '.1em' }}
                           >⊘ VACATE FLOOR</button>
                         );
                       }
@@ -24890,7 +24886,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── POWER GRID HUD INDICATOR ── */}
       {powerPct < 100 && (
-        <div style={{ position: 'absolute', top: '3.5rem', right: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', border: `1px solid rgba(${powerPct < 30 ? '255,60,60' : '255,140,0'},.5)`, background: 'rgba(0,0,0,.8)', padding: '.3rem .55rem', color: powerPct < 30 ? '#ff4444' : '#ffaa00', letterSpacing: '.1em', animation: powerPct < 30 ? 'smfade 0.6s steps(1) infinite alternate' : 'none' }}>
+        <div style={{ position: 'absolute', top: '3.5rem', right: '.8rem', zIndex: 200, fontFamily: "var(--font-sans)", fontSize: '.55rem', border: `1px solid rgba(${powerPct < 30 ? '255,60,60' : '255,140,0'},.5)`, background: 'rgba(0,0,0,.8)', padding: '.3rem .55rem', color: powerPct < 30 ? '#ff4444' : '#ffaa00', letterSpacing: '.1em', animation: powerPct < 30 ? 'smfade 0.6s steps(1) infinite alternate' : 'none' }}>
           ⚡ POWER {powerPct}%{powerPct < 30 ? ' — BLACKOUT' : ' — REDUCED'}
         </div>
       )}
@@ -24910,7 +24906,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!hasWorkstation && !g.loan && realEstateCount <= 0 && !g.officeTerminalRenting) return null;
         const billCol = loanOverdue ? '#ff4444' : '#ffaa00';
         return (
-          <div style={{ position: 'absolute', top: powerPct < 100 ? '5.2rem' : '3.5rem', left: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', border: `1px solid ${billCol}44`, background: 'rgba(0,0,0,.85)', padding: '.3rem .55rem', color: billCol, letterSpacing: '.08em', maxWidth: 220 }}>
+          <div style={{ position: 'absolute', top: powerPct < 100 ? '5.2rem' : '3.5rem', left: '.8rem', zIndex: 200, fontFamily: "var(--font-sans)", fontSize: '.48rem', border: `1px solid ${billCol}44`, background: 'rgba(0,0,0,.85)', padding: '.3rem .55rem', color: billCol, letterSpacing: '.08em', maxWidth: 220 }}>
             <div style={{ fontSize: '.42rem', color: `${billCol}88`, letterSpacing: '.12em', marginBottom: '.15rem' }}>BILLS & OBLIGATIONS</div>
             {hasWorkstation && <div style={{ color: 'rgba(56,189,248,.5)' }}>WORKSTATION RENT: ƒ{wsRentCost}/rest</div>}
             {(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht && ht.rent > 0 ? <div style={{ color: 'rgba(56,189,248,.4)' }}>HOUSING RENT: ƒ{ht.rent.toLocaleString()}/{ht.rentPeriod === 'week' ? 'week' : 'night'}</div> : null; })()}
@@ -24939,9 +24935,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── QUICK JOB PANEL ──────────────────────────────────────────────── */}
       {jobPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}>
-          <div style={{ width: 360, border: '1px solid rgba(56,189,248,.4)', background: 'rgba(0,8,2,.97)', padding: '1.6rem', fontFamily: "'Share Tech Mono',monospace" }}>
+          <div style={{ width: 360, border: '1px solid rgba(56,189,248,.4)', background: 'rgba(0,8,2,.97)', padding: '1.6rem', fontFamily: "var(--font-sans)" }}>
             <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>QUICK JOB AVAILABLE</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.15em', marginBottom: '.4rem' }}>{jobPanel.label}</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.15em', marginBottom: '.4rem' }}>{jobPanel.label}</div>
             <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginBottom: '1rem' }}>
               Pay: <strong style={{ color: '#ffdd44' }}>${jobPanel.pay}</strong> · Duration: <strong style={{ color: '#38bdf8' }}>{jobPanel.seconds}s</strong>
             </div>
@@ -24970,11 +24966,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       setJobPanel(prev => prev ? { ...prev, progress: elapsed } : null);
                     }
                   }, 250);
-                }} style={{ flex: 1, padding: '.6rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.1em' }}>
+                }} style={{ flex: 1, padding: '.6rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '1.2rem', letterSpacing: '.1em' }}>
                   START JOB
                 </button>
                 <button onClick={() => { if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; } setJobPanel(null); }}
-                  style={{ padding: '.6rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem' }}>
+                  style={{ padding: '.6rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '1.2rem' }}>
                   CANCEL
                 </button>
               </div>
@@ -24993,7 +24989,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const elapsed = (Date.now() - harvestStartRef.current) / 1000;
         const pct = Math.min(100, (elapsed / harvestInfo.seconds) * 100);
         return (
-          <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 800, background: 'rgba(0,8,12,.92)', border: '1px solid rgba(103,232,249,.35)', padding: '.6rem 1.2rem', minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.4rem', fontFamily: "'Share Tech Mono',monospace" }}>
+          <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 800, background: 'rgba(0,8,12,.92)', border: '1px solid rgba(103,232,249,.35)', padding: '.6rem 1.2rem', minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.4rem', fontFamily: "var(--font-sans)" }}>
             <div style={{ fontSize: '.6rem', color: '#67e8f9', letterSpacing: '.12em' }}>HARVESTING</div>
             <div style={{ fontSize: '1.1rem' }}>{harvestInfo.icon} {harvestInfo.name}</div>
             <div style={{ width: '100%', height: 6, background: 'rgba(103,232,249,.1)', border: '1px solid rgba(103,232,249,.2)', borderRadius: 2, overflow: 'hidden' }}>
@@ -25134,12 +25130,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           setNarr(`> VendKing — ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent. Check your inventory.`);
         };
-        const S2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const S2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowVend(false); }}>
-            <div style={{ width:760, maxHeight:'90vh', display:'flex', flexDirection:'column', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+            <div style={{ width:760, maxHeight:'90vh', display:'flex', flexDirection:'column', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)" }}>
               {/* Header */}
               <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(56,189,248,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
@@ -25255,19 +25251,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowTrade(null); }}>
-            <div style={{ width:720, maxHeight:'88vh', overflow:'auto', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace" }}>
+            <div style={{ width:720, maxHeight:'88vh', overflow:'auto', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', padding:'1.2rem', fontFamily:"var(--font-sans)" }}>
               {/* Header */}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'.8rem' }}>
                 <div>
-                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.6rem', color:'#38bdf8', letterSpacing:'.18em' }}>{loc}</div>
+                  <div style={{ fontFamily:"var(--font-sans)", fontSize:'1.6rem', color:'#38bdf8', letterSpacing:'.18em' }}>{loc}</div>
                   <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.35)', letterSpacing:'.12em', marginTop:'.15rem' }}>
                     COMMODITY EXCHANGE · PRICES FLUCTUATE · {isCity ? 'BUY CITY → SELL WASTELAND' : 'BUY WASTELAND → SELL CITY'}
                   </div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.1rem', color:'#38bdf8' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
+                  <div style={{ fontFamily:"var(--font-sans)", fontSize:'1.1rem', color:'#38bdf8' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
                   <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', marginTop:'.1rem' }}>ƒ{salary.toLocaleString()} FIAT</div>
-                  <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', fontFamily:"'VT323',monospace", fontSize:'.95rem' }}>ESC</button>
+                  <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.95rem' }}>ESC</button>
                 </div>
               </div>
               {/* Best routes banner */}
@@ -25300,25 +25296,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div key={c.id} style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', alignItems:'center', padding:'.4rem .3rem', border:held > 0 ? '1px solid rgba(56,189,248,.22)' : '1px solid transparent', background:held > 0 ? 'rgba(56,189,248,.03)' : 'transparent' }}>
                       <div>
                         <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
-                          <span style={{ fontFamily:"'VT323',monospace", fontSize:'.95rem', color: c.illegal ? 'rgba(255,180,0,.8)' : '#38bdf8', letterSpacing:'.07em' }}>{c.name}</span>
+                          <span style={{ fontFamily:"var(--font-sans)", fontSize:'.95rem', color: c.illegal ? 'rgba(255,180,0,.8)' : '#38bdf8', letterSpacing:'.07em' }}>{c.name}</span>
                           {c.illegal && <span style={{ fontSize:'.35rem', padding:'1px 4px', border:'1px solid rgba(255,160,0,.4)', color:'rgba(255,160,0,.6)', letterSpacing:'.08em' }}>CONTRABAND</span>}
                         </div>
                         <div style={{ fontSize:'.4rem', color:'rgba(56,189,248,.28)', marginTop:'.05rem', lineHeight:1.5 }}>{c.desc}</div>
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <button onClick={() => doBuy(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canBuy ? 'rgba(56,189,248,.08)' : 'transparent', border: canBuy ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.1)', color: canBuy ? '#38bdf8' : 'rgba(56,189,248,.2)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canBuy ? 'pointer' : 'default', letterSpacing:'.05em' }}>
+                        <button onClick={() => doBuy(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canBuy ? 'rgba(56,189,248,.08)' : 'transparent', border: canBuy ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.1)', color: canBuy ? '#38bdf8' : 'rgba(56,189,248,.2)', fontFamily:"var(--font-sans)", fontSize:'.82rem', cursor: canBuy ? 'pointer' : 'default', letterSpacing:'.05em' }}>
                           ƒ{buyPrice.toLocaleString()}
                         </button>
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <button onClick={() => doSell(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canSell ? 'rgba(56,189,248,.08)' : 'transparent', border: canSell ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.1)', color: canSell ? '#38bdf8' : 'rgba(56,189,248,.18)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canSell ? 'pointer' : 'default', letterSpacing:'.05em' }}>
+                        <button onClick={() => doSell(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canSell ? 'rgba(56,189,248,.08)' : 'transparent', border: canSell ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.1)', color: canSell ? '#38bdf8' : 'rgba(56,189,248,.18)', fontFamily:"var(--font-sans)", fontSize:'.82rem', cursor: canSell ? 'pointer' : 'default', letterSpacing:'.05em' }}>
                           {canSell ? `+ƒ${sellPrice.toLocaleString()}` : '——'}
                         </button>
                       </div>
                       <div style={{ textAlign:'right', fontSize:'.48rem', color: profit > 0 ? 'rgba(56,189,248,.55)' : 'rgba(255,80,80,.45)' }}>
                         {profit > 0 ? `+ƒ${profit.toLocaleString()}` : `–ƒ${Math.abs(profit).toLocaleString()}`}
                       </div>
-                      <div style={{ textAlign:'center', fontFamily:"'VT323',monospace", fontSize:'1.1rem', color: held > 0 ? '#38bdf8' : 'rgba(56,189,248,.2)' }}>
+                      <div style={{ textAlign:'center', fontFamily:"var(--font-sans)", fontSize:'1.1rem', color: held > 0 ? '#38bdf8' : 'rgba(56,189,248,.2)' }}>
                         {held > 0 ? held : '·'}
                       </div>
                     </div>
@@ -25363,16 +25359,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}
           onClick={() => { setShowMap(false); setMapZoom(1); }}>
-          <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace", boxSizing: 'border-box' }}
+          <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "var(--font-sans)", boxSizing: 'border-box' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexShrink: 0 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>{getActiveCityDef().name} MAP</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>{getActiveCityDef().name} MAP</div>
               <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                <button onClick={() => setMapZoom(z => Math.min(4, z * 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>+</button>
-                <button onClick={() => setMapZoom(z => Math.max(0.25, z / 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>−</button>
+                <button onClick={() => setMapZoom(z => Math.min(4, z * 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem' }}>+</button>
+                <button onClick={() => setMapZoom(z => Math.max(0.25, z / 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem' }}>−</button>
                 <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)' }}>{Math.round(mapZoom * 100)}%</span>
                 <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>SERVER: {getActiveCityDef().name}</div>
-                <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
+                <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
             {/* LAYER TOGGLE — subterranean / ground / above-ground + infra overlays */}
@@ -25388,7 +25384,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const active = mapLayer === opt.id;
                 return (
                   <button key={opt.id} onClick={() => setMapLayer(opt.id)}
-                    style={{ padding: '.25rem .55rem', background: active ? `${opt.hue}22` : 'transparent', border: `1px solid ${active ? opt.hue : 'rgba(56,189,248,.18)'}`, color: active ? opt.hue : 'rgba(56,189,248,.55)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', letterSpacing: '.08em' }}>
+                    style={{ padding: '.25rem .55rem', background: active ? `${opt.hue}22` : 'transparent', border: `1px solid ${active ? opt.hue : 'rgba(56,189,248,.18)'}`, color: active ? opt.hue : 'rgba(56,189,248,.55)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.55rem', letterSpacing: '.08em' }}>
                     {opt.label}
                   </button>
                 );
@@ -25416,10 +25412,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <rect x={0} y={H - BORDER} width={W} height={BORDER} fill="rgba(80,60,30,.5)" />
               <line x1={0} y1={CITY_TOP} x2={W} y2={CITY_TOP} stroke="rgba(56,189,248,.2)" strokeWidth={2} strokeDasharray="10 5" />
               <line x1={0} y1={CITY_BOTTOM} x2={W} y2={CITY_BOTTOM} stroke="rgba(56,189,248,.2)" strokeWidth={2} strokeDasharray="10 5" />
-              <text x={vbX + 10} y={CITY_TOP - 8} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">NORTH WASTELAND</text>
-              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{getActiveCityDef().name}</text>
-              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{getActiveCityDef().name}</text>
-              <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
+              <text x={vbX + 10} y={CITY_TOP - 8} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="var(--font-sans)">NORTH WASTELAND</text>
+              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="var(--font-sans)">{getActiveCityDef().name}</text>
+              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="var(--font-sans)">{getActiveCityDef().name}</text>
+              <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="var(--font-sans)">SOUTH WASTELAND</text>
               <g opacity={mapLayer === 'surface' ? 1 : 0.28}>
               {CITY_ZONES.map(z => (
                 <rect key={z.id} x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color} stroke="none" />
@@ -25437,14 +25433,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {isTower && <rect x={b.x - 2} y={b.y - 2} width={b.w + 4} height={b.h + 4} fill="none" stroke="rgba(120,0,200,.25)" strokeWidth={4} />}
                     <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={zoneFill} stroke={zoneStroke} strokeWidth={strokeW} />
                     {isTower && <rect x={b.x + 2} y={b.y + 2} width={b.w - 4} height={b.h - 4} fill="none" stroke="rgba(180,100,255,.2)" strokeWidth={1} strokeDasharray="4 3" />}
-                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(56,189,248,.7)'} fontSize={isTower ? 8 : 7} fontFamily="Share Tech Mono">{cityBuildingLabel(b).substring(0,14)}</text>
+                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(56,189,248,.7)'} fontSize={isTower ? 8 : 7} fontFamily="var(--font-sans)">{cityBuildingLabel(b).substring(0,14)}</text>
                   </g>
                 );
               })}
               {BILLBOARDS.map(bb => (
                 <g key={bb.locationId}>
                   <rect x={bb.x - 4} y={bb.y - 4} width={8} height={8} fill="rgba(0,200,255,.2)" stroke="rgba(0,200,255,.5)" strokeWidth={1} />
-                  <text x={bb.x} y={bb.y + 3} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={5} fontFamily="Share Tech Mono">BB</text>
+                  <text x={bb.x} y={bb.y + 3} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={5} fontFamily="var(--font-sans)">BB</text>
                 </g>
               ))}
               </g>
@@ -25485,9 +25481,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <g key={n.id}>
                           {n.kind === 'reactor' && <circle cx={n.x} cy={n.y} r={r + 10} fill="none" stroke={col} strokeWidth={1} opacity={0.35} strokeDasharray="3 2" />}
                           <polygon points={`${n.x},${n.y - r} ${n.x + r},${n.y} ${n.x},${n.y + r} ${n.x - r},${n.y}`} fill="rgba(0,0,0,.8)" stroke={col} strokeWidth={1.6} />
-                          <text x={n.x} y={n.y + 2} textAnchor="middle" fill={col} fontSize={8} fontFamily="Share Tech Mono">⚡</text>
-                          <text x={n.x} y={n.y + r + 10} textAnchor="middle" fill={col} fontSize={7} fontFamily="Share Tech Mono" opacity={0.85}>{n.label}</text>
-                          <text x={n.x} y={n.y + r + 19} textAnchor="middle" fill={col} fontSize={6} fontFamily="Share Tech Mono" opacity={0.55}>{n.kw.toLocaleString()} kW</text>
+                          <text x={n.x} y={n.y + 2} textAnchor="middle" fill={col} fontSize={8} fontFamily="var(--font-sans)">⚡</text>
+                          <text x={n.x} y={n.y + r + 10} textAnchor="middle" fill={col} fontSize={7} fontFamily="var(--font-sans)" opacity={0.85}>{n.label}</text>
+                          <text x={n.x} y={n.y + r + 19} textAnchor="middle" fill={col} fontSize={6} fontFamily="var(--font-sans)" opacity={0.55}>{n.kw.toLocaleString()} kW</text>
                         </g>
                       );
                     })}
@@ -25516,8 +25512,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <circle cx={t.x} cy={t.y - 10} r={2} fill="#33ffcc" />
                         <path d={`M${t.x - 6},${t.y - 14} Q${t.x},${t.y - 22} ${t.x + 6},${t.y - 14}`} stroke="#33ffcc" strokeWidth={1} fill="none" opacity={0.6} />
                         <path d={`M${t.x - 10},${t.y - 16} Q${t.x},${t.y - 28} ${t.x + 10},${t.y - 16}`} stroke="#33ffcc" strokeWidth={0.8} fill="none" opacity={0.35} />
-                        <text x={t.x} y={t.y + 16} textAnchor="middle" fill="#33ffcc" fontSize={7} fontFamily="Share Tech Mono">{t.label}</text>
-                        <text x={t.x} y={t.y + 24} textAnchor="middle" fill="#33ffcc" fontSize={6} fontFamily="Share Tech Mono" opacity={0.6}>{t.band}</text>
+                        <text x={t.x} y={t.y + 16} textAnchor="middle" fill="#33ffcc" fontSize={7} fontFamily="var(--font-sans)">{t.label}</text>
+                        <text x={t.x} y={t.y + 24} textAnchor="middle" fill="#33ffcc" fontSize={6} fontFamily="var(--font-sans)" opacity={0.6}>{t.band}</text>
                       </g>
                     ))}
                   </g>
@@ -25552,7 +25548,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {[CITY_LEFT, CITY_LEFT + 300, cx, CITY_RIGHT - 300, CITY_RIGHT].map((sx, i) => (
                       <g key={`ew${i}`}>
                         <circle cx={sx} cy={cy} r={5} fill="#00020a" stroke="#ff55ff" strokeWidth={1.8} />
-                        <text x={sx} y={cy - 10} textAnchor="middle" fill="#ff55ff" fontSize={6} fontFamily="Share Tech Mono">STN {i + 1}</text>
+                        <text x={sx} y={cy - 10} textAnchor="middle" fill="#ff55ff" fontSize={6} fontFamily="var(--font-sans)">STN {i + 1}</text>
                       </g>
                     ))}
                     {[CITY_TOP, CITY_TOP + 250, cy, CITY_BOTTOM - 250, CITY_BOTTOM].map((sy, i) => (
@@ -25560,8 +25556,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <circle cx={cx} cy={sy} r={5} fill="#00020a" stroke="#55ffff" strokeWidth={1.8} />
                       </g>
                     ))}
-                    <text x={CITY_LEFT - 50} y={cy - 14} fill="#ff55ff" fontSize={8} fontFamily="Share Tech Mono" opacity={0.8}>RED LINE — E/W</text>
-                    <text x={cx + 10} y={CITY_TOP - 46} fill="#55ffff" fontSize={8} fontFamily="Share Tech Mono" opacity={0.8}>BLUE LINE — N/S</text>
+                    <text x={CITY_LEFT - 50} y={cy - 14} fill="#ff55ff" fontSize={8} fontFamily="var(--font-sans)" opacity={0.8}>RED LINE — E/W</text>
+                    <text x={cx + 10} y={CITY_TOP - 46} fill="#55ffff" fontSize={8} fontFamily="var(--font-sans)" opacity={0.8}>BLUE LINE — N/S</text>
                   </g>
                 );
               })()}
@@ -25594,13 +25590,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <g key={`tw${t.id}`}>
                           <rect x={t.x - 1} y={t.y - 1} width={t.w + 2} height={t.h + 2} fill="rgba(255,140,255,.18)" stroke="#ff8cff" strokeWidth={1.5} />
                           <circle cx={cx2} cy={cy2} r={6} fill="rgba(0,0,0,.85)" stroke="#ff8cff" strokeWidth={1.4} />
-                          <text x={cx2} y={cy2 + 2.5} textAnchor="middle" fill="#ff8cff" fontSize={7} fontFamily="Share Tech Mono">H</text>
-                          <text x={cx2} y={t.y - 4} textAnchor="middle" fill="#ff8cff" fontSize={7} fontFamily="Share Tech Mono" opacity={0.85}>{t.label.substring(0, 14)}</text>
+                          <text x={cx2} y={cy2 + 2.5} textAnchor="middle" fill="#ff8cff" fontSize={7} fontFamily="var(--font-sans)">H</text>
+                          <text x={cx2} y={t.y - 4} textAnchor="middle" fill="#ff8cff" fontSize={7} fontFamily="var(--font-sans)" opacity={0.85}>{t.label.substring(0, 14)}</text>
                         </g>
                       );
                     })}
                     {/* Note strip for the layer */}
-                    <text x={vbX + 12} y={vbY + 20} fill="#ff8cff" fontSize={10} fontFamily="Share Tech Mono" opacity={0.65}>ABOVE-GROUND · SKYBRIDGES · HELIPADS</text>
+                    <text x={vbX + 12} y={vbY + 20} fill="#ff8cff" fontSize={10} fontFamily="var(--font-sans)" opacity={0.65}>ABOVE-GROUND · SKYBRIDGES · HELIPADS</text>
                   </g>
                 );
               })()}
@@ -25608,12 +25604,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <g>
                   <circle cx={gs.current.story.homeBase.x} cy={gs.current.story.homeBase.y} r={10} fill="none" stroke="#aef25a" strokeWidth={1.5} opacity={0.8} />
                   <polygon points={`${gs.current.story.homeBase.x},${gs.current.story.homeBase.y - 7} ${gs.current.story.homeBase.x + 6},${gs.current.story.homeBase.y + 5} ${gs.current.story.homeBase.x - 6},${gs.current.story.homeBase.y + 5}`} fill="#aef25a" opacity={0.9} />
-                  <text x={gs.current.story.homeBase.x} y={gs.current.story.homeBase.y + 18} textAnchor="middle" fill="#aef25a" fontSize={8} fontFamily="Share Tech Mono">{gs.current.story.homeBase.label}</text>
+                  <text x={gs.current.story.homeBase.x} y={gs.current.story.homeBase.y + 18} textAnchor="middle" fill="#aef25a" fontSize={8} fontFamily="var(--font-sans)">{gs.current.story.homeBase.label}</text>
                 </g>
               )}
               <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="none" stroke="#38bdf8" strokeWidth={2} />
               <circle cx={gs.current.px} cy={gs.current.py} r={4} fill="#38bdf8" />
-              <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#38bdf8" fontSize={10} fontFamily="Share Tech Mono">{char.name}</text>
+              <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#38bdf8" fontSize={10} fontFamily="var(--font-sans)">{char.name}</text>
               {gs.current.threats.map((t, ti) => (
                 <circle key={ti} cx={t.x} cy={t.y} r={5} fill={THREAT_COL[t.type] ?? '#ff4444'} opacity={0.6} />
               ))}
@@ -25624,7 +25620,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <g key={`quest${ti}`}>
                   <circle cx={task.mapMarker!.x} cy={task.mapMarker!.y} r={10} fill="none" stroke="#ffcc44" strokeWidth={2} strokeDasharray="6 3" />
                   <circle cx={task.mapMarker!.x} cy={task.mapMarker!.y} r={4} fill="#ffcc44" opacity={0.8} />
-                  <text x={task.mapMarker!.x} y={task.mapMarker!.y - 14} textAnchor="middle" fill="#ffcc44" fontSize={7} fontFamily="Share Tech Mono">{task.mapMarker!.label}</text>
+                  <text x={task.mapMarker!.x} y={task.mapMarker!.y - 14} textAnchor="middle" fill="#ffcc44" fontSize={7} fontFamily="var(--font-sans)">{task.mapMarker!.label}</text>
                 </g>
               ))}
             </svg>
@@ -25655,7 +25651,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.82)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:370 }}
             onClick={() => setDecorCatalogOpen(false)}>
-            <div style={{ width:640, maxHeight:'85vh', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,4,8,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace", display:'flex', flexDirection:'column', overflow:'hidden' }}
+            <div style={{ width:640, maxHeight:'85vh', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,4,8,.98)', padding:'1.2rem', fontFamily:"var(--font-sans)", display:'flex', flexDirection:'column', overflow:'hidden' }}
               onClick={e => e.stopPropagation()}>
               <div style={{ color:'rgb(56,189,248)', fontSize:'.85rem', letterSpacing:'.15em', borderBottom:'1px solid rgba(56,189,248,.2)', paddingBottom:'.5rem', marginBottom:'.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 FURNITURE CATALOG
@@ -25674,7 +25670,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ marginTop:'.4rem', display:'flex', gap:'.5rem', flexWrap:'wrap' }}>
                     {decorSelectedItem.variants.map(v => (
                       <button key={v.id} onClick={() => setDecorSelectedVariant(v.id)}
-                        style={{ padding:'.2rem .5rem', border:`1px solid ${decorSelectedVariant===v.id?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:decorSelectedVariant===v.id?'rgba(56,189,248,.2)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'.3rem' }}>
+                        style={{ padding:'.2rem .5rem', border:`1px solid ${decorSelectedVariant===v.id?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:decorSelectedVariant===v.id?'rgba(56,189,248,.2)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"var(--font-sans)", fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'.3rem' }}>
                         <span style={{ width:10, height:10, display:'inline-block', background:v.color, border:'1px solid rgba(255,255,255,.3)', flexShrink:0 }} />
                         {v.label}
                       </button>
@@ -25685,7 +25681,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                   {selectedOwned ? (
                     <button onClick={() => { setDecorCatalogOpen(false); setNarr(`> PLACE ${decorSelectedItem.name.toUpperCase()} — Click on interior floor to place. [R] rotate.`); }}
-                      style={{ marginTop:'.5rem', padding:'.3rem .8rem', background:'rgba(56,189,248,.2)', border:'1px solid rgba(56,189,248,.5)', color:'rgb(56,189,248)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.65rem', cursor:'pointer' }}>
+                      style={{ marginTop:'.5rem', padding:'.3rem .8rem', background:'rgba(56,189,248,.2)', border:'1px solid rgba(56,189,248,.5)', color:'rgb(56,189,248)', fontFamily:"var(--font-sans)", fontSize:'.65rem', cursor:'pointer' }}>
                       PLACE ITEM →
                     </button>
                   ) : (
@@ -25697,12 +25693,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               )}
               <div style={{ display:'flex', gap:'.3rem', flexWrap:'wrap', marginBottom:'.5rem' }}>
                 <button onClick={() => setDecorCategory(null)}
-                  style={{ padding:'.2rem .5rem', border:`1px solid ${!decorCategory?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:!decorCategory?'rgba(56,189,248,.15)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
+                  style={{ padding:'.2rem .5rem', border:`1px solid ${!decorCategory?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:!decorCategory?'rgba(56,189,248,.15)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"var(--font-sans)", fontSize:'.6rem', cursor:'pointer' }}>
                   ALL
                 </button>
                 {categories.map(cat => (
                   <button key={cat} onClick={() => setDecorCategory(cat)}
-                    style={{ padding:'.2rem .5rem', border:`1px solid ${decorCategory===cat?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:decorCategory===cat?'rgba(56,189,248,.15)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
+                    style={{ padding:'.2rem .5rem', border:`1px solid ${decorCategory===cat?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:decorCategory===cat?'rgba(56,189,248,.15)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"var(--font-sans)", fontSize:'.6rem', cursor:'pointer' }}>
                     {catLabels[cat]}
                   </button>
                 ))}
@@ -25746,11 +25742,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 370 }}
             onClick={() => setShowBillboard(null)}>
-            <div style={{ width: 420, border: '1px solid rgba(0,200,255,.3)', background: 'rgba(0,4,8,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace" }}
+            <div style={{ width: 420, border: '1px solid rgba(0,200,255,.3)', background: 'rgba(0,4,8,.98)', padding: '1.2rem', fontFamily: "var(--font-sans)" }}
               onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#00ccff', letterSpacing: '.15em' }}>BILLBOARD MARKETPLACE</div>
-                <button onClick={() => setShowBillboard(null)} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,200,255,.2)', color: 'rgba(0,200,255,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.6rem', color: '#00ccff', letterSpacing: '.15em' }}>BILLBOARD MARKETPLACE</div>
+                <button onClick={() => setShowBillboard(null)} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,200,255,.2)', color: 'rgba(0,200,255,.4)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem' }}>ESC</button>
               </div>
               <div style={{ width: '100%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,200,255,.3), transparent)', marginBottom: '.8rem' }} />
               <div style={{ fontSize: '.6rem', color: 'rgba(0,200,255,.6)', marginBottom: '.4rem', letterSpacing: '.1em' }}>SLOT: {showBillboard.label}</div>
@@ -25784,7 +25780,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               )}
               {(!owned || expired) && (
                 <button onClick={() => { if (bbInfo) purchaseBillboard(bbInfo.id); }}
-                  style={{ width: '100%', padding: '.5rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.4)', color: '#00ccff', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer', marginBottom: '.5rem' }}>
+                  style={{ width: '100%', padding: '.5rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.4)', color: '#00ccff', fontFamily: "var(--font-sans)", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer', marginBottom: '.5rem' }}>
                   BUY SLOT — ç{price.toLocaleString()} FIAT
                 </button>
               )}
@@ -25793,11 +25789,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', marginBottom: '.4rem', letterSpacing: '.1em' }}>UPDATE YOUR AD</div>
                   <input value={bbAdText} onChange={e => setBbAdText(e.target.value)} placeholder="Ad text (max 60 chars)"
                     maxLength={60}
-                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.3rem', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.45rem', marginBottom: '.3rem', boxSizing: 'border-box' }} />
                   <input value={bbAdUrl} onChange={e => setBbAdUrl(e.target.value)} placeholder="Image URL (optional)"
-                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.4rem', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.45rem', marginBottom: '.4rem', boxSizing: 'border-box' }} />
                   <button onClick={() => { if (bbInfo) updateBillboardContent(bbInfo.id); }}
-                    style={{ width: '100%', padding: '.4rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>
+                    style={{ width: '100%', padding: '.4rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>
                     UPDATE AD
                   </button>
                 </div>
@@ -25826,13 +25822,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#38bdf8' }}>⚔</span>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.02em' }}>{activeWeapon}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#38bdf8' }}>⚔</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.45rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.02em' }}>{activeWeapon}</span>
           </div>
           <div style={{ width: '70%', height: 1, background: 'rgba(56,189,248,.15)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === secondaryWeapon)?.color ?? '#38bdf8' }}>🔫</span>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.02em' }}>{secondaryWeapon}</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: WEAPONS.find(w => w.id === secondaryWeapon)?.color ?? '#38bdf8' }}>🔫</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '.45rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.02em' }}>{secondaryWeapon}</span>
           </div>
         </div>
         {showWeapons && (() => {
@@ -25842,7 +25838,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const rangedWpns = available.filter(w => w.type === 'ranged');
           const renderSlot = (label: string, wpns: typeof WEAPONS, current: string, onSelect: (id: string) => void) => (
             <div>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', padding: '3px 4px', borderBottom: '1px solid rgba(56,189,248,.12)', marginBottom: '2px' }}>{label}</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', padding: '3px 4px', borderBottom: '1px solid rgba(56,189,248,.12)', marginBottom: '2px' }}>{label}</div>
               {wpns.map(w => {
                 const isActive = current === w.id;
                 return (
@@ -25859,7 +25855,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   >
                     <span style={{ fontSize: '1.1rem', width: 22, textAlign: 'center' }}>{iconMap[w.icon] ?? '?'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isActive ? w.color : 'rgba(56,189,248,.7)', letterSpacing: '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontFamily: "var(--font-sans)", fontSize: '.95rem', color: isActive ? w.color : 'rgba(56,189,248,.7)', letterSpacing: '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {isActive ? '▸ ' : ''}{w.label}
                       </div>
                       <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginTop: 1 }}>+{w.atkBonus} ATK</div>
@@ -25895,7 +25891,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── MERCHANT PANEL ─────────────────────────────────────────────── */}
       {showMerchant && (() => {
         const g = gs.current;
-        const VTM: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VTM: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const doMerchBuy = (item: MerchantItem) => {
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
           if (g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
@@ -25948,7 +25944,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowMerchant(null); frozenRef.current = false; } }}>
-            <div style={{ width:500, maxHeight:'85vh', display:'flex', flexDirection:'column', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+            <div style={{ width:500, maxHeight:'85vh', display:'flex', flexDirection:'column', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)" }}>
               <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(56,189,248,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
                   <div style={{ ...VTM, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.14em' }}>{showMerchant.name} — MERCHANT</div>
@@ -25997,7 +25993,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {lootPanel && (
         <div style={{ position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', zIndex: 400, pointerEvents: 'auto', minWidth: 220, maxWidth: 320 }} onClick={() => setLootPanel(null)}>
-          <div style={{ background: 'rgba(0,0,0,.92)', border: `1px solid ${lootPanel.money < 0 ? '#ff2222' : '#38bdf8'}`, borderRadius: 4, padding: '12px 16px', fontFamily: "'VT323',monospace" }}>
+          <div style={{ background: 'rgba(0,0,0,.92)', border: `1px solid ${lootPanel.money < 0 ? '#ff2222' : '#38bdf8'}`, borderRadius: 4, padding: '12px 16px', fontFamily: "var(--font-sans)" }}>
             <div style={{ fontSize: '.7rem', letterSpacing: '.15em', color: lootPanel.money < 0 ? '#ff4444' : '#38bdf8', marginBottom: 8, textAlign: 'center' }}>
               {lootPanel.money < 0 ? '▼ LOOT LOST ▼' : '▲ LOOT ACQUIRED ▲'}
             </div>
@@ -26020,8 +26016,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── BANCO OMBRA TERMINAL ─────────────────────────────────────────── */}
       {showBank && (() => {
         const g = gs.current;
-        const VTB: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-        const STB: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const VTB: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+        const STB: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const tabBtn = (active: boolean): React.CSSProperties => ({
           padding: '.4rem .75rem', border: active ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.15)',
           background: active ? 'rgba(56,189,248,.08)' : 'transparent',
@@ -26886,13 +26882,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 450, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: 500, padding: '2rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: accentColor, letterSpacing: '.15em', marginBottom: '1.5rem', opacity: 0.7 }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.2rem', color: accentColor, letterSpacing: '.15em', marginBottom: '1.5rem', opacity: 0.7 }}>
               {isUnemployed
                 ? `${hamletLabel} — YOUR HAMLET`
                 : (() => { const ht = HOUSING_TIERS.find(t => t.id === gs.current.housingTier); return ht ? ht.label : 'YOUR ROOM'; })()}
             </div>
             <div style={{ width: '100%', height: '1px', background: `linear-gradient(90deg, transparent, ${spawnColor}.3), transparent)`, marginBottom: '1.2rem' }} />
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: `${spawnColor}.5)`, lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: `${spawnColor}.5)`, lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
               {isUnemployed ? (
                 isShelter ? (<>
                   The shelter is cold. Concrete walls. A single overhead light buzzes.<br/>
@@ -26919,7 +26915,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </>)}
             </div>
             <div style={{ width: '100%', height: '1px', background: `linear-gradient(90deg, transparent, ${spawnColor}.15), transparent)`, marginBottom: '1.5rem' }} />
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: `${spawnColor}.3)`, letterSpacing: '.08em', marginBottom: '1.2rem' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.55rem', color: `${spawnColor}.3)`, letterSpacing: '.08em', marginBottom: '1.2rem' }}>
               {isUnemployed
                 ? `Hamlet: ${hamletLabel}. No corporate affiliation. Register a business at SHADOW TOWER anytime.`
                 : 'View of the city from your window. Unit 408. Rent: paid through PABLO CORP'}
@@ -26963,11 +26959,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   ? `> ${hamletLabel} — Your hamlet. No corporate ties. Walk to the EXIT to step outside. Register a business at PABLO TOWER when you're ready.`
                   : `> ${(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht ? ht.label : hamletLabel; })()} — Your place. Walk to the EXIT to step outside.`);
               }}
-              style={{ padding: '.65rem 2rem', background: isUnemployed ? 'rgba(255,200,60,.08)' : 'rgba(56,189,248,.08)', border: `1px solid ${isUnemployed ? 'rgba(255,200,60,.5)' : 'rgba(56,189,248,.5)'}`, color: accentColor, fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+              style={{ padding: '.65rem 2rem', background: isUnemployed ? 'rgba(255,200,60,.08)' : 'rgba(56,189,248,.08)', border: `1px solid ${isUnemployed ? 'rgba(255,200,60,.5)' : 'rgba(56,189,248,.5)'}`, color: accentColor, fontFamily: "var(--font-sans)", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
             >
               WAKE UP
             </button>
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', marginTop: '.8rem' }}>PRESS ANY KEY TO CONTINUE</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', marginTop: '.8rem' }}>PRESS ANY KEY TO CONTINUE</div>
           </div>
         </div>
         );
@@ -26976,11 +26972,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {isCollapsed && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 480, flexDirection: 'column' }}>
           <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem', animation: 'pulse 1s infinite' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2rem,8vw,4rem)', color: '#ff3322', letterSpacing: '.2em', textShadow: '0 0 20px rgba(255,0,0,.7)' }}>CRITICAL</div>
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', color: 'rgba(255,150,120,.7)', marginTop: '.5rem', letterSpacing: '.08em' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(2rem,8vw,4rem)', color: '#ff3322', letterSpacing: '.2em', textShadow: '0 0 20px rgba(255,0,0,.7)' }}>CRITICAL</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.75rem', color: 'rgba(255,150,120,.7)', marginTop: '.5rem', letterSpacing: '.08em' }}>
               YOU HAVE COLLAPSED. AWAITING RESCUE.
             </div>
-            <div style={{ marginTop: '1rem', fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: 'rgba(255,255,255,.4)', letterSpacing: '.12em' }}>
+            <div style={{ marginTop: '1rem', fontFamily: "var(--font-sans)", fontSize: '1.2rem', color: 'rgba(255,255,255,.4)', letterSpacing: '.12em' }}>
               {(() => {
                 const ms = Math.max(0, collapseDeadlineRef.current - Date.now());
                 const sec = Math.ceil(ms / 1000);
@@ -26993,13 +26989,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {channelBar && (
         <div style={{ position: 'absolute', bottom: '120px', left: '50%', transform: 'translateX(-50%)', zIndex: 470, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', pointerEvents: 'none' }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ffcc44', letterSpacing: '.12em', textShadow: '0 0 8px rgba(255,200,50,.5)' }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#ffcc44', letterSpacing: '.12em', textShadow: '0 0 8px rgba(255,200,50,.5)' }}>
             {channelBar.eventType === 'evt_medical' ? '⛑ ASSISTING INJURED…' : channelBar.eventType === 'evt_fire' ? '🔥 FIGHTING FIRE…' : '⚡ RESTORING POWER…'}
           </div>
           <div style={{ width: 280, height: 10, background: 'rgba(255,255,255,.1)', borderRadius: 5, overflow: 'hidden', border: '1px solid rgba(255,200,60,.3)' }}>
             <div style={{ height: '100%', width: `${channelBar.progress * 100}%`, background: channelBar.eventType === 'evt_medical' ? 'linear-gradient(90deg,#22dd66,#55ffaa)' : channelBar.eventType === 'evt_fire' ? 'linear-gradient(90deg,#ff5533,#ffcc22)' : 'linear-gradient(90deg,#3388ff,#88ccff)', transition: 'width .12s linear' }} />
           </div>
-          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', color: 'rgba(255,255,255,.35)', letterSpacing: '.06em' }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.6rem', color: 'rgba(255,255,255,.35)', letterSpacing: '.06em' }}>
             HOLD [E] TO RESPOND
           </div>
         </div>
@@ -27008,9 +27004,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showHospitalPrompt && !hospitalCinematic && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 460, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#ff6644', letterSpacing: '.15em', marginBottom: '1rem', textShadow: '0 0 12px rgba(255,60,30,.4)' }}>YOU DIED DURING YOUR LAST SESSION.</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.6rem', color: '#ff6644', letterSpacing: '.15em', marginBottom: '1rem', textShadow: '0 0 12px rgba(255,60,30,.4)' }}>YOU DIED DURING YOUR LAST SESSION.</div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,100,68,.3), transparent)', marginBottom: '1.2rem' }} />
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(255,180,150,.5)', lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.7rem', color: 'rgba(255,180,150,.5)', lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
               Your vitals flatlined. Emergency services brought you in.<br/>
               You've been unconscious in the {char.class.toLowerCase() === 'replicant' ? 'ROBODOC REPAIR BAY' : 'CITY HOSPITAL'} for an unknown amount of time.<br/>
               The fluorescent light above your bed flickers. Monitors beep steadily.<br/>
@@ -27023,18 +27019,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   setShowHospitalPrompt(false);
                   setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
                 }}
-                style={{ padding: '.65rem 2rem', width: 320, background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+                style={{ padding: '.65rem 2rem', width: 320, background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "var(--font-sans)", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
               >
                 WAKE UP IN HOSPITAL
               </button>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.5rem' }}>PRESS ANY KEY</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.5rem' }}>PRESS ANY KEY</div>
               <button
                 onClick={() => {
                   setShowHospitalPrompt(false);
                   doSaveRef.current(buildSaveData());
                   navigate('/pablo');
                 }}
-                style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
+                style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "var(--font-sans)", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
               >
                 ← RETURN TO TERMINAL
               </button>
@@ -27046,9 +27042,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {isDead && !hospitalCinematic && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.5rem' }}>YOU ARE DEAD</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.5rem' }}>YOU ARE DEAD</div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '1rem' }} />
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '1.2rem', textShadow: '0 0 8px rgba(255,60,30,.3)' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '1.2rem', textShadow: '0 0 8px rgba(255,60,30,.3)' }}>
               {gs.current.deathReason || 'Vitals flatlined'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center' }}>
@@ -27057,18 +27053,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   setIsDead(false);
                   setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
                 }}
-                style={{ padding: '.65rem 2rem', width: 320, background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}
+                style={{ padding: '.65rem 2rem', width: 320, background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "var(--font-sans)", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}
               >
                 {char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'GO TO HOSPITAL'}
               </button>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.3rem', marginBottom: '.3rem' }}>PRESS ANY KEY</div>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.3rem', marginBottom: '.3rem' }}>PRESS ANY KEY</div>
               <button
                 onClick={() => {
                   setIsDead(false);
                   doSaveRef.current(buildSaveData());
                   navigate('/pablo');
                 }}
-                style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
+                style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "var(--font-sans)", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
               >
                 ← RETURN TO TERMINAL
               </button>
@@ -27078,7 +27074,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {arcadeGameId && (
-        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace" }}>LOADING...</div>}>
+        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "var(--font-sans)" }}>LOADING...</div>}>
           <ArcadeGame
             gameId={arcadeGameId}
             salary={salary}
@@ -27095,21 +27091,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {activeBattle && (
-        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 120, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>ENTERING BATTLE...</div>}>
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 120, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "var(--font-sans)", letterSpacing: '.2em' }}>ENTERING BATTLE...</div>}>
           <BattleArena descriptor={activeBattle.descriptor} player={activeBattle.player} onOutcome={handleBattleOutcome} />
         </Suspense>
       )}
 
       {showSoundLab && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 620, background: 'rgba(0,0,0,.0)' }}>
-          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.2rem', letterSpacing: '.2em' }}>{`LOADING ${boomerMode ? 'THE LAB' : '1999'}...`}</div>}>
+          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '1.2rem', letterSpacing: '.2em' }}>{`LOADING ${boomerMode ? 'THE LAB' : '1999'}...`}</div>}>
             <SoundLabOverlay onClose={() => { setShowSoundLab(false); gameRef.current?.focus(); }} />
           </Suspense>
         </div>
       )}
 
       {showCosmeticStore && (
-        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING STORE...</div>}>
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "var(--font-sans)", letterSpacing: '.2em' }}>LOADING STORE...</div>}>
           <CosmeticStore
             onClose={() => { setShowCosmeticStore(false); gameRef.current?.focus(); }}
             onEquipChange={(equipped) => {
@@ -27121,7 +27117,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {showSecretLabPrompt && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 650, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 650, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "var(--font-sans)" }}
           onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}>
           <div style={{ background: 'rgba(0,6,2,.97)', border: '1px solid rgba(56,189,248,.2)', borderRadius: '6px', padding: '28px 36px', minWidth: 340, maxWidth: '92vw', textAlign: 'center' }}
             onClick={e => e.stopPropagation()}>
@@ -27133,14 +27129,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ color: 'rgba(56,189,248,.35)', fontSize: '.45rem', marginBottom: '12px' }}>Current balance: {salary.toLocaleString()} FIAT</div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}
-                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
+                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
                 <button onClick={() => {
                   const g = gs.current;
                   if (g.salary < 500000) { setNarr('> INSUFFICIENT FIAT — You need 500,000 FIAT.'); setShowSecretLabPrompt(null); gameRef.current?.focus(); return; }
                   g.salary -= 500000; setSalary(g.salary);
                   setShowSecretLabPrompt('setpw');
                 }}
-                  style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
+                  style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
                   PURCHASE — 500K
                 </button>
               </div>
@@ -27159,7 +27155,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setShowSoundLab(true);
                   }
                 }}
-                style={{ width: '100%', padding: '8px 12px', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
+                style={{ width: '100%', padding: '8px 12px', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
               <button onClick={() => {
                 if (!secretLabPwInput.trim()) return;
                 const g = gs.current;
@@ -27167,7 +27163,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setShowSecretLabPrompt(null);
                 setShowSoundLab(true);
               }}
-                style={{ padding: '6px 24px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
+                style={{ padding: '6px 24px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
                 CONFIRM & ENTER
               </button>
             </>)}
@@ -27187,10 +27183,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     }
                   }
                 }}
-                style={{ width: '100%', padding: '8px 12px', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
+                style={{ width: '100%', padding: '8px 12px', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}
-                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
+                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
                 <button onClick={() => {
                   const g = gs.current;
                   if (g.secretLab && secretLabPwInput === g.secretLab.password) {
@@ -27200,7 +27196,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setNarr('> WRONG PASSWORD.');
                   }
                 }}
-                  style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>ENTER</button>
+                  style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>ENTER</button>
               </div>
             </>)}
           </div>
@@ -27210,7 +27206,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showNewspaper && (() => {
         const np = showNewspaper;
         return (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 700, background: 'rgba(0,0,0,.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 700, background: 'rgba(0,0,0,.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "var(--font-sans)" }}>
             <div style={{ width: '700px', maxWidth: '96vw', maxHeight: '92vh', background: '#f5f0e0', color: '#1a1a1a', borderRadius: '3px', overflow: 'auto', boxShadow: '0 0 40px rgba(255,200,60,.15)', border: '2px solid #2a2a2a' }}>
               <div style={{ background: '#1a1a1a', color: '#f5f0e0', padding: '10px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: '2rem', fontWeight: 'bold', letterSpacing: '.3em', lineHeight: 1.1 }}>THE MINX</div>
@@ -27251,8 +27247,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   setNarr(`> PURCHASED — THE MINX Issue #${np.issue} (${np.season}) added to inventory. -100 FIAT`);
                   setShowNewspaper(null);
                   gameRef.current?.focus();
-                }} style={{ padding: '6px 18px', background: '#1a1a1a', color: '#f5f0e0', border: 'none', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>KEEP COPY — 100 FIAT</button>
-                <button onClick={() => { setShowNewspaper(null); gameRef.current?.focus(); }} style={{ padding: '6px 18px', background: 'transparent', color: '#1a1a1a', border: '1px solid #1a1a1a', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>CLOSE</button>
+                }} style={{ padding: '6px 18px', background: '#1a1a1a', color: '#f5f0e0', border: 'none', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.08em' }}>KEEP COPY — 100 FIAT</button>
+                <button onClick={() => { setShowNewspaper(null); gameRef.current?.focus(); }} style={{ padding: '6px 18px', background: 'transparent', color: '#1a1a1a', border: '1px solid #1a1a1a', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.08em' }}>CLOSE</button>
               </div>
             </div>
           </div>
@@ -27268,8 +27264,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           BREAK CAMP — extinguish and pick up the fire. */}
       {showCamp && campsitePos && (() => {
         const g = gs.current;
-        const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-        const STM: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+        const STM: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         // Helper to apply an effect string ("hunger30 hp10 ...") to player state.
         const applyEffect = (eff: string) => {
           const parts = eff.split(' ');
@@ -27439,12 +27435,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setNarr(`> SOLD — ${item.name} for ${item.value} FIAT. "Pleasure doing business."`);
         };
         return (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 700, background: 'rgba(0,0,0,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}
+          <div style={{ position: 'absolute', inset: 0, zIndex: 700, background: 'rgba(0,0,0,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "var(--font-sans)" }}
             onClick={(e) => { if (e.target === e.currentTarget) { setShowInventory(false); gameRef.current?.focus(); } }}>
             <div style={{ width: '520px', maxWidth: '96vw', background: 'rgba(10,12,18,.96)', border: '1px solid rgba(0,255,200,.25)', borderRadius: '4px', boxShadow: '0 0 30px rgba(0,255,200,.08)' }}>
               <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(0,255,200,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'rgba(0,255,200,.8)', fontSize: '.8rem', letterSpacing: '.15em' }}>INVENTORY ({inventory.length}/{INVENTORY_MAX_SLOTS}){inShop ? ' — SELL MODE' : ''}</span>
-                <button onClick={() => { setShowInventory(false); gameRef.current?.focus(); }} style={{ background: 'none', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.7)', padding: '2px 10px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem' }}>CLOSE [ESC]</button>
+                <button onClick={() => { setShowInventory(false); gameRef.current?.focus(); }} style={{ background: 'none', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.7)', padding: '2px 10px', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.6rem' }}>CLOSE [ESC]</button>
               </div>
               <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: `repeat(${INVENTORY_GRID_COLS}, 1fr)`, gap: '6px', minHeight: '200px' }}>
                 {Array.from({ length: INVENTORY_MAX_SLOTS }).map((_, i) => {
@@ -27481,7 +27477,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {hologramNotification && (
-        <div style={{ position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 800, fontFamily: "'Share Tech Mono',monospace", pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 800, fontFamily: "var(--font-sans)", pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(0,10,30,.95)', border: '1px solid rgba(0,200,255,.5)', padding: '6px 14px', borderRadius: '4px', boxShadow: '0 0 20px rgba(0,200,255,.2)', color: 'rgba(0,200,255,.9)', fontSize: '.55rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>
             ▓ {hologramNotification} ▓
           </div>
@@ -27489,11 +27485,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {videoCallRoom && (
-        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 750, fontFamily: "'Share Tech Mono',monospace", width: '340px', maxWidth: '40vw' }}>
+        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 750, fontFamily: "var(--font-sans)", width: '340px', maxWidth: '40vw' }}>
           <div style={{ background: 'rgba(8,8,14,.94)', border: '1px solid rgba(0,200,255,.3)', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 0 25px rgba(0,200,255,.1)' }}>
             <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,200,255,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,200,255,.06)' }}>
               <span style={{ color: 'rgba(0,200,255,.8)', fontSize: '.6rem', letterSpacing: '.1em' }}>VIDEO CALL — {videoCallPeers.length + 1} participant{videoCallPeers.length !== 0 ? 's' : ''}{videoCallPeers.some(p => p.isGuest) ? ` · ${videoCallPeers.filter(p => p.isGuest).length} HOLOGRAM` : ''}</span>
-              <button onClick={leaveVideoCall} style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.8)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px' }}>END [ESC]</button>
+              <button onClick={leaveVideoCall} style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.8)', padding: '2px 8px', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', borderRadius: '3px' }}>END [ESC]</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: videoCallPeers.length > 1 ? '1fr 1fr' : '1fr', gap: '3px', padding: '4px' }}>
               <div style={{ aspectRatio: '4/3', background: 'rgba(0,0,0,.6)', borderRadius: '3px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(0,200,255,.15)' }}>
@@ -27537,7 +27533,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const audioTrack = vcStreamRef.current.getAudioTracks()[0];
                     if (audioTrack) { audioTrack.enabled = !audioTrack.enabled; setAudioEnabled(audioTrack.enabled); }
                   }
-                }} style={{ padding: '4px 12px', background: audioEnabled ? 'rgba(0,200,255,.08)' : 'rgba(255,60,60,.15)', border: `1px solid ${audioEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.5)'}`, color: audioEnabled ? 'rgba(0,200,255,.8)' : 'rgba(255,60,60,.8)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px', letterSpacing: '.06em' }}>
+                }} style={{ padding: '4px 12px', background: audioEnabled ? 'rgba(0,200,255,.08)' : 'rgba(255,60,60,.15)', border: `1px solid ${audioEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.5)'}`, color: audioEnabled ? 'rgba(0,200,255,.8)' : 'rgba(255,60,60,.8)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', borderRadius: '3px', letterSpacing: '.06em' }}>
                   {audioEnabled ? '🎙 MIC ON' : '🔇 MIC OFF'}
                 </button>
                 <button onClick={() => {
@@ -27545,7 +27541,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const videoTrack = vcStreamRef.current.getVideoTracks()[0];
                     if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; setVideoEnabled(videoTrack.enabled); }
                   }
-                }} style={{ padding: '4px 12px', background: videoEnabled ? 'rgba(0,200,255,.08)' : 'rgba(255,160,0,.12)', border: `1px solid ${videoEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,160,0,.5)'}`, color: videoEnabled ? 'rgba(0,200,255,.8)' : 'rgba(255,160,0,.8)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px', letterSpacing: '.06em' }}>
+                }} style={{ padding: '4px 12px', background: videoEnabled ? 'rgba(0,200,255,.08)' : 'rgba(255,160,0,.12)', border: `1px solid ${videoEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,160,0,.5)'}`, color: videoEnabled ? 'rgba(0,200,255,.8)' : 'rgba(255,160,0,.8)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', borderRadius: '3px', letterSpacing: '.06em' }}>
                   {videoEnabled ? '📹 CAM ON' : '📷 CAM OFF'}
                 </button>
               </div>
@@ -27559,10 +27555,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           onClick={() => { setGamePaused(false); gameRef.current?.focus(); }}
           style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.35)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 500, cursor: 'pointer', gap: '.6rem' }}
         >
-          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '1.8rem', color: 'rgba(255,255,255,.6)', letterSpacing: '.4em', fontWeight: 300 }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.8rem', color: 'rgba(255,255,255,.6)', letterSpacing: '.4em', fontWeight: 300 }}>
             BREAK
           </div>
-          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.08em' }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.08em' }}>
             click to return
           </div>
         </div>
@@ -27579,13 +27575,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 470, flexDirection: 'column' }}>
             <CinematicBars />
             <div style={{ textAlign: 'center', maxWidth: 640, padding: '2rem' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(174,242,90,.7)', letterSpacing: '.2em', marginBottom: '1.4rem' }}>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1rem', color: 'rgba(174,242,90,.7)', letterSpacing: '.2em', marginBottom: '1.4rem' }}>
                 {sceneLabel(0)}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '2rem' }}>
                 {lines.slice(0, currentLine + 1).map((line, i) => (
                   <div key={i} style={{
-                    fontFamily: "'Share Tech Mono',monospace",
+                    fontFamily: "var(--font-sans)",
                     fontSize: '.7rem',
                     color: i === currentLine ? 'rgba(190,231,255,.85)' : 'rgba(190,231,255,.4)',
                     letterSpacing: '.04em',
@@ -27600,12 +27596,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <button
                   data-scene-continue
                   onClick={() => { sfxUIClick(); if (isIntro) sceneAdvanceFromIntro(); else sceneClaimFinalize(); }}
-                  style={{ padding: '.55rem 1.4rem', background: 'rgba(174,242,90,.12)', border: '1.5px solid #aef25a', color: '#d6ffae', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', letterSpacing: '.15em' }}
+                  style={{ padding: '.55rem 1.4rem', background: 'rgba(174,242,90,.12)', border: '1.5px solid #aef25a', color: '#d6ffae', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.15em' }}
                 >
                   {isIntro ? '→ RUN' : '→ CLAIM THE MX-75'}
                 </button>
               ) : (
-                <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', color: 'rgba(190,231,255,.25)', letterSpacing: '.18em' }}>▌</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '.6rem', color: 'rgba(190,231,255,.25)', letterSpacing: '.18em' }}>▌</div>
               )}
             </div>
           </div>
@@ -27632,13 +27628,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.99)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 470, flexDirection: 'column' }}>
             <CinematicBars />
             <div style={{ textAlign: 'center', maxWidth: 600, padding: '2rem' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(255,100,68,.6)', letterSpacing: '.2em', marginBottom: '2rem' }}>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: '1rem', color: 'rgba(255,100,68,.6)', letterSpacing: '.2em', marginBottom: '2rem' }}>
                 {char.class.toLowerCase() === 'replicant' ? '[ ROBODOC REPAIR BAY ]' : '[ CITY HOSPITAL — EMERGENCY WARD ]'}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '2rem' }}>
                 {HOSPITAL_LINES.slice(0, currentLine + 1).map((line, i) => (
                   <div key={i} style={{
-                    fontFamily: "'Share Tech Mono',monospace",
+                    fontFamily: "var(--font-sans)",
                     fontSize: '.65rem',
                     color: i === currentLine ? 'rgba(255,180,150,.7)' : 'rgba(255,180,150,.3)',
                     letterSpacing: '.04em',
@@ -27691,11 +27687,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     }
                   }}
                   data-cinematic-continue="true"
-                  style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer', animation: 'smblink 1.5s ease-in-out infinite alternate' }}
+                  style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "var(--font-sans)", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer', animation: 'smblink 1.5s ease-in-out infinite alternate' }}
                 >
                   OPEN YOUR EYES
                 </button>
-                <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.5rem' }}>PRESS ANY KEY</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.5rem' }}>PRESS ANY KEY</div>
               </>)}
             </div>
           </div>
@@ -27729,7 +27725,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         };
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}>
-            <div style={{ background: '#050505', border: '2px solid rgba(56,189,248,.45)', width: 'min(580px,92vw)', fontFamily: '"VT323", monospace', color: '#38bdf8', display: 'flex', flexDirection: 'column', maxHeight: '85vh', overflow: 'hidden' }}>
+            <div style={{ background: '#050505', border: '2px solid rgba(56,189,248,.45)', width: 'min(580px,92vw)', fontFamily: "var(--font-sans)", color: '#38bdf8', display: 'flex', flexDirection: 'column', maxHeight: '85vh', overflow: 'hidden' }}>
               {/* Header */}
               <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(56,189,248,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
                 <div>
@@ -27783,7 +27779,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── MERCHANT SHOP PANEL ──────────────────────────────────────────── */}
       {showMerchantShop && (() => {
         const g = gs.current;
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const merchant = showMerchantShop;
         const allItems = VEND_CATALOG.flatMap(c => c.items);
         const shopItems = merchant.inventory.map(id => allItems.find(i => i.id === id)).filter(Boolean) as VendItem[];
@@ -27814,7 +27810,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowMerchantShop(null); frozenRef.current = false; } }}>
-            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(255,204,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(255,204,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)", padding:'1.2rem' }}>
               <div style={{ ...VT2, fontSize:'1.6rem', color:'#ffcc00', letterSpacing:'.18em', marginBottom:'.3rem' }}>{merchant.name}</div>
               <div style={{ fontSize:'.42rem', color:'rgba(255,204,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>
                 {merchant.type === 'city' ? 'LICENSED CITY MERCHANT' : 'WASTELAND TRADER'} · FIAT BALANCE: ƒ{salary.toLocaleString()}
@@ -27844,7 +27840,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── GOLD EXCHANGE PANEL (TABBED: GOLD / ASSETS / STOCKS) ──────────── */}
       {showGoldExchange && (() => {
         const g = gs.current;
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const rate = FIAT_PER_GOLD;
         const frame = g.worldTime;
         const doBuyGold = (amt: number) => {
@@ -27912,7 +27908,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); setGoldExchangeTab('gold'); } }}>
-            <div style={{ width:620, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+            <div style={{ width:620, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)", padding:'1.2rem' }}>
               <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>{getActiveCityDef().name} EXCHANGE</div>
               <div style={{ display:'flex', gap:'.4rem', marginBottom:'1rem' }}>
                 {tabBtn('gold', 'GOLD', '#FFD700')}
@@ -28037,7 +28033,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── HOUSING MANAGEMENT PANEL ───────────────────────────────────────── */}
       {showHousingPanel && (() => {
         const g = gs.current;
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const currentTier = HOUSING_TIERS.find(t => t.id === g.housingTier) ?? HOUSING_TIERS[0];
         const daysSinceRent = Math.floor((Date.now() - g.rentPaidAt) / 86400000);
         const currentCycleDays = RENT_PERIOD_DAYS(currentTier);
@@ -28099,7 +28095,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowHousingPanel(false); }}>
-            <div style={{ width:'min(740px,95vw)', maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(56,189,248,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+            <div style={{ width:'min(740px,95vw)', maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(56,189,248,.3)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)", padding:'1.2rem' }}>
               <div style={{ ...VT2, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.18em', marginBottom:'.6rem' }}>HOUSING MANAGEMENT</div>
               <div style={{ padding:'.6rem', border:'1px solid rgba(56,189,248,.15)', background:'rgba(56,189,248,.03)', marginBottom:'1rem' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
@@ -28164,7 +28160,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── BRANCHING DIALOGUE PANEL ──────────────────────────────────────── */}
       {showDialoguePanel && dialogueNode && (() => {
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const npcColor = '#67e8f9';
         const depthId = gs.current.activeDialogueNode ?? 'start';
         const depthLevel = (depthId.match(/_/g) || []).length;
@@ -28292,11 +28288,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             position: 'fixed', inset: 0, zIndex: 600,
             background: 'radial-gradient(ellipse at center, rgba(0,14,6,.93) 0%, rgba(0,2,2,.98) 70%, #000 100%)',
             display: 'flex', flexDirection: 'column',
-            fontFamily: "'VT323', monospace",
+            fontFamily: "var(--font-sans)",
           }}>
-            {/* scan-line overlay */}
-            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, rgba(51,255,170,0) 0, rgba(51,255,170,0) 3px, rgba(51,255,170,.03) 3px, rgba(51,255,170,.03) 4px)' }} />
-
             {/* top bar */}
             <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.9rem', letterSpacing: '.25em', borderBottom: '1px solid rgba(51,255,170,.18)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
@@ -28352,7 +28345,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       style={{
                         padding: '.9rem 1.2rem', background: choiceBg, border: `1px solid ${choiceBorder}`,
                         color: choiceColor, cursor: 'pointer', textAlign: 'left',
-                        fontFamily: "'VT323', monospace", fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)', letterSpacing: '.05em',
+                        fontFamily: "var(--font-sans)", fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)', letterSpacing: '.05em',
                         transition: 'all .15s ease', display: 'flex', alignItems: 'center', gap: '.9rem',
                       }}
                     >
@@ -28365,7 +28358,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <button
                     data-dialogue-continue="true"
                     onClick={() => handleChoice(null, dialogueNode.effect === 'open_shop')}
-                    style={{ padding: '.9rem 1.2rem', background: 'rgba(51,255,170,.06)', border: '1px solid rgba(51,255,170,.35)', color: '#86ffce', cursor: 'pointer', fontFamily: "'VT323', monospace", fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)', letterSpacing: '.05em', textAlign: 'left' }}
+                    style={{ padding: '.9rem 1.2rem', background: 'rgba(51,255,170,.06)', border: '1px solid rgba(51,255,170,.35)', color: '#86ffce', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)', letterSpacing: '.05em', textAlign: 'left' }}
                   >
                     ▶ CONTINUE <span style={{ fontSize: '.85rem', color: 'rgba(51,255,170,.4)', marginLeft: '.8rem' }}>press any key</span>
                   </button>
@@ -28381,8 +28374,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── CHARACTER CUSTOMIZATION PANEL ─────────────────────────────────── */}
       {showCostume && (() => {
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-        const ST2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+        const ST2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const tabs: { id: typeof costumeTab; label: string }[] = [
           { id: 'body',   label: 'BODY' },
           { id: 'hair',   label: 'HAIR' },
@@ -28660,7 +28653,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             onClick={e => { if (e.target === e.currentTarget) setShowAdmin(false); }}>
             <div style={{ width: 440, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(56,189,248,.4)', boxShadow: '0 0 40px rgba(56,189,248,.12)', padding: '1.2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: '#38bdf8', letterSpacing: '.1em' }}>DEPT. OF BUSINESS AFFAIRS</div>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.4rem', color: '#38bdf8', letterSpacing: '.1em' }}>DEPT. OF BUSINESS AFFAIRS</div>
                 <button onClick={() => setShowAdmin(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
               </div>
               <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL 2 — BUSINESS REGISTRATION</div>
@@ -28674,8 +28667,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     return (
                     <div key={bi} style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.5rem .7rem', background: 'rgba(56,189,248,.03)', marginBottom: '.3rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.07em' }}>{biz.companyName}</div>
-                        <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: indInfo?.color ?? '#38bdf8', letterSpacing: '.06em' }}>ƒ{(biz.totalRevenue ?? 0).toLocaleString()}</div>
+                        <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.07em' }}>{biz.companyName}</div>
+                        <div style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: indInfo?.color ?? '#38bdf8', letterSpacing: '.06em' }}>ƒ{(biz.totalRevenue ?? 0).toLocaleString()}</div>
                       </div>
                       <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>
                         {biz.bizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} · {biz.workstationLabel ?? 'UNASSIGNED'}<br/>
@@ -28697,7 +28690,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               )}
               {progressionBlockMsg ? (
                 <div style={{ border: '1px solid rgba(255,100,0,.3)', padding: '.8rem', background: 'rgba(255,100,0,.04)', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ff6600', letterSpacing: '.08em' }}>ADDITIONAL SLOT LOCKED</div>
+                  <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.1rem', color: '#ff6600', letterSpacing: '.08em' }}>ADDITIONAL SLOT LOCKED</div>
                   <div style={{ fontSize: '.5rem', color: 'rgba(255,150,50,.6)', lineHeight: 1.8 }}>{progressionBlockMsg}</div>
                   <div style={{ fontSize: '.45rem', color: 'rgba(255,150,50,.4)', lineHeight: 1.7 }}>
                     Net worth = (FIAT + savings) ÷ ƒ100,000 + gold oz. Each additional business slot requires Level {reqLevel} and {reqGoldNetWorth}oz gold net worth.
@@ -28715,7 +28708,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       onChange={e => setAdminBizName(e.target.value)}
                       placeholder="Enter business name..."
                       maxLength={40}
-                      style={{ width: '100%', padding: '.4rem .5rem', background: 'rgba(0,5,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', letterSpacing: '.06em', outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '.4rem .5rem', background: 'rgba(0,5,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.06em', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
@@ -28726,7 +28719,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           flex: 1, padding: '.5rem', background: adminBizType === t ? 'rgba(56,189,248,.12)' : 'transparent',
                           border: `1px solid ${adminBizType === t ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.15)'}`,
                           color: adminBizType === t ? '#38bdf8' : 'rgba(56,189,248,.4)', cursor: 'pointer',
-                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.08em',
+                          fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.08em',
                         }}>
                           {t === 'minx' ? `MINX CITY BUSINESS — ƒ${MINX_FEE.toLocaleString()}` : `REAL ENTERPRISE — ƒ${REAL_FEE.toLocaleString()}`}
                         </button>
@@ -28740,7 +28733,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const info = BIZ_INDUSTRY_INFO[cat];
                       return (
                         <div style={{ padding: '.4rem .5rem', marginBottom: '.4rem', border: `1px solid ${info.color}33`, background: `${info.color}08` }}>
-                          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: info.color, letterSpacing: '.08em' }}>REVENUE: {info.label}</div>
+                          <div style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: info.color, letterSpacing: '.08em' }}>REVENUE: {info.label}</div>
                           <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.6, marginTop: '.15rem' }}>{info.desc}. Your cut: {Math.round(info.cut * 100)}% of every matching transaction.</div>
                         </div>
                       );
@@ -28754,7 +28747,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           padding: '.3rem .4rem', background: adminBizIndustry === ind ? 'rgba(56,189,248,.1)' : 'transparent',
                           border: `1px solid ${adminBizIndustry === ind ? (catInfo?.color ?? 'rgba(56,189,248,.4)') + '66' : 'rgba(56,189,248,.1)'}`,
                           color: adminBizIndustry === ind ? (catInfo?.color ?? '#38bdf8') : 'rgba(56,189,248,.35)', cursor: 'pointer',
-                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', textAlign: 'left',
+                          fontFamily: "var(--font-sans)", fontSize: '.55rem', textAlign: 'left',
                         }}>
                           {ind}{catInfo ? ` [${catInfo.label}]` : ''}
                         </button>
@@ -28763,14 +28756,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   </div>
                   <div style={{ padding: '.5rem .7rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.25)', marginTop: '.2rem' }}>
-                    <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', color: 'rgba(255,200,0,.7)', letterSpacing: '.08em', lineHeight: 1.8 }}>
+                    <div style={{ fontFamily: "var(--font-sans)", fontSize: '.48rem', color: 'rgba(255,200,0,.7)', letterSpacing: '.08em', lineHeight: 1.8 }}>
                       NOTICE: Businesses with no activity for 30 consecutive days will be demolished and the registration voided. All fees are non-refundable.
                     </div>
                   </div>
                   <button onClick={doRegister} style={{
                     width: '100%', padding: '.5rem', marginTop: '.3rem',
                     background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)',
-                    color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace",
+                    color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)",
                     fontSize: '1.1rem', letterSpacing: '.1em',
                   }}>
                     REGISTER — ƒ{regFee.toLocaleString()}
@@ -28788,7 +28781,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── ADMIN DEPARTMENT PANELS ──────────────────────────────────────── */}
       {showAdminDept && (() => {
         const g = gs.current;
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const deptConfig: Record<string, { title: string; floor: number; subtitle: string }> = {
           open_records: { title: 'DEPT. OF RECORDS & ARCHIVES', floor: 3, subtitle: 'MUNICIPAL RECORDS · CIVIL REGISTRY · HISTORICAL ARCHIVES' },
           open_permits: { title: 'DEPT. OF PERMITS & ZONING', floor: 4, subtitle: 'CONSTRUCTION · ZONING · LAND USE · VARIANCES' },
@@ -28887,7 +28880,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── REAL ESTATE OFFICE PANEL ───────────────────────────────────────── */}
       {showRealEstateOffice && (() => {
         const g = gs.current;
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const deeds = g.propertyDeeds ?? [];
         const doPurchase = (listing: typeof REAL_ESTATE_LISTINGS[0]) => {
           if ((g.goldBalance ?? 0) < listing.price) { sfxError(); setNarr(`> INSUFFICIENT GOLD — "${listing.name}" costs ${listing.price} GOLD. You have ${(g.goldBalance ?? 0).toFixed(1)}.`); return; }
@@ -28931,10 +28924,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowRealEstateOffice(false); frozenRef.current = false; } }}>
-            <div style={{ width:650, maxWidth:'94vw', border:'1px solid rgba(204,68,255,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ width:650, maxWidth:'94vw', border:'1px solid rgba(204,68,255,.4)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.8rem' }}>
                 <div style={{ ...VT2, fontSize:'1.6rem', color:'#cc44ff', letterSpacing:'.18em' }}>REAL ESTATE OFFICE</div>
-                <button onClick={() => { setShowRealEstateOffice(false); frozenRef.current = false; }} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(204,68,255,.2)', color:'rgba(204,68,255,.4)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.5rem' }}>ESC</button>
+                <button onClick={() => { setShowRealEstateOffice(false); frozenRef.current = false; }} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(204,68,255,.2)', color:'rgba(204,68,255,.4)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.5rem' }}>ESC</button>
               </div>
               <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(204,68,255,.3),transparent)', marginBottom:'.8rem' }} />
               <div style={{ display:'flex', gap:'.8rem', marginBottom:'.8rem' }}>
@@ -28989,12 +28982,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ display:'flex', gap:'.3rem' }}>
                           {!isRented && (
                             <button onClick={() => doRegisterRental(deed.id, listing)}
-                              style={{ padding:'.15rem .5rem', background:'rgba(56,189,248,.05)', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.42rem' }}>
+                              style={{ padding:'.15rem .5rem', background:'rgba(56,189,248,.05)', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.5)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.42rem' }}>
                               REGISTER RENTAL ({listing ? Math.floor(listing.price * 0.1) : 1} GOLD)
                             </button>
                           )}
                           <button onClick={() => doSell(deed)}
-                            style={{ padding:'.15rem .5rem', background:'rgba(255,68,68,.06)', border:'1px solid rgba(255,68,68,.2)', color:'rgba(255,68,68,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.42rem' }}>
+                            style={{ padding:'.15rem .5rem', background:'rgba(255,68,68,.06)', border:'1px solid rgba(255,68,68,.2)', color:'rgba(255,68,68,.5)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.42rem' }}>
                             SELL (NET: ƒ{saleNet.toLocaleString()})
                           </button>
                         </div>
@@ -29037,7 +29030,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── QUEST / MISSION PANEL ─────────────────────────────────────────── */}
       {showAssignments && (() => {
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const story = gs.current.story;
         const quarter = getRealQuarter();
         const season = quarterToSeason(quarter);
@@ -29047,10 +29040,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div key={assignmentsRev} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowAssignments(false); }}>
-            <div style={{ width:560, maxWidth:'92vw', border:'1px solid rgba(255,200,60,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ width:560, maxWidth:'92vw', border:'1px solid rgba(255,200,60,.4)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.6rem' }}>
                 <div style={{ ...VT2, fontSize:'1.6rem', color:'#ffcc44', letterSpacing:'.18em' }}>{quarterLabel(quarter)} ASSIGNMENTS</div>
-                <button onClick={() => setShowAssignments(false)} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(255,200,60,.2)', color:'rgba(255,200,60,.4)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.5rem' }}>ESC</button>
+                <button onClick={() => setShowAssignments(false)} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(255,200,60,.2)', color:'rgba(255,200,60,.4)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.5rem' }}>ESC</button>
               </div>
               <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', fontSize:'.5rem', letterSpacing:'.1em', marginBottom:'.5rem', color:'rgba(56,189,248,.55)' }}>
                 <span style={{ border:'1px solid rgba(56,189,248,.25)', padding:'.2rem .45rem' }}>QUARTER {quarterLabel(quarter)}</span>
@@ -29088,16 +29081,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
       {showQuests && (() => {
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
         const activeQuests = quests.filter(q => !q.completed);
         const completedQuests = quests.filter(q => q.completed);
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowQuests(false); }}>
-            <div style={{ width:560, maxWidth:'92vw', border:'1px solid rgba(255,200,60,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ width:560, maxWidth:'92vw', border:'1px solid rgba(255,200,60,.4)', background:'rgba(0,6,2,.98)', fontFamily:"var(--font-sans)", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.8rem' }}>
                 <div style={{ ...VT2, fontSize:'1.6rem', color:'#ffcc44', letterSpacing:'.18em' }}>MISSIONS</div>
-                <button onClick={() => setShowQuests(false)} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(255,200,60,.2)', color:'rgba(255,200,60,.4)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.5rem' }}>ESC</button>
+                <button onClick={() => setShowQuests(false)} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(255,200,60,.2)', color:'rgba(255,200,60,.4)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.5rem' }}>ESC</button>
               </div>
               <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(255,200,60,.3),transparent)', marginBottom:'.8rem' }} />
 

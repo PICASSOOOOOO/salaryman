@@ -326,7 +326,7 @@ export default function MediaCenter() {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ background: "#0a0a0a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#00ff41", fontFamily: "Share Tech Mono, monospace" }}>
+      <div style={{ background: "#0a0a0a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#00ff41", fontFamily: "var(--font-sans)" }}>
         <p>Login required</p>
       </div>
     );
@@ -338,14 +338,14 @@ export default function MediaCenter() {
     background: tab === t ? "rgba(0,255,65,0.15)" : "transparent",
     color: tab === t ? "#00ff41" : "rgba(0,255,65,0.5)",
     border: tab === t ? "1px solid rgba(0,255,65,0.4)" : "1px solid transparent",
-    fontFamily: "Share Tech Mono, monospace",
+    fontFamily: "var(--font-sans)",
     fontSize: "0.85rem",
     letterSpacing: "0.05em",
     position: "relative" as const,
   });
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#00ff41", fontFamily: "Share Tech Mono, monospace", padding: "20px" }}>
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#00ff41", fontFamily: "var(--font-sans)", padding: "20px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <h1 style={{ fontSize: "1.6rem", letterSpacing: "0.15em", marginBottom: 8, borderBottom: "1px solid rgba(0,255,65,0.2)", paddingBottom: 12 }}>
           MEDIA CENTER
@@ -392,7 +392,7 @@ export default function MediaCenter() {
                             color: "#00ff41",
                             padding: "4px 12px",
                             cursor: "pointer",
-                            fontFamily: "Share Tech Mono, monospace",
+                            fontFamily: "var(--font-sans)",
                             fontSize: "0.75rem",
                             opacity: downloadingId === call.id ? 0.5 : 1,
                           }}
@@ -410,7 +410,7 @@ export default function MediaCenter() {
                           color: "#a855f7",
                           padding: "4px 12px",
                           cursor: "pointer",
-                          fontFamily: "Share Tech Mono, monospace",
+                          fontFamily: "var(--font-sans)",
                           fontSize: "0.75rem",
                           opacity: downloadingId === call.id ? 0.5 : 1,
                         }}
@@ -427,7 +427,7 @@ export default function MediaCenter() {
                           color: "#4af",
                           padding: "4px 12px",
                           cursor: "pointer",
-                          fontFamily: "Share Tech Mono, monospace",
+                          fontFamily: "var(--font-sans)",
                           fontSize: "0.75rem",
                         }}
                       >
@@ -507,7 +507,7 @@ export default function MediaCenter() {
                 color: "#00ff41",
                 padding: "12px 24px",
                 cursor: "pointer",
-                fontFamily: "Share Tech Mono, monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: "0.9rem",
                 letterSpacing: "0.1em",
               }}
@@ -519,13 +519,13 @@ export default function MediaCenter() {
               <div style={{ marginTop: 20 }}>
                 <img src={screenshotUrl} alt="Screenshot" style={{ maxWidth: "100%", maxHeight: 500, border: "1px solid rgba(0,255,65,0.3)" }} />
                 <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={downloadScreenshot} style={{ background: "transparent", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px 16px", cursor: "pointer", fontFamily: "Share Tech Mono, monospace", fontSize: "0.8rem" }}>
+                  <button onClick={downloadScreenshot} style={{ background: "transparent", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px 16px", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: "0.8rem" }}>
                     DOWNLOAD PNG
                   </button>
                   <select
                     value={shareToUser}
                     onChange={(e) => setShareToUser(e.target.value)}
-                    style={{ background: "#111", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px", fontFamily: "Share Tech Mono, monospace", fontSize: "0.8rem" }}
+                    style={{ background: "#111", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px", fontFamily: "var(--font-sans)", fontSize: "0.8rem" }}
                   >
                     <option value="">Share to...</option>
                     {members.map((m) => (
@@ -535,7 +535,7 @@ export default function MediaCenter() {
                   {shareToUser && (
                     <button
                       onClick={() => handleShareMedia("screenshot", `Screenshot ${new Date().toLocaleString()}`, screenshotUrl)}
-                      style={{ background: "transparent", border: "1px solid rgba(0,150,255,0.4)", color: "#4af", padding: "8px 16px", cursor: "pointer", fontFamily: "Share Tech Mono, monospace", fontSize: "0.8rem" }}
+                      style={{ background: "transparent", border: "1px solid rgba(0,150,255,0.4)", color: "#4af", padding: "8px 16px", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: "0.8rem" }}
                     >
                       SEND
                     </button>
@@ -562,7 +562,7 @@ export default function MediaCenter() {
                   color: "#ff3232",
                   padding: "12px 24px",
                   cursor: "pointer",
-                  fontFamily: "Share Tech Mono, monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: "0.9rem",
                   letterSpacing: "0.1em",
                 }}
@@ -581,7 +581,7 @@ export default function MediaCenter() {
                     color: "#ff3232",
                     padding: "8px 20px",
                     cursor: "pointer",
-                    fontFamily: "Share Tech Mono, monospace",
+                    fontFamily: "var(--font-sans)",
                     fontSize: "0.85rem",
                   }}
                 >
@@ -594,13 +594,13 @@ export default function MediaCenter() {
               <div style={{ marginTop: 20 }}>
                 <video src={recordedUrl} controls style={{ maxWidth: "100%", maxHeight: 500, border: "1px solid rgba(0,255,65,0.3)" }} />
                 <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={downloadRecording} style={{ background: "transparent", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px 16px", cursor: "pointer", fontFamily: "Share Tech Mono, monospace", fontSize: "0.8rem" }}>
+                  <button onClick={downloadRecording} style={{ background: "transparent", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px 16px", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: "0.8rem" }}>
                     DOWNLOAD WEBM
                   </button>
                   <select
                     value={shareToUser}
                     onChange={(e) => setShareToUser(e.target.value)}
-                    style={{ background: "#111", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px", fontFamily: "Share Tech Mono, monospace", fontSize: "0.8rem" }}
+                    style={{ background: "#111", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: "8px", fontFamily: "var(--font-sans)", fontSize: "0.8rem" }}
                   >
                     <option value="">Share to...</option>
                     {members.map((m) => (
@@ -610,7 +610,7 @@ export default function MediaCenter() {
                   {shareToUser && (
                     <button
                       onClick={() => handleShareMedia("screen_recording", `Screen Recording ${new Date().toLocaleString()}`, recordedUrl)}
-                      style={{ background: "transparent", border: "1px solid rgba(0,150,255,0.4)", color: "#4af", padding: "8px 16px", cursor: "pointer", fontFamily: "Share Tech Mono, monospace", fontSize: "0.8rem" }}
+                      style={{ background: "transparent", border: "1px solid rgba(0,150,255,0.4)", color: "#4af", padding: "8px 16px", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: "0.8rem" }}
                     >
                       SEND
                     </button>
@@ -685,7 +685,7 @@ export default function MediaCenter() {
               <select
                 value={shareToUser}
                 onChange={(e) => setShareToUser(e.target.value)}
-                style={{ width: "100%", background: "#0a0a0a", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: 10, fontFamily: "Share Tech Mono, monospace", fontSize: "0.85rem", marginBottom: 10 }}
+                style={{ width: "100%", background: "#0a0a0a", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: 10, fontFamily: "var(--font-sans)", fontSize: "0.85rem", marginBottom: 10 }}
               >
                 <option value="">Select team member...</option>
                 {members.map((m) => (
@@ -697,19 +697,19 @@ export default function MediaCenter() {
                 onChange={(e) => setShareDesc(e.target.value)}
                 placeholder="Add a note (optional)..."
                 rows={3}
-                style={{ width: "100%", background: "#0a0a0a", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: 10, fontFamily: "Share Tech Mono, monospace", fontSize: "0.85rem", resize: "vertical", marginBottom: 12 }}
+                style={{ width: "100%", background: "#0a0a0a", border: "1px solid rgba(0,255,65,0.3)", color: "#00ff41", padding: 10, fontFamily: "var(--font-sans)", fontSize: "0.85rem", resize: "vertical", marginBottom: 12 }}
               />
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button
                   onClick={() => { setShareTarget(null); setShareDesc(""); setShareToUser(""); }}
-                  style={{ background: "transparent", border: "1px solid rgba(0,255,65,0.2)", color: "rgba(0,255,65,0.5)", padding: "8px 16px", cursor: "pointer", fontFamily: "Share Tech Mono, monospace" }}
+                  style={{ background: "transparent", border: "1px solid rgba(0,255,65,0.2)", color: "rgba(0,255,65,0.5)", padding: "8px 16px", cursor: "pointer", fontFamily: "var(--font-sans)" }}
                 >
                   CANCEL
                 </button>
                 <button
                   onClick={handleShare}
                   disabled={!shareToUser}
-                  style={{ background: shareToUser ? "rgba(0,255,65,0.1)" : "transparent", border: "1px solid rgba(0,255,65,0.4)", color: "#00ff41", padding: "8px 16px", cursor: shareToUser ? "pointer" : "not-allowed", fontFamily: "Share Tech Mono, monospace", opacity: shareToUser ? 1 : 0.4 }}
+                  style={{ background: shareToUser ? "rgba(0,255,65,0.1)" : "transparent", border: "1px solid rgba(0,255,65,0.4)", color: "#00ff41", padding: "8px 16px", cursor: shareToUser ? "pointer" : "not-allowed", fontFamily: "var(--font-sans)", opacity: shareToUser ? 1 : 0.4 }}
                 >
                   SEND
                 </button>

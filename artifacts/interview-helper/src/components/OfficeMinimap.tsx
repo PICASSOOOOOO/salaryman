@@ -48,7 +48,7 @@ export function OfficeMinimap({
       // header
       const occ = occupantsRef.current;
       ctx.fillStyle = 'rgba(56,230,255,0.85)';
-      ctx.font = "8px 'Share Tech Mono', monospace";
+      ctx.font = "8px 'Fira Code', monospace";
       ctx.textBaseline = 'alphabetic';
       ctx.fillText('OFFICE FLOOR', pad, 10);
       ctx.fillStyle = 'rgba(109,255,143,0.9)';

@@ -240,7 +240,7 @@ export default function BusinessServices() {
           <ArrowLeft className="w-3 h-3" /> BUSINESS
         </button>
         <div className="text-cyan-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center"
-          style={{ fontFamily: "'VT323', monospace" }}>
+          style={{ fontFamily: "var(--font-sans)" }}>
           ▌ SERVICES BOARD <span className="text-pink-400">サービス</span> ▌
         </div>
         <div className="flex gap-2">
@@ -443,7 +443,7 @@ function BountyTab({ bounties, onAccept, onCollect, onCancel, busy }: {
         <div key={b.id} className="rounded-xl border border-red-700/30 bg-red-950/10 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
             <div>
-              <span className="text-red-300 font-bold text-sm tracking-wide" style={{ fontFamily: "'VT323', monospace" }}>
+              <span className="text-red-300 font-bold text-sm tracking-wide" style={{ fontFamily: "var(--font-sans)" }}>
                 TARGET: {b.targetName}
               </span>
               {b.acceptedByUserId && (
@@ -765,7 +765,7 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <div className="w-full max-w-md bg-zinc-950 border border-zinc-700 rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-          <div className="text-cyan-300 text-sm tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>{title}</div>
+          <div className="text-cyan-300 text-sm tracking-[0.3em]" style={{ fontFamily: "var(--font-sans)" }}>{title}</div>
           <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200">
             <X className="w-4 h-4" />
           </button>

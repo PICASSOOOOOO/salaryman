@@ -74,12 +74,11 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
       ctx.fillRect(0, 0, W, H);
 
       if (stateRef.current === 'title') {
-        drawScanlines(ctx, W, H, frameRef.current);
-        ctx.font = 'bold 18px "Share Tech Mono", monospace';
+        ctx.font = 'bold 18px "Fira Code", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = game.color;
         ctx.fillText(game.label, W / 2, 60);
-        ctx.font = '10px "Share Tech Mono", monospace';
+        ctx.font = '10px "Fira Code", monospace';
         ctx.fillStyle = 'rgba(255,255,255,.5)';
         ctx.fillText(game.desc, W / 2, 90);
         ctx.fillStyle = 'rgba(255,255,255,.3)';
@@ -87,11 +86,11 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
         const blink = Math.sin(frameRef.current * 0.08) > 0;
         if (blink) {
           ctx.fillStyle = game.color;
-          ctx.font = '12px "Share Tech Mono", monospace';
+          ctx.font = '12px "Fira Code", monospace';
           ctx.fillText('PRESS ENTER TO START', W / 2, 160);
         }
         ctx.fillStyle = 'rgba(255,255,255,.2)';
-        ctx.font = '9px "Share Tech Mono", monospace';
+        ctx.font = '9px "Fira Code", monospace';
         ctx.fillText('ESC TO EXIT', W / 2, 220);
         if (highScoreRef.current > 0) {
           ctx.fillStyle = 'rgba(255,200,0,.4)';
@@ -106,17 +105,16 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
           forceUpdate(n => n + 1);
         }
         renderGame(ctx, gameId, gameDataRef.current, W, H, frameRef.current, game.color);
-        ctx.font = '10px "Share Tech Mono", monospace';
+        ctx.font = '10px "Fira Code", monospace';
         ctx.textAlign = 'left';
         ctx.fillStyle = game.color;
         ctx.fillText(`SCORE: ${scoreRef.current}`, 8, 14);
       } else if (stateRef.current === 'gameover') {
-        drawScanlines(ctx, W, H, frameRef.current);
-        ctx.font = 'bold 20px "Share Tech Mono", monospace';
+        ctx.font = 'bold 20px "Fira Code", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ff3333';
         ctx.fillText('GAME OVER', W / 2, 70);
-        ctx.font = '14px "Share Tech Mono", monospace';
+        ctx.font = '14px "Fira Code", monospace';
         ctx.fillStyle = game.color;
         ctx.fillText(`SCORE: ${scoreRef.current}`, W / 2, 100);
         if (scoreRef.current >= highScoreRef.current) {
@@ -124,16 +122,16 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
           ctx.fillText('NEW HIGH SCORE!', W / 2, 120);
         }
         ctx.fillStyle = 'rgba(255,255,255,.3)';
-        ctx.font = '10px "Share Tech Mono", monospace';
+        ctx.font = '10px "Fira Code", monospace';
         ctx.fillText(`INSERT 1 FIAT TO CONTINUE  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 155);
         const blink = Math.sin(frameRef.current * 0.08) > 0;
         if (blink) {
           ctx.fillStyle = game.color;
-          ctx.font = '12px "Share Tech Mono", monospace';
+          ctx.font = '12px "Fira Code", monospace';
           ctx.fillText('PRESS ENTER', W / 2, 185);
         }
         ctx.fillStyle = 'rgba(255,255,255,.2)';
-        ctx.font = '9px "Share Tech Mono", monospace';
+        ctx.font = '9px "Fira Code", monospace';
         ctx.fillText('ESC TO EXIT', W / 2, 220);
       }
       frameRef.current++;
@@ -152,14 +150,6 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
       </div>
     </div>
   );
-}
-
-function drawScanlines(ctx: CanvasRenderingContext2D, w: number, h: number, frame: number) {
-  ctx.fillStyle = 'rgba(255,255,255,.02)';
-  for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
-  const scanY = (frame * 2) % (h + 20) - 10;
-  ctx.fillStyle = 'rgba(255,255,255,.04)';
-  ctx.fillRect(0, scanY, w, 2);
 }
 
 function initGame(id: string): any {
@@ -486,7 +476,7 @@ function renderBarrelRunner(ctx: CanvasRenderingContext2D, d: any, _w: number, _
   ctx.fillStyle = '#ddb888';
   ctx.beginPath(); ctx.arc(d.px, d.py - 11, 4, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.2)';
-  ctx.font = '9px "Share Tech Mono", monospace';
+  ctx.font = '9px "Fira Code", monospace';
   ctx.textAlign = 'right';
   ctx.fillText(`LVL ${d.level}`, 315, 14);
 }

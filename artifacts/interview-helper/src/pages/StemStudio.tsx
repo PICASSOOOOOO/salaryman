@@ -12,8 +12,8 @@ const OC = '#ff8c00';
 const BG = '#0a0d0a';
 const PANEL = '#0d100d';
 const BORDER = 'rgba(56,189,248,.18)';
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+const MONO: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 type StemType = 'vocals' | 'drums' | 'bass' | 'melody' | 'other';
 

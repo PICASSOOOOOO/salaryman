@@ -167,7 +167,7 @@ export default function PhoneSecretaryPage() {
     <PhonePageLayout title="AI SECRETARY" subtitle="Authentication required" icon={<Bot size={24} style={{ color: blue(0.8) }} />}>
       <div style={{ padding: '60px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
         <AlertTriangle size={32} style={{ color: `rgba(251,191,36,0.6)` }} />
-        <div style={{ fontSize: '0.65rem', color: `rgba(251,191,36,0.8)`, letterSpacing: '0.15em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
+        <div style={{ fontSize: '0.65rem', color: `rgba(251,191,36,0.8)`, letterSpacing: '0.15em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
           SESSION EXPIRED
         </div>
         <div style={{ fontSize: '0.55rem', color: crt(0.35), letterSpacing: '0.08em', maxWidth: 320, lineHeight: 1.7 }}>
@@ -176,7 +176,7 @@ export default function PhoneSecretaryPage() {
         <button
           onClick={() => login()}
           style={{
-            ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '0.7rem', color: '#38bdf8',
+            ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), fontSize: '0.7rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.4)', padding: '10px 28px',
             background: 'rgba(56,189,248,0.06)', cursor: 'pointer', letterSpacing: '0.12em',
             transition: 'all 0.2s', marginTop: 8,

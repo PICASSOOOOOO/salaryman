@@ -204,10 +204,10 @@ export default function VideoAnalyzer() {
                 <Video className="w-5 h-5 text-violet-400" />
               </div>
               <div className="flex-1">
-                <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
+                <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
                   {boomerMode ? 'VIDEO ANALYZER' : 'VID-SCAN // VIDEO INTELLIGENCE'}
                 </h1>
-                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                   {boomerMode ? 'PASTE ANY VIDEO URL — YOUTUBE, TIKTOK, OR ANY WEBSITE. AI ANALYZES AND EXTRACTS ACTIONABLE INTELLIGENCE.' : 'PASTE VIDEO URL · AI EXTRACTS TRANSCRIPT · ANALYZES CONTENT · RETURNS ACTIONABLE INTEL'}
                 </p>
               </div>
@@ -237,7 +237,7 @@ export default function VideoAnalyzer() {
                   onKeyDown={e => e.key === 'Enter' && !isProcessing && analyzeVideo()}
                   placeholder={boomerMode ? 'Paste YouTube, TikTok, or any video URL...' : 'https://youtube.com/watch?v=... | tiktok.com/... | any video URL'}
                   className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-violet-500/40 transition-colors"
-                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                  style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                   disabled={isProcessing}
                 />
               </div>
@@ -263,7 +263,7 @@ export default function VideoAnalyzer() {
                 onChange={e => setGoal(e.target.value)}
                 placeholder={boomerMode ? 'Optional: What should the AI focus on? (e.g., "marketing strategies", "competitor analysis")' : 'OPTIONAL FOCUS: marketing tactics | competitor intel | content ideas | sales techniques'}
                 className="flex-1 px-3 py-2 rounded-lg bg-transparent border border-border/50 text-xs text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-violet-500/30 transition-colors"
-                style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                 disabled={isProcessing}
               />
             </div>
@@ -353,7 +353,7 @@ export default function VideoAnalyzer() {
                   <div className="flex items-center justify-center py-12 text-muted-foreground">
                     <div className="flex flex-col items-center gap-3">
                       <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-                      <span className="text-sm font-bold" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                      <span className="text-sm font-bold" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                         {phase === 'fetching'
                           ? (boomerMode ? 'FETCHING VIDEO DATA...' : 'ACQUIRING TARGET DATA...')
                           : phase === 'meta'
@@ -395,7 +395,7 @@ export default function VideoAnalyzer() {
                       prose-li:text-muted-foreground prose-li:text-xs
                       prose-strong:text-foreground
                       prose-hr:border-border/30"
-                      style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                      style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(analysis) }}
                     />
                   </div>
@@ -447,7 +447,7 @@ export default function VideoAnalyzer() {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               className="rounded-2xl border border-border/50 bg-card/30 p-8 text-center">
               <Video className="w-12 h-12 mx-auto mb-4 text-muted-foreground/20" />
-              <h3 className="text-sm font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.2rem', letterSpacing: '0.08em' }}>
+              <h3 className="text-sm font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", fontSize: '1.2rem', letterSpacing: '0.08em' }}>
                 {boomerMode ? 'PASTE A VIDEO URL TO GET STARTED' : 'AWAITING TARGET URL'}
               </h3>
               <p className="text-xs text-muted-foreground/50 max-w-md mx-auto leading-relaxed mb-6">

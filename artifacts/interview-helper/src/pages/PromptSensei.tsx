@@ -28,8 +28,8 @@ const STARTER_PROMPTS: Record<string, string> = {
   workflows: "Show me how to chain multiple AI actions together into an agentic workflow. I want to automate complex tasks.",
 };
 
-const VT: React.CSSProperties = { fontFamily: "'VT323', monospace" };
-const SM: React.CSSProperties = { fontFamily: "'Share Tech Mono', monospace" };
+const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+const SM: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 export default function PromptSensei() {
   const [, navigate] = useLocation();

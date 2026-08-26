@@ -39,7 +39,7 @@ export function Scene8() {
 
       <motion.div
         style={{
-          fontFamily: '"VT323", monospace',
+          fontFamily: "var(--font-sans)",
           fontSize: 'clamp(14px, 3.5vw, 32px)',
           color: '#ef4444',
           letterSpacing: '0.15em',
@@ -55,7 +55,7 @@ export function Scene8() {
 
       <motion.div
         style={{
-          fontFamily: '"Share Tech Mono", monospace',
+          fontFamily: "var(--font-sans)",
           fontSize: 'clamp(5px, 0.9vw, 8px)',
           color: '#94a3b8',
           letterSpacing: '0.3em',
@@ -99,7 +99,7 @@ export function Scene8() {
                 padding: 'clamp(1px, 0.2vw, 2px) clamp(3px, 0.5vw, 6px)',
                 border: '1px solid #ef444425',
                 borderRadius: 2,
-                fontFamily: '"Share Tech Mono", monospace',
+                fontFamily: "var(--font-sans)",
                 fontSize: 'clamp(3px, 0.5vw, 5px)',
                 color: '#ef4444',
                 letterSpacing: '0.1em',
@@ -118,7 +118,7 @@ export function Scene8() {
       <motion.div
         style={{
           position: 'absolute', bottom: '12%',
-          fontFamily: '"VT323", monospace',
+          fontFamily: "var(--font-sans)",
           fontSize: 'clamp(6px, 1.2vw, 11px)',
           color: '#10b981',
           letterSpacing: '0.12em',
@@ -133,7 +133,7 @@ export function Scene8() {
       <motion.div
         style={{
           position: 'absolute', bottom: '6%',
-          fontFamily: '"Share Tech Mono", monospace',
+          fontFamily: "var(--font-sans)",
           fontSize: 'clamp(3px, 0.55vw, 5px)',
           color: '#64748b',
           letterSpacing: '0.2em',

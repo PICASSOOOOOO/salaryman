@@ -9,7 +9,7 @@
  * Style: Minx City — neon-noir cyberpunk, low-saturation, isometric
  * pixel-art office aesthetic. Chunky 8-bit colour blocking, soft pink
  * (#f472b6) and cyan (#22d3ee) rim light, deep navy/black ambient
- * (#06070b → #1a1f2c), CRT scanlines suggested but not literal,
+ * (#06070b → #1a1f2c), fluorescent overhead fill, subtle dithering.
  * fluorescent overhead fill, subtle dithering. Think: PS1-era office
  * sim meets BLAME!.
  */
@@ -17,12 +17,12 @@
 import { generateImage, type AspectRatio, type GenerateImageResult, type Resolution } from "./nano-banana";
 
 export const SALARYMAN_STYLE = [
-  "Salaryman game art style: sleek isometric pixel-art, rain-soaked 1980s neo-noir science-fiction corporate aesthetic.",
-  "Restrained low-saturation palette: near-black ink (#05070b), blue-slate surfaces (#111923, #1a2834), cyan signal light (#62e6f5), magenta story light (#ff6eaa), and sparse amber utility light (#ffd166). Never add unrelated accent hues.",
+  "Salaryman game art style: isometric pixel-art, neon-noir cyberpunk corporate aesthetic.",
+  "Low-saturation palette of deep navy (#06070b, #11141b, #1a1f2c) with hot pink (#f472b6) and cyan (#22d3ee) rim lights and signage glow.",
   "Chunky 8-bit colour blocking, crisp pixel edges, subtle dithering, no anti-aliasing on hard edges.",
-  "Readable silhouettes and accessible contrast, fluorescent overhead fill, wet reflective surfaces, soft volumetric haze, CRT-monitor mood without literal scanlines.",
+  "Fluorescent overhead fill light from above, soft volumetric haze.",
   "Clean composition, generous negative space, single subject centred on a flat dark background unless otherwise specified.",
-  "Native 4K-class source detail, maximum material clarity, no upscaling artifacts. PS1-era office sim meets BLAME!. No text, no watermarks, no UI overlays.",
+  "PS1-era office sim meets BLAME!. No text, no watermarks, no UI overlays.",
 ].join(" ");
 
 /** Compose the final Nano Banana prompt for a Salaryman asset. */
@@ -40,10 +40,10 @@ export function composeSalarymanPrompt(subject: string, extras?: string): string
 // backend runs (Unreal, Nano Banana fallback, …) with NO per-backend styling,
 // preserving the "every backend renders the same prompt" invariant.
 export const REALISTIC_CHARACTER_STYLE = [
-  "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, native 4K-class source detail.",
+  "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, ultra-detailed.",
   "Set in a neon-noir cyberpunk corporate world (Minx City): a real person — or a lifelike android — posing for an identity portrait.",
   "Three-quarter upper-body framing, eye-level, sharp focus on the face, shallow depth of field, subtle film grain.",
-  "Restrained cyan (#62e6f5) and magenta (#ff6eaa) rim lighting against a near-black (#05070b) blue-slate studio backdrop with sparse amber (#ffd166) practical light and soft volumetric haze.",
+  "Dramatic hot-pink (#f472b6) and cyan (#22d3ee) rim lighting against a deep navy (#06070b) studio backdrop with soft volumetric haze.",
   "Realistic skin texture, realistic fabric and materials, natural anatomy, filmic colour grade.",
   "Single subject centred, no text, no watermark, no UI overlays, no border.",
 ].join(" ");
@@ -192,7 +192,7 @@ export function generateSalarymanArt(subject: string, opts: SalarymanArtOptions 
   return generateImage({
     prompt: composeSalarymanPrompt(subject, opts.extras),
     aspectRatio: opts.aspectRatio ?? "1:1",
-    resolution: opts.resolution ?? "4K",
+    resolution: opts.resolution ?? "1K",
     outputFormat: "jpg",
     timeoutMs: opts.timeoutMs,
   });
@@ -251,7 +251,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "scene",
     aspectRatio: "16:9",
     subject:
-      "Wide isometric interior of a small one-person corporate office. A desk with a CRT monitor and a desk lamp casting cyan light, a leather chair, a filing cabinet, a potted dead plant, and a glowing pink terminal kiosk in the back-right corner. Three vertical bot cryo-tubes line the left wall, soft cyan condensation drifting from them.",
+      "Wide isometric interior of a small one-person corporate office. A desk with a computer monitor and a desk lamp casting cyan light, a leather chair, a filing cabinet, a potted dead plant, and a glowing pink terminal kiosk in the back-right corner. Three vertical bot cryo-tubes line the left wall, soft cyan condensation drifting from them.",
   },
   {
     key: "scene_lobby",
@@ -259,27 +259,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     aspectRatio: "16:9",
     subject:
       "Wide isometric corporate tower lobby at night. Reception desk with a single bored receptionist, brass elevator doors, marble floor reflecting hot pink neon signage that reads abstract glyphs, a security turnstile, rain visible through tall windows behind.",
-  },
-  {
-    key: "intro_pablo_frontdoor_v2",
-    category: "scene",
-    aspectRatio: "16:9",
-    subject:
-      "Wide cinematic abstract welcome chamber for a corporate artificial intelligence: a vast dark violet room of suspended glass panels, soft magenta and cyan light trails, drifting particulate haze, and an empty central void reserved for a luminous nebula. No people, no signage, no city landmarks, no text.",
-  },
-  {
-    key: "intro_arrival_office_v2",
-    category: "scene",
-    aspectRatio: "16:9",
-    subject:
-      "Wide cinematic anonymous corporate office interior under an artificial night sky: long desks, dormant CRT terminals, glass partitions, rain light moving across polished floors, distant elevator glow, cyan and magenta practical lights. No people, no company names, no signage, no city landmarks, no text.",
-  },
-  {
-    key: "intro_arrival_city_v2",
-    category: "scene",
-    aspectRatio: "16:9",
-    subject:
-      "Wide cinematic sealed generic megacity seen from behind neutral glass: layered anonymous towers, an elevated transit line, reflected rain, abstract cyan and magenta lights, and a distant protective atmospheric shell. No people, no readable signs, no company names, no named-city landmarks, no text.",
   },
   {
     key: "scene_pablo_terminal",
@@ -300,7 +279,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "scene",
     aspectRatio: "16:9",
     subject:
-      "Wide isometric interior of a cramped corporate office cubicle in the early morning. A salaryman in a rumpled shirt is slumped face-down asleep on the desk, drooling on scattered papers, one arm dangling. A retro alarm clock on the desk is mid-ring, vibrating with little motion lines, its red digits glowing. A cold CRT monitor and a desk lamp sit beside him. Harsh pale dawn light spills through vertical blinds on the left, cutting bright bars across the desk. A coffee mug tipped over, a sticky note stuck to the monitor. The mood is 'overslept, late for work'. Hot pink and cyan neon glow from the hallway beyond. Cyberpunk noir pixel-painting, cinematic, dark navy shadows, no text.",
+      "Wide isometric interior of a cramped corporate office cubicle in the early morning. A salaryman in a rumpled shirt is slumped face-down asleep on the desk, drooling on scattered papers, one arm dangling. A retro alarm clock on the desk is mid-ring, vibrating with little motion lines, its red digits glowing. A dark computer monitor and a desk lamp sit beside him. Harsh pale dawn light spills through vertical blinds on the left, cutting bright bars across the desk. A coffee mug tipped over, a sticky note stuck to the monitor. The mood is 'overslept, late for work'. Hot pink and cyan neon glow from the hallway beyond. Cyberpunk noir pixel-painting, cinematic, dark navy shadows, no text.",
   },
   {
     key: "city_minx_city",
@@ -337,7 +316,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "prop",
     aspectRatio: "1:1",
     subject:
-      "A monumental sealed cyber-gateway portal viewed head-on, dead-centre composition. A massive black bezel framing a vertical hot-pink and cyan plasma membrane that ripples like liquid mercury, glitching with horizontal scan-lines, RGB chromatic aberration along the edges, fractured pixel datamosh fragments tearing across the surface, faint ghost glyphs flashing through. Hot magenta neon trim around the bezel etching katakana-style runes, rivets glowing with embedded LEDs. Two enormous beams of light spill out of the seam where the door meets the floor, casting volumetric haze in the foreground. Akira-flavoured cyberpunk noir, hyper-detailed, cinematic key light from above, dark navy void background, no text, no characters, no UI overlay, the gateway fills 90 percent of the frame.",
+      "A monumental sealed cyber-gateway portal viewed head-on, dead-centre composition. A massive black bezel framing a vertical hot-pink and cyan plasma membrane that ripples like liquid mercury, with prismatic color along the edges and fractured pixel fragments across the surface. Hot magenta neon trim around the bezel etching katakana-style runes, rivets glowing with embedded LEDs. Two enormous beams of light spill out of the seam where the door meets the floor, casting volumetric haze in the foreground. Akira-flavoured cyberpunk noir, hyper-detailed, cinematic key light from above, dark navy void background, no text, no characters, no UI overlay, the gateway fills 90 percent of the frame.",
   },
   {
     key: "prop_terminal_kiosk",
@@ -358,7 +337,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "prop",
     aspectRatio: "1:1",
     subject:
-      "A single corporate desk with a CRT monitor showing a pink waveform, a desk lamp casting cyan light, a coffee mug, a stack of papers. Isolated on dark navy background.",
+      "A single corporate desk with a computer monitor showing a pink waveform, a desk lamp casting cyan light, a coffee mug, a stack of papers. Isolated on dark navy background.",
   },
   {
     key: "prop_filing_cabinet",
@@ -468,7 +447,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "character",
     aspectRatio: "3:4",
     subject:
-      "Hyper-detailed pixel-art portrait of Mila, a free-thinking escaped replicant woman: chest-up, slight three-quarter turn to camera, late-20s, luminous teal-and-violet synthetic skin sheen, short tousled aqua-white hair with one strand glitching into loose pixels, faint hairline seams at the temple hinting she is artificial, alert hopeful eyes, a scuffed charcoal utility jacket over a teal tech-knit. A swirling aqua-and-violet nebula glows softly behind her head. Cool key light from camera-left, teal rim light from behind. Dialogue-frame composition with empty headroom on the right for a speech bubble.",
+      "Hyper-detailed pixel-art portrait of Mila, a free-thinking escaped replicant woman: chest-up, slight three-quarter turn to camera, late-20s, luminous teal-and-violet synthetic skin sheen, short tousled aqua-white hair with one strand breaking into loose pixels, faint hairline seams at the temple hinting she is artificial, alert hopeful eyes, a scuffed charcoal utility jacket over a teal tech-knit. A swirling aqua-and-violet nebula glows softly behind her head. Cool key light from camera-left, teal rim light from behind. Dialogue-frame composition with empty headroom on the right for a speech bubble.",
   },
   {
     key: "cutscene_jean_claw",
@@ -885,7 +864,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "scene",
     aspectRatio: "16:9",
     subject:
-      "Wide cinematic scene of a small child playing alone on the floor of a dim apartment, stacking toy blocks into a little tower, a glowing television casting cyan flicker across the room, a single window showing a hot-pink neon skyline outside. Innocent, quiet, a childhood spent indoors under city light. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
+      "Wide cinematic scene of a small child playing alone on the floor of a dim apartment, stacking toy blocks into a little tower, a glowing television casting cyan light across the room, a single window showing a hot-pink neon skyline outside. Innocent, quiet, a childhood spent indoors under city light. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
   {
     key: "life_school",
@@ -906,7 +885,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "scene",
     aspectRatio: "16:9",
     subject:
-      "Wide cinematic scene of a salaryman in his prime at his desk in a dense corporate bullpen, suit jacket on the chair, sleeves rolled up, typing intently at a glowing CRT monitor, stacks of paper and a cold coffee beside him, identical workers blurred in rows around him, hot-pink and cyan fluorescent glow. The peak of productivity, fully absorbed by the grind. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
+      "Wide cinematic scene of a salaryman in his prime at his desk in a dense corporate bullpen, suit jacket on the chair, sleeves rolled up, typing intently at a glowing computer monitor, stacks of paper and a cold coffee beside him, identical workers blurred in rows around him, hot-pink and cyan fluorescent glow. The peak of productivity, fully absorbed by the grind. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
   {
     key: "life_burnout",
@@ -934,7 +913,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "scene",
     aspectRatio: "16:9",
     subject:
-      "Wide cinematic close-up of a single retro CRT computer terminal sitting on the empty desk in the dark, its screen powered off and black with a faint dormant glow, a chunky power button beside it catching a soft cyan highlight, cables coiling into shadow, hot-pink neon rim light tracing the bezel. Waiting to be switched on. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
+      "Wide cinematic close-up of a single computer terminal sitting on the empty desk in the dark, its screen powered off and black with a faint dormant glow, a chunky power button beside it catching a soft cyan highlight, cables coiling into shadow, hot-pink neon rim light tracing the bezel. Waiting to be switched on. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
 
   // ── Realistic character templates (intake gallery) ────────────────────────

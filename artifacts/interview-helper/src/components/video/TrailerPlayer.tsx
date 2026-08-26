@@ -29,7 +29,7 @@ export default function TrailerPlayer({ className }: { className?: string }) {
               alignItems: 'center',
               justifyContent: 'center',
               color: '#38bdf8',
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '0.75rem',
               letterSpacing: '0.15em',
             }}

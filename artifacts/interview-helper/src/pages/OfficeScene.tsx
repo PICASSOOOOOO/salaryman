@@ -76,7 +76,7 @@ export default function OfficeScene() {
   const officeUrl = officeArt;
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#06070b] text-pink-100 overflow-hidden select-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+    <div className="fixed inset-0 z-40 bg-[#06070b] text-pink-100 overflow-hidden select-none" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Pro-baked background — same Nano Banana still as the realty card
           for `property_apartment_office`. Slow Ken-Burns drift so the
           empty room feels alive without adding fake occupants. */}
@@ -91,14 +91,9 @@ export default function OfficeScene() {
         />
       )}
 
-      {/* Subtle pink/cyan glow + scanlines so the empty room reads as
-          part of the Akira-tinged Salaryman world even when the art is
-          still composing. */}
+      {/* Ambient scene lighting while the art is still composing. */}
       <div className="absolute inset-0 pointer-events-none" style={{
         background: "radial-gradient(ellipse at 18% 70%, rgba(34,211,238,0.10), transparent 55%), radial-gradient(ellipse at 82% 30%, rgba(236,72,153,0.14), transparent 55%)",
-      }} />
-      <div className="absolute inset-0 pointer-events-none opacity-25 mix-blend-overlay" style={{
-        background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px)",
       }} />
 
       {/* CSS fallback room while the Nano Banana still composes. */}

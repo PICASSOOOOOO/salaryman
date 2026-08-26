@@ -216,7 +216,7 @@ export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_play
             </div>
             <div
               className="text-lg sm:text-xl text-zinc-100 leading-relaxed min-h-[3.5rem] whitespace-pre-wrap"
-              style={{ fontFamily: "'VT323', monospace", letterSpacing: "0.02em" }}
+              style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.02em" }}
             >
               {visibleText}
               {!fullyTyped && <span className="inline-block w-2 h-5 ml-1 align-middle" style={{ background: accent }} />}
@@ -280,14 +280,6 @@ function CharacterPlate({ url, name, role, accent, side, active, mirrored }: Cha
             ▌ COMPOSING ▌
           </div>
         )}
-        {/* Scanline overlay */}
-        <div
-          className="absolute inset-0 pointer-events-none mix-blend-overlay opacity-40"
-          style={{
-            background:
-              "repeating-linear-gradient(0deg, rgba(0,0,0,0.0) 0px, rgba(0,0,0,0.0) 2px, rgba(0,0,0,0.5) 3px, rgba(0,0,0,0.5) 4px)",
-          }}
-        />
       </div>
       <div
         className={`absolute -bottom-2 px-3 py-1.5 rounded-md border-2 backdrop-blur-sm text-center ${
@@ -300,7 +292,7 @@ function CharacterPlate({ url, name, role, accent, side, active, mirrored }: Cha
       >
         <div
           className="text-xs sm:text-sm font-bold tracking-[0.3em]"
-          style={{ color: accent, fontFamily: "'VT323', monospace" }}
+          style={{ color: accent, fontFamily: "var(--font-sans)" }}
         >
           {name}
         </div>
@@ -340,7 +332,7 @@ function ActionPalette({
             data-testid={`cutscene-action-${a.kind}`}
             aria-label={`${a.kind}: ${a.label}`}
             className={`px-3 py-3 rounded-lg border-2 text-xs tracking-[0.2em] font-bold transition-all hover:scale-[1.03] ${ACTION_TINT[a.kind]}`}
-            style={{ fontFamily: "'VT323', monospace", letterSpacing: "0.15em", fontSize: "1rem" }}
+            style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.15em", fontSize: "1rem" }}
           >
             <span className="mr-2 text-base" aria-hidden="true">{ACTION_ICON[a.kind]}</span>
             {a.label}

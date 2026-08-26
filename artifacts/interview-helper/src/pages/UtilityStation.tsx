@@ -203,11 +203,11 @@ export function PowerGoodsGrid({ mode }: { mode: UtilityMode }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] tracking-[0.4em] text-cyan-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-[10px] tracking-[0.4em] text-cyan-300/70" style={{ fontFamily: "var(--font-sans)" }}>
           ▾ {mode === "charge" ? "POWER CELLS · SPEND ƒ" : "FUEL · SPEND ƒ"}
         </div>
         {rate && (
-          <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "var(--font-sans)" }}>
             {rate}
           </div>
         )}
@@ -220,7 +220,7 @@ export function PowerGoodsGrid({ mode }: { mode: UtilityMode }) {
               ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
               : "border-red-400/50 bg-red-500/10 text-red-200"
           }`}
-          style={{ fontFamily: "'VT323', monospace" }}
+          style={{ fontFamily: "var(--font-sans)" }}
         >
           {toast.msg}
         </div>
@@ -251,7 +251,7 @@ export function PowerGoodsGrid({ mode }: { mode: UtilityMode }) {
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-3">
-                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
                     ƒ{g.priceFiat.toLocaleString()}
                   </div>
                   <button
@@ -342,10 +342,10 @@ function RefuelSection({
   return (
     <div className="mb-5 rounded-lg border-2 border-amber-500/40 bg-amber-500/[0.05] p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] tracking-[0.4em] text-amber-300/80" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-[10px] tracking-[0.4em] text-amber-300/80" style={{ fontFamily: "var(--font-sans)" }}>
           ▾ REFUEL · SPEND ƒ
         </div>
-        <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "var(--font-sans)" }}>
           ƒ{gasUnitPrice}/unit
         </div>
       </div>
@@ -357,7 +357,7 @@ function RefuelSection({
               ? "border-amber-400/50 bg-amber-500/10 text-amber-200"
               : "border-red-400/50 bg-red-500/10 text-red-200"
           }`}
-          style={{ fontFamily: "'VT323', monospace" }}
+          style={{ fontFamily: "var(--font-sans)" }}
         >
           {toast.msg}
         </div>
@@ -387,7 +387,7 @@ function RefuelSection({
           <div data-testid="refuel-vehicle">
             <div className="flex items-center justify-between mb-1.5">
               <div className="text-amber-100 text-[11px] tracking-[0.2em] font-bold">⛽ {vehicleInfo.label} · GAS</div>
-              <div className="text-amber-300/80 text-[10px] tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <div className="text-amber-300/80 text-[10px] tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
                 {Math.floor(vehicleInfo.gas)} / {vehicleInfo.cap} u
               </div>
             </div>
@@ -413,7 +413,7 @@ function RefuelSection({
       <div className="pt-3 border-t border-amber-500/15" data-testid="refuel-home">
         <div className="flex items-center justify-between mb-1.5">
           <div className="text-amber-100 text-[11px] tracking-[0.2em] font-bold">🍳 HOME GAS SUPPLY</div>
-          <div className="text-amber-300/80 text-[10px] tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="text-amber-300/80 text-[10px] tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
             {Math.floor(homeGas)} / {homeGasCap} u
           </div>
         </div>
@@ -507,7 +507,7 @@ export function InstalledBatteryPanel() {
     <div className="mt-6 pt-5 border-t border-cyan-500/20" data-testid="battery-panel">
       <div className="flex items-center gap-2 mb-3">
         <BatteryCharging className="w-3.5 h-3.5 text-cyan-300" />
-        <div className="text-[10px] tracking-[0.4em] text-cyan-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-[10px] tracking-[0.4em] text-cyan-300/70" style={{ fontFamily: "var(--font-sans)" }}>
           ▾ YOUR POWERED UNITS
         </div>
       </div>
@@ -517,7 +517,7 @@ export function InstalledBatteryPanel() {
           className={`mb-3 px-3 py-2 rounded border text-[10px] tracking-[0.25em] ${
             toast.ok ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200" : "border-red-400/50 bg-red-500/10 text-red-200"
           }`}
-          style={{ fontFamily: "'VT323', monospace" }}
+          style={{ fontFamily: "var(--font-sans)" }}
           data-testid="battery-toast"
         >
           {toast.msg}
@@ -565,10 +565,10 @@ export function InstalledBatteryPanel() {
                   <div className={`h-full ${barColor} transition-all`} style={{ width: `${Math.round(b.pct * 100)}%` }} />
                 </div>
                 <div className="flex items-center justify-between mt-1.5">
-                  <div className="text-[9px] text-cyan-300/70 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className="text-[9px] text-cyan-300/70 tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
                     {Math.round(b.charge).toLocaleString()} / {b.capacity.toLocaleString()} kWh
                   </div>
-                  <div className="text-[9px] text-amber-300/80 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className="text-[9px] text-amber-300/80 tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
                     {b.charge < b.capacity ? `RECHARGE ƒ${b.rechargeCost.toLocaleString()}` : "FULL"}
                   </div>
                 </div>
@@ -669,7 +669,7 @@ export default function UtilityStation({ mode, onClose, refuel }: { mode: Utilit
               <Icon className="w-4 h-4 text-cyan-300" />
             </div>
             <div className="min-w-0">
-              <div className="text-cyan-200 text-sm tracking-[0.3em] truncate" style={{ fontFamily: "'VT323', monospace" }}>
+              <div className="text-cyan-200 text-sm tracking-[0.3em] truncate" style={{ fontFamily: "var(--font-sans)" }}>
                 {title} <span className="text-red-400/70 text-[10px]">{kana}</span>
               </div>
               <div className="text-[9px] text-cyan-300/60 tracking-[0.3em] truncate">

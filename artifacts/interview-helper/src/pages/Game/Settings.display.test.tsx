@@ -94,7 +94,7 @@ beforeEach(() => {
     STORE_KEY,
     JSON.stringify({ master: 0.3, music: 0.55, muted: true }),
   );
-  document.documentElement.classList.remove("low-gfx", "no-crt");
+  document.documentElement.classList.remove("low-gfx");
   changeCount = 0;
   window.addEventListener("sm-settings-changed", onChange);
   container = document.createElement("div");

@@ -192,8 +192,22 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
     effect: "Permanently unlocks the full Phone System — dialer, voicemail, call center, and AI secretary. One-time pledge, no subscription.",
     costUsd: 99, icon: "📞", popup: true,
   },
-  { id: "term_retro", category: "terminals", name: "Retro CRT Terminal", blurb: "Green phosphor glow.", effect: "Unlocks the CRT terminal skin for Pablo and the Command Deck.", costUsd: 16, icon: "📟" },
   { id: "term_holo", category: "terminals", name: "Holo Terminal", blurb: "From the future.", effect: "Premium holographic terminal type with extra panels.", costUsd: 54, icon: "🔮" },
+];
+
+// Retired products stay server-side solely so delayed Stripe webhooks and
+// existing purchase records retain their original catalog identity. They are
+// intentionally excluded from all active catalog and checkout lookups.
+const RETIRED_FULFILLMENT_CATALOG: PledgeItem[] = [
+  {
+    id: "term_retro",
+    category: "terminals",
+    name: "Retired Terminal Cosmetic",
+    blurb: "Retired product — retained for purchase-history fulfillment only.",
+    effect: "Historical entitlement retained without enabling a selectable terminal skin.",
+    costUsd: 16,
+    icon: "📟",
+  },
 ];
 
 // ─── CONFIDENTIAL: cost-plus pricing ─────────────────────────────────────────
@@ -335,7 +349,13 @@ const PRIME_LISTING: PledgeItem = {
 // The full internal catalog is retained for webhook fulfillment. The public
 // storefront deliberately exposes only dollar-backed agent products and PRIME;
 // everything else belongs in the in-world economy.
-const FULL_CATALOG: PledgeItem[] = [...PLEDGE_CATALOG, ...GEAR_LISTINGS, ...BUNDLE_LISTINGS, PRIME_LISTING];
+const FULL_CATALOG: PledgeItem[] = [
+  ...PLEDGE_CATALOG,
+  ...RETIRED_FULFILLMENT_CATALOG,
+  ...GEAR_LISTINGS,
+  ...BUNDLE_LISTINGS,
+  PRIME_LISTING,
+];
 const DOLLAR_STORE_CATEGORIES = new Set<PledgeCategory>(["bots", "membership"]);
 const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => DOLLAR_STORE_CATEGORIES.has(item.category));
 const PUBLIC_CATEGORIES = ["bots", "membership"] as const;

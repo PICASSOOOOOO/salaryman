@@ -43,8 +43,8 @@ export function PropertyCard({
   actionLabel,
   boomer,
 }: PropertyCardProps) {
-  const VT: React.CSSProperties = boomer ? {} : { fontFamily: "'VT323',monospace" };
-  const ST: React.CSSProperties = boomer ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = boomer ? {} : { fontFamily: "var(--font-sans)" };
+  const ST: React.CSSProperties = boomer ? {} : { fontFamily: "var(--font-sans)" };
 
   const accentFull = 'rgba(56,189,248,1)';
   const accentFade = 'rgba(56,189,248,0.45)';

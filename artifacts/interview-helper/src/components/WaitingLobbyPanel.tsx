@@ -1,7 +1,7 @@
 import { PLANNED_CITIES } from '@/lib/world-servers';
 
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 // Capacity LOBBY. When a realm is at its player cap, non-business arrivals are
 // held HERE instead of being bounced — they take no "floor" (no world slot /

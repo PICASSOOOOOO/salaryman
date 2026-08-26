@@ -10,7 +10,7 @@ import { apiFetch } from "@/lib/api-client";
 import { usePlan } from "@/hooks/use-plan";
 
 const CRT = "#38bdf8";
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 type AuthType = "app_password" | "webhook" | "oauth";
 

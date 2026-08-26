@@ -3,7 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { Send, Loader2, GraduationCap } from 'lucide-react';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 interface Msg { role: 'user' | 'assistant'; content: string }
 

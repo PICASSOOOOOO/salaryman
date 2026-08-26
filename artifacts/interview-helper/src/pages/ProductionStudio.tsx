@@ -280,11 +280,11 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
               <Clapperboard className="w-5 h-5 text-violet-400" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
-                {boomerMode ? 'PRODUCTION STUDIO' : 'PRODUCTION STUDIO // PRD-X'}
+              <h1 className="text-lg font-bold text-foreground">
+                PRODUCTION STUDIO
               </h1>
-              <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                {boomerMode ? 'AI-POWERED CREATIVE PRODUCTION FOR BRANDS, FILM & VIDEO' : 'CLOTHING · BILLBOARDS · 35MM · HI-DEF · VIDEO PRODUCTION'}
+              <p className="text-xs text-muted-foreground">
+                AI-powered creative production for brands, film, and video
               </p>
             </div>
           </div>
@@ -344,7 +344,7 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
                     ? 'Describe your 35mm shot: "Woman in vintage red dress walking through Tokyo neon streets at dusk, rain-slicked pavement..."'
                     : 'Describe what you want to create...'}
                   className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/25 focus:outline-none focus:border-violet-500/40 transition-colors resize-none"
-                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                  style={{ fontFamily: "'Fira Code', monospace" }}
                   rows={4}
                   disabled={generating}
                 />
@@ -379,8 +379,8 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Loader2 className="w-10 h-10 animate-spin text-violet-400 mb-4" />
-                    <span className="text-sm font-bold" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                      {boomerMode ? 'GENERATING IMAGE...' : 'RENDERING...'}
+                    <span className="text-sm font-bold">
+                       Generating image…
                     </span>
                     <span className="text-[10px] text-muted-foreground/40 mt-1">This may take 15-30 seconds</span>
                   </motion.div>
@@ -459,7 +459,7 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
                         <div key={p.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2.5 border-b border-border/20 items-center hover:bg-violet-500/[0.02] transition-colors">
                           <div className="flex items-center gap-2 min-w-0">
                             <ImageIcon className="w-3.5 h-3.5 text-violet-400/50 shrink-0" />
-                            <span className="text-[10px] text-foreground truncate" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                            <span className="text-[10px] text-foreground truncate" style={{ fontFamily: "'Fira Code', monospace" }}>
                               {p.name}
                             </span>
                           </div>
@@ -494,8 +494,8 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
                   </div>
                   <div className="flex items-center gap-2 mt-2 px-1">
                     <CloudOff className="w-3 h-3 text-muted-foreground/20" />
-                    <span className="text-[9px] text-muted-foreground/30" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                      {boomerMode ? 'UNLOCKED FILES AUTO-DELETE AFTER 30 DAYS. LOCK TO KEEP PERMANENTLY.' : 'UNLOCKED FILES AUTO-PURGE IN 30D // LOCK TO PRESERVE'}
+                    <span className="text-[9px] text-muted-foreground/30">
+                       Unlocked files are deleted after 30 days. Lock files to keep them permanently.
                     </span>
                   </div>
                 </div>
@@ -536,7 +536,7 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
                     ? 'Describe your fashion film: "SS25 collection reveal, models walking through abandoned warehouse, industrial meets haute couture..."'
                     : 'Describe your video concept...'}
                   className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/25 focus:outline-none focus:border-violet-500/40 transition-colors resize-none"
-                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                  style={{ fontFamily: "'Fira Code', monospace" }}
                   rows={4}
                   disabled={scriptLoading}
                 />
@@ -595,7 +595,7 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
                     </button>
                   </div>
                   <div className="p-5 prose prose-sm prose-invert max-w-none prose-headings:text-foreground prose-h2:text-sm prose-h3:text-xs prose-p:text-xs prose-li:text-xs prose-strong:text-foreground overflow-y-auto max-h-[600px]"
-                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    style={{ fontFamily: "'Fira Code', monospace" }}
                     dangerouslySetInnerHTML={{ __html: renderMd(videoScript) }}
                   />
                 </motion.div>

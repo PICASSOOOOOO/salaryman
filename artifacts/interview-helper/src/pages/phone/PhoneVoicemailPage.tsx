@@ -109,7 +109,7 @@ function SendVoicemailToHummingBird({ url, id }: { url: string; id: number }) {
       style={{
         background: 'transparent', border: '1px solid rgba(168,85,247,0.5)',
         color: '#a855f7', padding: '4px 10px', cursor: busy ? 'wait' : 'pointer',
-        fontFamily: 'Share Tech Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em',
+        fontFamily: "var(--font-sans)", fontSize: '0.55rem', letterSpacing: '0.1em',
         opacity: busy ? 0.5 : 1,
       }}
     >

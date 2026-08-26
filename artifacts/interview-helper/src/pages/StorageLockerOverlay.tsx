@@ -17,7 +17,7 @@ function lockerSlot(): number {
 }
 
 const PANEL: React.CSSProperties = {
-  fontFamily: '"Share Tech Mono", monospace',
+  fontFamily: "var(--font-sans)",
 };
 
 export default function StorageLockerOverlay({ onClose }: { onClose: () => void }) {

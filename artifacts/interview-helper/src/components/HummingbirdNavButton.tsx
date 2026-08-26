@@ -24,7 +24,7 @@ export function HummingbirdNavButton({ size = 18 }: { size?: number }) {
           : "text-zinc-500 hover:text-purple-300 hover:bg-purple-500/8"
       }`}
     >
-      <HummingbirdIcon size={size} color={live ? "#67e8f9" : "currentColor"} glow={live} />
+      <HummingbirdIcon size={size} color={live ? "#67e8f9" : "currentColor"} />
       {live && (
         <>
           <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />

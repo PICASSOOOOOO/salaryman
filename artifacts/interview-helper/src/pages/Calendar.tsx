@@ -107,14 +107,15 @@ function formatDuration(startStr: string, endStr: string): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-function CRTBorder({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function SurfaceCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={className}
       style={{
-        border: "1px solid rgba(56,189,248,0.25)",
-        background: "rgba(9,9,11,0.95)",
-        boxShadow: "0 0 20px rgba(255,255,255,0.05), inset 0 0 40px rgba(0,0,0,0.5)",
+        border: "1px solid rgba(148,163,184,0.2)",
+        background: "hsl(225 11% 10%)",
+        borderRadius: "12px",
+        boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
       }}
     >
       {children}
@@ -161,7 +162,7 @@ function ApptModal({
       style={{ background: "rgba(0,0,0,0.85)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <CRTBorder className="w-full max-w-md">
+      <SurfaceCard className="w-full max-w-md">
         <div
           className="flex items-center justify-between px-5 py-3"
           style={{ borderBottom: "1px solid rgba(56,189,248,0.2)" }}
@@ -170,7 +171,7 @@ function ApptModal({
             className="display-text text-xs tracking-widest"
             style={{ color: "rgba(56,189,248,0.6)" }}
           >
-            {isEdit ? "[ EDIT MISSION ]" : "[ NEW MISSION ]"}
+            {isEdit ? "Edit event" : "New event"}
           </span>
           <button onClick={onClose} style={{ color: "rgba(56,189,248,0.4)" }}>
             <X className="w-4 h-4" />
@@ -191,11 +192,11 @@ function ApptModal({
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(56,189,248,0.25)",
                 color: "#38bdf8",
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "'Fira Code', monospace",
               }}
               value={form.title}
               onChange={e => set("title", e.target.value)}
-              placeholder="Mission title..."
+                placeholder="Event title..."
               autoFocus
             />
           </div>
@@ -215,7 +216,7 @@ function ApptModal({
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(56,189,248,0.25)",
                   color: "#38bdf8",
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "'Fira Code', monospace",
                   colorScheme: "dark",
                 }}
                 value={form.startDate}
@@ -236,7 +237,7 @@ function ApptModal({
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(56,189,248,0.25)",
                   color: "#38bdf8",
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "'Fira Code', monospace",
                   colorScheme: "dark",
                 }}
                 value={form.startTime}
@@ -257,7 +258,7 @@ function ApptModal({
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(56,189,248,0.25)",
                   color: "#38bdf8",
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "'Fira Code', monospace",
                   colorScheme: "dark",
                 }}
                 value={form.endTime}
@@ -279,7 +280,7 @@ function ApptModal({
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(56,189,248,0.25)",
                 color: "#38bdf8",
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "'Fira Code', monospace",
               }}
               value={form.location}
               onChange={e => set("location", e.target.value)}
@@ -300,7 +301,7 @@ function ApptModal({
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(56,189,248,0.25)",
                 color: "#38bdf8",
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "'Fira Code', monospace",
                 height: "70px",
               }}
               value={form.description}
@@ -319,10 +320,10 @@ function ApptModal({
             <select
               className="w-full display-text text-xs px-3 py-2 outline-none"
               style={{
-                background: "rgba(9,9,11,0.95)",
+                background: "hsl(225 11% 10%)",
                 border: "1px solid rgba(56,189,248,0.25)",
                 color: "#38bdf8",
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "'Fira Code', monospace",
               }}
               value={form.reminderMinutes}
               onChange={e => set("reminderMinutes", Number(e.target.value))}
@@ -414,7 +415,7 @@ function ApptModal({
             )}
           </div>
         </div>
-      </CRTBorder>
+      </SurfaceCard>
     </div>
   );
 }
@@ -452,7 +453,6 @@ function ApptPill({
           fontSize: compact ? "0.55rem" : "0.65rem",
           color: "#38bdf8",
           letterSpacing: "0.05em",
-          textShadow: "0 0 8px rgba(56,189,248,0.4)",
         }}
       >
         {formatTime(appt.startAt)} {appt.title}
@@ -557,11 +557,10 @@ function MonthView({
                 className="display-text text-xs mb-1 w-6 h-6 flex items-center justify-center"
                 style={{
                   fontSize: "0.7rem",
-                  color: isToday ? "#030803" : isSelected ? "#38bdf8" : "rgba(56,189,248,0.5)",
+                  color: isToday ? "#0f172a" : isSelected ? "#38bdf8" : "rgba(56,189,248,0.5)",
                   background: isToday ? "#38bdf8" : "transparent",
                   borderRadius: "2px",
                   fontWeight: isToday ? "bold" : "normal",
-                  textShadow: isToday ? "none" : isSelected ? "0 0 8px rgba(56,189,248,0.5)" : "none",
                 }}
               >
                 {cell.getDate()}
@@ -629,7 +628,6 @@ function WeekView({
                   fontSize: "0.55rem",
                   color: isToday ? "#38bdf8" : "rgba(56,189,248,0.4)",
                   letterSpacing: "0.1em",
-                  textShadow: isToday ? "0 0 8px rgba(56,189,248,0.6)" : "none",
                 }}
               >
                 {DAY_NAMES[d.getDay()]} {d.getDate()}
@@ -761,7 +759,7 @@ function DayView({
         {DAY_NAMES[date.getDay()]} {MONTH_NAMES[date.getMonth()]} {date.getDate()}, {date.getFullYear()}
         {dayAppts.length > 0 && (
           <span style={{ color: "rgba(56,189,248,0.35)", marginLeft: "12px" }}>
-            {dayAppts.length} MISSION{dayAppts.length > 1 ? "S" : ""}
+            {dayAppts.length} EVENT{dayAppts.length > 1 ? "S" : ""}
           </span>
         )}
       </div>
@@ -1215,7 +1213,7 @@ export default function Calendar() {
         style={{
           minHeight: "calc(100vh - 88px)",
           background: "#09090b",
-          fontFamily: "'Share Tech Mono', monospace",
+          fontFamily: "'Fira Code', monospace",
         }}
       >
         {/* Header */}
@@ -1241,7 +1239,6 @@ export default function Calendar() {
                 style={{
                   fontSize: "1rem",
                   color: "#38bdf8",
-                  textShadow: "0 0 10px rgba(56,189,248,0.6)",
                   letterSpacing: "0.12em",
                 }}
               >
@@ -1267,7 +1264,7 @@ export default function Calendar() {
                   style={{
                     fontSize: "0.6rem",
                     letterSpacing: "0.1em",
-                    color: view === v ? "#030803" : "rgba(56,189,248,0.5)",
+                    color: view === v ? "#0f172a" : "rgba(56,189,248,0.5)",
                     background: view === v ? "rgba(56,189,248,0.85)" : "transparent",
                     borderRight: v !== "day" ? "1px solid rgba(56,189,248,0.2)" : "none",
                     textTransform: "uppercase",
@@ -1323,7 +1320,6 @@ export default function Calendar() {
                 color: "#34d399",
                 background: "rgba(52,211,153,0.07)",
                 border: "1px solid rgba(52,211,153,0.35)",
-                textShadow: "0 0 8px rgba(52,211,153,0.4)",
               }}
               title="Sync upcoming missions to Google Calendar"
             >
@@ -1340,7 +1336,6 @@ export default function Calendar() {
                 color: "#a78bfa",
                 background: "rgba(167,139,250,0.07)",
                 border: "1px solid rgba(167,139,250,0.35)",
-                textShadow: "0 0 8px rgba(167,139,250,0.4)",
               }}
               title="Export as .ics for Google Calendar, Outlook, Apple Calendar"
             >
@@ -1357,7 +1352,6 @@ export default function Calendar() {
                 color: "#67e8f9",
                 background: "rgba(103,232,249,0.07)",
                 border: "1px solid rgba(103,232,249,0.35)",
-                textShadow: "0 0 8px rgba(103,232,249,0.4)",
               }}
             >
               <Video className="w-3.5 h-3.5" />
@@ -1373,7 +1367,6 @@ export default function Calendar() {
                 color: "#38bdf8",
                 background: "rgba(56,189,248,0.1)",
                 border: "1px solid rgba(56,189,248,0.4)",
-                textShadow: "0 0 8px rgba(56,189,248,0.4)",
               }}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -1392,7 +1385,7 @@ export default function Calendar() {
               letterSpacing: "0.08em",
             }}
           >
-            <span><AlarmClock className="w-2.5 h-2.5 inline mr-1" />{appointments.length} TOTAL MISSIONS</span>
+            <span><AlarmClock className="w-2.5 h-2.5 inline mr-1" />{appointments.length} TOTAL EVENTS</span>
             <span>
               {appointments.filter(a => new Date(a.startAt) > new Date()).length} UPCOMING
             </span>
@@ -1452,7 +1445,7 @@ export default function Calendar() {
               className="display-text text-xs text-center"
               style={{ color: "rgba(56,189,248,0.2)", letterSpacing: "0.12em" }}
             >
-              NO MISSIONS SCHEDULED · CLICK ANY DAY OR [+ NEW] TO ADD ONE
+              NO EVENTS SCHEDULED · CLICK ANY DAY OR [+ NEW] TO ADD ONE
             </div>
           </div>
         )}
@@ -1464,7 +1457,7 @@ export default function Calendar() {
             style={{ background: "rgba(0,0,0,0.88)" }}
             onClick={e => { if (e.target === e.currentTarget) setMeetModal(false); }}
           >
-            <CRTBorder className="w-full max-w-sm">
+            <SurfaceCard className="w-full max-w-sm">
               <div
                 className="flex items-center justify-between px-5 py-3"
                 style={{ borderBottom: "1px solid rgba(103,232,249,0.2)" }}
@@ -1502,7 +1495,7 @@ export default function Calendar() {
                           background: "rgba(255,255,255,0.04)",
                           border: "1px solid rgba(103,232,249,0.25)",
                           color: "#67e8f9",
-                          fontFamily: "'Share Tech Mono', monospace",
+                          fontFamily: "'Fira Code', monospace",
                         }}
                         value={meetTitle}
                         onChange={e => setMeetTitle(e.target.value)}
@@ -1605,7 +1598,7 @@ export default function Calendar() {
                           background: "rgba(255,255,255,0.04)",
                           border: "1px solid rgba(103,232,249,0.2)",
                           color: "#67e8f9",
-                          fontFamily: "'Share Tech Mono', monospace",
+                          fontFamily: "'Fira Code', monospace",
                         }}
                         value={meetInviteEmail}
                         onChange={e => setMeetInviteEmail(e.target.value)}
@@ -1630,7 +1623,7 @@ export default function Calendar() {
                   </>
                 )}
               </div>
-            </CRTBorder>
+            </SurfaceCard>
           </div>
         )}
 
@@ -1679,7 +1672,7 @@ export default function Calendar() {
             style={{ background: "rgba(0,0,0,0.85)" }}
             onClick={e => { if (e.target === e.currentTarget) setEmailModal(null); }}
           >
-            <CRTBorder className="w-full max-w-sm">
+            <SurfaceCard className="w-full max-w-sm">
               <div
                 className="flex items-center justify-between px-5 py-3"
                 style={{ borderBottom: "1px solid rgba(56,189,248,0.2)" }}
@@ -1708,7 +1701,7 @@ export default function Calendar() {
                     background: "rgba(255,255,255,0.04)",
                     border: "1px solid rgba(56,189,248,0.25)",
                     color: "#38bdf8",
-                    fontFamily: "'Share Tech Mono', monospace",
+                    fontFamily: "'Fira Code', monospace",
                   }}
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
@@ -1730,7 +1723,7 @@ export default function Calendar() {
                   SEND CONFIRMATION
                 </button>
               </div>
-            </CRTBorder>
+            </SurfaceCard>
           </div>
         )}
       </div>

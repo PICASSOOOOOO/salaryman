@@ -29,7 +29,7 @@ export function EconomyKey({
   note?: boolean;
   style?: React.CSSProperties;
 }) {
-  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   return (
     <div
       data-testid="economy-key"

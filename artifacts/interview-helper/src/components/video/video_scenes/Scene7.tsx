@@ -43,7 +43,7 @@ export function Scene7() {
         position: 'absolute', top: '3%', left: 0, right: 0, textAlign: 'center',
       }}
         initial={{ opacity: 0, y: -10 }} animate={phase >= 1 ? { opacity: 1, y: 0 } : {}}>
-        <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(12px, 2.5vw, 22px)', color: '#ef4444', letterSpacing: '0.12em' }}>
+        <span style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(12px, 2.5vw, 22px)', color: '#ef4444', letterSpacing: '0.12em' }}>
           THE MATH IS SIMPLE
         </span>
       </motion.div>
@@ -60,7 +60,7 @@ export function Scene7() {
             initial={{ opacity: 0, x: -30 }}
             animate={phase >= 2 ? { opacity: 1, x: 0 } : {}}
             transition={{ delay: i * 0.12, duration: 0.35, ease: 'backOut' }}>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.65vw, 6px)', color: item.you ? '#ef4444' : '#94a3b8', letterSpacing: '0.1em' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(4px, 0.65vw, 6px)', color: item.you ? '#ef4444' : '#94a3b8', letterSpacing: '0.1em' }}>
               {item.label}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(4px, 0.6vw, 6px)' }}>
@@ -70,7 +70,7 @@ export function Scene7() {
                   transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }} />
               )}
               <span style={{
-                fontFamily: '"VT323", monospace',
+                fontFamily: "var(--font-sans)",
                 fontSize: 'clamp(6px, 1.2vw, 11px)',
                 color: item.you ? '#ef4444' : '#64748b',
                 textDecoration: item.you ? 'none' : 'line-through',
@@ -79,7 +79,7 @@ export function Scene7() {
                 {item.cost}
               </span>
               {item.you && (
-                <motion.span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.4vw, 4px)', color: '#10b981', letterSpacing: '0.1em' }}
+                <motion.span style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(3px, 0.4vw, 4px)', color: '#10b981', letterSpacing: '0.1em' }}
                   animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }}>
                   ✓ BEST VALUE
                 </motion.span>
@@ -96,7 +96,7 @@ export function Scene7() {
           padding: 'clamp(4px, 0.7vw, 8px)',
         }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-          <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.5vw, 5px)', color: '#ef444480', letterSpacing: '0.15em', marginBottom: 'clamp(3px, 0.5vw, 6px)' }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(3px, 0.5vw, 5px)', color: '#ef444480', letterSpacing: '0.15em', marginBottom: 'clamp(3px, 0.5vw, 6px)' }}>
             WHAT YOU GET
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'clamp(2px, 0.3vw, 4px)' }}>
@@ -105,7 +105,7 @@ export function Scene7() {
                 initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06, duration: 0.2 }}>
                 <span style={{ color: '#10b981', fontSize: 'clamp(4px, 0.5vw, 5px)' }}>✓</span>
-                <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 4px)', color: '#e2e8f0' }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(3px, 0.45vw, 4px)', color: '#e2e8f0' }}>
                   {item}
                 </span>
               </motion.div>
@@ -121,7 +121,7 @@ export function Scene7() {
         initial={{ opacity: 0 }}
         animate={phase >= 4 ? { opacity: 1 } : {}}
       >
-        <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#f59e0b', letterSpacing: '0.08em' }}>
+        <span style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(10px, 2vw, 18px)', color: '#f59e0b', letterSpacing: '0.08em' }}>
           $149/MO · CANCEL ANYTIME
         </span>
       </motion.div>

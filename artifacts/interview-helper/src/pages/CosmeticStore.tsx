@@ -54,8 +54,8 @@ interface Props {
 export default function CosmeticStore({ onClose, onEquipChange }: Props) {
   const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
-  const VT: React.CSSProperties = boomerMode ? {} : { fontFamily: "'VT323',monospace" };
-  const ST: React.CSSProperties = boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = boomerMode ? {} : { fontFamily: "var(--font-sans)" };
+  const ST: React.CSSProperties = boomerMode ? {} : { fontFamily: "var(--font-sans)" };
   const [tab, setTab] = useState<'store' | 'wardrobe' | 'bundles'>('store');
   const [category, setCategory] = useState<CosmeticCategory>('all');
   const [catalog, setCatalog] = useState<CosmeticItem[]>([]);

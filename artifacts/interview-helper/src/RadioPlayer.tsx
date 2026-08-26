@@ -27,7 +27,7 @@ export function RadioHud({ visible, on, fading, topOffset, onToggle }: RadioHudP
   return (
     <div style={{
       position: 'absolute', top: topOffset, right: '.8rem', zIndex: 210,
-      fontFamily: "'VT323',monospace", background: 'rgba(0,6,2,.92)',
+      fontFamily: "var(--font-sans)", background: 'rgba(0,6,2,.92)',
       border: `1px solid ${on ? 'rgba(56,189,248,.55)' : 'rgba(56,189,248,.2)'}`,
       padding: '.4rem .7rem', minWidth: 200,
       boxShadow: on ? '0 0 12px rgba(56,189,248,.15)' : 'none',
@@ -74,7 +74,7 @@ export function ScoreHud({ visible, topOffset, scoreOn, scoreMuted, onToggleScor
   return (
     <div style={{
       position: 'absolute', top: topOffset, right: '.8rem', zIndex: 209,
-      fontFamily: "'VT323',monospace", background: 'rgba(0,6,2,.92)',
+      fontFamily: "var(--font-sans)", background: 'rgba(0,6,2,.92)',
       border: `1px solid ${scoreOn ? 'rgba(0,200,255,.45)' : 'rgba(0,200,255,.15)'}`,
       padding: '.4rem .7rem', minWidth: 200,
       boxShadow: scoreOn ? '0 0 10px rgba(0,200,255,.1)' : 'none',
@@ -102,7 +102,7 @@ export function ScoreHud({ visible, topOffset, scoreOn, scoreMuted, onToggleScor
         </div>
       </div>
       <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem' }}>
-        <button onClick={e => { e.stopPropagation(); onToggleScoreMute(); }} style={{ flex: 1, background: scoreMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${scoreMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,200,255,.1)'}`, color: scoreMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,200,255,.28)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
+        <button onClick={e => { e.stopPropagation(); onToggleScoreMute(); }} style={{ flex: 1, background: scoreMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${scoreMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,200,255,.1)'}`, color: scoreMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,200,255,.28)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "var(--font-sans)", letterSpacing: '.06em' }}>
           {scoreMuted ? '🔇 MUTE' : '🔊 MUTE'}
         </button>
       </div>

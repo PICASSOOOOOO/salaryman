@@ -34,7 +34,7 @@ interface Props {
   onComplete: () => void;
 }
 
-const FONT_ST: React.CSSProperties = { fontFamily: "'Share Tech Mono', monospace" };
+const FONT_ST: React.CSSProperties = { fontFamily: "'Inter', sans-serif" };
 
 // Minimum on-screen time per spoken line, so the cinematic still paces well
 // even if TTS is slow, fast, or unavailable (we never want lines to flash by).
@@ -215,17 +215,6 @@ export function PostOnboardingIntro({ playerName, onComplete }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Subtle scanlines so it locks into the same CRT vibe as the rest of the
-          immigration desk. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1000,
-          backgroundImage: 'repeating-linear-gradient(0deg, rgba(56,189,248,.06) 0 1px, transparent 1px 3px)',
-          mixBlendMode: 'overlay', opacity: 0.55,
-        }}
-      />
     </div>
   );
 }

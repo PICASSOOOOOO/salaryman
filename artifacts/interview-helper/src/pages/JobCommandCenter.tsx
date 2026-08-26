@@ -164,7 +164,7 @@ export default function JobCommandCenter() {
       <div className="min-h-screen flex flex-col bg-background items-center justify-center p-8">
         <div className="max-w-md text-center">
           <Bot className="w-16 h-16 mx-auto mb-4 text-emerald-400/30" />
-          <h2 className="text-xl font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.6rem' }}>
+          <h2 className="text-xl font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", fontSize: '1.6rem' }}>
             {boomerMode ? 'PIXEL AGENTS REQUIRED' : 'ACCESS LEVEL: INSUFFICIENT'}
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
@@ -318,12 +318,12 @@ export default function JobCommandCenter() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
+                  <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
                     {boomerMode ? 'JOB COMMAND CENTER' : 'JOB COMMAND CENTER // JCC'}
                   </h1>
                   <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">PIXEL AGENTS</span>
                 </div>
-                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                   {boomerMode ? 'AI-POWERED JOB EVALUATION, RESUME TAILORING, AND INTERVIEW PREPARATION' : 'EVALUATE · TRACK · OPTIMIZE RESUME · PREPARE FOR BATTLE'}
                 </p>
               </div>
@@ -361,7 +361,7 @@ export default function JobCommandCenter() {
                       <input type="url" value={jobUrl} onChange={e => setJobUrl(e.target.value)}
                         placeholder={boomerMode ? 'Job posting URL (optional)' : 'JOB URL (OPTIONAL)'}
                         className="w-full px-4 py-2.5 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-emerald-500/40 transition-colors"
-                        style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                        style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                         disabled={isEvaluating}
                       />
                     </div>
@@ -371,7 +371,7 @@ export default function JobCommandCenter() {
                     onChange={e => setJobDesc(e.target.value)}
                     placeholder={boomerMode ? 'Paste the full job description here...' : 'PASTE FULL JOB DESCRIPTION HERE...'}
                     className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-emerald-500/40 transition-colors resize-none"
-                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                     rows={8}
                     disabled={isEvaluating}
                   />
@@ -398,7 +398,7 @@ export default function JobCommandCenter() {
                     {isEvaluating && !evalParsed && (
                       <div className="flex items-center justify-center py-10 text-muted-foreground">
                         <Loader2 className="w-6 h-6 animate-spin text-emerald-400 mr-3" />
-                        <span className="text-sm font-bold" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        <span className="text-sm font-bold" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                           {boomerMode ? 'EVALUATING JOB...' : 'ANALYZING TARGET...'}
                         </span>
                       </div>
@@ -410,19 +410,19 @@ export default function JobCommandCenter() {
                           <div className="flex items-start gap-4 mb-5">
                             <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center shrink-0"
                               style={{ borderColor: GRADE_COLORS[String(evalParsed.grade)] ?? '#6366f1', background: `${GRADE_COLORS[String(evalParsed.grade)] ?? '#6366f1'}15` }}>
-                              <span className="text-2xl font-bold" style={{ color: GRADE_COLORS[String(evalParsed.grade)] ?? '#6366f1', fontFamily: "'VT323', monospace" }}>
+                              <span className="text-2xl font-bold" style={{ color: GRADE_COLORS[String(evalParsed.grade)] ?? '#6366f1', fontFamily: "var(--font-sans)" }}>
                                 {String(evalParsed.grade)}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.3rem' }}>
+                              <h3 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", fontSize: '1.3rem' }}>
                                 {String(evalParsed.role ?? 'Role')}
                               </h3>
                               <p className="text-sm text-muted-foreground">{String(evalParsed.company ?? 'Company')} · {String(evalParsed.location ?? '')}</p>
                               <p className="text-xs text-emerald-400/70 mt-1">{String(evalParsed.verdict ?? '')}</p>
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="text-2xl font-bold" style={{ color: GRADE_COLORS[String(evalParsed.grade)] ?? '#6366f1', fontFamily: "'VT323', monospace" }}>
+                              <div className="text-2xl font-bold" style={{ color: GRADE_COLORS[String(evalParsed.grade)] ?? '#6366f1', fontFamily: "var(--font-sans)" }}>
                                 {Number(evalParsed.score).toFixed(1)}
                               </div>
                               <div className="text-[10px] text-muted-foreground/50">/ 5.0</div>
@@ -440,7 +440,7 @@ export default function JobCommandCenter() {
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-5">
                             {(Array.isArray(evalParsed.dimensions) ? (evalParsed.dimensions as Array<{ name: string; score: number; note: string }>) : []).map((dim) => (
                               <div key={dim.name} className="rounded-lg border border-border/50 p-2.5 text-center" title={dim.note}>
-                                <div className="text-lg font-bold" style={{ fontFamily: "'VT323', monospace", color: dim.score >= 4 ? '#10b981' : dim.score >= 3 ? '#f59e0b' : '#ef4444' }}>
+                                <div className="text-lg font-bold" style={{ fontFamily: "var(--font-sans)", color: dim.score >= 4 ? '#10b981' : dim.score >= 3 ? '#f59e0b' : '#ef4444' }}>
                                   {dim.score}
                                 </div>
                                 <div className="text-[8px] text-muted-foreground/50 uppercase tracking-wider leading-tight">{dim.name}</div>
@@ -535,7 +535,7 @@ export default function JobCommandCenter() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0"
                             style={{ borderColor: GRADE_COLORS[job.grade] ?? '#6366f1', background: `${GRADE_COLORS[job.grade] ?? '#6366f1'}15` }}>
-                            <span className="text-lg font-bold" style={{ color: GRADE_COLORS[job.grade] ?? '#6366f1', fontFamily: "'VT323', monospace" }}>{job.grade}</span>
+                            <span className="text-lg font-bold" style={{ color: GRADE_COLORS[job.grade] ?? '#6366f1', fontFamily: "var(--font-sans)" }}>{job.grade}</span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -590,7 +590,7 @@ export default function JobCommandCenter() {
                     { label: 'AVG SCORE', value: (jobs.reduce((a, j) => a + j.score, 0) / jobs.length).toFixed(1), color: 'text-amber-400' },
                   ].map(stat => (
                     <div key={stat.label} className="rounded-lg border border-border/50 p-3 text-center">
-                      <div className={`text-lg font-bold ${stat.color}`} style={{ fontFamily: "'VT323', monospace" }}>{stat.value}</div>
+                      <div className={`text-lg font-bold ${stat.color}`} style={{ fontFamily: "var(--font-sans)" }}>{stat.value}</div>
                       <div className="text-[8px] text-muted-foreground/40 uppercase tracking-wider">{stat.label}</div>
                     </div>
                   ))}
@@ -615,7 +615,7 @@ export default function JobCommandCenter() {
                   onChange={e => setUserResume(e.target.value)}
                   placeholder={boomerMode ? 'Paste your current resume/CV here. This will be used as the base for all tailored versions and for personalized job scoring.' : 'PASTE BASE CV HERE. USED FOR ALL TAILORED VERSIONS + PERSONALIZED SCORING.'}
                   className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-sky-500/40 transition-colors resize-none"
-                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                  style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                   rows={6}
                 />
               </div>
@@ -632,7 +632,7 @@ export default function JobCommandCenter() {
                   onChange={e => setResumeJobDesc(e.target.value)}
                   placeholder={boomerMode ? 'Paste the job description to tailor your resume for...' : 'PASTE TARGET JOB DESCRIPTION...'}
                   className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-emerald-500/40 transition-colors resize-none"
-                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                  style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                   rows={6}
                   disabled={isGeneratingResume}
                 />
@@ -661,7 +661,7 @@ export default function JobCommandCenter() {
                     </button>
                   </div>
                   <div className="p-5 prose prose-sm prose-invert max-w-none prose-headings:text-foreground prose-h2:text-sm prose-h2:text-emerald-400 prose-h3:text-xs prose-p:text-xs prose-li:text-xs prose-strong:text-foreground"
-                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                     dangerouslySetInnerHTML={{ __html: renderMd(resumeResult) }}
                   />
                 </motion.div>
@@ -682,13 +682,13 @@ export default function JobCommandCenter() {
                   <input type="text" value={prepCompany} onChange={e => setPrepCompany(e.target.value)}
                     placeholder={boomerMode ? 'Company name' : 'COMPANY'}
                     className="px-4 py-2.5 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-violet-500/40 transition-colors"
-                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                     disabled={isPrepping}
                   />
                   <input type="text" value={prepRole} onChange={e => setPrepRole(e.target.value)}
                     placeholder={boomerMode ? 'Role/position' : 'TARGET ROLE'}
                     className="px-4 py-2.5 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-violet-500/40 transition-colors"
-                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                     disabled={isPrepping}
                   />
                 </div>
@@ -697,7 +697,7 @@ export default function JobCommandCenter() {
                   onChange={e => setPrepJobDesc(e.target.value)}
                   placeholder={boomerMode ? 'Paste the job description for interview prep...' : 'PASTE JOB DESCRIPTION FOR BATTLE PREP...'}
                   className="w-full px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-violet-500/40 transition-colors resize-none"
-                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                  style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                   rows={6}
                   disabled={isPrepping}
                 />
@@ -726,7 +726,7 @@ export default function JobCommandCenter() {
                     </button>
                   </div>
                   <div className="p-5 prose prose-sm prose-invert max-w-none prose-headings:text-foreground prose-h2:text-sm prose-h2:text-violet-400 prose-h3:text-xs prose-p:text-xs prose-li:text-xs prose-strong:text-foreground"
-                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}
                     dangerouslySetInnerHTML={{ __html: renderMd(prepResult) }}
                   />
                 </motion.div>

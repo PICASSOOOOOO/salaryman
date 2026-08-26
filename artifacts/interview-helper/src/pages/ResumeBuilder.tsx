@@ -8,8 +8,8 @@ import {
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 
-const VT: React.CSSProperties = { fontFamily: "'VT323', monospace" };
-const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono', monospace" };
+const UI: React.CSSProperties = { fontFamily: "'Inter', sans-serif" };
+const MONO: React.CSSProperties = { fontFamily: "'Fira Code', monospace" };
 
 type TemplateId = 'professional' | 'modern' | 'minimal' | 'executive';
 
@@ -139,7 +139,7 @@ function InputField({ label, value, onChange, placeholder, multiline, rows }: {
   };
   return (
     <div style={{ marginBottom: '.6rem' }}>
-      <label style={{ display: 'block', fontSize: '.65rem', color: accent, letterSpacing: '.12em', marginBottom: '.25rem', ...VT }}>{label}</label>
+      <label style={{ display: 'block', fontSize: '.65rem', color: accent, letterSpacing: '.08em', marginBottom: '.25rem', ...UI }}>{label}</label>
       {multiline ? (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows ?? 3}
           style={{ ...common, resize: 'vertical', minHeight: '60px' }} />
@@ -157,7 +157,7 @@ function SectionHeader({ label, icon: Icon, open, onToggle }: {
     <button onClick={onToggle} style={{
       display: 'flex', alignItems: 'center', gap: '.5rem', width: '100%', padding: '.6rem .75rem',
       background: open ? accentDim : 'transparent', border: `1px solid ${open ? accent : border}`,
-      borderRadius: '6px', cursor: 'pointer', color: accent, ...VT, fontSize: '1rem', letterSpacing: '.1em',
+      borderRadius: '6px', cursor: 'pointer', color: accent, ...UI, fontSize: '.8rem', fontWeight: 600, letterSpacing: '.04em',
       transition: 'all .15s',
     }}>
       <Icon size={14} />
@@ -195,7 +195,7 @@ function ExperienceSection({ entries, onChange }: { entries: ExperienceEntry[]; 
       {entries.map((exp, i) => (
         <div key={exp.id} style={{ padding: '.75rem', background: cardBg, border: `1px solid ${border}`, borderRadius: '6px', marginBottom: '.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-            <span style={{ color: accent, fontSize: '.75rem', ...VT, letterSpacing: '.1em' }}>POSITION {i + 1}</span>
+             <span style={{ color: accent, fontSize: '.75rem', ...UI, fontWeight: 600, letterSpacing: '.06em' }}>POSITION {i + 1}</span>
             <button onClick={() => remove(exp.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
           </div>
           <InputField label="JOB TITLE" value={exp.title} onChange={v => update(exp.id, { title: v })} placeholder="Software Engineer" />
@@ -211,7 +211,7 @@ function ExperienceSection({ entries, onChange }: { entries: ExperienceEntry[]; 
             </label>
           </div>
           <div style={{ marginTop: '.3rem' }}>
-            <label style={{ display: 'block', fontSize: '.65rem', color: accent, letterSpacing: '.12em', marginBottom: '.25rem', ...VT }}>BULLET POINTS</label>
+             <label style={{ display: 'block', fontSize: '.65rem', color: accent, letterSpacing: '.08em', marginBottom: '.25rem', ...UI }}>BULLET POINTS</label>
             {exp.bullets.map((b, bi) => (
               <div key={bi} style={{ display: 'flex', gap: '.3rem', marginBottom: '.3rem', alignItems: 'center' }}>
                 <span style={{ color: '#475569', fontSize: '.7rem' }}>•</span>
@@ -232,7 +232,7 @@ function ExperienceSection({ entries, onChange }: { entries: ExperienceEntry[]; 
       ))}
       <button onClick={add} style={{
         width: '100%', padding: '.5rem', background: accentDim, border: `1px dashed ${accent}`,
-        borderRadius: '6px', color: accent, cursor: 'pointer', ...VT, fontSize: '.9rem', letterSpacing: '.08em',
+         borderRadius: '6px', color: accent, cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600, letterSpacing: '.04em',
       }}>
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '.3rem' }} /> ADD EXPERIENCE
       </button>
@@ -249,7 +249,7 @@ function EducationSection({ entries, onChange }: { entries: EducationEntry[]; on
       {entries.map((edu, i) => (
         <div key={edu.id} style={{ padding: '.75rem', background: cardBg, border: `1px solid ${border}`, borderRadius: '6px', marginBottom: '.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-            <span style={{ color: accent, fontSize: '.75rem', ...VT, letterSpacing: '.1em' }}>EDUCATION {i + 1}</span>
+             <span style={{ color: accent, fontSize: '.75rem', ...UI, fontWeight: 600, letterSpacing: '.06em' }}>EDUCATION {i + 1}</span>
             <button onClick={() => remove(edu.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
           </div>
           <InputField label="INSTITUTION" value={edu.institution} onChange={v => update(edu.id, { institution: v })} placeholder="MIT" />
@@ -267,7 +267,7 @@ function EducationSection({ entries, onChange }: { entries: EducationEntry[]; on
       ))}
       <button onClick={add} style={{
         width: '100%', padding: '.5rem', background: accentDim, border: `1px dashed ${accent}`,
-        borderRadius: '6px', color: accent, cursor: 'pointer', ...VT, fontSize: '.9rem', letterSpacing: '.08em',
+         borderRadius: '6px', color: accent, cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600, letterSpacing: '.04em',
       }}>
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '.3rem' }} /> ADD EDUCATION
       </button>
@@ -300,7 +300,7 @@ function TagSection({ label, tags, onChange, placeholder }: { label: string; tag
         <input value={input} onChange={e => setInput(e.target.value)} placeholder={placeholder}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
           style={{ flex: 1, background: inputBg, border: `1px solid ${border}`, color: '#e2e8f0', padding: '.4rem .5rem', borderRadius: '4px', fontSize: '.8rem', ...MONO, outline: 'none' }} />
-        <button onClick={add} style={{ background: accentDim, border: `1px solid ${accent}`, color: accent, cursor: 'pointer', padding: '.3rem .6rem', borderRadius: '4px', fontSize: '.75rem', ...VT }}>ADD</button>
+         <button onClick={add} style={{ background: accentDim, border: `1px solid ${accent}`, color: accent, cursor: 'pointer', padding: '.3rem .6rem', borderRadius: '4px', fontSize: '.75rem', ...UI, fontWeight: 600 }}>ADD</button>
       </div>
     </div>
   );
@@ -315,7 +315,7 @@ function CertSection({ entries, onChange }: { entries: CertEntry[]; onChange: (e
       {entries.map((c, i) => (
         <div key={c.id} style={{ padding: '.75rem', background: cardBg, border: `1px solid ${border}`, borderRadius: '6px', marginBottom: '.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-            <span style={{ color: accent, fontSize: '.75rem', ...VT, letterSpacing: '.1em' }}>CERT {i + 1}</span>
+             <span style={{ color: accent, fontSize: '.75rem', ...UI, fontWeight: 600, letterSpacing: '.06em' }}>CERT {i + 1}</span>
             <button onClick={() => remove(c.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
           </div>
           <InputField label="CERTIFICATION NAME" value={c.name} onChange={v => update(c.id, { name: v })} placeholder="AWS Solutions Architect" />
@@ -328,7 +328,7 @@ function CertSection({ entries, onChange }: { entries: CertEntry[]; onChange: (e
       ))}
       <button onClick={add} style={{
         width: '100%', padding: '.5rem', background: accentDim, border: `1px dashed ${accent}`,
-        borderRadius: '6px', color: accent, cursor: 'pointer', ...VT, fontSize: '.9rem', letterSpacing: '.08em',
+         borderRadius: '6px', color: accent, cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600, letterSpacing: '.04em',
       }}>
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '.3rem' }} /> ADD CERTIFICATION
       </button>
@@ -345,7 +345,7 @@ function ProjectSection({ entries, onChange }: { entries: ProjectEntry[]; onChan
       {entries.map((p, i) => (
         <div key={p.id} style={{ padding: '.75rem', background: cardBg, border: `1px solid ${border}`, borderRadius: '6px', marginBottom: '.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-            <span style={{ color: accent, fontSize: '.75rem', ...VT, letterSpacing: '.1em' }}>PROJECT {i + 1}</span>
+             <span style={{ color: accent, fontSize: '.75rem', ...UI, fontWeight: 600, letterSpacing: '.06em' }}>PROJECT {i + 1}</span>
             <button onClick={() => remove(p.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
           </div>
           <InputField label="PROJECT NAME" value={p.name} onChange={v => update(p.id, { name: v })} placeholder="E-Commerce Platform" />
@@ -356,7 +356,7 @@ function ProjectSection({ entries, onChange }: { entries: ProjectEntry[]; onChan
       ))}
       <button onClick={add} style={{
         width: '100%', padding: '.5rem', background: accentDim, border: `1px dashed ${accent}`,
-        borderRadius: '6px', color: accent, cursor: 'pointer', ...VT, fontSize: '.9rem', letterSpacing: '.08em',
+         borderRadius: '6px', color: accent, cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600, letterSpacing: '.04em',
       }}>
         <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '.3rem' }} /> ADD PROJECT
       </button>
@@ -370,7 +370,7 @@ function ResumePreview({ data }: { data: ResumeData }) {
 
   if (!hasContent) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#475569', ...VT, fontSize: '1.1rem', letterSpacing: '.1em' }}>
+       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#475569', ...UI, fontSize: '1.1rem', letterSpacing: '.04em' }}>
         START FILLING IN YOUR DETAILS TO SEE PREVIEW
       </div>
     );
@@ -794,7 +794,7 @@ export default function ResumeBuilder() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
           <FileText size={18} color={accent} />
-          <span style={{ ...VT, fontSize: '1.2rem', color: accent, letterSpacing: '.12em' }}>RESUME BUILDER</span>
+          <span style={{ ...UI, fontSize: '1.2rem', fontWeight: 700, color: accent, letterSpacing: '.04em' }}>RESUME BUILDER</span>
           {saved && (
             <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ fontSize: '.65rem', color: '#22c55e', ...MONO, letterSpacing: '.08em' }}>
@@ -804,15 +804,15 @@ export default function ResumeBuilder() {
         </div>
         <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
           <button onClick={() => setShowPreview(!showPreview)}
-            style={{ display: 'flex', alignItems: 'center', gap: '.3rem', padding: '.4rem .75rem', background: showPreview ? accentDim : 'transparent', border: `1px solid ${showPreview ? accent : border}`, borderRadius: '6px', color: accent, cursor: 'pointer', ...VT, fontSize: '.85rem' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '.3rem', padding: '.4rem .75rem', background: showPreview ? accentDim : 'transparent', border: `1px solid ${showPreview ? accent : border}`, borderRadius: '6px', color: accent, cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600 }}>
             <Eye size={13} /> {showPreview ? 'EDITOR' : 'PREVIEW'}
           </button>
           <button onClick={handleExport} disabled={exporting}
-            style={{ display: 'flex', alignItems: 'center', gap: '.3rem', padding: '.4rem .75rem', background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.4)', borderRadius: '6px', color: '#22c55e', cursor: 'pointer', ...VT, fontSize: '.85rem', opacity: exporting ? .5 : 1 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '.3rem', padding: '.4rem .75rem', background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.4)', borderRadius: '6px', color: '#22c55e', cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600, opacity: exporting ? .5 : 1 }}>
             {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} EXPORT PDF
           </button>
           <button onClick={handleReset}
-            style={{ display: 'flex', alignItems: 'center', gap: '.3rem', padding: '.4rem .75rem', background: 'rgba(239,68,68,.06)', border: '1px solid rgba(239,68,68,.25)', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '.3rem', padding: '.4rem .75rem', background: 'rgba(239,68,68,.06)', border: '1px solid rgba(239,68,68,.25)', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', ...UI, fontSize: '.8rem', fontWeight: 600 }}>
             <Trash2 size={13} /> RESET
           </button>
         </div>
@@ -822,7 +822,7 @@ export default function ResumeBuilder() {
         {!showPreview && (
           <div style={{ flex: 1, overflow: 'auto', padding: '1rem 1.25rem', maxWidth: '600px' }}>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '.7rem', color: accent, letterSpacing: '.12em', marginBottom: '.4rem', ...VT }}>TEMPLATE</label>
+              <label style={{ display: 'block', fontSize: '.7rem', color: accent, letterSpacing: '.08em', marginBottom: '.4rem', ...UI }}>TEMPLATE</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
                 {TEMPLATES.map(t => (
                   <button key={t.id} onClick={() => updateData({ template: t.id })}
@@ -869,7 +869,7 @@ export default function ResumeBuilder() {
           display: 'flex', justifyContent: 'center',
         }}>
           <div style={{ width: '100%', maxWidth: '520px' }}>
-            <div style={{ fontSize: '.65rem', color: '#64748b', textAlign: 'center', marginBottom: '.5rem', ...VT, letterSpacing: '.1em' }}>
+            <div style={{ fontSize: '.65rem', color: '#64748b', textAlign: 'center', marginBottom: '.5rem', ...UI, letterSpacing: '.04em' }}>
               LIVE PREVIEW — {TEMPLATES.find(t => t.id === data.template)?.name ?? 'PROFESSIONAL'}
             </div>
             <ResumePreview data={data} />

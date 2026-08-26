@@ -161,10 +161,10 @@ type Step = 'destination' | 'greet' | 'identity' | 'business' | 'estate' | 'subm
 const DATA_STEPS: Step[] = ['destination', 'greet', 'identity', 'business', 'estate'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
-  return boomer ? {} : { fontFamily: "'VT323',monospace" };
+  return boomer ? {} : { fontFamily: "var(--font-sans)" };
 }
 function stFont(boomer: boolean): React.CSSProperties {
-  return boomer ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+  return boomer ? {} : { fontFamily: "var(--font-sans)" };
 }
 
 // Salaryman address term ('man'|'woman'|'neither') → paper-doll body gender

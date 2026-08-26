@@ -12,13 +12,13 @@ const ProductionStudioInner = lazy(() => import('./ProductionStudio'));
 
 type DarkRoomTab = 'graphics' | 'copy' | 'social' | 'image' | 'video';
 
-const CRT_GREEN = '#38bdf8';
+const ACCENT_CYAN = '#22d3ee';
 
 const LOADER = (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    height: '60vh', color: CRT_GREEN,
-    fontFamily: "'Share Tech Mono', monospace", fontSize: '0.9rem', letterSpacing: '.15em',
+    height: '60vh', color: ACCENT_CYAN,
+    fontFamily: "var(--font-sans)", fontSize: '0.9rem', letterSpacing: '.15em',
   }}>
     DEVELOPING...
   </div>
@@ -42,13 +42,8 @@ export default function DarkRoom() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030803', color: CRT_GREEN }}>
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: ACCENT_CYAN }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
         <div style={{ marginBottom: '24px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
             {/* hummingbird strip floats right */}
@@ -57,25 +52,23 @@ export default function DarkRoom() {
             </div>
             <div style={{
               width: '36px', height: '36px',
-              border: '1px solid rgba(56,189,248,0.5)',
-              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(34,211,238,0.4)',
+              background: 'rgba(30,41,59,0.8)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 12px rgba(56,189,248,0.1)',
             }}>
-              <Clapperboard className="w-5 h-5" style={{ color: CRT_GREEN }} />
+              <Clapperboard className="w-5 h-5" style={{ color: ACCENT_CYAN }} />
             </div>
             <div>
               <h1 style={{
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '1.4rem',
                 letterSpacing: '0.12em',
-                color: CRT_GREEN,
-                textShadow: '0 0 12px rgba(56,189,248,0.5)',
+                color: ACCENT_CYAN,
                 lineHeight: 1,
               }}>
                 {boomerMode ? 'DARK ROOM' : PABLO_PRODUCTS.DARK_ROOM.name}
               </h1>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(56,189,248,0.35)', letterSpacing: '0.1em', marginTop: '4px' }}>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: 'rgba(56,189,248,0.35)', letterSpacing: '0.1em', marginTop: '4px' }}>
                 {boomerMode ? 'Creative studio — graphics, copy, social, production & video' : PABLO_PRODUCTS.DARK_ROOM.desc}
               </p>
             </div>
@@ -92,19 +85,18 @@ export default function DarkRoom() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
                   flexShrink: 0, whiteSpace: 'nowrap',
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '0.7rem',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
-                  color: active ? CRT_GREEN : 'rgba(56,189,248,0.35)',
-                  background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
-                  border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
-                  borderBottom: active ? '1px solid #030803' : '1px solid transparent',
+                  color: active ? ACCENT_CYAN : 'rgba(34,211,238,0.45)',
+                  background: active ? 'rgba(34,211,238,0.08)' : 'transparent',
+                  border: `1px solid ${active ? 'rgba(34,211,238,0.4)' : 'transparent'}`,
+                  borderBottom: active ? '1px solid #0f172a' : '1px solid transparent',
                   padding: '8px 16px',
                   cursor: 'pointer',
                   marginBottom: active ? '-1px' : '0',
                   transition: 'all 0.15s',
-                  textShadow: active ? '0 0 8px rgba(56,189,248,0.5)' : 'none',
                 }}
                 onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.7)'; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.35)'; }}
@@ -116,7 +108,7 @@ export default function DarkRoom() {
           })}
         </div>
 
-        <div style={{ marginBottom: '16px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
+        <div style={{ marginBottom: '16px', fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
           {tabs.find(t => t.id === activeTab)?.desc.toUpperCase()}
         </div>
 
@@ -140,7 +132,7 @@ export default function DarkRoom() {
         </AnimatePresence>
 
         <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid rgba(56,189,248,0.08)', textAlign: 'center' }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(56,189,248,0.2)', letterSpacing: '0.12em' }}>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.55rem', color: 'rgba(56,189,248,0.2)', letterSpacing: '0.12em' }}>
             PABLO USES YOUR BRAND KIT FROM DASHBOARD · CONTENT IS AI-GENERATED · REVIEW BEFORE PUBLISHING
           </span>
         </div>

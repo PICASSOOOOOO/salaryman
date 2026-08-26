@@ -135,7 +135,7 @@ function FloatingReactionEl({ reaction }: { reaction: FloatingReaction }) {
           color: "rgba(212,184,150,0.85)",
           fontSize: "0.55rem",
           letterSpacing: "0.08em",
-          fontFamily: "'VT323', monospace",
+          fontFamily: "var(--font-sans)",
           whiteSpace: "nowrap",
         }}
       >
@@ -275,7 +275,7 @@ export default function TheaterPage() {
         inset: 0,
         background: "#0a0203",
         overflow: "hidden",
-        fontFamily: "'VT323', 'Share Tech Mono', monospace",
+        fontFamily: "var(--font-sans)",
         userSelect: "none",
       }}
     >
@@ -461,16 +461,6 @@ export default function TheaterPage() {
               background: "#000",
             }}
           />
-          {/* Subtle scanline overlay on screen */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              background: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px)",
-              zIndex: 5,
-            }}
-          />
         </div>
         {/* Bottom gold rail */}
         <div
@@ -611,7 +601,7 @@ export default function TheaterPage() {
           background: "rgba(20,5,5,0.85)",
           border: "1px solid rgba(180,120,30,0.4)",
           color: "#c8900a",
-          fontFamily: "'VT323', monospace",
+          fontFamily: "var(--font-sans)",
           fontSize: "0.8rem",
           letterSpacing: "0.12em",
           padding: "4px 12px",

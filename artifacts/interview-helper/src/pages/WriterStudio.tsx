@@ -745,7 +745,7 @@ export default function WriterStudio() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+    <div className="min-h-screen bg-[#09090b] flex flex-col" style={{ fontFamily: "var(--font-sans)" }}>
       <div className="border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -1161,7 +1161,7 @@ export default function WriterStudio() {
                 {showRhymeBook && (
                   <div
                     className="shrink-0 select-none border-r border-white/[0.04] bg-black/20 text-right pr-1.5 pl-2 py-6 overflow-hidden"
-                    style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '11px', lineHeight: '1.85', minWidth: '64px' }}
+                    style={{ fontFamily: "var(--font-sans)", fontSize: '11px', lineHeight: '1.85', minWidth: '64px' }}
                     aria-hidden="true"
                   >
                     {lineStats.map((s, i) => (
@@ -1191,7 +1191,7 @@ export default function WriterStudio() {
                   placeholder="Start writing, or use the toolbar above to let Pablo write for you..."
                   className="flex-1 bg-transparent text-zinc-300 text-sm outline-none resize-none placeholder:text-zinc-800 px-8 py-6"
                   style={{
-                    fontFamily: showRhymeBook ? "'Share Tech Mono', monospace" : "'Georgia', 'Times New Roman', serif",
+                    fontFamily: showRhymeBook ? "var(--font-sans)" : "'Georgia', 'Times New Roman', serif",
                     fontSize: '15px',
                     lineHeight: '1.85',
                   }}

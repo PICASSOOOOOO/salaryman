@@ -896,7 +896,7 @@ export default function PabloOffice() {
         width: '100%',
         background: '#000',
         color: '#38bdf8',
-        font: '13px "Share Tech Mono", monospace',
+        font: '13px "var(--font-sans)", monospace',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
@@ -909,7 +909,7 @@ export default function PabloOffice() {
         paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
-      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}@keyframes cctvScan{0%{top:-18%}100%{top:118%}}@keyframes cctvNoise{0%,100%{opacity:.05}50%{opacity:.085}}`}</style>
+      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}`}</style>
 
       {/* COMPACT HEADER — single fixed-height bar so the floor gets the rest.
           Hidden in embed mode so the /my-office monitor pane is chrome-free. */}
@@ -1061,7 +1061,7 @@ export default function PabloOffice() {
                         padding: '.5rem 1rem',
                         background: 'rgba(4,10,6,.82)',
                         border: '1px solid rgba(180,255,100,.5)', borderRadius: 7, color: '#d9f99d',
-                        font: 'bold .68rem "Share Tech Mono", monospace', letterSpacing: '.14em',
+                        font: 'bold .68rem "var(--font-sans)", monospace', letterSpacing: '.14em',
                         cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
                     >
@@ -1200,7 +1200,7 @@ export default function PabloOffice() {
             )}
 
             {arcadeGameId && (
-              <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING…</div>}>
+              <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "var(--font-sans)", letterSpacing: '.2em' }}>LOADING…</div>}>
                 <ArcadeGame
                   gameId={arcadeGameId}
                   salary={citySave?.salary ?? 0}
@@ -1211,18 +1211,9 @@ export default function PabloOffice() {
             )}
 
             {surveillance && (
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 8, fontFamily: '"Share Tech Mono", monospace' }}>
-                {/* CCTV colour grade — cool low-light wash up top, warm falloff at
-                    the base. Sells the "monitored feed" read over the SAME iso art. */}
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(8,22,32,.22) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,0) 70%, rgba(22,2,8,.34) 100%)' }} />
-                {/* Horizontal scanlines. */}
-                <div style={{ position: 'absolute', inset: 0, opacity: .5, backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,.30) 0px, rgba(0,0,0,.30) 1px, transparent 1px, transparent 3px)' }} />
-                {/* Rolling refresh band drifting top→bottom. */}
-                <div style={{ position: 'absolute', left: 0, right: 0, height: '16%', background: 'linear-gradient(180deg, transparent, rgba(150,220,255,.07) 50%, transparent)', animation: 'cctvScan 6.5s linear infinite' }} />
-                {/* Sensor grain — animated SVG turbulence at low opacity. */}
-                <div style={{ position: 'absolute', inset: 0, animation: 'cctvNoise 1.1s steps(2) infinite', backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")` }} />
-                {/* Red surveillance frame + heavy vignette. */}
-                <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.32), inset 0 0 150px rgba(0,0,0,.58)' }} />
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 8, fontFamily: "var(--font-sans)" }}>
+                {/* Frame markers keep the surveillance state identifiable. */}
+                <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.32)' }} />
                 {/* Camera framing brackets in each corner. */}
                 {([['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']] as const).map(([v, h]) => (
                   <div
@@ -1303,7 +1294,7 @@ export default function PabloOffice() {
               alignItems: 'center',
               justifyContent: 'center',
               color: 'rgba(56,189,248,.7)',
-              font: '12px "Share Tech Mono", monospace',
+              font: '12px "var(--font-sans)", monospace',
               letterSpacing: '.1em',
               background: '#0a0a0a',
               borderRadius: 14,
@@ -1430,7 +1421,7 @@ export default function PabloOffice() {
             position: 'fixed', inset: 0, zIndex: 700,
             background: 'rgba(0,4,12,0.92)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Share Tech Mono', monospace",
+            fontFamily: "var(--font-sans)",
           }}
         >
           <style>{`

@@ -38,8 +38,8 @@ interface Props {
 }
 
 const CYAN = "rgba(56,189,248";
-const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
+const MONO: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 const CATEGORY_LABEL: Record<Recipe["category"], string> = {
   refine: "REFINE — HARVEST → MATERIALS",

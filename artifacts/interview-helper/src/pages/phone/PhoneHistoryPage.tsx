@@ -181,7 +181,7 @@ export default function PhoneHistoryPage() {
                 border: `1px solid ${statusFilter === f.key ? crt(0.25) : crt(0.08)}`,
                 color: statusFilter === f.key ? crt(0.8) : crt(0.3),
                 borderRadius: 4, cursor: 'pointer', transition: 'all 0.15s',
-                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
               }}
             >
               {f.label}

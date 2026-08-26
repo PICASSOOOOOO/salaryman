@@ -293,7 +293,7 @@ export default function Upgrade({ embedded = false, onPrimeCheckout, primeChecko
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <h3 className="text-xl font-bold text-foreground"
-                          style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.5rem' }}>
+                          style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.06em', fontSize: '1.5rem' }}>
                           {boomerMode ? flagshipCard.boomerLabel : flagshipCard.label}
                         </h3>
                         {!boomerMode && (
@@ -324,7 +324,7 @@ export default function Upgrade({ embedded = false, onPrimeCheckout, primeChecko
                     <div className="flex items-center gap-2 mb-3">
                       <Zap className="w-3 h-3 text-emerald-400" />
                       <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest"
-                        style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                         {boomerMode ? 'Included Agent Skills' : 'AGENT SKILLS // ALL OPERATIONAL'}
                       </span>
                     </div>
@@ -340,7 +340,7 @@ export default function Upgrade({ embedded = false, onPrimeCheckout, primeChecko
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <span className="text-[10px] font-bold text-foreground uppercase tracking-wider"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                                   {skill.name}
                                 </span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />

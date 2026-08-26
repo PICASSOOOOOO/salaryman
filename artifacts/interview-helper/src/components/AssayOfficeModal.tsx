@@ -89,7 +89,7 @@ export default function AssayOfficeModal({ onClose, onSold, slot = 0 }: Props) {
         position: "fixed", inset: 0, zIndex: 9200,
         background: "rgba(0,0,0,0.88)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'Share Tech Mono',monospace",
+        fontFamily: "var(--font-sans)",
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -120,7 +120,7 @@ export default function AssayOfficeModal({ onClose, onSold, slot = 0 }: Props) {
               style={{
                 background: "none", border: "1px solid rgba(255,60,60,0.3)",
                 color: "rgba(255,60,60,0.7)", padding: "4px 10px",
-                cursor: "pointer", fontFamily: "'Share Tech Mono',monospace", fontSize: "0.6rem",
+                cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: "0.6rem",
               }}
             >LEAVE [ESC]</button>
           </div>
@@ -173,7 +173,7 @@ export default function AssayOfficeModal({ onClose, onSold, slot = 0 }: Props) {
                               width: "3rem", background: "rgba(0,0,0,0.5)",
                               border: "1px solid rgba(255,255,255,0.15)",
                               color: "#fff", padding: "2px 4px", textAlign: "center",
-                              fontFamily: "'Share Tech Mono',monospace", fontSize: "0.6rem",
+                              fontFamily: "var(--font-sans)", fontSize: "0.6rem",
                             }}
                           />
                           <button
@@ -184,7 +184,7 @@ export default function AssayOfficeModal({ onClose, onSold, slot = 0 }: Props) {
                               border: "1px solid rgba(255,200,50,0.4)",
                               color: "rgba(255,200,50,0.9)", padding: "4px 10px",
                               cursor: selling === def.id ? "default" : "pointer",
-                              fontFamily: "'Share Tech Mono',monospace", fontSize: "0.58rem",
+                              fontFamily: "var(--font-sans)", fontSize: "0.58rem",
                               whiteSpace: "nowrap",
                             }}
                           >

@@ -289,7 +289,7 @@ export default function MediaLibrary() {
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
               {boomerMode ? 'MEDIA LIBRARY' : 'VAULT-X'}
             </h1>
             <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase">

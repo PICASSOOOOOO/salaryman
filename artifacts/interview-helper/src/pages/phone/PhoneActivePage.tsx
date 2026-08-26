@@ -61,7 +61,7 @@ function ElapsedTimer({ seconds, boomer }: { seconds: number; boomer: boolean })
     : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   return (
     <span style={{
-      ...(boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+      ...(boomer ? {} : { fontFamily: "var(--font-sans)" }),
       fontSize: '1.8rem',
       color: crt(0.9),
       letterSpacing: '0.15em',
@@ -483,7 +483,7 @@ export default function PhoneActivePage() {
                           <div style={{
                             padding: '10px 12px', minHeight: 60, maxHeight: 150, overflowY: 'auto',
                             fontSize: '0.5rem', color: crt(0.5), lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                            ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                            ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                           }}>
                             {c.liveTranscript
                               ? c.liveTranscript

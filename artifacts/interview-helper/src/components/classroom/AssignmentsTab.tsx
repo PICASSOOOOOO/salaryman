@@ -9,7 +9,7 @@ import WritingField from './WritingField';
 import SubmissionCard, { type ClassSubmission } from './SubmissionCard';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 export interface AssignmentSummary {
   id: number;

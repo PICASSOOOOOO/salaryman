@@ -75,12 +75,6 @@ export default function TerrenceStudio() {
   return (
     <div className="min-h-screen relative overflow-hidden text-pink-100 font-mono"
          style={{ background: 'radial-gradient(ellipse at 50% 30%, #1c0d1a 0%, #0a0408 60%, #000 100%)' }}>
-      {/* Scanlines */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.55) 0 1px, transparent 1px 3px)',
-        mixBlendMode: 'multiply',
-      }} />
-
       {/* Header */}
       <header className="relative px-5 pt-4 pb-2 flex items-center justify-between">
         <button onClick={() => navigate('/pledge')} className="flex items-center gap-2 text-[10px] tracking-[0.4em] text-pink-200 hover:text-white">

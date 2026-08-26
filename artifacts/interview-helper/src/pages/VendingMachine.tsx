@@ -68,7 +68,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
         >
           <ArrowLeft className="w-3 h-3" /> {onClose ? "CLOSE" : exitLabel}
         </button>
-        <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "var(--font-sans)" }}>
           ▌ VendKing <span className="text-red-400">自販機</span> ▌
         </div>
         <div className="shrink-0 w-[1px]" aria-hidden />
@@ -89,7 +89,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
                   ? "border-pink-400 text-pink-200 bg-pink-500/10"
                   : "border-transparent text-pink-200/40 hover:text-pink-200/80"
               }`}
-              style={{ fontFamily: "'VT323', monospace" }}
+              style={{ fontFamily: "var(--font-sans)" }}
             >
               {t.label}
               <span className="ml-1 text-red-400/70 text-[8px] tracking-[0.2em]">{t.sub}</span>
@@ -113,7 +113,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
           )}
           <div
             className="absolute bottom-0 inset-x-0 px-3 py-2 bg-black/85 border-t-2 border-cyan-400/60 text-cyan-200 text-[10px] text-center tracking-[0.25em]"
-            style={{ fontFamily: "'VT323', monospace" }}
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             ▾ INSERT FLORINS · CHOOSE A SLOT
           </div>
@@ -254,7 +254,7 @@ function FoodTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "var(--font-sans)" }}>
           ▾ PABLO FRESH · EAT TO RESTORE STAMINA
         </div>
         <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ function FoodTab() {
               <Zap className="w-3 h-3" /> STAMINA {energyNow}/100
             </div>
           )}
-          <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "var(--font-sans)" }}>
             BAL · ƒ{balance.toLocaleString()}
           </div>
         </div>
@@ -276,7 +276,7 @@ function FoodTab() {
               ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
               : "border-red-400/50 bg-red-500/10 text-red-200"
           }`}
-          style={{ fontFamily: "'VT323', monospace" }}
+          style={{ fontFamily: "var(--font-sans)" }}
           data-testid="food-toast"
         >
           {toast.msg}
@@ -306,7 +306,7 @@ function FoodTab() {
                 }}
                 data-testid={`food-${item.id}`}
               >
-                <div className="text-cyan-100 text-xs font-bold tracking-widest mb-1 truncate" style={{ fontFamily: "'VT323', monospace" }}>
+                <div className="text-cyan-100 text-xs font-bold tracking-widest mb-1 truncate" style={{ fontFamily: "var(--font-sans)" }}>
                   {item.name}
                 </div>
                 {fx.energy > 0 && (
@@ -316,7 +316,7 @@ function FoodTab() {
                 )}
                 <div className="text-[10px] text-pink-200/70 leading-snug mb-2 line-clamp-3 flex-1">{item.desc}</div>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
                     ƒ{item.price.toLocaleString()}
                   </div>
                   <button
@@ -463,10 +463,10 @@ function CosmeticsTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "var(--font-sans)" }}>
           ▾ COSMETIC EXCHANGE · SPEND FIAT
         </div>
-        <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "var(--font-sans)" }}>
           BAL · ƒ{balance.toLocaleString()}
         </div>
       </div>
@@ -478,7 +478,7 @@ function CosmeticsTab() {
               ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
               : "border-red-400/50 bg-red-500/10 text-red-200"
           }`}
-          style={{ fontFamily: "'VT323', monospace" }}
+          style={{ fontFamily: "var(--font-sans)" }}
         >
           {toast.msg}
         </div>
@@ -523,7 +523,7 @@ function CosmeticsTab() {
                 </div>
                 <div className="text-[10px] text-pink-200/70 leading-snug mb-2 line-clamp-3">{item.description}</div>
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "var(--font-sans)" }}>
                     ƒ{item.priceCrypto.toLocaleString()}
                   </div>
                   {owned ? (
@@ -676,7 +676,7 @@ function HomebaseTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "var(--font-sans)" }}>
           ▾ HOMEBASE CATALOG · CHOOSE A LOCATION
         </div>
         <div className={`flex items-center gap-1 text-[10px] tracking-[0.3em] ${trendClr}`}
@@ -709,8 +709,8 @@ function PropertySection({
       <div className="flex items-end justify-between mb-2 border-b border-pink-500/15 pb-1">
         <div className="flex items-center gap-2">
           <Icon className="w-3.5 h-3.5 text-pink-300" />
-          <span className="text-pink-200 text-xs tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>{title}</span>
-          <span className="text-red-400/70 text-[9px] tracking-[0.2em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <span className="text-pink-200 text-xs tracking-[0.3em]" style={{ fontFamily: "var(--font-sans)" }}>{title}</span>
+          <span className="text-red-400/70 text-[9px] tracking-[0.2em]" style={{ fontFamily: "var(--font-sans)" }}>
             {kana}
           </span>
         </div>
@@ -750,8 +750,8 @@ function PropertyCard({ t, baseMult }: { t: PropertyTemplate; baseMult: number }
 
       <div className="p-2.5">
         <div className="flex items-baseline justify-between gap-2 mb-1">
-          <div className="text-pink-100 font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
-          <div className="text-[10px] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="text-pink-100 font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "var(--font-sans)" }}>{t.name}</div>
+          <div className="text-[10px] text-amber-300" style={{ fontFamily: "var(--font-sans)" }}>
             ƒ{liveRent.toLocaleString()}/mo
           </div>
         </div>
@@ -770,7 +770,7 @@ function PropertyCard({ t, baseMult }: { t: PropertyTemplate; baseMult: number }
           onClick={() => onChooseHomebase(t)}
           data-testid={`homebase-choose-${t.artKey}`}
           className="w-full py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-100 text-[10px] tracking-[0.25em]"
-          style={{ fontFamily: "'VT323', monospace" }}
+          style={{ fontFamily: "var(--font-sans)" }}
         >
           ▸ CHOOSE AS HOMEBASE
         </button>

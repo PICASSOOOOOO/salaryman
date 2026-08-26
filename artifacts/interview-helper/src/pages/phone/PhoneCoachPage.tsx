@@ -239,7 +239,7 @@ export default function PhoneCoachPage() {
                     color: activeTab === t.key ? t.color(0.8) : crt(0.3),
                     fontSize: '0.48rem', letterSpacing: '0.15em',
                     cursor: 'pointer', border: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                    ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), transition: 'all 0.15s',
+                    ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), transition: 'all 0.15s',
                   }}
                 >
                   {t.icon} {t.label}
@@ -368,7 +368,7 @@ export default function PhoneCoachPage() {
                     padding: '9px 12px', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
                     background: 'rgba(0,12,0,0.5)', border: `1px solid ${crt(0.07)}`,
                     borderRadius: 6, cursor: 'pointer', fontSize: '0.52rem', color: crt(0.5), letterSpacing: '0.03em',
-                    transition: 'all 0.15s', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                    transition: 'all 0.15s', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                   }}
                 >
                   <div style={{ color: q.color(0.5), flexShrink: 0 }}>{q.icon}</div>

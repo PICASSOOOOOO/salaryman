@@ -71,7 +71,7 @@ export function Scene1() {
         </motion.div>
 
         <motion.h1
-          style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(28px, 7vw, 56px)', lineHeight: 1, letterSpacing: '0.12em' }}
+          style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(28px, 7vw, 56px)', lineHeight: 1, letterSpacing: '0.12em' }}
           className="font-bold text-center mt-3"
         >
           {'PIXEL AGENTS'.split('').map((char, i) => (
@@ -106,7 +106,7 @@ export function Scene1() {
           <motion.div className="h-[1px] bg-gradient-to-r from-transparent to-red-400/40" style={{ width: 'clamp(20px, 4vw, 40px)' }}
             initial={{ scaleX: 0 }} animate={phase >= 4 ? { scaleX: 1 } : {}} transition={{ duration: 0.4 }} />
           <motion.p
-            style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.2vw, 12px)', letterSpacing: '0.4em' }}
+            style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(7px, 1.2vw, 12px)', letterSpacing: '0.4em' }}
             className="text-red-400 uppercase text-center"
           >
             PIXEL AGENTS MANAGER
@@ -119,7 +119,7 @@ export function Scene1() {
       {phase >= 3 && (
         <motion.div className="absolute bottom-[8%] left-0 right-0 flex justify-center"
           initial={{ opacity: 0 }} animate={{ opacity: 0.15 }} transition={{ duration: 0.6, delay: 0.3 }}>
-          <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', letterSpacing: '0.5em', color: '#64748b' }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: 'clamp(5px, 0.7vw, 7px)', letterSpacing: '0.5em', color: '#64748b' }}>
             THE SALARYMAN PLATFORM
           </div>
         </motion.div>

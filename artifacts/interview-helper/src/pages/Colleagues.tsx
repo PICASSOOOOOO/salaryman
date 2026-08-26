@@ -340,7 +340,7 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
     <>
       {!embedded && (
         <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
             <Users className="inline w-5 h-5 mr-2" />
             {boomerMode ? 'ASSOCIATES' : 'ASSOCIATES NETWORK'}
           </h1>

@@ -13,7 +13,7 @@
 //     name -> email -> auth choice modal.
 //   • The header SIGN IN button opens the same auth choice modal.
 //
-// PabloNebula3D / SceneFX (WebGL), the art kit, TTS, and audio are all stubbed
+// PabloNebula3D (WebGL), the art kit, TTS, and audio are all stubbed
 // so the terminal mounts in jsdom. speakWithTTS fires its done callback
 // synchronously, which is what drives the single-shot redirect (goLogin ->
 // setAuthChoice) the real component relies on.
@@ -57,11 +57,10 @@ vi.mock("@/lib/tts", () => ({
 
 // Stub the heavy / browser-only visuals so jsdom can mount the page.
 vi.mock("@/components/PabloNebula3D", () => ({
-  PabloNebula3D: () => null,
+  PabloNebula3D: () => <div data-testid="canonical-pablo-nebula" />,
   PABLO_VARIANT: {},
   MILA_VARIANT: {},
 }));
-vi.mock("@/components/SceneFX", () => ({ SceneFX: () => null }));
 vi.mock("@/components/HummingBirdAttachStrip", () => ({ HummingBirdAttachStrip: () => null }));
 vi.mock("@/components/VisionIntake", () => ({ VisionIntake: () => null }));
 vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));
@@ -134,6 +133,15 @@ afterEach(() => {
 });
 
 describe("Pablo front-door admittance flow", () => {
+  it("renders the canonical persona-aware nebula at full strength during intake", async () => {
+    await mount();
+
+    const nebula = qs("canonical-pablo-nebula");
+    expect(nebula).not.toBeNull();
+    expect((nebula!.parentElement as HTMLDivElement).style.opacity).toBe("1");
+    expect(qs("pablo-frontdoor-scene")).toBeNull();
+  });
+
   it("admits a returning visitor saying 'let me in' straight to the auth choice modal", async () => {
     window.localStorage.setItem("salaryman_name", "Returning Rita");
     window.localStorage.setItem("salaryman_email", "rita@example.com");

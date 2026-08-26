@@ -140,7 +140,7 @@ export default function BotVendingMachine() {
         >
           <ArrowLeft className="w-3 h-3" /> BOT FACTORY
         </button>
-        <div className="text-pink-300 tracking-[0.5em]" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-pink-300 tracking-[0.5em]" style={{ fontFamily: "var(--font-sans)" }}>
           ▌ FRESH BOTS — VendKing ▌
         </div>
         <button
@@ -166,7 +166,7 @@ export default function BotVendingMachine() {
           )}
           {flash && (
             <div className="absolute bottom-0 inset-x-0 px-4 py-3 bg-black/90 border-t-2 border-cyan-400 text-cyan-200 text-xs text-center tracking-[0.25em]"
-              style={{ fontFamily: "'VT323', monospace" }}>
+              style={{ fontFamily: "var(--font-sans)" }}>
               {flash}
             </div>
           )}
@@ -174,7 +174,7 @@ export default function BotVendingMachine() {
 
         {/* Slot grid */}
         <div>
-          <div className="text-[10px] tracking-[0.4em] text-pink-300/70 mb-3" style={{ fontFamily: "'VT323', monospace" }}>
+          <div className="text-[10px] tracking-[0.4em] text-pink-300/70 mb-3" style={{ fontFamily: "var(--font-sans)" }}>
             ▾ INSERT FLORINS · CHOOSE A SLOT
           </div>
 

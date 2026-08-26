@@ -10,7 +10,7 @@ import {
 const CRT = '#38bdf8';
 const CRT_DIM = 'rgba(56,189,248,0.5)';
 const CRT_FAINT = 'rgba(56,189,248,0.08)';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 type Platform = 'linkedin' | 'instagram' | 'facebook' | 'tiktok';
 

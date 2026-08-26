@@ -49,7 +49,7 @@ function StatusDot({ status }: { status: 'online' | 'offline' | 'unknown' }) {
     return (
       <span className="flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-        <span className="text-sky-400 text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ONLINE</span>
+        <span className="text-sky-400 text-xs font-bold" style={{ fontFamily: "var(--font-sans)" }}>ONLINE</span>
       </span>
     );
   }
@@ -57,14 +57,14 @@ function StatusDot({ status }: { status: 'online' | 'offline' | 'unknown' }) {
     return (
       <span className="flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-red-400" />
-        <span className="text-red-400 text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>OFFLINE</span>
+        <span className="text-red-400 text-xs font-bold" style={{ fontFamily: "var(--font-sans)" }}>OFFLINE</span>
       </span>
     );
   }
   return (
     <span className="flex items-center gap-1.5">
       <span className="w-2 h-2 rounded-full bg-yellow-400/60" />
-      <span className="text-yellow-400/60 text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>CHECKING</span>
+      <span className="text-yellow-400/60 text-xs font-bold" style={{ fontFamily: "var(--font-sans)" }}>CHECKING</span>
     </span>
   );
 }
@@ -101,10 +101,10 @@ export default function AgentTeam() {
                 <Cpu className="w-5 h-5 text-sky-400" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: boomerMode ? undefined : "'VT323', monospace", letterSpacing: boomerMode ? undefined : '0.1em', fontSize: boomerMode ? undefined : '1.4rem' }}>
+                <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: boomerMode ? undefined : "var(--font-sans)", letterSpacing: boomerMode ? undefined : '0.1em', fontSize: boomerMode ? undefined : '1.4rem' }}>
                   {boomerMode ? 'AI Team' : 'PABLO NETWORK'}
                 </h1>
-                <p className="text-xs text-muted-foreground" style={{ fontFamily: boomerMode ? undefined : "'Share Tech Mono', monospace" }}>
+                <p className="text-xs text-muted-foreground" style={{ fontFamily: boomerMode ? undefined : "var(--font-sans)" }}>
                   {boomerMode ? 'The specialist AIs working behind the scenes' : 'MULTI-AGENT ORCHESTRATION LAYER · ACTIVE SPECIALISTS'}
                 </p>
               </div>
@@ -121,7 +121,7 @@ export default function AgentTeam() {
           <div className="mb-6 rounded-xl border border-border bg-card/50 p-4">
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>
+              <span className="text-xs font-bold text-muted-foreground" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>
                 {boomerMode ? 'HOW IT WORKS' : 'ROUTING LOGIC'}
               </span>
             </div>
@@ -145,7 +145,7 @@ export default function AgentTeam() {
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Bot className="w-6 h-6 animate-pulse mr-3" />
-              <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <span className="text-sm" style={{ fontFamily: "var(--font-sans)" }}>
                 {boomerMode ? 'Checking agent status...' : 'PINGING AGENT NETWORK...'}
               </span>
             </div>
@@ -190,13 +190,13 @@ export default function AgentTeam() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                           <h2 className={`font-bold text-foreground ${boomerMode ? 'text-base' : 'text-lg'}`}
-                            style={boomerMode ? undefined : { fontFamily: "'VT323', monospace", letterSpacing: '0.08em' }}>
+                            style={boomerMode ? undefined : { fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>
                             {boomerMode ? agent.plainName : agent.codeName}
                           </h2>
                           <StatusDot status={agent.status} />
                         </div>
 
-                        <p className="text-xs text-muted-foreground mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        <p className="text-xs text-muted-foreground mb-2" style={{ fontFamily: "var(--font-sans)" }}>
                           {boomerMode ? agent.plainSpecialty : agent.specialty}
                         </p>
 
@@ -211,16 +211,16 @@ export default function AgentTeam() {
                               : agent.provider === 'openclaw'
                               ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25'
                               : 'bg-sky-500/10 text-sky-400 border-sky-500/25'
-                          }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          }`} style={{ fontFamily: "var(--font-sans)" }}>
                             {agent.provider === 'claude' ? 'ANTHROPIC' : agent.provider === 'openclaw' ? 'OPENCLAW' : 'OPENAI'}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] text-muted-foreground/50 border border-border"
-                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            style={{ fontFamily: "var(--font-sans)" }}>
                             {agent.model}
                           </span>
                           {agent.requestTypes.map(t => (
                             <span key={t} className="px-2 py-0.5 rounded text-[10px] text-muted-foreground/40 border border-border/50"
-                              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              style={{ fontFamily: "var(--font-sans)" }}>
                               {t}
                             </span>
                           ))}
@@ -246,7 +246,7 @@ export default function AgentTeam() {
           )}
 
           {/* Footer note */}
-          <p className="mt-6 text-center text-[11px] text-muted-foreground/40" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <p className="mt-6 text-center text-[11px] text-muted-foreground/40" style={{ fontFamily: "var(--font-sans)" }}>
             {boomerMode
               ? 'Model selection is automatic. You can\'t (and don\'t need to) change it manually.'
               : 'MANUAL OVERRIDE: DISABLED · AUTONOMOUS ROUTING ONLY · OPTIMAL DISPATCH GUARANTEED'

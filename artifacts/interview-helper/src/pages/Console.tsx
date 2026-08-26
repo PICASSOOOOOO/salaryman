@@ -187,19 +187,10 @@ export default function Console() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-      {/* phosphor glow ambience — terminal green / amber */}
+    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden font-sans">
+      {/* Restrained depth accents keep the workspace legible without terminal effects. */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full pointer-events-none" style={{ background: 'rgba(52,211,153,0.10)' }} />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full pointer-events-none" style={{ background: 'rgba(255,176,0,0.07)' }} />
-
-      {/* CRT scanlines + vignette overlay (non-interactive) */}
-      <div className="pointer-events-none absolute inset-0 z-30" aria-hidden style={{
-        background: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.13) 3px, rgba(0,0,0,0) 4px)',
-        mixBlendMode: 'multiply',
-      }} />
-      <div className="pointer-events-none absolute inset-0 z-30" aria-hidden style={{
-        background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.42) 100%)',
-      }} />
 
       {/* TERMINAL WINDOW TITLEBAR */}
       <div className="relative z-40 px-4 py-2 flex items-center gap-3"
@@ -249,7 +240,7 @@ export default function Console() {
             try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
           }}
           style={{
-            fontFamily: "'Share Tech Mono', monospace",
+            fontFamily: "'Fira Code', monospace",
             fontSize: '0.5rem',
             letterSpacing: '0.08em',
             padding: '2px 8px',
@@ -280,11 +271,11 @@ export default function Console() {
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <div>
-                    <p className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    <p className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-300`} style={{ fontFamily: "'Fira Code', monospace" }}>
                       {boomerMode ? t('console.autoScanRunning') : t('console.autoPilotActive')}
                     </p>
                     {countdown > 0 && (
-                      <p className="text-[10px] text-green-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      <p className="text-[10px] text-green-400/60" style={{ fontFamily: "'Fira Code', monospace" }}>
                         {t('console.nextScan')} {countdown}{t('console.seconds')}
                       </p>
                     )}
@@ -308,7 +299,7 @@ export default function Console() {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <Mic className="w-3.5 h-3.5 text-green-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'LIVE LISTEN' : PABLO_PRODUCTS.LIVE_LISTEN.short}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-400`} style={{ fontFamily: "'Fira Code', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'LIVE LISTEN' : PABLO_PRODUCTS.LIVE_LISTEN.short}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 {consoleConv.isSupported && (
@@ -352,7 +343,7 @@ export default function Console() {
                   consoleConv.convState === 'speaking' ? 'bg-purple-400 animate-pulse' :
                   'bg-gray-400'
                 }`} />
-                <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold`} style={{ fontFamily: "'Share Tech Mono', monospace",
+                <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold`} style={{ fontFamily: "'Fira Code', monospace",
                   color: consoleConv.convState === 'listening' ? 'rgba(52,211,153,0.9)' :
                          consoleConv.convState === 'processing' ? 'rgba(251,191,36,0.9)' :
                          consoleConv.convState === 'speaking' ? 'rgba(192,132,252,0.9)' :
@@ -365,7 +356,7 @@ export default function Console() {
                 </p>
               </div>
             ) : (
-              <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Fira Code', monospace" }}>
                 {boomerMode ? t('console.liveListenDesc') : PABLO_PRODUCTS.LIVE_LISTEN.desc}
               </p>
             )}
@@ -418,7 +409,7 @@ export default function Console() {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <Upload className="w-3.5 h-3.5 text-purple-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-purple-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-purple-400`} style={{ fontFamily: "'Fira Code', monospace", letterSpacing: '0.08em' }}>
                   {boomerMode ? 'MEDIA ANALYZER' : PABLO_PRODUCTS.MEDIA_LAB.short}
                 </span>
               </div>
@@ -472,7 +463,7 @@ export default function Console() {
                 )}
               </div>
             ) : (
-              <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Fira Code', monospace" }}>
                 {isDragging
                   ? (boomerMode ? 'Drop your file here...' : 'Release to analyze...')
                   : boomerMode ? 'Drag & drop or upload an image, audio, or video file for AI analysis.'
@@ -511,7 +502,7 @@ export default function Console() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Keyboard className="w-3.5 h-3.5 text-violet-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-violet-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'PRINTER TOOLS' : PABLO_PRODUCTS.PRINTER.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-violet-400`} style={{ fontFamily: "'Fira Code', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'PRINTER TOOLS' : PABLO_PRODUCTS.PRINTER.name}</span>
               </div>
               {canTypeMode && !isStreaming && (
                 <button onClick={handleToggleTypeMode}
@@ -524,7 +515,7 @@ export default function Console() {
                 </button>
               )}
             </div>
-            <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Fira Code', monospace" }}>
               {typeMode
                 ? (isTyping ? t('console.typingInProgress') : typingDone ? t('console.typingComplete') : t('console.typeModeActive'))
                 : boomerMode ? t('console.solveFirst')
@@ -538,7 +529,7 @@ export default function Console() {
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden">
 
             <div className="h-12 border-b flex items-center justify-between px-4 shrink-0" style={{ borderColor: 'rgba(52,211,153,0.18)', background: 'rgba(8,12,10,0.45)' }}>
-              <div className="flex items-center gap-2 text-xs font-medium" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(52,211,153,0.75)', letterSpacing: '0.06em', textShadow: '0 0 6px rgba(52,211,153,0.3)' }}>
+              <div className="flex items-center gap-2 text-xs font-medium" style={{ fontFamily: "'Fira Code', monospace", color: 'rgba(56,189,248,0.85)', letterSpacing: '0.06em' }}>
                 <Terminal className="w-3.5 h-3.5" /> stdout
               </div>
               <div className="flex items-center gap-2">
@@ -599,7 +590,7 @@ export default function Console() {
                 ) : !displayResponse && (displayStatus === 'idle' || displayStatus === 'done') ? (
                   <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="absolute inset-0 flex items-center justify-center px-6">
-                    <div className="w-full max-w-md" style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', lineHeight: 1.7, textShadow: '0 0 6px rgba(52,211,153,0.25)' }}>
+                    <div className="w-full max-w-md" style={{ fontFamily: "'Fira Code', monospace", fontSize: '0.8rem', lineHeight: 1.7 }}>
                       <p style={{ color: 'rgba(52,211,153,0.45)' }}>
                         <span style={{ color: 'rgba(52,211,153,0.7)' }}>pablo@cipher-x</span>:<span style={{ color: 'rgba(255,176,0,0.7)' }}>~</span>$ ./cipher-x --listen
                       </p>

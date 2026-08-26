@@ -95,7 +95,7 @@ export function Scene5() {
         />
         <span
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(7px, 1vw, 11px)',
             letterSpacing: '0.3em',
             color: '#a78bfa',
@@ -194,7 +194,7 @@ export function Scene5() {
             bottom: '32%',
             left: '50%',
             transform: 'translateX(-50%)',
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(10px, 1.8vw, 16px)',
             color: '#22d3ee',
             letterSpacing: '0.05em',
@@ -235,7 +235,7 @@ export function Scene5() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: p.delay / 1000, duration: 0.35 }}
               style={{
-                fontFamily: '"Share Tech Mono", monospace',
+                fontFamily: "var(--font-sans)",
                 fontSize: 'clamp(6px, 0.9vw, 10px)',
                 color: i === RESPONSE_PARTS.length - 1 ? '#10b981' : '#f472b6',
                 letterSpacing: '0.2em',
@@ -257,7 +257,7 @@ export function Scene5() {
       >
         <div
           style={{
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(11px, 2.2vw, 20px)',
             color: '#fff',
             letterSpacing: '0.06em',
@@ -268,7 +268,7 @@ export function Scene5() {
         </div>
         <div
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(5px, 0.75vw, 7px)',
             color: '#94a3b8',
             letterSpacing: '0.25em',

@@ -35,7 +35,7 @@ export interface MissionMenuProps {
   onClose: () => void;
 }
 
-const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+const VT2: React.CSSProperties = { fontFamily: "var(--font-sans)" };
 
 /** A scene is playable from the office when it's the active scene AND either the
  *  story is already running, or it's the reserved opener (which BEGINS the run). */
@@ -70,10 +70,10 @@ export function MissionMenu({
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, padding: '1rem',
       }}
     >
-      <div style={{ width: 560, maxWidth: '92vw', border: '1px solid rgba(255,200,60,.4)', background: 'rgba(0,6,2,.98)', fontFamily: "'Share Tech Mono',monospace", padding: '1.2rem', maxHeight: '85vh', overflowY: 'auto' }}>
+      <div style={{ width: 560, maxWidth: '92vw', border: '1px solid rgba(255,200,60,.4)', background: 'rgba(0,6,2,.98)', fontFamily: "var(--font-sans)", padding: '1.2rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.6rem' }}>
           <div style={{ ...VT2, fontSize: '1.6rem', color: '#ffcc44', letterSpacing: '.18em' }}>MISSIONS · {quarterLabel(quarter)}</div>
-          <button onClick={onClose} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(255,200,60,.2)', color: 'rgba(255,200,60,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
+          <button onClick={onClose} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(255,200,60,.2)', color: 'rgba(255,200,60,.4)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem' }}>ESC</button>
         </div>
         <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', fontSize: '.5rem', letterSpacing: '.1em', marginBottom: '.5rem', color: 'rgba(56,189,248,.55)' }}>
           <span style={{ border: '1px solid rgba(56,189,248,.25)', padding: '.2rem .45rem' }}>QUARTER {quarterLabel(quarter)}</span>
@@ -113,7 +113,7 @@ export function MissionMenu({
                       padding: '.4rem .9rem',
                       background: 'linear-gradient(135deg, rgba(236,72,153,.92), rgba(56,189,248,.82))',
                       border: '1px solid rgba(244,180,255,.95)', borderRadius: 6, color: '#0a0414',
-                      font: 'bold .62rem "Share Tech Mono", monospace', letterSpacing: '.14em',
+                      font: 'bold .62rem "var(--font-sans)", monospace', letterSpacing: '.14em',
                       cursor: 'pointer', whiteSpace: 'nowrap',
                     }}
                   >

@@ -201,7 +201,7 @@ export default function CalllHomePage() {
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
       }}>
         <div style={{ textAlign: 'center', color: crt(0.3) }}>
           <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em', marginBottom: 12 }}>VERIFYING ACCESS...</div>
@@ -220,7 +220,7 @@ export default function CalllHomePage() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{
@@ -251,7 +251,7 @@ export default function CalllHomePage() {
                 background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.05)})`,
                 border: `1px solid ${amber(0.35)}`,
                 color: amber(0.9), borderRadius: 8, cursor: 'pointer',
-                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                 boxShadow: `0 0 16px ${amber(0.08)}`,
                 transition: 'all 0.2s',
               }}
@@ -265,7 +265,7 @@ export default function CalllHomePage() {
                 background: 'transparent',
                 border: `1px solid ${crt(0.15)}`,
                 color: crt(0.4), borderRadius: 8, cursor: 'pointer',
-                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                 transition: 'all 0.2s',
               }}
             >
@@ -285,7 +285,7 @@ export default function CalllHomePage() {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-      ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+      ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
       color: crt(0.85),
       position: 'relative',
     }}>
@@ -377,7 +377,7 @@ export default function CalllHomePage() {
                   color: isActive ? crt(0.95) : (emphasized ? crt(0.7) : crt(0.3)),
                   fontSize: '0.45rem', letterSpacing: '0.12em',
                   cursor: 'pointer',
-                  ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                  ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                   transition: 'all 0.15s',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
@@ -404,7 +404,7 @@ export default function CalllHomePage() {
                 color: showTabSettings ? crt(0.85) : crt(0.35),
                 fontSize: '0.45rem', letterSpacing: '0.12em',
                 cursor: 'pointer',
-                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                 transition: 'color 0.15s, background 0.15s',
                 whiteSpace: 'nowrap',
               }}
@@ -435,7 +435,7 @@ export default function CalllHomePage() {
                   borderRadius: 6,
                   boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 12px ${crt(0.08)}`,
                   padding: '8px 0',
-                  ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                  ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -468,7 +468,7 @@ export default function CalllHomePage() {
                         textAlign: 'left',
                         opacity: hidden ? 0.6 : 1,
                         transition: 'background 0.1s, color 0.1s',
-                        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                       }}
                       onMouseEnter={e => { if (!locked) e.currentTarget.style.background = crt(0.04); }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -497,7 +497,7 @@ export default function CalllHomePage() {
                         color: amber(0.7),
                         fontSize: '0.45rem', letterSpacing: '0.12em',
                         cursor: 'pointer', textAlign: 'left',
-                        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background = crt(0.04); }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}

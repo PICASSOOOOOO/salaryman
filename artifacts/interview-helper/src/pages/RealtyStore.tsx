@@ -250,7 +250,7 @@ export default function RealtyStore() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 relative">
-      {/* Akira-flavoured CSS — slow Ken Burns "tour" pan, scanlines, glitch */}
+      {/* Slow Ken Burns tour pan for property art. */}
       <style>{`
         @keyframes tour-pan {
           0%   { transform: scale(1.18) translate(-3%, -2%); }
@@ -260,18 +260,6 @@ export default function RealtyStore() {
         .tour-pan {
           animation: tour-pan 22s ease-in-out infinite;
           will-change: transform;
-        }
-        .scanlines::after {
-          content: "";
-          position: absolute; inset: 0; pointer-events: none;
-          background: repeating-linear-gradient(
-            to bottom,
-            rgba(255,255,255,0.04) 0px,
-            rgba(255,255,255,0.04) 1px,
-            transparent 1px,
-            transparent 3px
-          );
-          mix-blend-mode: overlay;
         }
         @keyframes tick-flash {
           0%   { color: inherit; }
@@ -289,7 +277,7 @@ export default function RealtyStore() {
         >
           <ArrowLeft className="w-3 h-3" /> WORLD
         </button>
-        <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "var(--font-sans)" }}>
           ▌ DOWNTOWN REALTY <span className="text-red-400">不動産</span> ▌
         </div>
         <div className={`flex items-center gap-1 text-[10px] tracking-[0.3em] shrink-0 ${trendClr}`} title={idx ? `BTC ≈ $${idx.btcUsd.toLocaleString("en-US")} • ${idx.source}` : "loading market…"}>
@@ -300,13 +288,13 @@ export default function RealtyStore() {
 
       {/* Live ticker bar — Akira-style scrolling status */}
       <div className="px-4 sm:px-6 py-2 border-b border-red-500/20 bg-gradient-to-r from-black via-red-950/20 to-black flex items-center justify-between text-[10px] tracking-[0.3em] gap-3">
-        <span className="text-red-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <span className="text-red-400" style={{ fontFamily: "var(--font-sans)" }}>
           市場 LIVE · UPDATING EVERY SECOND
         </span>
         <span className="text-zinc-500 hidden sm:inline">
           INDEX ×{(baseMult * (1 + liveWave(t, 0))).toFixed(4)} · BTC ${idx ? Math.round(idx.btcUsd * (1 + liveWave(t, 1.3))).toLocaleString("en-US") : "—"}
         </span>
-        <span className="text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <span className="text-pink-300" style={{ fontFamily: "var(--font-sans)" }}>
            {localCcy.symbol}{Math.round(10_000 * baseMult * cityMult * (1 + liveWave(t, 0.4))).toLocaleString("en-US")} {localCcy.code} / mo · ENTRY
         </span>
       </div>
@@ -314,7 +302,7 @@ export default function RealtyStore() {
       <div className="px-4 sm:px-12 py-6 sm:py-8 max-w-7xl mx-auto">
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <div className="text-pink-100 text-2xl tracking-[0.2em] mb-1" style={{ fontFamily: "'VT323', monospace" }}>
+            <div className="text-pink-100 text-2xl tracking-[0.2em] mb-1" style={{ fontFamily: "var(--font-sans)" }}>
               PROPERTY <span className="text-red-400">テンプレート</span>
             </div>
             <div className="text-zinc-400 text-sm max-w-xl leading-snug">
@@ -343,8 +331,8 @@ export default function RealtyStore() {
           <div data-testid="my-property-panel" className="mb-6 rounded-xl border border-emerald-400/40 bg-emerald-500/[0.04] px-4 py-3">
             <div className="flex items-center gap-2 mb-2">
               <Check className="w-4 h-4 text-emerald-300" />
-              <span className="text-emerald-200 text-sm tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>MY PROPERTY</span>
-              <span className="text-emerald-400/60 text-[10px] tracking-[0.2em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>所有物</span>
+              <span className="text-emerald-200 text-sm tracking-[0.3em]" style={{ fontFamily: "var(--font-sans)" }}>MY PROPERTY</span>
+              <span className="text-emerald-400/60 text-[10px] tracking-[0.2em]" style={{ fontFamily: "var(--font-sans)" }}>所有物</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[ownedHome, ownedOffice].filter(Boolean).map((o) => (
@@ -354,7 +342,7 @@ export default function RealtyStore() {
                   className="flex items-center justify-between rounded border border-emerald-400/30 bg-black/40 px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <div className="text-emerald-100 text-sm font-bold tracking-wide truncate" style={{ fontFamily: "'VT323', monospace" }}>
+                    <div className="text-emerald-100 text-sm font-bold tracking-wide truncate" style={{ fontFamily: "var(--font-sans)" }}>
                       {(o as OwnedProperty).name}
                     </div>
                     <div className="text-emerald-300/60 text-[10px] tracking-[0.2em] uppercase">
@@ -381,10 +369,10 @@ export default function RealtyStore() {
             <span className="text-[10px] tracking-[0.3em] uppercase px-2 py-0.5 rounded border" style={{ color: district.accent, borderColor: `${district.accent}66` }}>
               {district.factionLabel}
             </span>
-            <span className="text-sm tracking-[0.3em] font-bold" style={{ fontFamily: "'VT323', monospace", color: district.accent }}>
+            <span className="text-sm tracking-[0.3em] font-bold" style={{ fontFamily: "var(--font-sans)", color: district.accent }}>
               {district.district}
             </span>
-            <span className="text-[10px] tracking-[0.2em] opacity-60" style={{ fontFamily: "'Share Tech Mono', monospace", color: district.accent }}>
+            <span className="text-[10px] tracking-[0.2em] opacity-60" style={{ fontFamily: "var(--font-sans)", color: district.accent }}>
               {district.districtKana}
             </span>
           </div>
@@ -480,7 +468,7 @@ function RenovateModal({
         <div className="px-4 pt-4 pb-2 flex items-center justify-between border-b border-cyan-500/20">
           <div className="flex items-center gap-2">
             <Paintbrush className="w-4 h-4 text-cyan-300" />
-            <span className="text-cyan-100 text-sm tracking-[0.25em]" style={{ fontFamily: "'VT323', monospace" }}>
+            <span className="text-cyan-100 text-sm tracking-[0.25em]" style={{ fontFamily: "var(--font-sans)" }}>
               RENOVATE — {t.name}
             </span>
           </div>
@@ -492,7 +480,7 @@ function RenovateModal({
         <div className="p-4 space-y-4">
           {/* Swatch picker */}
           <div>
-            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ACCENT SWATCH</div>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "var(--font-sans)" }}>ACCENT SWATCH</div>
             <div className="flex flex-wrap gap-2">
               {RENOVATION_SWATCHES.map(s => (
                 <button
@@ -510,7 +498,7 @@ function RenovateModal({
 
           {/* Lighting picker */}
           <div>
-            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LIGHTING</div>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "var(--font-sans)" }}>LIGHTING</div>
             <div className="grid grid-cols-3 gap-2">
               {LIGHTING_OPTIONS.map(o => (
                 <button
@@ -528,7 +516,7 @@ function RenovateModal({
 
           {/* Signage */}
           <div>
-            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>SIGNAGE (optional)</div>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "var(--font-sans)" }}>SIGNAGE (optional)</div>
             <input
               type="text"
               data-testid="renovate-signage"
@@ -542,8 +530,8 @@ function RenovateModal({
 
           {/* Labor cost */}
           <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2">
-            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LABOR — {crewDays}-DAY CREW</div>
-            <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace" }} data-testid="renovate-labor-cost">
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "var(--font-sans)" }}>LABOR — {crewDays}-DAY CREW</div>
+            <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "var(--font-sans)" }} data-testid="renovate-labor-cost">
               {formatFiat(laborCost)}
             </div>
           </div>
@@ -610,7 +598,7 @@ function AcquireModal({
         style={{ boxShadow: "0 0 40px rgba(236,72,153,0.3)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="aspect-video w-full overflow-hidden bg-black/80 relative scanlines">
+        <div className="aspect-video w-full overflow-hidden bg-black/80 relative">
           {url ? (
             <img src={url} alt={t.name} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} draggable={false} />
           ) : (
@@ -622,12 +610,12 @@ function AcquireModal({
         </div>
 
         <div className="p-4">
-          <div className="text-pink-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
+          <div className="text-pink-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>{t.name}</div>
           <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
 
           <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2 mb-3">
-            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{verb}</div>
-            <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "var(--font-sans)" }}>{verb}</div>
+            <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "var(--font-sans)" }}>
               {localCcy.symbol}{Math.round(price).toLocaleString("en-US")} <span className="text-sm text-cyan-300/70">{localCcy.code}{tenure === "rent" ? " / mo" : ""}</span>
             </div>
             <div className="text-[10px] text-zinc-500 tracking-wide mt-0.5">live · BTC ×{baseMult.toFixed(3)} · CITY ×{cityMult.toFixed(2)} · display only</div>
@@ -675,8 +663,8 @@ function SectionHeader({ icon: Icon, title, kana, subtitle }: { icon: typeof Hom
     <div className="flex items-end justify-between mb-3 border-b border-pink-500/15 pb-2">
       <div className="flex items-center gap-2">
         <Icon className="w-4 h-4 text-pink-300" />
-        <span className="text-pink-200 text-sm tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>{title}</span>
-        <span className="text-red-400/70 text-[10px] tracking-[0.2em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <span className="text-pink-200 text-sm tracking-[0.3em]" style={{ fontFamily: "var(--font-sans)" }}>{title}</span>
+        <span className="text-red-400/70 text-[10px] tracking-[0.2em]" style={{ fontFamily: "var(--font-sans)" }}>
           {kana}
         </span>
       </div>
@@ -708,7 +696,7 @@ function PropertyCard({
     >
       {/* Tour viewport — Ken Burns slow pan + zoom on the cover art so the
           player can see the layout while staying close to the details. */}
-      <div className="aspect-video w-full overflow-hidden bg-black/80 relative scanlines">
+      <div className="aspect-video w-full overflow-hidden bg-black/80 relative">
         {url ? (
           <img
             src={url}
@@ -724,10 +712,10 @@ function PropertyCard({
         )}
         {/* Akira accent band */}
         <div className="absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-between px-2">
-          <span className="text-red-400/80 text-[9px] tracking-[0.3em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <span className="text-red-400/80 text-[9px] tracking-[0.3em]" style={{ fontFamily: "var(--font-sans)" }}>
             {t.kana}
           </span>
-          <span className="text-cyan-300/80 text-[9px] tracking-[0.3em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <span className="text-cyan-300/80 text-[9px] tracking-[0.3em]" style={{ fontFamily: "var(--font-sans)" }}>
             ▶ LIVE TOUR
           </span>
         </div>
@@ -747,7 +735,7 @@ function PropertyCard({
 
       <div className="p-3">
         <div className="flex items-baseline justify-between gap-2 mb-1">
-          <div className="text-pink-100 font-bold tracking-[0.2em] text-sm" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
+          <div className="text-pink-100 font-bold tracking-[0.2em] text-sm" style={{ fontFamily: "var(--font-sans)" }}>{t.name}</div>
         </div>
         <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
 
@@ -811,13 +799,13 @@ function PriceButton({ label, value, currencySymbol, accent, onClick, testid }: 
       data-testid={testid}
       className={`text-left rounded border ${cls} px-2 py-1.5 transition-colors active:scale-[0.98]`}
     >
-      <div className={`text-[8px] tracking-[0.3em] ${labelCls}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+      <div className={`text-[8px] tracking-[0.3em] ${labelCls}`} style={{ fontFamily: "var(--font-sans)" }}>
         {label}
       </div>
       <div
         key={rounded}
         className="tick-flash text-base font-bold leading-tight"
-        style={{ fontFamily: "'Share Tech Mono', monospace" }}
+        style={{ fontFamily: "var(--font-sans)" }}
       >
         {currencySymbol}{rounded.toLocaleString("en-US")}
       </div>

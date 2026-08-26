@@ -54,16 +54,16 @@ const REGIONS: Region[] = ['city', 'wastes', 'outlands', 'subterranean', 'aerial
 const STATUSES: Status[] = ['draft', 'active', 'completed', 'archived'];
 const KINDS: TaskKind[] = ['building', 'road', 'prop', 'sign', 'light', 'tree', 'custom'];
 
-const BOX = { border: '1px solid rgba(56,189,248,.2)', background: 'rgba(0,6,2,.85)', padding: '.6rem', fontFamily: "'Share Tech Mono',monospace" };
+const BOX = { border: '1px solid rgba(56,189,248,.2)', background: 'rgba(0,6,2,.85)', padding: '.6rem', fontFamily: "var(--font-sans)" };
 const BTN = (active = false): React.CSSProperties => ({
   padding: '.3rem .6rem', background: active ? 'rgba(56,189,248,.12)' : 'transparent',
   border: `1px solid ${active ? '#38bdf8' : 'rgba(56,189,248,.25)'}`,
   color: active ? '#38bdf8' : 'rgba(56,189,248,.7)',
-  cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em',
+  cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.08em',
 });
 const INP: React.CSSProperties = {
   width: '100%', background: 'rgba(0,0,0,.5)', border: '1px solid rgba(56,189,248,.2)',
-  color: '#cfe9ff', padding: '.35rem .5rem', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem',
+  color: '#cfe9ff', padding: '.35rem .5rem', fontFamily: "var(--font-sans)", fontSize: '.7rem',
   boxSizing: 'border-box',
 };
 const LBL: React.CSSProperties = { fontSize: '.5rem', color: 'rgba(56,189,248,.55)', letterSpacing: '.14em', marginBottom: 2 };
@@ -215,12 +215,12 @@ export function WorldBuildDesigner({ onClose }: { onClose: () => void }) {
   return (
     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400 }}
       onClick={onClose}>
-      <div style={{ position: 'relative', width: '95vw', maxWidth: 1400, height: '90vh', background: 'rgba(0,6,2,.98)', border: '1px solid rgba(56,189,248,.3)', display: 'flex', flexDirection: 'column', fontFamily: "'Share Tech Mono',monospace" }}
+      <div style={{ position: 'relative', width: '95vw', maxWidth: 1400, height: '90vh', background: 'rgba(0,6,2,.98)', border: '1px solid rgba(56,189,248,.3)', display: 'flex', flexDirection: 'column', fontFamily: "var(--font-sans)" }}
         onClick={e => e.stopPropagation()}>
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.8rem 1rem', borderBottom: '1px solid rgba(56,189,248,.2)', flexShrink: 0 }}>
           <div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>WORLD DESIGNER</div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>WORLD DESIGNER</div>
             <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em' }}>PICASSO.AI · BLUEPRINT TERMINAL — DRAFT PLANS FOR INMATE LABOR</div>
           </div>
           <div style={{ display: 'flex', gap: '.4rem' }}>
@@ -357,7 +357,7 @@ export function WorldBuildDesigner({ onClose }: { onClose: () => void }) {
                     onClick={handlePreviewClick}
                     preserveAspectRatio="xMidYMid meet">
                     <rect x={draft.areaX} y={draft.areaY} width={draft.areaW} height={draft.areaH} fill="rgba(56,189,248,.03)" stroke="rgba(56,189,248,.25)" strokeDasharray="6 4" />
-                    <text x={draft.areaX + 4} y={draft.areaY - 4} fill="rgba(56,189,248,.5)" fontSize={Math.max(8, draft.areaW / 40)} fontFamily="Share Tech Mono">AREA · {draft.region.toUpperCase()}</text>
+                    <text x={draft.areaX + 4} y={draft.areaY - 4} fill="rgba(56,189,248,.5)" fontSize={Math.max(8, draft.areaW / 40)} fontFamily="var(--font-sans)">AREA · {draft.region.toUpperCase()}</text>
                     {draft.tasks.map(t => {
                       const w = t.w && t.w > 0 ? t.w : 20;
                       const h = t.h && t.h > 0 ? t.h : 20;
@@ -365,7 +365,7 @@ export function WorldBuildDesigner({ onClose }: { onClose: () => void }) {
                       return (
                         <g key={t.id}>
                           <rect x={t.x - w / 2} y={t.y - h / 2} width={w} height={h} fill={t.completed ? 'rgba(34,211,238,.15)' : 'rgba(244,114,182,.1)'} stroke={col} strokeWidth={1.2} />
-                          <text x={t.x} y={t.y + 3} textAnchor="middle" fill={col} fontSize={Math.max(6, draft.areaW / 60)} fontFamily="Share Tech Mono">{t.label.substring(0, 14)}</text>
+                          <text x={t.x} y={t.y + 3} textAnchor="middle" fill={col} fontSize={Math.max(6, draft.areaW / 60)} fontFamily="var(--font-sans)">{t.label.substring(0, 14)}</text>
                         </g>
                       );
                     })}

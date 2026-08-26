@@ -490,8 +490,8 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
   const [boomerMode] = useBoomerMode();
   const [, navigate] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const ST: React.CSSProperties = boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" };
-  const VT: React.CSSProperties = boomerMode ? {} : { fontFamily: "'VT323',monospace" };
+  const ST: React.CSSProperties = boomerMode ? {} : { fontFamily: "var(--font-sans)" };
+  const VT: React.CSSProperties = boomerMode ? {} : { fontFamily: "var(--font-sans)" };
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [org, setOrg] = useState<Org | null>(null);

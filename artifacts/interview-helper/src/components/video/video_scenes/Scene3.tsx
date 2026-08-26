@@ -74,7 +74,7 @@ export function Scene3() {
         />
         <span
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(7px, 1vw, 11px)',
             letterSpacing: '0.3em',
             color: '#22d3ee',
@@ -93,7 +93,7 @@ export function Scene3() {
       >
         <span
           style={{
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(8px, 1.4vw, 13px)',
             color: '#f472b6',
             letterSpacing: '0.1em',
@@ -103,7 +103,7 @@ export function Scene3() {
         </span>
         <span
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(5px, 0.7vw, 7px)',
             color: '#94a3b8',
             letterSpacing: '0.25em',
@@ -187,7 +187,7 @@ export function Scene3() {
             style={{
               right: '8%',
               top: '52%',
-              fontFamily: '"Share Tech Mono", monospace',
+              fontFamily: "var(--font-sans)",
               fontSize: 'clamp(5px, 0.7vw, 7px)',
               color: '#22d3ee',
               letterSpacing: '0.25em',
@@ -215,7 +215,7 @@ export function Scene3() {
       >
         <div
           style={{
-            fontFamily: '"VT323", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(11px, 2.2vw, 20px)',
             color: '#fff',
             letterSpacing: '0.06em',
@@ -226,7 +226,7 @@ export function Scene3() {
         </div>
         <div
           style={{
-            fontFamily: '"Share Tech Mono", monospace',
+            fontFamily: "var(--font-sans)",
             fontSize: 'clamp(5px, 0.75vw, 7px)',
             color: '#94a3b8',
             letterSpacing: '0.25em',

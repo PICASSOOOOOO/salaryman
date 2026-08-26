@@ -866,7 +866,7 @@ export function LiveOffice({
             top: 8,
             left: 8,
             padding: '4px 8px',
-            font: '10px "Share Tech Mono", monospace',
+            font: '10px "var(--font-sans)", monospace',
             letterSpacing: '.18em',
             color: '#7dd3fc',
             background: 'rgba(2,12,24,0.8)',
@@ -885,7 +885,7 @@ export function LiveOffice({
             bottom: 8,
             right: 8,
             padding: '4px 8px',
-            font: '10px "Share Tech Mono", monospace',
+            font: '10px "var(--font-sans)", monospace',
             letterSpacing: '.16em',
             color: 'rgba(125,211,252,.85)',
             background: 'rgba(2,12,24,0.75)',
@@ -901,7 +901,7 @@ export function LiveOffice({
           position: absolute;
           left: 0;
           top: 0;
-          font: 9px "Share Tech Mono", monospace;
+          font: 9px "var(--font-sans)", monospace;
           letter-spacing: .08em;
           color: #cbe9ff;
           background: rgba(2, 12, 24, 0.75);
@@ -937,7 +937,7 @@ export function LiveOffice({
             alignItems: 'center',
             justifyContent: 'center',
             color: '#38bdf8',
-            font: '12px "Share Tech Mono", monospace',
+            font: '12px "var(--font-sans)", monospace',
             letterSpacing: '.1em',
             background: 'rgba(0,0,0,.4)',
           }}
@@ -954,7 +954,7 @@ export function LiveOffice({
             alignItems: 'center',
             justifyContent: 'center',
             color: '#f87171',
-            font: '12px "Share Tech Mono", monospace',
+            font: '12px "var(--font-sans)", monospace',
             padding: '1rem',
             textAlign: 'center',
           }}

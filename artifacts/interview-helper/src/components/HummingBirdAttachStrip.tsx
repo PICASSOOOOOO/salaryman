@@ -72,7 +72,7 @@ export function HummingBirdAttachStrip({
             display: "inline-flex", alignItems: "center", gap: 6,
             background: "transparent", border: `1px solid ${color}`,
             color, padding: "4px 10px", borderRadius: 4, cursor: "pointer",
-            fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: ".15em",
+            fontFamily: "var(--font-sans)", fontSize: 11, letterSpacing: ".15em",
           }}>
           <HummingbirdIcon size={14} color={color} />
           {buttonLabel}
@@ -86,7 +86,7 @@ export function HummingBirdAttachStrip({
           background: `linear-gradient(180deg, ${color}, #5b21b6)`,
           border: "1px solid #000", color: "#fff",
           padding: "5px 12px", borderRadius: 4, cursor: "pointer",
-          fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: ".15em",
+          fontFamily: "var(--font-sans)", fontSize: 11, letterSpacing: ".15em",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,.25)",
         }}>
         <HummingbirdIcon size={14} color="#fff" />
@@ -105,7 +105,7 @@ export function HummingBirdAttachStrip({
           background: "rgba(168,85,247,0.08)",
           border: `1px solid rgba(168,85,247,0.4)`,
           borderRadius: 3,
-          fontFamily: "'Share Tech Mono', monospace",
+          fontFamily: "var(--font-sans)",
           fontSize: compact ? 9 : 10,
           color: "#e9d5ff",
           letterSpacing: ".08em",

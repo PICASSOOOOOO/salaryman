@@ -64,7 +64,7 @@ export function PhonePageLayout({
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-      ...(boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+      ...(boomer ? {} : { fontFamily: "var(--font-sans)" }),
       color: crt(0.85),
       position: 'relative',
       paddingBottom: 100,

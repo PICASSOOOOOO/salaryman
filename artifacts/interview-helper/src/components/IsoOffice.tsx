@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
 import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/office/office-types';
 import { sfxStep } from '@/soundEngine';
-import { NEON_NOIR_PALETTE } from '@/lib/visual-grade';
 
 /**
  * IsoOffice — an ISOMETRIC ("almost 3D") render of THE OFFICE, matching the
@@ -653,8 +652,8 @@ export function IsoOffice({
         height: viewportHeight ?? '100%',
         margin: '0 auto',
         overflow: 'hidden',
-        background: `radial-gradient(130% 110% at 50% 0%, ${NEON_NOIR_PALETTE.raised} 0%, ${NEON_NOIR_PALETTE.void} 52%, ${NEON_NOIR_PALETTE.ink} 100%)`,
-        boxShadow: '0 0 0 1px rgba(98,230,245,.22), inset 0 0 90px rgba(2,4,7,.82)',
+        background: 'radial-gradient(130% 110% at 50% 0%, #1a0d3a 0%, #0a0719 52%, #04030d 100%)',
+        boxShadow: '0 0 0 1px rgba(150,120,255,.30), inset 0 0 90px rgba(8,4,26,.85)',
         cursor: playable ? 'pointer' : 'default',
       }}
     >
@@ -663,7 +662,7 @@ export function IsoOffice({
       {/* Corner vignette + scene tint (screen-space). */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 50% 42%, transparent 58%, rgba(2,4,7,0.6) 100%)',
+        background: 'radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(8,4,22,0.62) 100%)',
         zIndex: 5,
       }} />
 
@@ -696,10 +695,10 @@ export function IsoOffice({
           style={{
             position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)',
             padding: '.5rem .9rem',
-            background: `linear-gradient(135deg, ${NEON_NOIR_PALETTE.cyan}, ${NEON_NOIR_PALETTE.ice})`,
-            border: '1px solid rgba(233,247,248,.9)', borderRadius: 6, color: NEON_NOIR_PALETTE.ink,
-            font: 'bold .7rem "Share Tech Mono", monospace', letterSpacing: '.16em',
-            cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(98,230,245,.38)', whiteSpace: 'nowrap',
+            background: 'linear-gradient(135deg, rgba(236,72,153,.92), rgba(56,189,248,.82))',
+            border: '1px solid rgba(244,180,255,.95)', borderRadius: 6, color: '#0a0414',
+            font: 'bold .7rem "var(--font-sans)", monospace', letterSpacing: '.16em',
+            cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(236,72,153,.55)', whiteSpace: 'nowrap',
           }}
         >
           ▸ {showComputerPrompt
@@ -717,7 +716,7 @@ function labelStyle(side: 'left' | 'right'): React.CSSProperties {
   return {
     position: 'absolute',
     [side]: 8, top: 8,
-    fontFamily: '"Share Tech Mono", "VT323", monospace',
+    fontFamily: "var(--font-sans)",
     fontSize: 11,
     color: side === 'left' ? 'rgba(244,180,255,0.9)' : 'rgba(150,230,255,0.9)',
     textShadow: '0 0 6px rgba(0,0,0,0.9)',
@@ -768,9 +767,9 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
       ctx.drawImage(img, (s.viewW - dw) / 2, (s.viewH - dh) / 2, dw, dh);
       // Darken so the foreground sprites/furniture read against the art.
       const ov = ctx.createLinearGradient(0, 0, 0, s.viewH);
-      ov.addColorStop(0, 'rgba(5,7,11,0.5)');
-      ov.addColorStop(0.6, 'rgba(9,16,23,0.3)');
-      ov.addColorStop(1, 'rgba(2,4,7,0.62)');
+      ov.addColorStop(0, 'rgba(10,6,24,0.55)');
+      ov.addColorStop(0.6, 'rgba(10,6,24,0.32)');
+      ov.addColorStop(1, 'rgba(8,4,18,0.62)');
       ctx.fillStyle = ov;
       ctx.fillRect(0, 0, s.viewW, s.viewH);
     }
@@ -784,28 +783,28 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   if (painted) {
     // Translucent stage tint over the painted floor.
     const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
-    fg.addColorStop(0, 'rgba(26,40,52,0.42)');
-    fg.addColorStop(0.55, 'rgba(17,25,35,0.36)');
-    fg.addColorStop(1, 'rgba(9,16,23,0.5)');
+    fg.addColorStop(0, 'rgba(36,17,64,0.42)');
+    fg.addColorStop(0.55, 'rgba(26,15,51,0.36)');
+    fg.addColorStop(1, 'rgba(18,11,38,0.5)');
     ctx.fillStyle = fg;
   } else {
     const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
-    fg.addColorStop(0, NEON_NOIR_PALETTE.raised);
-    fg.addColorStop(0.55, NEON_NOIR_PALETTE.surface);
-    fg.addColorStop(1, NEON_NOIR_PALETTE.void);
+    fg.addColorStop(0, '#241140');
+    fg.addColorStop(0.55, '#1a0f33');
+    fg.addColorStop(1, '#120b26');
     ctx.fillStyle = fg;
   }
   ctx.fill();
 
   // Grid lines.
   ctx.lineWidth = 1;
-  ctx.strokeStyle = painted ? 'rgba(98,230,245,0.07)' : 'rgba(98,230,245,0.11)';
+  ctx.strokeStyle = painted ? 'rgba(150,110,230,0.09)' : 'rgba(150,110,230,0.13)';
   for (let c = 0; c <= cols; c++) { const a = P(c, 0), b = P(c, rows); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
   for (let r = 0; r <= rows; r++) { const a = P(0, r), b = P(cols, r); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 
   // Neon floor rim along the two FRONT edges.
   ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(98,230,245,0.42)';
+  ctx.strokeStyle = 'rgba(236,72,153,0.55)';
   ctx.beginPath(); ctx.moveTo(fD.x, fD.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fB.x, fB.y); ctx.stroke();
 
   // ---- Back walls (glass + city skyline) ----
@@ -830,8 +829,8 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   }
 
   // Desks (both rooms). Left room = player's private (empty desks); right = bullpen (bots).
-  for (const d of s.leftDesks) push(d.c + d.w, d.r + d.d, () => drawDesk(ctx, s, d, '#a9bcc8', '#617887'));
-  for (const d of s.bullpenDesks) push(d.c + d.w, d.r + d.d, () => drawDesk(ctx, s, d, '#d7c69b', '#907c54'));
+  for (const d of s.leftDesks) push(d.c + d.w, d.r + d.d, () => drawDesk(ctx, s, d, '#e9d8ff', '#c9a8ff'));
+  for (const d of s.bullpenDesks) push(d.c + d.w, d.r + d.d, () => drawDesk(ctx, s, d, '#ffd9b0', '#e0a878'));
 
   // Capsules (idle bots) along bullpen back wall.
   s.sleeping.forEach((bot, i) => {
@@ -940,8 +939,8 @@ function drawDesk(ctx: CanvasRenderingContext2D, s: SceneCtx, d: DeskRect, topCo
 }
 
 function drawChair(ctx: CanvasRenderingContext2D, s: SceneCtx, c: number, r: number) {
-  isoBox(ctx, s, c, r, 0.8, 0.8, 5, '#30414f', '#1a2834', '#263744'); // seat
-  isoBox(ctx, s, c, r, 0.8, 0.2, 12, '#3b5060', '#22323f', '#2c414f'); // back
+  isoBox(ctx, s, c, r, 0.8, 0.8, 5, '#d8623a', '#a8432a', '#c25234'); // seat
+  isoBox(ctx, s, c, r, 0.8, 0.2, 12, '#e0764a', '#b04a2c', '#cc5e38'); // back
 }
 
 function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: number, bot: PixelOfficeBot) {
@@ -981,7 +980,7 @@ function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: num
   ctx.beginPath(); ctx.arc(p.x + eyeDx, headY - eyeDy, eyeR, 0, Math.PI * 2); ctx.fill();
   // name plate
   ctx.fillStyle = bot.teamColor ?? 'rgba(180,255,220,0.85)';
-  ctx.font = `${Math.max(7, 4 * u * 0.5)}px "Share Tech Mono", monospace`;
+  ctx.font = `${Math.max(7, 4 * u * 0.5)}px "Fira Code", monospace`;
   ctx.textAlign = 'center';
   ctx.fillText(bot.name.slice(0, 8).toUpperCase(), p.x, baseY + 6 * u * 0.5);
   ctx.textAlign = 'left';
@@ -1088,7 +1087,7 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
     ctx.shadowColor = 'rgba(244,63,94,0.75)';
     ctx.shadowBlur = 9;
     ctx.fillStyle = '#f43f5e';
-    ctx.font = `bold ${Math.max(7, 4 * u)}px "Share Tech Mono", monospace`;
+    ctx.font = `bold ${Math.max(7, 4 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.fillText('LOCKED', top.x, top.y - heightPx(40));
     ctx.textAlign = 'left';
@@ -1098,7 +1097,7 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
   // Station label
   if (!s.suppressLabels || active) {
     ctx.fillStyle = active ? '#aef3ff' : 'rgba(140,195,220,0.75)';
-    ctx.font = `${Math.max(8, 4.2 * u)}px "Share Tech Mono", monospace`;
+    ctx.font = `${Math.max(8, 4.2 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.fillText((active ? '▸ ' : '') + 'ELEVATOR', top.x, top.y - heightPx(15) - 8 * u);
     ctx.textAlign = 'left';
@@ -1152,7 +1151,7 @@ function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   // Label — suppressed on mobile/touch unless this station is active.
   if (!s.suppressLabels || active) {
     ctx.fillStyle = active ? '#aef3ff' : cfg.label;
-    ctx.font = `${Math.max(8, 4.2 * u)}px "Share Tech Mono", monospace`;
+    ctx.font = `${Math.max(8, 4.2 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.fillText((active ? '▸ ' : '') + st.label, top.x, fy - 4 * u);
     ctx.textAlign = 'left';
@@ -1203,7 +1202,7 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   ctx.restore();
   if (!s.suppressLabels || active) {
     ctx.fillStyle = accent;
-    ctx.font = `${Math.max(8, 4.2 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
+    ctx.font = `${Math.max(8, 4.2 * (s.T / TILE) * 0.5)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.fillText((active ? '▸ ' : '') + st.label, top.x, top.y - s.heightPx(15) - 8 * (s.T / TILE) * 0.5);
     ctx.textAlign = 'left';
@@ -1238,7 +1237,7 @@ function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: numb
   // "YOUR DESK" nameplate so it's unmistakably the player's own station.
   ctx.save();
   ctx.fillStyle = `rgba(${GOLD},${0.85 + t * 0.15})`;
-  ctx.font = `${Math.max(8, 3.6 * u)}px "Share Tech Mono", monospace`;
+  ctx.font = `${Math.max(8, 3.6 * u)}px "Fira Code", monospace`;
   ctx.textAlign = 'center';
   const deskLabel = (s.playerName && s.playerName.trim())
     ? s.playerName.trim().toUpperCase().slice(0, 18)
@@ -1281,7 +1280,7 @@ function drawCapsule(ctx: CanvasRenderingContext2D, s: SceneCtx, col: number, bo
   // name + zzz — suppressed on mobile/touch
   if (!s.suppressLabels) {
     ctx.fillStyle = bot.teamColor ?? 'rgba(140,200,255,0.8)';
-    ctx.font = `${Math.max(7, 3.4 * u)}px "Share Tech Mono", monospace`;
+    ctx.font = `${Math.max(7, 3.4 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.fillText(`${bot.name.slice(0, 6).toUpperCase()} 💤`, p.x, p.y + 8 * u);
     ctx.textAlign = 'left';
@@ -1303,12 +1302,12 @@ function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRo
   const top = P(room.x + room.w / 2, room.y);
   if (!s.suppressLabels) {
     ctx.fillStyle = accent;
-    ctx.font = `${Math.max(8, 4.4 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
+    ctx.font = `${Math.max(8, 4.4 * (s.T / TILE) * 0.5)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.fillText((room.label ?? 'OFFICE').toUpperCase(), top.x, top.y - s.heightPx(16));
     if (room.sub) {
       ctx.fillStyle = 'rgba(200,210,255,0.7)';
-      ctx.font = `${Math.max(6, 3 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
+      ctx.font = `${Math.max(6, 3 * (s.T / TILE) * 0.5)}px "Fira Code", monospace`;
       ctx.fillText(room.sub.toUpperCase(), top.x, top.y - s.heightPx(16) + 9 * (s.T / TILE) * 0.5);
     }
     ctx.textAlign = 'left';

@@ -127,7 +127,7 @@ function StreamOutput({ output, loading, statusMsg, placeholder }: {
       <div style={{
         flex: 1,
         overflowY: 'auto' as const,
-        fontFamily: "'Share Tech Mono', monospace",
+        fontFamily: "var(--font-sans)",
         fontSize: '0.8rem',
         lineHeight: 1.7,
         color: output ? 'rgba(228,228,231,0.85)' : 'rgba(56,189,248,0.2)',
@@ -578,14 +578,14 @@ export default function SeoModule() {
       minHeight: '100vh',
       background: '#09090b',
       padding: '24px',
-      fontFamily: "'Share Tech Mono', monospace",
+      fontFamily: "var(--font-sans)",
     }}>
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <Search className="w-5 h-5" style={{ color: CRT_GREEN }} />
           <h1 style={{
-            fontFamily: "'Share Tech Mono', monospace",
+            fontFamily: "var(--font-sans)",
             fontSize: '1.1rem',
             fontWeight: 'normal',
             letterSpacing: '0.15em',
@@ -623,7 +623,7 @@ export default function SeoModule() {
               key={t.id}
               onClick={() => setTab(t.id)}
               style={{
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '0.7rem',
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase' as const,

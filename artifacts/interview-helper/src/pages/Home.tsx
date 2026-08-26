@@ -866,14 +866,14 @@ export default function Home() {
               </button>
               <div className="flex items-center gap-2 mb-4">
                 <Clock className="w-4 h-4 shrink-0" style={{ color: 'rgba(255,165,0,0.7)' }} />
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', color: 'rgba(255,165,0,0.5)', textTransform: 'uppercase' }}>
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', letterSpacing: '0.12em', color: 'rgba(255,165,0,0.5)', textTransform: 'uppercase' }}>
                   PROGRAM STATUS UPDATE
                 </span>
               </div>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: 'rgba(255,165,0,0.95)', letterSpacing: '0.04em', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.85rem', color: 'rgba(255,165,0,0.95)', letterSpacing: '0.04em', marginBottom: '0.75rem', lineHeight: 1.5 }}>
                 SUBSCRIPTION LAUNCH — PENDING
               </p>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', lineHeight: 1.7, marginBottom: '1.25rem' }}>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', lineHeight: 1.7, marginBottom: '1.25rem' }}>
                 Pablo Corp's payment infrastructure is not yet operational — subscriptions will be made available once the billing system clears compliance review.
                 <br /><br />
                 In the meantime, all standard modules remain fully functional. Pro augmentation modules will be unlocked upon subscription launch. Thank you for your patience and continued commitment to corporate excellence.
@@ -881,7 +881,7 @@ export default function Home() {
               <button
                 onClick={dismissTrialPopup}
                 className="w-full rounded-lg py-2.5"
-                style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.3)', color: 'rgba(255,165,0,0.9)', cursor: 'pointer', textTransform: 'uppercase' }}
+                style={{ fontFamily: "var(--font-sans)", fontSize: '0.65rem', letterSpacing: '0.1em', background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.3)', color: 'rgba(255,165,0,0.9)', cursor: 'pointer', textTransform: 'uppercase' }}
               >
                 Understood. Proceed.
               </button>
@@ -899,8 +899,8 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Layers className="w-3.5 h-3.5 text-sky-400/70" />
             <div>
-              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(56,189,248,0.7)' }}>THE SALARYMAN PLATFORM</span>
-              <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
+              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "var(--font-sans)", color: 'rgba(56,189,248,0.7)' }}>THE SALARYMAN PLATFORM</span>
+              <span className="text-[9px] ml-2" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
             </div>
           </div>
           <button
@@ -915,7 +915,7 @@ export default function Home() {
             data-testid="hub-late-to-work"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
-            <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "var(--font-sans)" }}>
               ▸ YOU'RE LATE TO WORK
             </span>
           </button>
@@ -929,7 +929,7 @@ export default function Home() {
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
               </div>
               {/* Stack the FROM/TO selects vertically with the swap button on
                   its own row so the swap can never visually overlap the
@@ -941,7 +941,7 @@ export default function Home() {
                 <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)}
                   aria-label="Translate from"
                   className={`w-full bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   {LANGUAGES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
                 </select>
                 <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }}
@@ -951,7 +951,7 @@ export default function Home() {
                 <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)}
                   aria-label="Translate to"
                   className={`w-full bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   {LANGUAGES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
                 </select>
               </div>
@@ -984,7 +984,7 @@ export default function Home() {
               <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)}
                 placeholder="Type or speak text to translate..."
                 className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none resize-none mb-2"
-                style={{ fontFamily: "'Share Tech Mono', monospace", minHeight: 48 }} />
+                style={{ fontFamily: "var(--font-sans)", minHeight: 48 }} />
               <button onClick={async () => {
                 if (!translatorText.trim()) return;
                 setTranslatorResult('Translating...');
@@ -995,12 +995,12 @@ export default function Home() {
                 } catch { setTranslatorResult('Translation service unavailable. Try again.'); }
               }}
                 className={`w-full flex items-center justify-center gap-2 px-3 ${boomerMode ? 'py-2.5 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors mb-2`}
-                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                style={{ fontFamily: "var(--font-sans)" }}>
                 <ArrowRight className="w-3 h-3" /> TRANSLATE
               </button>
               {translatorResult && translatorResult !== 'Translating...' && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 flex items-start gap-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300 flex-1`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300 flex-1`} style={{ fontFamily: "var(--font-sans)", lineHeight: 1.6 }}>{translatorResult}</p>
                   <button onClick={() => {
                     speakWithTTS(translatorResult, () => {}, undefined);
                   }}
@@ -1012,7 +1012,7 @@ export default function Home() {
               )}
               {translatorResult === 'Translating...' && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300`} style={{ fontFamily: "var(--font-sans)", lineHeight: 1.6 }}>{translatorResult}</p>
                 </div>
               )}
             </div>
@@ -1021,14 +1021,14 @@ export default function Home() {
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'DICTIONARY' : PABLO_PRODUCTS.DICTIONARY.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>{boomerMode ? 'DICTIONARY' : PABLO_PRODUCTS.DICTIONARY.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
                 <input value={dictWord} onChange={e => setDictWord(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') lookupWord(dictWord); }}
                   placeholder="Type a word..."
                   className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                  style={{ fontFamily: "var(--font-sans)" }} />
                 {speechSupported && (
                   <button
                     onClick={() => startWordSpeech(setDictWord, lookupWord, setDictListening, dictRecRef)}
@@ -1039,26 +1039,26 @@ export default function Home() {
                 )}
                 <button onClick={() => lookupWord(dictWord)}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   LOOKUP
                 </button>
               </div>
               {dictLoading && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className="text-xs text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Looking up...</p>
+                  <p className="text-xs text-pink-300" style={{ fontFamily: "var(--font-sans)" }}>Looking up...</p>
                 </div>
               )}
               {dictError && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictError}</p>
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "var(--font-sans)" }}>{dictError}</p>
                   {dictSuggestions.length > 0 && (
                     <div className="mt-1.5">
-                      <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/60 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>DID YOU MEAN:</p>
+                      <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/60 mb-1`} style={{ fontFamily: "var(--font-sans)" }}>DID YOU MEAN:</p>
                       <div className="flex flex-wrap gap-1">
                         {dictSuggestions.map(s => (
                           <button key={s} onClick={() => { setDictWord(s); lookupWord(s); }}
                             className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/25 transition-colors`}
-                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            style={{ fontFamily: "var(--font-sans)" }}>
                             {s}
                           </button>
                         ))}
@@ -1071,35 +1071,35 @@ export default function Home() {
                 <div className="space-y-2">
                   <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
                     <div className="flex items-baseline gap-2">
-                      <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.word.toUpperCase()}</span>
-                      {dictResult.phonetic && <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/60`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.phonetic}</span>}
+                      <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-300`} style={{ fontFamily: "var(--font-sans)" }}>{dictResult.word.toUpperCase()}</span>
+                      {dictResult.phonetic && <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/60`} style={{ fontFamily: "var(--font-sans)" }}>{dictResult.phonetic}</span>}
                     </div>
                     {dictResult.meanings.slice(0, 3).map((m, mi) => (
                       <div key={mi}>
-                        <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/50 uppercase`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{m.partOfSpeech}</span>
+                        <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/50 uppercase`} style={{ fontFamily: "var(--font-sans)" }}>{m.partOfSpeech}</span>
                         {m.definitions.slice(0, 2).map((d, di) => (
-                          <p key={di} className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/80 ml-2`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.5 }}>• {d.definition}</p>
+                          <p key={di} className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/80 ml-2`} style={{ fontFamily: "var(--font-sans)", lineHeight: 1.5 }}>• {d.definition}</p>
                         ))}
                         {m.definitions[0]?.synonyms && m.definitions[0].synonyms.length > 0 && (
-                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/40 ml-2 mt-0.5`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>syn: {m.definitions[0].synonyms.slice(0, 4).join(', ')}</p>
+                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/40 ml-2 mt-0.5`} style={{ fontFamily: "var(--font-sans)" }}>syn: {m.definitions[0].synonyms.slice(0, 4).join(', ')}</p>
                         )}
                       </div>
                     ))}
                   </div>
                   {dictThesaurus && (Object.keys(dictThesaurus.synonymsByPos).length > 0 || dictThesaurus.antonyms.length > 0) && (
                     <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
-                      <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/70 uppercase`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>THESAURUS</span>
+                      <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/70 uppercase`} style={{ fontFamily: "var(--font-sans)" }}>THESAURUS</span>
                       {Object.keys(dictThesaurus.synonymsByPos).length > 0 && (
                         <div className="space-y-1.5">
-                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>SYNONYMS</p>
+                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50`} style={{ fontFamily: "var(--font-sans)" }}>SYNONYMS</p>
                           {Object.entries(dictThesaurus.synonymsByPos).map(([pos, words]) => (
                             <div key={pos}>
-                              <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/40 uppercase ml-0.5`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{pos}</span>
+                              <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/40 uppercase ml-0.5`} style={{ fontFamily: "var(--font-sans)" }}>{pos}</span>
                               <div className="flex flex-wrap gap-1 mt-0.5">
                                 {words.map(s => (
                                   <button key={s} onClick={() => { setDictWord(s); lookupWord(s); }}
                                     className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/20 bg-pink-500/5 text-pink-300/80 hover:bg-pink-500/20 hover:text-pink-300 transition-colors`}
-                                    style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                    style={{ fontFamily: "var(--font-sans)" }}>
                                     {s}
                                   </button>
                                 ))}
@@ -1110,12 +1110,12 @@ export default function Home() {
                       )}
                       {dictThesaurus.antonyms.length > 0 && (
                         <div>
-                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>ANTONYMS</p>
+                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "var(--font-sans)" }}>ANTONYMS</p>
                           <div className="flex flex-wrap gap-1">
                             {dictThesaurus.antonyms.map(a => (
                               <button key={a} onClick={() => { setDictWord(a); lookupWord(a); }}
                                 className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-400/20 bg-pink-400/5 text-pink-400/70 hover:bg-pink-400/15 hover:text-pink-400 transition-colors`}
-                                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                style={{ fontFamily: "var(--font-sans)" }}>
                                 {a}
                               </button>
                             ))}
@@ -1132,14 +1132,14 @@ export default function Home() {
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'THESAURUS' : PABLO_PRODUCTS.THESAURUS.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>{boomerMode ? 'THESAURUS' : PABLO_PRODUCTS.THESAURUS.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
                 <input value={thesWord} onChange={e => setThesWord(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') lookupThesaurus(thesWord); }}
                   placeholder="Type a word..."
                   className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                  style={{ fontFamily: "var(--font-sans)" }} />
                 {speechSupported && (
                   <button
                     onClick={() => startWordSpeech(setThesWord, lookupThesaurus, setThesListening, thesRecRef)}
@@ -1150,35 +1150,35 @@ export default function Home() {
                 )}
                 <button onClick={() => lookupThesaurus(thesWord)}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   SEARCH
                 </button>
               </div>
               {thesLoading && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className="text-xs text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Searching...</p>
+                  <p className="text-xs text-pink-300" style={{ fontFamily: "var(--font-sans)" }}>Searching...</p>
                 </div>
               )}
               {thesError && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{thesError}</p>
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "var(--font-sans)" }}>{thesError}</p>
                 </div>
               )}
               {!thesLoading && !thesError && thesLookedUp && (Object.keys(thesSynonyms).length > 0 || thesAntonyms.length > 0 || thesRelated.length > 0) && (
                 <div className="space-y-2">
                   <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
-                    <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{thesLookedUp.toUpperCase()}</span>
+                    <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-300`} style={{ fontFamily: "var(--font-sans)" }}>{thesLookedUp.toUpperCase()}</span>
                     {Object.keys(thesSynonyms).length > 0 && (
                       <div className="space-y-1.5">
-                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>SYNONYMS</p>
+                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50`} style={{ fontFamily: "var(--font-sans)" }}>SYNONYMS</p>
                         {Object.entries(thesSynonyms).map(([pos, words]) => (
                           <div key={pos}>
-                            <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/40 uppercase ml-0.5`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{pos}</span>
+                            <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/40 uppercase ml-0.5`} style={{ fontFamily: "var(--font-sans)" }}>{pos}</span>
                             <div className="flex flex-wrap gap-1 mt-0.5">
                               {words.map(s => (
                                 <button key={s} onClick={() => { setThesWord(s); lookupThesaurus(s); }}
                                   className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/20 bg-pink-500/5 text-pink-300/80 hover:bg-pink-500/20 hover:text-pink-300 transition-colors`}
-                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  style={{ fontFamily: "var(--font-sans)" }}>
                                   {s}
                                 </button>
                               ))}
@@ -1189,12 +1189,12 @@ export default function Home() {
                     )}
                     {thesAntonyms.length > 0 && (
                       <div>
-                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>ANTONYMS</p>
+                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "var(--font-sans)" }}>ANTONYMS</p>
                         <div className="flex flex-wrap gap-1">
                           {thesAntonyms.map(a => (
                             <button key={a} onClick={() => { setThesWord(a); lookupThesaurus(a); }}
                               className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-400/20 bg-pink-400/5 text-pink-400/70 hover:bg-pink-400/15 hover:text-pink-400 transition-colors`}
-                              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              style={{ fontFamily: "var(--font-sans)" }}>
                               {a}
                             </button>
                           ))}
@@ -1203,12 +1203,12 @@ export default function Home() {
                     )}
                     {thesRelated.length > 0 && (
                       <div>
-                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>RELATED WORDS</p>
+                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "var(--font-sans)" }}>RELATED WORDS</p>
                         <div className="flex flex-wrap gap-1">
                           {thesRelated.map(r => (
                             <button key={r} onClick={() => { setThesWord(r); lookupThesaurus(r); }}
                               className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/15 bg-pink-500/5 text-pink-300/60 hover:bg-pink-500/15 hover:text-pink-300 transition-colors`}
-                              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              style={{ fontFamily: "var(--font-sans)" }}>
                               {r}
                             </button>
                           ))}
@@ -1224,7 +1224,7 @@ export default function Home() {
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'CURRENCY CONVERTER' : PABLO_PRODUCTS.CURRENCY.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>{boomerMode ? 'CURRENCY CONVERTER' : PABLO_PRODUCTS.CURRENCY.name}</span>
               </div>
               <div className="grid grid-cols-[1fr_auto_1fr] gap-1.5 mb-2 items-center">
                 <input
@@ -1233,46 +1233,46 @@ export default function Home() {
                   onKeyDown={e => { if (e.key === 'Enter') convertCurrency(); }}
                   placeholder="Amount"
                   className={`min-w-0 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                  style={{ fontFamily: "var(--font-sans)" }} />
                 <select value={ccyFrom} onChange={e => setCcyFrom(e.target.value)}
                   className={`bg-background border border-border rounded-md px-2 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   {CCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <button
                   onClick={() => { const f = ccyFrom; setCcyFrom(ccyTo); setCcyTo(f); }}
                   title="Swap currencies"
                   className={`flex items-center justify-center ${boomerMode ? 'w-9 h-9' : 'w-7 h-7'} rounded-md border bg-pink-500/10 border-pink-500/30 text-pink-400 hover:bg-pink-500/20 transition-colors col-span-3 justify-self-center my-0.5`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>⇅</button>
+                  style={{ fontFamily: "var(--font-sans)" }}>⇅</button>
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-1.5 mb-2">
                 <select value={ccyTo} onChange={e => setCcyTo(e.target.value)}
                   className={`bg-background border border-border rounded-md px-2 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   {CCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <button onClick={convertCurrency}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   CONVERT
                 </button>
               </div>
               {ccyLoading && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className="text-xs text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Fetching rate...</p>
+                  <p className="text-xs text-pink-300" style={{ fontFamily: "var(--font-sans)" }}>Fetching rate...</p>
                 </div>
               )}
               {ccyError && !ccyLoading && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{ccyError}</p>
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "var(--font-sans)" }}>{ccyError}</p>
                 </div>
               )}
               {ccyResult && !ccyLoading && !ccyError && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <div className={`${boomerMode ? 'text-base' : 'text-sm'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className={`${boomerMode ? 'text-base' : 'text-sm'} font-bold text-pink-300`} style={{ fontFamily: "var(--font-sans)" }}>
                     {ccyAmount} {ccyFrom} = {ccyResult.value.toLocaleString(undefined, { maximumFractionDigits: 4 })} {ccyTo}
                   </div>
-                  <div className="text-[10px] text-pink-400/60 mt-0.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <div className="text-[10px] text-pink-400/60 mt-0.5" style={{ fontFamily: "var(--font-sans)" }}>
                     1 {ccyFrom} = {ccyResult.rate.toLocaleString(undefined, { maximumFractionDigits: 6 })} {ccyTo}
                     {ccyResult.date && ` · ${ccyResult.date}`}
                   </div>
@@ -1284,7 +1284,7 @@ export default function Home() {
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'CALCULATOR' : PABLO_PRODUCTS.CALCULATOR.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>{boomerMode ? 'CALCULATOR' : PABLO_PRODUCTS.CALCULATOR.name}</span>
               </div>
               <input
                 value={calcExpr}
@@ -1292,23 +1292,23 @@ export default function Home() {
                 onKeyDown={e => { if (e.key === 'Enter') evalCalc(calcExpr); }}
                 placeholder="e.g. (12+3)*4 or 250*15%"
                 className={`w-full bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none mb-2`}
-                style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                style={{ fontFamily: "var(--font-sans)" }} />
               <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 mb-2 min-h-[2.25rem] flex items-center justify-end">
                 {calcError ? (
-                  <span className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{calcError}</span>
+                  <span className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "var(--font-sans)" }}>{calcError}</span>
                 ) : (
-                  <span className={`${boomerMode ? 'text-base' : 'text-sm'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>= {calcResult || '0'}</span>
+                  <span className={`${boomerMode ? 'text-base' : 'text-sm'} font-bold text-pink-300`} style={{ fontFamily: "var(--font-sans)" }}>= {calcResult || '0'}</span>
                 )}
               </div>
               <div className="grid grid-cols-4 gap-1">
                 {['C','(',')','⌫','7','8','9','/','4','5','6','*','1','2','3','-','0','.','%','+'].map(k => (
                   <button key={k} onClick={() => calcKey(k)}
                     className={`${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 transition-colors font-bold`}
-                    style={{ fontFamily: "'Share Tech Mono', monospace" }}>{k}</button>
+                    style={{ fontFamily: "var(--font-sans)" }}>{k}</button>
                 ))}
                 <button onClick={() => calcKey('=')}
                   className={`col-span-4 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} rounded-md border border-pink-400/50 bg-pink-500/20 text-pink-200 hover:bg-pink-500/30 transition-colors font-bold`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>=</button>
+                  style={{ fontFamily: "var(--font-sans)" }}>=</button>
               </div>
             </div>
 
@@ -1316,7 +1316,7 @@ export default function Home() {
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'QUICK NOTES' : PABLO_PRODUCTS.NOTES.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>{boomerMode ? 'QUICK NOTES' : PABLO_PRODUCTS.NOTES.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
                 <div ref={noteWrapperRef} className="flex-1 relative bg-background border border-border rounded-md">
@@ -1324,7 +1324,7 @@ export default function Home() {
                     <div
                       aria-hidden
                       className={`absolute inset-0 px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} rounded-md pointer-events-none whitespace-pre-wrap break-words overflow-hidden text-foreground`}
-                      style={{ fontFamily: "'Share Tech Mono', monospace", minHeight: 36, lineHeight: 1.5 }}
+                      style={{ fontFamily: "var(--font-sans)", minHeight: 36, lineHeight: 1.5 }}
                       dangerouslySetInnerHTML={{ __html: noteHighlightHtml }}
                     />
                   )}
@@ -1340,7 +1340,7 @@ export default function Home() {
                     placeholder="Jot a note..."
                     className={`w-full bg-transparent rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} placeholder:text-muted-foreground/50 outline-none resize-none relative`}
                     style={{
-                      fontFamily: "'Share Tech Mono', monospace",
+                      fontFamily: "var(--font-sans)",
                       minHeight: 36,
                       lineHeight: 1.5,
                       color: noteHighlightHtml ? 'transparent' : undefined,
@@ -1348,14 +1348,14 @@ export default function Home() {
                     }}
                   />
                   {spellMatches.length > 0 && (
-                    <div className="absolute top-1 right-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] bg-pink-500/10 text-pink-400 border border-pink-500/20 pointer-events-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    <div className="absolute top-1 right-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] bg-pink-500/10 text-pink-400 border border-pink-500/20 pointer-events-none" style={{ fontFamily: "var(--font-sans)" }}>
                       {spellMatches.length} TYPO{spellMatches.length !== 1 ? 'S' : ''}
                     </div>
                   )}
                   {spellPopup && (
                     <div
                       className="absolute z-50 rounded-md border border-pink-500/30 bg-card shadow-lg p-1.5 min-w-[120px]"
-                      style={{ left: spellPopup.x, top: spellPopup.y, fontFamily: "'Share Tech Mono', monospace" }}
+                      style={{ left: spellPopup.x, top: spellPopup.y, fontFamily: "var(--font-sans)" }}
                     >
                       <div className="text-[9px] text-pink-400/60 px-1 pb-1 border-b border-pink-500/20 mb-1">
                         SUGGESTIONS FOR &quot;{spellPopup.match.word}&quot;
@@ -1376,7 +1376,7 @@ export default function Home() {
                 </div>
                 <button onClick={addNote}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0 self-end`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ fontFamily: "var(--font-sans)" }}>
                   SAVE
                 </button>
               </div>
@@ -1384,7 +1384,7 @@ export default function Home() {
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {notes.map(n => (
                     <div key={n.id} className="flex items-start gap-2 rounded-md border border-pink-500/10 bg-pink-500/5 px-2.5 py-1.5 group">
-                      <p className="flex-1 text-xs text-pink-300/80 whitespace-pre-wrap break-words" style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.5 }}>{n.text}</p>
+                      <p className="flex-1 text-xs text-pink-300/80 whitespace-pre-wrap break-words" style={{ fontFamily: "var(--font-sans)", lineHeight: 1.5 }}>{n.text}</p>
                       <button onClick={() => deleteNote(n.id)}
                         className="shrink-0 text-pink-500/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-[10px] mt-0.5"
                         title="Delete note">✕</button>
@@ -1393,7 +1393,7 @@ export default function Home() {
                 </div>
               )}
               {notes.length === 0 && (
-                <p className="text-[10px] text-pink-400/30 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>No notes yet. Your notes persist locally.</p>
+                <p className="text-[10px] text-pink-400/30 text-center" style={{ fontFamily: "var(--font-sans)" }}>No notes yet. Your notes persist locally.</p>
               )}
             </div>
 
@@ -1401,7 +1401,7 @@ export default function Home() {
             <div className="rounded-xl border border-sky-500/15 bg-sky-500/3 p-3">
               <div className="flex items-center gap-2 mb-2.5">
                 <Layers className="w-3.5 h-3.5" style={{ color: 'rgba(56,189,248,0.5)' }} />
-                <span className="text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em', color: 'rgba(56,189,248,0.6)' }}>MODULES</span>
+                <span className="text-xs font-bold" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em', color: 'rgba(56,189,248,0.6)' }}>MODULES</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {([
@@ -1452,18 +1452,18 @@ export default function Home() {
                             <span className="text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
                           )}
                         </div>
-                        <span className="hidden sm:block text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                        <span className="hidden sm:block text-[9px] leading-tight" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
                       </>
                     ) : (
                       <>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[11px] inline-flex items-center" style={{ color: mod.color }}>{mod.icon}</span>
-                          <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
+                          <span className="text-[10px] font-bold" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
                           {isMusicActive && (
                             <span className="ml-auto text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
                           )}
                         </div>
-                        <span className="hidden sm:block text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                        <span className="hidden sm:block text-[9px] leading-tight" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
                       </>
                     )}
                   </button>
@@ -1483,8 +1483,8 @@ export default function Home() {
                 <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                    <span className="text-[10px] font-bold text-sky-400" style={{ fontFamily: "'VT323', monospace", fontSize: '0.85rem', letterSpacing: '0.12em' }}>{getActiveCityName()}</span>
-                    <span className="text-[8px] text-sky-400/30" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.1em' }}>SERVER: PST · 24 CITIES WORLDWIDE</span>
+                    <span className="text-[10px] font-bold text-sky-400" style={{ fontFamily: "var(--font-sans)", fontSize: '0.85rem', letterSpacing: '0.12em' }}>{getActiveCityName()}</span>
+                    <span className="text-[8px] text-sky-400/30" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.1em' }}>SERVER: PST · 24 CITIES WORLDWIDE</span>
                   </div>
                 </div>
 
@@ -1492,41 +1492,41 @@ export default function Home() {
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-xs font-bold text-emerald-400" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>EMPLOYMENT STATUS</span>
+                    <span className="text-xs font-bold text-emerald-400" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>EMPLOYMENT STATUS</span>
                   </div>
                   {orgData?.org ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-xs font-bold text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>EMPLOYED</span>
+                        <span className="text-xs font-bold text-emerald-300" style={{ fontFamily: "var(--font-sans)" }}>EMPLOYED</span>
                       </div>
                       <div className="space-y-1.5 rounded-md border border-emerald-500/15 bg-emerald-500/5 px-3 py-2">
                         <div>
                           <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>EMPLOYER</div>
-                          <div className="text-xs text-emerald-300 font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{orgData.org.name.toUpperCase()}</div>
+                          <div className="text-xs text-emerald-300 font-bold" style={{ fontFamily: "var(--font-sans)" }}>{orgData.org.name.toUpperCase()}</div>
                         </div>
                         {orgData.member?.role && (
                           <div>
                             <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>POSITION</div>
-                            <div className="text-xs text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{(orgData.member.title ?? orgData.member.role).toUpperCase()}</div>
+                            <div className="text-xs text-emerald-300" style={{ fontFamily: "var(--font-sans)" }}>{(orgData.member.title ?? orgData.member.role).toUpperCase()}</div>
                           </div>
                         )}
                         {orgData.member?.department && (
                           <div>
                             <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>DEPARTMENT</div>
-                            <div className="text-xs text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{orgData.member.department.toUpperCase()}</div>
+                            <div className="text-xs text-emerald-300" style={{ fontFamily: "var(--font-sans)" }}>{orgData.member.department.toUpperCase()}</div>
                           </div>
                         )}
                         {orgData.member?.salary && (
                           <div>
                             <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>SALARY</div>
-                            <div className="text-xs text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>${Number(orgData.member.salary).toLocaleString()}</div>
+                            <div className="text-xs text-emerald-300" style={{ fontFamily: "var(--font-sans)" }}>${Number(orgData.member.salary).toLocaleString()}</div>
                           </div>
                         )}
                         {orgData.org.industry && (
                           <div>
                             <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>INDUSTRY</div>
-                            <div className="text-xs text-emerald-300/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{orgData.org.industry.toUpperCase()}</div>
+                            <div className="text-xs text-emerald-300/70" style={{ fontFamily: "var(--font-sans)" }}>{orgData.org.industry.toUpperCase()}</div>
                           </div>
                         )}
                       </div>
@@ -1534,7 +1534,7 @@ export default function Home() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-amber-400/60" />
-                      <span className="text-xs text-amber-300/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NOT EMPLOYED — REGISTER A BUSINESS BELOW OR JOIN AN ORGANIZATION</span>
+                      <span className="text-xs text-amber-300/70" style={{ fontFamily: "var(--font-sans)" }}>NOT EMPLOYED — REGISTER A BUSINESS BELOW OR JOIN AN ORGANIZATION</span>
                     </div>
                   )}
                 </div>
@@ -1544,12 +1544,12 @@ export default function Home() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                      <span className="text-xs font-bold text-cyan-400" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>BUSINESS REGISTRATION</span>
+                      <span className="text-xs font-bold text-cyan-400" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>BUSINESS REGISTRATION</span>
                     </div>
                     {!bizRegOpen && (
                       <button onClick={() => setBizRegOpen(true)}
                         className="text-[10px] px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
-                        style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        style={{ fontFamily: "var(--font-sans)" }}>
                         + REGISTER
                       </button>
                     )}
@@ -1560,17 +1560,17 @@ export default function Home() {
                       {worldBiz.map(biz => (
                         <div key={biz.id} className="rounded-md border border-cyan-500/15 bg-cyan-500/5 px-3 py-2 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-cyan-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{(biz.companyName ?? 'UNNAMED').toUpperCase()}</span>
+                            <span className="text-xs font-bold text-cyan-300" style={{ fontFamily: "var(--font-sans)" }}>{(biz.companyName ?? 'UNNAMED').toUpperCase()}</span>
                             <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold" style={{
-                              fontFamily: "'Share Tech Mono', monospace",
+                              fontFamily: "var(--font-sans)",
                               ...(biz.businessType === 'real' ? { color: 'rgba(52,211,153,0.8)', borderColor: 'rgba(52,211,153,0.3)', background: 'rgba(52,211,153,0.1)' } : { color: 'rgba(56,189,248,0.8)', borderColor: 'rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' })
                             }}>
                               {biz.businessType === 'real' ? 'REAL ENTERPRISE' : 'MINX CORP'}
                             </span>
                           </div>
-                          {biz.industry && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>INDUSTRY: {biz.industry.toUpperCase()}</div>}
-                          {biz.companySize && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>SIZE: {biz.companySize.toUpperCase()}</div>}
-                          {biz.contactEmail && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>CONTACT: {biz.contactEmail.toUpperCase()}</div>}
+                          {biz.industry && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "var(--font-sans)" }}>INDUSTRY: {biz.industry.toUpperCase()}</div>}
+                          {biz.companySize && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "var(--font-sans)" }}>SIZE: {biz.companySize.toUpperCase()}</div>}
+                          {biz.contactEmail && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "var(--font-sans)" }}>CONTACT: {biz.contactEmail.toUpperCase()}</div>}
                         </div>
                       ))}
                     </div>
@@ -1578,14 +1578,14 @@ export default function Home() {
 
                   {orgData?.org && orgData.members.length > 0 && (
                     <div className="rounded-md border border-cyan-500/15 bg-cyan-500/5 px-3 py-2 mb-2">
-                      <div className="text-[10px] font-bold text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>
+                      <div className="text-[10px] font-bold text-cyan-400/70 mb-1.5" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.08em' }}>
                         ORGANIZATION STRUCTURE — {orgData.org.name.toUpperCase()}
                       </div>
                       <div className="space-y-1">
                         {orgData.members.filter(m => m.status === 'active' || m.status === 'invited').map((m, i) => {
                           const classification = m.role === 'owner' ? 'OWNER / PARTNER' : m.role === 'manager' ? 'PARTNER / MANAGER' : 'EMPLOYEE';
                           return (
-                            <div key={i} className="flex items-center justify-between text-[10px]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            <div key={i} className="flex items-center justify-between text-[10px]" style={{ fontFamily: "var(--font-sans)" }}>
                               <div className="flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: m.status === 'active' ? 'rgba(52,211,153,0.6)' : 'rgba(255,200,50,0.4)' }} />
                                 <span className="text-cyan-300/80">{(m.inviteEmail ?? m.userId).toUpperCase()}</span>
@@ -1609,28 +1609,28 @@ export default function Home() {
 
                   {bizRegOpen && (
                     <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-2">
-                      <div className="text-[10px] font-bold text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>REGISTER NEW BUSINESS</div>
+                      <div className="text-[10px] font-bold text-cyan-400/70" style={{ fontFamily: "var(--font-sans)" }}>REGISTER NEW BUSINESS</div>
                       <select value={bizRegForm.businessType} onChange={e => setBizRegForm(f => ({ ...f, businessType: e.target.value as 'real' | 'minx' }))}
-                        className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground outline-none" style={{ fontFamily: "var(--font-sans)" }}>
                         <option value="real">REAL-WORLD ENTERPRISE</option>
                         <option value="minx">MINX CORP (IN-GAME)</option>
                       </select>
                       <input value={bizRegForm.companyName} onChange={e => setBizRegForm(f => ({ ...f, companyName: e.target.value }))}
-                        placeholder="Company name" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                        placeholder="Company name" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
                       <input value={bizRegForm.industry} onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
-                        placeholder="Industry (e.g. Technology, Finance)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                        placeholder="Industry (e.g. Technology, Finance)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
                       <input value={bizRegForm.companySize} onChange={e => setBizRegForm(f => ({ ...f, companySize: e.target.value }))}
-                        placeholder="Company size (e.g. 1-10, 50-100)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                        placeholder="Company size (e.g. 1-10, 50-100)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
                       <input value={bizRegForm.contactEmail} onChange={e => setBizRegForm(f => ({ ...f, contactEmail: e.target.value }))}
-                        placeholder="Contact email" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
-                      {bizRegError && <div className="text-[10px] text-red-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{bizRegError}</div>}
+                        placeholder="Contact email" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
+                      {bizRegError && <div className="text-[10px] text-red-400" style={{ fontFamily: "var(--font-sans)" }}>{bizRegError}</div>}
                       <div className="flex gap-2">
                         <button onClick={() => { setBizRegOpen(false); setBizRegError(''); }}
-                          className="flex-1 text-xs py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          className="flex-1 text-xs py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                           CANCEL
                         </button>
                         <button onClick={registerBusiness} disabled={bizRegLoading || !bizRegForm.companyName.trim()}
-                          className="flex-1 text-xs py-1.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors disabled:opacity-50" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          className="flex-1 text-xs py-1.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors disabled:opacity-50" style={{ fontFamily: "var(--font-sans)" }}>
                           {bizRegLoading ? 'REGISTERING...' : 'REGISTER'}
                         </button>
                       </div>
@@ -1638,7 +1638,7 @@ export default function Home() {
                   )}
 
                   {worldBiz.length === 0 && !bizRegOpen && (
-                    <p className="text-[10px] text-cyan-400/30 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NO BUSINESSES REGISTERED. CLICK + REGISTER TO GET STARTED.</p>
+                    <p className="text-[10px] text-cyan-400/30 text-center" style={{ fontFamily: "var(--font-sans)" }}>NO BUSINESSES REGISTERED. CLICK + REGISTER TO GET STARTED.</p>
                   )}
                 </div>
               </>
@@ -1655,7 +1655,7 @@ export default function Home() {
                     currentAgent.provider === 'claude'
                       ? 'bg-orange-500/10 text-orange-400 border-orange-500/30'
                       : 'bg-sky-500/10 text-sky-400 border-sky-500/30'
-                  }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  }`} style={{ fontFamily: "var(--font-sans)" }}>
                     {boomerMode
                       ? (currentAgent.provider === 'claude' ? 'CODE EXPERT' : 'QUICK ASSIST')
                       : currentAgent.agentShort
@@ -1726,7 +1726,7 @@ export default function Home() {
                                 msg.agent.provider === 'claude'
                                   ? 'bg-orange-500/10 text-orange-400/70 border-orange-500/20'
                                   : 'bg-sky-500/10 text-sky-400/70 border-sky-500/20'
-                              }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              }`} style={{ fontFamily: "var(--font-sans)" }}>
                                 {boomerMode
                                   ? (msg.agent.provider === 'claude' ? 'Code Expert' : 'Quick Assist')
                                   : msg.agent.agentShort
@@ -1735,7 +1735,7 @@ export default function Home() {
                             )}
                             <button onClick={() => voice.speakResponse(msg.content)}
                               className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-sky-500/20 bg-sky-500/10 text-sky-400/70 hover:text-sky-400 hover:bg-sky-500/20 transition-colors"
-                              style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                              style={{ fontFamily: "var(--font-sans)" }}
                               title="Hear PABLO say this">
                               <Volume2 className="w-3 h-3" /> {boomerMode ? 'HEAR THIS' : 'PLAY'}
                             </button>
@@ -1777,7 +1777,7 @@ export default function Home() {
                       conv.convState === 'speaking' ? 'bg-purple-400 animate-pulse' :
                       'bg-gray-400'
                     }`} />
-                    <span className="text-xs flex-1" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em',
+                    <span className="text-xs flex-1" style={{ fontFamily: "var(--font-sans)", letterSpacing: '0.06em',
                       color: conv.convState === 'listening' ? 'rgba(52,211,153,0.8)' :
                              conv.convState === 'processing' ? 'rgba(251,191,36,0.8)' :
                              conv.convState === 'speaking' ? 'rgba(192,132,252,0.8)' :
@@ -1790,11 +1790,11 @@ export default function Home() {
                     </span>
                     <button onClick={conv.stopConversation}
                       className="shrink-0 px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 transition-colors"
-                      style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      style={{ fontFamily: "var(--font-sans)" }}>
                       END
                     </button>
                   </div>
-                  <p className="text-[9px] text-muted-foreground/25 mt-1 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <p className="text-[9px] text-muted-foreground/25 mt-1 text-center" style={{ fontFamily: "var(--font-sans)" }}>
                     Say "goodbye Pablo" to end · All exchanges saved to chat
                   </p>
                 </div>
@@ -1822,7 +1822,7 @@ export default function Home() {
 
                 {voice.liveTranscript && (
                   <div className="mt-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                    <p className="text-[10px] text-purple-400/60 mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    <p className="text-[10px] text-purple-400/60 mb-1" style={{ fontFamily: "var(--font-sans)" }}>
                       {voice.isListening ? 'RECORDING:' : 'PABLO HEARS:'}
                     </p>
                     <p className="text-sm text-purple-300 italic">"{voice.liveTranscript}"</p>
@@ -1837,7 +1837,7 @@ export default function Home() {
                       ${voice.isListening
                         ? 'bg-red-500/20 border-red-500/40 text-red-400 animate-pulse'
                         : 'bg-purple-500/15 border-purple-500/30 text-purple-400 hover:bg-purple-500/25'}`}
-                    style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {voice.isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
                     {voice.isListening ? (voice.liveTranscript ? 'SEND' : 'LISTENING...') : (boomerMode ? 'SPEAK TO PABLO' : 'MIC')}
@@ -1852,7 +1852,7 @@ export default function Home() {
                       ${autoSpeakEnabled
                         ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
                         : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
-                    style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                    style={{ fontFamily: "var(--font-sans)" }}
                     title={autoSpeakEnabled ? 'PABLO reads every response aloud' : 'PABLO stays silent'}
                   >
                     <Volume2 className="w-3.5 h-3.5" />
@@ -1869,7 +1869,7 @@ export default function Home() {
                           : conv.permissionDenied
                           ? 'bg-red-500/15 border-red-500/30 text-red-400'
                           : 'bg-sky-500/10 border-sky-500/25 text-sky-400/60 hover:bg-sky-500/20 hover:text-sky-400'}`}
-                      style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                      style={{ fontFamily: "var(--font-sans)" }}
                       title={conv.permissionDenied ? 'Microphone access denied — open app in a new browser tab to enable' : conv.isConvMode ? 'End conversation mode' : 'Hands-free back-and-forth with PABLO'}
                     >
                       <Radio className="w-3.5 h-3.5" />
@@ -1877,12 +1877,12 @@ export default function Home() {
                     </button>
                   )}
                   {conv.permissionDenied && (
-                    <span className="text-[10px] text-red-400/80" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    <span className="text-[10px] text-red-400/80" style={{ fontFamily: "var(--font-sans)" }}>
                       Open in new tab for mic access
                     </span>
                   )}
                   {voice.micError && (
-                    <span className="text-[10px] text-red-400/80" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    <span className="text-[10px] text-red-400/80" style={{ fontFamily: "var(--font-sans)" }}>
                       {voice.micError}
                     </span>
                   )}
@@ -1891,7 +1891,7 @@ export default function Home() {
                     <button
                       onClick={() => voice.stopSpeaking()}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/15 text-red-400 text-xs font-bold hover:bg-red-500/25 transition-colors ml-auto"
-                      style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                      style={{ fontFamily: "var(--font-sans)" }}
                     >
                       <X className="w-3.5 h-3.5" />
                       STOP
@@ -1899,7 +1899,7 @@ export default function Home() {
                   )}
                 </div>
 
-                <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center" style={{ fontFamily: "var(--font-sans)" }}>
                   {voice.isListening ? 'Listening... tap MIC again or wait to send' :
                    conv.isConvMode ? 'Voice conversation active — speak naturally' :
                    voice.isSpeaking ? 'PABLO is speaking...' :

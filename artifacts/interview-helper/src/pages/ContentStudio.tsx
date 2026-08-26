@@ -14,15 +14,11 @@ import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
-const CRT_GREEN = '#38bdf8';
-const CRT_DIM = 'rgba(56,189,248,0.5)';
-const CRT_FAINT = 'rgba(56,189,248,0.08)';
+const ACCENT_CYAN = '#22d3ee';
+const MUTED_CYAN = 'rgba(34,211,238,0.6)';
+const SUBTLE_CYAN = 'rgba(34,211,238,0.08)';
 
-function crtField(className = "") {
-  return `${className} bg-transparent border outline-none resize-none`;
-}
-
-const CRT_INPUT_STYLE: React.CSSProperties = {
+const INPUT_STYLE: React.CSSProperties = {
   background: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.08)',
   color: 'rgba(228,228,231,0.9)',
@@ -34,19 +30,19 @@ const CRT_INPUT_STYLE: React.CSSProperties = {
   borderRadius: '6px',
 };
 
-const CRT_TEXTAREA_STYLE: React.CSSProperties = {
-  ...CRT_INPUT_STYLE,
+const TEXTAREA_STYLE: React.CSSProperties = {
+  ...INPUT_STYLE,
   resize: 'none',
 };
 
-const CRT_SELECT_STYLE: React.CSSProperties = {
-  ...CRT_INPUT_STYLE,
+const SELECT_STYLE: React.CSSProperties = {
+  ...INPUT_STYLE,
   cursor: 'pointer',
   appearance: 'none' as any,
   WebkitAppearance: 'none' as any,
 };
 
-function CrtButton({ onClick, children, disabled, style, small }: {
+function StudioButton({ onClick, children, disabled, style, small }: {
   onClick?: () => void;
   children: React.ReactNode;
   disabled?: boolean;
@@ -61,9 +57,9 @@ function CrtButton({ onClick, children, disabled, style, small }: {
         fontFamily: 'inherit',
         fontSize: small ? '0.75rem' : '0.85rem',
         letterSpacing: '0.05em',
-        color: disabled ? 'rgba(161,161,170,0.3)' : 'rgba(56,189,248,0.9)',
-        border: `1px solid ${disabled ? 'rgba(255,255,255,0.06)' : 'rgba(56,189,248,0.3)'}`,
-        background: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(56,189,248,0.08)',
+        color: disabled ? 'rgba(148,163,184,0.45)' : ACCENT_CYAN,
+        border: `1px solid ${disabled ? 'rgba(148,163,184,0.12)' : 'rgba(34,211,238,0.35)'}`,
+        background: disabled ? 'rgba(15,23,42,0.5)' : 'rgba(34,211,238,0.1)',
         padding: small ? '4px 10px' : '7px 16px',
         borderRadius: '6px',
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -97,8 +93,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function Panel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      border: '1px solid rgba(56,189,248,0.2)',
-      background: 'rgba(0,10,0,0.6)',
+      border: '1px solid rgba(34,211,238,0.2)',
+      background: 'rgba(15,23,42,0.8)',
       padding: '16px',
       ...style,
     }}>
@@ -249,11 +245,11 @@ function GraphicsStudio() {
             onChange={e => setPrompt(e.target.value)}
             placeholder="Describe the image you want to generate..."
             rows={4}
-            style={CRT_TEXTAREA_STYLE}
+            style={TEXTAREA_STYLE}
             onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generate(); }}
           />
           <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-            <span style={{ fontSize: '0.6rem', color: 'rgba(56,189,248,0.3)', fontFamily: "'Share Tech Mono', monospace", alignSelf: 'center', letterSpacing: '0.1em' }}>
+            <span style={{ fontSize: '0.6rem', color: 'rgba(56,189,248,0.3)', fontFamily: "var(--font-sans)", alignSelf: 'center', letterSpacing: '0.1em' }}>
               ASPECT RATIO:
             </span>
             {(Object.keys(ASPECT_LABELS) as AspectRatio[]).map(a => (
@@ -261,11 +257,11 @@ function GraphicsStudio() {
                 key={a}
                 onClick={() => setAspect(a)}
                 style={{
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '0.6rem',
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  color: aspect === a ? CRT_GREEN : 'rgba(56,189,248,0.35)',
+                  color: aspect === a ? ACCENT_CYAN : 'rgba(34,211,238,0.45)',
                   border: `1px solid ${aspect === a ? 'rgba(56,189,248,0.5)' : 'rgba(56,189,248,0.15)'}`,
                   background: aspect === a ? 'rgba(56,189,248,0.1)' : 'transparent',
                   padding: '3px 8px',
@@ -280,16 +276,16 @@ function GraphicsStudio() {
 
         {error && (
           <Panel style={{ borderColor: 'rgba(255,50,50,0.4)', background: 'rgba(255,0,0,0.05)' }}>
-            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,80,80,0.9)' }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: 'rgba(255,80,80,0.9)' }}>
               ERROR: {error}
             </span>
           </Panel>
         )}
 
-        <CrtButton onClick={generate} disabled={generating || !prompt.trim()}>
+        <StudioButton onClick={generate} disabled={generating || !prompt.trim()}>
           {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
           {generating ? 'GENERATING...' : 'GENERATE IMAGE'}
-        </CrtButton>
+        </StudioButton>
 
         {generatedImage && (
           <Panel>
@@ -299,7 +295,7 @@ function GraphicsStudio() {
                 value={newText}
                 onChange={e => setNewText(e.target.value)}
                 placeholder="Text to overlay..."
-                style={CRT_INPUT_STYLE}
+                style={INPUT_STYLE}
                 onKeyDown={e => { if (e.key === 'Enter') addLayer(); }}
               />
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -311,12 +307,12 @@ function GraphicsStudio() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 2 }}>
                   <SectionLabel>SIZE: {newSize}px</SectionLabel>
                   <input type="range" min={12} max={120} value={newSize} onChange={e => setNewSize(Number(e.target.value))}
-                    style={{ width: '100%', accentColor: CRT_GREEN }} />
+                    style={{ width: '100%', accentColor: ACCENT_CYAN }} />
                 </div>
               </div>
-              <CrtButton onClick={addLayer} disabled={!newText.trim()} small>
+              <StudioButton onClick={addLayer} disabled={!newText.trim()} small>
                 <Plus className="w-3 h-3" /> ADD LAYER
-              </CrtButton>
+              </StudioButton>
             </div>
 
             {layers.length > 0 && (
@@ -330,7 +326,7 @@ function GraphicsStudio() {
                     border: `1px solid ${selectedLayer === l.id ? 'rgba(56,189,248,0.3)' : 'transparent'}`,
                     cursor: 'pointer',
                   }} onClick={() => setSelectedLayer(l.id)}>
-                    <span style={{ flex: 1, fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: l.color, letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ flex: 1, fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: l.color, letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {l.text}
                     </span>
                     <button onClick={e => { e.stopPropagation(); removeLayer(l.id); }} style={{ color: 'rgba(255,80,80,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}>
@@ -342,9 +338,9 @@ function GraphicsStudio() {
             )}
 
             <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-              <CrtButton onClick={downloadImage} small>
+              <StudioButton onClick={downloadImage} small>
                 <Download className="w-3 h-3" /> EXPORT PNG
-              </CrtButton>
+              </StudioButton>
             </div>
           </Panel>
         )}
@@ -372,9 +368,9 @@ function GraphicsStudio() {
           >
             {generating && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                <Loader2 className="w-8 h-8 animate-spin" style={{ color: CRT_DIM }} />
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: CRT_DIM, letterSpacing: '0.15em' }}>
-                  SYNTHESIZING...
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: MUTED_CYAN }} />
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: MUTED_CYAN, letterSpacing: '0.08em' }}>
+                  GENERATING...
                 </span>
               </div>
             )}
@@ -390,9 +386,9 @@ function GraphicsStudio() {
 
             {!generatedImage && !generating && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: 0.3 }}>
-                <Image className="w-10 h-10" style={{ color: CRT_GREEN }} />
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: CRT_GREEN, letterSpacing: '0.12em' }}>
-                  AWAITING PROMPT
+                <Image className="w-10 h-10" style={{ color: ACCENT_CYAN }} />
+                <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: ACCENT_CYAN, letterSpacing: '0.08em' }}>
+                  READY FOR A PROMPT
                 </span>
               </div>
             )}
@@ -410,9 +406,8 @@ function GraphicsStudio() {
                   fontWeight: layer.bold ? 'bold' : 'normal',
                   cursor: 'grab',
                   userSelect: 'none',
-                  textShadow: '0 2px 8px rgba(0,0,0,0.8)',
                   fontFamily: 'sans-serif',
-                  outline: selectedLayer === layer.id ? `1px dashed ${CRT_DIM}` : 'none',
+                  outline: selectedLayer === layer.id ? `1px dashed ${MUTED_CYAN}` : 'none',
                   outlineOffset: '4px',
                   whiteSpace: 'nowrap',
                   transform: 'translate(-50%, -50%)',
@@ -424,7 +419,7 @@ function GraphicsStudio() {
             ))}
           </div>
 
-          <div style={{ marginTop: '8px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>
+          <div style={{ marginTop: '8px', fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>
             {generatedImage ? 'DRAG TEXT TO REPOSITION · EXPORT TO SAVE' : 'ENTER PROMPT AND GENERATE'}
           </div>
         </Panel>
@@ -524,11 +519,11 @@ function CopyStudio() {
                 onClick={() => setType(t.value)}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '0.65rem',
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  color: type === t.value ? CRT_GREEN : 'rgba(56,189,248,0.4)',
+                  color: type === t.value ? ACCENT_CYAN : 'rgba(34,211,238,0.45)',
                   border: `1px solid ${type === t.value ? 'rgba(56,189,248,0.5)' : 'rgba(56,189,248,0.15)'}`,
                   background: type === t.value ? 'rgba(56,189,248,0.1)' : 'transparent',
                   padding: '5px 10px',
@@ -550,11 +545,11 @@ function CopyStudio() {
                 key={t}
                 onClick={() => setTone(t)}
                 style={{
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '0.6rem',
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  color: tone === t ? CRT_GREEN : 'rgba(56,189,248,0.35)',
+                  color: tone === t ? ACCENT_CYAN : 'rgba(34,211,238,0.45)',
                   border: `1px solid ${tone === t ? 'rgba(56,189,248,0.45)' : 'rgba(56,189,248,0.1)'}`,
                   background: tone === t ? 'rgba(56,189,248,0.08)' : 'transparent',
                   padding: '4px 8px',
@@ -574,14 +569,14 @@ function CopyStudio() {
             onChange={e => setContext(e.target.value)}
             placeholder="Add campaign goal, topic, target audience, or any extra context..."
             rows={3}
-            style={CRT_TEXTAREA_STYLE}
+            style={TEXTAREA_STYLE}
           />
         </Panel>
 
-        <CrtButton onClick={generate} disabled={generating}>
+        <StudioButton onClick={generate} disabled={generating}>
           {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
           {generating ? 'GENERATING...' : 'GENERATE COPY'}
-        </CrtButton>
+        </StudioButton>
       </div>
 
       <Panel style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
@@ -589,19 +584,19 @@ function CopyStudio() {
           <SectionLabel>OUTPUT</SectionLabel>
           {output && (
             <div style={{ display: 'flex', gap: '6px' }}>
-              <CrtButton onClick={copyToClipboard} small>
+              <StudioButton onClick={copyToClipboard} small>
                 {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 {copied ? 'COPIED' : 'COPY'}
-              </CrtButton>
-              <CrtButton onClick={downloadText} small>
+              </StudioButton>
+              <StudioButton onClick={downloadText} small>
                 <Download className="w-3 h-3" /> SAVE
-              </CrtButton>
+              </StudioButton>
             </div>
           )}
         </div>
         <div style={{
           flex: 1,
-          fontFamily: "'Share Tech Mono', monospace",
+          fontFamily: "var(--font-sans)",
           fontSize: '0.78rem',
           lineHeight: 1.65,
           color: output ? 'rgba(56,189,248,0.85)' : 'rgba(56,189,248,0.2)',
@@ -614,11 +609,11 @@ function CopyStudio() {
           {output || (generating ? '' : 'PABLO AWAITING ORDERS...\n\nSelect a content type, set your tone,\nadd context, and hit GENERATE.')}
           {generating && !output && (
             <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
-              <Loader2 className="w-3 h-3 animate-spin" style={{ color: CRT_DIM }} />
-              <span style={{ color: CRT_DIM }}>SYNTHESIZING COPY...</span>
+              <Loader2 className="w-3 h-3 animate-spin" style={{ color: MUTED_CYAN }} />
+              <span style={{ color: MUTED_CYAN }}>GENERATING COPY...</span>
             </span>
           )}
-          {generating && output && <span style={{ color: CRT_DIM, animation: 'smfade 0.8s steps(1) infinite alternate' }}>▋</span>}
+          {generating && output && <span style={{ color: MUTED_CYAN }}>…</span>}
         </div>
       </Panel>
     </div>
@@ -736,11 +731,11 @@ function SocialStudio() {
             onClick={() => { setTemplate(t.value); setResult(null); setGeneratedImage(null); }}
             style={{
               display: 'flex', alignItems: 'center', gap: '8px',
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '0.7rem',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              color: template === t.value ? CRT_GREEN : 'rgba(56,189,248,0.4)',
+              color: template === t.value ? ACCENT_CYAN : 'rgba(34,211,238,0.45)',
               border: `1px solid ${template === t.value ? 'rgba(56,189,248,0.5)' : 'rgba(56,189,248,0.15)'}`,
               background: template === t.value ? 'rgba(56,189,248,0.1)' : 'rgba(0,0,0,0.3)',
               padding: '8px 16px',
@@ -762,13 +757,13 @@ function SocialStudio() {
           value={topic}
           onChange={e => setTopic(e.target.value)}
           placeholder="Post topic or campaign goal (optional)..."
-          style={{ ...CRT_INPUT_STYLE, flex: 1 }}
+          style={{ ...INPUT_STYLE, flex: 1 }}
           onKeyDown={e => { if (e.key === 'Enter') generate(); }}
         />
-        <CrtButton onClick={generate} disabled={generating}>
+        <StudioButton onClick={generate} disabled={generating}>
           {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
           {generating ? 'BUILDING...' : 'BUILD POST'}
-        </CrtButton>
+        </StudioButton>
       </div>
 
       {/* Results */}
@@ -780,12 +775,12 @@ function SocialStudio() {
               <Panel>
                 <SectionLabel>HOOK</SectionLabel>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
-                  <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(56,189,248,0.9)', lineHeight: 1.5, flex: 1, fontWeight: 'bold' }}>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.8rem', color: 'rgba(56,189,248,0.9)', lineHeight: 1.5, flex: 1, fontWeight: 'bold' }}>
                     {result.hook}
                   </p>
-                  <CrtButton onClick={() => copyText(result.hook!, 'hook')} small>
+                  <StudioButton onClick={() => copyText(result.hook!, 'hook')} small>
                     {copied === 'hook' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  </CrtButton>
+                  </StudioButton>
                 </div>
               </Panel>
             )}
@@ -794,12 +789,12 @@ function SocialStudio() {
               <Panel>
                 <SectionLabel>{result.caption ? 'CAPTION' : result.tweet ? 'TWEET' : result.description ? 'DESCRIPTION' : 'POST'}</SectionLabel>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
-                  <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: 'rgba(56,189,248,0.85)', lineHeight: 1.6, flex: 1, whiteSpace: 'pre-wrap' }}>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: 'rgba(56,189,248,0.85)', lineHeight: 1.6, flex: 1, whiteSpace: 'pre-wrap' }}>
                     {mainText}
                   </p>
-                  <CrtButton onClick={() => copyText(mainText, 'main')} small>
+                  <StudioButton onClick={() => copyText(mainText, 'main')} small>
                     {copied === 'main' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  </CrtButton>
+                  </StudioButton>
                 </div>
               </Panel>
             )}
@@ -808,12 +803,12 @@ function SocialStudio() {
               <Panel>
                 <SectionLabel>CALL TO ACTION</SectionLabel>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
-                  <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(56,189,248,0.9)', fontWeight: 'bold' }}>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.8rem', color: 'rgba(56,189,248,0.9)', fontWeight: 'bold' }}>
                     {result.cta}
                   </p>
-                  <CrtButton onClick={() => copyText(result.cta!, 'cta')} small>
+                  <StudioButton onClick={() => copyText(result.cta!, 'cta')} small>
                     {copied === 'cta' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  </CrtButton>
+                  </StudioButton>
                 </div>
               </Panel>
             )}
@@ -824,7 +819,7 @@ function SocialStudio() {
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', marginBottom: '8px' }}>
                   {result.hashtags.map((h, i) => (
                     <span key={i} style={{
-                      fontFamily: "'Share Tech Mono', monospace",
+                      fontFamily: "var(--font-sans)",
                       fontSize: '0.65rem',
                       color: 'rgba(56,189,248,0.7)',
                       background: 'rgba(255,255,255,0.05)',
@@ -836,10 +831,10 @@ function SocialStudio() {
                     </span>
                   ))}
                 </div>
-                <CrtButton onClick={() => copyText(result.hashtags!.map(h => `#${h}`).join(' '), 'hashtags')} small>
+                <StudioButton onClick={() => copyText(result.hashtags!.map(h => `#${h}`).join(' '), 'hashtags')} small>
                   {copied === 'hashtags' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                   COPY ALL HASHTAGS
-                </CrtButton>
+                </StudioButton>
               </Panel>
             )}
           </div>
@@ -849,13 +844,13 @@ function SocialStudio() {
             {result.image_prompt && (
               <Panel>
                 <SectionLabel>IMAGE PROMPT (AI SUGGESTED)</SectionLabel>
-                <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: 'rgba(56,189,248,0.5)', lineHeight: 1.5, marginBottom: '10px' }}>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.7rem', color: 'rgba(56,189,248,0.5)', lineHeight: 1.5, marginBottom: '10px' }}>
                   {result.image_prompt}
                 </p>
-                <CrtButton onClick={generateImageFromPrompt} disabled={generatingImage}>
+                <StudioButton onClick={generateImageFromPrompt} disabled={generatingImage}>
                   {generatingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <Image className="w-3 h-3" />}
                   {generatingImage ? 'GENERATING...' : 'GENERATE IMAGE'}
-                </CrtButton>
+                </StudioButton>
               </Panel>
             )}
 
@@ -864,9 +859,9 @@ function SocialStudio() {
                 <SectionLabel>GENERATED VISUAL</SectionLabel>
                 <img src={generatedImage} alt="Social media visual" style={{ width: '100%', border: '1px solid rgba(56,189,248,0.15)' }} />
                 <div style={{ marginTop: '10px' }}>
-                  <CrtButton onClick={downloadImage} small>
+                  <StudioButton onClick={downloadImage} small>
                     <Download className="w-3 h-3" /> DOWNLOAD IMAGE
-                  </CrtButton>
+                  </StudioButton>
                 </div>
               </Panel>
             )}
@@ -874,8 +869,8 @@ function SocialStudio() {
             {!result.image_prompt && !generatedImage && (
               <Panel>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '32px', opacity: 0.3 }}>
-                  <Image className="w-8 h-8" style={{ color: CRT_GREEN }} />
-                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: CRT_GREEN, letterSpacing: '0.1em', textAlign: 'center' }}>
+                  <Image className="w-8 h-8" style={{ color: ACCENT_CYAN }} />
+                  <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: ACCENT_CYAN, letterSpacing: '0.08em', textAlign: 'center' }}>
                     IMAGE PROMPT WILL APPEAR HERE
                   </span>
                 </div>
@@ -887,7 +882,7 @@ function SocialStudio() {
 
       {result?.raw && (
         <Panel style={{ borderColor: 'rgba(255,50,50,0.3)', background: 'rgba(255,0,0,0.04)' }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,80,80,0.8)' }}>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.75rem', color: 'rgba(255,80,80,0.8)' }}>
             {result.raw}
           </span>
         </Panel>
@@ -896,8 +891,8 @@ function SocialStudio() {
       {!result && !generating && (
         <Panel>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '40px', opacity: 0.25 }}>
-            <Share2 className="w-10 h-10" style={{ color: CRT_GREEN }} />
-            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: CRT_GREEN, letterSpacing: '0.12em', textAlign: 'center', lineHeight: 2 }}>
+            <Share2 className="w-10 h-10" style={{ color: ACCENT_CYAN }} />
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: ACCENT_CYAN, letterSpacing: '0.08em', textAlign: 'center', lineHeight: 2 }}>
               SELECT A TEMPLATE<br />ADD YOUR TOPIC<br />BUILD THE POST
             </span>
           </div>
@@ -945,22 +940,20 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
               border: '1px solid rgba(56,189,248,0.5)',
               background: 'rgba(255,255,255,0.05)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 12px rgba(56,189,248,0.1)',
             }}>
-              <Layers className="w-5 h-5" style={{ color: CRT_GREEN }} />
+              <Layers className="w-5 h-5" style={{ color: ACCENT_CYAN }} />
             </div>
             <div>
               <h1 style={{
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '1.4rem',
                 letterSpacing: '0.12em',
-                color: CRT_GREEN,
-                textShadow: '0 0 12px rgba(56,189,248,0.5)',
+                color: ACCENT_CYAN,
                 lineHeight: 1,
               }}>
                 {boomerMode ? 'CONTENT STUDIO' : PABLO_PRODUCTS.STUDIO.name}
               </h1>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(56,189,248,0.35)', letterSpacing: '0.1em', marginTop: '4px' }}>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: '0.6rem', color: 'rgba(56,189,248,0.35)', letterSpacing: '0.1em', marginTop: '4px' }}>
                 {boomerMode ? 'AI-powered graphics, copy & social media' : PABLO_PRODUCTS.STUDIO.desc}
               </p>
             </div>
@@ -980,19 +973,18 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
                 onClick={() => setTab(t.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
-                  fontFamily: "'Share Tech Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '0.7rem',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
-                  color: active ? CRT_GREEN : 'rgba(56,189,248,0.35)',
-                  background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
-                  border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
-                  borderBottom: active ? '1px solid #030803' : '1px solid transparent',
+                  color: active ? ACCENT_CYAN : 'rgba(34,211,238,0.45)',
+                  background: active ? SUBTLE_CYAN : 'transparent',
+                  border: `1px solid ${active ? 'rgba(34,211,238,0.4)' : 'transparent'}`,
+                  borderBottom: active ? '1px solid #0f172a' : '1px solid transparent',
                   padding: '8px 20px',
                   cursor: 'pointer',
                   marginBottom: active ? '-1px' : '0',
                   transition: 'all 0.15s',
-                  textShadow: active ? '0 0 8px rgba(56,189,248,0.5)' : 'none',
                 }}
                 onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.7)'; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.35)'; }}
@@ -1006,7 +998,7 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
       )}
 
       {!initialTab && (
-        <div style={{ marginBottom: '16px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
+        <div style={{ marginBottom: '16px', fontFamily: "var(--font-sans)", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
           {TABS.find(t => t.id === tab)?.desc.toUpperCase()}
         </div>
       )}
@@ -1027,7 +1019,7 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
 
       {!embedded && (
         <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid rgba(56,189,248,0.08)', textAlign: 'center' }}>
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(56,189,248,0.2)', letterSpacing: '0.12em' }}>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: '0.55rem', color: 'rgba(56,189,248,0.2)', letterSpacing: '0.12em' }}>
             PABLO USES YOUR BRAND KIT FROM DASHBOARD · CONTENT IS AI-GENERATED · REVIEW BEFORE PUBLISHING
           </span>
         </div>
@@ -1038,12 +1030,8 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
   if (embedded) return innerContent;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030803', color: CRT_GREEN }}>
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-      }} />
-      <main style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: ACCENT_CYAN }}>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
         {innerContent}
       </main>
     </div>

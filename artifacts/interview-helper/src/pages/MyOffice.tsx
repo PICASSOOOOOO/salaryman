@@ -147,7 +147,7 @@ const SEV: Record<string, string> = {
 // vignette to signal privacy — you watch the bullpen, not the corner offices.
 function SurveillancePane() {
   // The embedded /office monitor (?embed=1) renders its own polished CCTV feed —
-  // scanlines, REC, camera id, timestamp, framing brackets, vignette — and hides
+  // REC, camera id, timestamp, framing brackets, and vignette — and hides
   // its header / economy / hint chrome. So this pane only adds a privacy footer
   // and the Enter shortcut; no duplicate REC dot or timestamp.
   const src = `${import.meta.env.BASE_URL}office?mode=surveillance&embed=1`;

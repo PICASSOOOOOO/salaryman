@@ -205,7 +205,7 @@ export default function BusinessMarketplace() {
         >
           <ArrowLeft className="w-3 h-3" /> BUSINESS
         </button>
-        <div className="text-cyan-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "'VT323', monospace" }}>
+        <div className="text-cyan-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "var(--font-sans)" }}>
           ▌ BIZ EXCHANGE <span className="text-pink-400">事業取引</span> ▌
         </div>
         <button
@@ -237,7 +237,7 @@ export default function BusinessMarketplace() {
                 <span className="absolute top-2 right-2 text-[9px] tracking-[0.2em] text-pink-200/70 uppercase">{c.category}</span>
               </div>
               <div className="p-3 flex flex-col flex-1">
-                <div className="text-cyan-100 font-bold tracking-[0.15em] text-sm" style={{ fontFamily: "'VT323', monospace" }}>{c.name}</div>
+                <div className="text-cyan-100 font-bold tracking-[0.15em] text-sm" style={{ fontFamily: "var(--font-sans)" }}>{c.name}</div>
                 <div className="text-[10px] text-zinc-500 mb-1">{c.kana}</div>
                 <div className="text-zinc-400 text-[11px] leading-snug mb-2 flex-1">{c.blurb}</div>
                 <div className="text-[10px] text-emerald-300 tracking-wide mb-2 flex items-center gap-1">
@@ -285,7 +285,7 @@ export default function BusinessMarketplace() {
                   <span className="absolute top-2 right-2 text-[9px] tracking-[0.2em] text-pink-200/70 uppercase">{l.category}</span>
                 </div>
                 <div className="p-3 flex flex-col flex-1">
-                  <div className="text-pink-100 font-bold tracking-[0.15em] text-sm" style={{ fontFamily: "'VT323', monospace" }}>{l.title}</div>
+                  <div className="text-pink-100 font-bold tracking-[0.15em] text-sm" style={{ fontFamily: "var(--font-sans)" }}>{l.title}</div>
                   <div className="text-[10px] text-zinc-500 mb-1">by {l.sellerName}</div>
                   <div className="text-zinc-400 text-[11px] leading-snug mb-2 flex-1 line-clamp-3">{l.description || "—"}</div>
                   {l.monthlyIncomeFiat > 0 && (
@@ -397,7 +397,7 @@ function SectionHeader({ icon: Icon, title, kana, subtitle }: {
   return (
     <div className="flex items-end gap-3 mb-3 border-b border-zinc-800 pb-2">
       <Icon className="w-5 h-5 text-cyan-300" />
-      <div className="text-cyan-100 text-lg tracking-[0.2em]" style={{ fontFamily: "'VT323', monospace" }}>
+      <div className="text-cyan-100 text-lg tracking-[0.2em]" style={{ fontFamily: "var(--font-sans)" }}>
         {title} <span className="text-pink-400 text-sm">{kana}</span>
       </div>
       <div className="text-zinc-500 text-[11px] tracking-wide ml-auto">{subtitle}</div>
@@ -417,7 +417,7 @@ function AcquireModal({ item, tenure, busy, result, onConfirm, onClose }: {
         <Building2 className="w-16 h-16 text-cyan-300/40" />
       </div>
       <div className="p-4">
-        <div className="text-cyan-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "'VT323', monospace" }}>{item.name}</div>
+        <div className="text-cyan-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>{item.name}</div>
         <div className="text-zinc-400 text-xs leading-snug mb-3">{item.blurb}</div>
         <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2 mb-3">
           <div className="text-[9px] tracking-[0.3em] text-cyan-400/70">{verb}</div>
@@ -450,7 +450,7 @@ function BuyModal({ listing, mode, busy, result, onConfirm, onClose }: {
         )}
       </div>
       <div className="p-4">
-        <div className="text-pink-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "'VT323', monospace" }}>{listing.title}</div>
+        <div className="text-pink-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>{listing.title}</div>
         <div className="text-zinc-500 text-[11px] mb-1">by {listing.sellerName} · {listing.category}</div>
         <div className="text-zinc-400 text-xs leading-snug mb-3">{listing.description || "—"}</div>
         <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2 mb-3">
@@ -520,7 +520,7 @@ function ListModal({ onClose, onCreated }: { onClose: () => void; onCreated: () 
   return (
     <ModalShell onClose={onClose}>
       <div className="p-4 max-h-[80vh] overflow-y-auto">
-        <div className="text-cyan-100 font-bold tracking-[0.2em] text-base mb-3" style={{ fontFamily: "'VT323', monospace" }}>LIST A BUSINESS</div>
+        <div className="text-cyan-100 font-bold tracking-[0.2em] text-base mb-3" style={{ fontFamily: "var(--font-sans)" }}>LIST A BUSINESS</div>
 
         <div className="space-y-2.5">
           <div>

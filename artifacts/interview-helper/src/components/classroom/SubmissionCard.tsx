@@ -3,7 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { ScanText, Loader2, Save, Check, Award } from 'lucide-react';
 
 const CRT = '#38bdf8';
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 export interface ClassSubmission {
   id: number;

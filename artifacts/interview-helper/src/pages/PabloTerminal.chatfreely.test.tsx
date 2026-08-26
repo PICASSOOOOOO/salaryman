@@ -21,8 +21,8 @@
 //     of tool/navigation intent), so it pins the "...unless they ask"
 //     half of the guarantee.
 //
-// Same stubbing strategy as the admit suite: WebGL nebula, SceneFX, art
-// kit, TTS and audio are all faked so the terminal mounts under jsdom,
+// Same stubbing strategy as the admit suite: WebGL nebula, TTS and
+// audio are all faked so the terminal mounts under jsdom,
 // and speakWithTTS fires its done callback synchronously so the
 // single-shot redirect resolves without fake timers.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -73,14 +73,12 @@ vi.mock("@/lib/tts", () => ({
 
 // Stub the heavy / browser-only visuals so jsdom can mount the page.
 vi.mock("@/components/PabloNebula3D", () => ({
-  PabloNebula3D: () => null,
+  PabloNebula3D: () => <div data-testid="canonical-pablo-nebula" />,
   PABLO_VARIANT: {},
   MILA_VARIANT: {},
 }));
-vi.mock("@/components/SceneFX", () => ({ SceneFX: () => null }));
 vi.mock("@/components/HummingBirdAttachStrip", () => ({ HummingBirdAttachStrip: () => null }));
 vi.mock("@/components/VisionIntake", () => ({ VisionIntake: () => null }));
-vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));
 vi.mock("@/lib/lowGfx", () => ({ useLowGfx: () => [true, () => {}] }));
 vi.mock("@/hooks/use-mobile", () => ({ useBoomerMode: () => [false, () => {}] }));
 
@@ -161,13 +159,14 @@ afterEach(() => {
 });
 
 describe("Pablo front-door: returning visitors aren't pushed to log in unless they ask", () => {
-  it("opens on an animated scene and lets the nebula take over when a visitor begins chatting", async () => {
+  it("opens directly on the canonical nebula and keeps it present while chatting", async () => {
     await mount();
-    expect(qs("pablo-frontdoor-scene")).not.toBeNull();
+    expect(qs("canonical-pablo-nebula")).not.toBeNull();
+    expect(qs("pablo-frontdoor-scene")).toBeNull();
 
     await typeAndSend("what is a salaryman?");
 
-    expect(qs("pablo-frontdoor-scene")).toBeNull();
+    expect(qs("canonical-pablo-nebula")).not.toBeNull();
   });
 
   it("greets a returning visitor on mount WITHOUT opening the auth-choice modal", async () => {

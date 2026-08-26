@@ -61,22 +61,13 @@ export interface CaptureOptions {
   durationSec?: number;
   /** Called with short status strings for progress surfacing. */
   onStage?: (stage: string) => void;
-  /**
-   * Which surface to record. "city" lands on /world/play (default, used by the
-   * weekly TikTok run). "office" lands on /office for the onboarding intro tour.
-   */
+  /** Which surface to record. "city" lands on /world/play (the weekly default). */
   scene?: CaptureScene;
   /**
    * Recording aspect. "portrait" (default) is the 720x1280 TikTok cut;
    * "landscape" is the 1280x720 16:9 cut used by the landing-page hero trailer.
    */
   orientation?: CaptureOrientation;
-  /**
-   * Render the capture bot as a Deckard (PABLO CORP · MAINTENANCE replicant)
-   * instead of the default FIELD OPS suit. Only the INJECTED client state is
-   * changed — the bot's DB save (and therefore the weekly run) is untouched.
-   */
-  deckard?: boolean;
   /**
    * Load the surface in chrome-free embed mode (?embed=1). This suppresses the
    * app shell (alpha banner, audio control, toaster) AND the office page chrome
@@ -96,20 +87,13 @@ export interface CaptureResult {
   height: number;
 }
 
-// The Deckard look: a PABLO CORP · MAINTENANCE replicant (synthetic build,
-// hoodie-style faction wear). Matches the worldServer maintenance crew so the
-// onboarding tour "stars" the same character players meet roaming the city.
-const DECKARD_NAME = "DECKARD-7F";
-const DECKARD_COMPANY = "PABLO CORP · MAINTENANCE";
-
 // A minimal-but-valid save blob that renders a character standing in the city.
-// Mirrors the new-game shape built by WorldMenu (corporate spawn). Pass
-// `deckard` to dress the bot as a PABLO CORP maintenance replicant instead.
-function captureSaveBlob(deckard = false): Record<string, unknown> {
+// Mirrors the new-game shape built by WorldMenu (corporate spawn).
+function captureSaveBlob(): Record<string, unknown> {
   return {
-    name: deckard ? DECKARD_NAME : CAPTURE_BOT_NAME,
-    class: deckard ? "replicant" : "corporate",
-    company: deckard ? DECKARD_COMPANY : "FIELD OPS",
+    name: CAPTURE_BOT_NAME,
+    class: "corporate",
+    company: "FIELD OPS",
     sx: 5555,
     sy: 5620,
     px: 5555,
@@ -123,27 +107,17 @@ function captureSaveBlob(deckard = false): Record<string, unknown> {
     energy: 100,
     hasBusiness: false,
     bizType: "unemployed",
-    activeCostume: deckard ? "default" : "suit",
-    ownedClothes: deckard ? ["default"] : ["default", "suit"],
-    appearance: deckard
-      ? {
-          gender: "nb",
-          skinTone: "#c9b8a6",
-          hairColor: "#11131a",
-          hairStyle: "short",
-          faceStyle: "plain",
-          outfitStyle: "hoodie",
-          outfitColor: "#3a4a5a",
-        }
-      : {
-          gender: "nb",
-          skinTone: "#d4906a",
-          hairColor: "#1a1a1a",
-          hairStyle: "short",
-          faceStyle: "plain",
-          outfitStyle: "suit",
-          outfitColor: "#2e2e2e",
-        },
+    activeCostume: "suit",
+    ownedClothes: ["default", "suit"],
+    appearance: {
+      gender: "nb",
+      skinTone: "#d4906a",
+      hairColor: "#1a1a1a",
+      hairStyle: "short",
+      faceStyle: "plain",
+      outfitStyle: "suit",
+      outfitColor: "#2e2e2e",
+    },
     // Marks onboarding complete. Home (kept-alive, always mounted) reads this
     // from sm_save and otherwise auto-redirects every route to /immigration.
     pabloOnboardingDone: true,
@@ -258,9 +232,7 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
   const orientation: CaptureOrientation = opts.orientation ?? "portrait";
   const capW = orientation === "landscape" ? CAPTURE_W_LANDSCAPE : CAPTURE_W;
   const capH = orientation === "landscape" ? CAPTURE_H_LANDSCAPE : CAPTURE_H;
-  // Short cinematic clips for the onboarding tour; the weekly run still defaults
-  // to a long 40s roam. Floor at 8s so a tour clip can be tight.
-  const durationSec = Math.max(8, Math.min(90, opts.durationSec ?? 40));
+  const durationSec = Math.max(15, Math.min(90, opts.durationSec ?? 40));
   const stage = opts.onStage ?? (() => {});
 
   const workDir = path.join(os.tmpdir(), `salaryman-capture-${Date.now().toString(36)}`);
@@ -294,7 +266,7 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
     // from localStorage `sm_char` (set by WorldMenu), NOT the server — without
     // it the page redirects to the menu and never mounts the world canvas. We
     // also pre-clear the new-user funnel gate (tutorial/passcode flags).
-    const saveBlob = captureSaveBlob(opts.deckard);
+    const saveBlob = captureSaveBlob();
     const clientChar = {
       name: (saveBlob.name as string) ?? CAPTURE_BOT_NAME,
       class: (saveBlob.class as string) ?? "corporate",

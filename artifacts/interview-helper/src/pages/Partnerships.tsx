@@ -146,7 +146,7 @@ export default function Partnerships() {
           <ArrowLeft className="w-4 h-4 text-muted-foreground" />
         </button>
         <Handshake className="w-5 h-5 text-rose-400" />
-        <h1 className="text-lg font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <h1 className="text-lg font-bold tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>
           {boomerMode ? 'PARTNERSHIPS' : 'ORG LINK MATRIX'}
         </h1>
       </div>
@@ -321,7 +321,7 @@ export default function Partnerships() {
                   <div className="flex items-center gap-3">
                     <Building2 className={`w-4 h-4 ${isActive ? 'text-emerald-400' : isPending ? 'text-amber-400' : 'text-zinc-500'}`} />
                     <div>
-                      <h3 className="text-sm font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      <h3 className="text-sm font-bold tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>
                         {p.partnerOrg?.name ?? 'UNKNOWN ORG'}
                       </h3>
                       <div className="flex items-center gap-2 mt-0.5">

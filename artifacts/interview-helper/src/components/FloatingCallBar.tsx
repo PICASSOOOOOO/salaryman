@@ -7,7 +7,7 @@ import {
 } from '@/lib/phone-utils';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
-const FONT = "'Share Tech Mono', monospace";
+const FONT = "var(--font-sans)";
 
 function ElapsedCompact({ seconds, boomer = false }: { seconds: number; boomer?: boolean }) {
   const m = Math.floor(seconds / 60);

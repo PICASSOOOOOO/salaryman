@@ -239,19 +239,19 @@ export default function MeetPage({ params }: { params: { code: string } }) {
   }, []);
 
   const S: Record<string, React.CSSProperties> = {
-    page: { minHeight: '100vh', background: '#030803', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', 'Courier New', monospace" }), padding: '1rem' },
+    page: { minHeight: '100vh', background: '#030803', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), padding: '1rem' },
     card: { background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', borderRadius: '8px', padding: '2rem', maxWidth: '480px', width: '100%', boxShadow: '0 0 30px rgba(56,189,248,.08)' },
     header: { color: 'rgba(56,189,248,.5)', fontSize: '.55rem', letterSpacing: '.15em', marginBottom: '.5rem' },
     title: { color: '#38bdf8', fontSize: '1rem', letterSpacing: '.1em', marginBottom: '1.5rem', borderBottom: '1px solid rgba(56,189,248,.15)', paddingBottom: '.75rem' },
     label: { color: 'rgba(56,189,248,.5)', fontSize: '.55rem', letterSpacing: '.1em', display: 'block', marginBottom: '.3rem' },
-    input: { width: '100%', background: 'rgba(56,189,248,.04)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '.75rem', padding: '.6rem .8rem', outline: 'none', boxSizing: 'border-box' as const, borderRadius: '2px' },
-    btn: { display: 'block', width: '100%', padding: '.7rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '.7rem', letterSpacing: '.12em', marginTop: '1rem', borderRadius: '2px' },
-    dangerBtn: { display: 'block', padding: '.4rem .9rem', background: 'rgba(255,60,60,.1)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,80,80,.8)', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '.55rem', letterSpacing: '.08em', borderRadius: '2px' },
+    input: { width: '100%', background: 'rgba(56,189,248,.04)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), fontSize: '.75rem', padding: '.6rem .8rem', outline: 'none', boxSizing: 'border-box' as const, borderRadius: '2px' },
+    btn: { display: 'block', width: '100%', padding: '.7rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), fontSize: '.7rem', letterSpacing: '.12em', marginTop: '1rem', borderRadius: '2px' },
+    dangerBtn: { display: 'block', padding: '.4rem .9rem', background: 'rgba(255,60,60,.1)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,80,80,.8)', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), fontSize: '.55rem', letterSpacing: '.08em', borderRadius: '2px' },
     grid: { display: 'grid', gap: '4px', padding: '4px' },
     videoBox: { aspectRatio: '4/3' as const, background: 'rgba(0,0,0,.7)', borderRadius: '4px', overflow: 'hidden', position: 'relative' as const, border: '1px solid rgba(56,189,248,.15)' },
     nameTag: { position: 'absolute' as const, bottom: 4, left: 6, fontSize: '.4rem', color: 'rgba(56,189,248,.7)', background: 'rgba(0,0,0,.7)', padding: '1px 5px', borderRadius: '2px' },
     controls: { display: 'flex', gap: '8px', justifyContent: 'center', padding: '8px 4px', borderTop: '1px solid rgba(56,189,248,.1)' },
-    ctrlBtn: { padding: '.35rem .9rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '.5rem', cursor: 'pointer', borderRadius: '3px' },
+    ctrlBtn: { padding: '.35rem .9rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), fontSize: '.5rem', cursor: 'pointer', borderRadius: '3px' },
   };
 
   if (stage === 'loading') {

@@ -265,12 +265,12 @@ export function drawPlayerBuilding(
 
   if (b.rentPrice > 0 && !b.tenantId) {
     ctx.fillStyle = '#f59e0b99';
-    ctx.font = '6px "Share Tech Mono"';
+    ctx.font = '6px "Fira Code"';
     ctx.fillText(`ƒ${b.rentPrice} RENT`, bx + b.w / 2, by - 5);
   }
   if (b.tenantName) {
     ctx.fillStyle = '#10b98188';
-    ctx.font = '5px "Share Tech Mono"';
+    ctx.font = '5px "Fira Code"';
     ctx.fillText(`TENANT: ${b.tenantName}`, bx + b.w / 2, by - 5);
   }
 
@@ -279,7 +279,7 @@ export function drawPlayerBuilding(
     ctx.lineWidth = 1.5;
     ctx.strokeRect(bx - 1, by - 1, b.w + 2, b.h + 2);
     ctx.fillStyle = blink ? `${c}dd` : `${c}35`;
-    ctx.font = '8px "Share Tech Mono"';
+    ctx.font = '8px "Fira Code"';
     ctx.fillText('[E]', bx + b.w / 2, by - 12);
   }
 }

@@ -114,12 +114,6 @@ export default function InstitutionCutscene({
         <div className="absolute inset-x-0 top-[55%] h-px bg-white/10" />
         <div className={`absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t ${bd.floor}`} />
 
-        {/* Subtle scan-lines for the broadcast feel */}
-        <div
-          className="absolute inset-0 opacity-[0.07] pointer-events-none mix-blend-screen"
-          style={{ backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.6) 0 1px, transparent 1px 3px)" }}
-        />
-
         {/* Top status bar */}
         <div className="absolute top-0 inset-x-0 flex items-center justify-between px-4 sm:px-8 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
           <div className="text-[9px] sm:text-[10px] font-mono tracking-[0.4em] text-white/60">

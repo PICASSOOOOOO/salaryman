@@ -50,8 +50,6 @@ const TILE = 16; // px native, before scale
 interface PixelOfficeProps {
   /** Pixel scale-up factor. 3 → ~768×336 visible at the 16-col layout. */
   scale?: number;
-  /** Apply a phosphor-blue tint to match the CRT theme. Default: true. */
-  crtTint?: boolean;
   /**
    * If true, the character becomes PLAYER-CONTROLLED instead of auto-wandering:
    * WASD / arrow keys (and tap-to-move on touch) walk them around the office
@@ -106,7 +104,6 @@ const FRAME_H = 32;
 
 export function PixelOffice({
   scale = 3,
-  crtTint = true,
   playable = false,
   onEnterTerminal,
 }: PixelOfficeProps) {
@@ -388,9 +385,6 @@ export function PixelOffice({
         height: heightPx,
         margin: '0 auto',
         imageRendering: 'pixelated',
-        filter: crtTint
-          ? 'sepia(1) hue-rotate(165deg) saturate(2.1) brightness(0.95) contrast(1.05)'
-          : undefined,
         overflow: 'hidden',
         boxShadow: '0 0 0 1px rgba(56,189,248,.35), inset 0 0 24px rgba(0,16,24,.7)',
         background: '#000',
@@ -529,14 +523,6 @@ export function PixelOffice({
         zIndex: 199,
       }} />
 
-      {/* Subtle scanline overlay to lock the diorama into the CRT theme. */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px)',
-        mixBlendMode: 'multiply',
-        zIndex: 200,
-      }} />
-
       {/* Walk-up prompt — shown when standing on the desk computer. */}
       {playable && onEnterTerminal && nearComputer && (
         <button
@@ -553,7 +539,7 @@ export function PixelOffice({
             border: '1px solid rgba(56,189,248,.95)',
             borderRadius: 6,
             color: '#001016',
-            font: 'bold .7rem "Share Tech Mono", monospace',
+            font: 'bold .7rem "var(--font-sans)", monospace',
             letterSpacing: '.16em',
             cursor: 'pointer',
             zIndex: 220,

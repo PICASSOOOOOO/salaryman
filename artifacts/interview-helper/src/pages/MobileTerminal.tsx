@@ -67,10 +67,10 @@ interface PabloMsg {
 }
 
 function vtFont(boomer: boolean): React.CSSProperties {
-  return boomer ? {} : { fontFamily: "'VT323',monospace" };
+  return boomer ? {} : { fontFamily: "var(--font-sans)" };
 }
 function stFont(boomer: boolean): React.CSSProperties {
-  return boomer ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+  return boomer ? {} : { fontFamily: "var(--font-sans)" };
 }
 
 function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {

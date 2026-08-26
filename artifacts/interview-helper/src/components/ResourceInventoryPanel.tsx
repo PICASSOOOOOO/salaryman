@@ -33,7 +33,7 @@ export default function ResourceInventoryPanel({ onClose, onSell, refreshTick }:
         position: "fixed", inset: 0, zIndex: 9100,
         background: "rgba(0,0,0,0.82)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'Share Tech Mono',monospace",
+        fontFamily: "var(--font-sans)",
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -57,7 +57,7 @@ export default function ResourceInventoryPanel({ onClose, onSell, refreshTick }:
               style={{
                 background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)",
                 color: "rgba(56,189,248,0.85)", padding: "4px 12px", cursor: "pointer",
-                fontFamily: "'Share Tech Mono',monospace", fontSize: "0.6rem", letterSpacing: "0.1em",
+                fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.1em",
               }}
             >SELL</button>
             <button
@@ -65,7 +65,7 @@ export default function ResourceInventoryPanel({ onClose, onSell, refreshTick }:
               style={{
                 background: "none", border: "1px solid rgba(255,60,60,0.3)",
                 color: "rgba(255,60,60,0.7)", padding: "4px 10px", cursor: "pointer",
-                fontFamily: "'Share Tech Mono',monospace", fontSize: "0.6rem",
+                fontFamily: "var(--font-sans)", fontSize: "0.6rem",
               }}
             >CLOSE</button>
           </div>

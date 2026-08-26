@@ -323,7 +323,7 @@ function ProfileHero({ identity, employment, level, netWorthFiat }: {
         width: 84, height: 84, flexShrink: 0, borderRadius: 4,
         background: identity.avatarColor, color: "#0a0a0f",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'VT323',monospace", fontSize: "3rem",
+        fontFamily: "var(--font-sans)", fontSize: "3rem",
         boxShadow: `0 0 24px ${identity.avatarColor}66`,
         overflow: "hidden",
       }}>
@@ -332,7 +332,7 @@ function ProfileHero({ identity, employment, level, netWorthFiat }: {
           : initial}
       </div>
       <div style={{ flex: 1, minWidth: 200 }}>
-        <h1 style={{ margin: 0, color: "#ff2266", fontFamily: "'VT323',monospace", fontSize: "2.4rem", letterSpacing: ".08em", lineHeight: 1 }}>{identity.playerName}</h1>
+        <h1 style={{ margin: 0, color: "#ff2266", fontFamily: "var(--font-sans)", fontSize: "2.4rem", letterSpacing: ".08em", lineHeight: 1 }}>{identity.playerName}</h1>
         <p style={{ margin: "6px 0 0", color: "#38bdf8", fontSize: ".72rem", letterSpacing: ".15em" }}>
           {employment.status} · {employment.title.toUpperCase()} · LVL {level}
         </p>
@@ -343,7 +343,7 @@ function ProfileHero({ identity, employment, level, netWorthFiat }: {
       </div>
       <div style={{ textAlign: "right" }}>
         <div style={{ fontSize: ".55rem", letterSpacing: ".15em", color: "#94a3b8" }}>NET WORTH</div>
-        <div style={{ fontSize: "1.8rem", color: "#a78bfa", fontFamily: "'VT323',monospace", lineHeight: 1 }}>{f(netWorthFiat)}</div>
+        <div style={{ fontSize: "1.8rem", color: "#a78bfa", fontFamily: "var(--font-sans)", lineHeight: 1 }}>{f(netWorthFiat)}</div>
       </div>
     </div>
   );
@@ -351,7 +351,7 @@ function ProfileHero({ identity, employment, level, netWorthFiat }: {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0f", color: "#e2e8f0", padding: 24, fontFamily: "'VT323','Courier New',monospace" }}>
+    <div style={{ minHeight: "100vh", background: "#0a0a0f", color: "#e2e8f0", padding: 24, fontFamily: "var(--font-sans)" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>{children}</div>
     </div>
   );
