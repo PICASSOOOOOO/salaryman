@@ -3,9 +3,9 @@
 // Sibling of Settings.game-reset.test.tsx / Settings.display.test.tsx /
 // Settings.screen-terminal.test.tsx. Those cover the GAME (controls + reset),
 // DISPLAY and TERMINAL tabs. This one closes the last untested corner: the
-// SOUND tab.
+// GAME tab.
 //
-// The SOUND tab's sliders (Master / Music / SFX / Voice / Soundtrack) and the
+// The GAME tab's audio controls (Master / Music / SFX / Voice / Pablo Radio volume) and the
 // "Mute all" toggle do NOT flow through the page's own game-settings store.
 // They go through the central audio store (`src/lib/audio-settings.ts`), which
 // persists VERBOSE keys (masterVolume, musicVolume, sfxVolume, voiceVolume,
@@ -14,7 +14,7 @@
 // there silently changes how loud the whole game is — for the game, the
 // terminal and Hummingbird — with nothing to catch it.
 //
-// These tests drive the real SOUND tab UI and assert:
+// These tests drive the real GAME tab audio UI and assert:
 //   - moving a slider merges the value into sm_game_settings_v1 under the
 //     correct verbose key WITHOUT clobbering the game keys sharing that blob,
 //   - the slider→key mapping is correct for every channel,
@@ -99,7 +99,7 @@ beforeEach(() => {
   localStorage.clear();
   // Seed GAME keys into the shared blob. These are owned by the page's own
   // settings store, NOT the audio store — they must survive every save the
-  // SOUND tab makes (the merge-on-save contract on the one localStorage key).
+  // GAME tab makes (the merge-on-save contract on the one localStorage key).
   localStorage.setItem(
     STORE_KEY,
     JSON.stringify({ controlScheme: "arrows", invertY: true, resolution: "720p" }),
@@ -118,10 +118,10 @@ afterEach(() => {
   container.remove();
 });
 
-describe("GameSettings SOUND tab volume persistence", () => {
+describe("GameSettings General audio volume persistence", () => {
   it("moves the Master slider, merges masterVolume, and keeps the game keys", async () => {
     await mount();
-    clickTab("SOUND");
+    clickTab("GAME");
     expect(blob().masterVolume).toBe(AUDIO_DEFAULTS.master);
 
     moveSlider("Master", "0.5");
@@ -136,7 +136,7 @@ describe("GameSettings SOUND tab volume persistence", () => {
 
   it("maps every slider to its correct verbose key", async () => {
     await mount();
-    clickTab("SOUND");
+    clickTab("GAME");
 
     // [row label, verbose key persisted, value to set]
     const cases: Array<[string, string, string]> = [
@@ -144,7 +144,7 @@ describe("GameSettings SOUND tab volume persistence", () => {
       ["Music", "musicVolume", "0.6"],
       ["SFX", "sfxVolume", "0.45"],
       ["Voice", "voiceVolume", "0.25"],
-      ["Soundtrack", "soundtrackVolume", "0.7"],
+      ["Pablo Radio volume", "soundtrackVolume", "0.7"],
     ];
 
     for (const [label, key, value] of cases) {
@@ -162,10 +162,10 @@ describe("GameSettings SOUND tab volume persistence", () => {
   });
 });
 
-describe("GameSettings SOUND tab mute toggle", () => {
+describe("GameSettings General audio mute toggle", () => {
   it("flips audioMuted and disables every slider while muted", async () => {
     await mount();
-    clickTab("SOUND");
+    clickTab("GAME");
     expect(blob().audioMuted).toBe(false);
 
     // Sliders are live before muting.
@@ -180,7 +180,7 @@ describe("GameSettings SOUND tab mute toggle", () => {
     expect(b.controlScheme).toBe("arrows");
 
     // Every slider is now disabled.
-    for (const label of ["Master", "Music", "SFX", "Voice", "Soundtrack"]) {
+    for (const label of ["Master", "Music", "SFX", "Voice", "Pablo Radio volume"]) {
       expect(rowControl<HTMLInputElement>(label, "input[type=range]").disabled).toBe(true);
     }
 

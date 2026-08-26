@@ -3,7 +3,7 @@
 // Verifies the two independent enable gates that decide whether background audio
 // is allowed to make sound AT ALL (separate from per-channel volume):
 //   - AMBIANCE  -> the "music" channel (procedural ambient score). Default ON.
-//   - MUSIC     -> the "soundtrack" channel (office radio songs). Default OFF.
+//   - PABLO RADIO -> the "soundtrack" channel (Call Home tracks). Default OFF.
 // When a gate is OFF its channel must report zero effective gain (so nothing is
 // audible) AND, for AMBIANCE, the engine music volume must collapse to 0 even if
 // the raw slider is up — that's what lets an in-game toggle silence the bed

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 //
 // Sibling-in-spirit of pages/Game/Settings.sound.test.tsx. That suite covers the
-// SOUND tab's numeric volume SLIDERS + the Mute-all toggle. It does NOT touch the
+// GAME tab's numeric volume sliders + the Mute-all toggle. It does NOT touch the
 // two boolean GATES the audio store also owns:
-//   • musicEnabled    — the opt-in office-radio MUSIC. Default OFF.
+//   • musicEnabled    — the opt-in Pablo Radio. Default OFF.
 //   • ambianceEnabled — the low ambient bed. Default ON.
 // These gates decide whether whole CATEGORIES of audio play at all
 // (channelGain()/applyToEngine() branch on them), yet no test exercises the UI

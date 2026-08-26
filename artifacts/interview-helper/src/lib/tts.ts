@@ -206,7 +206,7 @@ export function speakWithTTS(
   text: string,
   onEnd: () => void,
   onError?: (err: Error) => void,
-  opts?: { endpoint?: string; character?: string },
+  opts?: { endpoint?: string; character?: string; volume?: number },
 ): TTSHandle {
   const abortController = new AbortController();
   const signal = abortController.signal;
@@ -229,6 +229,7 @@ export function speakWithTTS(
   onEnd = () => { releasePriorityOnce(); originalOnEnd(); };
   const ttsEndpoint = opts?.endpoint ?? 'api/tts';
   const character = opts?.character;
+  const volume = Math.max(0, Math.min(1, opts?.volume ?? 1));
 
   const clean = cleanText(text);
   const sentences = splitSentences(clean);
@@ -278,6 +279,7 @@ export function speakWithTTS(
       const el = new Audio();
       el.src = url;
       el.preload = 'auto';
+      el.volume = volume;
       currentEl = el;
       currentObjUrl = url;
 
@@ -314,7 +316,10 @@ export function speakWithTTS(
       await new Promise<void>((resolve) => {
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.connect(ctx.destination);
+        const gain = ctx.createGain();
+        gain.gain.value = volume;
+        source.connect(gain);
+        gain.connect(ctx.destination);
         currentSource = source;
         source.onended = () => {
           currentSource = null;
@@ -411,8 +416,9 @@ export function speakGameTTS(
   onEnd: () => void,
   onError?: (err: Error) => void,
   character?: string,
+  volume?: number,
 ): TTSHandle {
-  return speakWithTTS(text, onEnd, onError, { endpoint: "api/game-tts", character });
+  return speakWithTTS(text, onEnd, onError, { endpoint: "api/game-tts", character, volume });
 }
 
 // Roster of major characters → TTS character keys (matches CHARACTER_VOICES in

@@ -169,8 +169,8 @@ describe('GameSettings "Reset to defaults"', () => {
     const invert = rowControl<HTMLButtonElement>("Invert vertical", "button");
     act(() => { invert.click(); });
 
-    // 2) Audio store via the SOUND tab's Master slider (persists masterVolume).
-    clickTab("SOUND");
+    // 2) Audio store via the GAME tab's Master slider (persists masterVolume).
+    clickTab("GAME");
     const master = rowControl<HTMLInputElement>("Master", "input[type=range]");
     act(() => {
       setNativeValue(master, "0.2");

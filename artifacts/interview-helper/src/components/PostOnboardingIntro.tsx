@@ -8,6 +8,7 @@ import {
   startOfficeAmbient,
   stopOfficeAmbient,
 } from '@/soundEngine';
+import { getMusicEnabled } from '@/lib/audio-settings';
 
 /**
  * PostOnboardingIntro — the cinematic that plays AFTER Pablo's intake +
@@ -72,7 +73,9 @@ export function PostOnboardingIntro({ playerName, onComplete }: Props) {
     const t = setTimeout(() => {
       setDoorsOpen(true);
       try { sfxDoorSlide(); } catch { /* ignore */ }
-      try { startOfficeAmbient(); } catch { /* ignore */ }
+      if (!getMusicEnabled()) {
+        try { startOfficeAmbient(); } catch { /* ignore */ }
+      }
     }, 650);
     return () => clearTimeout(t);
   }, []);

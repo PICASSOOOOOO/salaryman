@@ -1384,5 +1384,15 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.16.8.1995",
+    "date": "2026-08-26",
+    "commitHash": "a2cac52026650c39298d11bc0238070ca3b5dc11",
+    "changes": [
+      "Build city-differentiated markets and Banco Ombra Finance hub",
+      "Update Pablo memory and add verification screenshot",
+      "Update version and implement cinematic intro tour features"
+    ]
   }
 ]

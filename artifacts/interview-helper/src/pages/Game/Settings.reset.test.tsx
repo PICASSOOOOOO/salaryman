@@ -265,8 +265,8 @@ describe("GameSettings RESET TO DEFAULTS", () => {
     act(() => { rowControl<HTMLButtonElement>("Bloom / glow", "button").click(); });
     act(() => { rowControl<HTMLButtonElement>("Low graphics mode", "button").click(); });
 
-    // SOUND tab: the central audio store (a separate store sharing the blob).
-    clickTab("SOUND");
+    // GAME tab: the central audio store (a separate store sharing the blob).
+    clickTab("GAME");
     const master = rowControl<HTMLInputElement>("Master", "input[type=range]");
     act(() => {
       setNativeValue(master, "0.2");

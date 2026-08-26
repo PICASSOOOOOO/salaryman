@@ -47,8 +47,8 @@ export function subscribeVoicePriority(fn: Listener): () => void {
 // ── Background-music-tier coordinator ────────────────────────────────────────
 // On top of voice ducking, the app enforces a second rule: at most ONE sustained
 // "background music tier" source may be audible at a time. The tiers are the
-// procedural world score, the office ambient bed, the radio OST (manual + the
-// headless office radio), and the Hummingbird global player. (Crowd murmur is a
+// procedural world score, the office ambient bed, Pablo Radio, and the
+// Hummingbird global player. (Crowd murmur is a
 // deliberate SFX-channel sub-layer of the world score and is NOT a tier, so it
 // does not participate here.) One-shot SFX never participate either.
 //
@@ -62,8 +62,7 @@ export function subscribeVoicePriority(fn: Listener): () => void {
 export const BG_OWNERS = {
   worldScore: "world-score",
   officeAmbient: "office-ambient",
-  radioOffice: "radio-office",
-  radioWorld: "radio-world",
+  radioPablo: "radio-pablo",
   hummingbird: "hummingbird",
 } as const;
 

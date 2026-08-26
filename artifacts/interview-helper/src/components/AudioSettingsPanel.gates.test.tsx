@@ -2,7 +2,7 @@
 //
 // Sibling of AudioControl.gates.test.tsx. That suite drives the global
 // AudioControl popup's two boolean GATES:
-//   • musicEnabled    — opt-in office-radio MUSIC. Default OFF.
+//   • musicEnabled    — opt-in Pablo Radio. Default OFF.
 //   • ambianceEnabled — the low ambient bed. Default ON.
 // The SAME two gates are also exposed on a SECOND surface — the Hummingbird
 // "Audio Hub" panel (AudioSettingsPanel), the canonical full mixer. Those
@@ -11,7 +11,7 @@
 // would go uncaught even though the AudioControl test still passes.
 //
 // These tests drive the real Audio Hub panel and assert:
-//   - clicking "MUSIC · ON/OFF" flips ONLY musicEnabled,
+//   - clicking "PABLO RADIO · ON/OFF" flips ONLY musicEnabled,
 //   - clicking "AMBIANCE · ON/OFF" flips ONLY ambianceEnabled,
 //   - neither flip clobbers the volume keys or the unrelated game keys that
 //     share the one `sm_game_settings_v1` localStorage blob.
@@ -52,7 +52,7 @@ function blob(): Record<string, unknown> {
 }
 
 // The panel has no data-testids, so gate buttons are selected by their label
-// text ("MUSIC · ON/OFF" / "AMBIANCE · ON/OFF").
+// text ("PABLO RADIO · ON/OFF" / "AMBIANCE · ON/OFF").
 function buttonByText(prefix: string): HTMLButtonElement {
   const btns = Array.from(container.querySelectorAll("button"));
   const el = btns.find((b) => (b.textContent ?? "").includes(prefix));
@@ -88,22 +88,22 @@ afterEach(() => {
 });
 
 describe("AudioSettingsPanel gate defaults", () => {
-  it("renders MUSIC OFF and AMBIANCE ON at defaults", async () => {
+  it("renders PABLO RADIO OFF and AMBIANCE ON at defaults", async () => {
     await mount();
     expect(blob().musicEnabled).toBe(false);
     expect(blob().ambianceEnabled).toBe(true);
-    expect(buttonByText("MUSIC ·").textContent).toContain("OFF");
+    expect(buttonByText("PABLO RADIO ·").textContent).toContain("OFF");
     expect(buttonByText("AMBIANCE ·").textContent).toContain("ON");
   });
 });
 
-describe("AudioSettingsPanel MUSIC gate toggle", () => {
+describe("AudioSettingsPanel Pablo Radio gate toggle", () => {
   it("flips musicEnabled on/off without clobbering volumes or game keys", async () => {
     await mount();
     expect(blob().musicEnabled).toBe(false);
 
-    // Turn MUSIC on.
-    click(buttonByText("MUSIC ·"));
+    // Turn Pablo Radio on.
+    click(buttonByText("PABLO RADIO ·"));
     let b = blob();
     expect(b.musicEnabled).toBe(true);
     // ambiance gate untouched.
@@ -116,15 +116,15 @@ describe("AudioSettingsPanel MUSIC gate toggle", () => {
     expect(b.controlScheme).toBe("arrows");
     expect(b.invertY).toBe(true);
     expect(b.resolution).toBe("720p");
-    expect(buttonByText("MUSIC ·").textContent).toContain("ON");
+    expect(buttonByText("PABLO RADIO ·").textContent).toContain("ON");
 
-    // Turn MUSIC back off — round-trips cleanly.
-    click(buttonByText("MUSIC ·"));
+    // Turn Pablo Radio back off — round-trips cleanly.
+    click(buttonByText("PABLO RADIO ·"));
     b = blob();
     expect(b.musicEnabled).toBe(false);
     expect(b.ambianceEnabled).toBe(true);
     expect(b.controlScheme).toBe("arrows");
-    expect(buttonByText("MUSIC ·").textContent).toContain("OFF");
+    expect(buttonByText("PABLO RADIO ·").textContent).toContain("OFF");
   });
 });
 
@@ -161,12 +161,12 @@ describe("AudioSettingsPanel gates are independent", () => {
   it("toggling one gate never disturbs the other", async () => {
     await mount();
 
-    // Flip MUSIC on, leave AMBIANCE alone.
-    click(buttonByText("MUSIC ·"));
+    // Flip Pablo Radio on, leave AMBIANCE alone.
+    click(buttonByText("PABLO RADIO ·"));
     expect(blob().musicEnabled).toBe(true);
     expect(blob().ambianceEnabled).toBe(true);
 
-    // Now flip AMBIANCE off — MUSIC must stay on.
+    // Now flip AMBIANCE off — Pablo Radio must stay on.
     click(buttonByText("AMBIANCE ·"));
     const b = blob();
     expect(b.musicEnabled).toBe(true);

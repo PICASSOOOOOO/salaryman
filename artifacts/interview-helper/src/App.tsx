@@ -373,8 +373,8 @@ function AppShell() {
   // route does not legitimately run. The destination's own mount effects restart
   // whatever it needs, and soundEngine's running-flag guards make a redundant
   // stop a no-op, so this never fights the page that owns the route. The radio /
-  // Hummingbird HTMLAudio tiers self-clean (OfficeRadio re-gates by route,
-  // RadioPlayer unmounts with WorldPlay, Hummingbird is global by design), so
+  // Hummingbird and the global Pablo Radio HTMLAudio tiers self-clean through
+  // the background coordinator, so
   // they are handled by the coordinator's claim/release, not stopped here.
   useEffect(() => {
     const allowsWorldScore = pathname === "/world/play" || pathname.startsWith("/world/play/");
@@ -551,8 +551,7 @@ function AppShell() {
           the app for new arrivals — leaking the music indicator there
           breaks the "you haven't been admitted yet" fiction. */}
       {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
-      {/* Distant office radio — low background soundtrack on game/office scenes.
-          Headless + self-gating by route; renders nothing. */}
+      {/* Pablo Radio — one headless station for every non-phone route. */}
       {!isEmbed && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the audio from anywhere (full mixer still on /game/settings).

@@ -95,7 +95,7 @@ import {
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
-import { getAmbianceEnabled, setAudioSettings, subscribeAudioSettings } from '../lib/audio-settings';
+import { getAmbianceEnabled, getMusicEnabled, setAudioSettings, subscribeAudioSettings } from '../lib/audio-settings';
 import { useAudioSettings } from '../hooks/use-audio-settings';
 import { readWeatherQuality, weatherCaps, weatherEffectsEnabled, clearWeatherEffects, type WeatherQuality } from '../lib/weather-quality';
 import {
@@ -104,7 +104,7 @@ import {
   readUiScale, readBloomEnabled, readCinematicLetterbox, cinematicBarHeight,
   lowGfxEnabled,
 } from '../lib/graphics-quality';
-import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
+import { RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { CurrencyTicker } from '../components/CurrencyTicker';
 import { NetWorthHUD } from '../components/NetWorthHUD';
@@ -5876,7 +5876,7 @@ export default function WorldPlay() {
   const catAdoptTarget = useRef<any>(null);
   const [catNameErr,      setCatNameErr]      = useState('');
   const [catNameChecking, setCatNameChecking] = useState(false);
-  const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
+  const { radioOn, radioVisible, radioFading, radioVisibleRef, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio } = useRadio();
   const [scoreOn, setScoreOn] = useState(() => getAmbianceEnabled() && !getScoreMuted());
   const [scoreMuted, setScoreMuted] = useState(() => getScoreMuted());
   const [campsitePos, setCampsitePos] = useState<{x:number;y:number}|null>(null);
@@ -6010,10 +6010,8 @@ export default function WorldPlay() {
   }, [genningFromPhoto, char.class]);
   const equippedCosmeticsRef = useRef<Record<string, string>>({});
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
-  const [radioMuted, setRadioMuted] = useState(false);
   const [allMuted, setAllMuted] = useState(() => getMuted());
   const [showSoundPanel, setShowSoundPanel] = useState(false);
-  const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
   const [micVolume, setMicVolume] = useState(() => { try { const v = localStorage.getItem('sm_mic_vol'); return v ? parseFloat(v) : 1.0; } catch { return 1.0; } });
   // AMBIANCE + SFX in-world sliders are driven by the central audio store so the
   // game honors the same chokepoint as the AUDIO HUB / settings page — no more
@@ -6615,7 +6613,7 @@ export default function WorldPlay() {
       setNarr(`> You turn the dial. Static. Then music. RADIO ${st.freq} — ${st.name}. The signal bleeds through the walls. Something familiar. Something human.`);
     } else {
       // When radio turns off, resume ambient score only if AMBIANCE is enabled
-      if (getAmbianceEnabled() && !getScoreMuted()) { playMusic(); }
+      if (getAmbianceEnabled() && !getScoreMuted() && !getMusicEnabled()) { playMusic(); }
       setNarr('> You switch the radio off. Silence returns. The wasteland hum fills the gap.');
     }
   }, [toggleRadio, stationId, scoreOn, scoreMuted, pauseMusic, playMusic]);
@@ -8461,10 +8459,6 @@ export default function WorldPlay() {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem('sm_radio_vol', String(radioVolume)); } catch {}
-  }, [radioVolume]);
-
-  useEffect(() => {
     micVolumeRef.current = micVolume;
     try { localStorage.setItem('sm_mic_vol', String(micVolume)); } catch {}
   }, [micVolume]);
@@ -9347,8 +9341,6 @@ export default function WorldPlay() {
       if ((e.key === 'r' || e.key === 'R') && radioVisibleRef.current && !frozenRef.current && !chatOpenRef.current) {
         handleRadioToggle();
       }
-      if (e.key === ',' && radioVisibleRef.current && radioOn && !frozenRef.current) { prevStation(); }
-      if (e.key === '.' && radioVisibleRef.current && radioOn && !frozenRef.current) { nextStation(); }
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
       // [Space] attack with active weapon (melee or ranged). Click to shoot.
       if (e.key === ' ' && !frozenRef.current && !dialog && !gamePausedRef.current) {
@@ -22391,14 +22383,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.music * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; audioCfg.set({ music: v }); }} style={{ width: '100%', accentColor: '#00c8ff', height: 3, cursor: 'pointer' }} />
                 </div>
                 <button onClick={() => { handleRadioToggle(); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: radioOn ? 'rgba(56,189,248,.06)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.25)' : '1px solid rgba(56,189,248,.1)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-                  📻 RADIO — {radioOn ? 'ON' : 'OFF'}
+                  📻 PABLO RADIO — {radioOn ? 'ON' : 'OFF'}
                 </button>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "'Share Tech Mono',monospace" }}>RADIO VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
+                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "'Share Tech Mono',monospace" }}>PABLO RADIO VOL</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(audioCfg.settings.soundtrack * 100)}%</span>
                   </div>
-                  <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; setRadioVolume(v); try { localStorage.setItem('sm_radio_vol', String(v)); } catch {} }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
+                  <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.soundtrack * 100)} onChange={e => { audioCfg.set({ soundtrack: parseInt(e.target.value) / 100 }); }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
                 </div>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
@@ -24765,9 +24757,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── RADIO HUD + HIDDEN PLAYER ── */}
-      <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} stationId={stationId} onNextStation={nextStation} onPrevStation={prevStation} musicMuted={radioMuted} onToggleMusicMute={() => { setRadioMuted(m => !m); }} />
-      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || radioMuted} stationId={stationId} volume={radioVolume} />
+      {/* ── PABLO RADIO HUD ── The app-wide player lives in OfficeRadio. */}
+      <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 

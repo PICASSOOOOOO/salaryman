@@ -14,7 +14,7 @@ import { OfficeMinimap } from '@/components/OfficeMinimap';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
-import { getAmbianceEnabled, subscribeAudioSettings } from '@/lib/audio-settings';
+import { getAmbianceEnabled, getMusicEnabled, subscribeAudioSettings } from '@/lib/audio-settings';
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch, FIAT_CHANGED_EVENT } from '@/lib/api-client';
@@ -520,13 +520,13 @@ export default function PabloOffice() {
     if (embed) return; // embedded monitor stays silent — the host page owns audio
     const start = () => {
       resumeAudioContext();
-      if (getAmbianceEnabled()) startOfficeAmbient();
+      if (getAmbianceEnabled() && !getMusicEnabled()) startOfficeAmbient();
     };
     window.addEventListener('pointerdown', start, { once: true });
     window.addEventListener('keydown', start, { once: true });
     // Honor the AMBIANCE toggle mid-session (e.g. from the global audio panel).
     const unsub = subscribeAudioSettings(() => {
-      if (getAmbianceEnabled()) startOfficeAmbient();
+      if (getAmbianceEnabled() && !getMusicEnabled()) startOfficeAmbient();
       else stopOfficeAmbient();
     });
     return () => {

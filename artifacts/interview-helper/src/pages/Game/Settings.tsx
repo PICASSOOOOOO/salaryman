@@ -87,11 +87,10 @@ function load(): GameSettings {
   } catch { return DEFAULTS; }
 }
 
-type TabId = "game" | "display" | "sound" | "terminal" | "streaming" | "data";
+type TabId = "game" | "display" | "terminal" | "streaming" | "data";
 const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: "game",      label: "GAME",      icon: Gamepad2 },
   { id: "display",   label: "DISPLAY",   icon: Monitor },
-  { id: "sound",     label: "SOUND",     icon: Volume2 },
   { id: "terminal",  label: "TERMINAL",  icon: TerminalSquare },
   { id: "streaming", label: "STREAMING", icon: Radio },
   { id: "data",      label: "DATA",      icon: Database },
@@ -225,6 +224,49 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 <Row label="Invert vertical">
                   <Toggle on={s.invertY} onChange={(v) => setS({ ...s, invertY: v })} />
                 </Row>
+              </Sec>
+
+              <Sec icon={Volume2} title="AUDIO">
+                <Row label="Mute all" hint="Silence every sound.">
+                  <button
+                    onClick={() => toggleMuted()}
+                    className={`px-3 py-1 text-[10px] font-mono tracking-widest rounded border transition-colors inline-flex items-center gap-1.5 ${
+                      audio.muted ? "bg-red-500/20 border-red-500/40 text-red-300"
+                                  : "bg-zinc-900 border-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    {audio.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    {audio.muted ? "MUTED" : "ON"}
+                  </button>
+                </Row>
+                <Row label="Pablo Radio broadcast" hint="One live station across SALARYMAN. It pauses while you use the phone.">
+                  <Toggle on={audio.musicEnabled} onChange={(musicEnabled) => setAudio({ musicEnabled })} />
+                </Row>
+                {([
+                  ["Master",      "master"],
+                  ["Music",       "music"],
+                  ["SFX",         "sfx"],
+                  ["Voice",       "voice"],
+                  ["Pablo Radio volume", "soundtrack"],
+                ] as const).map(([label, key]) => (
+                  <Row
+                    key={key}
+                    label={label}
+                    hint={label === "Pablo Radio volume"
+                      ? `${Math.round(audio[key] * 100)}% · live Call Home broadcast`
+                      : `${Math.round(audio[key] * 100)}%`}
+                  >
+                    <input type="range" min={0} max={1} step={0.05} value={audio[key]}
+                      disabled={audio.muted}
+                      onChange={(e) => setAudio({ [key]: Number(e.target.value) })}
+                      className="w-40 accent-fuchsia-400 disabled:opacity-40" />
+                  </Row>
+                ))}
+                <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
+                  These apply everywhere — the game, Pablo, and Hummingbird.
+                  Pablo Radio is opt-in and stays tuned as you move around the app.
+                  Phone calls always take priority over background audio.
+                </p>
               </Sec>
 
               <Sec icon={Globe} title="LOCALIZATION">
@@ -395,47 +437,6 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 </Row>
               </Sec>
             </>
-          )}
-
-          {tab === "sound" && (
-            <Sec icon={Volume2} title="SOUND">
-              <Row label="Mute all" hint="Silence every sound.">
-                <button
-                  onClick={() => toggleMuted()}
-                  className={`px-3 py-1 text-[10px] font-mono tracking-widest rounded border transition-colors inline-flex items-center gap-1.5 ${
-                    audio.muted ? "bg-red-500/20 border-red-500/40 text-red-300"
-                                : "bg-zinc-900 border-zinc-700 text-zinc-400"
-                  }`}
-                >
-                  {audio.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                  {audio.muted ? "MUTED" : "ON"}
-                </button>
-              </Row>
-              {([
-                ["Master",     "master"],
-                ["Music",      "music"],
-                ["SFX",        "sfx"],
-                ["Voice",      "voice"],
-                ["Soundtrack", "soundtrack"],
-              ] as const).map(([label, key]) => (
-                <Row
-                  key={key}
-                  label={label}
-                  hint={label === "Soundtrack"
-                    ? `${Math.round(audio[key] * 100)}% · distant office radio`
-                    : `${Math.round(audio[key] * 100)}%`}
-                >
-                  <input type="range" min={0} max={1} step={0.05} value={audio[key]}
-                    disabled={audio.muted}
-                    onChange={(e) => setAudio({ [key]: Number(e.target.value) })}
-                    className="w-40 accent-fuchsia-400 disabled:opacity-40" />
-                </Row>
-              ))}
-              <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
-                These apply everywhere — the game, the terminal, and Hummingbird.
-                Phone always plays at master volume — calls override game audio.
-              </p>
-            </Sec>
           )}
 
           {tab === "terminal" && (

@@ -12,7 +12,7 @@ const CHANNELS: { key: VolumeKey; label: string; hint: string; icon: typeof Volu
   { key: "music",      label: "AMBIANCE",   hint: "Low ambient bed",       icon: Music,   accent: "#a78bfa" },
   { key: "sfx",        label: "SFX",        hint: "Interface & game",      icon: Sparkles,accent: "#f472b6" },
   { key: "voice",      label: "VOICE",      hint: "Pablo & advisors",      icon: Mic,     accent: "#60a5fa" },
-  { key: "soundtrack", label: "MUSIC",      hint: "Office radio songs",    icon: Radio,   accent: "#fbbf24" },
+  { key: "soundtrack", label: "PABLO RADIO", hint: "Live Call Home station", icon: Radio,   accent: "#fbbf24" },
 ];
 
 export function AudioSettingsPanel() {
@@ -68,7 +68,7 @@ export function AudioSettingsPanel() {
               : "bg-transparent border-zinc-700 text-zinc-500"
           }`}
         >
-          MUSIC · {settings.musicEnabled ? "ON" : "OFF"}
+          PABLO RADIO · {settings.musicEnabled ? "ON" : "OFF"}
         </button>
         <button
           onClick={() => { playClick(); set({ ambianceEnabled: !settings.ambianceEnabled }); }}
@@ -85,8 +85,8 @@ export function AudioSettingsPanel() {
 
       <p className="mt-3 text-[9px] font-mono text-zinc-600 leading-relaxed">
         These control all of SALARYMAN — the game, the terminal, and this player.
-        MUSIC (the office radio songs) is off by default and plays only in-game when
-        switched on. AMBIANCE is a low background bed that plays during the game.
+        Pablo Radio is off by default and plays across SALARYMAN when switched on.
+        AMBIANCE is a low background bed that plays during the game.
       </p>
     </section>
   );
