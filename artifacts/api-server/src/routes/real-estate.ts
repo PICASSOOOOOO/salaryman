@@ -32,6 +32,36 @@ const ETH_BASELINE_USD = 3_000;
 const MARKET_CACHE_TTL_MS = 60_000;
 let marketCache: { btcUsd: number; ethUsd: number; multiplier: number; asOf: number; source: string } | null = null;
 
+// Presentation-only city cost-of-living baselines. Settlement routes continue to
+// use the single BTC-scaled FIAT price; these values are returned for client
+// readouts and market storytelling.
+const CITY_COST_OF_LIVING: Record<string, number> = {
+  minx_city: 1.42,
+  huda_city: 1.00,
+  solaris_drift: 1.16,
+  verde_nexus: 1.10,
+  obsidian_reach: 0.94,
+  cobalt_harbor: 1.28,
+  vostok_gate: 1.08,
+  crescent_spire: 1.22,
+  amber_circuit: 1.04,
+  dragon_forge: 1.18,
+  coral_vault: 1.24,
+};
+
+function getCityMultiplier(cityId: string, btcMultiplier: number): number {
+  const baseline = CITY_COST_OF_LIVING[cityId] ?? 1.08;
+  const btc = Math.max(0.4, Math.min(4, Number.isFinite(btcMultiplier) && btcMultiplier > 0 ? btcMultiplier : 1));
+  return 1 + (baseline - 1) / Math.sqrt(btc);
+}
+
+function getCityMultipliers(btcMultiplier: number): Record<string, { labor: number; property: number }> {
+  return Object.fromEntries(Object.keys(CITY_COST_OF_LIVING).map((cityId) => {
+    const property = getCityMultiplier(cityId, btcMultiplier);
+    return [cityId, { property, labor: 1 + (property - 1) * 0.94 }];
+  }));
+}
+
 async function fetchCryptoUsd(): Promise<{ btcUsd: number; ethUsd: number; source: string }> {
   // CoinGecko free public endpoint — no key required. BTC drives real-estate
   // pricing; ETH is an additional in-game-only market for the exchange counter.
@@ -282,6 +312,7 @@ router.get("/real-estate/market-index", async (_req: Request, res: Response) => 
       fx: fx.rates,
       fxSource: fx.source,
       fxAsOf: fx.asOf,
+      cityMultipliers: getCityMultipliers(idx.multiplier),
     });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || "market index failed" });

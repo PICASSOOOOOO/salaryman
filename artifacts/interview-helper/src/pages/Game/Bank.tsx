@@ -6,9 +6,9 @@ import {
 } from "lucide-react";
 import InstitutionCutscene from "@/components/InstitutionCutscene";
 import { apiFetch } from "@/lib/api-client";
-import { SUPPORTED_CURRENCIES, setLiveRates, getCityCurrencyCode } from "@/lib/currency";
+import { SUPPORTED_CURRENCIES, setLiveRates, getCityCurrencyCode, getCityCostMultipliers } from "@/lib/currency";
 import { useCurrency } from "@/hooks/use-currency";
-import { getActiveCityId } from "@/lib/city-defs";
+import { getActiveCityId, hydrateActiveCityFromSave } from "@/lib/city-defs";
 
 /**
  * Banking — full retail bank under Go to Work, also reachable in-world via
@@ -54,7 +54,7 @@ const TX_TONE: Record<string, string> = {
   payroll:  "text-emerald-300",
 };
 
-type Tab = "overview" | "ledger" | "transfer" | "market" | "credit" | "statements" | "cards";
+type Tab = "overview" | "ledger" | "transfer" | "finance" | "credit" | "statements" | "cards";
 
 type MarketIndex = {
   btcUsd: number;
@@ -63,6 +63,7 @@ type MarketIndex = {
   source: string;
   conversion: { usdToFiat: number; usdToGoldOz: number; btcToFiat: number; btcToGoldOz: number };
   fx?: Record<string, number>;
+  cityMultipliers?: Record<string, { labor: number; property: number }>;
 };
 type CreditScore = {
   score: number;
@@ -101,10 +102,14 @@ const BANK_CUTSCENE = [
 ];
 
 export default function GameBank() {
+  hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tx, setTx] = useState<Tx[]>([]);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "overview";
+    return new URLSearchParams(window.location.search).get("tab") === "finance" ? "finance" : "overview";
+  });
   const [toast, setToast] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -308,7 +313,7 @@ export default function GameBank() {
             ["overview",   "OVERVIEW",   PiggyBank],
             ["ledger",     "TRANSACTIONS", Receipt],
             ["transfer",   "TRANSFER",   ArrowLeftRight],
-            ["market",     "MARKET",     Bitcoin],
+            ["finance",    "FINANCE",    Bitcoin],
             ["credit",     "CREDIT",     Gauge],
             ["statements", "STATEMENTS", Lock],
             ["cards",      "CARDS",      CreditCard],
@@ -414,7 +419,7 @@ export default function GameBank() {
           <TransferForm accounts={accounts} onTransfer={transfer} />
         )}
 
-        {tab === "market" && (
+        {tab === "finance" && (
           <MarketPanel market={market} curCode={curCode} cur={cur} localCode={localCode} />
         )}
 
@@ -567,6 +572,20 @@ function MarketPanel({
   // A small spread of headline currencies pulled from the live FX table.
   const fxCodes = ["USD", "EUR", "GBP", "JPY", "VND", "INR"];
   const fx = market.fx ?? {};
+  const cityMultipliers = market.cityMultipliers ?? {
+    minx_city: getCityCostMultipliers("minx_city", market.multiplier),
+    huda_city: getCityCostMultipliers("huda_city", market.multiplier),
+  };
+  const minx = cityMultipliers.minx_city;
+  const huda = cityMultipliers.huda_city;
+  const propertyDelta = minx && huda ? ((minx.property / huda.property) - 1) * 100 : 0;
+  const laborDelta = minx && huda ? ((minx.labor / huda.labor) - 1) * 100 : 0;
+  const activeCity = getActiveCityId();
+  const activeName = activeCity === "huda_city" ? "HUDA" : "MINX";
+  const favored = propertyDelta >= 0 ? "HUDA" : "MINX";
+  const narrative = propertyDelta >= 1
+    ? `Asian markets undercut Western by ${Math.round(propertyDelta)}% — labor arbitrage window is open.`
+    : `${favored} currently offers the sharper cost-of-living edge — watch the spread as BTC moves.`;
   return (
     <div className="space-y-4">
       <div className="grid sm:grid-cols-3 gap-3">
@@ -632,6 +651,53 @@ function MarketPanel({
           Rates are USD→currency (units per USD). The whole Banco Ombra economy
           settles on the live BTC ledger; ƒ, Gold and local currencies all peg back
           to it. Display-only — your in-game ƒ balances are unaffected.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-cyan-700/30 bg-gradient-to-br from-cyan-950/20 to-zinc-950 p-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[10px] font-mono tracking-[0.3em] text-cyan-300/90">CITY SPREAD · LIVE INDEX</p>
+            <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">{narrative}</p>
+          </div>
+          <span className="shrink-0 rounded border border-emerald-400/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-mono tracking-widest text-emerald-200">
+            {activeName} ACTIVE
+          </span>
+        </div>
+        <div className="overflow-x-auto rounded border border-white/[0.06]">
+          <table className="w-full min-w-[420px] text-[11px] font-mono">
+            <thead className="bg-white/[0.03] text-zinc-500">
+              <tr>
+                <th className="text-left px-3 py-2 tracking-widest">CITY</th>
+                <th className="text-right px-3 py-2 tracking-widest">LABOR</th>
+                <th className="text-right px-3 py-2 tracking-widest">PROPERTY</th>
+                <th className="text-right px-3 py-2 tracking-widest">POSITION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["MINX CITY", minx, "Western Premium"],
+                ["HUDA CITY", huda, "Asian Labor Advantage"],
+              ].map(([label, rates, flavor]) => {
+                const r = rates as { labor: number; property: number } | undefined;
+                return (
+                  <tr key={label as string} className="border-t border-white/[0.04]">
+                    <td className="px-3 py-2 text-zinc-200">{label as string}</td>
+                    <td className="px-3 py-2 text-right text-amber-200">{r ? `×${r.labor.toFixed(2)}` : "—"}</td>
+                    <td className="px-3 py-2 text-right text-fuchsia-200">{r ? `×${r.property.toFixed(2)}` : "—"}</td>
+                    <td className="px-3 py-2 text-right text-[10px] text-zinc-400">{flavor as string}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-mono tracking-widest">
+          <span className="rounded border border-fuchsia-400/30 bg-fuchsia-500/10 px-2 py-1 text-fuchsia-200">PROPERTY DELTA +{propertyDelta.toFixed(0)}%</span>
+          <span className="rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-amber-200">LABOR DELTA +{laborDelta.toFixed(0)}%</span>
+        </div>
+        <p className="mt-3 text-[10px] font-mono tracking-widest text-zinc-600">
+          {activeName} display rate · local settlement remains ƒ · BTC ×{market.multiplier.toFixed(2)}
         </p>
       </div>
     </div>

@@ -34,6 +34,8 @@ import {
   getFactionPropertyCatalog, factionFromValue, FACTION_DISTRICTS,
   type Faction, type PropertyTemplate,
 } from "@/lib/property-catalog";
+import { getCityCurrency, getCityMultiplier } from "@/lib/currency";
+import { getActiveCityId, hydrateActiveCityFromSave } from "@/lib/city-defs";
 
 type Kind = "home" | "office";
 
@@ -45,6 +47,7 @@ interface MarketIndex {
   multiplier: number;
   asOf: number;
   source: string;
+  cityMultipliers?: Record<string, { labor: number; property: number }>;
 }
 
 function useMarketIndex(): { idx: MarketIndex | null; pct: number } {
@@ -103,10 +106,16 @@ function formatFiat(n: number): string {
 interface AcquireTarget { t: PropertyTemplate; tenure: "rent" | "own"; }
 
 export default function RealtyStore() {
+  hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
   const { idx, pct } = useMarketIndex();
   const t = useTick(1000);
   const baseMult = idx?.multiplier ?? 1;
+  const activeCityId = getActiveCityId();
+  const localCcy = getCityCurrency(activeCityId);
+  const cityMult = idx?.cityMultipliers?.[activeCityId]?.property ?? getCityMultiplier(activeCityId, baseMult);
+  const formatLocalDisplay = (n: number) =>
+    `${localCcy.symbol}${Math.round(n).toLocaleString("en-US")} ${localCcy.code}`;
 
   const [ownedOffice, setOwnedOffice] = useState<OwnedProperty | null>(() => getOwnedOffice());
   const [ownedHome, setOwnedHome] = useState<OwnedProperty | null>(() => getOwnedHome());
@@ -179,7 +188,8 @@ export default function RealtyStore() {
       if (typeof j.newBalance === "number") setFiatBalanceLocal(j.newBalance);
       if (owned.kind === "office") setOwnedOffice(owned); else setOwnedHome(owned);
       const verb = target.tenure === "own" ? "Bought" : "Leased";
-      setResult({ ok: true, msg: `${verb} ${target.t.name} for ${formatFiat(j.price ?? 0)}. ${owned.kind === "office" ? "Opening your office…" : "Keys are yours."}` });
+       const displayPrice = Number(j.price ?? 0) * cityMult;
+       setResult({ ok: true, msg: `${verb} ${target.t.name} for ${formatLocalDisplay(displayPrice)} display rate (settled in ƒ). ${owned.kind === "office" ? "Opening your office…" : "Keys are yours."}` });
       if (owned.kind === "office") setTimeout(() => navigate("/office"), 1400);
     } catch {
       setResult({ ok: false, msg: "Network error — try again." });
@@ -297,7 +307,7 @@ export default function RealtyStore() {
           INDEX ×{(baseMult * (1 + liveWave(t, 0))).toFixed(4)} · BTC ${idx ? Math.round(idx.btcUsd * (1 + liveWave(t, 1.3))).toLocaleString("en-US") : "—"}
         </span>
         <span className="text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-          ƒ{Math.round(10_000 * baseMult * (1 + liveWave(t, 0.4))).toLocaleString("en-US")} / mo · ENTRY
+           {localCcy.symbol}{Math.round(10_000 * baseMult * cityMult * (1 + liveWave(t, 0.4))).toLocaleString("en-US")} {localCcy.code} / mo · ENTRY
         </span>
       </div>
 
@@ -309,8 +319,12 @@ export default function RealtyStore() {
             </div>
             <div className="text-zinc-400 text-sm max-w-xl leading-snug">
               Every dwelling ships with a working terminal. Rent monthly or buy outright — purchase is
-              <span className="text-pink-300"> 100 months of rent + 20% premium</span>. Both numbers tick with the
-              live BTC index every second.
+               <span className="text-pink-300"> 100 months of rent + 20% premium</span>. Both numbers tick with the
+               live BTC index every second.
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[10px] tracking-[0.2em] text-zinc-500">
+              <span className="px-2 py-0.5 rounded border border-amber-400/30 text-amber-200">{activeCityId === "huda_city" ? "HUDA RATE" : "MINX RATE"}</span>
+              <span>CITY SPREAD ×{cityMult.toFixed(2)} · LOCAL {localCcy.code} {localCcy.symbol}</span>
             </div>
           </div>
           <button
@@ -381,7 +395,7 @@ export default function RealtyStore() {
         <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${homes.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
           {homes.map(p => (
-            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
+            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} cityMult={cityMult} localCcy={localCcy} now={t}
               owned={ownedFor(p.kind)}
               onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
               onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }}
@@ -393,7 +407,7 @@ export default function RealtyStore() {
         <SectionHeader icon={Briefcase} title="OFFICES" kana="事務所" subtitle={`${offices.length} layouts · scale from apartment to campus`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {offices.map(p => (
-            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
+            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} cityMult={cityMult} localCcy={localCcy} now={t}
               owned={ownedFor(p.kind)}
               onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
               onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }}
@@ -411,7 +425,9 @@ export default function RealtyStore() {
       {target && (
         <AcquireModal
           target={target}
-          baseMult={baseMult}
+           baseMult={baseMult}
+           cityMult={cityMult}
+           localCcy={localCcy}
           now={t}
           busy={busy}
           result={result}
@@ -564,10 +580,12 @@ function RenovateModal({
 }
 
 function AcquireModal({
-  target, baseMult, now, busy, result, owned, onConfirm, onClose,
+  target, baseMult, cityMult, localCcy, now, busy, result, owned, onConfirm, onClose,
 }: {
   target: AcquireTarget;
   baseMult: number;
+  cityMult: number;
+  localCcy: { code: string; symbol: string };
   now: number;
   busy: boolean;
   result: { ok: boolean; msg: string } | null;
@@ -578,7 +596,7 @@ function AcquireModal({
   const { t, tenure } = target;
   const url = useArtAsset(t.artKey);
   const phase = useMemo(() => hashPhase(t.artKey), [t.artKey]);
-  const liveMult = baseMult * (1 + liveWave(now, phase));
+  const liveMult = baseMult * cityMult * (1 + liveWave(now, phase));
   const price = tenure === "own"
     ? t.monthlyRent * PURCHASE_MULTIPLE * PURCHASE_MARKUP * liveMult
     : t.monthlyRent * liveMult;
@@ -610,9 +628,9 @@ function AcquireModal({
           <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2 mb-3">
             <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{verb}</div>
             <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              {formatFiat(price)}{tenure === "rent" ? <span className="text-sm text-cyan-300/70"> / mo</span> : null}
+              {localCcy.symbol}{Math.round(price).toLocaleString("en-US")} <span className="text-sm text-cyan-300/70">{localCcy.code}{tenure === "rent" ? " / mo" : ""}</span>
             </div>
-            <div className="text-[10px] text-zinc-500 tracking-wide mt-0.5">live · BTC ×{liveMult.toFixed(3)}</div>
+            <div className="text-[10px] text-zinc-500 tracking-wide mt-0.5">live · BTC ×{baseMult.toFixed(3)} · CITY ×{cityMult.toFixed(2)} · display only</div>
           </div>
 
           {replacing && (
@@ -668,16 +686,16 @@ function SectionHeader({ icon: Icon, title, kana, subtitle }: { icon: typeof Hom
 }
 
 function PropertyCard({
-  t, baseMult, now, owned, onRent, onBuy, onRenovate,
+  t, baseMult, cityMult, localCcy, now, owned, onRent, onBuy, onRenovate,
 }: {
-  t: PropertyTemplate; baseMult: number; now: number;
+  t: PropertyTemplate; baseMult: number; cityMult: number; localCcy: { code: string; symbol: string }; now: number;
   owned: OwnedProperty | null;
   onRent: () => void; onBuy: () => void;
   onRenovate: (owned: OwnedProperty) => void;
 }) {
   const url = useArtAsset(t.artKey);
   const phase = useMemo(() => hashPhase(t.artKey), [t.artKey]);
-  const liveMult = baseMult * (1 + liveWave(now, phase));
+  const liveMult = baseMult * cityMult * (1 + liveWave(now, phase));
   const liveRent = t.monthlyRent * liveMult;
   const livePurchase = t.monthlyRent * PURCHASE_MULTIPLE * PURCHASE_MARKUP * liveMult;
   const isOwned = owned?.artKey === t.artKey;
@@ -746,8 +764,8 @@ function PropertyCard({
           </button>
         ) : (
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <PriceButton label="RENT / MO" value={liveRent} accent="pink" onClick={onRent} testid={`rent-${t.artKey}`} />
-            <PriceButton label="BUY OUTRIGHT" value={livePurchase} accent="cyan" onClick={onBuy} testid={`buy-${t.artKey}`} />
+            <PriceButton label={`RENT / MO · ${localCcy.code}`} value={liveRent} currencySymbol={localCcy.symbol} accent="pink" onClick={onRent} testid={`rent-${t.artKey}`} />
+            <PriceButton label={`BUY OUTRIGHT · ${localCcy.code}`} value={livePurchase} currencySymbol={localCcy.symbol} accent="cyan" onClick={onBuy} testid={`buy-${t.artKey}`} />
           </div>
         )}
 
@@ -778,7 +796,7 @@ function PropertyCard({
   );
 }
 
-function PriceButton({ label, value, accent, onClick, testid }: { label: string; value: number; accent: "pink" | "cyan"; onClick: () => void; testid: string }) {
+function PriceButton({ label, value, currencySymbol, accent, onClick, testid }: { label: string; value: number; currencySymbol: string; accent: "pink" | "cyan"; onClick: () => void; testid: string }) {
   // Re-key the inner span on each integer change to retrigger the flash
   // animation — gives the visible "live tick" feel.
   const rounded = Math.round(value);
@@ -801,7 +819,7 @@ function PriceButton({ label, value, accent, onClick, testid }: { label: string;
         className="tick-flash text-base font-bold leading-tight"
         style={{ fontFamily: "'Share Tech Mono', monospace" }}
       >
-        ƒ{rounded.toLocaleString("en-US")}
+        {currencySymbol}{rounded.toLocaleString("en-US")}
       </div>
     </button>
   );

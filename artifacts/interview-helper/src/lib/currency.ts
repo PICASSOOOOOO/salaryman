@@ -102,6 +102,48 @@ export function getCityCurrency(cityId: string | null | undefined): CurrencyInfo
   return getCurrencyInfo(getCityCurrencyCode(cityId));
 }
 
+// Cost-of-living baselines are intentionally separate from FX rates: these
+// change what a city feels like in-game, while local currency only changes the
+// label/readout. Minx carries a Western premium; Huda is the reference market.
+const CITY_COST_OF_LIVING: Record<string, number> = {
+  minx_city: 1.42,
+  huda_city: 1.00,
+  solaris_drift: 1.16,
+  verde_nexus: 1.10,
+  obsidian_reach: 0.94,
+  cobalt_harbor: 1.28,
+  vostok_gate: 1.08,
+  crescent_spire: 1.22,
+  amber_circuit: 1.04,
+  dragon_forge: 1.18,
+  coral_vault: 1.24,
+};
+
+export interface CityCostMultipliers {
+  labor: number;
+  property: number;
+}
+
+/**
+ * Return a city's live cost-of-living multiplier.
+ *
+ * The BTC index is a market-pressure input, not a second price source: as BTC
+ * rallies, the Western premium compresses; when BTC falls, the premium widens.
+ * Huda remains the low-cost reference at 1.00x.
+ */
+export function getCityMultiplier(cityId: string | null | undefined, btcMultiplier = 1): number {
+  const baseline = CITY_COST_OF_LIVING[cityId ?? ''] ?? 1.08;
+  const btc = Math.max(0.4, Math.min(4, Number.isFinite(btcMultiplier) && btcMultiplier > 0 ? btcMultiplier : 1));
+  const marketPressure = 1 / Math.sqrt(btc);
+  return 1 + (baseline - 1) * marketPressure;
+}
+
+/** Labor is slightly more elastic than property in the same city. */
+export function getCityCostMultipliers(cityId: string | null | undefined, btcMultiplier = 1): CityCostMultipliers {
+  const property = getCityMultiplier(cityId, btcMultiplier);
+  return { property, labor: 1 + (property - 1) * 0.94 };
+}
+
 // Live USD→currency FX rates ingested from the market-index endpoint. When a
 // code is present here it overrides that currency's static `ratePerUsd`; codes
 // missing from the live payload keep their static fallback.

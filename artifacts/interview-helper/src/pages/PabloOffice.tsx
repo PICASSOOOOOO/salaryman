@@ -18,7 +18,7 @@ import { getAmbianceEnabled, subscribeAudioSettings } from '@/lib/audio-settings
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch, FIAT_CHANGED_EVENT } from '@/lib/api-client';
-import { setLiveRates, getCityCurrency, getCityCurrencyCode } from '@/lib/currency';
+import { setLiveRates, getCityCurrency, getCityCurrencyCode, getCityCostMultipliers } from '@/lib/currency';
 import { NetWorthHUD } from '@/components/NetWorthHUD';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
@@ -287,8 +287,10 @@ export default function PabloOffice() {
   const [goldOz, setGoldOz] = useState<number>(0);
   const [market, setMarket] = useState<{
     btcUsd: number;
+    multiplier: number;
     conversion: { usdToFiat: number; usdToGoldOz: number; btcToFiat: number; btcToGoldOz: number };
     fx?: Record<string, number>;
+    cityMultipliers?: Record<string, { labor: number; property: number }>;
   } | null>(null);
 
   // Live FIAT + GOLD balances from the bank ledger.
@@ -762,6 +764,17 @@ export default function PabloOffice() {
   const withdrawUsd = goldOz * usdPerOz * (1 - GOLD_CASHOUT_FEE);
   const btcInLocal = market ? market.btcUsd * localCcy.ratePerUsd : 0;
   const fiatPerLocal = market ? market.conversion.usdToFiat / localCcy.ratePerUsd : 0;
+  const fallbackCityRates = getCityCostMultipliers(getActiveCityId(), market?.multiplier ?? 1);
+  const activeCityRates = market?.cityMultipliers?.[getActiveCityId()] ?? fallbackCityRates;
+  const minxCityRates = market?.cityMultipliers?.minx_city ?? getCityCostMultipliers('minx_city', market?.multiplier ?? 1);
+  const hudaCityRates = market?.cityMultipliers?.huda_city ?? getCityCostMultipliers('huda_city', market?.multiplier ?? 1);
+  const cheapestCity = hudaCityRates.property <= minxCityRates.property ? 'HUDA' : 'MINX';
+  const cheapestProperty = Math.min(hudaCityRates.property, minxCityRates.property);
+  const activeCityLabel = getActiveCityId() === 'huda_city' ? 'HUDA' : 'MINX';
+  const citySpreadPct = cheapestProperty > 0 ? Math.max(0, (activeCityRates.property / cheapestProperty - 1) * 100) : 0;
+  const spreadSummary = activeCityLabel === cheapestCity
+    ? `${activeCityLabel} LOWEST`
+    : `${activeCityLabel} +${Math.round(citySpreadPct)}% vs ${cheapestCity}`;
   // Salary readout: verified hourly wage once a work visa clears, else the flat
   // unemployment stipend per game-day.
   const salaryReadout = verifiedSalary?.verified
@@ -779,11 +792,12 @@ export default function PabloOffice() {
     ['EXCHANGE', market ? `1 ${localCcyCode} → ƒ${econFmt(fiatPerLocal, 2)}` : '—', 'rgba(217,140,255,.9)'],
     ['LOCAL', `${localCcyCode} ${localCcy.symbol}`, 'rgba(120,255,190,.9)'],
     ['WITHDRAW', market ? `$${econFmt(withdrawUsd, 2)}` : '—', 'rgba(120,255,190,.9)'],
+    ['SPREAD', market ? spreadSummary : '—', 'rgba(255,190,100,.95)'],
   ];
   // Collapsed-strip summary: live wallet + BTC so the headline reads true even
   // before the drawer is opened.
   const economyStrip = walletFiat != null
-    ? `ƒ${walletFiat.toLocaleString()} WALLET${market ? ` · BTC ${localCcy.symbol}${econFmt(btcInLocal)}` : ''}`
+    ? `ƒ${walletFiat.toLocaleString()} WALLET${market ? ` · BTC ${localCcy.symbol}${econFmt(btcInLocal)} · SPREAD ${spreadSummary}` : ''}`
     : 'LOADING…';
   // Camera viewport — full-bleed now that the global NavBar is hidden on /office.
   // Prefer the measured pane (exact fill, safe-area aware); fall back to the
@@ -1320,7 +1334,7 @@ export default function PabloOffice() {
           floor stays full-bleed. Hidden in the embedded monitor. */}
       {!embed && (
       <section
-        onClick={() => { playNav(); navigate('/game/bank'); }}
+         onClick={() => { playNav(); navigate('/game/bank?tab=finance'); }}
         title="Open Banco Ombra"
         style={{
           flex: '0 0 auto',
@@ -1375,7 +1389,7 @@ export default function PabloOffice() {
             {economyCells.map(([label, value, color]) => (
               <div
                 key={label}
-                onClick={() => { playNav(); navigate('/game/bank'); }}
+                 onClick={() => { playNav(); navigate('/game/bank?tab=finance'); }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '1px', cursor: 'pointer' }}
               >
                 <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>

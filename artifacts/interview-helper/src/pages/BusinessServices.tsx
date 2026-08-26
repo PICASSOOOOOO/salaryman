@@ -16,6 +16,8 @@ import {
   CheckCircle, AlertTriangle, Clock, Loader2, X, MapPin, Zap,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { getCityCurrency, getCityMultiplier } from "@/lib/currency";
+import { getActiveCityId, hydrateActiveCityFromSave } from "@/lib/city-defs";
 
 type Tab = "browse" | "mine" | "bounties" | "rentals";
 
@@ -100,7 +102,16 @@ interface FleetVehicle {
   speedBonus: number;
 }
 
+interface CityMarketDisplay {
+  cityId: string;
+  cityName: string;
+  currencyCode: string;
+  currencySymbol: string;
+  laborMultiplier: number;
+}
+
 export default function BusinessServices() {
+  hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>("browse");
   const [listings, setListings] = useState<ServiceListing[]>([]);
@@ -113,6 +124,33 @@ export default function BusinessServices() {
   const [showPostGig, setShowPostGig] = useState(false);
   const [showPostBounty, setShowPostBounty] = useState(false);
   const [ratingTarget, setRatingTarget] = useState<{ listingId: number } | null>(null);
+  const [market, setMarket] = useState<{ multiplier: number; cityMultipliers?: Record<string, { labor: number; property: number }> } | null>(null);
+  const activeCityId = getActiveCityId();
+  const localCcy = getCityCurrency(activeCityId);
+  const laborMultiplier = market?.cityMultipliers?.[activeCityId]?.labor
+    ?? getCityMultiplier(activeCityId, market?.multiplier ?? 1);
+  const cityMarket: CityMarketDisplay = {
+    cityId: activeCityId,
+    cityName: activeCityId === "huda_city" ? "HUDA CITY" : "MINX CITY",
+    currencyCode: localCcy.code,
+    currencySymbol: localCcy.symbol,
+    laborMultiplier,
+  };
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await apiFetch("api/real-estate/market-index");
+        if (!r.ok) return;
+        const j = await r.json();
+        if (alive) setMarket(j);
+      } catch { /* keep local fallback */ }
+    };
+    void load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
 
   const loadListings = useCallback(async () => {
     try {
@@ -227,6 +265,9 @@ export default function BusinessServices() {
           </button>
         ))}
       </div>
+      <div className="px-4 sm:px-8 py-2 border-b border-amber-500/15 bg-amber-950/10 text-[10px] tracking-[0.2em] text-amber-200/80">
+        {cityMarket.cityName} · {cityMarket.currencyCode} {cityMarket.currencySymbol} · LABOR DISPLAY RATE ×{cityMarket.laborMultiplier.toFixed(2)}
+      </div>
 
       {msg && (
         <div className={`mx-4 mt-3 px-3 py-2 rounded text-xs flex items-center gap-2 ${msg.ok ? "bg-emerald-900/40 border border-emerald-500/30 text-emerald-200" : "bg-red-900/40 border border-red-500/30 text-red-200"}`}>
@@ -239,11 +280,11 @@ export default function BusinessServices() {
       <div className="px-4 sm:px-8 py-6 max-w-6xl mx-auto">
         {tab === "browse" && (
           <BrowseTab listings={filtered} catFilter={catFilter} setCatFilter={setCatFilter}
-            onClaim={claimGig} busy={busy} />
+            onClaim={claimGig} busy={busy} cityMarket={cityMarket} />
         )}
         {tab === "mine" && (
           <MyGigsTab listings={mine} onComplete={completeGig} onDispute={disputeGig}
-            onCancel={cancelGig} busy={busy} setRatingTarget={setRatingTarget} />
+            onCancel={cancelGig} busy={busy} setRatingTarget={setRatingTarget} cityMarket={cityMarket} />
         )}
         {tab === "bounties" && (
           <BountyTab bounties={bounties} onAccept={acceptBounty} onCollect={collectBounty}
@@ -272,9 +313,9 @@ export default function BusinessServices() {
 }
 
 // ── Browse Tab ──────────────────────────────────────────────────────────────
-function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy }: {
+function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy, cityMarket }: {
   listings: ServiceListing[]; catFilter: string; setCatFilter: (c: string) => void;
-  onClaim: (id: number) => void; busy: boolean;
+  onClaim: (id: number) => void; busy: boolean; cityMarket: CityMarketDisplay;
 }) {
   return (
     <div>
@@ -297,7 +338,7 @@ function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy }: {
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {listings.map((l) => (
-          <ServiceCard key={l.id} listing={l}>
+          <ServiceCard key={l.id} listing={l} cityMarket={cityMarket}>
             <button type="button" disabled={busy} onClick={() => onClaim(l.id)}
               className="mt-2 w-full px-2 py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-100 text-[10px] tracking-[0.2em] disabled:opacity-50">
               CLAIM GIG
@@ -310,13 +351,14 @@ function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy }: {
 }
 
 // ── My Gigs Tab ──────────────────────────────────────────────────────────────
-function MyGigsTab({ listings, onComplete, onDispute, onCancel, busy, setRatingTarget }: {
+function MyGigsTab({ listings, onComplete, onDispute, onCancel, busy, setRatingTarget, cityMarket }: {
   listings: ServiceListing[];
   onComplete: (id: number) => void;
   onDispute: (id: number) => void;
   onCancel: (id: number) => void;
   busy: boolean;
   setRatingTarget: (t: { listingId: number } | null) => void;
+  cityMarket: CityMarketDisplay;
 }) {
   if (listings.length === 0) {
     return (
@@ -334,7 +376,7 @@ function MyGigsTab({ listings, onComplete, onDispute, onCancel, busy, setRatingT
               <span className={`text-[9px] tracking-[0.3em] px-1.5 py-0.5 rounded mr-2 ${statusColor(l.status)}`}>{l.status.toUpperCase()}</span>
               <span className="text-zinc-100 text-sm">{l.title}</span>
             </div>
-            <span className="text-cyan-200 text-xs shrink-0">{fiat(l.payFiat)}{l.payType === "hourly" ? "/hr" : ""}</span>
+             <span className="text-cyan-200 text-xs shrink-0">{cityMarket.currencySymbol}{Math.round(l.payFiat * cityMarket.laborMultiplier).toLocaleString("en-US")}{l.payType === "hourly" ? "/hr" : ""}</span>
           </div>
           <div className="text-[10px] text-zinc-500 mb-2">
             {l.category} · {l.location} · posted {relTime(l.createdAt)}
@@ -507,12 +549,13 @@ function RentalsTab({ vehicles, onRent, onReturn, busy }: {
 }
 
 // ── Service Card ──────────────────────────────────────────────────────────────
-function ServiceCard({ listing, children }: { listing: ServiceListing; children?: React.ReactNode }) {
+function ServiceCard({ listing, cityMarket, children }: { listing: ServiceListing; cityMarket: CityMarketDisplay; children?: React.ReactNode }) {
+  const displayedPay = Math.round(listing.payFiat * cityMarket.laborMultiplier);
   return (
     <div className="rounded-xl border border-zinc-700/40 bg-zinc-900/30 p-3 flex flex-col">
       <div className="flex items-start justify-between gap-2 mb-1">
         <span className="text-zinc-100 text-sm font-medium">{listing.title}</span>
-        <span className="text-cyan-200 text-xs shrink-0 font-bold">{fiat(listing.payFiat)}{listing.payType === "hourly" ? "/hr" : ""}</span>
+        <span className="text-cyan-200 text-xs shrink-0 font-bold">{cityMarket.currencySymbol}{displayedPay.toLocaleString("en-US")}{listing.payType === "hourly" ? "/hr" : ""}</span>
       </div>
       <div className="text-[10px] text-zinc-500 mb-1">
         {listing.category} · {listing.location} · by {listing.posterName}
@@ -522,6 +565,10 @@ function ServiceCard({ listing, children }: { listing: ServiceListing; children?
         <div className="text-zinc-400 text-[11px] leading-snug mb-2 line-clamp-2">{listing.description}</div>
       )}
       <div className="text-[10px] text-zinc-600">{relTime(listing.createdAt)}</div>
+      <div className="mt-2 flex items-center gap-2 text-[9px] tracking-[0.2em] text-amber-200/70">
+        <span className="rounded border border-amber-400/30 bg-amber-500/5 px-1.5 py-0.5">{cityMarket.cityId === "huda_city" ? "HUDA RATE" : "MINX RATE"}</span>
+        <span>LOCAL {cityMarket.currencyCode} · DISPLAY ×{cityMarket.laborMultiplier.toFixed(2)}</span>
+      </div>
       {children}
     </div>
   );
