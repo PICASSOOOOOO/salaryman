@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   ChevronLeft, Monitor, Volume2, VolumeX, Gamepad2, Building2,
-  ChevronRight, TerminalSquare, Database, Camera, User, FlaskConical,
+  ChevronRight, TerminalSquare, Database, Camera, User, FlaskConical, Map,
   Globe, Coins, Radio,
 } from "lucide-react";
 import { LanguageSelector } from "../../components/LanguageSelector";
@@ -285,6 +285,21 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
               </Sec>
 
               <Sec icon={Building2} title="WORLD">
+                <Link
+                  href="/game/map"
+                  data-testid="link-settings-map"
+                  className="grid grid-cols-[1fr_auto] gap-3 items-center group"
+                >
+                  <div>
+                    <div className="text-xs font-mono text-cyan-200 tracking-wider group-hover:text-cyan-100 flex items-center gap-1.5">
+                      <Map className="w-3.5 h-3.5" /> Visitor Atlas
+                    </div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                      Open the city chart or your current building floor plan.
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
+                </Link>
                 <Link
                   href="/game/directory"
                   className="grid grid-cols-[1fr_auto] gap-3 items-center group"

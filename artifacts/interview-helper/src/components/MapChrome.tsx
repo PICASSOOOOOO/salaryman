@@ -17,12 +17,12 @@ export type AnchorType = typeof CORE_ANCHORS[number]['type'];
  * legends and minimap dots across every map so they match.
  */
 export const LANDMARK_GUIDE: Record<AnchorType, { icon: string; tag: string; color: string }> = {
-  tower:      { icon: '🏢', tag: 'LANDMARK', color: '#c084fc' },
-  security:   { icon: '🚓', tag: 'POLICE',   color: '#f87171' },
-  commerce:   { icon: '🛒', tag: 'SHOPS',    color: '#34d399' },
-  civic:      { icon: '🏛️', tag: 'CIVIC',    color: '#fbbf24' },
-  realestate: { icon: '🏠', tag: 'HOMES',    color: '#a78bfa' },
-  terminal:   { icon: '📟', tag: 'TERMINAL', color: '#38bdf8' },
+  tower:      { icon: '◆', tag: 'LANDMARK', color: '#c084fc' },
+  security:   { icon: '✚', tag: 'POLICE',   color: '#f87171' },
+  commerce:   { icon: '◇', tag: 'SHOPS',    color: '#34d399' },
+  civic:      { icon: '▣', tag: 'CIVIC',    color: '#fbbf24' },
+  realestate: { icon: '⌂', tag: 'HOMES',    color: '#a78bfa' },
+  terminal:   { icon: '▤', tag: 'TERMINAL', color: '#38bdf8' },
 };
 
 /** Decorative compass rose — the shared "you are holding a printed map" cue. */

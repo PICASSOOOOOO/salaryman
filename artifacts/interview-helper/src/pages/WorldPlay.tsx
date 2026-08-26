@@ -154,6 +154,7 @@ import { CREDIT_TIERS, getNextTier, getRoadmapActions, getPtsNeeded } from '@wor
 import { type ExchangeCurrency, SWAP_CURRENCIES, exchangeQuote, roundToCurrency, formatCurrencyAmount, unitValueInFiat } from '@/lib/exchange';
 import { formatFromUsd, getCurrency } from '@/lib/currency';
 import { VEND_FOOD_ITEMS } from '@/lib/vending-food';
+import { clearMapContext, setBuildingMapContext } from '@/lib/map-context';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
@@ -5349,6 +5350,24 @@ export default function WorldPlay() {
   const [elevatorPw, setElevatorPw] = useState('');
   const [elevatorPwError, setElevatorPwError] = useState('');
   const [currentFloor, setCurrentFloor] = useState(0);
+  useEffect(() => {
+    clearMapContext();
+    return () => {
+      if (!gs.current.interior) clearMapContext();
+    };
+  }, []);
+
+  useEffect(() => {
+    const interior = gs.current.interior;
+    if (!interior) return;
+    setBuildingMapContext(
+      interior.bid,
+      interior.def.label,
+      BUILDING_INTERIOR_MAP[interior.bid] ?? interior.def.id,
+      interior.def,
+      currentFloor,
+    );
+  }, [currentFloor]);
   // Play the elevator-cab animation whenever the player changes floor inside a
   // building that has floors (tower). The interior swap already happened; this
   // overlay just covers the transition. Lobby == floor 0, rendered as FL 01.
@@ -7147,6 +7166,13 @@ export default function WorldPlay() {
         savedWorldX: g.px,
         savedWorldY: g.py,
       };
+      setBuildingMapContext(
+        bid,
+        def.label,
+        BUILDING_INTERIOR_MAP[bid] ?? def.id,
+        def,
+        currentFloor,
+      );
       // Defensive: drop any leftover world tap-to-move target so it can't linger
       // across the interior visit and re-trigger a drift the moment we step out.
       g.moveTarget = null;
@@ -7158,7 +7184,7 @@ export default function WorldPlay() {
       executeBuildingLogic(bid);
       g.interiorFadeDir = -1;
     };
-  }, [executeBuildingLogic]);
+  }, [currentFloor, executeBuildingLogic]);
 
   const exitInterior = useCallback(() => {
     const g = gs.current;
@@ -7179,6 +7205,7 @@ export default function WorldPlay() {
       g.moveTarget = null;
       g.interiorMoveTarget = null;
       g.interior = null;
+      clearMapContext();
       setCurrentFloor(0);
       setNarr(`> You step back outside.`);
       g.interiorFadeDir = -1;

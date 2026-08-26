@@ -36,26 +36,17 @@ import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, type OwnedPr
 import { useArtAsset } from '@/lib/art';
 import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
+import { setMapContext } from '@/lib/map-context';
+import {
+  OFFICE_FLOOR_WIDTH_TILES,
+  OFFICE_STATION_LAYOUT,
+  OFFICE_TIER_FLOOR,
+  OFFICE_TIER_MIN_ROWS,
+} from '@/lib/office-layout';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
 // only loads when a cabinet is actually used).
 const ArcadeGame = lazy(() => import('@/pages/ArcadeGames'));
-
-// Tier → furnished floor scale. Desk columns/rows and capsule count grow with
-// the owned property tier so a capsule holder gets a small, intimate floor and a
-// suite holder gets the full bullpen. Floor WIDTH stays fixed (the hand-placed
-// station strip spans the full 45-tile width), so tier scales the desk/capsule
-// COUNT and the floor DEPTH only — never the width.
-const TIER_FLOOR: Record<string, { deskCols: number; deskRows: number; capsules: number }> = {
-  capsule:   { deskCols: 2, deskRows: 1, capsules: 4 },
-  studio:    { deskCols: 3, deskRows: 1, capsules: 6 },
-  coworking: { deskCols: 4, deskRows: 2, capsules: 9 },
-  suite:     { deskCols: 5, deskRows: 2, capsules: 11 },
-};
-// Minimum floor DEPTH (rows) per tier — the exec wing can still grow it further.
-const TIER_MIN_ROWS: Record<string, number> = {
-  capsule: 18, studio: 20, coworking: 24, suite: 28,
-};
 
 interface CitySave {
   salary: number;
@@ -147,6 +138,14 @@ export default function PabloOffice() {
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
+  useEffect(() => {
+    setMapContext({
+      kind: 'office',
+      buildingId: 'salaryman_office',
+      buildingLabel: 'PABLO CORP — OPERATIONS FLOOR',
+      officeTier: tier,
+    });
+  }, [tier]);
   // Story gate — pre-story players are confined to the office (see StoryCityLock
   // in App.tsx). The office is the ONLY place that can begin the story, so the
   // city gate never soft-locks. `null` while the server result is in flight.
@@ -655,8 +654,8 @@ export default function PabloOffice() {
   // Tier-driven furniture + floor depth. The exec wing can still push the floor
   // deeper, so the actual depth is the larger of the exec layout and the tier
   // minimum. Furniture counts come straight from the tier table.
-  const tierFloor = TIER_FLOOR[tier] ?? TIER_FLOOR.capsule;
-  const floorRows = Math.max(execLayout.floorRows, TIER_MIN_ROWS[tier] ?? TIER_MIN_ROWS.capsule);
+  const tierFloor = OFFICE_TIER_FLOOR[tier] ?? OFFICE_TIER_FLOOR.capsule;
+  const floorRows = Math.max(execLayout.floorRows, OFFICE_TIER_MIN_ROWS[tier] ?? OFFICE_TIER_MIN_ROWS.capsule);
 
   // Build the crew roster: Pablo first, then deduped staff + employees.
   // The stage shows a finite set of portrait cards, so cap the head count
@@ -821,7 +820,7 @@ export default function PabloOffice() {
   // Pixel scale-up, driven directly by the office mode.
   //   SURVEILLANCE → shrink-to-fit the ENTIRE floor (fixed CCTV overview).
   //   LIVE         → tight, zoomed-in camera locked on the player.
-  const FLOOR_W_TILES = 22;                   // private office only (no bullpen)
+  const FLOOR_W_TILES = OFFICE_FLOOR_WIDTH_TILES; // private office only (no bullpen)
   const FLOOR_H_TILES = floorRows;            // tier minimum, grown by the exec wing
   const officeScale = useMemo(() => {
     if (surveillance) {
@@ -850,36 +849,22 @@ export default function PabloOffice() {
   // sprites for objects with no art yet (comms phone, vending, sound rig,
   // arcade, water cooler).
   const stations = useMemo<OfficeStation[]>(() => {
-    const base: OfficeStation[] = [
-      // ELEVATOR — the floor's exit, set into the BACK wall like a real lift so
-      // it reads as a fixed feature of the room, not a floating marker. This is
-      // the natural story start: stepping in begins the run when you're ready.
-      {
-        id: 'elevator', label: 'ELEVATOR', col: 15, row: 1, glyph: 'elevator', radius: 30,
-        onInteract: () => {
-          playClick();
-          const g = storyGateRef.current;
-          if (g?.active) { playNav(); navigate('/world/play'); }
-          else if (g?.eligible) { beginStory(); }
-          else { setElevatorLocked(true); }
-        },
+    const actions: Record<string, () => void> = {
+      elevator: () => {
+        playClick();
+        const g = storyGateRef.current;
+        if (g?.active) { playNav(); navigate('/world/play'); }
+        else if (g?.eligible) { beginStory(); }
+        else { setElevatorLocked(true); }
       },
-      // ATM — cash machine built into the back wall beside the lift.
-      {
-        id: 'atm', label: 'ATM', col: 8, row: 1, glyph: 'atm', radius: 28,
-        onInteract: () => { playNav(); navigate('/game/bank'); },
-      },
-      // PAYPHONE — wall-mounted booth on the left wall; rings out to COMMS.
-      {
-        id: 'payphone', label: 'PAYPHONE', col: 1, row: 7, glyph: 'payphone', radius: 28,
-        onInteract: () => { playNav(); navigate('/comms'); },
-      },
-      // VENDING — snack machine flush against the left wall, below the payphone.
-      {
-        id: 'vending', label: 'VENDING', col: 1, row: 12, glyph: 'vending', radius: 28,
-        onInteract: () => { playNav(); navigate('/vending?from=office'); },
-      },
-    ];
+      atm: () => { playNav(); navigate('/game/bank'); },
+      payphone: () => { playNav(); navigate('/comms'); },
+      vending: () => { playNav(); navigate('/vending?from=office'); },
+    };
+    const base: OfficeStation[] = OFFICE_STATION_LAYOUT.map((station) => ({
+      ...station,
+      onInteract: actions[station.id],
+    }));
     // Using ANY object counts toward the discovery "interact" step — wrap every
     // station so the contextual cue advances no matter what the player tries.
     return base.map((s) => ({ ...s, onInteract: () => { markInteracted(); s.onInteract(); } }));
@@ -977,6 +962,7 @@ export default function PabloOffice() {
           </div>
           {hkBtn(() => { playClick(); setShowMissions(true); }, '◇ MISSIONS', showMissions)}
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
+          <Link href="/game/map" data-testid="link-office-map" onClick={() => playNav()} style={{ color: '#c7f36b', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>MAP »</Link>
           <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>
         </div>
       </header>

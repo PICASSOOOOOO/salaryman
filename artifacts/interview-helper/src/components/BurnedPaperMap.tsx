@@ -1,22 +1,6 @@
-import { useMemo, useState } from "react";
-import { CORE_ANCHORS, DOWNTOWN_BOUNDS } from "@/lib/city-config";
-import { CompassRose, LANDMARK_GUIDE } from "@/components/MapChrome";
-
-/**
- * Burned-paper world map — the GO TO WORK chart.
- *
- * Aesthetic: think a torn, sepia, slightly charred sheet pinned to a desk.
- * Unexplored regions are shown but blurred + low-contrast (RDR2 trick: the
- * land is still THERE, you just don't know what's on it). Explored tiles
- * burn through the haze so POIs become readable.
- *
- * Player dots are optional — the same component is reused full-screen for
- * the /game/map page (no dots) and as the in-world minimap (dots overlay).
- *
- * Tile size matches the server fog: 1 tile == 256 world units. We render
- * the explored tiles as a slightly-rotated mask of warm windows in the
- * paper, instead of a stark binary fog cliff.
- */
+import { useMemo, useState, type MouseEvent } from 'react';
+import { CITY_QUADRANTS, CORE_ANCHORS, DOWNTOWN_BOUNDS } from '@/lib/city-config';
+import { CompassRose, LANDMARK_GUIDE } from '@/components/MapChrome';
 
 const TILE = 256;
 
@@ -24,7 +8,7 @@ export type MapPlayer = {
   id: string;
   x: number;
   y: number;
-  faction?: "self" | "friendly" | "hostile" | "neutral";
+  faction?: 'self' | 'friendly' | 'hostile' | 'neutral';
   label?: string;
 };
 
@@ -40,373 +24,365 @@ export type WorldEventMarker = {
 };
 
 const EVENT_META: Record<string, { color: string; stroke: string; icon: string; label: string }> = {
-  evt_fire:     { color: "#ff6622", stroke: "#ff8844", icon: "🔥", label: "FIRE" },
-  evt_blackout: { color: "#ffe04b", stroke: "#fff066", icon: "⚡", label: "BLACKOUT" },
-  evt_medical:  { color: "#22ee88", stroke: "#44ffaa", icon: "⛑", label: "MEDICAL" },
-  evt_robbery:  { color: "#ff2233", stroke: "#ff5566", icon: "🔴", label: "ROBBERY" },
+  evt_fire: { color: '#ff704d', stroke: '#ffb199', icon: '▲', label: 'FIRE' },
+  evt_blackout: { color: '#f5d66d', stroke: '#fff2a8', icon: '✦', label: 'BLACKOUT' },
+  evt_medical: { color: '#45e0a0', stroke: '#9affca', icon: '+', label: 'MEDICAL' },
+  evt_robbery: { color: '#ff5d79', stroke: '#ff9caf', icon: '!', label: 'ROBBERY' },
 };
-
-const DEFAULT_EVENT_META = { color: "#ff6622", stroke: "#ff8844", icon: "⚠", label: "ALERT" };
+const DEFAULT_EVENT_META = { color: '#ff704d', stroke: '#ffb199', icon: '!', label: 'ALERT' };
 
 interface BurnedPaperMapProps {
-  exploredTiles: string[]; // "qx,qy"
+  exploredTiles: string[];
   players?: MapPlayer[];
+  currentPosition?: { x: number; y: number } | null;
   waypoint?: MapWaypoint | null;
   onWaypointSet?: (x: number, y: number) => void;
   events?: WorldEventMarker[];
   onEventClick?: (ev: WorldEventMarker) => void;
-  // Optional override of the visible world bounds. Defaults to a margin around city.
   bounds?: { minX: number; minY: number; maxX: number; maxY: number };
   className?: string;
 }
 
-// city-config exposes DOWNTOWN_BOUNDS as {left,top,right,bottom}; we adapt
-// to {minX,minY,maxX,maxY} here so the map can speak its own coord vocab.
 const DEFAULT_BOUNDS = {
-  minX: DOWNTOWN_BOUNDS.left - 1500,
-  minY: DOWNTOWN_BOUNDS.top - 1500,
-  maxX: DOWNTOWN_BOUNDS.right + 1500,
-  maxY: DOWNTOWN_BOUNDS.bottom + 1500,
+  minX: DOWNTOWN_BOUNDS.left - 900,
+  minY: DOWNTOWN_BOUNDS.top - 650,
+  maxX: DOWNTOWN_BOUNDS.right + 900,
+  maxY: DOWNTOWN_BOUNDS.bottom + 650,
 };
+
+function tileId(x: number, y: number): string {
+  return `${Math.floor(x / TILE)},${Math.floor(y / TILE)}`;
+}
+
+function exploredAreaOverlaps(
+  explored: Set<string>,
+  area: { x: number; y: number; w: number; h: number },
+): boolean {
+  const minX = Math.floor(area.x / TILE);
+  const maxX = Math.floor((area.x + area.w - 1) / TILE);
+  const minY = Math.floor(area.y / TILE);
+  const maxY = Math.floor((area.y + area.h - 1) / TILE);
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (explored.has(`${x},${y}`)) return true;
+    }
+  }
+  return false;
+}
+
+export function mapClientPointToWorld(
+  clientX: number,
+  clientY: number,
+  rect: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+): { x: number; y: number } | null {
+  const worldWidth = bounds.maxX - bounds.minX;
+  const worldHeight = bounds.maxY - bounds.minY;
+  if (worldWidth <= 0 || worldHeight <= 0 || rect.width <= 0 || rect.height <= 0) return null;
+
+  const scale = Math.min(rect.width / worldWidth, rect.height / worldHeight);
+  const renderedWidth = worldWidth * scale;
+  const renderedHeight = worldHeight * scale;
+  const offsetX = (rect.width - renderedWidth) / 2;
+  const offsetY = (rect.height - renderedHeight) / 2;
+  const localX = clientX - rect.left - offsetX;
+  const localY = clientY - rect.top - offsetY;
+
+  if (localX < 0 || localY < 0 || localX > renderedWidth || localY > renderedHeight) return null;
+  return {
+    x: Math.round(bounds.minX + localX / scale),
+    y: Math.round(bounds.minY + localY / scale),
+  };
+}
+
+function factionColor(faction: MapPlayer['faction']): string {
+  if (faction === 'self') return '#c7f36b';
+  if (faction === 'friendly') return '#55d6ff';
+  if (faction === 'hostile') return '#ff5d79';
+  return '#a9b5c8';
+}
 
 export function BurnedPaperMap({
   exploredTiles,
   players = [],
+  currentPosition = null,
   waypoint = null,
   onWaypointSet,
   events = [],
   onEventClick,
   bounds = DEFAULT_BOUNDS,
-  className = "",
+  className = '',
 }: BurnedPaperMapProps) {
   const [hoverPoi, setHoverPoi] = useState<string | null>(null);
   const [hoverEvent, setHoverEvent] = useState<string | null>(null);
-
-  // Tile set lookup. Memoized because the explored list comes from server
-  // and rarely changes mid-session.
   const exploredSet = useMemo(() => new Set(exploredTiles), [exploredTiles]);
-
   const w = bounds.maxX - bounds.minX;
   const h = bounds.maxY - bounds.minY;
-
-  // Tile grid for the fog mask.
   const tileMinX = Math.floor(bounds.minX / TILE);
   const tileMinY = Math.floor(bounds.minY / TILE);
   const tileMaxX = Math.ceil(bounds.maxX / TILE);
   const tileMaxY = Math.ceil(bounds.maxY / TILE);
 
-  function svgClick(e: React.MouseEvent<SVGSVGElement>) {
+  function svgClick(event: MouseEvent<SVGSVGElement>) {
     if (!onWaypointSet) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xFrac = (e.clientX - rect.left) / rect.width;
-    const yFrac = (e.clientY - rect.top) / rect.height;
-    const wx = Math.round(bounds.minX + xFrac * w);
-    const wy = Math.round(bounds.minY + yFrac * h);
-    onWaypointSet(wx, wy);
+    const point = mapClientPointToWorld(
+      event.clientX,
+      event.clientY,
+      event.currentTarget.getBoundingClientRect(),
+      bounds,
+    );
+    if (point) onWaypointSet(point.x, point.y);
   }
 
+  const cityW = DOWNTOWN_BOUNDS.right - DOWNTOWN_BOUNDS.left;
+  const cityH = DOWNTOWN_BOUNDS.bottom - DOWNTOWN_BOUNDS.top;
+  const cityCx = DOWNTOWN_BOUNDS.left + cityW / 2;
+  const cityCy = DOWNTOWN_BOUNDS.top + cityH / 2;
+
   return (
-    <div className={`relative w-full h-full select-none ${className}`} style={{
-      // Outer mat: charred edges around the paper
-      background: "radial-gradient(ellipse at center, #1a1410 60%, #0a0805 100%)",
-      padding: "12px",
-      borderRadius: "6px",
-    }}>
+    <div className={`relative w-full h-full select-none ${className}`}
+      style={{ background: 'radial-gradient(circle at 50% 30%, #112637 0%, #071019 55%, #03060b 100%)', padding: 10 }}>
       <style>{`
-        @keyframes evPulse {
-          0%   { r: 22; opacity: 0.9; }
-          50%  { r: 38; opacity: 0.3; }
-          100% { r: 22; opacity: 0.9; }
-        }
-        @keyframes evRing {
-          0%   { r: 28; opacity: 0.7; }
-          100% { r: 56; opacity: 0; }
-        }
-        .ev-pulse { animation: evPulse 1.4s ease-in-out infinite; }
-        .ev-ring  { animation: evRing  1.4s ease-out  infinite; }
+        @keyframes mapPulse { 0%,100% { opacity:.45; transform:scale(.8) } 50% { opacity:0; transform:scale(1.45) } }
+        @keyframes mapDash { to { stroke-dashoffset:-120 } }
+        @keyframes mapBeacon { 0%,100% { opacity:.7 } 50% { opacity:1 } }
+        .map-pulse { transform-box:fill-box; transform-origin:center; animation:mapPulse 2.3s ease-out infinite; }
+        .map-dash { animation:mapDash 14s linear infinite; }
+        .map-beacon { animation:mapBeacon 1.8s ease-in-out infinite; }
       `}</style>
       <svg
         viewBox={`${bounds.minX} ${bounds.minY} ${w} ${h}`}
         preserveAspectRatio="xMidYMid meet"
         onClick={svgClick}
         className="w-full h-full"
-        style={{ cursor: onWaypointSet ? "crosshair" : "default", display: "block" }}
+        style={{ cursor: onWaypointSet ? 'crosshair' : 'default', display: 'block' }}
+        aria-label="Minx City visitor map"
+        data-testid="visitor-map"
       >
         <defs>
-          {/* Paper texture — layered noise that reads as fibers + foxing */}
-          <filter id="paperNoise" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" />
-            <feColorMatrix values="0 0 0 0 0.32  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.35 0" />
-            <feComposite in2="SourceGraphic" operator="in" />
-          </filter>
-          <filter id="charBurn" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="3" />
-            <feDisplacementMap in="SourceGraphic" scale="40" />
-          </filter>
-          {/* Vague-but-there: heavy blur for unexplored regions */}
-          <filter id="vagueBlur"><feGaussianBlur stdDeviation="14" /></filter>
-          <filter id="evGlow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
+          <linearGradient id="atlasBase" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#142c3d" />
+            <stop offset="52%" stopColor="#0b1a29" />
+            <stop offset="100%" stopColor="#071019" />
+          </linearGradient>
+          <linearGradient id="cityCore" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#153c4d" stopOpacity=".75" />
+            <stop offset="50%" stopColor="#102439" stopOpacity=".78" />
+            <stop offset="100%" stopColor="#102035" stopOpacity=".9" />
+          </linearGradient>
+          <pattern id="atlasGrid" width="128" height="128" patternUnits="userSpaceOnUse">
+            <path d="M128 0H0V128" fill="none" stroke="#65d4ee" strokeOpacity=".08" strokeWidth="2" />
+            <circle cx="4" cy="4" r="2" fill="#65d4ee" fillOpacity=".12" />
+          </pattern>
+          <pattern id="fogTile" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path d="M-8 32L32 -8M8 40L40 8" stroke="#02060d" strokeOpacity=".42" strokeWidth="9" />
+            <path d="M0 0H32V32H0Z" fill="#030811" fillOpacity=".56" />
+          </pattern>
+          <filter id="atlasGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="10" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-
-          {/* Burned-edge vignette */}
-          <radialGradient id="burnEdge" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#d9b88a" stopOpacity="0" />
-            <stop offset="55%" stopColor="#7a4a1f" stopOpacity="0.0" />
-            <stop offset="80%" stopColor="#3d1f0a" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="#0a0502" stopOpacity="1" />
+          <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <radialGradient id="atlasEdge" cx="50%" cy="48%" r="66%">
+            <stop offset="58%" stopColor="#02060b" stopOpacity="0" />
+            <stop offset="86%" stopColor="#02060b" stopOpacity=".55" />
+            <stop offset="100%" stopColor="#02060b" stopOpacity=".98" />
           </radialGradient>
-          <linearGradient id="paperBase" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e6cfa3" />
-            <stop offset="50%" stopColor="#d2b07f" />
-            <stop offset="100%" stopColor="#a47a4c" />
-          </linearGradient>
         </defs>
 
-        {/* Paper base */}
-        <rect x={bounds.minX} y={bounds.minY} width={w} height={h} fill="url(#paperBase)" />
-        {/* Foxing / fibers */}
-        <rect x={bounds.minX} y={bounds.minY} width={w} height={h} filter="url(#paperNoise)" opacity="0.6" />
+        <rect x={bounds.minX} y={bounds.minY} width={w} height={h} fill="url(#atlasBase)" />
+        <rect x={bounds.minX} y={bounds.minY} width={w} height={h} fill="url(#atlasGrid)" opacity=".75" />
 
-        {/* Vague unexplored layer: hint of streets/blocks under heavy blur */}
-        <g filter="url(#vagueBlur)" opacity="0.55">
-          {/* Coarse street grid suggestion */}
-          {Array.from({ length: 14 }).map((_, i) => (
-            <line
-              key={`v${i}`}
-              x1={bounds.minX + (w / 14) * i}
-              x2={bounds.minX + (w / 14) * i}
-              y1={bounds.minY} y2={bounds.maxY}
-              stroke="#3a2410" strokeWidth="6" opacity="0.4"
-            />
+        {/* Outer geography: the safe city is a bright island in a much darker map. */}
+        <path d={`M ${bounds.minX + 150} ${cityCy - 190} L ${DOWNTOWN_BOUNDS.left - 420} ${DOWNTOWN_BOUNDS.top + 220}
+          L ${DOWNTOWN_BOUNDS.left - 130} ${DOWNTOWN_BOUNDS.bottom + 270}
+          L ${DOWNTOWN_BOUNDS.right + 480} ${DOWNTOWN_BOUNDS.bottom + 140}
+          L ${DOWNTOWN_BOUNDS.right + 370} ${DOWNTOWN_BOUNDS.top - 250} Z`}
+          fill="#091520" stroke="#2d7184" strokeOpacity=".22" strokeWidth="12" />
+        <path d={`M ${bounds.minX} ${cityCy + 290} C ${cityCx - 720} ${cityCy + 80}, ${cityCx - 260} ${cityCy + 520}, ${bounds.maxX} ${cityCy + 160}`}
+          fill="none" stroke="#2a8a9a" strokeOpacity=".13" strokeWidth="20" />
+        <path d={`M ${bounds.minX} ${cityCy + 290} C ${cityCx - 720} ${cityCy + 80}, ${cityCx - 260} ${cityCy + 520}, ${bounds.maxX} ${cityCy + 160}`}
+          fill="none" stroke="#65d4ee" strokeOpacity=".18" strokeWidth="3" strokeDasharray="28 20" className="map-dash" />
+
+        {/* City core and its four readable district plates. */}
+        <rect x={DOWNTOWN_BOUNDS.left} y={DOWNTOWN_BOUNDS.top} width={cityW} height={cityH}
+          rx="22" fill="url(#cityCore)" stroke="#59d6f2" strokeOpacity=".56" strokeWidth="5" />
+        {CITY_QUADRANTS.map((district) => {
+          const known = exploredAreaOverlaps(exploredSet, district);
+          return (
+            <g key={district.id}>
+              <rect x={district.x} y={district.y} width={district.w} height={district.h}
+                fill={district.color} fillOpacity={known ? '.12' : '.045'} stroke={district.color}
+                strokeOpacity={known ? '.55' : '.2'} strokeWidth="3" strokeDasharray="12 8" />
+              <path d={`M${district.x + 26} ${district.y + 52}H${district.x + district.w - 26}`}
+                stroke={district.color} strokeOpacity={known ? '.3' : '.1'} strokeWidth="2" />
+              <text x={district.x + 28} y={district.y + 38} fill={district.color} fillOpacity={known ? '.95' : '.32'}
+                fontSize="24" fontFamily="monospace" fontWeight="bold" letterSpacing="3">
+                {district.label}
+              </text>
+              <text x={district.x + 30} y={district.y + 76} fill="#a9bfd1" fillOpacity={known ? '.7' : '.24'}
+                fontSize="15" fontFamily="monospace" letterSpacing="1">
+                {known ? district.blurb.toUpperCase() : 'SIGNAL OBSCURED · EXPLORE TO REVEAL'}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* A street spine and block-scale route hints. */}
+        <g fill="none" strokeLinecap="round">
+          <path d={`M${DOWNTOWN_BOUNDS.left + 50} ${cityCy}H${DOWNTOWN_BOUNDS.right - 50}`}
+            stroke="#07111e" strokeWidth="66" />
+          <path d={`M${cityCx} ${DOWNTOWN_BOUNDS.top + 35}V${DOWNTOWN_BOUNDS.bottom - 35}`}
+            stroke="#07111e" strokeWidth="62" />
+          <path d={`M${DOWNTOWN_BOUNDS.left + 50} ${cityCy}H${DOWNTOWN_BOUNDS.right - 50}`}
+            stroke="#55d6ff" strokeOpacity=".43" strokeWidth="4" strokeDasharray="25 16" className="map-dash" />
+          <path d={`M${cityCx} ${DOWNTOWN_BOUNDS.top + 35}V${DOWNTOWN_BOUNDS.bottom - 35}`}
+            stroke="#55d6ff" strokeOpacity=".35" strokeWidth="4" strokeDasharray="25 16" className="map-dash" />
+          {[DOWNTOWN_BOUNDS.left + 260, DOWNTOWN_BOUNDS.left + 550, DOWNTOWN_BOUNDS.right - 260].map((x) => (
+            <path key={`road-v-${x}`} d={`M${x} ${DOWNTOWN_BOUNDS.top + 45}V${DOWNTOWN_BOUNDS.bottom - 45}`}
+              stroke="#9dc2cf" strokeOpacity=".14" strokeWidth="12" />
           ))}
-          {Array.from({ length: 10 }).map((_, i) => (
-            <line
-              key={`h${i}`}
-              x1={bounds.minX} x2={bounds.maxX}
-              y1={bounds.minY + (h / 10) * i}
-              y2={bounds.minY + (h / 10) * i}
-              stroke="#3a2410" strokeWidth="6" opacity="0.4"
-            />
+          {[DOWNTOWN_BOUNDS.top + 190, DOWNTOWN_BOUNDS.top + 430, DOWNTOWN_BOUNDS.bottom - 150].map((y) => (
+            <path key={`road-h-${y}`} d={`M${DOWNTOWN_BOUNDS.left + 45} ${y}H${DOWNTOWN_BOUNDS.right - 45}`}
+              stroke="#9dc2cf" strokeOpacity=".14" strokeWidth="12" />
           ))}
-          {/* Phantom downtown blob */}
-          <ellipse
-            cx={(DOWNTOWN_BOUNDS.left + DOWNTOWN_BOUNDS.right) / 2}
-            cy={(DOWNTOWN_BOUNDS.top + DOWNTOWN_BOUNDS.bottom) / 2}
-            rx={(DOWNTOWN_BOUNDS.right - DOWNTOWN_BOUNDS.left) / 2 + 200}
-            ry={(DOWNTOWN_BOUNDS.bottom - DOWNTOWN_BOUNDS.top) / 2 + 200}
-            fill="#5a3818" opacity="0.5"
-          />
         </g>
+        <text x={cityCx} y={DOWNTOWN_BOUNDS.bottom + 190} textAnchor="middle"
+          fill="#75d7ea" fillOpacity=".55" fontSize="17" fontFamily="monospace" letterSpacing="5">
+          SAFE CORE // STREET GRID
+        </text>
 
-        {/* Fog mask — clearer "windows" only over explored tiles */}
-        <g>
+        {/* Fog is a deliberate overlay: every tile remains legible as a shape,
+            but its detail is hidden until the exploration set says otherwise. */}
+        <g pointerEvents="none">
           {Array.from({ length: tileMaxY - tileMinY }).flatMap((_, dy) =>
-            Array.from({ length: tileMaxX - tileMinX }).map((_, dx) => {
+            Array.from({ length: tileMaxX - tileMinX }).map((__, dx) => {
               const qx = tileMinX + dx;
               const qy = tileMinY + dy;
-              if (!exploredSet.has(`${qx},${qy}`)) return null;
+              const known = exploredSet.has(`${qx},${qy}`);
               return (
-                <rect
-                  key={`t${qx}_${qy}`}
-                  x={qx * TILE} y={qy * TILE}
-                  width={TILE} height={TILE}
-                  fill="#f7e6c2"
-                  opacity="0.45"
-                />
+                <rect key={`fog-${qx}-${qy}`} x={qx * TILE} y={qy * TILE} width={TILE} height={TILE}
+                  fill={known ? '#6ce7ef' : 'url(#fogTile)'} fillOpacity={known ? '.08' : '.5'}
+                  stroke={known ? '#6ce7ef' : '#152b3c'} strokeOpacity={known ? '.18' : '.12'} strokeWidth="2" />
               );
             }),
           )}
         </g>
 
-        {/* Anchor POIs — only visible / labeled when explored nearby OR core */}
+        {/* POIs become crisp and labeled only after their tile is discovered. */}
         <g>
-          {CORE_ANCHORS.map((a) => {
-            const tileId = `${Math.floor(a.x / TILE)},${Math.floor(a.y / TILE)}`;
-            const known = exploredSet.has(tileId);
-            const fill = known ? "#3a1d08" : "#3a1d08";
-            const opacity = known ? 1 : 0.35;
+          {CORE_ANCHORS.map((anchor) => {
+            const known = exploredSet.has(tileId(anchor.x, anchor.y));
+            const guide = LANDMARK_GUIDE[anchor.type];
+            const visible = known || hoverPoi === anchor.id;
             return (
-              <g
-                key={a.id}
-                onMouseEnter={() => setHoverPoi(a.id)}
-                onMouseLeave={() => setHoverPoi(null)}
-                style={{ cursor: "pointer" }}
-              >
-                <circle cx={a.x} cy={a.y} r="22" fill={fill} opacity={opacity} />
-                <circle cx={a.x} cy={a.y} r="13" fill="#f4d589" opacity={opacity} />
-                <text x={a.x} y={a.y + 7} textAnchor="middle" fontSize="20" opacity={opacity}>
-                  {LANDMARK_GUIDE[a.type].icon}
+              <g key={anchor.id} onClick={(event) => event.stopPropagation()}
+                onMouseEnter={() => setHoverPoi(anchor.id)} onMouseLeave={() => setHoverPoi(null)}
+                style={{ cursor: 'help' }} data-testid={`poi-${anchor.id}`}>
+                <circle cx={anchor.x} cy={anchor.y} r="48" fill={guide.color} fillOpacity={known ? '.15' : '.035'} />
+                <circle cx={anchor.x} cy={anchor.y} r="30" fill="#071019" stroke={guide.color}
+                  strokeOpacity={known ? '.95' : '.3'} strokeWidth={known ? '5' : '3'} />
+                <text x={anchor.x} y={anchor.y + 10} textAnchor="middle" fill={guide.color}
+                  fillOpacity={known ? '1' : '.35'} fontSize="26" fontFamily="monospace" fontWeight="bold">
+                  {guide.icon}
                 </text>
-                {(known || hoverPoi === a.id) && (
-                  <text
-                    x={a.x} y={a.y - 32}
-                    textAnchor="middle"
-                    fontFamily="ui-monospace, monospace"
-                    fontSize="34"
-                    fill="#2a1505"
-                    style={{ paintOrder: "stroke", stroke: "#e6cfa3", strokeWidth: 6 }}
-                  >
-                    {a.short}
-                  </text>
+                {visible && (
+                  <g>
+                    <rect x={anchor.x - 105} y={anchor.y - 86} width="210" height="35" rx="5"
+                      fill="#050c14" fillOpacity=".94" stroke={guide.color} strokeOpacity=".65" />
+                    <text x={anchor.x} y={anchor.y - 63} textAnchor="middle" fill="#e0f5ff"
+                      fontSize="19" fontFamily="monospace" fontWeight="bold" letterSpacing="2">
+                      {anchor.short}
+                    </text>
+                    <text x={anchor.x} y={anchor.y + 73} textAnchor="middle" fill={guide.color}
+                      fillOpacity={known ? '.8' : '.5'} fontSize="13" fontFamily="monospace" letterSpacing="2">
+                      {known ? guide.tag : 'SIGNAL LOST'}
+                    </text>
+                  </g>
                 )}
               </g>
             );
           })}
         </g>
 
-        {/* Players */}
-        <g>
-          {players.map((p) => {
-            const color = p.faction === "self" ? "#22c55e"
-              : p.faction === "friendly" ? "#3b82f6"
-              : p.faction === "hostile" ? "#ef4444"
-              : "#a3a3a3";
-            return (
-              <g key={p.id}>
-                <circle cx={p.x} cy={p.y} r="14" fill={color} opacity="0.35" />
-                <circle cx={p.x} cy={p.y} r="7" fill={color} stroke="#0a0502" strokeWidth="2" />
-                {p.faction === "self" && (
-                  <circle cx={p.x} cy={p.y} r="22" fill="none" stroke={color} strokeWidth="2" opacity="0.6">
-                    <animate attributeName="r" values="14;28;14" dur="2.5s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.6;0;0.6" dur="2.5s" repeatCount="indefinite" />
-                  </circle>
-                )}
-              </g>
-            );
-          })}
-        </g>
-
-        {/* World event markers — pulsing alert beacons */}
-        <g filter="url(#evGlow)">
-          {events.map((ev) => {
-            const meta = EVENT_META[ev.eventType] ?? DEFAULT_EVENT_META;
-            const isHovered = hoverEvent === ev.id;
-            return (
-              <g
-                key={ev.id}
-                style={{ cursor: onEventClick ? "pointer" : "default" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onEventClick) onEventClick(ev);
-                  else if (onWaypointSet) onWaypointSet(ev.locationX, ev.locationY);
-                }}
-                onMouseEnter={() => setHoverEvent(ev.id)}
-                onMouseLeave={() => setHoverEvent(null)}
-              >
-                {/* Outer expanding ring */}
-                <circle
-                  cx={ev.locationX} cy={ev.locationY}
-                  r="28"
-                  fill="none"
-                  stroke={meta.stroke}
-                  strokeWidth="3"
-                  opacity="0.7"
-                  className="ev-ring"
-                  style={{ animationDelay: `${String(ev.id).charCodeAt(0) * 97 % 800}ms` }}
-                />
-                {/* Inner pulsing fill */}
-                <circle
-                  cx={ev.locationX} cy={ev.locationY}
-                  r="22"
-                  fill={meta.color}
-                  fillOpacity="0.25"
-                  stroke={meta.stroke}
-                  strokeWidth="3"
-                  className="ev-pulse"
-                  style={{ animationDelay: `${String(ev.id).charCodeAt(0) * 97 % 800}ms` }}
-                />
-                {/* Icon */}
-                <text
-                  x={ev.locationX} y={ev.locationY + 10}
-                  textAnchor="middle"
-                  fontSize="28"
-                >
-                  {meta.icon}
-                </text>
-                {/* Label badge */}
-                <rect
-                  x={ev.locationX - 42} y={ev.locationY - 68}
-                  width="84" height="22"
-                  rx="4"
-                  fill="#0a0502"
-                  fillOpacity="0.85"
-                  stroke={meta.color}
-                  strokeWidth="2"
-                />
-                <text
-                  x={ev.locationX} y={ev.locationY - 52}
-                  textAnchor="middle"
-                  fontFamily="ui-monospace, monospace"
-                  fontSize="18"
-                  fill={meta.color}
-                  fontWeight="bold"
-                >
-                  {isHovered ? "→ GO HERE" : meta.label}
-                </text>
-              </g>
-            );
-          })}
-        </g>
-
-        {/* Waypoint marker */}
-        {waypoint && (
-          <g>
-            <circle cx={waypoint.x} cy={waypoint.y} r="36" fill="none" stroke="#facc15" strokeWidth="6" strokeDasharray="14 10" />
-            <line x1={waypoint.x} y1={waypoint.y - 60} x2={waypoint.x} y2={waypoint.y - 24} stroke="#facc15" strokeWidth="6" />
-            <text
-              x={waypoint.x} y={waypoint.y - 70}
-              textAnchor="middle"
-              fontFamily="ui-monospace, monospace"
-              fontSize="32" fill="#facc15"
-              style={{ paintOrder: "stroke", stroke: "#0a0502", strokeWidth: 5 }}
-            >
-              {waypoint.label || "WAYPOINT"}
+        {/* The player's position is always readable, even if the tile itself is
+            still fogged, so the chart never loses its orientation. */}
+        {currentPosition && (
+          <g pointerEvents="none">
+            <circle cx={currentPosition.x} cy={currentPosition.y} r="78" fill="#c7f36b" fillOpacity=".2" className="map-pulse" />
+            <circle cx={currentPosition.x} cy={currentPosition.y} r="25" fill="#c7f36b" fillOpacity=".2" stroke="#c7f36b" strokeWidth="4" />
+            <path d={`M${currentPosition.x} ${currentPosition.y - 42}l-12 18h24z`} fill="#c7f36b" filter="url(#softGlow)" />
+            <text x={currentPosition.x} y={currentPosition.y + 63} textAnchor="middle" fill="#d9ff83"
+              fontSize="15" fontFamily="monospace" fontWeight="bold" letterSpacing="2">
+              YOU ARE HERE
             </text>
           </g>
         )}
-
-        {/* Burned-edge vignette on top */}
-        <rect x={bounds.minX} y={bounds.minY} width={w} height={h} fill="url(#burnEdge)" pointerEvents="none" />
-      </svg>
-
-      {/* Title strip */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded text-[10px] font-mono tracking-[0.45em]"
-        style={{ background: "rgba(20,12,4,0.7)", color: "#e6cfa3", border: "1px solid #5a3a18" }}>
-        MINX CITY · VISITOR MAP
-      </div>
-
-      <CompassRose size={54} color="#e6cfa3" accent="#c98a3a"
-        className="absolute bottom-4 right-4 pointer-events-none opacity-80" />
-
-      {/* Active event legend */}
-      {events.length > 0 && (
-        <div className="absolute bottom-4 left-4 flex flex-col gap-1">
-          {events.map((ev) => {
-            const meta = EVENT_META[ev.eventType] ?? DEFAULT_EVENT_META;
+        <g>
+          {players.map((player) => {
+            const color = factionColor(player.faction);
             return (
-              <div
-                key={ev.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono tracking-widest cursor-pointer"
-                style={{
-                  background: "rgba(10,5,2,0.85)",
-                  border: `1px solid ${meta.color}55`,
-                  color: meta.color,
-                }}
-                onClick={() => {
-                  if (onEventClick) onEventClick(ev);
-                  else if (onWaypointSet) onWaypointSet(ev.locationX, ev.locationY);
-                }}
-              >
-                <span>{meta.icon}</span>
-                <span>{meta.label}</span>
-                <span style={{ color: "#a0916a" }}>· TAP TO GO</span>
-              </div>
+              <g key={player.id} pointerEvents="none">
+                <circle cx={player.x} cy={player.y} r="24" fill={color} fillOpacity=".18" />
+                <circle cx={player.x} cy={player.y} r="10" fill={color} stroke="#02060b" strokeWidth="3" />
+                {player.label && <text x={player.x} y={player.y - 20} textAnchor="middle" fill={color} fontSize="13" fontFamily="monospace">{player.label}</text>}
+              </g>
             );
           })}
-        </div>
-      )}
+        </g>
+
+        <g>
+          {events.map((event) => {
+            const meta = EVENT_META[event.eventType] ?? DEFAULT_EVENT_META;
+            const hovered = hoverEvent === event.id;
+            return (
+              <g key={event.id} style={{ cursor: onEventClick ? 'pointer' : 'default' }}
+                onClick={(e) => { e.stopPropagation(); onEventClick ? onEventClick(event) : onWaypointSet?.(event.locationX, event.locationY); }}
+                onMouseEnter={() => setHoverEvent(event.id)} onMouseLeave={() => setHoverEvent(null)}
+                data-testid={`map-event-${event.id}`}>
+                <circle cx={event.locationX} cy={event.locationY} r="55" fill="none" stroke={meta.stroke}
+                  strokeWidth="5" className="map-pulse" />
+                <circle cx={event.locationX} cy={event.locationY} r="28" fill={meta.color} fillOpacity=".28"
+                  stroke={meta.stroke} strokeWidth="4" className="map-beacon" filter="url(#softGlow)" />
+                <text x={event.locationX} y={event.locationY + 10} textAnchor="middle" fill="#fff" fontSize="25" fontFamily="monospace" fontWeight="bold">{meta.icon}</text>
+                <rect x={event.locationX - 70} y={event.locationY - 88} width="140" height="28" rx="4"
+                  fill="#050c14" fillOpacity=".95" stroke={meta.color} strokeWidth="2" />
+                <text x={event.locationX} y={event.locationY - 68} textAnchor="middle" fill={meta.color}
+                  fontSize="14" fontFamily="monospace" fontWeight="bold" letterSpacing="1">
+                  {hovered ? 'SELECT RESPONSE' : meta.label}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+
+        {waypoint && (
+          <g pointerEvents="none">
+            <circle cx={waypoint.x} cy={waypoint.y} r="45" fill="none" stroke="#e7ff65" strokeWidth="5" strokeDasharray="16 11" />
+            <line x1={waypoint.x} y1={waypoint.y - 72} x2={waypoint.x} y2={waypoint.y - 38} stroke="#e7ff65" strokeWidth="5" />
+            <text x={waypoint.x} y={waypoint.y - 82} textAnchor="middle" fill="#e7ff65"
+              fontSize="16" fontFamily="monospace" fontWeight="bold" letterSpacing="2"
+              style={{ paintOrder: 'stroke', stroke: '#03060b', strokeWidth: 6 }}>
+              {waypoint.label || 'WAYPOINT'}
+            </text>
+          </g>
+        )}
+        <rect x={bounds.minX} y={bounds.minY} width={w} height={h} fill="url(#atlasEdge)" pointerEvents="none" />
+      </svg>
+
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded border border-cyan-300/30 bg-[#050c14]/90 text-center pointer-events-none">
+        <div className="text-[8px] font-mono tracking-[.35em] text-cyan-300/60">SALARYMAN // {DOWNTOWN_BOUNDS.left === 5600 ? 'MINX CITY' : 'CITY'}</div>
+        <div className="text-[12px] font-mono tracking-[.24em] text-cyan-100 font-bold">VISITOR ATLAS</div>
+      </div>
+      <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 text-[9px] font-mono tracking-widest text-slate-400 pointer-events-none">
+        <span className="px-2 py-1 rounded border border-cyan-300/25 bg-[#050c14]/85 text-cyan-200">▦ DISCOVERED SIGNAL</span>
+        <span className="px-2 py-1 rounded border border-slate-500/30 bg-[#050c14]/85 text-slate-500">▧ UNCHARTED</span>
+      </div>
+      <CompassRose size={62} color="#b7d8e1" accent="#c7f36b"
+        className="absolute bottom-4 right-4 pointer-events-none opacity-85" />
     </div>
   );
 }
