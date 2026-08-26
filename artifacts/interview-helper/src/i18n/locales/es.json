@@ -1,7 +1,7 @@
 {
   "nav": {
     "pablo": "PABLO",
-    "console": "CONSOLA",
+    "console": "TERMINAL",
     "business": "NEGOCIOS",
     "creative": "CREATIVO",
     "intel": "INTEL",
@@ -69,7 +69,7 @@
   },
   "labels": {
     "pablo": "PABLO",
-    "console": "CONSOLA",
+    "console": "TERMINAL",
     "business": "NEGOCIOS",
     "creative": "CREATIVO",
     "intel": "INTEL",
@@ -225,7 +225,7 @@
     ]
   },
   "console": {
-    "terminal": "CONSOLA",
+    "terminal": "TERMINAL",
     "lab": "EL LABORATORIO",
     "fullSuite": "Suite de aumentación completa. Todos los módulos de interceptación y resolución disponibles.",
     "labDesc": "Máquinas de ritmos, sintetizadores, samplers y efectos.",

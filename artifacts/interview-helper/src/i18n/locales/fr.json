@@ -1,7 +1,7 @@
 {
   "nav": {
     "pablo": "PABLO",
-    "console": "CONSOLE",
+    "console": "TERMINAL",
     "business": "AFFAIRES",
     "creative": "CRÉATIF",
     "intel": "INTEL",
@@ -69,7 +69,7 @@
   },
   "labels": {
     "pablo": "PABLO",
-    "console": "CONSOLE",
+    "console": "TERMINAL",
     "business": "AFFAIRES",
     "creative": "CRÉATIF",
     "intel": "INTEL",
@@ -225,7 +225,7 @@
     ]
   },
   "console": {
-    "terminal": "CONSOLE",
+    "terminal": "TERMINAL",
     "lab": "LE LABO",
     "fullSuite": "Suite d'augmentation complète. Tous les modules d'interception et de résolution disponibles.",
     "labDesc": "Boîtes à rythmes, synthés, samplers et effets.",

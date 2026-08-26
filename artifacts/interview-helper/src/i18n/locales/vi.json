@@ -1,7 +1,7 @@
 {
   "nav": {
     "pablo": "PABLO",
-    "console": "BÀN ĐIỀU KHIỂN",
+    "console": "TERMINAL",
     "business": "DOANH NGHIỆP",
     "creative": "SÁNG TẠO",
     "intel": "TÌNH BÁO",
@@ -69,7 +69,7 @@
   },
   "labels": {
     "pablo": "PABLO",
-    "console": "BÀN ĐIỀU KHIỂN",
+    "console": "TERMINAL",
     "business": "DOANH NGHIỆP",
     "creative": "SÁNG TẠO",
     "intel": "TÌNH BÁO",
@@ -224,7 +224,7 @@
     ]
   },
   "console": {
-    "terminal": "BÀN ĐIỀU KHIỂN",
+    "terminal": "TERMINAL",
     "lab": "PHÒNG THÍ NGHIỆM",
     "fullSuite": "Bộ tăng cường đầy đủ. Tất cả các phân hệ đánh chặn và giải đáp đều khả dụng.",
     "labDesc": "Máy đánh nhịp, tổng hợp âm, bộ lấy mẫu và hiệu ứng.",

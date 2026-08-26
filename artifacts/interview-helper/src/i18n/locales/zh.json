@@ -1,7 +1,7 @@
 {
   "nav": {
     "pablo": "帕布洛",
-    "console": "控制台",
+    "console": "终端",
     "business": "商务",
     "creative": "创意",
     "intel": "情报",
@@ -69,7 +69,7 @@
   },
   "labels": {
     "pablo": "帕布洛",
-    "console": "控制台",
+    "console": "终端",
     "business": "商务",
     "creative": "创意",
     "intel": "情报",
@@ -224,7 +224,7 @@
     ]
   },
   "console": {
-    "terminal": "控制台",
+    "terminal": "终端",
     "lab": "实验室",
     "fullSuite": "完整增强套件。所有拦截和解题模块均可用。",
     "labDesc": "节拍机、合成器、采样器和效果器。",

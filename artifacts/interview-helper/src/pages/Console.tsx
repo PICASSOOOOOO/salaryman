@@ -186,19 +186,43 @@ export default function Console() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+      {/* phosphor glow ambience — terminal green / amber */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full pointer-events-none" style={{ background: 'rgba(52,211,153,0.10)' }} />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full pointer-events-none" style={{ background: 'rgba(255,176,0,0.07)' }} />
 
-      <div className="relative z-20 px-4 py-2 flex items-center gap-3"
-        style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(56,189,248,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', color: 'rgba(56,189,248,0.7)', borderRadius: '4px' }}>
-            <Terminal className="w-3.5 h-3.5 shrink-0" />
-            {boomerMode ? t('console.terminal') : PABLO_PRODUCTS.CONSOLE.short}
-          </div>
+      {/* CRT scanlines + vignette overlay (non-interactive) */}
+      <div className="pointer-events-none absolute inset-0 z-30" aria-hidden style={{
+        background: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.13) 3px, rgba(0,0,0,0) 4px)',
+        mixBlendMode: 'multiply',
+      }} />
+      <div className="pointer-events-none absolute inset-0 z-30" aria-hidden style={{
+        background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.42) 100%)',
+      }} />
+
+      {/* TERMINAL WINDOW TITLEBAR */}
+      <div className="relative z-40 px-4 py-2 flex items-center gap-3"
+        style={{ background: 'rgba(8,12,10,0.65)', borderBottom: '1px solid rgba(52,211,153,0.18)' }}>
+        {/* window traffic-light dots */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56', boxShadow: '0 0 6px rgba(255,95,86,0.55)' }} />
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e', boxShadow: '0 0 6px rgba(255,189,46,0.55)' }} />
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f', boxShadow: '0 0 6px rgba(39,201,63,0.55)' }} />
         </div>
-        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.06em' }}>
+        {/* monospace shell prompt path */}
+        <div className="flex items-center gap-1.5 min-w-0" style={{ fontSize: '0.62rem', letterSpacing: '0.05em', textShadow: '0 0 6px rgba(52,211,153,0.35)' }}>
+          <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(52,211,153,0.85)' }} />
+          <span style={{ color: 'rgba(52,211,153,0.6)' }}>pablo@cipher-x</span>
+          <span style={{ color: 'rgba(120,160,140,0.5)' }}>:</span>
+          <span style={{ color: 'rgba(255,176,0,0.75)' }}>~</span>
+          <span style={{ color: 'rgba(120,160,140,0.5)' }}>$</span>
+          <span className="truncate" style={{ color: 'rgba(190,235,210,0.9)' }}>
+            ./{(boomerMode ? t('console.terminal') : PABLO_PRODUCTS.CONSOLE.short).toLowerCase()} --all-modules
+          </span>
+          <span className="inline-block w-[7px] h-[13px] ml-0.5 align-middle animate-pulse" style={{ background: 'rgba(52,211,153,0.8)' }} />
+        </div>
+        <div className="flex-1" />
+        <span className="hidden md:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>
         <button
@@ -216,9 +240,9 @@ export default function Console() {
             borderRadius: '4px',
             transition: 'all .15s',
             whiteSpace: 'nowrap',
-            background: boomerMode ? 'rgba(255,170,0,0.08)' : 'transparent',
-            border: boomerMode ? '1px solid rgba(255,170,0,0.4)' : '1px solid rgba(56,189,248,0.15)',
-            color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(56,189,248,0.3)',
+            background: boomerMode ? 'rgba(255,176,0,0.08)' : 'transparent',
+            border: boomerMode ? '1px solid rgba(255,176,0,0.4)' : '1px solid rgba(52,211,153,0.2)',
+            color: boomerMode ? 'rgba(255,176,0,0.9)' : 'rgba(52,211,153,0.4)',
           }}
           title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
         >
@@ -496,9 +520,9 @@ export default function Console() {
         <section className="flex flex-col h-full max-h-[60vh] lg:max-h-[calc(100vh-120px)]">
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden">
 
-            <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Terminal className="w-3.5 h-3.5" /> Output
+            <div className="h-12 border-b flex items-center justify-between px-4 shrink-0" style={{ borderColor: 'rgba(52,211,153,0.18)', background: 'rgba(8,12,10,0.45)' }}>
+              <div className="flex items-center gap-2 text-xs font-medium" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(52,211,153,0.75)', letterSpacing: '0.06em', textShadow: '0 0 6px rgba(52,211,153,0.3)' }}>
+                <Terminal className="w-3.5 h-3.5" /> stdout
               </div>
               <div className="flex items-center gap-2">
                 {canTypeMode && !isStreaming && (
@@ -557,12 +581,17 @@ export default function Console() {
                   </motion.div>
                 ) : !displayResponse && (displayStatus === 'idle' || displayStatus === 'done') ? (
                   <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4 border border-border">
-                        <Terminal className="w-8 h-8 text-muted-foreground/50" />
-                      </div>
-                      <p className="text-muted-foreground font-mono text-sm">Waiting for execution request...</p>
+                    className="absolute inset-0 flex items-center justify-center px-6">
+                    <div className="w-full max-w-md" style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', lineHeight: 1.7, textShadow: '0 0 6px rgba(52,211,153,0.25)' }}>
+                      <p style={{ color: 'rgba(52,211,153,0.45)' }}>
+                        <span style={{ color: 'rgba(52,211,153,0.7)' }}>pablo@cipher-x</span>:<span style={{ color: 'rgba(255,176,0,0.7)' }}>~</span>$ ./cipher-x --listen
+                      </p>
+                      <p style={{ color: 'rgba(52,211,153,0.4)' }}>[ ok ] interception modules online</p>
+                      <p style={{ color: 'rgba(52,211,153,0.4)' }}>[ ok ] awaiting input buffer...</p>
+                      <p style={{ color: 'rgba(190,235,210,0.75)' }}>
+                        <span style={{ color: 'rgba(52,211,153,0.7)' }}>pablo@cipher-x</span>:<span style={{ color: 'rgba(255,176,0,0.7)' }}>~</span>$
+                        <span className="inline-block w-[8px] h-[15px] ml-1 align-middle animate-pulse" style={{ background: 'rgba(52,211,153,0.85)' }} />
+                      </p>
                     </div>
                   </motion.div>
                 ) : (

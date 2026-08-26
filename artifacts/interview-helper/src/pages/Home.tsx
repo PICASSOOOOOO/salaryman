@@ -1405,7 +1405,7 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {([
-                  { label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, desc: 'Interview solver & screen scan', path: '/console', color: 'rgba(56,189,248,0.5)', bg: 'rgba(56,189,248,0.05)', border: 'rgba(56,189,248,0.15)', icon: '⌥' },
+                  { label: boomerMode ? 'TERMINAL' : PABLO_PRODUCTS.CONSOLE.short, desc: 'Interview solver & screen scan', path: '/console', color: 'rgba(56,189,248,0.5)', bg: 'rgba(56,189,248,0.05)', border: 'rgba(56,189,248,0.15)', icon: '⌥' },
                   { label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, desc: 'CRM & relationship intel', path: '/business/contacts', color: 'rgba(100,180,255,0.6)', bg: 'rgba(100,180,255,0.05)', border: 'rgba(100,180,255,0.15)', icon: '◈' },
                   { label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, desc: 'Recruit & manage staff', path: '/business/hiring', color: 'rgba(255,160,50,0.6)', bg: 'rgba(255,160,50,0.05)', border: 'rgba(255,160,50,0.15)', icon: '▣' },
                   { label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, desc: 'Invoices, contracts & files', path: '/business/documents', color: 'rgba(180,100,255,0.6)', bg: 'rgba(180,100,255,0.05)', border: 'rgba(180,100,255,0.15)', icon: '◻' },

@@ -82,8 +82,8 @@ const DROPDOWN_ITEMS = [
   // ORG — dedicated org-management hub. Label is replaced at render time with
   // the live org name (falls back to 'ORG'). Distinct from the OFFICE primary tab.
   { id: 'org', path: '/org', label: 'ORG', icon: Network, authOnly: true },
-  { id: 'comms', path: '/comms', label: 'PAYPHONE', icon: MessageSquare, authOnly: true },
-  { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
+  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
+  { id: 'console', path: '/console', label: 'TERMINAL', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },

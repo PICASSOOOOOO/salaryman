@@ -1,7 +1,7 @@
 {
   "nav": {
     "pablo": "パブロ",
-    "console": "コンソール",
+    "console": "ターミナル",
     "business": "ビジネス",
     "creative": "クリエイティブ",
     "intel": "インテル",
@@ -69,7 +69,7 @@
   },
   "labels": {
     "pablo": "パブロ",
-    "console": "コンソール",
+    "console": "ターミナル",
     "business": "ビジネス",
     "creative": "クリエイティブ",
     "intel": "インテル",
@@ -224,7 +224,7 @@
     ]
   },
   "console": {
-    "terminal": "コンソール",
+    "terminal": "ターミナル",
     "lab": "ラボ",
     "fullSuite": "完全拡張スイート。全傍受・解決モジュール利用可能。",
     "labDesc": "ビートマシン、シンセサイザー、サンプラー、エフェクト。",

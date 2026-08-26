@@ -1,7 +1,7 @@
 {
   "nav": {
     "pablo": "파블로",
-    "console": "콘솔",
+    "console": "터미널",
     "business": "비즈니스",
     "creative": "크리에이티브",
     "intel": "인텔",
@@ -69,7 +69,7 @@
   },
   "labels": {
     "pablo": "파블로",
-    "console": "콘솔",
+    "console": "터미널",
     "business": "비즈니스",
     "creative": "크리에이티브",
     "intel": "인텔",
@@ -224,7 +224,7 @@
     ]
   },
   "console": {
-    "terminal": "콘솔",
+    "terminal": "터미널",
     "lab": "더 랩",
     "fullSuite": "완전 강화 스위트. 모든 차단 및 해결 모듈 이용 가능.",
     "labDesc": "비트 머신, 신시사이저, 샘플러, 이펙트.",

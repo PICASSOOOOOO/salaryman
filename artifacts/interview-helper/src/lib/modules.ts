@@ -97,12 +97,12 @@ export const MODULES: Module[] = [
   {
     id: 'console',
     path: '/console',
-    label: 'CONSOLE',
+    label: 'TERMINAL',
     codename: 'CIPHER-X',
     icon: Code2,
     defaultPath: '/console',
     subs: [
-      { id: 'terminal', path: '/console', label: 'TERMINAL', boomerLabel: 'TERMINAL', codename: 'CIPHER-X', icon: Code2 },
+      { id: 'terminal', path: '/console', label: 'SOLVER', boomerLabel: 'SOLVER', codename: 'CIPHER-X', icon: Code2 },
       { id: 'agents', path: '/console/agents', label: 'AGENTS', boomerLabel: 'AGENTS', codename: 'AGENT NET', icon: Bot },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },

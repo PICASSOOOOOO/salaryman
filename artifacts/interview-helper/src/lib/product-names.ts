@@ -124,7 +124,7 @@ export const PABLO_PRODUCTS = {
     desc: "Stealth document fabrication unit. Outputs formatted intel at any connected terminal.",
   },
   CONSOLE: {
-    name: "CIPHER-X CONSOLE",
+    name: "CIPHER-X TERMINAL",
     short: "CIPHER-X",
     desc: "Full interception and solve suite. Interview Solver, Live Listen, Screen Scan, and Ghost Hands type module.",
   },
