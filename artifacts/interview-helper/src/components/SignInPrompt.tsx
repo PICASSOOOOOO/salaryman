@@ -78,12 +78,21 @@ interface SignInPromptProps {
   context?: string;
   onDismiss?: () => void;
   inline?: boolean;
+  // Where to land the user AFTER a successful sign-in. When set, every sign-in
+  // method (primary / Discord / GitHub) carries it as the OAuth returnTo so the
+  // user comes back to this exact page instead of the app base. The Console
+  // passes "/console" so powering on the terminal -> sign in -> back to the
+  // terminal, never bounced to the nebula front door.
+  returnTo?: string;
 }
 
-export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) {
+export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPromptProps) {
   const { login, loginWithDiscord, loginWithGithub } = useAuth();
   const [boomer] = useBoomerMode();
   const providers = useAuthProviders();
+  const signInPrimary = () => login(returnTo);
+  const signInDiscord = () => loginWithDiscord(returnTo);
+  const signInGithub = () => loginWithGithub(returnTo);
 
   if (inline) {
     return (
@@ -98,7 +107,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
           {context || (boomer ? 'Sign in to access this feature.' : 'Authentication required to access this module.')}
         </div>
         <button
-          onClick={login}
+          onClick={signInPrimary}
           style={{
             fontFamily: fontFor(boomer), fontSize: '0.7rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.4)', padding: '8px 24px',
@@ -112,7 +121,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         </button>
         {providers.discord && (
           <button
-            onClick={() => loginWithDiscord()}
+            onClick={signInDiscord}
             style={{
               fontFamily: fontFor(boomer), fontSize: '0.7rem', color: DISCORD_BLURPLE,
               border: `1px solid ${DISCORD_BLURPLE}66`, padding: '8px 20px', marginTop: '10px',
@@ -127,7 +136,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         )}
         {providers.github && (
           <button
-            onClick={() => loginWithGithub()}
+            onClick={signInGithub}
             style={{
               fontFamily: fontFor(boomer), fontSize: '0.7rem', color: GITHUB_FG,
               border: `1px solid ${GITHUB_FG}44`, padding: '8px 20px', marginTop: '10px',
@@ -186,7 +195,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         </div>
 
         <button
-          onClick={login}
+          onClick={signInPrimary}
           style={{
             fontFamily: fontFor(boomer), fontSize: '0.75rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.5)', padding: '10px 32px',
@@ -201,7 +210,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
 
         {providers.discord && (
           <button
-            onClick={() => loginWithDiscord()}
+            onClick={signInDiscord}
             style={{
               fontFamily: fontFor(boomer), fontSize: '0.72rem', color: '#fff',
               border: `1px solid ${DISCORD_BLURPLE}`, padding: '10px 32px', marginTop: '10px',
@@ -218,7 +227,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
 
         {providers.github && (
           <button
-            onClick={() => loginWithGithub()}
+            onClick={signInGithub}
             style={{
               fontFamily: fontFor(boomer), fontSize: '0.72rem', color: GITHUB_FG,
               border: '1px solid #30363d', padding: '10px 32px', marginTop: '10px',
@@ -251,10 +260,10 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
   );
 }
 
-export function SignInPage({ context }: { context?: string }) {
+export function SignInPage({ context, returnTo }: { context?: string; returnTo?: string }) {
   return (
     <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <SignInPrompt inline context={context} />
+      <SignInPrompt inline context={context} returnTo={returnTo} />
     </div>
   );
 }

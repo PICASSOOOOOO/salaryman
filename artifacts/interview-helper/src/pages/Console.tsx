@@ -182,7 +182,7 @@ export default function Console() {
   const typingProgress = displayedText.length / (getTypableText().length || 1);
 
   if (!_consoleAuth) {
-    return <SignInPage context={boomerMode ? t('console.signInContext') : t('console.signInContextCodename')} />;
+    return <SignInPage context={boomerMode ? t('console.signInContext') : t('console.signInContextCodename')} returnTo="/console" />;
   }
 
   return (

@@ -2,21 +2,22 @@
  * ScrollLanding — the public, scroll-driven gameplay-trailer front door at "/".
  *
  * Instead of stills, this plays a real GAMEPLAY TRAILER (office → city → the
- * world of SALARYMAN) scrubbed by the page scroll: scroll position maps to
- * video currentTime, so scroll velocity becomes the perceived playback speed.
- * Pablo narrates continuously over the top — a separate baked VO mp3 is played
- * straight through on the visitor's first interaction, honoring the app's master
- * mute. Captions (loaded from trailer-captions.json, with a fallback set) are
- * synced to the audio clock while narrating, or to scroll position when muted.
+ * world of SALARYMAN) scrubbed by the page scroll: scrolling down advances the
+ * footage, scrolling up rewinds it, and scroll velocity controls how fast the
+ * footage moves (fast scroll = fast playback, holding still = the footage eases
+ * and holds). Pablo narrates what SALARYMAN is over the top as a continuous
+ * voice-over (started on the visitor's first interaction, honoring the site's
+ * mute rules), with on-screen captions as a muted/scrubbing fallback.
  *
- * If the video can't load we fall back to an on-brand neon-noir wash so the
- * page never reads as broken. Under reduce-motion we skip scrubbing and show
- * the wash instead. Reaching the end of the scroll arms the terminal power
- * button, which plays the original power-on → "enter the screen" transition
- * and routes into /pablo (the sign-in funnel).
+ * The trailer ends on the existing "dormant terminal → power on" beat: a glowing
+ * power button appears near the end of the scroll and, on tap, plays an "enter
+ * the screen" transition and routes into /console (the CRT terminal; logged-out
+ * visitors see the console's own sign-in screen there).
  *
- * NOTE: the life_* art-kit/pipeline is intentionally left intact server-side;
- * this page simply no longer renders those stills.
+ * Graceful by design: if the video can't load we fall back to an on-brand
+ * neon-noir wash (never a dead black screen); under reduce-motion we show a
+ * static poster instead of scrubbing. The full story still lives in `sr-only`
+ * semantic content + captions so the page stays crawlable and accessible.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -28,40 +29,34 @@ import {
   useMotionValueEvent,
   useReducedMotion,
 } from "framer-motion";
-import { resumeAudioContext } from "@/soundEngine";
 import { getAudioSettings } from "@/lib/audio-settings";
 
 // ── Asset URLs (served as static public assets, BASE_URL-prefixed). ──────────
-const BASE = import.meta.env.BASE_URL ?? "/";
-const TRAILER_SRC = `${BASE}brand/landing/trailer.mp4`;
-const CAPTIONS_SRC = `${BASE}brand/landing/trailer-captions.json`;
-// Pablo VO is served as its own mp3 so the audio and video tracks are decoupled.
-const AUDIO_SRC = `${BASE}brand/landing/trailer-vo.mp3`;
+const BASE = import.meta.env.BASE_URL;
+const VIDEO_SRC = `${BASE}brand/other/salaryman-trailer.mp4`;
+const POSTER_SRC = `${BASE}brand/other/salaryman-trailer-poster.jpg`;
+const VO_SRC = `${BASE}brand/other/salaryman-trailer-vo.mp3`;
+
+// ── Pablo's narration, as timed caption cues (muted/scrubbing fallback). ─────
+// `at` = seconds into the voice-over track where the line begins. The active
+// caption is the last cue whose `at` is <= the audio's currentTime.
+interface Cue {
+  at: number;
+  text: string;
+}
+const CUES: Cue[] = [
+  { at: 0, text: "Welcome. You're looking at SALARYMAN." },
+  { at: 3.5, text: "My city." },
+  { at: 5, text: "Out there, every soul works a job, runs a business, earns their keep." },
+  { at: 11, text: "The offices never close. The streets never sleep." },
+  { at: 16, text: "Some build empires. Some burn out at the desk." },
+  { at: 22, text: "There's a position open now — yours, if you want it." },
+  { at: 29, text: "But know the terms: in here, you work, or you don't last." },
+  { at: 36, text: "Power on the terminal. Let's see what you're made of." },
+];
 
 // How tall the scroll track is — longer = a slower, more cinematic scrub.
-const SCROLL_VH = 600;
-
-interface Caption {
-  text: string;
-  start: number;
-  end: number;
-}
-interface CaptionFile {
-  durationSec: number;
-  captions: Caption[];
-}
-
-// Fallback narration (kept in sync with landing-trailer.ts LANDING_NARRATION)
-// so captions + SEO copy still work even before the captions JSON loads.
-const FALLBACK_CAPTIONS: Caption[] = [
-  "Minx City runs on work.",
-  "Every morning, thousands show up — competing for jobs, clients, a way up.",
-  "Salaryman. That is what they call the ones who grind for something better.",
-  "There are desks here. Businesses to build. Real money to make.",
-  "The city does not hand you anything. You earn every coin.",
-  "Some make it. Most do not. The difference is hunger.",
-  "If you are ready — your shift starts now.",
-].map((text, i) => ({ text, start: i * 4, end: i * 4 + 3.5 }));
+const SCROLL_VH = 620;
 
 /** A short, safe power-on blip. Gesture-triggered, so autoplay policy allows it. */
 function playPowerOn() {
@@ -113,7 +108,7 @@ function PowerGlyph() {
 }
 
 /** On-brand neon-noir wash — shown while the video buffers or if it fails. */
-function NeonNoirFallback({ reduceMotion }: { reduceMotion: boolean }) {
+function NeonFallback({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#06070b]">
       <motion.div
@@ -121,10 +116,10 @@ function NeonNoirFallback({ reduceMotion }: { reduceMotion: boolean }) {
         style={{
           background:
             "radial-gradient(ellipse 70% 55% at 38% 42%, rgba(244,114,182,0.22), transparent 60%), " +
-            "radial-gradient(ellipse 60% 50% at 66% 58%, rgba(34,211,238,0.18), transparent 62%), " +
+            "radial-gradient(ellipse 60% 50% at 66% 60%, rgba(34,211,238,0.18), transparent 62%), " +
             "linear-gradient(160deg, #0a0c14 0%, #06070b 55%, #11071a 100%)",
         }}
-        animate={reduceMotion ? undefined : { opacity: [0.55, 0.95, 0.55] }}
+        animate={reduceMotion ? undefined : { opacity: [0.6, 0.95, 0.6] }}
         transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
       />
       <div
@@ -147,6 +142,10 @@ export default function ScrollLanding() {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Wall-clock origin for captions, set on the visitor's first gesture. Captions
+  // run off this even when the voice-over is muted or autoplay-blocked, and snap
+  // to the real audio clock whenever the VO is actually playing.
+  const captionStartRef = useRef<number | null>(null);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -156,103 +155,64 @@ export default function ScrollLanding() {
   const [terminalReady, setTerminalReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("scroll");
   const [videoFailed, setVideoFailed] = useState(false);
-  const [captions, setCaptions] = useState<Caption[]>(FALLBACK_CAPTIONS);
-  const [durationSec, setDurationSec] = useState(0);
-  const [activeLine, setActiveLine] = useState<string | null>(null);
-
-  // Latest scroll progress (0..1), kept in a ref for the rAF caption loop.
-  const progressRef = useRef(0);
-  // Whether Pablo's narration audio is actively playing (vs. muted fallback).
-  const narratingRef = useRef(false);
+  const [captionIdx, setCaptionIdx] = useState(-1);
 
   // Watchdog: a trailer that never errors but never loads (slow CDN, stalled
-  // connection) would otherwise leave the cover depending on a frame that never
-  // arrives. Fall back to the neon wash after 6s if no duration reported.
+  // connection, or a cold cache after navigating back onto the page) would
+  // otherwise leave the cover depending on a frame that never arrives. If the
+  // video hasn't reported a usable duration within a few seconds, fall back to
+  // the on-brand neon wash — which needs no media at all — so the front door is
+  // always advanceable. The poster covers the gap until then.
   useEffect(() => {
     if (reduceMotion || videoFailed) return undefined;
     const id = window.setTimeout(() => {
-      const vid = videoRef.current;
-      if (!vid || !(vid.duration > 0)) setVideoFailed(true);
+      if (durationRef.current <= 0) setVideoFailed(true);
     }, 6000);
     return () => window.clearTimeout(id);
   }, [reduceMotion, videoFailed]);
 
-  // ── Load caption timings (best-effort; falls back to even distribution). ──
-  useEffect(() => {
-    let alive = true;
-    fetch(CAPTIONS_SRC, { credentials: "omit" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((data: CaptionFile) => {
-        if (!alive || !Array.isArray(data?.captions) || data.captions.length === 0) return;
-        setCaptions(data.captions);
-        if (data.durationSec) setDurationSec(data.durationSec);
-      })
-      .catch(() => {
-        /* keep FALLBACK_CAPTIONS */
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  // ── Scrub the muted video by scroll position. ──
+  // Scroll → video scrub. We never .play() the video; instead we ease its
+  // currentTime toward the scroll-derived target every frame. The lerp gives
+  // the "velocity" feel for free: a fast scroll yanks the target far ahead so
+  // the footage races to catch up, holding still lets it ease to rest.
+  const progressRef = useRef(0);
+  const durationRef = useRef(0);
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     progressRef.current = v;
     setTerminalReady(v > 0.9);
-    const vid = videoRef.current;
-    if (vid && !videoFailed && !reduceMotion) {
-      const dur = vid.duration;
-      if (Number.isFinite(dur) && dur > 0) {
-        const t = Math.min(dur - 0.05, Math.max(0, v * dur));
-        // Only seek on a meaningful delta to avoid thrashing the decoder.
-        if (Math.abs((vid.currentTime || 0) - t) > 0.03) {
+  });
+
+  useEffect(() => {
+    if (reduceMotion || videoFailed) return undefined;
+    let raf = 0;
+    const tick = () => {
+      const vid = videoRef.current;
+      const dur = durationRef.current;
+      if (vid && dur > 0) {
+        const target = Math.min(progressRef.current, 0.999) * dur;
+        const cur = vid.currentTime;
+        const next = cur + (target - cur) * 0.12; // smoothing / inertia
+        if (Math.abs(target - cur) > 0.01) {
           try {
-            vid.currentTime = t;
+            vid.currentTime = next;
           } catch {
-            /* seeking can throw mid-load; ignore */
+            /* seeking can briefly throw mid-load; ignore */
           }
         }
       }
-    }
-  });
-
-  // ── Caption sync loop ──
-  // While Pablo's narration is playing, captions follow the audio clock; when
-  // it isn't (muted fallback / reduce-motion) they follow the scroll position
-  // mapped onto the trailer timeline. One rAF loop handles both.
-  useEffect(() => {
-    let raf = 0;
-    const totalForFallback =
-      durationSec ||
-      (captions.length
-        ? Math.max(captions[captions.length - 1].end, captions.length)
-        : 1);
-    const tick = () => {
-      let time: number;
-      const audio = audioRef.current;
-      if (narratingRef.current && audio && !audio.paused) {
-        time = audio.currentTime;
-      } else {
-        time = progressRef.current * totalForFallback;
-      }
-      let line: string | null = null;
-      for (const c of captions) {
-        if (time >= c.start && time < c.end) {
-          line = c.text;
-          break;
-        }
-      }
-      setActiveLine((prev) => (prev === line ? prev : line));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [captions, durationSec]);
+  }, [reduceMotion, videoFailed]);
 
-  // ── Pablo narration: continuous audio started on first interaction. ──
-  // Honors the app's master mute. Skipped under reduce-motion.
+  // ── Pablo voice-over ───────────────────────────────────────────────────────
+  // The narration is a continuous audio track (NOT the scrubbed video's audio,
+  // which would be unusable when seeking). It starts on the visitor's first
+  // interaction — required by browser autoplay policy — and honors the site's
+  // master mute. Captions track the audio's clock so muted/scrubbing visitors
+  // still get the words. Cleaned up on navigate-away.
   useEffect(() => {
-    if (reduceMotion) return undefined;
     let armed = true;
     const events: (keyof WindowEventMap)[] = [
       "pointerdown",
@@ -261,33 +221,32 @@ export default function ScrollLanding() {
       "wheel",
       "scroll",
     ];
-    const remove = () => {
+    const removeListeners = () => {
       for (const e of events) window.removeEventListener(e, onFirstGesture);
     };
     function onFirstGesture() {
       if (!armed) return;
       armed = false;
-      remove();
+      removeListeners();
+      // Start the caption clock regardless of audio — captions must run when
+      // the VO is muted or its autoplay is blocked.
+      if (captionStartRef.current == null) {
+        captionStartRef.current =
+          typeof performance !== "undefined" ? performance.now() : Date.now();
+      }
       const s = getAudioSettings();
-      if (s.muted) return; // captions still show via scroll clock; no audio
-      const audio = audioRef.current;
-      if (!audio) return;
+      if (s.muted) return; // captions still show via the wall clock; no audio
+      const a = audioRef.current;
+      if (!a) return;
       try {
-        resumeAudioContext();
-        audio.volume = 0.9;
-        audio.muted = false;
-        const p = audio.play();
-        if (p && typeof p.then === "function") {
-          p.then(() => {
-            narratingRef.current = true;
-          }).catch(() => {
-            narratingRef.current = false;
-          });
-        } else {
-          narratingRef.current = true;
+        a.volume = 0.9;
+        const p = a.play();
+        if (p && typeof p.catch === "function") {
+          // Autoplay blocked — captions keep running on the wall clock.
+          p.catch(() => {});
         }
       } catch {
-        narratingRef.current = false;
+        /* best-effort; captions cover the muted/blocked case */
       }
     }
     for (const e of events) {
@@ -295,29 +254,54 @@ export default function ScrollLanding() {
     }
     return () => {
       armed = false;
-      remove();
-      const audio = audioRef.current;
-      if (audio) {
+      removeListeners();
+      const a = audioRef.current;
+      if (a) {
         try {
-          audio.pause();
-          audio.currentTime = 0;
+          a.pause();
+          a.currentTime = 0;
         } catch {
           /* ignore */
         }
       }
-      narratingRef.current = false;
     };
-  }, [reduceMotion]);
+  }, []);
 
-  // ── Power-on → "enter the screen" → /pablo. Idempotent. ──
+  // Drive captions off a single clock that starts on the first gesture. When the
+  // voice-over is actually playing we use its real currentTime (tight sync); when
+  // it's muted or autoplay-blocked we fall back to elapsed wall-clock time so the
+  // words still appear. Runs only during the scroll phase.
+  useEffect(() => {
+    if (phase !== "scroll") return undefined;
+    const pick = (t: number) => {
+      let idx = -1;
+      for (let i = 0; i < CUES.length; i++) {
+        if (t >= CUES[i].at) idx = i;
+        else break;
+      }
+      setCaptionIdx(idx);
+    };
+    const id = window.setInterval(() => {
+      const start = captionStartRef.current;
+      if (start == null) return; // not started until first gesture
+      const a = audioRef.current;
+      const playing = !!a && !a.paused && !a.muted && a.currentTime > 0.05;
+      const now =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      const t = playing ? a!.currentTime : (now - start) / 1000;
+      pick(t);
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
+  // Power-on → "enter the screen" → /console. Idempotent: ignore re-taps.
   const powerOn = () => {
     if (phase !== "scroll") return;
     playPowerOn();
-    // Let Pablo's voice bow out as we cross into the funnel.
-    const audio = audioRef.current;
-    if (audio) {
+    const a = audioRef.current;
+    if (a) {
       try {
-        audio.pause();
+        a.pause();
       } catch {
         /* ignore */
       }
@@ -331,7 +315,12 @@ export default function ScrollLanding() {
       return () => clearTimeout(t);
     }
     if (phase === "entering") {
-      const t = setTimeout(() => navigate("/pablo"), reduceMotion ? 200 : 850);
+      // Powering on the terminal lands the visitor on the actual TERMINAL —
+      // the CRT console screen with the tools — not the Pablo nebula orb
+      // (which was a dead-end you got stuck on). Logged-out visitors see the
+      // console's own sign-in screen there; the global gate allows /console
+      // for anonymous visitors so they aren't bounced back to the nebula.
+      const t = setTimeout(() => navigate("/console"), reduceMotion ? 200 : 850);
       return () => clearTimeout(t);
     }
     return undefined;
@@ -341,23 +330,29 @@ export default function ScrollLanding() {
   const controlOpacity = useTransform(scrollYProgress, [0.86, 0.93], [0, 1]);
   const chevronOpacity = useTransform(scrollYProgress, [0, 0.06], [1, 0]);
 
+  // The real poster frame (on the <video>/<img>) covers the loading gap, so the
+  // on-brand wash is reserved strictly for an actual load failure — never a
+  // dead black screen, never hiding a frame that's about to appear.
+  const showFallback = videoFailed;
+  const caption = captionIdx >= 0 ? CUES[captionIdx]?.text : "";
+
   return (
     <div className="relative w-full bg-[#06070b]">
       {/* Continuous Pablo voice-over (separate from the scrubbed video). */}
-      <audio ref={audioRef} src={AUDIO_SRC} preload="auto" muted playsInline />
+      <audio ref={audioRef} src={VO_SRC} preload="auto" />
 
       {/* ── SEO / accessibility: the pitch in words, visually hidden. ── */}
       <div className="sr-only">
-        <h1>SALARYMAN — Come Find Work. Compete. Survive.</h1>
+        <h1>SALARYMAN — Begin Your Shift, by Picasso AI</h1>
         <p>
-          Minx City runs on work. SALARYMAN is the AI-powered competitive city
-          simulation where you grind for income, build businesses, and fight for
-          your place in a living neon-noir world. Thousands show up every morning.
-          Most do not make it. If you are ready, your shift starts now.
+          SALARYMAN is the AI-powered business operating system and living city
+          by Picasso AI. Watch real gameplay — corporate offices, neon-noir
+          streets, and the world you'll work in — narrated by Pablo, your host
+          inside SALARYMAN.
         </p>
         <ol>
-          {captions.map((c, i) => (
-            <li key={i}>{c.text}</li>
+          {CUES.map((c) => (
+            <li key={c.at}>{c.text}</li>
           ))}
         </ol>
         <p>
@@ -366,47 +361,42 @@ export default function ScrollLanding() {
         </p>
       </div>
 
-      {/* ── The scroll cinematic: tall scroll track + sticky viewport. ── */}
+      {/* ── The scroll cinematic. Tall scroll track + sticky viewport. ── */}
       <div
         ref={containerRef}
         style={{ height: `${SCROLL_VH}vh` }}
         className="relative w-full"
       >
         <div className="sticky top-0 h-screen w-full overflow-hidden bg-[#06070b]">
-          {/* The scrubbed gameplay trailer (or neon wash under reduce-motion/failure). */}
-          {videoFailed || reduceMotion ? (
-            <NeonNoirFallback reduceMotion={reduceMotion} />
-          ) : (
-            <video
-              ref={videoRef}
-              src={TRAILER_SRC}
-              muted
-              playsInline
-              preload="auto"
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full object-cover"
-              onLoadedMetadata={(e) => {
-                const vid = e.currentTarget;
-                const d = vid.duration;
-                if (Number.isFinite(d) && d > 0) {
-                  // Prefer real video duration for fallback caption mapping if
-                  // the captions JSON didn't carry one.
-                  setDurationSec((prev) => prev || d);
-                  // Seek to wherever the scroll currently sits so the very first
-                  // paint shows the correct frame (we never call play()).
-                  try {
-                    vid.currentTime = Math.min(
-                      d - 0.05,
-                      Math.max(0.04, progressRef.current * d),
-                    );
-                  } catch {
-                    /* seeking can throw mid-load; ignore */
-                  }
-                }
-              }}
-              onError={() => setVideoFailed(true)}
-            />
-          )}
+          {/* The scrubbed gameplay trailer (or static poster under reduce-motion). */}
+          {!videoFailed &&
+            (reduceMotion ? (
+              <img
+                src={POSTER_SRC}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={() => setVideoFailed(true)}
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={VIDEO_SRC}
+                poster={POSTER_SRC}
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover"
+                onLoadedMetadata={(e) => {
+                  durationRef.current = e.currentTarget.duration || 0;
+                }}
+                onError={() => setVideoFailed(true)}
+              />
+            ))}
+
+          {/* On-brand wash beneath/over while buffering or on failure. */}
+          {showFallback && <NeonFallback reduceMotion={reduceMotion} />}
 
           {/* Vignette + bottom gradient for depth and caption legibility. */}
           <div
@@ -417,21 +407,20 @@ export default function ScrollLanding() {
             }}
           />
 
-          {/* ── Pablo's caption line. ── */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-[24%] flex justify-center px-6">
-            {activeLine && (
-              <motion.p
-                key={activeLine}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.4 }}
-                className="max-w-2xl text-center text-lg font-medium leading-snug text-cyan-50 drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:text-2xl"
-              >
-                {activeLine}
-              </motion.p>
-            )}
-          </div>
+          {/* ── Pablo's narration captions (muted/scrubbing fallback). ── */}
+          {caption && phase === "scroll" && (
+            <motion.div
+              key={captionIdx}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="pointer-events-none absolute inset-x-0 bottom-[26%] flex justify-center px-6"
+            >
+              <p className="max-w-2xl text-center text-base font-light leading-relaxed text-cyan-50/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:text-lg">
+                {caption}
+              </p>
+            </motion.div>
+          )}
 
           {/* Scroll affordance — a wordless bouncing chevron, fades on descent. */}
           {!reduceMotion && (
@@ -459,7 +448,7 @@ export default function ScrollLanding() {
           {/* ── The interactive power button on the final terminal beat. ── */}
           <motion.div
             style={{ opacity: controlOpacity }}
-            className="absolute inset-x-0 bottom-[10%] flex justify-center"
+            className="absolute inset-x-0 bottom-[14%] flex justify-center"
           >
             <motion.button
               type="button"
@@ -491,7 +480,7 @@ export default function ScrollLanding() {
         </div>
       </div>
 
-      {/* ── "Enter the screen" transition overlay (unchanged). ── */}
+      {/* ── "Enter the screen" transition overlay. ── */}
       {phase !== "scroll" && (
         <motion.div
           aria-hidden="true"

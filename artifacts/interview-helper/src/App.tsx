@@ -328,10 +328,11 @@ function HomeOrCover() {
   // can flip tutorialDone for an authed user.
   // A logged-out / first-time visitor lands on the wordless, scroll-driven
   // life cinematic (birth → work → death → an open position). It sits IN FRONT
-  // of /pablo as the public SEO front door; its terminal powers on and routes
-  // into /pablo (the existing sign-in funnel). Authenticated users keep the
-  // office-first funnel below — already-onboarded players still skip straight
-  // to their /office.
+  // of the app as the public SEO front door; its terminal powers on and routes
+  // into /console (the CRT terminal, which shows its own sign-in screen for
+  // logged-out visitors and returns them there after auth). Authenticated users
+  // keep the office-first funnel below — already-onboarded players still skip
+  // straight to their /office.
   // Hold the gate until the server onboarding check resolves. A returning,
   // already-onboarded user signing in on a fresh device has no local
   // salaryman_tutorial_done flag yet — without this wait we'd flash them through
@@ -426,9 +427,18 @@ function AppShell() {
   // intake desk and legal pages open up too (those are post-sign-in).
   const ANON_ALLOWED_PREFIXES = ["/pablo", "/auth", "/api"];
   const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/immigration", "/legal", "/alpha", "/auth", "/api"];
+  // Powering on the landing cinematic's terminal sends visitors to /console
+  // (the CRT terminal), so an anonymous visitor must be allowed to reach EXACTLY
+  // /console and see the console's own sign-in screen there — without being
+  // bounced back to the nebula front door. We allow only the exact path, never
+  // the /console/* subroutes (those tool deep-routes stay protected: guessing
+  // them while logged out still bounces to the door). The console sign-in
+  // screen passes returnTo="/console" to OAuth, so after signing in the visitor
+  // lands back on the console rather than the app base.
+  const ANON_ALLOWED_EXACT = ["/console"];
   const matchesPrefix = (list: string[]) =>
     pathname === "/" || list.some(p => pathname === p || pathname.startsWith(p + "/"));
-  const allowedForAnon = matchesPrefix(ANON_ALLOWED_PREFIXES);
+  const allowedForAnon = matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
   const allowedForAuthedNew = matchesPrefix(NEW_USER_ALLOWED_PREFIXES);
   const tutorialDone = isTutorialDone();
   const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;

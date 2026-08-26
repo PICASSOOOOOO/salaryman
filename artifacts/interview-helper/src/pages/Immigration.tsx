@@ -365,16 +365,16 @@ export default function Immigration() {
     if (phase === 'done') return;
     setPhase('done');
     markTutorialDone();
-    // Straight into the player's office once the controls tutorial ends. That
-    // hands-on beat literally has the user "enter the terminal," so dropping
-    // them into their own pixel office is the natural, no-detour next screen —
-    // no jarring jump into a film right after they expected to sit down.
-    navigate('/office', { replace: true });
+    // Powering on the terminal is the through-line of the whole funnel, so a
+    // brand-new user who completes intake lands on the actual TERMINAL — the
+    // CRT console with the tools — instead of the office. This keeps the
+    // power-on → terminal promise consistent for first-time accounts too.
+    navigate('/console', { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
     // base so we land inside this app, not at host root.
     setTimeout(() => {
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
-      window.location.href = `${base}office`;
+      window.location.href = `${base}console`;
     }, 400);
   };
 
