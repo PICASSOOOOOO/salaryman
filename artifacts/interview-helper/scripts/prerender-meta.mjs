@@ -75,7 +75,7 @@ const STATIC_BODY = {
         <p style="color:#a1a1aa;font-size:.9rem">Cancel anytime · no contracts</p>
         ${UL([
           "Everything in Free",
-          "77 Pixel Agent AI bots",
+          "9 curated Pixel Agents across 4 teams",
           "Live Listen — real-time audio intercept",
           "Screen Scan — AI sees your screen",
           "AI Phone System — unlimited campaigns",
@@ -92,42 +92,41 @@ const STATIC_BODY = {
 
   "/pledge": () => `
     ${H1("SALARYMAN Pledge Store")}
-    ${P("Support SALARYMAN's development and secure your place as a founding member. Pledge backers unlock exclusive perks, early access to new features, and lifetime rewards that are not available after public launch.")}
-    ${H2("WHY PLEDGE?")}
+    ${P("The Pledge Store is the single place for dollar-backed PABLO PRIME membership and Pixel Agent upgrades, with secure subscription and card billing.")}
+    ${H2("DOLLAR-BACKED AGENT PRODUCTS")}
     ${UL([
-      "Founding member status — permanently on record as an early supporter",
-      "Exclusive perks not available after public launch",
-      "Early access to new features and Pixel Agents before general release",
-      "Lifetime rewards tied to your pledge tier",
-      "Direct input on product direction and feature prioritization",
+      "PABLO PRIME — the complete nine-agent workforce and premium platform tools",
+      "Pixel Agent seat and capability upgrades",
+      "Secure Stripe billing and payment methods",
+      "Property, gear, vehicles, and supplies stay in the SALARYMAN FIAT economy",
+      "In-world goods are earned or purchased from city vendors such as the vending machine",
     ])}
     ${H2("PLATFORM BACKGROUND")}
-    ${P("SALARYMAN by Picasso AI is an AI-powered business operating system that unifies AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and 77 specialized bots into a single platform for professionals.")}
+    ${P("SALARYMAN by Picasso AI is an AI-powered business operating system that unifies AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams into a single platform for professionals.")}
     <p style="margin-top:24px">${A("/pricing","See Subscription Pricing")} &nbsp;·&nbsp; ${A("/pledge/agents","Meet the Pixel Agents")}</p>
   `,
 
   "/pledge/agents": () => `
-    ${H1("Pixel Agents — 77 Specialized AI Bots")}
-    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — 77 dedicated bots, each built for a specific business function. Available with a Pablo Prime subscription at $149/month.")}
+    ${H1("Pixel Agents — 9 Curated AI Agents")}
+    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — nine curated agents organized across Core Command, The Academy, Finance Desk, and Creative Studio. Available with a Pablo Prime subscription at $149/month.")}
     ${H2("AGENT DIVISIONS")}
     ${UL([
-      "Sales & Outreach — 14 agents: lead generation, cold outreach, pipeline management, deal closing",
-      "Content & Writing — 12 agents: copywriting, long-form content, scripts, brand voice, email sequences",
-      "Creative & Design — 11 agents: AI image generation, art direction, brand kit, visual content",
-      "Data & Research — 10 agents: market research, web scraping, competitive analysis, business intelligence",
-      "Support & Operations — 15 agents: customer service, HR, internal communications, task management",
-      "Code & Development — 8 agents: code generation, code review, architecture guidance, debugging",
-      "Social & Marketing — 7 agents: social media, SEO, campaign management, content scheduling",
+      "Core Command — Pablo, Jean Claw, and Rick",
+      "The Academy — Kenji Prime",
+      "Finance Desk — Viktor Prime",
+      "Creative Studio — Terrence Prime, Vivian Prime, Regina Prime, and Deepa Prime",
     ])}
     ${H2("FEATURED AGENTS")}
     ${UL([
-      "Claw-Bot — Jean Claw's command interface: coordinate multiple agents in sequence",
-      "Finance Tracker — real-time P&L, expense tracking, and cash flow analysis",
-      "Lead Gen Bot — multi-channel prospect sourcing and qualification",
-      "SEO Bot — keyword research, on-page optimization, and ranking analysis",
-      "Music Bot — music production, licensing guidance, and publishing management",
-      "Research Bot — deep web research, source verification, and report generation",
-      "Movie Bot — script analysis, pitch development, and entertainment industry guidance",
+      "Pablo — all-purpose AI business operative",
+      "Jean Claw — workforce manager and specialist router",
+      "Rick — scheduling, escalation, and operations underboss",
+      "Kenji Prime — prompt engineering coach",
+      "Viktor Prime — finance, invoicing, payroll, and reporting",
+      "Terrence Prime — music production",
+      "Vivian Prime — social publishing and analytics",
+      "Regina Prime — scripts and content production",
+      "Deepa Prime — autonomous deep research",
     ])}
     <p style="margin-top:24px">${A("/pricing","Subscribe for Access")} &nbsp;·&nbsp; ${A("/pledge","Pledge Store")}</p>
   `,
@@ -136,10 +135,10 @@ const STATIC_BODY = {
     ${H1("Investor Relations — SALARYMAN by Picasso AI")}
     ${P("Picasso AI is the company behind SALARYMAN — an AI-powered business operating system designed to replace the scattered stack of SaaS tools professionals use today with a single unified platform.")}
     ${H2("THE OPPORTUNITY")}
-    ${P("The business software market is undergoing its most significant transformation since the cloud migration. AI is not a feature — it is a new foundation. SALARYMAN is built from the ground up on that foundation, unifying AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and 77 specialized bots into one operating system.")}
+    ${P("The business software market is undergoing its most significant transformation since the cloud migration. AI is not a feature — it is a new foundation. SALARYMAN is built from the ground up on that foundation, unifying AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across Core Command, The Academy, Finance Desk, and Creative Studio into one operating system.")}
     ${H2("PLATFORM HIGHLIGHTS")}
     ${UL([
-      "77 specialized AI Pixel Agents across sales, legal, creative, finance, and operations",
+      "Nine curated AI Pixel Agents organized across Core Command, The Academy, Finance Desk, and Creative Studio",
       "Free tier with Pablo AI assistant — no credit card, no friction entry",
       "Pablo Prime subscription at $149/month with unlimited access to all agents and tools",
       "Full business stack: CRM, phone system, hiring, invoicing, payroll, and creative suite",

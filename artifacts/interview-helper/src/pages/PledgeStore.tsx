@@ -5,6 +5,8 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
 import PixelAgents from "@/pages/PixelAgents";
+import Upgrade from "@/pages/Upgrade";
+import { usePlan, type FeatureKey } from "@/hooks/use-plan";
 import {
   ChevronLeft, Loader2, Check, Sparkles, Bot, Crown, ArrowRight,
   ShoppingBag, Radio, Ruler, X, Building2, Layers,
@@ -36,7 +38,7 @@ interface PledgeItem {
   stockTotal?: number;
   stockRemaining?: number;
   soldOut?: boolean;
-  subscriptionFeature?: string;
+  subscriptionFeature?: FeatureKey;
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -77,6 +79,7 @@ function pledgeImage(id: string): string | null {
 export default function PledgeStore() {
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
+  const { features } = usePlan();
   const [items, setItems] = useState<PledgeItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -86,18 +89,22 @@ export default function PledgeStore() {
   const [notice, setNotice] = useState<string>("");
   const [schematic, setSchematic] = useState<PledgeItem | null>(null);
   const [imgFailed, setImgFailed] = useState<Record<string, boolean>>({});
-  const [view, setView] = useState<"agents" | "store">(
+  const [view, setView] = useState<"agents" | "store" | "prime">(
     typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("view") === "agents"
       ? "agents"
+      : typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("view") === "prime"
+      ? "prime"
       : "store",
   );
 
-  const switchView = useCallback((next: "agents" | "store") => {
+  const switchView = useCallback((next: "agents" | "store" | "prime") => {
     setView(next);
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (next === "agents") params.set("view", "agents");
+    else if (next === "prime") params.set("view", "prime");
     else params.delete("view");
     const qs = params.toString();
     window.history.replaceState(null, "", `/pledge${qs ? `?${qs}` : ""}`);
@@ -148,6 +155,10 @@ export default function PledgeStore() {
       // them to the subscription checkout so billing recurs and the plan
       // feature is granted, rather than the one-time pledge checkout.
       if (item.subscriptionFeature) {
+        if (features.has(item.subscriptionFeature)) {
+          setNotice(`${item.name} is already active on your account.`);
+          return;
+        }
         const subRes = await apiFetch("/api/stripe/create-checkout-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -214,7 +225,7 @@ export default function PledgeStore() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Equip your empire.</h1>
           <p className="text-zinc-400 text-sm max-w-xl mx-auto leading-relaxed">
-            Pledge real backing and get a real edge — property, pixel agents, gear, tech, and decor that give you the advantage in SALARYMAN. Every tool you need to build the ultimate app or business, deployed from your Command Deck.
+            Pledge dollars for PABLO PRIME and agent upgrades through secure billing. Property, gear, vehicles, and other in-world advantages are earned or purchased with FIAT (ƒ) from the SALARYMAN game economy.
           </p>
         </div>
 
@@ -226,6 +237,12 @@ export default function PledgeStore() {
               className={`px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${view === "store" ? "bg-amber-500/20 text-amber-200" : "text-zinc-400 hover:text-zinc-200"}`}
             >
               <span className="inline-flex items-center gap-1.5"><ShoppingBag className="w-3 h-3" /> Store</span>
+            </button>
+            <button
+              onClick={() => switchView("prime")}
+              className={`px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${view === "prime" ? "bg-emerald-500/20 text-emerald-200" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              <span className="inline-flex items-center gap-1.5"><Crown className="w-3 h-3" /> PABLO PRIME</span>
             </button>
             <button
               onClick={() => switchView("agents")}
@@ -244,9 +261,9 @@ export default function PledgeStore() {
 
         {view === "store" ? (
         <>
-        {/* Premium row — Pixel Agents teaser. PABLO PRIME now lives in the
-            catalog grid below (Membership category) so every real-money offer
-            is purchased through the one store. */}
+        {/* Premium row — Pixel Agents teaser. PABLO PRIME has its own
+            membership view, while the catalog below contains dollar-backed
+            agent upgrades and the membership listing. */}
         <div className="grid grid-cols-1 gap-4 mb-10">
           <div className="relative rounded-2xl border border-violet-500/30 bg-violet-500/[0.07] p-5 overflow-hidden">
             <div className="flex items-center gap-2 mb-2">
@@ -293,7 +310,8 @@ export default function PledgeStore() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((item) => {
-              const isOwned = owned.has(item.id);
+              const isOwned = owned.has(item.id) ||
+                (item.subscriptionFeature ? features.has(item.subscriptionFeature) : false);
               const img = imgFailed[item.id] ? null : pledgeImage(item.id);
               return (
                 <motion.div
@@ -380,6 +398,23 @@ export default function PledgeStore() {
         {/* Backer form */}
         <BackerForm />
         </>
+        ) : view === "prime" ? (
+          <Upgrade
+            embedded
+            onPrimeCheckout={() => {
+              if (features.has("claw_bot")) {
+                setNotice("PABLO PRIME is already active on your account.");
+                return;
+              }
+              const primeItem = items.find((item) => item.id === "membership_pablo_prime");
+              if (primeItem) {
+                buy(primeItem);
+              } else {
+                setNotice("PABLO PRIME is still loading — try again in a moment.");
+              }
+            }}
+            primeCheckoutLoading={buying === "membership_pablo_prime"}
+          />
         ) : (
           <PixelAgents embedded />
         )}

@@ -37,7 +37,7 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     name: "PABLO",
     codename: "PABLO PACKAGE",
     price: 149,
-    desc: "Everything paid, in one subscription. Jean Claw and his 77 specialist bots, Rick and the comms team, Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary. One price. One platform. One package.",
+    desc: "Everything paid, in one subscription. Jean Claw, Rick, and a curated nine-agent workforce organized across four teams, plus Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary. One price. One platform. One package.",
   },
 };
 

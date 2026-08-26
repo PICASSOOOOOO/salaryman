@@ -1,6 +1,6 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
-import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey } from "../lib/plan";
+import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey, hasFeature } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey, db, donationsTable, fiatTopupsTable, bankAccountsTable, bankTransactionsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
 import { eq, sum, desc, and, sql } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
@@ -261,6 +261,13 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
   }
 
   const user = req.user;
+  if (await hasFeature(user.id, user.email, feature)) {
+    res.status(409).json({
+      error: "already_active",
+      message: `${FEATURE_CATALOG[feature].name} is already active on this account.`,
+    });
+    return;
+  }
   const stripe = getStripe();
   const baseUrl = getAppBaseUrl();
 
@@ -291,11 +298,13 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     }
   }
 
+  const checkoutReturnPath = feature === "claw_bot" ? "/pledge?view=prime" : "/pricing";
+  const checkoutReturnSeparator = checkoutReturnPath.includes("?") ? "&" : "?";
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/pricing?checkout=success&feature=${feature}`,
-    cancel_url: `${baseUrl}/pricing?checkout=cancel`,
+    success_url: `${baseUrl}${checkoutReturnPath}${checkoutReturnSeparator}checkout=success&feature=${feature}`,
+    cancel_url: `${baseUrl}${checkoutReturnPath}${checkoutReturnSeparator}checkout=cancel`,
     client_reference_id: user.id,
     metadata: {
       userId: user.id,

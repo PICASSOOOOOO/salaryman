@@ -65,37 +65,31 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
   });
 
   it("applies the default 300% markup (retail = cost × 4)", () => {
-    // prop_corner_office cost basis is $49 → retail $196 at the default markup.
-    const office = catalog.items.find((i) => i.id === "prop_corner_office");
-    expect(office).toBeTruthy();
-    expect(office.priceUsd).toBe(196);
+    // bot_extra_seat cost basis is $25 → retail $100 at the default markup.
+    const seat = catalog.items.find((i) => i.id === "bot_extra_seat");
+    expect(seat).toBeTruthy();
+    expect(seat.priceUsd).toBe(100);
   });
 
-  it("exposes the gear and bundles categories", () => {
-    expect(catalog.categories).toContain("gear");
-    expect(catalog.categories).toContain("bundles");
+  it("exposes only dollar-backed agent and membership categories", () => {
+    expect(catalog.categories).toEqual(["bots", "membership"]);
+    expect(new Set(catalog.items.map((i) => i.category))).toEqual(new Set(["bots", "membership"]));
   });
 
-  it("lists consolidated Armory gear and bundle products", () => {
-    const gear = catalog.items.filter((i) => i.category === "gear");
-    const bundles = catalog.items.filter((i) => i.category === "bundles");
-    expect(gear.length).toBeGreaterThan(0);
-    expect(bundles.length).toBeGreaterThan(0);
-    // Bundles describe their member items in the effect copy.
-    const founder = bundles.find((b) => b.id === "bundle_founder");
-    expect(founder).toBeTruthy();
-    expect(founder.effect).toContain("Includes:");
+  it("keeps non-agent game goods out of the dollar storefront", () => {
+    const forbiddenCategories = new Set(["property", "vehicles", "gear", "bundles", "furniture", "decor"]);
+    expect(catalog.items.some((i) => forbiddenCategories.has(i.category))).toBe(false);
+    expect(catalog.items.find((i) => i.id === "prop_corner_office")).toBeUndefined();
+    expect(catalog.items.find((i) => i.id === "bundle_founder")).toBeUndefined();
   });
 
-  it("prices bundles below the sum of their members (bundle discount)", () => {
-    const founder = catalog.items.find((i) => i.id === "bundle_founder");
-    const members = ["prop_corner_office", "furn_standing_desks", "sup_espresso", "decor_neon"];
-    const sumMembers = members.reduce((t, id) => {
-      const m = catalog.items.find((i) => i.id === id);
-      expect(m).toBeTruthy();
-      return t + m.priceUsd;
-    }, 0);
-    expect(founder.priceUsd).toBeLessThan(sumMembers);
+  it("rejects direct dollar checkout for in-world goods", async () => {
+    const authed = buildAuthedApp();
+    const res = await request(authed)
+      .post("/api/pledge/checkout")
+      .send({ itemId: "prop_corner_office" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Unknown pledge item");
   });
 
   it("lists PABLO PRIME as an unmarked-up membership subscription", () => {

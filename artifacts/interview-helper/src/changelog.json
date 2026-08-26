@@ -1402,5 +1402,15 @@
     "changes": [
       "Add missing phone number country-context migration"
     ]
+  },
+  {
+    "version": "v.17.0.2000",
+    "date": "2026-08-26",
+    "commitHash": "6e1ef979fad8d93bd3561430574076b2f5d8e79b",
+    "changes": [
+      "Move PABLO PRIME into Pledge Store and align curated agent roster",
+      "Make the open-world stamina HUD clearly visible",
+      "Add SignInPrompt return-to test and update page imports"
+    ]
   }
 ]

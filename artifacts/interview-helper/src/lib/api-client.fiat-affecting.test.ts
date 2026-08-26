@@ -70,6 +70,7 @@ const SPEND_VOCAB =
 const EXCUSED_NON_BANK_SPENDS = new Set([
   "/api/items/checkout", // Stripe card checkout (real money, not bank ƒ)
   "/api/cosmetics/checkout", // Stripe card checkout (real money, not bank ƒ)
+  "/api/stripe/create-checkout-session", // PABLO PRIME Stripe subscription checkout
   "/api/stripe/create-bot-checkout-session", // Stripe checkout session
   "/api/billboards/*/purchase", // deducts client-save g.salary, not the bank
 ]);

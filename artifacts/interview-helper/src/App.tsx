@@ -59,7 +59,6 @@ const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default
 const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
-const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
@@ -171,6 +170,12 @@ function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
   if (!allowed) return <Redirect to="/upgrade" />;
   if (redirectTo) return <Redirect to={redirectTo} />;
   return <CalllHomePage />;
+}
+
+function LegacyUpgradeRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  params.set("view", "prime");
+  return <Redirect to={`/pledge?${params.toString()}`} />;
 }
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
@@ -425,8 +430,8 @@ function AppShell() {
   //
   // Once authenticated — but not yet cleared through immigration — the
   // intake desk and legal pages open up too (those are post-sign-in).
-  const ANON_ALLOWED_PREFIXES = ["/pablo", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/immigration", "/legal", "/alpha", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/immigration", "/legal", "/alpha", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
   // (the CRT terminal), so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -607,7 +612,7 @@ function AppShell() {
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
-            <Route path="/upgrade" component={Upgrade} />
+            <Route path="/upgrade" component={LegacyUpgradeRedirect} />
             <Route path="/pricing" component={Pricing} />
             <Route path="/wallet" component={Wallet} />
             <Route path="/world">{() => <Redirect to="/office" />}</Route>

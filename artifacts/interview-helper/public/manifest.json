@@ -1,7 +1,7 @@
 {
   "name": "SALARYMAN by Picasso AI — AI Business Operating System",
   "short_name": "SALARYMAN",
-  "description": "AI-powered business operating system with AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and 77 specialized bots. Built for professionals who refuse to settle.",
+  "description": "AI-powered business operating system with AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams. Built for professionals who refuse to settle.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

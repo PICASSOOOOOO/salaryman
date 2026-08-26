@@ -38,7 +38,7 @@ export function Scene2() {
         </motion.div>
 
         <div className="mt-4 space-y-1">
-          {['77 BOTS.', 'ONE SUBSCRIPTION.', 'ZERO EXCUSES.'].map((line, i) => (
+          {['9 AGENTS.', 'ONE SUBSCRIPTION.', 'ZERO EXCUSES.'].map((line, i) => (
             <motion.div key={i}
               style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(18px, 4.5vw, 38px)', lineHeight: 1.2, color: i === 1 ? '#ef4444' : '#fff' }}
               initial={{ opacity: 0, x: -40, filter: 'blur(8px)' }}

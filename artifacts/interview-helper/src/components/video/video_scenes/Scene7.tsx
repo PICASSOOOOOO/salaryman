@@ -5,11 +5,11 @@ const COMPARISON = [
   { label: 'HIRE 1 EMPLOYEE', cost: '$4,500/MO', color: '#475569', you: false },
   { label: 'HIRE 5 FREELANCERS', cost: '$3,200/MO', color: '#475569', you: false },
   { label: '5 SAAS SUBSCRIPTIONS', cost: '$890/MO', color: '#475569', you: false },
-  { label: 'PIXEL AGENTS · 77 BOTS', cost: '$149/MO', color: '#ef4444', you: true },
+  { label: 'PIXEL AGENTS · 9 AGENTS', cost: '$149/MO', color: '#ef4444', you: true },
 ];
 
 const INCLUDES = [
-  '77 SPECIALIZED AI BOTS',
+  '9 CURATED AI AGENTS · 4 TEAMS',
   'UNLIMITED TASKS',
   'BOT-TO-BOT CHAINING',
   'COMMAND CENTER DASHBOARD',

@@ -8,7 +8,6 @@ import {
   agentProjectsTable,
   usersTable,
   botsTable,
-  PLEDGE_CATEGORIES,
   type PledgeCategory,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
@@ -22,9 +21,10 @@ import { ITEM_CATALOG, type ItemStats } from "../lib/item-catalog";
 const router: IRouter = Router();
 
 // ─── Pledge catalog ───────────────────────────────────────────────────────
-// Real-money items sold in the Pledge Store. Each grants an in-game advantage.
-// Prices are USD dollars. `effect` is the in-game benefit, surfaced to the
-// player and read by game systems from the entitlement ledger as they wire up.
+// Dollar-backed items. Only the agent/membership subset is exposed through the
+// Pledge Store; property, gear, and other in-world advantages are earned or
+// purchased with FIAT from the game economy. The full definitions remain here
+// so historical pledge webhooks can still fulfill older purchases safely.
 // Architectural spec for buildable/property pledges — drives the floor-plan,
 // elevation schematic, and stats previews in the Pledge Store. Optional: only
 // physical structures carry one.
@@ -332,8 +332,13 @@ const PRIME_LISTING: PledgeItem = {
   icon: "👑",
 };
 
-// The full storefront: base pledges + consolidated gear + bundles + membership.
+// The full internal catalog is retained for webhook fulfillment. The public
+// storefront deliberately exposes only dollar-backed agent products and PRIME;
+// everything else belongs in the in-world economy.
 const FULL_CATALOG: PledgeItem[] = [...PLEDGE_CATALOG, ...GEAR_LISTINGS, ...BUNDLE_LISTINGS, PRIME_LISTING];
+const DOLLAR_STORE_CATEGORIES = new Set<PledgeCategory>(["bots", "membership"]);
+const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => DOLLAR_STORE_CATEGORIES.has(item.category));
+const PUBLIC_CATEGORIES = ["bots", "membership"] as const;
 
 // Client-safe projection. This is the ONLY shape that reaches the client:
 // the derived retail price ONLY — never costUsd, markup, or internal
@@ -357,6 +362,10 @@ function toPublicItem(item: PledgeItem, stock?: StockInfo) {
 
 function findItem(id: string): PledgeItem | undefined {
   return FULL_CATALOG.find((i) => i.id === id);
+}
+
+function findPublicItem(id: string): PledgeItem | undefined {
+  return PUBLIC_CATALOG.find((i) => i.id === id);
 }
 
 // Grant everything a purchased listing delivers BEYOND its own pledge ledger
@@ -498,18 +507,18 @@ function itemIsLimited(itemId: string): boolean {
 router.get("/pledge/catalog", async (_req, res) => {
   try {
     const stock = await getStockMap();
-    const items = FULL_CATALOG.map((i) => {
+    const items = PUBLIC_CATALOG.map((i) => {
       if (!i.limited) return toPublicItem(i);
       const s = stock.get(i.id);
       const total = s?.total ?? i.stock ?? 0;
       const remaining = Math.max(0, total - (s?.sold ?? 0));
       return toPublicItem(i, { stockTotal: total, stockRemaining: remaining, soldOut: remaining <= 0 });
     });
-    res.json({ categories: PLEDGE_CATEGORIES, items });
+    res.json({ categories: PUBLIC_CATEGORIES, items });
   } catch {
     // Stock lookup is non-critical — fall back to the (still client-safe)
     // catalog so the store renders even if the stock table is unavailable.
-    res.json({ categories: PLEDGE_CATEGORIES, items: FULL_CATALOG.map((i) => toPublicItem(i)) });
+    res.json({ categories: PUBLIC_CATEGORIES, items: PUBLIC_CATALOG.map((i) => toPublicItem(i)) });
   }
 });
 
@@ -518,7 +527,7 @@ router.get("/pledge/catalog", async (_req, res) => {
 // when a paid terminal feature is locked — instead of redirecting to a promo
 // page. Same checkout + entitlement plumbing as the full store.
 router.get("/pledge/popup", (_req, res) => {
-  res.json({ items: FULL_CATALOG.filter((i) => i.popup).map((i) => toPublicItem(i)) });
+  res.json({ items: PUBLIC_CATALOG.filter((i) => i.popup).map((i) => toPublicItem(i)) });
 });
 
 // ─── Owned entitlements ──────────────────────────────────────────────────────
@@ -542,7 +551,7 @@ router.post("/pledge/checkout", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   const itemId = (req.body?.itemId ?? "") as string;
-  const item = findItem(itemId);
+  const item = findPublicItem(itemId);
   if (!item) {
     res.status(400).json({ error: "Unknown pledge item" });
     return;

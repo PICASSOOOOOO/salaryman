@@ -7,15 +7,6 @@ import {
   Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp, Globe,
 } from "lucide-react";
 
-const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
-
-function openPrimePaymentLink(userId: string | undefined) {
-  const url = userId
-    ? `${PRIME_PAYMENT_LINK}?client_reference_id=${encodeURIComponent(userId)}`
-    : PRIME_PAYMENT_LINK;
-  window.location.href = url;
-}
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
@@ -40,6 +31,12 @@ interface FeatureCard {
   channels?: string[];
 }
 
+interface UpgradeProps {
+  embedded?: boolean;
+  onPrimeCheckout?: () => void;
+  primeCheckoutLoading?: boolean;
+}
+
 const JEAN_CLAW_SKILL_ICONS: Record<string, typeof Target> = {
   'AI Sales Closer': Target,
   'Customer Support': MessageSquare,
@@ -58,9 +55,9 @@ const FEATURE_CARDS: FeatureCard[] = [
     boomerLabel: "PABLO PRIME",
     codename: "PABLO PRIME",
     flagship: true,
-    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw — and Rick running comms. One price. One platform.",
-    boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, secretary, and all 77 bots — under one subscription. Customize your office, your business, your digital life.",
-    price: 145,
+    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and secretary, plus a curated nine-agent workforce organized across four teams. One price. One platform.",
+    boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, secretary, and a curated nine-agent workforce across four teams — under one subscription. Customize your office, your business, your digital life.",
+    price: 149,
     color: "text-emerald-400",
     borderColor: "border-emerald-500/30",
     bgColor: "bg-emerald-500/10",
@@ -71,14 +68,15 @@ const FEATURE_CARDS: FeatureCard[] = [
       { name: 'TTC · Phone System', desc: 'Unlimited predictive dialing, SMS campaigns, call coaching, voicemail, conference calling.' },
       { name: 'Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
       { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
-      { name: 'Sales Team', desc: 'Marcus, Elena, Derek, Priya — pipeline, prospecting, follow-ups on autopilot.' },
-      { name: 'Support & Ops', desc: 'Nadia, Tomás, Kenji, Amara — customer support, HR, and recruiting bots.' },
-      { name: 'Creative Studio', desc: 'Sasha, Milo, Zara, Lena, Camille, Felix — design, copy, content, photography.' },
-      { name: 'Finance & Legal', desc: 'Rosa, Victor, Hana, Julian, Margot — taxes, books, invoices, legal, insurance.' },
-      { name: 'Music & Publishing', desc: 'Dante, Cleo, Omar, Bianca, Kai, Remi, Nina, Theo — full publishing stack.' },
-      { name: 'Commerce & Trades', desc: 'Lucia, Anton, Jade, Rafael, Yuki, Bruno — ecommerce and field services.' },
-      { name: 'Podcast & Academy', desc: 'Harlow, Sienna, Jonah — podcast host, live workshops, course builder.' },
-      { name: '+ 40 More Specialists', desc: 'Real estate, agriculture, travel, security, fintech, nonprofits, and beyond.' },
+      { name: 'CORE COMMAND · PABLO', desc: 'Your all-purpose AI business operative for email, schedules, CRM, documents, and Q&A.' },
+      { name: 'CORE COMMAND · JEAN CLAW', desc: 'The Bot Factory manager who routes work to the right specialist.' },
+      { name: 'CORE COMMAND · RICK', desc: 'Jean Claw’s underboss for scheduling, escalations, and day-to-day operations.' },
+      { name: 'THE ACADEMY · KENJI PRIME', desc: 'Prompt engineering coach who helps you get more from Claude and Pablo.' },
+      { name: 'FINANCE DESK · VIKTOR PRIME', desc: 'AI CFO for accounting, banking, payroll, tax prep, and Sheets sync.' },
+      { name: 'CREATIVE STUDIO · TERRENCE PRIME', desc: 'Music factory for beats, songs, lyrics, and instrumentals.' },
+      { name: 'CREATIVE STUDIO · VIVIAN PRIME', desc: 'Social media manager for content, scheduling, engagement, and analytics.' },
+      { name: 'CREATIVE STUDIO · REGINA PRIME', desc: 'Content production factory for scripts, shorts, reels, and full productions.' },
+      { name: 'CREATIVE STUDIO · DEEPA PRIME', desc: 'Autonomous research engine for intelligence reports, trends, and due diligence.' },
     ],
     channels: ['Telegram', 'WhatsApp', 'Discord', 'Facebook', 'Email', 'LinkedIn', 'Web Chat'],
   },
@@ -95,11 +93,10 @@ const FREE_PERKS = [
   "Hiring tools — job descriptions, interview kits, scorecards",
 ];
 
-export default function Upgrade() {
+export default function Upgrade({ embedded = false, onPrimeCheckout, primeCheckoutLoading = false }: UpgradeProps) {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  const [loadingFeature, setLoadingFeature] = useState<FeatureKey | null>(null);
   const [error] = useState<string | null>(null);
-  const { user, isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const { features, isOwner, loading: planLoading } = usePlan();
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
@@ -132,7 +129,7 @@ export default function Upgrade() {
   const checkoutCancelled = new URLSearchParams(window.location.search).get("checkout") === "cancel";
   const activeCount = features.size;
 
-  if (planLoading) {
+  if (planLoading && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
@@ -141,13 +138,13 @@ export default function Upgrade() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <div className="absolute top-[-5%] left-[-5%] w-[40%] h-[40%] bg-amber-500/5 blur-[160px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[30%] h-[30%] bg-primary/6 blur-[140px] rounded-full pointer-events-none" />
+    <div className={`${embedded ? "w-full" : "min-h-screen flex flex-col"} bg-background`}>
+      {!embedded && <div className="absolute top-[-5%] left-[-5%] w-[40%] h-[40%] bg-amber-500/5 blur-[160px] rounded-full pointer-events-none" />}
+      {!embedded && <div className="absolute bottom-[-10%] right-[-5%] w-[30%] h-[30%] bg-primary/6 blur-[140px] rounded-full pointer-events-none" />}
 
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full relative z-10">
+      <main className={`${embedded ? "p-0" : "flex-1 p-6"} max-w-3xl mx-auto w-full relative z-10`}>
 
-        <div className="mb-2 flex items-center justify-between gap-2">
+        {!embedded && <div className="mb-2 flex items-center justify-between gap-2">
           <button
             type="button"
             data-testid="upgrade-maybe-later"
@@ -163,9 +160,9 @@ export default function Upgrade() {
           >
             Pledge Store →
           </button>
-        </div>
+        </div>}
 
-        <div className="text-center mb-8 mt-6">
+        <div className={`text-center mb-8 ${embedded ? "mt-2" : "mt-6"}`}>
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/8 mb-4">
               <CreditCard className="w-3 h-3 text-amber-400" />
@@ -266,7 +263,7 @@ export default function Upgrade() {
           const flagshipCard = FEATURE_CARDS.find(c => c.flagship);
           if (!flagshipCard) return null;
           const isActive = features.has(flagshipCard.key);
-          const isLoading = loadingFeature === flagshipCard.key;
+          const isLoading = primeCheckoutLoading;
           return (
             <motion.div
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
@@ -318,7 +315,7 @@ export default function Upgrade() {
                       <span className="text-3xl font-bold text-emerald-400">${flagshipCard.price}</span>
                       <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
                     </div>
-                    <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">ALL PREMIUM TOOLS · 77 BOTS · UNLIMITED PHONE*</span>
+                    <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">ALL PREMIUM TOOLS · 9 AGENTS · UNLIMITED PHONE*</span>
                   </div>
                 </div>
 
@@ -390,10 +387,11 @@ export default function Upgrade() {
                   ) : (
                     <button
                       onClick={() => {
-                        if (!isAuthenticated) { login(); return; }
-                        openPrimePaymentLink(user?.id);
+                        if (!isAuthenticated && !onPrimeCheckout) { login(); return; }
+                        if (onPrimeCheckout) onPrimeCheckout();
+                        else navigate("/pledge?view=prime");
                       }}
-                      disabled={isLoading || loadingFeature !== null}
+                      disabled={isLoading}
                       className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20"
                     >
                       {isLoading ? (
@@ -445,7 +443,7 @@ export default function Upgrade() {
           {[
             [
               boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
-              "One subscription, $149/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full Phone System, and all 77 bots. Cancel anytime.",
+              "One subscription, $149/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full Phone System, and the nine-agent curated workforce. Cancel anytime.",
             ],
             [
               "What about cosmetics, properties, vehicles?",
