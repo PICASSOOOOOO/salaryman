@@ -174,7 +174,7 @@ export default function PhoneSecretaryPage() {
           Your session has expired or you are not logged in. Please sign in again to access your secretary configuration.
         </div>
         <button
-          onClick={login}
+          onClick={() => login()}
           style={{
             ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '0.7rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.4)', padding: '10px 28px',

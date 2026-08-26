@@ -738,7 +738,7 @@ export default function WriterStudio() {
           <BookOpen className="w-12 h-12 text-amber-400/40 mx-auto" />
           <p className="text-zinc-500 font-mono text-sm uppercase tracking-widest">ACCESS RESTRICTED</p>
           <p className="text-zinc-600 font-mono text-xs">SIGN IN TO ACCESS HEMINGWAY</p>
-          <button onClick={login} className="px-6 py-2 border border-amber-500/30 text-amber-400 font-mono text-xs uppercase tracking-widest hover:bg-amber-500/10 transition-colors">SIGN IN</button>
+          <button onClick={() => login()} className="px-6 py-2 border border-amber-500/30 text-amber-400 font-mono text-xs uppercase tracking-widest hover:bg-amber-500/10 transition-colors">SIGN IN</button>
         </div>
       </div>
     );

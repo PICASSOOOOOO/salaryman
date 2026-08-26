@@ -419,7 +419,7 @@ export function NavBar() {
               </div>
             ) : (
               <button
-                onClick={login}
+                onClick={() => login()}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 hover:bg-white/8 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
