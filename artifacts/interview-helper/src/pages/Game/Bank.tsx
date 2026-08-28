@@ -62,7 +62,7 @@ const TX_TONE: Record<string, string> = {
   payroll:  "text-emerald-300",
 };
 
-type Tab = "overview" | "ledger" | "transfer" | "finance" | "credit" | "statements" | "cards";
+type Tab = "overview" | "ledger" | "transfer" | "finance" | "debt" | "statements" | "cards";
 
 type MarketIndex = {
   btcUsd: number;
@@ -116,7 +116,10 @@ export default function GameBank() {
   const [tx, setTx] = useState<Tx[]>([]);
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window === "undefined") return "overview";
-    return new URLSearchParams(window.location.search).get("tab") === "finance" ? "finance" : "overview";
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested === "finance") return "finance";
+    if (requested === "debt" || requested === "credit") return "debt";
+    return "overview";
   });
   const [toast, setToast] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -159,26 +162,23 @@ export default function GameBank() {
   const [loan, setLoan] = useState<LoanEligibility | null>(null);
   const [plan, setPlan] = useState<CreditPlan | null>(null);
   const [creditLoading, setCreditLoading] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      setCreditLoading(true);
-      try {
-        const [sRes, lRes, pRes] = await Promise.all([
-          apiFetch("/api/credit/score"),
-          apiFetch("/api/credit/loan/eligibility"),
-          apiFetch("/api/credit/plan"),
-        ]);
-        if (!alive) return;
-        if (sRes.ok) setCredit(await sRes.json());
-        if (lRes.ok) setLoan(await lRes.json());
-        if (pRes.ok) setPlan(await pRes.json());
-      } catch { /* ignore */ }
-      finally { if (alive) setCreditLoading(false); }
-    };
-    void load();
-    return () => { alive = false; };
+  const refreshCredit = useCallback(async () => {
+    setCreditLoading(true);
+    try {
+      const [sRes, lRes, pRes] = await Promise.all([
+        apiFetch("/api/credit/score"),
+        apiFetch("/api/credit/loan/eligibility"),
+        apiFetch("/api/credit/plan"),
+      ]);
+      if (sRes.ok) setCredit(await sRes.json());
+      if (lRes.ok) setLoan(await lRes.json());
+      if (pRes.ok) setPlan(await pRes.json());
+    } catch { /* keep the last known dossier visible */ }
+    finally { setCreditLoading(false); }
   }, []);
+  useEffect(() => {
+    void refreshCredit();
+  }, [refreshCredit]);
 
   const refresh = useCallback(async () => {
     setError("");
@@ -206,6 +206,9 @@ export default function GameBank() {
   }, [navigate]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  const refreshDebtWorkspace = useCallback(async () => {
+    await Promise.all([refresh(), refreshCredit()]);
+  }, [refresh, refreshCredit]);
   const refreshTopups = useCallback(async () => {
     const [packsResponse, historyResponse] = await Promise.all([
       apiFetch("/api/stripe/fiat-topup-packs"),
@@ -406,7 +409,7 @@ export default function GameBank() {
             ["ledger",     "TRANSACTIONS", Receipt],
             ["transfer",   "TRANSFER",   ArrowLeftRight],
             ["finance",    "FINANCE",    Bitcoin],
-            ["credit",     "CREDIT",     Gauge],
+            ["debt",       "DEBT",       FileWarning],
             ["statements", "STATEMENTS", Lock],
             ["cards",      "CARDS",      CreditCard],
           ] as const).map(([id, label, Icon]) => (
@@ -542,8 +545,8 @@ export default function GameBank() {
           <MarketPanel market={market} curCode={curCode} cur={cur} localCode={localCode} />
         )}
 
-        {tab === "credit" && (
-          <CreditPanel credit={credit} loan={loan} plan={plan} loading={creditLoading} onChanged={refresh} />
+        {tab === "debt" && (
+          <DebtPanel credit={credit} loan={loan} plan={plan} loading={creditLoading} onChanged={refreshDebtWorkspace} />
         )}
 
         {tab === "statements" && (
@@ -823,7 +826,7 @@ function MarketPanel({
   );
 }
 
-function CreditPanel({
+function DebtPanel({
   credit, loan, plan, loading, onChanged,
 }: {
   credit: CreditScore | null;
@@ -849,6 +852,15 @@ function CreditPanel({
   const scorePct = Math.max(0, Math.min(1, (score - 300) / 550));
   return (
     <div className="space-y-4">
+      <div>
+        <p className="text-[10px] font-mono tracking-[0.35em] text-zinc-400">DEBT &amp; PAYMENT PLANS</p>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Review balances, restructure collections debt, and manage active installments directly with Banco Ombra.
+        </p>
+      </div>
+
+      <BillsAndDebts plan={plan} onChanged={onChanged} />
+
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="rounded-lg border border-cyan-700/30 bg-gradient-to-br from-cyan-900/15 to-zinc-950 p-4">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-cyan-300/80">
@@ -897,13 +909,14 @@ function CreditPanel({
         </div>
       )}
 
-      <BillsAndDebts plan={plan} onChanged={onChanged} />
     </div>
   );
 }
 
 function BillsAndDebts({ plan, onChanged }: { plan: CreditPlan | null; onChanged: () => void }) {
   const [enrolling, setEnrolling] = useState<number | null>(null);
+  const [paying, setPaying] = useState<"installment" | "payoff" | null>(null);
+  const [notice, setNotice] = useState("");
   if (!plan) {
     return (
       <div className="rounded-lg border border-white/[0.06] bg-black/30 p-4 text-[11px] font-mono text-zinc-500 tracking-widest">
@@ -913,6 +926,35 @@ function BillsAndDebts({ plan, onChanged }: { plan: CreditPlan | null; onChanged
   }
   if (plan.active) {
     const due = plan.nextDueAt ? fmtDateTime(plan.nextDueAt) : "—";
+    const pay = async (kind: "installment" | "payoff") => {
+      setPaying(kind);
+      setNotice("");
+      try {
+        const path = kind === "installment" ? "/api/credit/plan/pay" : "/api/credit/plan/payoff";
+        const r = await apiFetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          const required = typeof body.required === "number" ? ` Need ${fmtFiat(body.required)}.` : "";
+          setNotice(`${body.error ?? "Payment could not be completed."}${required}`);
+          onChanged();
+          return;
+        }
+        setNotice(kind === "payoff"
+          ? `Debt paid in full · ${fmtFiat(body.paid ?? plan.balance)}`
+          : body.done
+            ? "Final installment paid · account clear"
+            : `Installment paid · ${fmtFiat(body.paid ?? plan.installment)}`);
+        onChanged();
+      } catch {
+        setNotice("Payment could not be completed. Check your connection and try again.");
+      } finally {
+        setPaying(null);
+      }
+    };
     return (
       <div className={`rounded-lg border p-4 ${plan.overdue ? "border-rose-700/40 bg-rose-950/20" : "border-amber-700/30 bg-amber-950/10"}`}>
         <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-amber-300/80 mb-2">
@@ -929,6 +971,32 @@ function BillsAndDebts({ plan, onChanged }: { plan: CreditPlan | null; onChanged
             OVERDUE · {plan.missed}/{plan.defaultsAfter} MISSES BEFORE DEFAULT
           </p>
         )}
+        <p className="mt-2 text-[10px] font-mono text-zinc-500 tracking-widest">
+          APR {(plan.apr * 100).toFixed(1)}% · PRINCIPAL {fmtFiat(plan.principal)}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => pay("installment")}
+            disabled={paying != null}
+            className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-[10px] font-mono tracking-[0.2em] text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+          >
+            {paying === "installment" ? "PAYING…" : `PAY INSTALLMENT · ${fmtFiat(plan.installment)}`}
+          </button>
+          <button
+            type="button"
+            onClick={() => pay("payoff")}
+            disabled={paying != null}
+            className="rounded-md border border-white/15 bg-black/30 px-3 py-2 text-[10px] font-mono tracking-[0.2em] text-zinc-300 hover:border-emerald-500/40 hover:text-emerald-200 disabled:opacity-50"
+          >
+            {paying === "payoff" ? "PAYING…" : `PAY OFF IN FULL · ${fmtFiat(plan.balance)}`}
+          </button>
+        </div>
+        {notice && (
+          <p className="mt-3 text-[10px] font-mono tracking-widest text-zinc-300" role="status">
+            {notice}
+          </p>
+        )}
       </div>
     );
   }
@@ -942,14 +1010,23 @@ function BillsAndDebts({ plan, onChanged }: { plan: CreditPlan | null; onChanged
   }
   const enroll = async (term: number) => {
     setEnrolling(term);
+    setNotice("");
     try {
       const r = await apiFetch("/api/credit/plan/enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ term }),
       });
-      if (r.ok) onChanged();
-    } catch { /* ignore */ }
+      if (r.ok) {
+        setNotice(`Debt restructured into ${term} installments.`);
+        onChanged();
+      } else {
+        const body = await r.json().catch(() => ({}));
+        setNotice(body.error ?? "Debt could not be restructured.");
+      }
+    } catch {
+      setNotice("Debt could not be restructured. Check your connection and try again.");
+    }
     finally { setEnrolling(null); }
   };
   return (
@@ -978,6 +1055,11 @@ function BillsAndDebts({ plan, onChanged }: { plan: CreditPlan | null; onChanged
           </button>
         ))}
       </div>
+      {notice && (
+        <p className="mt-3 text-[10px] font-mono tracking-widest text-zinc-300" role="status">
+          {notice}
+        </p>
+      )}
     </div>
   );
 }
