@@ -49,9 +49,14 @@ export interface OfficeOccupant {
 // furnished desk count scales with the owned property tier (capsule → suite).
 // Floor WIDTH stays fixed (22 per half) so the hand-placed station strip — whose
 // columns run the full width — never falls off the floor.
-function deskRects(shift: number, colCount?: number, rowCount?: number): DeskRect[] {
-  const cols = BIG_DESK_COLS.slice(0, colCount ?? BIG_DESK_COLS.length);
-  const rws = BIG_DESK_ROWS.slice(0, rowCount ?? BIG_DESK_ROWS.length);
+function deskRects(shift: number, colCount?: number, rowCount?: number, availableCols = 22): DeskRect[] {
+  const generatedCols = Array.from(
+    { length: Math.max(1, Math.min(colCount ?? BIG_DESK_COLS.length, Math.floor((availableCols - 1) / 4))) },
+    (_, i) => 1 + i * 4,
+  );
+  const generatedRows = Array.from({ length: Math.max(1, rowCount ?? BIG_DESK_ROWS.length) }, (_, i) => 4 + i * 3);
+  const cols = colCount == null ? BIG_DESK_COLS : generatedCols;
+  const rws = rowCount == null ? BIG_DESK_ROWS : generatedRows;
   const out: DeskRect[] = [];
   rws.forEach((r, ri) =>
     cols.forEach((c, ci) => out.push({ c: shift + c, r, w: 3, d: 2, ci, ri })),
@@ -121,6 +126,8 @@ export interface IsoOfficeProps {
   /** Live occupancy feed (player + bots), normalized to 0..1 of the floor, for
    *  the see-through wireframe minimap. Polled a few times a second. */
   onOccupants?: (occupants: OfficeOccupant[]) => void;
+  initialPose?: { x: number; y: number; facing: 'left' | 'right' };
+  onPoseChange?: (pose: { x: number; y: number; facing: 'left' | 'right' }) => void;
 }
 
 interface Vec2 { x: number; y: number }
@@ -159,6 +166,8 @@ export function IsoOffice({
   suppressLabels = false,
   playerName = '',
   onOccupants,
+  initialPose,
+  onPoseChange,
 }: IsoOfficeProps) {
   const isTouch =
     typeof window !== 'undefined' &&
@@ -200,8 +209,8 @@ export function IsoOffice({
     return s;
   }, [rooms]);
 
-  const deskRowDesks = useMemo(() => deskRects(0, deskColCount, deskRowCount), [deskColCount, deskRowCount]);
-  const bullpenDesks = useMemo(() => (bullpen ? deskRects(bullpenShift, deskColCount, deskRowCount) : []), [bullpen, bullpenShift, deskColCount, deskRowCount]);
+  const deskRowDesks = useMemo(() => deskRects(0, deskColCount, deskRowCount, leftCols), [deskColCount, deskRowCount, leftCols]);
+  const bullpenDesks = useMemo(() => (bullpen ? deskRects(bullpenShift, deskColCount, deskRowCount, rightCols) : []), [bullpen, bullpenShift, deskColCount, deskRowCount, rightCols]);
   const capSpots = useMemo(() => (bullpen ? capsuleSpots(bullpenShift, capsuleCount) : []), [bullpen, bullpenShift, capsuleCount]);
 
   // Seated bots fill bullpen desks (front-centre); idle bots fill capsules.
@@ -249,11 +258,9 @@ export function IsoOffice({
   // ── Refs the rAF loop reads (so the loop never restarts on prop churn) ──
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const fxRef = useRef<number>(
-    Math.round((bullpen ? bullpenShift + rightCols / 2 : cols / 2) * TILE),
-  );
-  const fyRef = useRef<number>(Math.round((rows - 3) * TILE));
-  const facingRef = useRef<'left' | 'right'>('right');
+  const fxRef = useRef<number>(initialPose?.x ?? Math.round((bullpen ? bullpenShift + rightCols / 2 : cols / 2) * TILE));
+  const fyRef = useRef<number>(initialPose?.y ?? Math.round((rows - 3) * TILE));
+  const facingRef = useRef<'left' | 'right'>(initialPose?.facing ?? 'right');
   const walkRef = useRef(0); // 0..1 walk phase for a tiny bob
   const runRef = useRef(false); // true while sprinting (Shift held / long tap)
   // Loaded realty-store backdrop image (painted behind the iso stage).
@@ -273,6 +280,7 @@ export function IsoOffice({
   const onBotInteractRef = useRef(onBotInteract);
   const onEnterRef = useRef(onEnterTerminal);
   const onMoveRef = useRef(onMove);
+  const onPoseChangeRef = useRef(onPoseChange);
   const movedOnceRef = useRef(false);
   const stationsRef = useRef<OfficeStation[]>(stations);
   const blockedRef = useRef(blockedTiles);
@@ -299,6 +307,7 @@ export function IsoOffice({
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
+  useEffect(() => { onPoseChangeRef.current = onPoseChange; }, [onPoseChange]);
   useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
   useEffect(() => { stationsRef.current = stations; }, [stations]);
   useEffect(() => { blockedRef.current = blockedTiles; }, [blockedTiles]);
@@ -463,6 +472,7 @@ export function IsoOffice({
           if (Math.abs(vx) > 0.01) facingRef.current = vx > 0 ? 'right' : 'left';
           fxRef.current = nx;
           fyRef.current = ny;
+           onPoseChangeRef.current?.({ x: nx, y: ny, facing: facingRef.current });
           frameAccum += dt;
           const gait = running ? FRAME_PERIOD_MS * 0.6 : FRAME_PERIOD_MS;
           if (frameAccum >= gait) {

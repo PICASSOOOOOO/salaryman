@@ -8,7 +8,7 @@
  */
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { type OfficeStation, type OfficeRoom } from '@/components/office/office-types';
+import { type OfficeStation } from '@/components/office/office-types';
 import { IsoOffice, type OfficeOccupant } from '@/components/IsoOffice';
 import { OfficeMinimap } from '@/components/OfficeMinimap';
 import { useToast } from '@/hooks/use-toast';
@@ -38,11 +38,11 @@ import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
 import { setMapContext } from '@/lib/map-context';
 import {
-  OFFICE_FLOOR_WIDTH_TILES,
-  OFFICE_STATION_LAYOUT,
-  OFFICE_TIER_FLOOR,
-  OFFICE_TIER_MIN_ROWS,
-} from '@/lib/office-layout';
+  getOfficePropertyLayout,
+  loadOfficePose,
+  saveOfficePose,
+  type OfficePose,
+} from '@/lib/office-property-layouts';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
 // only loads when a cabinet is actually used).
@@ -128,12 +128,6 @@ export default function PabloOffice() {
   // desks; everyone else sleeps in a cryo-capsule along the back wall.
   const [bots, setBots] = useState<MonitorBot[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
-  // Org roster → one enclosed executive office per active member, derived from
-  // /api/orgs/me (members[] is only populated for managers/owners). Nameplates
-  // read by job title / role since the row carries no display name.
-  const [orgMembers, setOrgMembers] = useState<
-    { userId: string; role: string; status: string; title?: string | null; department?: string | null }[]
-  >([]);
   // Read the user's onboarding office tier once on mount. localStorage
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
@@ -259,6 +253,19 @@ export default function PabloOffice() {
   // object → take the elevator), and stepping into the elevator naturally
   // begins the run. Progress persists per slot.
   const slot = currentSlot();
+  const officeLayout = useMemo(
+    () => getOfficePropertyLayout(owned?.propertyKey || owned?.artKey),
+    [owned],
+  );
+  const initialOfficePose = useMemo(() => loadOfficePose(slot, officeLayout), [slot, officeLayout]);
+  const officePoseRef = useRef<OfficePose>(initialOfficePose);
+  const rememberOfficePose = useCallback(() => {
+    saveOfficePose(slot, officeLayout, officePoseRef.current);
+  }, [slot, officeLayout]);
+  const navigateFromOffice = useCallback((path: string) => {
+    rememberOfficePose();
+    navigate(path);
+  }, [navigate, rememberOfficePose]);
   const [discovery, setDiscovery] = useState<DiscoveryState>(() => loadDiscovery(slot));
   const markMoved = () => setDiscovery((d) => {
     if (d.moved) return d;
@@ -354,7 +361,7 @@ export default function PabloOffice() {
       else if (k === 'escape') {
         if (showHelp) setShowHelp(false);
         else if (showMissions) setShowMissions(false);
-        else { playNav(); navigate('/pablo'); }
+        else { playNav(); navigateFromOffice('/pablo'); }
       }
     };
     window.addEventListener('keydown', onKey);
@@ -401,7 +408,7 @@ export default function PabloOffice() {
   const beginStory = () => {
     setStoryBeginIntent();
     playNav();
-    navigate('/world/play');
+    navigateFromOffice('/world/play');
   };
 
   // MISSION MENU "PLAY". Once the story is running, every playable scene is tracked
@@ -410,14 +417,14 @@ export default function PabloOffice() {
   // if not it routes you to find work so you can become eligible.
   const handlePlayScene = (def: StoryAssignmentDef) => {
     setShowMissions(false);
-    if (storyGate?.active) { playNav(); navigate('/world/play'); return; }
+    if (storyGate?.active) { playNav(); navigateFromOffice('/world/play'); return; }
     if (def.reserved) {
       if (storyGate?.eligible) beginStory();
       else { playNav(); navigate('/bots/jobs'); }
       return;
     }
     playNav();
-    navigate('/world/play');
+    navigateFromOffice('/world/play');
   };
 
   // Player city stats — local save first, then newest cloud save.
@@ -587,75 +594,14 @@ export default function PabloOffice() {
     };
   }, [isAuthenticated]);
 
-  // Org roster → executive offices. Fetched once; members[] is only returned
-  // when the viewer is a manager/owner (otherwise the wing shows vacant suites).
-  useEffect(() => {
-    if (!isAuthenticated) { setOrgMembers([]); return; }
-    let cancelled = false;
-    apiFetch('/api/orgs/me')
-      .then(async (r) => {
-        if (!r.ok || cancelled) return;
-        const d = await r.json();
-        setOrgMembers(Array.isArray(d?.members) ? d.members : []);
-      })
-      .catch(() => { /* vacant fallback */ });
-    return () => { cancelled = true; };
-  }, [isAuthenticated]);
-
-  // One enclosed executive office per active member, laid out across the lower
-  // HQ in banks of six (3 left + 3 right of the open divider corridor) that WRAP
-  // into additional rows as the org grows, so every active member gets their own
-  // walled office (not a fixed 6 cap). The floor height grows to fit. A solo
-  // player with no org gets a clean single room — NO placeholder offices, so the
-  // floor never carries invisible/illogical walls. A generous safety cap keeps a
-  // pathological roster from creating an enormous floor.
-  const execLayout = useMemo<{ rooms: OfficeRoom[]; floorRows: number }>(() => {
-    const COLS = [1, 8, 15, 24, 31, 38]; // office left-edge cols/row (skip col-22 divider)
-    const TOP = 12;       // first exec row starts below the bullpen
-    const W = 6, H = 7;
-    const ROW_STRIDE = 9; // office (7) + 2-tile walkway between stacked rows
-    const MAX = COLS.length * 4; // soft cap: up to 4 rows (24 offices)
-    const PALETTE = ['#c4b5fd', '#7dd3fc', '#fca5a5', '#86efac', '#fcd34d', '#f0abfc'];
-    const roleAccent: Record<string, string> = {
-      owner: '#fcd34d', ceo: '#fca5a5', executive: '#c4b5fd',
-      director: '#7dd3fc', manager: '#86efac', specialist: '#cbd5e1',
-    };
-    const hash = (s: string) => {
-      let h = 0;
-      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-      return Math.abs(h) + 7;
-    };
-    // Position helper: index → office cell (col from COLS, row stacks downward).
-    const place = (i: number) => ({
-      x: COLS[i % COLS.length],
-      y: TOP + Math.floor(i / COLS.length) * ROW_STRIDE,
-    });
-    const active = orgMembers.filter((m) => (m.status ?? 'active') === 'active');
-    const entries: OfficeRoom[] = active.slice(0, MAX).map((m, i) => {
-      const p = place(i);
-      return {
-        id: `exec-${m.userId}`, x: p.x, y: p.y, w: W, h: H,
-        doorSide: 'bottom' as const, doorSpan: 2,
-        label: (m.title || m.role || 'EXEC'),
-        sub: m.department || (m.title && m.role !== m.title ? m.role : undefined) || undefined,
-        accent: roleAccent[m.role] ?? PALETTE[i % PALETTE.length],
-        occupantSeed: hash(m.userId),
-      };
-    });
-    // No org members → no enclosed offices at all (a clean single room). Only a
-    // real roster grows the floor and adds walled suites.
-    const rowCount = Math.ceil(entries.length / COLS.length);
-    const floorRows = entries.length === 0
-      ? 0
-      : TOP + (rowCount - 1) * ROW_STRIDE + (H + 1); // last row + walkway
-    return { rooms: entries, floorRows };
-  }, [orgMembers]);
-  const execRooms = execLayout.rooms;
-  // Tier-driven furniture + floor depth. The exec wing can still push the floor
-  // deeper, so the actual depth is the larger of the exec layout and the tier
-  // minimum. Furniture counts come straight from the tier table.
-  const tierFloor = OFFICE_TIER_FLOOR[tier] ?? OFFICE_TIER_FLOOR.capsule;
-  const floorRows = Math.max(execLayout.floorRows, OFFICE_TIER_MIN_ROWS[tier] ?? OFFICE_TIER_MIN_ROWS.capsule);
+  // Property-keyed capacity and footprint: the deed, renderer, collision map,
+  // stations and surveillance camera all consume this same specification.
+  const tierFloor = {
+    deskCols: officeLayout.deskCols,
+    deskRows: officeLayout.deskRows,
+    capsules: officeLayout.capsules,
+  };
+  const floorRows = officeLayout.rows;
 
   // Build the crew roster: Pablo first, then deduped staff + employees.
   // The stage shows a finite set of portrait cards, so cap the head count
@@ -820,7 +766,7 @@ export default function PabloOffice() {
   // Pixel scale-up, driven directly by the office mode.
   //   SURVEILLANCE → shrink-to-fit the ENTIRE floor (fixed CCTV overview).
   //   LIVE         → tight, zoomed-in camera locked on the player.
-  const FLOOR_W_TILES = OFFICE_FLOOR_WIDTH_TILES; // private office only (no bullpen)
+  const FLOOR_W_TILES = officeLayout.cols;
   const FLOOR_H_TILES = floorRows;            // tier minimum, grown by the exec wing
   const officeScale = useMemo(() => {
     if (surveillance) {
@@ -852,16 +798,17 @@ export default function PabloOffice() {
     const actions: Record<string, () => void> = {
       elevator: () => {
         playClick();
+        rememberOfficePose();
         const g = storyGateRef.current;
-        if (g?.active) { playNav(); navigate('/world/play'); }
+        if (g?.active) { playNav(); navigateFromOffice('/world/play'); }
         else if (g?.eligible) { beginStory(); }
         else { setElevatorLocked(true); }
       },
-      atm: () => { playNav(); navigate('/game/bank'); },
-      payphone: () => { playNav(); navigate('/comms'); },
-      vending: () => { playNav(); navigate('/vending?from=office'); },
+      atm: () => { playNav(); navigateFromOffice('/game/bank'); },
+      payphone: () => { playNav(); navigateFromOffice('/comms'); },
+      vending: () => { playNav(); navigateFromOffice('/vending?from=office'); },
     };
-    const base: OfficeStation[] = OFFICE_STATION_LAYOUT.map((station) => ({
+    const base: OfficeStation[] = officeLayout.stations.map((station) => ({
       ...station,
       onInteract: actions[station.id],
     }));
@@ -869,7 +816,7 @@ export default function PabloOffice() {
     // station so the contextual cue advances no matter what the player tries.
     return base.map((s) => ({ ...s, onInteract: () => { markInteracted(); s.onInteract(); } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, [navigateFromOffice, officeLayout]);
 
   const hkBtn = (onClick: () => void, label: string, active: boolean, danger = false, disabled = false): ReactNode => (
     <button
@@ -993,8 +940,9 @@ export default function PabloOffice() {
                 `premium` renders the high-end, fully-lit grade; `followCam`
                 keeps the camera locked on the player while LIVE. */}
             <IsoOffice
+              key={`${slot}:${officeLayout.propertyKey}`}
               scale={officeScale}
-              roomCols={22}
+              roomCols={officeLayout.cols}
               roomRows={floorRows}
               viewportWidth={viewportW}
               viewportHeight={viewportH}
@@ -1003,14 +951,16 @@ export default function PabloOffice() {
               premium
               doorTopRow={11}
               doorBotRow={floorRows}
-              rooms={execRooms}
-              deskColCount={0}
-              deskRowCount={0}
-              capsuleCount={0}
+              rooms={officeLayout.rooms}
+              deskColCount={tierFloor.deskCols}
+              deskRowCount={tierFloor.deskRows}
+              capsuleCount={tierFloor.capsules}
+              initialPose={initialOfficePose}
+              onPoseChange={(pose) => { officePoseRef.current = pose; }}
               appearance={toWorkAttire(appearance)}
               playerName={playerName}
               onOccupants={handleOccupants}
-              onEnterTerminal={() => { markInteracted(); navigate('/pablo'); }}
+              onEnterTerminal={() => { markInteracted(); navigateFromOffice('/pablo'); }}
               onMove={markMoved}
               stations={stations}
               backdropSrc={ownedArt}
@@ -1083,6 +1033,7 @@ export default function PabloOffice() {
                   color: '#04121a', fontSize: '.5rem', fontWeight: 700, letterSpacing: '.18em',
                 }}>{owned.tenure === 'own' ? 'OWNED' : 'LEASED'}</span>
                 <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{(officeCustomization?.signage && officeCustomization.signage.trim().length > 0) ? officeCustomization.signage.trim().slice(0, 28) : owned.name}</span>
+                <span style={{ fontSize: '.42rem', color: 'rgba(186,230,253,.62)', letterSpacing: '.08em' }}>{officeLayout.representation}</span>
               </div>
             )}
 
@@ -1311,7 +1262,7 @@ export default function PabloOffice() {
           floor stays full-bleed. Hidden in the embedded monitor. */}
       {!embed && (
       <section
-         onClick={() => { playNav(); navigate('/game/bank?tab=finance'); }}
+         onClick={() => { playNav(); navigateFromOffice('/game/bank?tab=finance'); }}
         title="Open Banco Ombra"
         style={{
           flex: '0 0 auto',
@@ -1366,7 +1317,7 @@ export default function PabloOffice() {
             {economyCells.map(([label, value, color]) => (
               <div
                 key={label}
-                 onClick={() => { playNav(); navigate('/game/bank?tab=finance'); }}
+                 onClick={() => { playNav(); navigateFromOffice('/game/bank?tab=finance'); }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '1px', cursor: 'pointer' }}
               >
                 <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
