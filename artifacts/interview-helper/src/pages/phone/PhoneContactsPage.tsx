@@ -1,17 +1,19 @@
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Users, Phone, Search, CheckSquare, Square, Zap, Loader2, X, ArrowRight, Filter, Grid, List } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
-  crt, red, amber, blue, purple, formatPhone,
+  slate, destructive, warning, primary, accent, formatPhone,
   addActiveCall, addActiveCallsBatch,
-  type CRMContact, type BatchResult, type ActiveCall,
-} from '@/lib/phone-utils';
+  type CRMContact, type BatchResult, type ActiveCall } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 export default function PhoneContactsPage() {
+  const isMobile = useIsMobile();
+
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
   const [, rawNavigate] = useLocation();
@@ -83,8 +85,7 @@ export default function PhoneContactsPage() {
       const d = await bridgeOutbound(async () => {
         const r = await fetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
-        });
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Call failed');
@@ -109,8 +110,7 @@ export default function PhoneContactsPage() {
       const d = await bridgeOutbound(async () => {
         const r = await fetch(apiUrl('twilio/batch-call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ numbers, userId, callerName }),
-        });
+          body: JSON.stringify({ numbers, userId, callerName }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Batch call failed');
@@ -131,15 +131,15 @@ export default function PhoneContactsPage() {
     setBlasting(false);
   };
 
-  const AVATAR_COLORS = [crt, blue, amber, purple];
+  const AVATAR_COLORS = [slate, primary, warning, accent];
 
   return (
     <PhonePageLayout
       title="CONTACTS"
       subtitle="Phone-enabled CRM contacts — search, select, batch dial"
-      icon={<Users size={24} style={{ color: crt(0.8) }} />}
+      icon={<Users size={24} style={{ color: slate(0.8) }} />}
       statusLine={
-        <span style={{ color: crt(0.25) }}>
+        <span style={{ color: slate(0.55) }}>
           {contacts.length} CONTACTS · {companies.size} COMPANIES
         </span>
       }
@@ -152,23 +152,23 @@ export default function PhoneContactsPage() {
       }
     >
       {error && (
-        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: slate(0.02), border: `1px solid ${destructive(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: destructive(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: red(0.8) }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: destructive(0.8) }} />
             {error}
           </div>
-          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="TOTAL CONTACTS" value={contacts.length} />
-        <StatBlock label="COMPANIES" value={companies.size} color={blue} />
-        <StatBlock label="SELECTED" value={selected.size} color={selected.size > 0 ? amber : undefined} sub={selected.size > 0 ? 'ready to dial' : undefined} />
-        <StatBlock label="FILTERED" value={filtered.length} sub={search ? `matching "${search}"` : 'showing all'} color={purple} />
+        <StatBlock label="COMPANIES" value={companies.size} color={primary} />
+        <StatBlock label="SELECTED" value={selected.size} color={selected.size > 0 ? warning : undefined} sub={selected.size > 0 ? 'ready to dial' : undefined} />
+        <StatBlock label="FILTERED" value={filtered.length} sub={search ? `matching "${search}"` : 'showing all'} color={accent} />
       </div>
 
-      <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderBottom: `1px solid ${crt(0.06)}` }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderBottom: `1px solid ${slate(0.06)}` }}>
         {([['all', 'SEE'], ['nums', 'NUMS']] as const).map(([key, label]) => (
           <button
             key={key}
@@ -176,16 +176,15 @@ export default function PhoneContactsPage() {
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '6px 14px', fontSize: '0.42rem', letterSpacing: '0.15em',
-              color: contactFilter === key ? amber(0.9) : crt(0.3),
-              borderBottom: contactFilter === key ? `2px solid ${amber(0.6)}` : '2px solid transparent',
-            }}
+              color: contactFilter === key ? warning(0.9) : slate(0.3),
+              borderBottom: contactFilter === key ? `2px solid ${warning(0.6)}` : '2px solid transparent' }}
           >{label}</button>
         ))}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: crt(0.3) }} />
+          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: slate(0.55) }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -204,7 +203,7 @@ export default function PhoneContactsPage() {
           {selected.size === filtered.length && filtered.length > 0 ? 'DESELECT ALL' : `SELECT ALL (${filtered.length})`}
         </PhoneBtn>
         {selected.size > 0 && (
-          <PhoneBtn onClick={blastSelected} disabled={blasting} color={(o: number) => `rgba(0,220,60,${o})`} glow>
+          <PhoneBtn onClick={blastSelected} disabled={blasting} color={primary}>
             {blasting ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
             {blasting ? 'DIALING...' : `BLAST CALL ${selected.size}`}
           </PhoneBtn>
@@ -214,7 +213,7 @@ export default function PhoneContactsPage() {
       <PhoneCard>
         <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>CONTACTS WITH PHONE NUMBERS</span>
-          <span style={{ color: crt(0.5), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} / {contacts.length}</span>
+          <span style={{ color: slate(0.5), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} / {contacts.length}</span>
         </PhoneCardHeader>
 
         {filtered.length === 0 ? (
@@ -232,30 +231,28 @@ export default function PhoneContactsPage() {
                   onClick={() => toggleSelect(c.id)}
                   style={{
                     padding: 14, borderRadius: 8, cursor: 'pointer',
-                    background: selected.has(c.id) ? crt(0.06) : 'rgba(0,12,0,0.5)',
-                    border: `1px solid ${selected.has(c.id) ? crt(0.25) : crt(0.08)}`,
+                    background: selected.has(c.id) ? slate(0.06) : slate(0.04),
+                    border: `1px solid ${selected.has(c.id) ? slate(0.25) : slate(0.08)}`,
                     transition: 'all 0.15s',
-                    position: 'relative',
-                  }}
+                    position: 'relative' }}
                 >
-                  <div style={{ position: 'absolute', top: 10, right: 10, color: selected.has(c.id) ? crt(0.8) : crt(0.15) }}>
+                  <div style={{ position: 'absolute', top: 10, right: 10, color: selected.has(c.id) ? slate(0.8) : slate(0.15) }}>
                     {selected.has(c.id) ? <CheckSquare size={14} /> : <Square size={14} />}
                   </div>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10, marginBottom: 10,
-                    background: `linear-gradient(135deg, ${colorFn(0.15)}, ${colorFn(0.04)})`,
+                    background: slate(0.02),
                     border: `1px solid ${colorFn(0.25)}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1rem', color: colorFn(0.7),
-                  }}>
+                    fontSize: '1rem', color: colorFn(0.7) }}>
                     {c.name[0]?.toUpperCase()}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: crt(0.85), marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                  <div style={{ fontSize: '0.48rem', color: crt(0.35), marginBottom: 2 }}>{formatPhone(c.phone)}</div>
-                  {c.company && <div style={{ fontSize: '0.42rem', color: crt(0.2), marginTop: 2 }}>{c.company}</div>}
+                  <div style={{ fontSize: '0.7rem', color: slate(0.85), marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                  <div style={{ fontSize: '0.48rem', color: slate(0.55), marginBottom: 2 }}>{formatPhone(c.phone)}</div>
+                  {c.company && <div style={{ fontSize: '0.42rem', color: slate(0.55), marginTop: 2 }}>{c.company}</div>}
                   <PhoneBtn
                     onClick={e => { e?.stopPropagation(); callSingle(c.phone, c.name, c.id); }}
-                    color={(o: number) => `rgba(0,220,60,${o})`}
+                    color={primary}
                     size="sm"
                     style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
                   >
@@ -274,35 +271,33 @@ export default function PhoneContactsPage() {
                   key={c.id}
                   style={{
                     padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 12,
-                    borderBottom: `1px solid ${crt(0.04)}`,
-                    background: selected.has(c.id) ? crt(0.04) : 'transparent',
-                    cursor: 'pointer', transition: 'background 0.12s',
-                  }}
+                    borderBottom: `1px solid ${slate(0.04)}`,
+                    background: selected.has(c.id) ? slate(0.04) : 'transparent',
+                    cursor: 'pointer', transition: 'background 0.12s' }}
                   onClick={() => toggleSelect(c.id)}
                 >
-                  <div style={{ color: selected.has(c.id) ? crt(0.8) : crt(0.15), flexShrink: 0 }}>
+                  <div style={{ color: selected.has(c.id) ? slate(0.8) : slate(0.15), flexShrink: 0 }}>
                     {selected.has(c.id) ? <CheckSquare size={15} /> : <Square size={15} />}
                   </div>
                   <div style={{
                     width: 36, height: 36, borderRadius: 8,
-                    background: `linear-gradient(135deg, ${colorFn(selected.has(c.id) ? 0.15 : 0.08)}, transparent)`,
+                    background: slate(0.02),
                     border: `1px solid ${colorFn(selected.has(c.id) ? 0.3 : 0.12)}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ fontSize: '0.75rem', color: colorFn(selected.has(c.id) ? 0.8 : 0.5) }}>{c.name[0]?.toUpperCase()}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.7rem', color: crt(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                    <div style={{ fontSize: '0.48rem', color: crt(0.3), marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '0.7rem', color: slate(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                    <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <span>{formatPhone(c.phone)}</span>
-                      {c.company && <span style={{ color: crt(0.2) }}>· {c.company}</span>}
-                      {c.email && <span style={{ color: crt(0.15) }}>· {c.email}</span>}
+                      {c.company && <span style={{ color: slate(0.55) }}>· {c.company}</span>}
+                      {c.email && <span style={{ color: slate(0.55) }}>· {c.email}</span>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <PhoneBtn
                       onClick={e => { e?.stopPropagation(); callSingle(c.phone, c.name, c.id); }}
-                      color={(o: number) => `rgba(0,220,60,${o})`}
+                      color={primary}
                       size="sm"
                       title={`Call ${c.name}`}
                     >
@@ -319,23 +314,22 @@ export default function PhoneContactsPage() {
       {selected.size > 0 && (
         <div style={{
           position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
-          background: 'rgba(0,8,0,0.97)', border: `1px solid ${crt(0.3)}`, borderRadius: 10,
+          background: slate(0.97), border: `1px solid ${slate(0.3)}`, borderRadius: 10,
           padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16,
-          boxShadow: `0 0 40px ${crt(0.1)}, 0 8px 32px rgba(0,0,0,0.5)`,
-          backdropFilter: 'blur(12px)',
-        }}>
+
+          backdropFilter: 'blur(12px)' }}>
           <div>
-            <div style={{ fontSize: '0.75rem', color: crt(0.9), fontVariantNumeric: 'tabular-nums' }}>{selected.size} SELECTED</div>
-            <div style={{ fontSize: '0.42rem', color: crt(0.3) }}>ready for batch operation</div>
+            <div style={{ fontSize: '0.75rem', color: slate(0.9), fontVariantNumeric: 'tabular-nums' }}>{selected.size} SELECTED</div>
+            <div style={{ fontSize: '0.42rem', color: slate(0.55) }}>ready for batch operation</div>
           </div>
-          <PhoneBtn onClick={blastSelected} disabled={blasting} color={(o: number) => `rgba(0,220,60,${o})`} glow size="lg">
+          <PhoneBtn onClick={blastSelected} disabled={blasting} color={primary} size="lg">
             {blasting ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
             {blasting ? 'INITIATING...' : `BLAST CALL ALL ${selected.size}`}
           </PhoneBtn>
           <PhoneBtn onClick={() => navigate('/phone/sessions')}>
             START DIALING SESSION
           </PhoneBtn>
-          <PhoneBtn onClick={() => setSelected(new Set())} color={red} size="sm">
+          <PhoneBtn onClick={() => setSelected(new Set())} color={destructive} size="sm">
             <X size={12} />
           </PhoneBtn>
         </div>

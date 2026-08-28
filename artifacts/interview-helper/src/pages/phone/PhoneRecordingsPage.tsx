@@ -1,3 +1,4 @@
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Mic, Search, Phone, Download, AlertTriangle, X, ArrowUpRight, ArrowDownLeft, ChevronRight, ChevronDown, Shield, Voicemail } from 'lucide-react';
@@ -5,15 +6,16 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
-  crt, red, amber, blue, purple, formatPhone, formatDuration,
-  type CallRecord, type VoicemailRecord,
-} from '@/lib/phone-utils';
+  slate, destructive, warning, primary, accent, formatPhone, formatDuration,
+  type CallRecord, type VoicemailRecord } from '@/lib/phone-utils';
 
 type RecordingItem =
   | { kind: 'call'; id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; direction: string; transcript: string | null; summary: string | null; recordingUrl: string; }
   | { kind: 'vm';   id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; transcript: string | null; summary: string | null; recordingUrl: string; };
 
 export default function PhoneRecordingsPage() {
+  const isMobile = useIsMobile();
+
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
@@ -78,8 +80,7 @@ export default function PhoneRecordingsPage() {
         direction: c.direction ?? 'outbound',
         transcript: c.transcript ?? null,
         summary: c.summary ?? null,
-        recordingUrl: c.recordingUrl as string,
-      }));
+        recordingUrl: c.recordingUrl as string }));
     const vmItems: RecordingItem[] = vms
       .filter(v => !!v.recordingUrl)
       .map(v => ({
@@ -91,8 +92,7 @@ export default function PhoneRecordingsPage() {
         partyNumber: v.fromNumber,
         transcript: v.transcript ?? null,
         summary: v.summary ?? null,
-        recordingUrl: v.recordingUrl as string,
-      }));
+        recordingUrl: v.recordingUrl as string }));
     return [...callItems, ...vmItems].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   }, [calls, vms]);
 
@@ -140,56 +140,53 @@ export default function PhoneRecordingsPage() {
     <PhonePageLayout
       title="RECORDINGS"
       subtitle="Every call, every voicemail — recorded and retained for 10 years (HIPAA-aligned)"
-      icon={<Mic size={24} style={{ color: crt(0.85) }} />}
+      icon={<Mic size={24} style={{ color: slate(0.85) }} />}
       statusLine={
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: crt(0.4) }}>
-          <Shield size={11} style={{ color: crt(0.6) }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: slate(0.55) }}>
+          <Shield size={11} style={{ color: slate(0.6) }} />
           <span>{stats.total} ARCHIVED · 10-YEAR RETENTION</span>
         </span>
       }
     >
       {error && (
-        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: slate(0.02), border: `1px solid ${destructive(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: destructive(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={14} /> {error}</div>
-          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
 
       <div style={{
         marginBottom: 16, padding: '14px 18px',
-        background: 'linear-gradient(90deg, rgba(56,189,248,0.05), rgba(56,189,248,0.01))',
-        border: `1px solid ${crt(0.15)}`, borderRadius: 8,
-        display: 'flex', alignItems: 'center', gap: 14,
-      }}>
+        background: slate(0.02),
+        border: `1px solid ${slate(0.15)}`, borderRadius: 8,
+        display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{
           width: 38, height: 38, borderRadius: 8,
-          background: `linear-gradient(135deg, ${crt(0.18)}, ${crt(0.04)})`,
-          border: `1px solid ${crt(0.3)}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 0 16px ${crt(0.12)}`,
-        }}>
-          <Shield size={18} style={{ color: crt(0.9) }} />
+          background: slate(0.02),
+          border: `1px solid ${slate(0.3)}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Shield size={18} style={{ color: slate(0.9) }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '0.6rem', color: crt(0.85), letterSpacing: '0.1em' }}>HIPAA-ALIGNED RECORDING ARCHIVE</div>
-          <div style={{ fontSize: '0.48rem', color: crt(0.45), marginTop: 3, letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: '0.6rem', color: slate(0.85), letterSpacing: '0.1em' }}>HIPAA-ALIGNED RECORDING ARCHIVE</div>
+          <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 3, letterSpacing: '0.06em' }}>
             Every inbound call, outbound call, conference, and voicemail is recorded and stored for ten (10) years.
             Audio, transcripts, and AI summaries are encrypted and only accessible to you.
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 16 }}>
-        <StatBlock label="TOTAL RECORDINGS" value={stats.total} color={crt} />
-        <StatBlock label="CALL RECORDINGS" value={stats.callRecs} color={crt} />
-        <StatBlock label="VOICEMAILS" value={stats.vmRecs} color={amber} />
-        <StatBlock label="TOTAL AUDIO" value={formatDuration(stats.totalDuration)} color={blue} />
-        <StatBlock label="TRANSCRIBED" value={stats.transcribed} color={purple} sub={stats.total ? `${Math.round(stats.transcribed / stats.total * 100)}%` : '0%'} />
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, 1fr)', gap: 10, marginBottom: 16 }}>
+        <StatBlock label="TOTAL RECORDINGS" value={stats.total} color={slate} />
+        <StatBlock label="CALL RECORDINGS" value={stats.callRecs} color={slate} />
+        <StatBlock label="VOICEMAILS" value={stats.vmRecs} color={warning} />
+        <StatBlock label="TOTAL AUDIO" value={formatDuration(stats.totalDuration)} color={primary} />
+        <StatBlock label="TRANSCRIBED" value={stats.transcribed} color={accent} sub={stats.total ? `${Math.round(stats.transcribed / stats.total * 100)}%` : '0%'} />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: crt(0.3) }} />
+          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: slate(0.55) }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -205,12 +202,11 @@ export default function PhoneRecordingsPage() {
               onClick={() => setFilter(f.key)}
               style={{
                 padding: '5px 10px', fontSize: '0.45rem', letterSpacing: '0.1em',
-                background: filter === f.key ? crt(0.08) : 'transparent',
-                border: `1px solid ${filter === f.key ? crt(0.25) : crt(0.08)}`,
-                color: filter === f.key ? crt(0.8) : crt(0.3),
+                background: filter === f.key ? slate(0.08) : 'transparent',
+                border: `1px solid ${filter === f.key ? slate(0.25) : slate(0.08)}`,
+                color: filter === f.key ? slate(0.8) : slate(0.3),
                 borderRadius: 4, cursor: 'pointer',
-                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-              }}
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}
             >{f.label}</button>
           ))}
         </div>
@@ -219,11 +215,11 @@ export default function PhoneRecordingsPage() {
       <PhoneCard>
         <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>RECORDING ARCHIVE</span>
-          <span style={{ color: crt(0.4), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} / {stats.total}</span>
+          <span style={{ color: slate(0.55), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} / {stats.total}</span>
         </PhoneCardHeader>
 
         {loading ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', fontSize: '0.6rem', color: crt(0.3), letterSpacing: '0.15em' }}>
+          <div style={{ padding: '40px 0', textAlign: 'center', fontSize: '0.6rem', color: slate(0.55), letterSpacing: '0.15em' }}>
             LOADING RECORDING ARCHIVE...
           </div>
         ) : filtered.length === 0 ? (
@@ -236,49 +232,47 @@ export default function PhoneRecordingsPage() {
             const key = `${it.kind}-${it.id}`;
             const expanded = expandedKey === key;
             return (
-              <div key={key} style={{ borderBottom: `1px solid ${crt(0.05)}` }}>
+              <div key={key} style={{ borderBottom: `1px solid ${slate(0.05)}` }}>
                 <div
                   onClick={() => setExpandedKey(expanded ? null : key)}
                   style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                 >
                   <div style={{
                     width: 38, height: 38, borderRadius: 8, flexShrink: 0,
-                    background: it.kind === 'vm' ? `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.03)})` : 'rgba(0,12,0,0.5)',
-                    border: `1px solid ${it.kind === 'vm' ? amber(0.25) : crt(0.12)}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                    background: it.kind === 'vm' ? `linear-gradient(135deg, ${warning(0.15)}, ${warning(0.03)})` : slate(0.04),
+                    border: `1px solid ${it.kind === 'vm' ? warning(0.25) : slate(0.12)}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {it.kind === 'vm'
-                      ? <Voicemail size={16} style={{ color: amber(0.8) }} />
+                      ? <Voicemail size={16} style={{ color: warning(0.8) }} />
                       : it.direction === 'inbound'
-                        ? <ArrowDownLeft size={16} style={{ color: blue(0.7) }} />
-                        : <ArrowUpRight size={16} style={{ color: crt(0.6) }} />}
+                        ? <ArrowDownLeft size={16} style={{ color: primary(0.7) }} />
+                        : <ArrowUpRight size={16} style={{ color: slate(0.6) }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.72rem', color: crt(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: '0.72rem', color: slate(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {it.partyName || formatPhone(it.partyNumber)}
                     </div>
-                    <div style={{ fontSize: '0.48rem', color: crt(0.3), marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span>{formatPhone(it.partyNumber)}</span>
-                      <span style={{ color: crt(0.12) }}>·</span>
+                      <span style={{ color: slate(0.55) }}>·</span>
                       <span style={{
                         padding: '1px 5px', borderRadius: 3,
-                        background: it.kind === 'vm' ? amber(0.05) : crt(0.05),
-                        border: `1px solid ${it.kind === 'vm' ? amber(0.18) : crt(0.18)}`,
-                        color: it.kind === 'vm' ? amber(0.8) : crt(0.8),
-                        display: 'inline-flex', alignItems: 'center', gap: 3,
-                      }}>
+                        background: it.kind === 'vm' ? warning(0.05) : slate(0.05),
+                        border: `1px solid ${it.kind === 'vm' ? warning(0.18) : slate(0.18)}`,
+                        color: it.kind === 'vm' ? warning(0.8) : slate(0.8),
+                        display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                         {it.kind === 'vm' ? <><Voicemail size={9} /> VM</> : <><Mic size={9} /> CALL</>}
                       </span>
                       {it.durationSeconds != null && it.durationSeconds > 0 && (
                         <>
-                          <span style={{ color: crt(0.12) }}>·</span>
+                          <span style={{ color: slate(0.55) }}>·</span>
                           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDuration(it.durationSeconds)}</span>
                         </>
                       )}
-                      <span style={{ color: crt(0.12) }}>·</span>
+                      <span style={{ color: slate(0.55) }}>·</span>
                       <span>{new Date(it.startedAt).toLocaleDateString()} {new Date(it.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      {it.kind === 'call' && it.direction === 'inbound' && <span style={{ color: blue(0.6) }}>↙ INBOUND</span>}
-                      {it.transcript && <span style={{ color: purple(0.5) }}>📝</span>}
+                      {it.kind === 'call' && it.direction === 'inbound' && <span style={{ color: primary(0.6) }}>↙ INBOUND</span>}
+                      {it.transcript && <span style={{ color: accent(0.5) }}>📝</span>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
@@ -290,10 +284,9 @@ export default function PhoneRecordingsPage() {
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '5px 9px', fontSize: '0.45rem', letterSpacing: '0.1em',
-                        color: crt(0.7), border: `1px solid ${crt(0.18)}`, borderRadius: 4,
-                        textDecoration: 'none', background: crt(0.03),
-                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                      }}
+                        color: slate(0.7), border: `1px solid ${slate(0.18)}`, borderRadius: 4,
+                        textDecoration: 'none', background: slate(0.03),
+                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}
                     >
                       <Download size={11} />
                     </a>
@@ -302,22 +295,22 @@ export default function PhoneRecordingsPage() {
                         <Phone size={11} />
                       </PhoneBtn>
                     )}
-                    {expanded ? <ChevronDown size={13} style={{ color: crt(0.5) }} /> : <ChevronRight size={13} style={{ color: crt(0.2) }} />}
+                    {expanded ? <ChevronDown size={13} style={{ color: slate(0.5) }} /> : <ChevronRight size={13} style={{ color: slate(0.55) }} />}
                   </div>
                 </div>
 
                 {expanded && (
-                  <div style={{ padding: '14px 20px 18px', background: 'rgba(0,0,0,0.25)', borderTop: `1px solid ${crt(0.05)}` }}>
-                    <div style={{ marginBottom: 12, padding: '12px 14px', background: 'rgba(0,0,0,0.3)', borderRadius: 6, border: `1px solid ${crt(0.12)}` }}>
+                  <div style={{ padding: '14px 20px 18px', background: slate(0.25), borderTop: `1px solid ${slate(0.05)}` }}>
+                    <div style={{ marginBottom: 12, padding: '12px 14px', background: slate(0.3), borderRadius: 6, border: `1px solid ${slate(0.12)}` }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <div style={{ fontSize: '0.42rem', color: crt(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Mic size={11} /> {it.kind === 'vm' ? 'VOICEMAIL RECORDING' : 'CALL RECORDING'}
-                          <span style={{ color: crt(0.25) }}>· RETAINED 10 YEARS · HIPAA</span>
+                          <span style={{ color: slate(0.55) }}>· RETAINED 10 YEARS · HIPAA</span>
                         </div>
                         <a
                           href={downloadUrlFor(it)}
                           download={it.kind === 'call' ? `call-${it.id}.mp3` : `voicemail-${it.id}.mp3`}
-                          style={{ fontSize: '0.45rem', color: crt(0.7), letterSpacing: '0.15em', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: `1px solid ${crt(0.2)}`, borderRadius: 4 }}
+                          style={{ fontSize: '0.45rem', color: slate(0.7), letterSpacing: '0.15em', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: `1px solid ${slate(0.2)}`, borderRadius: 4 }}
                         >
                           <Download size={10} /> DOWNLOAD MP3
                         </a>
@@ -326,24 +319,23 @@ export default function PhoneRecordingsPage() {
                     </div>
 
                     {(it.summary || it.transcript) && (
-                      <div style={{ display: 'grid', gridTemplateColumns: it.summary && it.transcript ? '1fr 1fr' : '1fr', gap: 16 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (it.summary && it.transcript ? '1fr 1fr' : '1fr'), gap: 16 }}>
                         {it.summary && (
                           <div>
-                            <div style={{ fontSize: '0.42rem', color: purple(0.5), letterSpacing: '0.2em', marginBottom: 6 }}>AI SUMMARY</div>
-                            <div style={{ fontSize: '0.6rem', color: crt(0.6), lineHeight: 1.7, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 6, border: `1px solid ${crt(0.05)}` }}>
+                            <div style={{ fontSize: '0.42rem', color: accent(0.5), letterSpacing: '0.2em', marginBottom: 6 }}>AI SUMMARY</div>
+                            <div style={{ fontSize: '0.6rem', color: slate(0.6), lineHeight: 1.7, padding: '10px 12px', background: slate(0.2), borderRadius: 6, border: `1px solid ${slate(0.05)}` }}>
                               {it.summary}
                             </div>
                           </div>
                         )}
                         {it.transcript && (
                           <div>
-                            <div style={{ fontSize: '0.42rem', color: crt(0.35), letterSpacing: '0.2em', marginBottom: 6 }}>TRANSCRIPT</div>
+                            <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', marginBottom: 6 }}>TRANSCRIPT</div>
                             <div style={{
-                              fontSize: '0.55rem', color: crt(0.45), maxHeight: 180, overflowY: 'auto',
+                              fontSize: '0.55rem', color: slate(0.55), maxHeight: 180, overflowY: 'auto',
                               whiteSpace: 'pre-wrap', lineHeight: 1.7,
-                              padding: '10px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 6,
-                              border: `1px solid ${crt(0.05)}`,
-                            }}>
+                              padding: '10px 12px', background: slate(0.3), borderRadius: 6,
+                              border: `1px solid ${slate(0.05)}` }}>
                               {it.transcript}
                             </div>
                           </div>

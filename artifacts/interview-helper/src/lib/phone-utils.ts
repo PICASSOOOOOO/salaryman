@@ -204,11 +204,11 @@ export interface ConferenceRoom {
   participantsJson: string | null;
 }
 
-export const crt = (opacity: number) => `rgba(56,189,248,${opacity})`;
-export const red = (opacity: number) => `rgba(255,40,40,${opacity})`;
-export const amber = (opacity: number) => `rgba(255,180,0,${opacity})`;
-export const blue = (opacity: number) => `rgba(0,150,255,${opacity})`;
-export const purple = (opacity: number) => `rgba(180,0,255,${opacity})`;
+export const slate = (opacity: number) => `rgba(56,189,248,${opacity})`;
+export const destructive = (opacity: number) => `rgba(255,40,40,${opacity})`;
+export const warning = (opacity: number) => `rgba(255,180,0,${opacity})`;
+export const primary = (opacity: number) => `rgba(0,150,255,${opacity})`;
+export const accent = (opacity: number) => `rgba(180,0,255,${opacity})`;
 
 const ACTIVE_CALLS_KEY = 'phone_active_calls';
 

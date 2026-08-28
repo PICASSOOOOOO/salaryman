@@ -1,16 +1,18 @@
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { Headphones, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, X, Upload, FileText, Zap, PhoneOutgoing, PhoneIncoming, AlertTriangle, Users } from 'lucide-react';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
-  crt, amber, blue, red, purple, formatPhone,
-  type CallCenterAgent, type InboundScreening, type OutboundCampaign,
-} from '@/lib/phone-utils';
+  slate, warning, primary, destructive, accent, formatPhone,
+  type CallCenterAgent, type InboundScreening, type OutboundCampaign } from '@/lib/phone-utils';
 
 type Tab = 'inbound' | 'outbound';
 
 export default function PhoneCallCenterPage() {
+  const isMobile = useIsMobile();
+
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -63,8 +65,7 @@ export default function PhoneCallCenterPage() {
       const r = await fetch(apiUrl('twilio/call-center/agents'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name: agentName, phone: agentPhone, email: agentEmail || null }),
-      });
+        body: JSON.stringify({ name: agentName, phone: agentPhone, email: agentEmail || null }) });
       if (handleAuthStatus(r)) return;
       if (r.ok) {
         const d = await r.json();
@@ -103,8 +104,7 @@ export default function PhoneCallCenterPage() {
       const r = await fetch(apiUrl('twilio/pablo/campaigns'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }),
-      });
+        body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }) });
       if (r.ok) {
         const d = await r.json();
         setCampaigns(prev => [d.campaign, ...prev]);
@@ -129,17 +129,17 @@ export default function PhoneCallCenterPage() {
   };
 
   const outcomeColor = (outcome: string) => {
-    if (outcome === 'transferred') return (o: number) => `rgba(0,220,60,${o})`;
-    if (outcome === 'ended') return red;
-    if (outcome === 'screening') return amber;
-    if (outcome === 'timeout_transfer') return blue;
-    return crt;
+    if (outcome === 'transferred') return (o: number) => primary(o);
+    if (outcome === 'ended') return destructive;
+    if (outcome === 'screening') return warning;
+    if (outcome === 'timeout_transfer') return primary;
+    return slate;
   };
 
   if (loading) return (
-    <PhonePageLayout title="CALL CENTER" subtitle="Loading..." icon={<Headphones size={24} style={{ color: purple(0.8) }} />}>
+    <PhonePageLayout title="CALL CENTER" subtitle="Loading..." icon={<Headphones size={24} style={{ color: accent(0.8) }} />}>
       <div style={{ padding: '60px 0', textAlign: 'center' }}>
-        <Loader2 size={24} className="animate-spin" style={{ color: crt(0.3) }} />
+        <Loader2 size={24} className="animate-spin" style={{ color: slate(0.55) }} />
       </div>
     </PhonePageLayout>
   );
@@ -148,32 +148,32 @@ export default function PhoneCallCenterPage() {
     <PhonePageLayout
       title="CALL CENTER"
       subtitle="Dual-DID inbound screening & outbound campaigns with round-robin agent routing"
-      icon={<Headphones size={24} style={{ color: purple(0.8) }} />}
+      icon={<Headphones size={24} style={{ color: accent(0.8) }} />}
       statusLine={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: agents.some(a => a.isActive) ? 'rgba(0,220,60,0.8)' : crt(0.15) }} />
-          <span style={{ color: agents.some(a => a.isActive) ? crt(0.5) : crt(0.2) }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: agents.some(a => a.isActive) ? primary(0.8) : slate(0.15) }} />
+          <span style={{ color: agents.some(a => a.isActive) ? slate(0.5) : slate(0.2) }}>
             {agents.filter(a => a.isActive).length} AGENTS ONLINE
           </span>
         </div>
       }
     >
       {error && (
-        <div style={{ marginBottom: 16, padding: '12px 18px', background: red(0.05), border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: destructive(0.05), border: `1px solid ${destructive(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: destructive(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={14} />{error}</div>
-          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 16 }}>
-        <StatBlock label="AGENTS ONLINE" value={metrics.activeAgents} color={metrics.activeAgents > 0 ? (o: number) => `rgba(0,220,60,${o})` : undefined} />
-        <StatBlock label="TOTAL SCREENINGS" value={metrics.totalScreenings} color={purple} />
-        <StatBlock label="TRANSFERRED" value={metrics.transferred} color={blue} />
-        <StatBlock label="ENDED" value={metrics.ended} color={red} />
-        <StatBlock label="AVG SCREEN TIME" value={metrics.avgScreenTime > 0 ? `${metrics.avgScreenTime}s` : '--'} color={amber} />
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, 1fr)', gap: 10, marginBottom: 16 }}>
+        <StatBlock label="AGENTS ONLINE" value={metrics.activeAgents} color={metrics.activeAgents > 0 ? (o: number) => primary(o) : undefined} />
+        <StatBlock label="TOTAL SCREENINGS" value={metrics.totalScreenings} color={accent} />
+        <StatBlock label="TRANSFERRED" value={metrics.transferred} color={primary} />
+        <StatBlock label="ENDED" value={metrics.ended} color={destructive} />
+        <StatBlock label="AVG SCREEN TIME" value={metrics.avgScreenTime > 0 ? `${metrics.avgScreenTime}s` : '--'} color={warning} />
       </div>
 
-      <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: `1px solid ${crt(0.08)}` }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: `1px solid ${slate(0.08)}` }}>
         {([['inbound', 'INBOUND', <PhoneIncoming key="i" size={12} />], ['outbound', 'OUTBOUND', <PhoneOutgoing key="o" size={12} />]] as const).map(([key, label, icon]) => (
           <button
             key={key}
@@ -181,19 +181,18 @@ export default function PhoneCallCenterPage() {
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '10px 24px', fontSize: '0.55rem', letterSpacing: '0.15em',
-              color: tab === key ? purple(0.9) : crt(0.3),
-              borderBottom: tab === key ? `2px solid ${purple(0.6)}` : '2px solid transparent',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
+              color: tab === key ? accent(0.9) : slate(0.3),
+              borderBottom: tab === key ? `2px solid ${accent(0.6)}` : '2px solid transparent',
+              display: 'flex', alignItems: 'center', gap: 6 }}
           >{icon}{label}</button>
         ))}
       </div>
 
       {tab === 'inbound' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '380px 1fr', gap: 20, alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <PhoneCard>
-              <PhoneCardHeader accent={purple(0.5)}>
+              <PhoneCardHeader accent={accent(0.5)}>
                 <Users size={10} style={{ marginRight: 4 }} /> AGENT POOL
               </PhoneCardHeader>
               <div style={{ padding: 16 }}>
@@ -201,7 +200,7 @@ export default function PhoneCallCenterPage() {
                   <input value={agentName} onChange={e => setAgentName(e.target.value)} placeholder="Agent name" style={INPUT_STYLE} />
                   <input value={agentPhone} onChange={e => setAgentPhone(e.target.value)} placeholder="Phone (+1 555...)" style={INPUT_STYLE} />
                   <input value={agentEmail} onChange={e => setAgentEmail(e.target.value)} placeholder="Email (optional)" style={INPUT_STYLE} />
-                  <PhoneBtn onClick={addAgent} disabled={addingAgent || !agentName || !agentPhone} color={purple} glow={!addingAgent && !!agentName && !!agentPhone}>
+                  <PhoneBtn onClick={addAgent} disabled={addingAgent || !agentName || !agentPhone} color={accent}>
                     {addingAgent ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                     {addingAgent ? 'ADDING...' : 'ADD AGENT'}
                   </PhoneBtn>
@@ -214,19 +213,16 @@ export default function PhoneCallCenterPage() {
                     {agents.map(a => (
                       <div key={a.id} style={{
                         padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        background: a.isActive ? 'rgba(0,220,60,0.03)' : 'rgba(0,12,0,0.4)',
-                        border: `1px solid ${a.isActive ? 'rgba(0,220,60,0.15)' : crt(0.06)}`,
-                        borderRadius: 6,
-                      }}>
+                        background: a.isActive ? primary(0.03) : slate(0.04),
+                        border: `1px solid ${a.isActive ? primary(0.15) : slate(0.06)}`,
+                        borderRadius: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{
                             width: 8, height: 8, borderRadius: '50%',
-                            background: a.isActive ? 'rgba(0,220,60,0.8)' : crt(0.15),
-                            boxShadow: a.isActive ? '0 0 6px rgba(0,220,60,0.3)' : 'none',
-                          }} />
+                            background: a.isActive ? primary(0.8) : slate(0.15) }} />
                           <div>
-                            <div style={{ fontSize: '0.58rem', color: crt(a.isActive ? 0.9 : 0.5) }}>{a.name}</div>
-                            <div style={{ fontSize: '0.4rem', color: crt(0.25), marginTop: 2 }}>
+                            <div style={{ fontSize: '0.58rem', color: slate(a.isActive ? 0.9 : 0.5) }}>{a.name}</div>
+                            <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 2 }}>
                               {formatPhone(a.phone)} · {a.totalCalls} calls
                             </div>
                           </div>
@@ -234,11 +230,11 @@ export default function PhoneCallCenterPage() {
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button onClick={() => toggleAgent(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                             {a.isActive
-                              ? <ToggleRight size={20} style={{ color: 'rgba(0,220,60,0.7)' }} />
-                              : <ToggleLeft size={20} style={{ color: crt(0.2) }} />
+                              ? <ToggleRight size={20} style={{ color: primary(0.7) }} />
+                              : <ToggleLeft size={20} style={{ color: slate(0.55) }} />
                             }
                           </button>
-                          <button onClick={() => removeAgent(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: red(0.4) }}>
+                          <button onClick={() => removeAgent(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: destructive(0.55) }}>
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -251,7 +247,7 @@ export default function PhoneCallCenterPage() {
           </div>
 
           <PhoneCard>
-            <PhoneCardHeader accent={amber(0.5)}>SCREENING HISTORY</PhoneCardHeader>
+            <PhoneCardHeader accent={warning(0.5)}>SCREENING HISTORY</PhoneCardHeader>
             {screenings.length === 0 ? (
               <EmptyState message="NO SCREENINGS YET — INBOUND CALLS WILL APPEAR HERE AFTER PABLO SCREENS THEM" icon={<PhoneIncoming size={28} />} />
             ) : (
@@ -260,36 +256,33 @@ export default function PhoneCallCenterPage() {
                   const oc = outcomeColor(s.outcome);
                   return (
                     <div key={s.id} style={{
-                      padding: '12px 16px', borderBottom: `1px solid ${crt(0.04)}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    }}>
+                      padding: '12px 16px', borderBottom: `1px solid ${slate(0.04)}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
                           width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                          background: `linear-gradient(135deg, ${oc(0.1)}, transparent)`,
+                          background: slate(0.02),
                           border: `1px solid ${oc(0.2)}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
+                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <PhoneIncoming size={16} style={{ color: oc(0.7) }} />
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.58rem', color: crt(0.8) }}>{s.callerName || formatPhone(s.callerNumber)}</div>
-                          <div style={{ fontSize: '0.4rem', color: crt(0.25), marginTop: 2 }}>
+                          <div style={{ fontSize: '0.58rem', color: slate(0.8) }}>{s.callerName || formatPhone(s.callerNumber)}</div>
+                          <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 2 }}>
                             {formatPhone(s.callerNumber)}
                             {s.agentName && ` → ${s.agentName}`}
                             {s.screeningDurationSeconds != null && ` · ${s.screeningDurationSeconds}s`}
                           </div>
-                          {s.summary && <div style={{ fontSize: '0.4rem', color: crt(0.2), marginTop: 3, maxWidth: 400 }}>{s.summary}</div>}
+                          {s.summary && <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 3, maxWidth: 400 }}>{s.summary}</div>}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{
                           fontSize: '0.42rem', color: oc(0.8), letterSpacing: '0.1em',
-                          padding: '2px 8px', borderRadius: 4, background: oc(0.06), border: `1px solid ${oc(0.15)}`,
-                        }}>
+                          padding: '2px 8px', borderRadius: 4, background: oc(0.06), border: `1px solid ${oc(0.15)}` }}>
                           {s.outcome.toUpperCase().replace(/_/g, ' ')}
                         </div>
-                        <div style={{ fontSize: '0.38rem', color: crt(0.2), marginTop: 4 }}>
+                        <div style={{ fontSize: '0.38rem', color: slate(0.55), marginTop: 4 }}>
                           {new Date(s.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
@@ -303,16 +296,16 @@ export default function PhoneCallCenterPage() {
       )}
 
       {tab === 'outbound' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, alignItems: 'start' }}>
           <PhoneCard>
-            <PhoneCardHeader accent={amber(0.5)}>CREATE CAMPAIGN</PhoneCardHeader>
+            <PhoneCardHeader accent={warning(0.5)}>CREATE CAMPAIGN</PhoneCardHeader>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN NAME</label>
+                <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN NAME</label>
                 <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Q1 Lead Follow-up" style={INPUT_STYLE} />
               </div>
               <div>
-                <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>SCRIPT</label>
+                <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>SCRIPT</label>
                 <textarea
                   value={campaignScript} onChange={e => setCampaignScript(e.target.value)}
                   placeholder="Hi, I'm calling from [Company] to follow up on your recent inquiry..."
@@ -320,7 +313,7 @@ export default function PhoneCallCenterPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
+                <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
                   LEAD LIST (CSV: phone,name,company,email)
                 </label>
                 <textarea
@@ -331,18 +324,17 @@ export default function PhoneCallCenterPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                   <input type="file" accept=".csv,.txt" ref={csvInputRef} onChange={handleCsvUpload} style={{ display: 'none' }} />
                   <button onClick={() => csvInputRef.current?.click()} style={{
-                    fontSize: '0.45rem', color: crt(0.5), background: 'rgba(0,12,0,0.5)',
-                    border: `1px solid ${crt(0.12)}`, padding: '6px 12px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.1em',
-                  }}>
+                    fontSize: '0.45rem', color: slate(0.5), background: slate(0.5),
+                    border: `1px solid ${slate(0.12)}`, padding: '6px 12px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.1em' }}>
                     <Upload size={10} /> UPLOAD CSV
                   </button>
-                  <span style={{ fontSize: '0.38rem', color: crt(0.2) }}>
+                  <span style={{ fontSize: '0.38rem', color: slate(0.55) }}>
                     {campaignLeads ? `${campaignLeads.split('\n').filter(l => l.trim()).length} LEADS` : 'OR PASTE ABOVE'}
                   </span>
                 </div>
               </div>
-              <PhoneBtn onClick={createCampaign} disabled={campaignCreating || !campaignName || !campaignScript || !campaignLeads} color={amber} glow={!campaignCreating}>
+              <PhoneBtn onClick={createCampaign} disabled={campaignCreating || !campaignName || !campaignScript || !campaignLeads} color={warning}>
                 {campaignCreating ? <Loader2 size={12} className="animate-spin" /> : <PhoneOutgoing size={12} />}
                 {campaignCreating ? 'CREATING...' : 'CREATE CAMPAIGN'}
               </PhoneBtn>
@@ -350,39 +342,38 @@ export default function PhoneCallCenterPage() {
           </PhoneCard>
 
           <PhoneCard>
-            <PhoneCardHeader accent={crt(0.3)}>CAMPAIGNS</PhoneCardHeader>
+            <PhoneCardHeader accent={slate(0.3)}>CAMPAIGNS</PhoneCardHeader>
             {campaigns.length === 0 ? (
               <EmptyState message="NO OUTBOUND CAMPAIGNS — CREATE ONE TO START DIALING" icon={<FileText size={28} />} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {campaigns.map(c => (
                   <div key={c.id} style={{
-                    padding: '14px 16px', borderBottom: `1px solid ${crt(0.04)}`,
+                    padding: '14px 16px', borderBottom: `1px solid ${slate(0.04)}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: c.status === 'active' ? amber(0.02) : 'transparent',
-                  }}>
+                    background: c.status === 'active' ? warning(0.02) : 'transparent' }}>
                     <div>
-                      <div style={{ fontSize: '0.58rem', color: crt(0.7), letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <FileText size={12} style={{ color: crt(0.3) }} />
+                      <div style={{ fontSize: '0.58rem', color: slate(0.7), letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FileText size={12} style={{ color: slate(0.55) }} />
                         {c.name}
                       </div>
-                      <div style={{ fontSize: '0.4rem', color: crt(0.3), marginTop: 3 }}>
+                      <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 3 }}>
                         {c.totalLeads} LEADS · {c.dialedCount} DIALED · {c.answeredCount} ANSWERED · {c.status.toUpperCase()}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {c.status === 'draft' && (
-                        <PhoneBtn onClick={() => startCampaign(c.id)} color={amber} glow size="sm">
+                        <PhoneBtn onClick={() => startCampaign(c.id)} color={warning} size="sm">
                           <Zap size={10} /> START
                         </PhoneBtn>
                       )}
                       {c.status === 'active' && (
-                        <div style={{ fontSize: '0.42rem', color: amber(0.7), letterSpacing: '0.1em', padding: '4px 10px' }}>
+                        <div style={{ fontSize: '0.42rem', color: warning(0.7), letterSpacing: '0.1em', padding: '4px 10px' }}>
                           IN PROGRESS
                         </div>
                       )}
                       {c.status === 'completed' && (
-                        <div style={{ fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.1em', padding: '4px 10px' }}>
+                        <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.1em', padding: '4px 10px' }}>
                           COMPLETED
                         </div>
                       )}

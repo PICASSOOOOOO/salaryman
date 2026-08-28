@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageSquare, Send, Plus, X, Loader2 } from 'lucide-react';
-import { crt, amber, formatPhone } from '@/lib/phone-utils';
+import { slate, warning, formatPhone } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SmsConversation {
   id: number;
@@ -30,6 +31,8 @@ function formatTime(iso: string) {
 }
 
 export default function PhoneSmsPage() {
+  const isMobile = useIsMobile();
+
   const [conversations, setConversations] = useState<SmsConversation[]>([]);
   const [activeConv, setActiveConv] = useState<SmsConversation | null>(null);
   const [messages, setMessages] = useState<SmsMessage[]>([]);
@@ -87,8 +90,7 @@ export default function PhoneSmsPage() {
       const r = await apiFetch('/api/sms/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: activeConv.contactPhone, body, contactName: activeConv.contactName }),
-      });
+        body: JSON.stringify({ phone: activeConv.contactPhone, body, contactName: activeConv.contactName }) });
       const d = await r.json();
       if (r.ok && d.message) {
         setMessages(prev => [...prev, d.message]);
@@ -105,8 +107,7 @@ export default function PhoneSmsPage() {
       const r = await apiFetch('/api/sms/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: newPhone, body: newMsg, contactName: newName || newPhone }),
-      });
+        body: JSON.stringify({ phone: newPhone, body: newMsg, contactName: newName || newPhone }) });
       const d = await r.json();
       if (r.ok) {
         setShowNewConv(false);
@@ -122,18 +123,34 @@ export default function PhoneSmsPage() {
 
   const mono = { fontFamily: "var(--font-sans)" } as const;
   const inputStyle: React.CSSProperties = {
-    width: '100%', background: crt(0.03), border: `1px solid ${crt(0.15)}`,
-    borderRadius: 4, padding: '8px 10px', fontSize: '0.55rem', color: crt(0.9),
-    outline: 'none', ...mono,
-  };
+    width: '100%', background: slate(0.03), border: `1px solid ${slate(0.15)}`,
+    borderRadius: 4, padding: '8px 10px', fontSize: '0.55rem', color: slate(0.9),
+    outline: 'none', ...mono };
 
   return (
-    <div style={{ display: 'flex', height: 600, border: `1px solid ${crt(0.1)}`, borderRadius: 8, overflow: 'hidden', background: crt(0.01), ...mono }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      height: isMobile ? 720 : 600,
+      border: `1px solid ${slate(0.1)}`,
+      borderRadius: 8,
+      overflow: 'hidden',
+      background: slate(0.01),
+      ...mono,
+    }}>
       {/* Conversation list */}
-      <div style={{ width: 260, borderRight: `1px solid ${crt(0.1)}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: 12, borderBottom: `1px solid ${crt(0.1)}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '0.5rem', letterSpacing: '0.15em', color: crt(0.8), display: 'flex', alignItems: 'center', gap: 6 }}>
-            <MessageSquare size={12} style={{ color: crt(0.6) }} /> SMS THREADS
+      <div style={{
+        width: isMobile ? '100%' : 260,
+        height: isMobile ? 220 : 'auto',
+        borderRight: isMobile ? 'none' : `1px solid ${slate(0.1)}`,
+        borderBottom: isMobile ? `1px solid ${slate(0.1)}` : 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+      }}>
+        <div style={{ padding: 12, borderBottom: `1px solid ${slate(0.1)}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.5rem', letterSpacing: '0.15em', color: slate(0.8), display: 'flex', alignItems: 'center', gap: 6 }}>
+            <MessageSquare size={12} style={{ color: slate(0.6) }} /> SMS THREADS
           </span>
           <button
             onClick={() => { setShowNewConv(true); setActiveConv(null); }}
@@ -141,21 +158,20 @@ export default function PhoneSmsPage() {
             title="New conversation"
             style={{
               padding: 5, borderRadius: 4, cursor: 'pointer',
-              background: amber(0.08), border: `1px solid ${amber(0.25)}`, color: amber(0.85),
-              display: 'flex', alignItems: 'center',
-            }}
+              background: warning(0.08), border: `1px solid ${warning(0.25)}`, color: warning(0.85),
+              display: 'flex', alignItems: 'center' }}
           >
             <Plus size={12} />
           </button>
         </div>
         {loading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Loader2 size={16} style={{ color: crt(0.4), animation: 'spin 1s linear infinite' }} />
+            <Loader2 size={16} style={{ color: slate(0.55), animation: 'spin 1s linear infinite' }} />
           </div>
         ) : conversations.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, textAlign: 'center' }}>
-            <MessageSquare size={28} style={{ color: crt(0.15) }} />
-            <p style={{ fontSize: '0.48rem', color: crt(0.35), lineHeight: 1.6 }}>No threads yet. Inbound texts and Mila's replies appear here.</p>
+            <MessageSquare size={28} style={{ color: slate(0.55) }} />
+            <p style={{ fontSize: '0.48rem', color: slate(0.55), lineHeight: 1.6 }}>No threads yet. Inbound texts and Mila's replies appear here.</p>
           </div>
         ) : (
           <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -169,28 +185,26 @@ export default function PhoneSmsPage() {
                   style={{
                     width: '100%', padding: 12, textAlign: 'left', cursor: 'pointer',
                     borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                    borderBottom: `1px solid ${crt(0.06)}`,
-                    background: isActive ? crt(0.06) : 'transparent',
-                    ...mono,
-                  }}
+                    borderBottom: `1px solid ${slate(0.06)}`,
+                    background: isActive ? slate(0.06) : 'transparent',
+                    ...mono }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.55rem', color: crt(0.9), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.55rem', color: slate(0.9), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {conv.contactName || formatPhone(conv.contactPhone)}
                       </div>
-                      <div style={{ fontSize: '0.45rem', color: crt(0.4), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.45rem', color: slate(0.55), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {formatPhone(conv.contactPhone)}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.42rem', color: crt(0.35) }}>{formatTime(conv.lastMessageAt)}</span>
+                      <span style={{ fontSize: '0.42rem', color: slate(0.55) }}>{formatTime(conv.lastMessageAt)}</span>
                       {conv.unreadCount > 0 && (
                         <span style={{
                           minWidth: 14, height: 14, padding: '0 4px', borderRadius: 7,
-                          background: amber(0.85), color: '#020802', fontSize: '0.42rem',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
+                          background: warning(0.85), color: '#020802', fontSize: '0.42rem',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                         </span>
                       )}
@@ -208,21 +222,21 @@ export default function PhoneSmsPage() {
         {showNewConv ? (
           <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.6rem', color: crt(0.85), letterSpacing: '0.12em' }}>NEW CONVERSATION</span>
-              <button onClick={() => setShowNewConv(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: crt(0.4) }}>
+              <span style={{ fontSize: '0.6rem', color: slate(0.85), letterSpacing: '0.12em' }}>NEW CONVERSATION</span>
+              <button onClick={() => setShowNewConv(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: slate(0.55) }}>
                 <X size={14} />
               </button>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.42rem', color: crt(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>PHONE NUMBER *</label>
+              <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>PHONE NUMBER *</label>
               <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+1 555 000 1234" data-testid="input-sms-phone" style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.42rem', color: crt(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>CONTACT NAME</label>
+              <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>CONTACT NAME</label>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name (optional)" data-testid="input-sms-name" style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.42rem', color: crt(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>FIRST MESSAGE *</label>
+              <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>FIRST MESSAGE *</label>
               <textarea value={newMsg} onChange={e => setNewMsg(e.target.value)} rows={3} placeholder="Write your first message..." data-testid="input-sms-first" style={{ ...inputStyle, resize: 'none' }} />
             </div>
             <button
@@ -232,10 +246,9 @@ export default function PhoneSmsPage() {
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 padding: '10px 16px', borderRadius: 6, cursor: 'pointer',
-                background: amber(0.1), border: `1px solid ${amber(0.3)}`, color: amber(0.9),
+                background: warning(0.1), border: `1px solid ${warning(0.3)}`, color: warning(0.9),
                 fontSize: '0.5rem', letterSpacing: '0.12em', opacity: sending || !newPhone.trim() || !newMsg.trim() ? 0.4 : 1,
-                ...mono,
-              }}
+                ...mono }}
             >
               {sending ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={12} />}
               SEND & START
@@ -243,17 +256,17 @@ export default function PhoneSmsPage() {
           </div>
         ) : activeConv ? (
           <>
-            <div style={{ padding: 12, borderBottom: `1px solid ${crt(0.1)}` }}>
-              <div style={{ fontSize: '0.6rem', color: crt(0.9) }}>{activeConv.contactName || formatPhone(activeConv.contactPhone)}</div>
-              <div style={{ fontSize: '0.45rem', color: crt(0.4) }}>{formatPhone(activeConv.contactPhone)}</div>
+            <div style={{ padding: 12, borderBottom: `1px solid ${slate(0.1)}` }}>
+              <div style={{ fontSize: '0.6rem', color: slate(0.9) }}>{activeConv.contactName || formatPhone(activeConv.contactPhone)}</div>
+              <div style={{ fontSize: '0.45rem', color: slate(0.55) }}>{formatPhone(activeConv.contactPhone)}</div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {loadingMsgs ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Loader2 size={16} style={{ color: crt(0.4), animation: 'spin 1s linear infinite' }} />
+                  <Loader2 size={16} style={{ color: slate(0.55), animation: 'spin 1s linear infinite' }} />
                 </div>
               ) : messages.length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', color: crt(0.35) }}>No messages yet.</div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', color: slate(0.55) }}>No messages yet.</div>
               ) : (
                 messages.map(msg => {
                   const outbound = msg.direction === 'outbound';
@@ -261,14 +274,13 @@ export default function PhoneSmsPage() {
                     <div key={msg.id} style={{ display: 'flex', justifyContent: outbound ? 'flex-end' : 'flex-start' }}>
                       <div style={{
                         maxWidth: '75%', padding: '8px 11px', borderRadius: 10,
-                        fontSize: '0.55rem', lineHeight: 1.5, color: crt(0.9),
-                        background: outbound ? amber(0.08) : crt(0.05),
-                        border: `1px solid ${outbound ? amber(0.22) : crt(0.12)}`,
+                        fontSize: '0.55rem', lineHeight: 1.5, color: slate(0.9),
+                        background: outbound ? warning(0.08) : slate(0.05),
+                        border: `1px solid ${outbound ? warning(0.22) : slate(0.12)}`,
                         borderBottomRightRadius: outbound ? 2 : 10,
-                        borderBottomLeftRadius: outbound ? 10 : 2,
-                      }}>
+                        borderBottomLeftRadius: outbound ? 10 : 2 }}>
                         <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
-                        <div style={{ fontSize: '0.4rem', color: crt(0.3), marginTop: 4, textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 4, textAlign: 'right' }}>
                           {outbound ? 'MILA · ' : ''}{formatTime(msg.createdAt)}
                         </div>
                       </div>
@@ -278,7 +290,7 @@ export default function PhoneSmsPage() {
               )}
               <div ref={messagesEndRef} />
             </div>
-            <div style={{ padding: 12, borderTop: `1px solid ${crt(0.1)}`, display: 'flex', gap: 8 }}>
+            <div style={{ padding: 12, borderTop: `1px solid ${slate(0.1)}`, display: 'flex', gap: 8 }}>
               <textarea
                 value={newMsg}
                 onChange={e => setNewMsg(e.target.value)}
@@ -294,9 +306,8 @@ export default function PhoneSmsPage() {
                 data-testid="button-sms-send"
                 style={{
                   alignSelf: 'flex-end', padding: 10, borderRadius: 6, cursor: 'pointer',
-                  background: amber(0.1), border: `1px solid ${amber(0.3)}`, color: amber(0.9),
-                  display: 'flex', alignItems: 'center', opacity: sending || !newMsg.trim() ? 0.4 : 1,
-                }}
+                  background: warning(0.1), border: `1px solid ${warning(0.3)}`, color: warning(0.9),
+                  display: 'flex', alignItems: 'center', opacity: sending || !newMsg.trim() ? 0.4 : 1 }}
               >
                 {sending ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
               </button>
@@ -304,16 +315,15 @@ export default function PhoneSmsPage() {
           </>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32, textAlign: 'center' }}>
-            <MessageSquare size={40} style={{ color: crt(0.12) }} />
-            <p style={{ fontSize: '0.55rem', color: crt(0.4) }}>Select a thread or start a new conversation</p>
+            <MessageSquare size={40} style={{ color: slate(0.55) }} />
+            <p style={{ fontSize: '0.55rem', color: slate(0.55) }}>Select a thread or start a new conversation</p>
             <button
               onClick={() => setShowNewConv(true)}
               data-testid="button-sms-empty-new"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
-                background: amber(0.1), border: `1px solid ${amber(0.3)}`, color: amber(0.9),
-                fontSize: '0.5rem', letterSpacing: '0.12em', ...mono,
-              }}
+                background: warning(0.1), border: `1px solid ${warning(0.3)}`, color: warning(0.9),
+                fontSize: '0.5rem', letterSpacing: '0.12em', ...mono }}
             >
               <Plus size={12} /> NEW CONVERSATION
             </button>

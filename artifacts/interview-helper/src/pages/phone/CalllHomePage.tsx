@@ -4,7 +4,7 @@ import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, H
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
-import { crt, amber } from '@/lib/phone-utils';
+import { slate, warning } from '@/lib/phone-utils';
 import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 
@@ -41,7 +41,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: bo
 function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode: (m: AiSubMode) => void }) {
   return (
     <div>
-      <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderBottom: `1px solid ${crt(0.06)}` }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderBottom: `1px solid ${slate(0.06)}` }}>
         {([['coach', 'COACH'], ['secretary', 'SECRETARY']] as const).map(([key, label]) => (
           <button
             key={key}
@@ -49,9 +49,8 @@ function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode:
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '6px 16px', fontSize: '0.42rem', letterSpacing: '0.15em',
-              color: subMode === key ? amber(0.9) : crt(0.3),
-              borderBottom: subMode === key ? `2px solid ${amber(0.6)}` : '2px solid transparent',
-            }}
+              color: subMode === key ? warning(0.9) : slate(0.3),
+              borderBottom: subMode === key ? `2px solid ${warning(0.6)}` : '2px solid transparent' }}
           >{label}</button>
         ))}
       </div>
@@ -111,6 +110,7 @@ function getInitialTab(): TabKey {
 }
 
 export default function CalllHomePage() {
+
   const [boomerMode] = useBoomerMode();
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
@@ -199,15 +199,14 @@ export default function CalllHomePage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
+        background: slate(0.02),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-      }}>
-        <div style={{ textAlign: 'center', color: crt(0.3) }}>
+        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
+        <div style={{ textAlign: 'center', color: slate(0.55) }}>
           <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em', marginBottom: 12 }}>VERIFYING ACCESS...</div>
           <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
             {[0, 1, 2].map(i => (
-              <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: crt(0.3), animation: `pulse 1s infinite ${i * 0.3}s` }} />
+              <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: slate(0.3), animation: `pulse 1s infinite ${i * 0.3}s` }} />
             ))}
           </div>
         </div>
@@ -219,27 +218,23 @@ export default function CalllHomePage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
+        background: slate(0.02),
         ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{
-          maxWidth: 480, width: '100%', margin: '0 auto', padding: 32, textAlign: 'center',
-        }}>
+          maxWidth: 480, width: '100%', margin: '0 auto', padding: 32, textAlign: 'center' }}>
           <div style={{
             width: 64, height: 64, borderRadius: 16,
-            background: `linear-gradient(135deg, ${amber(0.12)}, ${amber(0.03)})`,
-            border: `1px solid ${amber(0.25)}`,
+            background: slate(0.02),
+            border: `1px solid ${warning(0.25)}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 20px',
-            boxShadow: `0 0 30px ${amber(0.08)}`,
-          }}>
-            <Lock size={28} style={{ color: amber(0.7) }} />
+            margin: '0 auto 20px' }}>
+            <Lock size={28} style={{ color: warning(0.7) }} />
           </div>
-          <div style={{ fontSize: '1.1rem', color: crt(0.85), marginBottom: 8, letterSpacing: '0.1em' }}>
+          <div style={{ fontSize: '1.1rem', color: slate(0.85), marginBottom: 8, letterSpacing: '0.1em' }}>
             CALLL HOME — ACCESS REQUIRED
           </div>
-          <div style={{ fontSize: '0.55rem', color: crt(0.4), lineHeight: 1.7, marginBottom: 24 }}>
+          <div style={{ fontSize: '0.55rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 24 }}>
             The Calll Home phone system requires an active subscription or free trial.
             Start your 7-day free trial to get full access to the dialer, call history, voicemail, and all phone features.
           </div>
@@ -248,13 +243,12 @@ export default function CalllHomePage() {
               onClick={() => navigate('/upgrade')}
               style={{
                 padding: '12px 24px', fontSize: '0.6rem', letterSpacing: '0.15em',
-                background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.05)})`,
-                border: `1px solid ${amber(0.35)}`,
-                color: amber(0.9), borderRadius: 8, cursor: 'pointer',
+                background: slate(0.02),
+                border: `1px solid ${warning(0.35)}`,
+                color: warning(0.9), borderRadius: 8, cursor: 'pointer',
                 ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                boxShadow: `0 0 16px ${amber(0.08)}`,
-                transition: 'all 0.2s',
-              }}
+
+                transition: 'all 0.2s' }}
             >
               START 7-DAY FREE TRIAL
             </button>
@@ -263,16 +257,15 @@ export default function CalllHomePage() {
               style={{
                 padding: '10px 24px', fontSize: '0.55rem', letterSpacing: '0.12em',
                 background: 'transparent',
-                border: `1px solid ${crt(0.15)}`,
-                color: crt(0.4), borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${slate(0.15)}`,
+                color: slate(0.55), borderRadius: 8, cursor: 'pointer',
                 ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                transition: 'all 0.2s',
-              }}
+                transition: 'all 0.2s' }}
             >
               VIEW SUBSCRIPTION PLANS
             </button>
           </div>
-          <div style={{ marginTop: 20, fontSize: '0.42rem', color: crt(0.2) }}>
+          <div style={{ marginTop: 20, fontSize: '0.42rem', color: slate(0.55) }}>
             $95/mo after trial · Cancel anytime
           </div>
         </div>
@@ -284,57 +277,52 @@ export default function CalllHomePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
+      background: slate(0.02),
       ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-      color: crt(0.85),
-      position: 'relative',
-    }}>
+      color: slate(0.85),
+      position: 'relative' }}>
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400, margin: '0 auto', padding: '0 16px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 0', borderBottom: `1px solid ${crt(0.08)}`,
-        }}>
+          padding: '8px 0', borderBottom: `1px solid ${slate(0.08)}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Phone size={18} style={{ color: crt(0.7) }} />
+            <Phone size={18} style={{ color: slate(0.7) }} />
             <img
               src={`${BASE}brand/callhome/calll-home-brush.png`}
               alt="CALLL HOME"
               style={{ height: 18, width: 'auto', opacity: 0.7, filter: 'brightness(1.8) saturate(0)' }}
             />
-            <span style={{ fontSize: '0.42rem', color: crt(0.2), letterSpacing: '0.15em' }}>│</span>
-            <span style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.15em' }}>EST. 1987</span>
+            <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.15em' }}>│</span>
+            <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.15em' }}>EST. 1987</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
-                background: systemStatus === 'online' ? crt(0.7) : (systemStatus === 'unconfigured' || systemStatus === 'no_subscription') ? amber(0.7) : crt(0.2),
-                boxShadow: systemStatus === 'online' ? `0 0 6px ${crt(0.3)}` : 'none',
-                animation: systemStatus === 'online' ? 'pulse 2s infinite' : 'none',
-              }} />
-              <span style={{ fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.12em' }}>
+                background: systemStatus === 'online' ? slate(0.7) : (systemStatus === 'unconfigured' || systemStatus === 'no_subscription') ? warning(0.7) : slate(0.2),
+
+                animation: systemStatus === 'online' ? 'pulse 2s infinite' : 'none' }} />
+              <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.12em' }}>
                 {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_subscription' ? 'NO ACCESS' : '...'}
               </span>
             </div>
-            <span style={{ fontSize: '0.42rem', color: crt(0.15) }}>│</span>
+            <span style={{ fontSize: '0.42rem', color: slate(0.55) }}>│</span>
             <span style={{
-              fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.1em',
-              padding: '2px 8px', border: `1px solid ${crt(0.12)}`, borderRadius: 3,
-              background: crt(0.02),
-            }}>PSO v3</span>
-            <span style={{ fontSize: '0.42rem', color: crt(0.25), fontVariantNumeric: 'tabular-nums', letterSpacing: '0.08em' }}>{clock}</span>
+              fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.1em',
+              padding: '2px 8px', border: `1px solid ${slate(0.12)}`, borderRadius: 3,
+              background: slate(0.02) }}>PSO v3</span>
+            <span style={{ fontSize: '0.42rem', color: slate(0.55), fontVariantNumeric: 'tabular-nums', letterSpacing: '0.08em' }}>{clock}</span>
           </div>
         </div>
 
         {systemStatus === 'unconfigured' && (
           <div style={{
             margin: '8px 0', padding: '8px 14px',
-            background: 'linear-gradient(90deg, rgba(255,180,0,0.06), rgba(255,180,0,0.02))',
-            border: `1px solid ${amber(0.2)}`, borderRadius: 6,
-            fontSize: '0.48rem', color: amber(0.7), letterSpacing: '0.08em',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
+            background: slate(0.02),
+            border: `1px solid ${warning(0.2)}`, borderRadius: 6,
+            fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
+            display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={12} />
             Twilio not configured — contact admin to set up Twilio credentials.
           </div>
@@ -342,22 +330,20 @@ export default function CalllHomePage() {
         {systemStatus === 'no_subscription' && (
           <div style={{
             margin: '8px 0', padding: '8px 14px',
-            background: 'linear-gradient(90deg, rgba(255,180,0,0.06), rgba(255,180,0,0.02))',
-            border: `1px solid ${amber(0.2)}`, borderRadius: 6,
-            fontSize: '0.48rem', color: amber(0.7), letterSpacing: '0.08em',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
+            background: slate(0.02),
+            border: `1px solid ${warning(0.2)}`, borderRadius: 6,
+            fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
+            display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={12} />
             Subscription verification failed. Please check your plan or start a free trial.
           </div>
         )}
 
         <div style={{
-          display: 'flex', gap: 0, borderBottom: `1px solid ${crt(0.08)}`,
+          display: 'flex', gap: 0, borderBottom: `1px solid ${slate(0.08)}`,
           overflowX: 'auto', scrollbarWidth: 'none',
           margin: '0 -16px', padding: '0 16px',
-          position: 'relative',
-        }}>
+          position: 'relative' }}>
           {visibleTabs.map(t => {
             const isActive = activeTab === t.key;
             const emphasized = t.emphasized;
@@ -370,19 +356,18 @@ export default function CalllHomePage() {
                   padding: '9px 14px',
                   display: 'flex', alignItems: 'center', gap: 5,
                   background: isActive
-                    ? (emphasized ? crt(0.1) : crt(0.05))
-                    : (emphasized ? crt(0.025) : 'transparent'),
-                  borderBottom: `2px solid ${isActive ? crt(0.5) : (emphasized ? crt(0.18) : 'transparent')}`,
+                    ? (emphasized ? slate(0.1) : slate(0.05))
+                    : (emphasized ? slate(0.025) : 'transparent'),
+                  borderBottom: `2px solid ${isActive ? slate(0.5) : (emphasized ? slate(0.18) : 'transparent')}`,
                   borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                  color: isActive ? crt(0.95) : (emphasized ? crt(0.7) : crt(0.3)),
+                  color: isActive ? slate(0.95) : (emphasized ? slate(0.7) : slate(0.3)),
                   fontSize: '0.45rem', letterSpacing: '0.12em',
                   cursor: 'pointer',
                   ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                   transition: 'all 0.15s',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
-                  textShadow: emphasized && isActive ? `0 0 8px ${crt(0.5)}` : undefined,
-                }}
+                   }}
               >
                 {t.icon} {t.label}
               </button>
@@ -399,24 +384,22 @@ export default function CalllHomePage() {
               style={{
                 padding: '9px 12px',
                 display: 'flex', alignItems: 'center', gap: 4,
-                background: showTabSettings ? crt(0.05) : 'transparent',
+                background: showTabSettings ? slate(0.05) : 'transparent',
                 border: 'none',
-                color: showTabSettings ? crt(0.85) : crt(0.35),
+                color: showTabSettings ? slate(0.85) : slate(0.35),
                 fontSize: '0.45rem', letterSpacing: '0.12em',
                 cursor: 'pointer',
                 ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                 transition: 'color 0.15s, background 0.15s',
-                whiteSpace: 'nowrap',
-              }}
+                whiteSpace: 'nowrap' }}
             >
               <Settings2 size={12} /> TABS
               {hiddenTabs.size > 0 && (
                 <span style={{
                   marginLeft: 4,
-                  fontSize: '0.4rem', color: amber(0.85),
+                  fontSize: '0.4rem', color: warning(0.85),
                   padding: '1px 5px', borderRadius: 3,
-                  background: amber(0.08), border: `1px solid ${amber(0.2)}`,
-                }}>
+                  background: warning(0.08), border: `1px solid ${warning(0.2)}` }}>
                   {hiddenTabs.size} HIDDEN
                 </span>
               )}
@@ -430,22 +413,20 @@ export default function CalllHomePage() {
                   position: 'absolute',
                   top: 'calc(100% + 4px)', right: 0, zIndex: 50,
                   minWidth: 220,
-                  background: 'rgba(2, 8, 2, 0.96)',
-                  border: `1px solid ${crt(0.18)}`,
+                  background: slate(0.96),
+                  border: `1px solid ${slate(0.18)}`,
                   borderRadius: 6,
-                  boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 12px ${crt(0.08)}`,
+
                   padding: '8px 0',
                   ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                  backdropFilter: 'blur(8px)',
-                }}
+                  backdropFilter: 'blur(8px)' }}
               >
                 <div style={{
                   padding: '4px 12px 8px',
                   fontSize: '0.4rem', letterSpacing: '0.18em',
-                  color: crt(0.5),
-                  borderBottom: `1px solid ${crt(0.08)}`,
-                  marginBottom: 6,
-                }}>
+                  color: slate(0.5),
+                  borderBottom: `1px solid ${slate(0.08)}`,
+                  marginBottom: 6 }}>
                   SHOW / HIDE TABS
                 </div>
                 {TABS.map(t => {
@@ -462,31 +443,30 @@ export default function CalllHomePage() {
                         display: 'flex', alignItems: 'center', gap: 8,
                         padding: '6px 12px',
                         background: 'transparent', border: 'none',
-                        color: locked ? crt(0.25) : (hidden ? crt(0.35) : crt(0.85)),
+                        color: locked ? slate(0.25) : (hidden ? slate(0.35) : slate(0.85)),
                         fontSize: '0.5rem', letterSpacing: '0.1em',
                         cursor: locked ? 'not-allowed' : 'pointer',
                         textAlign: 'left',
                         opacity: hidden ? 0.6 : 1,
                         transition: 'background 0.1s, color 0.1s',
-                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                      }}
-                      onMouseEnter={e => { if (!locked) e.currentTarget.style.background = crt(0.04); }}
+                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}
+                      onMouseEnter={e => { if (!locked) e.currentTarget.style.background = slate(0.04); }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <span style={{ width: 14, display: 'flex', alignItems: 'center', color: hidden ? crt(0.3) : crt(0.6) }}>
+                      <span style={{ width: 14, display: 'flex', alignItems: 'center', color: hidden ? slate(0.3) : slate(0.6) }}>
                         {hidden ? <EyeOff size={11} /> : <Eye size={11} />}
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
                         {t.icon} {t.label}
                       </span>
                       {locked && (
-                        <span style={{ fontSize: '0.38rem', color: crt(0.3), letterSpacing: '0.15em' }}>LOCKED</span>
+                        <span style={{ fontSize: '0.38rem', color: slate(0.55), letterSpacing: '0.15em' }}>LOCKED</span>
                       )}
                     </button>
                   );
                 })}
                 {hiddenTabs.size > 0 && (
-                  <div style={{ borderTop: `1px solid ${crt(0.08)}`, marginTop: 6, paddingTop: 6 }}>
+                  <div style={{ borderTop: `1px solid ${slate(0.08)}`, marginTop: 6, paddingTop: 6 }}>
                     <button
                       onClick={resetTabVisibility}
                       data-testid="button-tab-reset"
@@ -494,12 +474,11 @@ export default function CalllHomePage() {
                         width: '100%',
                         padding: '6px 12px',
                         background: 'transparent', border: 'none',
-                        color: amber(0.7),
+                        color: warning(0.7),
                         fontSize: '0.45rem', letterSpacing: '0.12em',
                         cursor: 'pointer', textAlign: 'left',
-                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = crt(0.04); }}
+                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}
+                      onMouseEnter={e => { e.currentTarget.style.background = slate(0.04); }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       ↺ SHOW ALL TABS
@@ -516,8 +495,7 @@ export default function CalllHomePage() {
               <Suspense fallback={
                 <div style={{
                   padding: '80px 0', textAlign: 'center',
-                  fontSize: '0.55rem', color: crt(0.25), letterSpacing: '0.15em',
-                }}>
+                  fontSize: '0.55rem', color: slate(0.55), letterSpacing: '0.15em' }}>
                   LOADING {TABS.find(t => t.key === activeTab)?.label}...
                 </div>
               }>
@@ -527,11 +505,10 @@ export default function CalllHomePage() {
         </div>
 
         <div style={{
-          borderTop: `1px solid ${crt(0.06)}`,
+          borderTop: `1px solid ${slate(0.06)}`,
           padding: '8px 0',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          fontSize: '0.38rem', color: crt(0.15), letterSpacing: '0.12em',
-        }}>
+          fontSize: '0.38rem', color: slate(0.55), letterSpacing: '0.12em' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <img
               src={`${BASE}brand/callhome/calll-home-brush.png`}
@@ -544,8 +521,7 @@ export default function CalllHomePage() {
             <span>Calll Poin: AI Ready</span>
             <div style={{
               width: 4, height: 4, borderRadius: '50%',
-              background: systemStatus === 'online' ? crt(0.4) : amber(0.3),
-            }} />
+              background: systemStatus === 'online' ? slate(0.4) : warning(0.3) }} />
           </div>
         </div>
       </div>
@@ -553,7 +529,6 @@ export default function CalllHomePage() {
       <style>{`
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes glowPulse { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,0.1); } 50% { box-shadow: 0 0 16px rgba(56,189,248,0.2); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
       `}</style>
     </div>

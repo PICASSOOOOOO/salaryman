@@ -1,3 +1,4 @@
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle } from 'lucide-react';
@@ -5,25 +6,23 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import {
-  crt, red, amber, blue, purple, formatPhone, formatDuration,
+  slate, destructive, warning, primary, accent, formatPhone, formatDuration,
   addActiveCall, addActiveCallsBatch,
-  type CRMContact, type CallRecord, type BatchResult, type ActiveCall,
-} from '@/lib/phone-utils';
+  type CRMContact, type CallRecord, type BatchResult, type ActiveCall } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
-  '7': 'PQRS', '8': 'TUV', '9': 'WXYZ', '0': '+',
-};
+  '7': 'PQRS', '8': 'TUV', '9': 'WXYZ', '0': '+' };
 
 type DialMode = 'power' | 'auto' | 'predictive';
 
-const MODES: { key: DialMode; label: string; desc: string; color: (o: number) => string; icon: string }[] = [
-  { key: 'power', label: 'POWER', desc: 'Manual queue — one at a time', color: crt, icon: '⚡' },
-  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: blue, icon: '🔄' },
-  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: purple, icon: '🚀' },
+const MODES: { key: DialMode; label: string; desc: string; color: (o: number) => string; icon: React.ReactNode }[] = [
+  { key: 'power', label: 'POWER', desc: 'Manual queue — one at a time', color: slate, icon: <Zap size={14} /> },
+  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: primary, icon: '🔄' },
+  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: accent, icon: '🚀' },
 ];
 
 function validatePhoneNumber(raw: string): boolean {
@@ -35,6 +34,8 @@ function validatePhoneNumber(raw: string): boolean {
 }
 
 export default function PhoneDialerPage() {
+  const isMobile = useIsMobile();
+
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
@@ -111,8 +112,7 @@ export default function PhoneDialerPage() {
         '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
         '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
         '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
-        '*': [941, 1209], '0': [941, 1336], '#': [941, 1477],
-      };
+        '*': [941, 1209], '0': [941, 1336], '#': [941, 1477] };
       const [f1, f2] = freqs[key] || [440, 480];
       const osc1 = ctx.createOscillator(); const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -140,8 +140,7 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
-        });
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
         if (await handleFetchError(r)) throw new Error('Call request failed');
         return r.json();
       }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
@@ -167,8 +166,7 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }),
-        });
+          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }) });
         if (await handleFetchError(r)) throw new Error('Dialing session request failed');
         return r.json();
       }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
@@ -194,87 +192,81 @@ export default function PhoneDialerPage() {
     <PhonePageLayout
       title="DIALER"
       subtitle="Direct dial interface with DTMF tone generation"
-      icon={<Phone size={24} style={{ color: crt(0.8) }} />}
+      icon={<Phone size={24} style={{ color: slate(0.8) }} />}
       statusLine={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <MiniWaveform active={!!dtmfTone} bars={4} />
-          <span style={{ color: crt(0.25) }}>DTMF {dtmfTone ? `[${dtmfTone}]` : 'IDLE'}</span>
+          <span style={{ color: slate(0.55) }}>DTMF {dtmfTone ? `[${dtmfTone}]` : 'IDLE'}</span>
         </div>
       }
     >
       {error && (
-        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: slate(0.02), border: `1px solid ${destructive(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: destructive(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: red(0.8), animation: 'pulse 1s infinite' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: destructive(0.8), animation: 'pulse 1s infinite' }} />
             {error}
           </div>
-          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 24, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '400px 1fr', gap: 24, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <PhoneCard glow={callStarting}>
-            <PhoneCardHeader accent={callStarting ? amber(0.8) : undefined}>
+          <PhoneCard>
+            <PhoneCardHeader accent={callStarting ? warning(0.8) : undefined}>
               {callStarting ? 'CONNECTING...' : 'DIAL PAD'}
             </PhoneCardHeader>
             <div style={{ padding: '20px 24px' }}>
               <div style={{
-                background: 'rgba(0,12,0,0.9)',
-                border: `1px solid ${showValidationError ? red(0.4) : crt(manualNumber ? 0.3 : 0.12)}`,
+                background: slate(0.9),
+                border: `1px solid ${showValidationError ? destructive(0.4) : slate(manualNumber ? 0.3 : 0.12)}`,
                 padding: '14px 18px', marginBottom: 8, borderRadius: 8,
-                transition: 'border-color 0.3s ease',
-                boxShadow: manualNumber ? `inset 0 0 20px ${crt(0.03)}` : 'none',
-              }}>
-                <div style={{ fontSize: '0.4rem', color: showValidationError ? red(0.6) : crt(0.2), letterSpacing: '0.2em', marginBottom: 4 }}>NUMBER INPUT</div>
+                transition: 'border-color 0.3s ease' }}>
+                <div style={{ fontSize: '0.4rem', color: showValidationError ? destructive(0.6) : slate(0.2), letterSpacing: '0.2em', marginBottom: 4 }}>NUMBER INPUT</div>
                 <input
                   value={manualNumber}
                   onChange={e => setManualNumber(e.target.value)}
                   placeholder="Enter phone number..."
                   style={{
                     width: '100%', background: 'transparent', border: 'none',
-                    color: showValidationError ? red(0.8) : crt(0.95), fontSize: '1.6rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                    outline: 'none', letterSpacing: '0.08em',
-                    textShadow: manualNumber ? `0 0 10px ${showValidationError ? red(0.2) : crt(0.2)}` : 'none',
-                  }}
+                    color: showValidationError ? destructive(0.8) : slate(0.95), fontSize: '1.6rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
+                    outline: 'none', letterSpacing: '0.08em' }}
                   onKeyDown={e => { if (e.key === 'Enter' && isValidNumber) callSingle(manualNumber); }}
                 />
                 {formattedDisplay && formattedDisplay !== manualNumber && !showValidationError && (
-                  <div style={{ fontSize: '0.55rem', color: crt(0.3), marginTop: 4 }}>{formattedDisplay}</div>
+                  <div style={{ fontSize: '0.55rem', color: slate(0.55), marginTop: 4 }}>{formattedDisplay}</div>
                 )}
                 {showValidationError && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                    <AlertCircle size={10} style={{ color: red(0.7), flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.48rem', color: red(0.7) }}>Invalid format — enter 10-digit US or E.164 number</span>
+                    <AlertCircle size={10} style={{ color: destructive(0.7), flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.48rem', color: destructive(0.7) }}>Invalid format — enter 10-digit US or E.164 number</span>
                   </div>
                 )}
               </div>
 
               {manualNumber && (
                 <div style={{ textAlign: 'right', marginBottom: 6 }}>
-                  <button onClick={() => setManualNumber('')} style={{ background: 'none', border: 'none', color: crt(0.25), cursor: 'pointer', fontSize: '0.45rem', letterSpacing: '0.1em' }}>
-                    CLEAR ✕
+                  <button onClick={() => setManualNumber('')} style={{ background: 'none', border: 'none', color: slate(0.55), cursor: 'pointer', fontSize: '0.45rem', letterSpacing: '0.1em' }}>
+                    CLEAR <X size={10} />
                   </button>
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
                 {dialKeys.map(key => (
                   <button
                     key={key}
                     onClick={() => pressKey(key)}
                     style={{
                       height: 62, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      background: dtmfTone === key ? crt(0.15) : 'rgba(56,189,248,0.035)',
-                      border: `1px solid ${dtmfTone === key ? crt(0.4) : crt(0.1)}`,
-                      color: crt(0.85), cursor: 'pointer', borderRadius: 8,
-                      transition: 'all 0.08s',
-                      boxShadow: dtmfTone === key ? `0 0 15px ${crt(0.15)}, inset 0 0 10px ${crt(0.05)}` : `inset 0 1px 0 ${crt(0.04)}`,
-                    }}
+                      background: dtmfTone === key ? slate(0.15) : slate(0.02),
+                      border: `1px solid ${dtmfTone === key ? slate(0.4) : slate(0.1)}`,
+                      color: slate(0.85), cursor: 'pointer', borderRadius: 8,
+                      transition: 'all 0.08s' }}
                   >
                     <span style={{ fontSize: '1.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), lineHeight: 1 }}>{key}</span>
                     {DIAL_LETTERS[key] && (
-                      <span style={{ fontSize: '0.35rem', color: crt(0.25), letterSpacing: '0.15em', marginTop: 2 }}>{DIAL_LETTERS[key]}</span>
+                      <span style={{ fontSize: '0.35rem', color: slate(0.55), letterSpacing: '0.15em', marginTop: 2 }}>{DIAL_LETTERS[key]}</span>
                     )}
                   </button>
                 ))}
@@ -291,8 +283,8 @@ export default function PhoneDialerPage() {
                 <PhoneBtn
                   onClick={() => { if (isValidNumber) callSingle(manualNumber); }}
                   disabled={!isValidNumber || loading}
-                  color={isValidNumber ? (o: number) => `rgba(0,220,60,${o})` : crt}
-                  glow={isValidNumber}
+                  color={isValidNumber ? (o: number) => primary(o) : slate}
+
                   style={{ flex: 2, justifyContent: 'center', height: 48 }}
                   size="lg"
                 >
@@ -305,32 +297,30 @@ export default function PhoneDialerPage() {
 
           {speedDials.length > 0 && (
             <PhoneCard>
-              <PhoneCardHeader accent={amber(0.5)}>SPEED DIAL</PhoneCardHeader>
-              <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <PhoneCardHeader accent={warning(0.5)}>SPEED DIAL</PhoneCardHeader>
+              <div style={{ padding: 12, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
                 {speedDials.map((c, i) => (
                   <button
                     key={c.id}
                     onClick={() => callSingle(c.phone, c.name, c.id)}
                     style={{
                       padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                      background: 'rgba(0,12,0,0.6)', border: `1px solid ${crt(0.1)}`,
+                      background: slate(0.6), border: `1px solid ${slate(0.1)}`,
                       borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s',
-                      textAlign: 'left',
-                    }}
+                      textAlign: 'left' }}
                   >
                     <div style={{
                       width: 30, height: 30, borderRadius: 6,
-                      background: `linear-gradient(135deg, ${[crt(0.12), blue(0.12), amber(0.12), purple(0.12)][i % 4]} 0%, transparent 100%)`,
-                      border: `1px solid ${[crt(0.2), blue(0.2), amber(0.2), purple(0.2)][i % 4]}`,
+                      background: slate(0.02),
+                      border: `1px solid ${[slate(0.2), primary(0.2), warning(0.2), accent(0.2)][i % 4]}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.65rem', color: [crt(0.7), blue(0.7), amber(0.7), purple(0.7)][i % 4],
-                      flexShrink: 0,
-                    }}>
+                      fontSize: '0.65rem', color: [slate(0.7), primary(0.7), warning(0.7), accent(0.7)][i % 4],
+                      flexShrink: 0 }}>
                       {c.name[0]?.toUpperCase()}
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: '0.6rem', color: crt(0.75), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                      <div style={{ fontSize: '0.42rem', color: crt(0.25) }}>{formatPhone(c.phone)}</div>
+                      <div style={{ fontSize: '0.6rem', color: slate(0.75), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                      <div style={{ fontSize: '0.42rem', color: slate(0.55) }}>{formatPhone(c.phone)}</div>
                     </div>
                   </button>
                 ))}
@@ -340,14 +330,14 @@ export default function PhoneDialerPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
             <StatBlock label="CONTACTS" value={recentContacts.length} sub="with phone" />
-            <StatBlock label="CALLS TODAY" value={recentCalls.filter(c => new Date(c.startedAt).toDateString() === new Date().toDateString()).length} sub="outbound" color={blue} />
-            <StatBlock label="SYSTEM" value="READY" sub="all lines open" color={crt} />
+            <StatBlock label="CALLS TODAY" value={recentCalls.filter(c => new Date(c.startedAt).toDateString() === new Date().toDateString()).length} sub="outbound" color={primary} />
+            <StatBlock label="SYSTEM" value="READY" sub="all lines open" color={slate} />
           </div>
 
           <PhoneCard>
-            <PhoneCardHeader accent={purple(0.6)}>DIALING MODE</PhoneCardHeader>
+            <PhoneCardHeader accent={accent(0.6)}>DIALING MODE</PhoneCardHeader>
             <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 {MODES.map(m => {
@@ -358,15 +348,13 @@ export default function PhoneDialerPage() {
                       onClick={() => setDialingMode(m.key)}
                       style={{
                         flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: 'pointer',
-                        background: isSel ? `linear-gradient(135deg, ${m.color(0.12)}, ${m.color(0.03)})` : 'rgba(0,12,0,0.5)',
-                        border: `1px solid ${isSel ? m.color(0.35) : crt(0.08)}`,
-                        transition: 'all 0.15s',
-                        boxShadow: isSel ? `0 0 10px ${m.color(0.06)}` : 'none',
-                      }}
+                        background: isSel ? slate(0.06) : slate(0.04),
+                        border: `1px solid ${isSel ? m.color(0.35) : slate(0.08)}`,
+                        transition: 'all 0.15s' }}
                     >
                       <div style={{ fontSize: '1.1rem', marginBottom: 4 }}>{m.icon}</div>
-                      <div style={{ fontSize: '0.52rem', color: isSel ? m.color(0.9) : crt(0.5), letterSpacing: '0.08em', marginBottom: 2 }}>{m.label}</div>
-                      <div style={{ fontSize: '0.38rem', color: isSel ? m.color(0.45) : crt(0.2), lineHeight: 1.4 }}>{m.desc}</div>
+                      <div style={{ fontSize: '0.52rem', color: isSel ? m.color(0.9) : slate(0.5), letterSpacing: '0.08em', marginBottom: 2 }}>{m.label}</div>
+                      <div style={{ fontSize: '0.38rem', color: isSel ? m.color(0.45) : slate(0.2), lineHeight: 1.4 }}>{m.desc}</div>
                     </button>
                   );
                 })}
@@ -375,8 +363,8 @@ export default function PhoneDialerPage() {
                 <PhoneBtn
                   onClick={launchDialingSession}
                   disabled={recentContacts.length === 0 || loading}
-                  color={(o: number) => `rgba(0,220,60,${o})`}
-                  glow={recentContacts.length > 0}
+                  color={primary}
+
                   style={{ flex: 1, justifyContent: 'center', height: 44 }}
                   size="lg"
                 >
@@ -393,7 +381,7 @@ export default function PhoneDialerPage() {
           <PhoneCard>
             <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>RECENT CONTACTS</span>
-              <button onClick={() => navigate('/phone/contacts')} style={{ background: 'none', border: 'none', color: crt(0.35), cursor: 'pointer', fontSize: '0.42rem', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => navigate('/phone/contacts')} style={{ background: 'none', border: 'none', color: slate(0.55), cursor: 'pointer', fontSize: '0.42rem', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 4 }}>
                 VIEW ALL <ArrowRight size={8} />
               </button>
             </PhoneCardHeader>
@@ -404,25 +392,23 @@ export default function PhoneDialerPage() {
                 {recentContacts.map(c => (
                   <div key={c.id} style={{
                     padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
-                    borderBottom: `1px solid ${crt(0.04)}`,
-                    transition: 'background 0.15s',
-                  }}>
+                    borderBottom: `1px solid ${slate(0.04)}`,
+                    transition: 'background 0.15s' }}>
                     <div style={{
                       width: 34, height: 34, borderRadius: 8,
-                      background: 'linear-gradient(135deg, rgba(56,189,248,0.08), rgba(56,189,248,0.02))',
-                      border: `1px solid ${crt(0.12)}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                      <span style={{ fontSize: '0.7rem', color: crt(0.55) }}>{c.name[0]?.toUpperCase()}</span>
+                      background: slate(0.02),
+                      border: `1px solid ${slate(0.12)}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.7rem', color: slate(0.55) }}>{c.name[0]?.toUpperCase()}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.7rem', color: crt(0.8), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                      <div style={{ fontSize: '0.48rem', color: crt(0.3), marginTop: 2 }}>
+                      <div style={{ fontSize: '0.7rem', color: slate(0.8), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                      <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 2 }}>
                         {formatPhone(c.phone)}
-                        {c.company && <span style={{ marginLeft: 8, color: crt(0.2) }}>· {c.company}</span>}
+                        {c.company && <span style={{ marginLeft: 8, color: slate(0.55) }}>· {c.company}</span>}
                       </div>
                     </div>
-                    <PhoneBtn onClick={() => callSingle(c.phone, c.name, c.id)} color={(o: number) => `rgba(0,220,60,${o})`} size="sm">
+                    <PhoneBtn onClick={() => callSingle(c.phone, c.name, c.id)} color={primary} size="sm">
                       <Phone size={11} /> CALL
                     </PhoneBtn>
                   </div>
@@ -435,24 +421,23 @@ export default function PhoneDialerPage() {
             <PhoneCard>
               <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>RECENT CALLS</span>
-                <button onClick={() => navigate('/phone/history')} style={{ background: 'none', border: 'none', color: crt(0.35), cursor: 'pointer', fontSize: '0.42rem', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button onClick={() => navigate('/phone/history')} style={{ background: 'none', border: 'none', color: slate(0.55), cursor: 'pointer', fontSize: '0.42rem', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 4 }}>
                   FULL LOG <ArrowRight size={8} />
                 </button>
               </PhoneCardHeader>
               <div>
                 {recentCalls.map(h => (
-                  <div key={h.id} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${crt(0.04)}` }}>
+                  <div key={h.id} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${slate(0.04)}` }}>
                     <div style={{
                       width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                      background: h.status === 'completed' ? crt(0.5) : ['failed', 'busy', 'no-answer'].includes(h.status) ? red(0.6) : amber(0.5),
-                    }} />
+                      background: h.status === 'completed' ? slate(0.5) : ['failed', 'busy', 'no-answer'].includes(h.status) ? destructive(0.6) : warning(0.5) }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.6rem', color: crt(0.65), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.6rem', color: slate(0.65), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {h.callerName || formatPhone(h.recipientNumber)}
                       </div>
-                      <div style={{ fontSize: '0.42rem', color: crt(0.25) }}>
+                      <div style={{ fontSize: '0.42rem', color: slate(0.55) }}>
                         {h.status} {h.durationSeconds ? `· ${formatDuration(h.durationSeconds)}` : ''} · {new Date(h.startedAt).toLocaleDateString()}
-                        {h.direction === 'inbound' && <span style={{ color: blue(0.5), marginLeft: 4 }}>↙</span>}
+                        {h.direction === 'inbound' && <span style={{ color: primary(0.5), marginLeft: 4 }}>↙</span>}
                       </div>
                     </div>
                     <PhoneBtn onClick={() => callSingle(h.recipientNumber, h.callerName || undefined)} size="sm" style={{ padding: '4px 8px' }}>
@@ -465,7 +450,7 @@ export default function PhoneDialerPage() {
           )}
 
           <PhoneCard>
-            <PhoneCardHeader accent={amber(0.4)}>KEYBOARD SHORTCUTS</PhoneCardHeader>
+            <PhoneCardHeader accent={warning(0.4)}>KEYBOARD SHORTCUTS</PhoneCardHeader>
             <div style={{ padding: '14px 16px' }}>
               {[
                 ['0-9, *, #', 'Dial keys (type directly)'],
@@ -475,11 +460,10 @@ export default function PhoneDialerPage() {
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'center' }}>
                   <span style={{
-                    fontSize: '0.52rem', color: amber(0.6), letterSpacing: '0.06em',
-                    padding: '2px 8px', border: `1px solid ${amber(0.2)}`, borderRadius: 4,
-                    background: amber(0.04), minWidth: 80, textAlign: 'center', flexShrink: 0,
-                  }}>{k}</span>
-                  <span style={{ fontSize: '0.52rem', color: crt(0.3) }}>{v}</span>
+                    fontSize: '0.52rem', color: warning(0.6), letterSpacing: '0.06em',
+                    padding: '2px 8px', border: `1px solid ${warning(0.2)}`, borderRadius: 4,
+                    background: warning(0.04), minWidth: 80, textAlign: 'center', flexShrink: 0 }}>{k}</span>
+                  <span style={{ fontSize: '0.52rem', color: slate(0.55) }}>{v}</span>
                 </div>
               ))}
             </div>

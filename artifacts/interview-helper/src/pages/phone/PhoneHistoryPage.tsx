@@ -1,3 +1,4 @@
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft, AlertTriangle, Download, Mic } from 'lucide-react';
@@ -5,14 +6,15 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
-  crt, red, amber, blue, purple, formatPhone, formatDuration,
+  slate, destructive, warning, primary, accent, formatPhone, formatDuration,
   addActiveCall,
-  type CallRecord,
-} from '@/lib/phone-utils';
+  type CallRecord } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 export default function PhoneHistoryPage() {
+  const isMobile = useIsMobile();
+
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
@@ -54,8 +56,7 @@ export default function PhoneHistoryPage() {
       const d = await bridgeOutbound(async () => {
         const r = await fetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }),
-        });
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || `Call failed (${r.status})`);
@@ -85,8 +86,7 @@ export default function PhoneHistoryPage() {
       const r = await fetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }),
-      });
+        body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }) });
       if (r.status === 403) { rawNavigate('/pricing'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to schedule follow-up'); return; }
       setFollowupCallSid(null);
@@ -118,9 +118,9 @@ export default function PhoneHistoryPage() {
   }, [history]);
 
   const statusColor = (status: string) => {
-    if (status === 'completed') return crt(0.6);
-    if (['failed', 'busy', 'no-answer'].includes(status)) return red(0.7);
-    return amber(0.6);
+    if (status === 'completed') return slate(0.6);
+    if (['failed', 'busy', 'no-answer'].includes(status)) return destructive(0.7);
+    return warning(0.6);
   };
 
   const FILTERS = [
@@ -134,31 +134,31 @@ export default function PhoneHistoryPage() {
     <PhonePageLayout
       title="CALL LOG"
       subtitle="Searchable call history with transcripts, AI summaries, and follow-up scheduling"
-      icon={<Clock size={24} style={{ color: crt(0.8) }} />}
-      statusLine={<span style={{ color: crt(0.25) }}>{stats.total} RECORDS</span>}
+      icon={<Clock size={24} style={{ color: slate(0.8) }} />}
+      statusLine={<span style={{ color: slate(0.55) }}>{stats.total} RECORDS</span>}
     >
       {error && (
-        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: slate(0.02), border: `1px solid ${destructive(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: destructive(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={14} />
             {error}
           </div>
-          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(7, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="TOTAL CALLS" value={stats.total} />
-        <StatBlock label="COMPLETED" value={stats.completed} color={crt} sub={`${stats.total ? Math.round(stats.completed / stats.total * 100) : 0}%`} />
-        <StatBlock label="FAILED" value={stats.failed} color={stats.failed > 0 ? red : undefined} />
-        <StatBlock label="INBOUND" value={stats.inbound} color={blue} />
-        <StatBlock label="AVG DURATION" value={formatDuration(stats.avgDuration)} color={amber} />
-        <StatBlock label="TRANSCRIBED" value={stats.withTranscript} color={purple} />
-        <StatBlock label="RECORDED" value={stats.withRecording} color={crt} sub="HIPAA · 10 YR" />
+        <StatBlock label="COMPLETED" value={stats.completed} color={slate} sub={`${stats.total ? Math.round(stats.completed / stats.total * 100) : 0}%`} />
+        <StatBlock label="FAILED" value={stats.failed} color={stats.failed > 0 ? destructive : undefined} />
+        <StatBlock label="INBOUND" value={stats.inbound} color={primary} />
+        <StatBlock label="AVG DURATION" value={formatDuration(stats.avgDuration)} color={warning} />
+        <StatBlock label="TRANSCRIBED" value={stats.withTranscript} color={accent} />
+        <StatBlock label="RECORDED" value={stats.withRecording} color={slate} sub="HIPAA · 10 YR" />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: crt(0.3) }} />
+          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: slate(0.55) }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -177,12 +177,11 @@ export default function PhoneHistoryPage() {
               onClick={() => setStatusFilter(f.key)}
               style={{
                 padding: '5px 10px', fontSize: '0.45rem', letterSpacing: '0.1em',
-                background: statusFilter === f.key ? crt(0.08) : 'transparent',
-                border: `1px solid ${statusFilter === f.key ? crt(0.25) : crt(0.08)}`,
-                color: statusFilter === f.key ? crt(0.8) : crt(0.3),
+                background: statusFilter === f.key ? slate(0.08) : 'transparent',
+                border: `1px solid ${statusFilter === f.key ? slate(0.25) : slate(0.08)}`,
+                color: statusFilter === f.key ? slate(0.8) : slate(0.3),
                 borderRadius: 4, cursor: 'pointer', transition: 'all 0.15s',
-                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-              }}
+                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}
             >
               {f.label}
             </button>
@@ -193,15 +192,15 @@ export default function PhoneHistoryPage() {
       <PhoneCard>
         <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>CALL HISTORY</span>
-          <span style={{ color: crt(0.4), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} RECORDS</span>
+          <span style={{ color: slate(0.55), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} RECORDS</span>
         </PhoneCardHeader>
 
         {loading ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', fontSize: '0.6rem', color: crt(0.3), letterSpacing: '0.15em' }}>
+          <div style={{ padding: '40px 0', textAlign: 'center', fontSize: '0.6rem', color: slate(0.55), letterSpacing: '0.15em' }}>
             <div style={{ marginBottom: 8 }}>LOADING CALL HISTORY...</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
               {[0, 1, 2].map(i => (
-                <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: crt(0.3), animation: `pulse 1s infinite ${i * 0.3}s` }} />
+                <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: slate(0.3), animation: `pulse 1s infinite ${i * 0.3}s` }} />
               ))}
             </div>
           </div>
@@ -209,59 +208,56 @@ export default function PhoneHistoryPage() {
           <EmptyState message="NO CALL HISTORY FOUND" icon={<Clock size={32} />} />
         ) : (
           filtered.map(h => (
-            <div key={h.id} style={{ borderBottom: `1px solid ${crt(0.05)}` }}>
+            <div key={h.id} style={{ borderBottom: `1px solid ${slate(0.05)}` }}>
               <div
                 onClick={() => setExpandedId(expandedId === h.id ? null : h.id)}
                 style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'background 0.12s' }}
               >
                 <div style={{
                   width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                  background: 'rgba(0,12,0,0.5)',
-                  border: `1px solid ${crt(0.08)}`,
+                  background: slate(0.5),
+                  border: `1px solid ${slate(0.08)}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative',
-                }}>
+                  position: 'relative' }}>
                   {h.direction === 'inbound'
-                    ? <ArrowDownLeft size={16} style={{ color: blue(0.6) }} />
-                    : <ArrowUpRight size={16} style={{ color: crt(0.5) }} />
+                    ? <ArrowDownLeft size={16} style={{ color: primary(0.6) }} />
+                    : <ArrowUpRight size={16} style={{ color: slate(0.5) }} />
                   }
                   <div style={{
                     position: 'absolute', bottom: -1, right: -1,
                     width: 8, height: 8, borderRadius: '50%',
                     background: statusColor(h.status),
-                    border: '2px solid rgba(0,10,0,0.8)',
-                  }} />
+                    border: `2px solid ${slate(0.1)}` }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.72rem', color: crt(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: '0.72rem', color: slate(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {h.callerName || formatPhone(h.recipientNumber)}
                   </div>
-                  <div style={{ fontSize: '0.48rem', color: crt(0.3), marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span>{formatPhone(h.recipientNumber)}</span>
-                    <span style={{ color: crt(0.12) }}>·</span>
+                    <span style={{ color: slate(0.55) }}>·</span>
                     <span style={{
                       padding: '1px 5px', borderRadius: 3,
-                      background: h.status === 'completed' ? crt(0.05) : ['failed', 'busy', 'no-answer'].includes(h.status) ? red(0.05) : amber(0.05),
+                      background: h.status === 'completed' ? slate(0.05) : ['failed', 'busy', 'no-answer'].includes(h.status) ? destructive(0.05) : warning(0.05),
                       border: `1px solid ${statusColor(h.status).replace(/[^,]+$/, '0.2)')}`,
-                      color: statusColor(h.status),
-                    }}>
+                      color: statusColor(h.status) }}>
                       {h.status.toUpperCase()}
                     </span>
                     {h.durationSeconds != null && h.durationSeconds > 0 && (
                       <>
-                        <span style={{ color: crt(0.12) }}>·</span>
+                        <span style={{ color: slate(0.55) }}>·</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDuration(h.durationSeconds)}</span>
                       </>
                     )}
-                    <span style={{ color: crt(0.12) }}>·</span>
+                    <span style={{ color: slate(0.55) }}>·</span>
                     <span>{new Date(h.startedAt).toLocaleDateString()} {new Date(h.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    {h.direction === 'inbound' && <span style={{ color: blue(0.6), padding: '1px 4px', borderRadius: 3, background: blue(0.05), border: `1px solid ${blue(0.15)}` }}>↙ INBOUND</span>}
-                    {h.callType && h.callType !== 'single' && <span style={{ color: amber(0.6) }}>[{h.callType}]</span>}
-                    {h.transcript && <span style={{ color: purple(0.5) }}>📝</span>}
-                    {h.recordingUrl && <span style={{ color: crt(0.7), padding: '1px 5px', borderRadius: 3, background: crt(0.05), border: `1px solid ${crt(0.18)}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Mic size={9} /> REC</span>}
+                    {h.direction === 'inbound' && <span style={{ color: primary(0.6), padding: '1px 4px', borderRadius: 3, background: primary(0.05), border: `1px solid ${primary(0.15)}` }}>↙ INBOUND</span>}
+                    {h.callType && h.callType !== 'single' && <span style={{ color: warning(0.6) }}>[{h.callType}]</span>}
+                    {h.transcript && <span style={{ color: accent(0.5) }}>📝</span>}
+                    {h.recordingUrl && <span style={{ color: slate(0.7), padding: '1px 5px', borderRadius: 3, background: slate(0.05), border: `1px solid ${slate(0.18)}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Mic size={9} /> REC</span>}
                   </div>
                   {h.summary && expandedId !== h.id && (
-                    <div style={{ fontSize: '0.5rem', color: crt(0.4), marginTop: 4, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: '0.5rem', color: slate(0.55), marginTop: 4, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {h.summary}
                     </div>
                   )}
@@ -270,29 +266,29 @@ export default function PhoneHistoryPage() {
                   <PhoneBtn onClick={e => { (e as React.MouseEvent).stopPropagation(); callSingle(h.recipientNumber, h.callerName || undefined); }} size="sm" title="Call back">
                     <Phone size={11} />
                   </PhoneBtn>
-                  <PhoneBtn onClick={e => { (e as React.MouseEvent).stopPropagation(); setFollowupCallSid(h.twilioCallSid ?? null); }} size="sm" title="Schedule follow-up" color={amber}>
+                  <PhoneBtn onClick={e => { (e as React.MouseEvent).stopPropagation(); setFollowupCallSid(h.twilioCallSid ?? null); }} size="sm" title="Schedule follow-up" color={warning}>
                     <Calendar size={11} />
                   </PhoneBtn>
-                  <PhoneBtn onClick={e => { (e as React.MouseEvent).stopPropagation(); emailCallSummary(h.id); }} size="sm" title="Email summary" color={blue}>
+                  <PhoneBtn onClick={e => { (e as React.MouseEvent).stopPropagation(); emailCallSummary(h.id); }} size="sm" title="Email summary" color={primary}>
                     <Mail size={11} />
                   </PhoneBtn>
-                  {expandedId === h.id ? <ChevronDown size={13} style={{ color: crt(0.5) }} /> : <ChevronRight size={13} style={{ color: crt(0.2) }} />}
+                  {expandedId === h.id ? <ChevronDown size={13} style={{ color: slate(0.5) }} /> : <ChevronRight size={13} style={{ color: slate(0.55) }} />}
                 </div>
               </div>
 
               {expandedId === h.id && (h.transcript || h.notes || h.summary || h.recordingUrl) && (
-                <div style={{ padding: '14px 20px 18px', background: 'rgba(56,189,248,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
+                <div style={{ padding: '14px 20px 18px', background: slate(0.015), borderTop: `1px solid ${slate(0.05)}` }}>
                   {h.recordingUrl && (
-                    <div style={{ marginBottom: 14, padding: '12px 14px', background: 'rgba(0,0,0,0.3)', borderRadius: 6, border: `1px solid ${crt(0.12)}` }}>
+                    <div style={{ marginBottom: 14, padding: '12px 14px', background: slate(0.3), borderRadius: 6, border: `1px solid ${slate(0.12)}` }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <div style={{ fontSize: '0.42rem', color: crt(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Mic size={11} /> CALL RECORDING
-                          <span style={{ color: crt(0.25), letterSpacing: '0.15em' }}>· RETAINED 10 YEARS · HIPAA</span>
+                          <span style={{ color: slate(0.55), letterSpacing: '0.15em' }}>· RETAINED 10 YEARS · HIPAA</span>
                         </div>
                         <a
                           href={apiUrl(`twilio/recording/${h.id}?download=1`)}
                           download={`call-${h.id}.mp3`}
-                          style={{ fontSize: '0.45rem', color: crt(0.7), letterSpacing: '0.15em', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: `1px solid ${crt(0.2)}`, borderRadius: 4 }}
+                          style={{ fontSize: '0.45rem', color: slate(0.7), letterSpacing: '0.15em', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: `1px solid ${slate(0.2)}`, borderRadius: 4 }}
                           title="Download MP3"
                         >
                           <Download size={10} /> DOWNLOAD
@@ -306,28 +302,27 @@ export default function PhoneHistoryPage() {
                       />
                     </div>
                   )}
-                  <div style={{ display: 'grid', gridTemplateColumns: h.transcript ? '1fr 1fr' : '1fr', gap: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (h.transcript ? '1fr 1fr' : '1fr'), gap: 16 }}>
                     {h.summary && (
                       <div>
-                        <div style={{ fontSize: '0.42rem', color: purple(0.5), letterSpacing: '0.2em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: purple(0.5) }} /> AI SUMMARY
+                        <div style={{ fontSize: '0.42rem', color: accent(0.5), letterSpacing: '0.2em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: accent(0.5) }} /> AI SUMMARY
                         </div>
-                        <div style={{ fontSize: '0.6rem', color: crt(0.6), lineHeight: 1.7, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 6, border: `1px solid ${crt(0.05)}` }}>
+                        <div style={{ fontSize: '0.6rem', color: slate(0.6), lineHeight: 1.7, padding: '10px 12px', background: slate(0.2), borderRadius: 6, border: `1px solid ${slate(0.05)}` }}>
                           {h.summary}
                         </div>
                       </div>
                     )}
                     {h.transcript && (
                       <div>
-                        <div style={{ fontSize: '0.42rem', color: crt(0.35), letterSpacing: '0.2em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: crt(0.35) }} /> TRANSCRIPT
+                        <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: slate(0.35) }} /> TRANSCRIPT
                         </div>
                         <div style={{
-                          fontSize: '0.55rem', color: crt(0.45), maxHeight: 180, overflowY: 'auto',
+                          fontSize: '0.55rem', color: slate(0.55), maxHeight: 180, overflowY: 'auto',
                           whiteSpace: 'pre-wrap', lineHeight: 1.7,
-                          padding: '10px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 6,
-                          border: `1px solid ${crt(0.05)}`,
-                        }}>
+                          padding: '10px 12px', background: slate(0.3), borderRadius: 6,
+                          border: `1px solid ${slate(0.05)}` }}>
                           {h.transcript}
                         </div>
                       </div>
@@ -335,10 +330,10 @@ export default function PhoneHistoryPage() {
                   </div>
                   {h.notes && (
                     <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: '0.42rem', color: amber(0.4), letterSpacing: '0.2em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 3, height: 3, borderRadius: '50%', background: amber(0.4) }} /> NOTES
+                      <div style={{ fontSize: '0.42rem', color: warning(0.55), letterSpacing: '0.2em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 3, height: 3, borderRadius: '50%', background: warning(0.4) }} /> NOTES
                       </div>
-                      <div style={{ fontSize: '0.6rem', color: crt(0.5), padding: '10px 12px', background: 'rgba(0,0,0,0.15)', borderRadius: 6, border: `1px solid ${crt(0.05)}` }}>
+                      <div style={{ fontSize: '0.6rem', color: slate(0.5), padding: '10px 12px', background: slate(0.15), borderRadius: 6, border: `1px solid ${slate(0.05)}` }}>
                         {h.notes}
                       </div>
                     </div>
@@ -347,25 +342,25 @@ export default function PhoneHistoryPage() {
               )}
 
               {followupCallSid === (h.twilioCallSid ?? '') && followupCallSid && (
-                <div style={{ padding: '14px 20px', background: amber(0.02), borderTop: `1px solid ${amber(0.1)}` }}>
-                  <div style={{ fontSize: '0.45rem', color: amber(0.5), letterSpacing: '0.2em', marginBottom: 10 }}>SCHEDULE FOLLOW-UP</div>
+                <div style={{ padding: '14px 20px', background: warning(0.02), borderTop: `1px solid ${warning(0.1)}` }}>
+                  <div style={{ fontSize: '0.45rem', color: warning(0.5), letterSpacing: '0.2em', marginBottom: 10 }}>SCHEDULE FOLLOW-UP</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <input value={followupForm.title} onChange={e => setFollowupForm(f => ({ ...f, title: e.target.value }))} placeholder="Follow-up title..." style={INPUT_STYLE} />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
                       <div>
-                        <label style={{ fontSize: '0.4rem', color: crt(0.25), letterSpacing: '0.15em', display: 'block', marginBottom: 4 }}>START</label>
+                        <label style={{ fontSize: '0.4rem', color: slate(0.55), letterSpacing: '0.15em', display: 'block', marginBottom: 4 }}>START</label>
                         <input type="datetime-local" value={followupForm.startAt} onChange={e => setFollowupForm(f => ({ ...f, startAt: e.target.value }))} style={{ ...INPUT_STYLE, colorScheme: 'dark' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.4rem', color: crt(0.25), letterSpacing: '0.15em', display: 'block', marginBottom: 4 }}>END (OPTIONAL)</label>
+                        <label style={{ fontSize: '0.4rem', color: slate(0.55), letterSpacing: '0.15em', display: 'block', marginBottom: 4 }}>END (OPTIONAL)</label>
                         <input type="datetime-local" value={followupForm.endAt} onChange={e => setFollowupForm(f => ({ ...f, endAt: e.target.value }))} style={{ ...INPUT_STYLE, colorScheme: 'dark' }} />
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <PhoneBtn onClick={scheduleFollowup} disabled={!followupForm.title || !followupForm.startAt} color={amber} style={{ flex: 1, justifyContent: 'center' }}>
+                      <PhoneBtn onClick={scheduleFollowup} disabled={!followupForm.title || !followupForm.startAt} color={warning} style={{ flex: 1, justifyContent: 'center' }}>
                         SCHEDULE FOLLOW-UP
                       </PhoneBtn>
-                      <PhoneBtn onClick={() => setFollowupCallSid(null)} color={red} size="sm"><X size={12} /></PhoneBtn>
+                      <PhoneBtn onClick={() => setFollowupCallSid(null)} color={destructive} size="sm"><X size={12} /></PhoneBtn>
                     </div>
                   </div>
                 </div>
