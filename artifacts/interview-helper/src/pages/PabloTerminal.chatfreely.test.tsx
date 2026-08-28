@@ -66,7 +66,6 @@ vi.mock("@/lib/tts", () => ({
     if (onDone) onDone();
     return { cancel: () => {} };
   },
-  whenAudioUnlocked: () => () => {},
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},
 }));
@@ -106,11 +105,11 @@ function qs(testid: string): HTMLElement | null {
   return container.querySelector(`[data-testid="${testid}"]`);
 }
 
-// Type a message into the intro input and submit, driving the real
+// Type a message into the standard input and submit, driving the real
 // onChange -> state -> onSubmit -> sendToPablo pipeline.
 async function typeAndSend(text: string) {
-  const input = qs("pablo-intro-text-input") as HTMLInputElement;
-  if (!input) throw new Error("intro text input not rendered");
+  const input = qs("pablo-text-input") as HTMLInputElement;
+  if (!input) throw new Error("text input not rendered");
   const setValue = Object.getOwnPropertyDescriptor(
     window.HTMLInputElement.prototype,
     "value",
@@ -127,13 +126,10 @@ async function typeAndSend(text: string) {
   await flush();
 }
 
-// Returning visitor: cached identity + the "intro already greeted" flag so
-// beginIntake fires on mount (introGreetedRef is seeded from this key) and
-// takes the cached-name+email path instead of re-running the storyteller.
+// Returning visitor with a cached identity.
 function seedReturningVisitor(name: string, email: string) {
   window.localStorage.setItem("salaryman_name", name);
   window.localStorage.setItem("salaryman_email", email);
-  window.localStorage.setItem("pablo.story_played_v2", "1");
 }
 
 beforeEach(() => {
@@ -211,7 +207,7 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     await typeAndSend("take me to my dashboard");
 
     expect(qs("pablo-auth-choice"), "a gated-destination request should open the sign-in modal").not.toBeNull();
-    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
@@ -234,7 +230,7 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
       "?returnTo= deep-link must auto-open the sign-in modal on mount for a returning visitor",
     ).not.toBeNull();
     // Must never regress to re-asking for name or email that are already on file.
-    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");

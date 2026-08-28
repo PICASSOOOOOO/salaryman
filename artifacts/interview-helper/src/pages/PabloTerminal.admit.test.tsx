@@ -48,9 +48,6 @@ vi.mock("@/lib/tts", () => ({
     if (onDone) onDone();
     return { cancel: () => {} };
   },
-  // Never auto-fire the greeting sequence — keeps the terminal in a clean
-  // pre-intake state so each test drives the flow explicitly.
-  whenAudioUnlocked: () => () => {},
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},
 }));
@@ -91,11 +88,11 @@ function qs(testid: string): HTMLElement | null {
   return container.querySelector(`[data-testid="${testid}"]`);
 }
 
-// Type a message into the intro input and submit the intake form, driving the
+// Type a message into the standard input and submit the form, driving the
 // real onChange -> state -> onSubmit -> sendToPablo pipeline.
 async function typeAndSend(text: string) {
-  const input = qs("pablo-intro-text-input") as HTMLInputElement;
-  if (!input) throw new Error("intro text input not rendered");
+  const input = qs("pablo-text-input") as HTMLInputElement;
+  if (!input) throw new Error("text input not rendered");
   const setValue = Object.getOwnPropertyDescriptor(
     window.HTMLInputElement.prototype,
     "value",
@@ -154,7 +151,7 @@ describe("Pablo front-door admittance flow", () => {
     // Admitted directly — modal open, and never bounced into name/email
     // collection (placeholder stays the generic chat prompt).
     expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
-    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
@@ -169,7 +166,7 @@ describe("Pablo front-door admittance flow", () => {
     await typeAndSend("show me your papers");
 
     expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
-    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
@@ -182,13 +179,13 @@ describe("Pablo front-door admittance flow", () => {
     // No cache: "let me in" pivots to asking-name, NOT straight to the modal.
     await typeAndSend("let me in");
     expect(qs("pablo-auth-choice"), "should not admit a new visitor yet").toBeNull();
-    let input = qs("pablo-intro-text-input") as HTMLInputElement;
+    let input = qs("pablo-text-input") as HTMLInputElement;
     expect(input.placeholder, "should be asking for the name now").toBe("Type your name");
 
     // Provide a name -> advances to asking-email.
     await typeAndSend("Alex");
     expect(qs("pablo-auth-choice"), "still collecting identity").toBeNull();
-    input = qs("pablo-intro-text-input") as HTMLInputElement;
+    input = qs("pablo-text-input") as HTMLInputElement;
     expect(input.placeholder, "should be asking for the email now").toBe("Type your email");
 
     // Provide an email -> hands off to the auth choice modal.

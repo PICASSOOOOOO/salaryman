@@ -51,9 +51,6 @@ vi.mock("@/lib/tts", () => ({
     if (onDone) onDone();
     return { cancel: () => {} };
   },
-  // Never auto-fire the greeting sequence — keeps the terminal in a clean
-  // pre-intake state so each test drives the flow explicitly.
-  whenAudioUnlocked: () => () => {},
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},
 }));
@@ -94,11 +91,11 @@ function qs(testid: string): HTMLElement | null {
   return container.querySelector(`[data-testid="${testid}"]`);
 }
 
-// Type a message into the intro input and submit the intake form, driving the
+// Type a message into the standard input and submit the form, driving the
 // real onChange -> state -> onSubmit -> sendToPablo pipeline.
 async function typeAndSend(text: string) {
-  const input = qs("pablo-intro-text-input") as HTMLInputElement;
-  if (!input) throw new Error("intro text input not rendered");
+  const input = qs("pablo-text-input") as HTMLInputElement;
+  if (!input) throw new Error("text input not rendered");
   const setValue = Object.getOwnPropertyDescriptor(
     window.HTMLInputElement.prototype,
     "value",
@@ -147,7 +144,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
     // Handed straight to OAuth — modal open, and never bounced into name or
     // email collection (placeholder stays the generic chat prompt).
     expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
-    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
@@ -164,7 +161,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
     await typeAndSend("log me in");
 
     expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
-    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
@@ -183,8 +180,8 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
     expect(qs("pablo-auth-choice"), "auth choice modal must stay closed").toBeNull();
   });
 
-  // The shortcut is documented to fire BEFORE the passcode / interview-phase
-  // branches "so it works at every step of the intro." The tests above only
+  // The shortcut fires before the interview-phase branches so it works at
+  // every step of identity collection. The tests above only
   // exercise it from the fresh idle state. The cases below drive the terminal
   // INTO a later intake phase first, then say "log me in", and assert it still
   // short-circuits straight to the auth modal without finishing the new-user
@@ -197,7 +194,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
     // cached identity it pivots a brand-new visitor into asking-name.
     await typeAndSend("let me in");
     expect(qs("pablo-auth-choice"), "should still be collecting identity").toBeNull();
-    let input = qs("pablo-intro-text-input") as HTMLInputElement;
+    let input = qs("pablo-text-input") as HTMLInputElement;
     expect(input.placeholder, "should be mid-intake asking for the name").toBe("Type your name");
 
     // Now they reveal they're a returning user. The shortcut must fire from
@@ -217,7 +214,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
     // asking-email. They've now given a name but not an email.
     await typeAndSend("let me in");
     await typeAndSend("Alex");
-    const emailInput = qs("pablo-intro-text-input") as HTMLInputElement;
+    const emailInput = qs("pablo-text-input") as HTMLInputElement;
     expect(emailInput.placeholder, "should be mid-intake asking for the email").toBe("Type your email");
     expect(window.localStorage.getItem("salaryman_name")).toBe("Alex");
 
@@ -272,7 +269,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
       // Drive into a later phase first (asking-name) so we exercise the
       // hint hand-off from MID-intake, not the fresh idle state.
       await typeAndSend("let me in");
-      expect((qs("pablo-intro-text-input") as HTMLInputElement).placeholder).toBe("Type your name");
+      expect((qs("pablo-text-input") as HTMLInputElement).placeholder).toBe("Type your name");
 
       await typeAndSend("log me in");
       const modal = qs("pablo-auth-choice");

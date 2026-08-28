@@ -6,8 +6,7 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
-import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
-import { ensureOnboardingScore } from "@/lib/onboarding-score";
+import { speakWithTTS, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
@@ -15,7 +14,7 @@ import { useLowGfx } from "@/lib/lowGfx";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
-  isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
+  isTutorialDone,
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
 import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
@@ -117,15 +116,8 @@ class NebulaErrorBoundary extends ReactComponent<{ children: RNode; fallback: RN
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
-
-// The storyteller intro. Pablo introduces himself, paints the world, then
-// asks for the passcode. Each line is spoken sequentially with TTS. The
-// user can interrupt at any time by tapping the nebula and asking a
-// question — Pablo will answer via the normal /api/chat/pablo/command
-// pipeline and then keep waiting for the passcode.
-// Idle one-liners Pablo cycles through AFTER the user has completed the
-// storyteller intro. The point is presence — Pablo always feels like he's
+// Idle one-liners Pablo cycles through for returning users. The point is
+// presence — Pablo always feels like he's
 // in the chat, watching, joking, occasionally trying to upsell PABLO PRIME.
 // We pick a line at random on each mount and keep a tiny "recently said"
 // queue in localStorage so the same line never repeats two visits in a row.
@@ -180,8 +172,8 @@ type Mode = "voice" | "text";
 // enforces identical navigation safety. Imported at the top of this file.
 
 // Detect a returning user who just wants to sign in. They shouldn't be
-// dragged through the new-user passcode → puzzle → ask-name → ask-email
-// sequence — OAuth covers the account half on its own. We bypass the
+// dragged through new-user identity collection — OAuth covers the account
+// half on its own. We bypass the
 // intro entirely and hand them straight to /api/login. This also avoids
 // a feedback loop where the LLM might return navigate to '/api/login',
 // our intro-gate would stash it as a "destination", and the email-step
@@ -783,23 +775,6 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
   );
 }
 
-// Pablo's intro lines, hoisted to module scope so callbacks defined
-// early in the component (beginIntake) can reference QUESTION_LINE
-// without TDZ errors. The text is content, not state — there's no
-// reason for it to live inside the component closure.
-const INTRO_LINES = [
-  "Pablo. You came looking for work — sensible. This city runs on people who make themselves useful. Be one of them.",
-];
-// QUESTION_LINE is the persistent pinned caption — the always-on safety
-// net shows it whenever the intro is visible (including return visits)
-// so the screen is never a blank nebula. It is DELIBERATELY NOT the
-// self-introduction: INTRO_LINES (Pablo naming himself) is spoken once
-// per visitor and guarded by the persisted greeting flag, but the pinned
-// caption re-renders whenever the reply bubble is cleared and a dep
-// changes. If the caption WERE the self-intro, every re-pin would read as
-// Pablo re-introducing himself in a loop. Keep this a short, neutral
-// prompt so a re-pin never re-introduces him.
-const QUESTION_LINE = "I'm listening.";
 // Only fires when the user asks for a feature that requires an account
 // (wantsTool match) — never as the default opener anymore.
 const NAME_PROMPT_LINE = "What should I call you?";
@@ -868,19 +843,9 @@ function PabloTerminalAuthed() {
   // voice anytime with the pablo-mode-toggle button.
   const [mode, setMode] = useState<Mode>("text");
   const [textInput, setTextInput] = useState("");
-  // Storyteller mode runs once per user. Gated on the unified tutorial flag
-  // so completing the passcode unlock everywhere clears it everywhere.
-  // ADDITIONALLY gated by localStorage: once the speech has played for this
-  // browser at all (even partially), it never replays. New tabs and cold
-  // reloads skip straight to the static passcode prompt. We use
-  // localStorage (not sessionStorage) because mobile users were reporting
-  // the intro looping every time they reopened the tab.
-  const STORY_PLAYED_KEY = "pablo.story_played_v2";
   // Cached server-authoritative assistant persona, so the terminal paints the
   // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
   const PERSONA_CACHE_KEY = "salaryman.persona";
-  const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
-  const [storyIdx, setStoryIdx] = useState(0);
   // (Removed Simon-says puzzle and its state. The puzzle was a guard that
   // ran post-passcode; with the passcode gone, the user goes directly
   // from the intro question to the inline employment / name / email
@@ -931,8 +896,8 @@ function PabloTerminalAuthed() {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    if (showIntro) return;
-    // Schedule the first lore drip 5 min after the intro ends; each subsequent
+    if (!isTutorialDone()) return;
+    // Schedule the first lore drip 5 min after mount; each subsequent
     // drip doubles the wait so an idle tab gets quieter the longer it sits.
     const scheduleNext = () => {
       if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
@@ -944,44 +909,11 @@ function PabloTerminalAuthed() {
     };
     scheduleNext();
     return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
-  }, [showIntro, fetchLoreDrip]);
-  // Pre-seed the "already greeted" flag from localStorage so reloads and
-  // new tabs don't restart the storyteller from line 0. The flag is set
-  // the moment the first line begins; once it's there, future mounts in
-  // ANY tab skip straight to "say the passcode" without re-running the
-  // speech. Mobile users were reporting the intro replaying every time
-  // they reopened the page; localStorage fixes that for good.
-  const introGreetedRef = useRef<boolean>(
-    typeof window !== "undefined" && window.localStorage.getItem(STORY_PLAYED_KEY) === "1"
-  );
+  }, [fetchLoreDrip]);
   // Audio unlocks itself the moment the user touches anything (handled by
   // the global armAudioAutoUnlock listener wired in App.tsx). Pablo's voice
   // is on by default and stays on; no manual unlock affordance needed.
-  // External handle to cancel the storyteller mid-flight. Flipped to true
-  // by the intake-start path so the storyteller's pending TTS chains
-  // bail instead of overwriting Pablo's intake replies (name prompt,
-  // email prompt) with a stale scripted line.
-  const storyCancelledRef = useRef<boolean>(false);
-  // True once the intro speech sequence has fully completed (all 3 lines
-  // spoken) OR the user is a return visitor (introGreetedRef already
-  // true at mount, so no sequence will play). Used by the intro safety
-  // net to know when to pre-arm the intake for return visitors.
-  const introScriptDoneRef = useRef<boolean>(
-    typeof window !== "undefined" && window.localStorage.getItem(STORY_PLAYED_KEY) === "1"
-  );
-  // True when this Pablo session is in "guided tour" mode — the user came
-  // back from landing via Get Started after already speaking the passcode.
-  // Skips the storyteller, plays a short reveal, fades into the world.
-  const [guidedActive, setGuidedActive] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try { return new URLSearchParams(window.location.search).get("guided") === "1"; }
-    catch { return false; }
-  });
-  const guidedRanRef = useRef(false);
-  const [revealOverlay, setRevealOverlay] = useState(false);
-  // While true, the next user utterance is checked for the passcode before
-  // being treated as a normal Pablo command.
-  // When the user (still on the intro screen, not yet onboarded) asks Pablo
+  // When the user asks Pablo
   // to take them somewhere — "open my dashboard", "go to studio", "find me X"
   // — we don't navigate immediately. Auth-gated pages would either crash on
   // missing user data or redirect through the login flow with no context,
@@ -1023,7 +955,6 @@ function PabloTerminalAuthed() {
   // explicit recovery path called out in code review.
   useEffect(() => () => { interviewPhaseRef.current = 'idle'; }, []);
   const autoListenRef = useRef(false);
-  const autoStartedRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -1052,10 +983,6 @@ function PabloTerminalAuthed() {
   }, []);
 
   useEffect(() => () => { cleanup(); ttsRef.current?.cancel(); }, [cleanup]);
-
-  const persistOnboarded = useCallback(() => {
-    try { localStorage.setItem(ONBOARD_KEY, "1"); } catch {}
-  }, []);
 
   // ── Email gate shared by beginIntake + sendToPablo ───────────────────────
   // Calls /api/chat/pablo/screen-email before opening the auth modal.
@@ -1103,42 +1030,16 @@ function PabloTerminalAuthed() {
     };
   });
 
-  // Camera/file/URL-vision UI lights up only when ALL of these are true:
-  //   * user is authenticated (OAuth runs at the END of intake — pre-auth
-  //     means name/email aren't even captured yet)
-  //   * the guided tour has run to completion (markTutorialDone, only
-  //     fired by the post-OAuth guided sequence on this page)
-  //   * the storyteller intro card isn't currently on screen
-  //
-  // Earlier we keyed off the ONBOARD_KEY localStorage flag, but that flag
-  // is set the MOMENT the user engages with intake (beginIntake /
-  // switchToVoice / chooseTextMode) — not when onboarding finishes —
-  // so the camera was leaking into mid-intake. Auth + tutorial-done is
-  // the actual "post-onboarding" signal.
-  const hasFinishedOnboarding = isAuthenticated && isTutorialDone() && !showIntro;
+  // Camera/file/URL-vision UI is available only after authentication and the
+  // immigration desk has completed.
+  const hasFinishedOnboarding = isAuthenticated && isTutorialDone();
 
-  // Try to unlock audio optimistically the moment we mount. If the user
-  // arrived at /pablo from a clicked link or a button (the common case
-  // — the SALARYMAN logo, the nebula nav button, the get-started CTA),
-  // the browser still considers us inside the user's gesture and the
-  // unlock succeeds. That makes Pablo greet immediately with his voice
-  // instead of sitting silent until the user taps the screen again.
-  // armAudioAutoUnlock keeps the existing tap-anywhere fallback alive
-  // for cold direct-loads where no gesture is in flight.
+  // Keep the existing global audio unlock path alive for reply speech and
+  // explicit voice input. There is no automatic greeting to start here.
   useEffect(() => {
     armAudioAutoUnlock();
     void unlockAudio();
   }, []);
-
-  // Subtle continuous onboarding score. ONLY for new arrivals still in the
-  // intro flow (showIntro = !tutorialDone) — returning visitors get no bed.
-  // The bed is a singleton that carries seamlessly into /immigration and the
-  // post-onboarding office intro, so we only START it and never stop it on
-  // unmount; PostOnboardingIntro / the office page own the eventual stop.
-  useEffect(() => {
-    if (!showIntro) return;
-    return ensureOnboardingScore();
-  }, [showIntro]);
 
   const speakLine = useCallback((text: string, after?: () => void) => {
     setStatus("speaking");
@@ -1152,15 +1053,9 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(text, done, done);
   }, []);
 
-  // Unlock the door: passcode accepted. Pablo keeps the conversation going
-  // right here — he tells the salaryman story, asks for a name, then asks
-  // for an email and hands the user off to OAuth. The remaining
-  // race/gender/biz/appearance/location onboarding lives in WorldPlay's
-  // PabloOnboarding modal, which auto-opens on first arrival at /world/play
-  // after auth returns.
-  //
-  // There is no separate marketing/landing page: the Pablo nebula terminal
-  // IS the door in. (A bold /landing Cover page was tried and removed.)
+  // Start the pre-auth intake when the visitor chooses to enter. The remaining
+  // race/gender/biz/appearance/location onboarding lives in Immigration and
+  // WorldPlay after auth returns.
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
     bumpInterview();
@@ -1177,34 +1072,12 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
   }, [bumpInterview]);
 
-  // (Removed beginSalarymanStory, playPuzzleSequence, startPuzzle.
-  // The post-passcode story drip and the Simon-says puzzle are gone
-  // along with the passcode itself — the user moves directly from the
-  // intro question into asking-name → asking-email → OAuth.)
-
-  // Kick off the inline intake. There's no passcode anymore — the user
-  // gets here by simply answering Pablo's intro question (or by typing
-  // anything during/after the intro). We mark the door unlocked so that
-  // any future Pablo flows that depended on `isPasscodeUnlocked` keep
-  // working, then transition into the employment-question phase. The
-  // intake stays inside the intro UI (showIntro stays true) so the
-  // single text input below collects each answer in turn; we only flip
-  // showIntro off at the very end, right before the OAuth redirect.
-  // Returns true when it spoke the question (caller should NOT then try
-  // to parse the user's interrupting input as the answer — they didn't
-  // know we were asking yet). Returns false when the question was
-  // already on screen / already spoken (return visitor or script
-  // already finished), so the caller can fall through and parse.
+  // Start the inline intake. The first message itself is preserved and
+  // continues through the normal chatting/readiness/name/email pipeline.
+  // Returns true when a cached identity requires a prompt or auth handoff;
+  // returns false when the caller should process the current message.
   const beginIntake = useCallback((): boolean => {
     if (interviewPhaseRef.current !== 'idle') return false;
-    persistOnboarded();
-    markPasscodeUnlocked();
-    // Tell the in-flight intro speech sequence (if any) to stop
-    // marching forward. The per-line preemption checks already catch
-    // most races, but this flag is a belt-and-suspenders guard for the
-    // 280ms inter-line gap where a scheduled setTimeout could otherwise
-    // start the next scripted line right after our intake reply lands.
-    storyCancelledRef.current = true;
 
     // Returning visitor: name and/or email are already in localStorage
     // from a previous run. Re-asking them is the loop the user reported
@@ -1230,7 +1103,6 @@ function PabloTerminalAuthed() {
       if (!isAuthenticated && hasPendingFeature) {
         interviewPhaseRef.current = 'idle';
         bumpInterview();
-        introScriptDoneRef.current = true;
         const ack = `Welcome back, ${cachedName}. Signing you in.`;
         setReply(ack);
         setStatus("speaking");
@@ -1252,30 +1124,15 @@ function PabloTerminalAuthed() {
         window.setTimeout(openModal, 1800);
         return true;
       }
-      // No pending feature — let them chat freely. They'll be nudged
-      // to log in only if/when they ask for a tool (wantsTool path).
+      // No pending feature — let them chat freely. The current message is
+      // preserved and processed by the chatting branch below.
       interviewPhaseRef.current = 'chatting';
       bumpInterview();
-      introScriptDoneRef.current = true;
-      const greet = `Hey ${cachedName}. Good to see you. What's on your mind?`;
-      setReply(greet);
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      const done = () => { ttsRef.current = null; setStatus("idle"); };
-      ttsRef.current = speakWithTTS(greet, done, done);
-      return true;
+      return false;
     }
 
-    // Brand-new visitor (no cached name) → enter the free CHATTING
-    // phase, NOT asking-name. The user explicitly asked for Pablo to
-    // be able to hold full conversations and act as an encyclopedia
-    // before any onboarding happens. Pablo will transition to
-    // asking-name once the visitor signals readiness ("let me in",
-    // "I'm ready") or volunteers their name. If the user already
-    // gave a name on a prior visit but no email, we go straight to
-    // asking-email — they're not a new visitor, they're a return
-    // visitor partway through, and re-entering the chat would feel
-    // like a regression.
+    // Brand-new visitors enter free chatting. Visitors with a cached name but
+    // no email resume at the email step.
     if (!haveName) {
       interviewPhaseRef.current = 'chatting';
     } else {
@@ -1284,387 +1141,24 @@ function PabloTerminalAuthed() {
     }
     bumpInterview();
 
-    // If the intro script never reached the question line (user
-    // interrupted early — typed "hi" mid-monologue, etc.), speak the
-    // appropriate prompt now so they actually know what we're asking.
-    // Without this, their interrupting input gets stored as an
-    // accidental name/email they didn't intend to give.
-    if (!introScriptDoneRef.current) {
-      introScriptDoneRef.current = true;
-      // Brand-new visitor going into the free CHATTING phase: do NOT
-      // speak QUESTION_LINE and do NOT drop the user's input. The
-      // opener ("Hey, I'm Pablo. Ask me anything.") is fluff at this
-      // point — the visitor is already asking. If we drop their
-      // message here and only speak the opener, their tool request
-      // (e.g. "I want to make a phone call") never reaches the
-      // wantsTool branch in the chatting handler, so onboarding never
-      // fires. Returning false lets sendToPablo continue and process
-      // the input through the chatting → wantsTool path. We still
-      // speak the asking-email prompt for the partial-return-visitor
-      // case (name cached, email missing) — there we DO need to ask.
-      if (interviewPhaseRef.current === 'asking-email') {
-        const prompt = `What's a good email for your account?`;
-        setReply(prompt);
-        setStatus("speaking");
-        ttsRef.current?.cancel();
-        const done = () => { ttsRef.current = null; setStatus("idle"); };
-        ttsRef.current = speakWithTTS(prompt, done, done);
-        return true;
-      }
-      // chatting phase — silently drop into chatting and let the
-      // caller process the user's input.
-      return false;
-    }
     return false;
-  }, [persistOnboarded, bumpInterview, QUESTION_LINE, isAuthenticated]);
+  }, [bumpInterview, isAuthenticated]);
 
-  // Intro form submit. There's no passcode anymore — whatever the user
-  // typed is just the next answer in the intake (employment → name →
-  // email). We hand it straight to sendToPablo, which routes on the
-  // current interview phase. If the user types something before the
-  // intro speech ends and we haven't entered intake yet, sendToPablo's
-  // showIntro/intake guards take care of it.
-  const submitIntro = useCallback(() => {
-    const text = textInput.trim();
-    if (!text) return;
-    setTextInput("");
-    setTranscript(text);
-    // The intake form is an UNAMBIGUOUS name request — the field is
-    // labeled "NAME ▸ your name" and the placeholder is "your name".
-    // Whatever the user types here IS their name. Without this, the
-    // generic sendToPablo flow would either:
-    //   (a) call beginIntake() because phase is still 'idle', which
-    //       speaks the name question and DROPS the user's input — they
-    //       have to type their name a SECOND time before anything
-    //       happens (reported as "Pablo isn't responsive"), or
-    //   (b) route to the chatting branch, which only captures names
-    //       with explicit "I'm X" / "my name is X" prefixes — bare
-    //       "John" falls through to free-conversation chitchat and
-    //       the name is never stored, so the user is stuck in a loop
-    //       of Pablo replies that never advance to OAuth.
-    // Force phase to asking-name so the name-extraction branch runs
-    // on the user's input on the very first submission. Also stop any
-    // in-flight greeting TTS so Pablo doesn't keep talking over the
-    // intake response.
-    storyCancelledRef.current = true;
-    introScriptDoneRef.current = true;
-    ttsRef.current?.cancel();
-    ttsRef.current = null;
-    // Chat-first intake. The visitor can ask Pablo anything before
-    // giving up identity. Force phase to 'chatting' so sendToPablo
-    // routes the input to the public LLM endpoint. The chatting
-    // branch in sendToPablo opportunistically promotes to asking-name
-    // when the user volunteers ("I'm Alex" / "my name is X" / email)
-    // or signals readiness ("let me in" / "I'm ready"). Without this
-    // override, phase=='idle' would cause beginIntake() to fire and
-    // DROP the user's first input.
-    if (interviewPhaseRef.current === 'idle') {
-      interviewPhaseRef.current = 'chatting';
-      bumpInterview();
-    }
-    void sendToPablo(text);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [textInput]);
-
-  // (Removed onPuzzlePadTap. The Simon-says puzzle is gone.)
+  // A deep link from a gated destination still resumes authentication
+  // immediately when this browser already has a complete cached identity.
+  // Ordinary visits never trigger an automatic greeting or storyteller.
+  useEffect(() => {
+    if (!pendingDestinationRef.current) return;
+    beginIntake();
+  }, [beginIntake]);
 
   const chooseTextMode = useCallback(() => {
-    persistOnboarded();
     setMode("text");
     ttsRef.current?.cancel();
     cleanup();
     setStatus("idle");
     setReply("Text mode on. Type what you need.");
-  }, [persistOnboarded, cleanup]);
-
-  // Pablo's greeting — a SINGLE line, fired only on the user's first
-  // gesture. An earlier version auto-marched through a long passcode
-  // monologue on mount and set the visible text BEFORE TTS started, so on mobile (where
-  // audio is locked until a user gesture) the user saw a long monologue
-  // scroll past in dead silence. The user described it as "a dialog loop
-  // that doesn't speak". Now: nothing visible, nothing audible, until the
-  // user touches the screen or presses a key. At that gesture the audio
-  // is already unlocked, so we set the caption AND start TTS in the same
-  // tick — text and voice arrive together. After the line finishes, the
-  // passcode listener arms and (in voice mode) the mic auto-opens.
-  // Pablo greets automatically — no "tap to wake" affordance. He also says
-  // the passcode out loud and in the caption, so the user doesn't have to
-  // solve a riddle. The only thing that can delay him is iOS Safari's
-  // audio lock, which the global armAudioAutoUnlock listener clears the
-  // instant the user touches *anything* on the page (the road input, a
-  // background swipe, a key — anything). We pipe through whenAudioUnlocked
-  // so caption text and TTS appear together; we don't add our own gesture
-  // listener (the previous build did, and it raced with the global unlock
-  // listener: our handler fired first, started TTS into a still-locked
-  // SpeechSynthesis, and the user saw text with no voice).
-  // The intro greeting is now SEQUENCED — Pablo doesn't dump the whole
-  // pitch in one breath any more. He leads the user in: a welcome, a
-  // setup line, then the actual passcode reveal. Each line is spoken in
-  // order; the *pinned* passcode badge below the caption stays visible
-  // throughout so the user never misses the answer even if they tab away
-  // during the speech. (User feedback: "Pablo won't tell me the
-  // passcode" + "Pablo needs to lead the user into the intro".)
-  //
-  // No passcode anymore. Pablo's intro now ends with a direct question —
-  // any answer (spoken or typed) drops the user into the onboarding
-  // intake (employment path → name → email → OAuth). The post-OAuth
-  // PabloOnboarding modal in WorldPlay handles deeper biz registration
-  // (company name, industry, type) using the bizPath we capture here.
-  // INTRO_LINES and QUESTION_LINE are defined at module scope above so
-  // beginIntake (declared earlier in the component) can reference
-  // QUESTION_LINE without a temporal dead zone error.
-  // Caption is shown IMMEDIATELY on mount (no longer gated on greetingStarted),
-  // because audio-unlock can take a long time on iOS and on cold loads — and
-  // when it stalls, the user used to sit looking at a black nebula with no
-  // dialog box, no passcode, no way forward. The TTS is still gated on
-  // whenAudioUnlocked, but the *text* should never be — at minimum the user
-  // can read the passcode and type it. (User feedback: "doesn't verbally
-  // tell me the passcode or write it in the dialog. He needs to speak as
-  // a greeting.")
-  const greetingFiredRef = useRef(false);
-  // Mode is read via a ref so the greeting effect doesn't tear down and
-  // re-init when the user (or Pablo) flips voice/text mid-intro. Tearing
-  // down used to leak the safety timer — a delayed cancel() could then
-  // chop the head off a later, unrelated TTS line and make Pablo seem
-  // mute again. (Architect-flagged race.)
-  const modeRef = useRef(mode);
-  useEffect(() => { modeRef.current = mode; }, [mode]);
-
-  // ALWAYS-ON intro-screen safety net (separate from the greeting effect):
-  // pins the question line in the dialog bubble whenever the intro is
-  // visible, even on a return visit where introGreetedRef is already
-  // true and the greeting effect below early-returns. Without this,
-  // returning users could see a black nebula with no dialog and no way
-  // to know what Pablo expects from them.
-  //
-  // For return visitors who already cleared the intro once but somehow
-  // landed back here (cleared storage, etc.), we also pre-arm the
-  // intake at the asking-name phase so their first answer flows
-  // straight into the parser instead of being dropped.
-  useEffect(() => {
-    if (!showIntro) return;
-    if (guidedActive) return;
-    setReply(prev => prev || QUESTION_LINE);
-    if (introGreetedRef.current) {
-      introScriptDoneRef.current = true;
-      if (interviewPhaseRef.current === 'idle') beginIntake();
-    }
-    if (modeRef.current === "voice") autoListenRef.current = true;
-  }, [showIntro, guidedActive, QUESTION_LINE, beginIntake]);
-
-  useEffect(() => {
-    if (!showIntro || introGreetedRef.current) return;
-    if (guidedActive) return; // guided tour takes over instead
-    let cancelled = false;
-    let safetyTimer: number | null = null;
-
-    const fireGreeting = () => {
-      if (cancelled || greetingFiredRef.current) return;
-      greetingFiredRef.current = true;
-      introGreetedRef.current = true;
-      try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      // Sequenced greeting: walk INTRO_LINES, swapping the caption to the
-      // line we're about to speak BEFORE TTS starts so audio + text stay
-      // in sync (same contract the previous single-line version honored).
-      // The passcode-bearing line is last; the always-on safety net's
-      // QUESTION_LINE fallback in the safety net keeps it pinned in the bubble
-      // after the sequence finishes.
-      //
-      // Race-safety contract (architect-flagged):
-      //   - Each line owns its own TTS handle (`lineHandle`) captured
-      //     in the closure. Timers only operate on lineHandle, never on
-      //     the global `ttsRef.current` — that prevents a stale per-line
-      //     timer from cross-cancelling an unrelated TTS that started
-      //     after the user interrupted us.
-      //   - If we detect ttsRef.current has changed out from under us
-      //     (sendToPablo / passcode-unlock / mode-flip preempted the
-      //     sequence), we mark `cancelled = true` and bail without
-      //     touching status — the new owner manages that.
-      //   - Per-line safety timers ONLY fire if the line is still ours
-      //     AND hasn't already advanced. This eliminates the 5-14s
-      //     "stuck on line 1" stall the architect identified.
-      let perLineSafety: number | null = null;
-      const speakIndex = (i: number) => {
-        if (cancelled) return;
-        // External intake-started signal: if Pablo's intake fired (any user
-        // input during the intro), stop the scripted lines from advancing
-        // so we don't stomp the asking-employment ack with the next intro
-        // line during the 280ms inter-line gap.
-        if (storyCancelledRef.current) { cancelled = true; return; }
-        if (i >= INTRO_LINES.length) {
-          // Sequence complete: clear timers, return to idle, arm passcode.
-          // Mark the script as done so the brush-off branch in
-          // sendToPablo stops firing — from this moment on, the user
-          // can chat with Pablo freely while the passcode card stays
-          // pinned on screen.
-          if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
-          if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
-          ttsRef.current = null;
-          setStatus("idle");
-          introScriptDoneRef.current = true;
-          if (modeRef.current === "voice") autoListenRef.current = true;
-          return;
-        }
-        const line = INTRO_LINES[i];
-        setReply(line);
-        setStatus("speaking");
-        let advanced = false;
-        // We assign lineHandle BEFORE calling speakWithTTS isn't possible
-        // (it returns the handle), so we use a let + closure read — both
-        // `advance` and the per-line timer fire asynchronously, so by
-        // the time they read `lineHandle` it has been assigned.
-        let lineHandle: ReturnType<typeof speakWithTTS> | null = null;
-        const advance = () => {
-          if (advanced || cancelled) return;
-          advanced = true;
-          if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
-          // External preemption check: if ttsRef no longer points at our
-          // line handle, somebody (sendToPablo, passcode-accept TTS,
-          // mode-flip) has taken the floor. Abort the sequence quietly
-          // and don't touch status — the new owner is in charge.
-          if (lineHandle !== null && ttsRef.current !== lineHandle) {
-            cancelled = true;
-            return;
-          }
-          // Tiny breath between lines so they don't collide as one rush.
-          // Re-check ownership inside the breath: external code (an
-          // interrupt landing in this 280ms window) may have grabbed
-          // ttsRef *after* our just-finished line released it. Without
-          // this guard the next line would start, rebind ttsRef, and
-          // stomp the new owner — overlapping audio + UI ownership theft
-          // (architect-flagged "280ms gap" race).
-          window.setTimeout(() => {
-            if (cancelled) return;
-            if (lineHandle !== null && ttsRef.current !== lineHandle) {
-              cancelled = true;
-              return;
-            }
-            speakIndex(i + 1);
-          }, 280);
-        };
-        const cap = Math.max(5000, Math.min(14000, line.length * 70 + 2200));
-        perLineSafety = window.setTimeout(() => {
-          if (cancelled || advanced) return;
-          // Only cancel OUR line's TTS — never the global ttsRef, which
-          // may have been rebound to an unrelated, more recent handle
-          // by an external interrupt.
-          if (lineHandle !== null && ttsRef.current === lineHandle) {
-            try { lineHandle.cancel(); } catch {}
-          }
-          advance();
-        }, cap) as unknown as number;
-        lineHandle = speakWithTTS(line, advance, advance);
-        ttsRef.current = lineHandle;
-      };
-      // Master cap — protects the whole sequence in case per-line caps
-      // somehow chain into a runaway. Generous because it covers all 3.
-      // Mirrors the per-line timer's "only cancel if still ours" rule
-      // by using the same ttsRef-identity check via a captured token
-      // (lineHandle isn't in scope here, so we just no-op the cancel
-      // and rely on speakIndex's own preemption check on next tick).
-      safetyTimer = window.setTimeout(() => {
-        if (cancelled) return;
-        cancelled = true;
-        if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
-        // Don't touch ttsRef here — if the sequence is still running,
-        // speakIndex's preemption check handles abort. If something
-        // else owns ttsRef, we shouldn't yank it.
-        setStatus("idle");
-        // Master safety fired: the sequence is done (one way or
-        // another). Treat the script as complete so brush-offs in
-        // sendToPablo don't strand the user "Quiet, I'm setting the
-        // scene" forever after a TTS stall. Architect-flagged.
-        introScriptDoneRef.current = true;
-        if (modeRef.current === "voice") autoListenRef.current = true;
-      }, 45_000) as unknown as number;
-      speakIndex(0);
-    };
-
-    // Try right away (desktop, or any visit where audio was unlocked
-    // earlier in the session). On a cold iOS visit this just queues until
-    // the user taps anything — including the road input itself.
-    const cancelWait = whenAudioUnlocked(fireGreeting);
-
-    // Hard fallback: if audio never unlocks (user truly does nothing for
-    // 12 s) we still need to let them in. Silently arm the passcode
-    // listener and the mic so the road input + voice still work, even if
-    // Pablo never gets to speak. Without this, a stuck-locked iOS would
-    // leave the page completely inert.
-    const muteFallback = window.setTimeout(() => {
-      if (cancelled || greetingFiredRef.current) return;
-      if (modeRef.current === "voice") autoListenRef.current = true;
-    }, 12_000);
-
-    return () => {
-      cancelled = true;
-      cancelWait();
-      window.clearTimeout(muteFallback);
-      if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
-      // Only cancel TTS if we ourselves haven't yet taken ownership of
-      // ttsRef. Otherwise a remount could chop off a later, unrelated
-      // line (passcode-accept, puzzle, story drip) and Pablo "goes mute".
-      if (greetingFiredRef.current === false) ttsRef.current?.cancel();
-    };
-  }, [showIntro, guidedActive]);
-
-  // Guided tour: triggered when user comes back to /pablo?guided=1 from the
-  // landing page after speaking the passcode. Pablo plays a short reveal
-  // sequence, fades the nebula into the office artwork, then drops them
-  // into the world. This is the ONLY path that marks tutorial-done — the
-  // passcode alone never opens the terminal.
-  useEffect(() => {
-    if (!guidedActive || guidedRanRef.current) return;
-    if (!isPasscodeUnlocked()) {
-      // Someone hit ?guided=1 without the passcode. Treat as fresh visit.
-      setGuidedActive(false);
-      return;
-    }
-    guidedRanRef.current = true;
-    autoListenRef.current = false;
-    setShowIntro(false);
-
-    const TOUR_LINES = [
-      "Knew you'd come back.",
-      "Watch this.",
-      "Welcome to the office. It's loud, it's pink, and it's yours.",
-      "Pick a face, pick a fit. Let's move.",
-    ];
-
-    let cancelled = false;
-    const speakIdx = (i: number) => {
-      if (cancelled) return;
-      if (i >= TOUR_LINES.length) {
-        // Reveal: fade nebula → office, then enter
-        setRevealOverlay(true);
-        setTimeout(() => {
-          if (cancelled) return;
-          markTutorialDone();
-          navigate("/office");
-        }, 1500);
-        return;
-      }
-      // Trigger overlay reveal partway through the tour for a felt transition
-      if (i === 2) setRevealOverlay(true);
-      const line = TOUR_LINES[i];
-      setReply(line);
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      const next = () => {
-        if (cancelled) return;
-        ttsRef.current = null;
-        setTimeout(() => speakIdx(i + 1), 700);
-      };
-      ttsRef.current = speakWithTTS(line, next, next);
-    };
-    speakIdx(0);
-
-    return () => {
-      cancelled = true;
-      ttsRef.current?.cancel();
-    };
-  }, [guidedActive, navigate]);
+  }, [cleanup]);
 
   // Active assistant identity. Pre-story this is ALWAYS "pablo" (his orb + his
   // voice, completely untouched). Once a player's story is live the server flips
@@ -1786,27 +1280,21 @@ function PabloTerminalAuthed() {
       if (cachedName.length < 2 || !isLikelyEmail(cachedEmail)) return false;
       interviewPhaseRef.current = 'idle';
       bumpInterview();
-      // Screen the cached email before committing to OAuth. Run async then
-      // open the modal if cleared — the closing line plays while we wait.
+      // Screen the cached email before committing to OAuth. The closing line
+      // may keep speaking, but opening the modal never depends on TTS ending.
       setReply(closingLine);
       setStatus('speaking');
       ttsRef.current?.cancel();
-      let fired = false;
-      let timerId: number | undefined;
       const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
-      const openModal = () => {
-        if (fired) return;
-        fired = true;
-        if (timerId !== undefined) window.clearTimeout(timerId);
-        ttsRef.current = null;
-        // Screen the email; open modal on pass, deflect in-character on block.
-        screenEmailBeforeAdmitRef.current(cachedEmail).then((ok) => {
-          if (ok) setAuthChoice({ dest, hint: cachedEmail });
-        });
-      };
-      ttsRef.current = speakWithTTS(closingLine, openModal, openModal);
-      timerId = window.setTimeout(openModal, 2200);
+      ttsRef.current = speakWithTTS(
+        closingLine,
+        () => { ttsRef.current = null; setStatus("idle"); },
+        () => { ttsRef.current = null; setStatus("idle"); },
+      );
+      void screenEmailBeforeAdmitRef.current(cachedEmail).then((ok) => {
+        if (ok) setAuthChoice({ dest, hint: cachedEmail });
+      });
       return true;
     };
 
@@ -1839,35 +1327,22 @@ function PabloTerminalAuthed() {
       const ack = "This way. Hold tight.";
       setReply(ack);
       setStatus("speaking");
-      const goLogin = () => {
-        setAuthChoice({ dest, hint });
-      };
-      ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
-      // Hard timeout in case TTS stalls (mic locked, ElevenLabs slow):
-      // we still want the redirect to fire so the user isn't stranded.
-      window.setTimeout(goLogin, 1800);
+      setAuthChoice({ dest, hint });
+      ttsRef.current = speakWithTTS(
+        ack,
+        () => { ttsRef.current = null; setStatus("idle"); },
+        () => { ttsRef.current = null; setStatus("idle"); },
+      );
       return;
     }
 
-    // No more passcode. While the intro card is up, ANY user input —
-    // spoken or typed — drops them into the inline intake. If the
-    // intro script never finished asking the question (user typed
-    // "hi" mid-monologue), beginIntake speaks the question now and
-    // returns true; we then DROP the interrupting input — they didn't
-    // know we were asking yet, parsing it as the answer was the source
-    // of the "Couldn't tell" loop. If the question was already on
-    // screen (script done, or return visitor), beginIntake returns
-    // false and we fall through to parse this input as the answer.
-    if (showIntro && interviewPhaseRef.current === 'idle') {
-      // The user typed something before we asked. beginIntake will
-      // either speak the name question (and we DROP this input — they
-      // didn't know we were asking yet, parsing it as a name would
-      // store junk) or it'll fall through (return false) when the
-      // intro script already finished asking, in which case the input
-      // IS their name and we let it flow into asking-name below.
-      const spokeQuestion = beginIntake();
-      if (spokeQuestion) return;
-      // fall through into the asking-name branch below
+    // A logged-out visitor's first normal message enters the existing
+    // conversational intake pipeline. Preserve that message: brand-new visitors
+    // continue into free chat/readiness detection, while cached partial identity
+    // states resume at the missing field.
+    if (!isAuthenticated && interviewPhaseRef.current === 'idle') {
+      const handled = beginIntake();
+      if (handled) return;
     }
 
     // CHATTING PHASE — pre-onboarding free conversation. Pablo answers
@@ -2215,23 +1690,16 @@ function PabloTerminalAuthed() {
       setReply(line);
       setStatus("speaking");
       ttsRef.current?.cancel();
-      // Single-shot redirect (TTS callback OR 2.2s fallback, never both).
-      // Capture dest/hint ONCE — a second invocation would otherwise see
-      // pendingDestinationRef nulled and recompute /immigration, racing
-      // the first window.location.href assignment.
-      let fired = false;
-      let timerId: number | undefined;
+      // Capture the destination once and open the modal immediately; speech
+      // remains an acknowledgment, not a gate that can strand the visitor.
       const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
-      const goLogin = () => {
-        if (fired) return;
-        fired = true;
-        if (timerId !== undefined) window.clearTimeout(timerId);
-        ttsRef.current = null;
-        setAuthChoice({ dest, hint: email });
-      };
-      ttsRef.current = speakWithTTS(line, goLogin, goLogin);
-      timerId = window.setTimeout(goLogin, 2200);
+      setAuthChoice({ dest, hint: email });
+      ttsRef.current = speakWithTTS(
+        line,
+        () => { ttsRef.current = null; setStatus("idle"); },
+        () => { ttsRef.current = null; setStatus("idle"); },
+      );
       return;
     }
 
@@ -2285,18 +1753,14 @@ function PabloTerminalAuthed() {
       // Cache write-through is owned by the account-tagging sync effect, which
       // fires on this persona change and stores { uid, persona }.
 
-      // INTRO GATE: if the user hasn't been onboarded yet (passcode → puzzle
-      // → name → email → OAuth) and Pablo decided to send them somewhere,
+      // PRE-AUTH GATE: if the user hasn't signed in yet and Pablo decided to
+      // send them somewhere,
       // do NOT navigate / open / log out now. Auth-gated routes either
       // crash on missing user data or redirect through login with no
       // context — both look like a black screen to the user.
       //
-      // We can't key the gate to `showIntro` alone, because `showIntro`
-      // flips false the moment the passcode is accepted, even though the
-      // user is still mid-puzzle / mid-name / mid-email and has no session
-      // yet. So we treat the user as pre-onboarded any time they aren't
-      // signed in OR the interview is still running OR the puzzle is up
-      // OR the intro card is up. While that holds:
+      // We treat the user as pre-onboarded any time they aren't signed in or
+      // the interview is still running. While that holds:
       //   - navigate / search → stash destination as pendingDestinationRef
       //     and use it as OAuth `returnTo` later.
       //   - external / logout  → drop entirely; they don't make sense
@@ -2307,7 +1771,6 @@ function PabloTerminalAuthed() {
       // user understands why we're routing them through immigration.
       const isPreOnboarding =
         !isAuthenticated ||
-        showIntro ||
         interviewPhaseRef.current !== 'idle';
       if (isPreOnboarding && action) {
         if (action.kind === "navigate") {
@@ -2360,8 +1823,7 @@ function PabloTerminalAuthed() {
         if (safeNav) setTimeout(() => navigate(safeNav), 300);
         else { setStatus("idle"); if (mode === "voice") autoListenRef.current = true; }
       } else if (action?.kind === "logout") {
-        // Reset Pablo's loop: wipe onboarding + history so next session starts fresh.
-        try { localStorage.removeItem(ONBOARD_KEY); } catch {}
+        // Reset the current terminal conversation for the next account.
         setHistory([]);
         setReply("");
         setTranscript("");
@@ -2386,7 +1848,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, speakLine, mode, chooseTextMode, persistOnboarded, logout, showIntro, beginIntake, askEmailNow, isAuthenticated]);
+  }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
@@ -2526,21 +1988,13 @@ function PabloTerminalAuthed() {
     return () => clearTimeout(t);
   }, [status, startListening, mode]);
 
-  // On first mount: if there's no intro to play, start listening right away.
-  useEffect(() => {
-    if (autoStartedRef.current) return;
-    autoStartedRef.current = true;
-    if (!showIntro && mode === "voice") autoListenRef.current = true;
-  }, [showIntro, mode]);
-
   const switchToText = useCallback(() => chooseTextMode(), [chooseTextMode]);
   const switchToVoice = useCallback(() => {
-    persistOnboarded();
     setMode("voice");
     ttsRef.current?.cancel();
     setStatus("idle");
     autoListenRef.current = true;
-  }, [persistOnboarded]);
+  }, []);
 
   return (
     <div
@@ -2617,45 +2071,6 @@ function PabloTerminalAuthed() {
       >
         GFX · {lowGfx ? "LO" : "HI"}
       </button>
-      )}
-
-      {/* Guided-tour reveal overlay: nebula art cross-fades into the office
-          artwork as Pablo narrates "watch this". Pixel-art frame stays hot-pink
-          to preserve the Akira aesthetic. */}
-      {guidedActive && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 5,
-            pointerEvents: "none",
-            opacity: revealOverlay ? 1 : 0,
-            transition: "opacity 1400ms cubic-bezier(.22,1,.36,1)",
-            backgroundImage:
-              "radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 100%), url('/api/art/asset/scene_office')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            imageRendering: "pixelated",
-            mixBlendMode: "screen",
-            filter: "saturate(1.15) contrast(1.05)",
-          }}
-        />
-      )}
-      {guidedActive && revealOverlay && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 6,
-            pointerEvents: "none",
-            background:
-              "linear-gradient(180deg, rgba(244,114,182,0) 0%, rgba(244,114,182,0.08) 50%, rgba(56,189,248,0.10) 100%)",
-            mixBlendMode: "overlay",
-            animation: "salaryPulse 1.4s ease-out 1",
-          }}
-        />
       )}
 
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
@@ -2797,168 +2212,8 @@ function PabloTerminalAuthed() {
         </div>
       )}
 
-      {/* Storyteller intro: spoken-line caption + passcode entry. Renders
-          only on first visit; passcode unlock dismisses it forever. */}
-      {showIntro && (
-        <div
-          className="absolute inset-x-0 bottom-0 px-4 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
-        >
-          {/* Caption: only renders once Pablo has actually started speaking.
-              Before the user's first gesture we show NOTHING up here — the
-              previous build set the speech text on mount, so on iOS (where
-              audio is locked until a user gesture) the caption scrolled past
-              in silence and felt like a broken dialog loop. Now: gesture
-              fires the greeting, audio plays, and the caption appears in
-              sync. After the line finishes the bubble keeps showing Pablo's
-              latest reply during normal conversation. */}
-          {(() => {
-            // Always show a Pablo bubble during the intro — even before
-            // his greeting fires (audio locked on iOS until first gesture,
-            // screenshot/preview environments with no audio device,
-            // network blip on the TTS, etc.). Without a guaranteed
-            // caption the page reads as "no welcome message or
-            // instructions" — purple void with only a tiny NAME chip.
-            // Fall back to the welcome + instructions until Pablo
-            // actually says something. This MUST be the neutral pinned
-            // caption (QUESTION_LINE), never a self-introduction: `reply`
-            // is cleared to "" by many handlers, so a self-intro fallback
-            // re-renders as Pablo re-introducing himself on every turn —
-            // the "free assistant" intro loop. QUESTION_LINE is short,
-            // in-character, and safe to re-pin indefinitely.
-            const lineText = reply || QUESTION_LINE;
-            const p = persona === "mila"
-              ? {
-                  border: "rgba(45,212,191,0.55)",
-                  glow: "rgba(45,212,191,0.30)",
-                  label: "rgb(153,246,228)",
-                  bar: "#2dd4bf",
-                }
-              : {
-                  border: "rgba(236,72,153,0.55)",
-                  glow: "rgba(236,72,153,0.32)",
-                  label: "rgb(251,207,232)",
-                  bar: "#ec4899",
-                };
-            const isSpeaking = status === "speaking";
-            return (
-              <div
-                className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 relative overflow-hidden"
-                style={{ borderWidth: 1, borderStyle: "solid", borderColor: p.border, boxShadow: `0 0 32px ${p.glow}` }}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="text-[9px] font-mono tracking-[0.3em]"
-                      style={{ color: p.label }}
-                    >
-                      {personaLabel}
-                    </span>
-                    {isSpeaking && (
-                      <span
-                        className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
-                        style={{ backgroundColor: p.bar, boxShadow: `0 0 6px ${p.bar}` }}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </div>
-                </div>
-                <motion.p
-                  key={lineText.slice(0, 32)}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="text-zinc-100 text-sm sm:text-lg leading-snug sm:leading-relaxed"
-                  style={{ textShadow: `0 0 14px ${p.glow}` }}
-                >
-                  {lineText}
-                </motion.p>
-              </div>
-            );
-          })()}
-
-          {/* The pinned intake "chip" was removed: it repeated, in tiny
-              cryptic monospace, the same prompt the input placeholder and
-              the plain instruction below already state clearly. Two copies
-              of the same ask in different wording is exactly the kind of
-              competing text that trips up anyone who reads slowly, so the
-              single clear input + instruction now carries it. */}
-
-          {/* The ROAD IN. A single text input that submits whatever the
-              user typed straight to Pablo. The first submission kicks
-              off the intake at the asking-name phase; subsequent
-              submissions answer email in turn, then hand off to OAuth.
-              Voice works the same way — the mic auto-opens after Pablo
-              finishes speaking and a recognised utterance flows
-              through the same pipe. */}
-          <div className="pointer-events-auto w-full max-w-2xl">
-            <form
-              onSubmit={(e) => { e.preventDefault(); submitIntro(); }}
-              className="flex items-stretch gap-2"
-            >
-              <input
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder={
-                  interviewPhaseRef.current === 'asking-name' ? "Type your name"
-                    : interviewPhaseRef.current === 'asking-email' ? "Type your email"
-                    : "Type your message"
-                }
-                className="flex-1 bg-black/60 border-2 rounded-xl px-4 py-3 text-base text-pink-50 placeholder:text-pink-300/45 outline-none transition-colors"
-                style={{ borderColor: "rgba(236,72,153,0.5)" }}
-                data-testid="pablo-intro-text-input"
-                autoFocus
-              />
-              <button
-                type="submit"
-                disabled={!textInput.trim() || status === "thinking"}
-                data-testid="pablo-intake-enter"
-                className="shrink-0 inline-flex items-center gap-2 px-5 rounded-xl border-2 border-pink-400/70 bg-pink-500/15 text-pink-50 hover:bg-pink-500/25 disabled:opacity-30 text-base font-semibold transition-colors"
-                aria-label="Send"
-              >
-                <Send className="w-4 h-4" />
-                Send
-              </button>
-            </form>
-            {mode !== "text" && (
-              <div className="mt-3 flex justify-center">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onOrbClick(); }}
-                  data-testid="pablo-talk-button"
-                  aria-label="Tap to talk to Pablo"
-                  className="pointer-events-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full border-2 bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-base sm:text-lg font-semibold transition-colors"
-                  style={{
-                    borderColor: status === "listening" ? "rgba(103,232,249,0.85)" : "rgba(236,72,153,0.75)",
-                    boxShadow: status === "listening" ? "0 0 26px rgba(103,232,249,0.40)" : "0 0 18px rgba(236,72,153,0.25)",
-                  }}
-                >
-                  <Mic className={`w-5 h-5 ${status === "listening" ? "animate-pulse" : ""}`} />
-                  {status === "listening" ? "Listening — tap to stop"
-                    : status === "thinking" ? "One moment…"
-                    : "Tap to talk"}
-                </button>
-              </div>
-            )}
-            <div className="text-pink-100/80 text-sm sm:text-base mt-3 text-center leading-snug">
-              {mode !== "text"
-                ? "Tap the button and talk, or type in the box above."
-                : "Type your message in the box, then press Send."}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* POST-ONBOARDING reply bubble. The storyteller intro caption is
-          gated on showIntro and disappears the moment onboarding completes,
-          which left the post-onboarding terminal with NO visible surface
-          for Pablo's responses — if TTS was locked (iOS audio policy, slow
-          ElevenLabs, low-volume device) the user spoke to the orb and
-          appeared to get nothing back. This bubble fills that gap: it
-          shows the user's transcript + Pablo's reply text whenever there's
-          activity in the terminal post-intro, regardless of TTS state. */}
-      {!showIntro && (transcript || reply || status === "thinking") && (
+      {/* Shared conversation surface for visitors and returning users. */}
+      {(transcript || reply || status === "thinking") && (
         <div
           className="absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
           style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 140}px)` }}
@@ -3002,7 +2257,7 @@ function PabloTerminalAuthed() {
           on a doubling cadence (5→10→20→40 min…). Each lore drip carries
           two cheeky clickable reply tokens; tapping one fires it back as a
           normal Pablo message. */}
-      {!showIntro && !reply && !transcript && idleLine && mode !== "text" && (
+      {!reply && !transcript && idleLine && mode !== "text" && (
         <div className="absolute inset-x-0 bottom-44 sm:bottom-48 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
           <div className={`pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
             <div className="flex items-center justify-between mb-0.5">
@@ -3034,14 +2289,11 @@ function PabloTerminalAuthed() {
         </div>
       )}
 
-      {/* POST-ONBOARDING voice control. Returning users in voice mode used
-          to have no visible way to talk — they had to somehow know to tap
-          the (invisible) full-bleed nebula. This surfaces the same clear,
-          labeled button the intro uses, so the action is never hidden. */}
-      {!showIntro && mode !== "text" && (
+      {/* Voice control is available from the first frame. */}
+      {mode !== "text" && (
         <div
           className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 px-4 w-full pointer-events-none z-20"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
         >
           <button
             type="button"
@@ -3065,8 +2317,8 @@ function PabloTerminalAuthed() {
         </div>
       )}
 
-      {/* Text-mode input — only shown when user explicitly switches to text */}
-      {mode === "text" && !showIntro && (
+      {/* Text input stays available alongside the explicit voice control. */}
+      {(
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
           className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
@@ -3077,7 +2329,11 @@ function PabloTerminalAuthed() {
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            placeholder="Type a command…"
+            placeholder={
+              interviewPhaseRef.current === 'asking-name' ? "Type your name"
+                : interviewPhaseRef.current === 'asking-email' ? "Type your email"
+                : "Type a message…"
+            }
             className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
             autoFocus
             data-testid="pablo-text-input"
@@ -3099,11 +2355,7 @@ function PabloTerminalAuthed() {
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-red-400/60 tracking-wider">{error}</div>
       )}
 
-      {/* Pablo's eyes: only AFTER the user has fully cleared onboarding
-          (passcode + intake → ONBOARD_KEY persisted). Hiding showIntro
-          alone wasn't enough — the storyteller can finish without the
-          intake completing, and we'd surface a camera prompt mid-flow.
-          Camera + file + URL go live exclusively post-onboarding. */}
+      {/* Camera + file + URL go live exclusively post-onboarding. */}
       {hasFinishedOnboarding && <VisionIntake />}
 
       {/* Sign-in method choice. Reached when onboarding hits the auth moment.
