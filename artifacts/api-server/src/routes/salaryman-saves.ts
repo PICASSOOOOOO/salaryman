@@ -9,7 +9,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
 import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../lib/battery";
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
-import { flushPendingBusinessTax } from "../lib/business-tax";
+import { getSpendableFiat } from "../lib/fiat-wallet";
 import { defaultT1ForClass } from "../lib/skill-catalog";
 
 const router: IRouter = Router();
@@ -34,6 +34,13 @@ const NEGATIVE_DAY_INTERVAL_MS = 3_600_000; // 1 real hour = 1 in-game day
 function num(v: unknown, fallback = 0): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** Compatibility projection for legacy save consumers; never trust save FIAT. */
+export function applyAuthoritativeSalarySnapshot(data: Record<string, unknown>, walletBalance: number): number {
+  const balance = Number.isSafeInteger(walletBalance) && walletBalance >= 0 ? walletBalance : 0;
+  data.salary = balance;
+  return balance;
 }
 
 async function syncDebtToLedger(userId: string, saveData: Record<string, unknown>): Promise<void> {
@@ -110,16 +117,6 @@ const ENTERPRISE_MAX_SLOTS = 1;
 // canonical begin-state on the server so the unlock can never be faked by a
 // client flag (see onboarding-complete gating).
 const STORY_HOME = { kind: "campsite" as const, x: 6620, y: 6520, label: "UNDERGROUND CAMP" };
-
-// Adoption fee for a stray dog companion (kept in sync with the client's
-// DOG_ADOPT_FEE). Used to refund the player if a save's dog name is rejected as
-// a duplicate at the write path (so they aren't charged for a companion the
-// server didn't grant).
-const DOG_ADOPT_FEE = 2000;
-// Adoption fee for a stray cat companion (kept in sync with the client's
-// CAT_ADOPT_FEE). Used to refund the player if a save's cat name is rejected as
-// a duplicate at the write path.
-const CAT_ADOPT_FEE = 1500;
 
 // Extract a normalized (trimmed, upper-cased) dog companion name from a save
 // blob, or null when there is no ACTIVE named dog. Inactive saves carry no
@@ -295,7 +292,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     res.status(400).json({ error: enterprise ? "Enterprise accounts are limited to 1 save slot" : `Invalid slot (0-${maxSlots - 1})`, maxSlots, tier, enterprise });
     return;
   }
-  const { charName, charClass, level, salary, lastZone, playtime, data } = req.body;
+    const { charName, charClass, level, lastZone, playtime, data } = req.body;
   if (!charName || !charClass || !data) {
     res.status(400).json({ error: "charName, charClass, data required" });
     return;
@@ -360,14 +357,11 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
         .onConflictDoNothing()
         .catch((err: Error) => console.error("[SaveVisa] auto-grant failed:", err.message));
     }
-    // Flush any "owed" business tax payments before writing the save so the
-    // deduction lands in the same write that triggered this flush. The helper
-    // mutates `incoming.salary` in-place (deducting what it can) and marks each
-    // payment "paid" (full cover) or "debt" (remainder → inGameDebt). Best-
-    // effort: a failure here must NEVER break the save response.
-    await flushPendingBusinessTax(req.user.id, incoming).catch((e) =>
-      console.error("[saves] business tax flush error:", e instanceof Error ? e.message : e)
-    );
+    // FIAT is held only in bank_accounts. A save may carry a salary field for
+    // old clients, but its value is always overwritten with this server wallet
+    // snapshot; neither the top-level nor JSON blob can mint or restore FIAT.
+    const wallet = await getSpendableFiat(req.user.id);
+    applyAuthoritativeSalarySnapshot(incoming, wallet.balance);
     // Dog companion names are GLOBALLY unique — enforced at this authoritative
     // write path so a duplicate can NEVER persist even if a client bypasses the
     // /dog-name-available preflight (or two adoptions race past it). We only
@@ -376,15 +370,12 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // already-owned dog never re-check. The conflict check + upsert run in ONE
     // transaction holding a name-keyed advisory lock, so two concurrent
     // adoptions of the same name can't both commit (TOCTOU). On conflict we
-    // revert the dog to its prior state (dropping the duplicate) and refund the
-    // adoption fee (both the blob's salary and the salary column), so the rest of
-    // the save still persists and the player isn't charged for a companion the
-    // server didn't grant. Excludes the caller's own saves (consistent with the
+    // revert the dog to its prior state (dropping the duplicate). FIAT is not
+    // adjusted here: companion charges are server-wallet actions, never save
+    // blob mutations. Excludes the caller's own saves (consistent with the
     // preflight) so re-saving never self-collides. The stored name is
     // canonicalized (trim + upper) so future lookups always match.
-    // Use the post-flush salary so the deduction is reflected in both the column
-    // and the data blob.
-    let salaryColumn = typeof incoming.salary === "number" ? incoming.salary : Number(salary) || 0;
+    const salaryColumn = wallet.balance;
     const writeSave = (exec: Pick<typeof db, "insert">) =>
       exec
         .insert(salarymanSavesTable)
@@ -445,8 +436,6 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
           if (dup) {
             if (priorData?.dogCompanion !== undefined) incoming.dogCompanion = priorData.dogCompanion;
             else delete incoming.dogCompanion;
-            salaryColumn += DOG_ADOPT_FEE;
-            if (typeof incoming.salary === "number") incoming.salary += DOG_ADOPT_FEE;
             dogNameRejected = true;
           } else if (incoming.dogCompanion && typeof incoming.dogCompanion === "object") {
             (incoming.dogCompanion as Record<string, unknown>).name = incomingDogName;
@@ -467,8 +456,6 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
           if (dup) {
             if (priorData?.catCompanion !== undefined) incoming.catCompanion = priorData.catCompanion;
             else delete incoming.catCompanion;
-            salaryColumn += CAT_ADOPT_FEE;
-            if (typeof incoming.salary === "number") incoming.salary += CAT_ADOPT_FEE;
             catNameRejected = true;
           } else if (incoming.catCompanion && typeof incoming.catCompanion === "object") {
             (incoming.catCompanion as Record<string, unknown>).name = incomingCatName;

@@ -5020,6 +5020,10 @@ export default function WorldPlay() {
   // Reactive state (only what the HUD needs)
   const [hp,      setHp]      = useState(_ss?.hp ?? 100);
   const [salary,  setSalary]  = useState(_ss?.salary ?? char.salary);
+  // `salary` remains in the save only as a compatibility display snapshot.  The
+  // wallet is the authority: WorldPlay never derives a new FIAT balance locally.
+  const gameplayFiatSession = useRef(crypto.randomUUID());
+  const gameplayFiatInteraction = useRef(0);
   const [zone,    setZone]    = useState(inCityBounds(char.sx, char.sy) ? getActiveCityDef().name : 'WASTELAND');
   const [empLabel, setEmpLabel] = useState<string>(() => {
     const biz = Array.isArray(_ss?.businesses) ? _ss.businesses : (char.hasBusiness && char.company ? [{ companyName: char.company }] : []);
@@ -5697,7 +5701,7 @@ export default function WorldPlay() {
     const g = gs.current;
     const desc = activeBattle?.descriptor;
     if (outcome.result === 'win' && outcome.rewards) {
-      if (outcome.rewards.fiat) { g.salary += outcome.rewards.fiat; setSalary(g.salary); sfxCoin(); }
+      if (outcome.rewards.fiat) { void performGameplayFiatAction('battle_reward', `${gameplayFiatSession.current}:battle:${++gameplayFiatInteraction.current}`)?.then(paid => { if (paid) sfxCoin(); }); }
       if (outcome.rewards.xp) { applyExpGain(g, outcome.rewards.xp, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp); }
     }
     if (!desc?.nonLethal) {
@@ -6399,7 +6403,7 @@ export default function WorldPlay() {
       biz.totalRevenue = (biz.totalRevenue ?? 0) + perBiz;
       biz.customerCount = (biz.customerCount ?? 0) + 1;
     }
-    g.salary += cut; setSalary(g.salary);
+    void performGameplayFiatAction('business_revenue', `${gameplayFiatSession.current}:business:${++gameplayFiatInteraction.current}`);
     g.floaters.push({ x: g.px, y: g.py - 40, text: `+ƒ${cut.toLocaleString()} BIZ REVENUE`, color: info.color, life: 70, maxLife: 70 });
   }, []);
 
@@ -6693,7 +6697,44 @@ export default function WorldPlay() {
     }
   }, [toggleRadio, stationId, scoreOn, scoreMuted, pauseMusic, playMusic]);
 
-  const executeBuildingLogic = useCallback((bid: string) => {
+  // This is deliberately the only writer of the legacy save's salary field.
+  // `salary` remains in the game save for backwards compatibility/UI hydration,
+  // but Banco Ombra's wallet response is the authority.
+  const reconcileAuthoritativeSalary = useCallback((newBalance: number) => {
+    gs.current.salary = newBalance;
+    setSalary(newBalance);
+  }, []);
+
+  const performGameplayFiatAction = useCallback(async (actionId: string, interaction: string) => {
+    const idempotencyKey = stableRequestId('world-gameplay-fiat', `${actionId}:${interaction}`);
+    try {
+      const response = await apiFetch('/api/gameplay/fiat/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, idempotencyKey }),
+      });
+      const data = await response.json() as {
+        ok?: boolean; error?: string; newBalance?: number; amountFiat?: number; spendable?: number; duplicate?: boolean;
+      };
+      if (!response.ok || !data.ok || typeof data.newBalance !== 'number') {
+        if (response.status === 402) {
+          setNarr(`> INSUFFICIENT FIAT — Need ƒ${(data.amountFiat ?? 0).toLocaleString()}. Spendable: ƒ${(data.spendable ?? 0).toLocaleString()}.`);
+        } else {
+          setNarr(`> TRANSACTION FAILED — ${data.error ?? 'Could not complete wallet action.'}`);
+        }
+        sfxError();
+        return null;
+      }
+      reconcileAuthoritativeSalary(data.newBalance);
+      return data;
+    } catch {
+      sfxError();
+      setNarr('> NETWORK ERROR — Wallet action could not be completed.');
+      return null;
+    }
+  }, [reconcileAuthoritativeSalary]);
+
+  const executeBuildingLogic = useCallback(async (bid: string) => {
     const g = gs.current;
     const isOwnerHome = bid === g.hamletBuildingId;
 
@@ -6733,7 +6774,7 @@ export default function WorldPlay() {
         setNarr(`> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — Rent overdue. ƒ${wsRent} required. You're on the clock.`);
         return;
       }
-      if (!isFree) { g.salary -= wsRent; setSalary(g.salary); }
+      if (!isFree && !await performGameplayFiatAction('workstation_rent', `${gameplayFiatSession.current}:workstation:${++gameplayFiatInteraction.current}`)) return;
       g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.5)); g.energy = Math.min(100, g.energy + 50);
       g.hunger = Math.min(100, g.hunger + 20); g.thirst = Math.min(100, g.thirst + 20);
       setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst);
@@ -6809,14 +6850,18 @@ export default function WorldPlay() {
       setNarr('> POLICE HQ — Precinct 1. Wanted boards line the walls. Officers ignore your presence unless you\'re on the list.');
     }
     else if (bid === 'clinic')  {
-      if (g.deviceBroken && g.salary >= 5000) {
-        g.salary -= 5000; g.deviceBroken = false; g.deviceDurability = 100; recordBizRevenue('device_buy', 5000);
-        setSalary(g.salary); setDeviceBroken(false); sfxHeal();
+      if (g.deviceBroken) {
+        const paid = await performGameplayFiatAction('clinic_repair', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+        if (!paid) return;
+        g.deviceBroken = false; g.deviceDurability = 100; recordBizRevenue('device_buy', paid.amountFiat ?? 5000);
+        setDeviceBroken(false); sfxHeal();
         setNarr('> CITY CLINIC — [ƒ5,000 FIAT] Device repaired. "Cracked screen, fried board. Standard job. Press [P] — it\'s alive again."');
         return;
       }
-      if (g.salary >= 10000) {
-        g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal(); recordBizRevenue('hospital', 10000);
+      {
+        const paid = await performGameplayFiatAction('clinic_treatment', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+        if (!paid) return;
+        g.hp = g.maxHp; setHp(g.maxHp); sfxHeal(); recordBizRevenue('hospital', paid.amountFiat ?? 10000);
         let clinicMsg = '> CITY CLINIC — [ƒ10,000 FIAT] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."';
         if (g.deviceBroken) {
           g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
@@ -6834,7 +6879,6 @@ export default function WorldPlay() {
         }
         setNarr(clinicMsg);
       }
-      else { sfxError(); setNarr(`> CITY CLINIC — "No fiat, no treatment. Even the medic has bills. Come back with ƒ10,000."${g.deviceBroken ? ' Device repair: ƒ5,000 FIAT.' : ''}`); }
     }
     else if (bid === 'megabank'){
       setFloorPanel({ bid, dir: BUILDING_FLOORS.megabank, selectedFloor: 0 });
@@ -6852,8 +6896,9 @@ export default function WorldPlay() {
     }
     else if (bid === 'overlook') {
       if (g.salary >= 8000) {
-        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 8000; recordBizRevenue('clinic', 8000);
-        setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
+        if (!await performGameplayFiatAction('overlook_room', `${gameplayFiatSession.current}:overlook:${++gameplayFiatInteraction.current}`)) return;
+        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); recordBizRevenue('clinic', 8000);
+        setHp(g.hp); setEnergy(g.energy); sfxHeal();
         setNarr('> THE PINNACLE [ƒ8,000 FIAT] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. ALDRIC PENN waves from the corridor. The hallway carpet pattern repeats forever.');
       } else {
         sfxError();
@@ -6867,14 +6912,13 @@ export default function WorldPlay() {
       setNarr('> SAFE HOUSE — Your bed is still here. Threadbare blanket, steel frame, but it\'s yours. You sleep deeply. HP +65%. Energy +60. Hunger +40. Thirst +40. Progress saved. KAEL VOSS stands watch. "Nobody gets in unless I say," he says. "Rest. You earned it."');
     }
     else if (bid === 'rust_porch') {
-      if (g.salary >= 4000) {
-        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000; recordBizRevenue('food_court', 4000);
-        setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
-        doSave({ ...g, salary: g.salary });
+      {
+        const paid = await performGameplayFiatAction('food_court', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+        if (!paid) return;
+        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); recordBizRevenue('food_court', paid.amountFiat ?? 4000);
+        setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
+        doSave({ ...g, salary: paid.newBalance! });
         setNarr('> THE RUST PORCH [ƒ4,000 FIAT] — DREN MALIK has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "Timber\'s hard to come by," Dren says, refilling your bowl, "but stew is the least I can do." He sounds like he means it.');
-      } else {
-        sfxError();
-        setNarr('> THE RUST PORCH — DREN MALIK stirs the stew. "I wish it was free, but supply runs cost ƒ4,000 FIAT. Come back when you have it." The stew smells extraordinary. It costs ƒ4,000.');
       }
     }
     else if (bid === 'ashfield_hostel') {
@@ -6889,9 +6933,11 @@ export default function WorldPlay() {
       setNarr('> TERMINUS SHELTER — ANSEL DUNN hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "I feed between thirty and sixty people a day," he says. "You\'re number forty-one." He says this like it\'s routine. It is.');
     }
     else if (bid === 'bastion_keep') {
-      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.energy = Math.min(100, g.energy + 60); g.salary += 2000;
-      setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
-      doSave({ ...g, salary: g.salary });
+      const credited = await performGameplayFiatAction('bastion_keep', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+      if (!credited) return;
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.energy = Math.min(100, g.energy + 60);
+      setHp(g.hp); setEnergy(g.energy); sfxHeal();
+      doSave({ ...g, salary: credited.newBalance! });
       setNarr('> BASTION KEEP — Stone walls. Reinforced perimeter. PETRA VANCE stands guard like someone who has never stopped standing guard. "Rest here. No charge." You sleep on a military cot. HP +60%. Energy +60. +ƒ2,000 FIAT (she pressed salvage credits into your hand). "Payment for showing up. Nobody else does." You saved.');
     }
     else if (bid === 'vend')    {
@@ -6919,7 +6965,11 @@ export default function WorldPlay() {
       setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ƒ3,500 FIAT. 5 seconds." You find a PCB labeled NX-87.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'oxide_labs'){ g.salary += 500; setSalary(g.salary); sfxBigPayout(500); sfxLoreReveal(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ500 in the drawer. I won\'t need it." +ƒ500 FIAT.'); }
+    else if (bid === 'oxide_labs'){
+      const credited = await performGameplayFiatAction('oxide_labs', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+      if (!credited) return;
+      sfxBigPayout(credited.amountFiat ?? 500); sfxLoreReveal(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ500 in the drawer. I won\'t need it." +ƒ500 FIAT.');
+    }
     else if (bid === 'crystal') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
@@ -6969,7 +7019,12 @@ export default function WorldPlay() {
       setNarr(crystalMsg);
     }
     else if (bid === 'dojo') { sfxEnter(); setNarr('> IRON DOJO — The SENSEI gestures to the sparring mat. "Show me your form. No blades. No death. Only discipline."'); startBattle(makeSparDescriptor(g.level)); }
-    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 400; setSalary(g.salary); sfxCoin(); sfxLoreReveal(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ400 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
+    else if (bid === 'data_vault') {
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 });
+      const credited = await performGameplayFiatAction('data_vault', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+      if (!credited) return;
+      sfxCoin(); sfxLoreReveal(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ400 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.');
+    }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
     else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO CORP surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
     else if (bid === 'print_shop') {
@@ -6994,7 +7049,11 @@ export default function WorldPlay() {
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
       setNarr('> OUTPOST BETA — Smaller. Quieter. A terminal still running. Last entry: "EASTERN BLOC pushed east border. Holding for now." Hunger +30. Thirst +35. Energy +15.');
     }
-    else if (bid === 'supply_cache') { g.salary += 600; setSalary(g.salary); sfxBigPayout(600); sfxLoreReveal(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ600 FIAT in unregistered tokens. Classic.'); }
+    else if (bid === 'supply_cache') {
+      const credited = await performGameplayFiatAction('supply_cache', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+      if (!credited) return;
+      sfxBigPayout(credited.amountFiat ?? 600); sfxLoreReveal(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ600 FIAT in unregistered tokens. Classic.');
+    }
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 12); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +12. Someone left coffee. Still warm.');
@@ -7022,15 +7081,16 @@ export default function WorldPlay() {
     }
     else if (bid === 'ttc') {
       sfxEnter();
-      const cost = 5000;
-      if (g.salary >= cost) { g.salary -= cost; setSalary(g.salary); sfxCoin(); setNarr(`> TTC — THE TELEPHONE COMPANY — Encrypted long-range signal routed through TTC\'s relay grid. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ƒ${cost.toLocaleString()} FIAT]`); }
-      else { sfxError(); setNarr(`> TTC — THE TELEPHONE COMPANY — ƒ${cost.toLocaleString()} FIAT for a long-range call. TTC controls every line in Minx City. "Nothing\'s free. Not even a voice."`);}
+      const paid = await performGameplayFiatAction('ttc', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+      if (!paid) return;
+      sfxCoin(); setNarr(`> TTC — THE TELEPHONE COMPANY — Encrypted long-range signal routed through TTC\'s relay grid. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ƒ${(paid.amountFiat ?? 5000).toLocaleString()} FIAT]`);
     }
     else if (bid === 'noodle_bar') {
       sfxEnter();
-      const cost = 1200;
-      if (g.salary >= cost) { g.salary -= cost; g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); recordBizRevenue('noodle_bar', cost); setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ƒ${cost.toLocaleString()} FIAT]`); }
-      else { sfxError(); setNarr('> NOODLE BAR — "No FIAT, no noodles. House rule since the collapse."'); }
+      const paid = await performGameplayFiatAction('noodle_bar', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+      if (!paid) return;
+      g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); recordBizRevenue('noodle_bar', paid.amountFiat ?? 1200);
+      setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ƒ${(paid.amountFiat ?? 1200).toLocaleString()} FIAT]`);
     }
     else if (bid === 'pawn_shop') {
       sfxEnter();
@@ -7039,22 +7099,20 @@ export default function WorldPlay() {
         setNarr('> PAWN SHOP — "Sell your junk. I buy everything." Click items to sell. [ESC] to close.');
       } else {
         const bonus = 3000 + Math.floor(Math.random() * 4000);
-        g.salary += bonus; setSalary(g.salary); sfxCoin();
+        void performGameplayFiatAction('pawn_shop_bonus', `${gameplayFiatSession.current}:pawn:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); });
         setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ƒ${bonus.toLocaleString()} FIAT. "Come back with more. I don\'t ask questions."`);
       }
     }
     else if (bid === 'terminal_shop') {
       sfxEnter();
-      const passportCost = 12000;
-      if (!g.passport && g.salary >= passportCost) {
-        g.passport = 'basic_city'; g.salary -= passportCost; setSalary(g.salary); setPassport('basic_city'); sfxCoin(); recordBizRevenue('passport', passportCost);
-        wsSend({ type: 'money_update', money: g.salary });
-        setNarr(`> PABLO CORP NORTH — BASIC CITY PASSPORT issued. Crossing authorized (fee applies). [−ƒ${passportCost.toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
+      if (!g.passport) {
+        const paid = await performGameplayFiatAction('terminal_shop', `${gameplayFiatSession.current}:${bid}:${++gameplayFiatInteraction.current}`);
+        if (!paid) return;
+        g.passport = 'basic_city'; setPassport('basic_city'); sfxCoin(); recordBizRevenue('passport', paid.amountFiat ?? 12000);
+        setNarr(`> PABLO CORP NORTH — BASIC CITY PASSPORT issued. Crossing authorized (fee applies). [−ƒ${(paid.amountFiat ?? 12000).toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
       } else if (g.passport) {
         const pType = g.passport === 'full_city' ? 'FULL CITY' : g.passport === 'wasteland' ? 'WASTELAND' : 'BASIC CITY';
         setNarr(`> PABLO CORP NORTH — "${pType} PASSPORT already registered. Access active."`);
-      } else {
-        sfxError(); setNarr(`> PABLO CORP NORTH — PASSPORT costs ƒ${passportCost.toLocaleString()} FIAT. Current balance insufficient.`);
       }
     }
     else if (bid === 'north_bunker') {
@@ -7107,12 +7165,12 @@ export default function WorldPlay() {
       setNarr('> EASTERN GATE — The last marked structure before the deep wasteland. Someone painted: "YOU WENT FAR ENOUGH." You didn\'t listen. Hunger +20. Thirst +20.');
     }
     else if (bid === 'deep_camp') {
-      g.hp = Math.min(g.maxHp, g.hp + 25); g.salary += 500; setHp(g.hp); setSalary(g.salary); sfxHeal(); sfxCoin();
+      g.hp = Math.min(g.maxHp, g.hp + 25); void performGameplayFiatAction('deep_camp_aid', `${gameplayFiatSession.current}:deep-camp:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); }); setHp(g.hp); sfxHeal();
       setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ƒ500 FIAT into your hand. "We found it in a PABLO CORP cache. We don\'t want their money." HP +25. +ƒ500 FIAT.');
     }
     else if (bid === 'ruins_alpha') {
       const loot = 300 + Math.floor(Math.random() * 600);
-      g.salary += loot; setSalary(g.salary); sfxCoin();
+      void performGameplayFiatAction('ruins_alpha_loot', `${gameplayFiatSession.current}:ruins-alpha:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); });
       setNarr(`> RUINS ALPHA — Pre-collapse architecture. High-rises reduced to rubble. You dig through concrete and find a sealed cache. +ƒ${loot.toLocaleString()} FIAT in old denomination tokens. Still valid.`);
     }
     else if (bid === 'southern_hub') {
@@ -7121,7 +7179,7 @@ export default function WorldPlay() {
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       setNarr('> SOUTHERN TERMINAL — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. HP +60%. Stats partially restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
     }
-  }, []);
+  }, [performGameplayFiatAction]);
 
   // ── Interior HUD suppression ──────────────────────────────────────
   // Offices, residences and other calm interiors hide the survival/combat
@@ -7668,7 +7726,7 @@ export default function WorldPlay() {
         if (!m.expired) setNarr('> EVENT — SITUATION RESOLVED.');
       } else if (m.type === 'event_reward') {
         const g = gs.current;
-        g.salary += (m.reward ?? 0);
+        void performGameplayFiatAction('world_message_reward', `${gameplayFiatSession.current}:message:${++gameplayFiatInteraction.current}`);
         setSalary(g.salary);
         sfxCoin();
         setNarr(`> ${m.message ?? `EVENT REWARD — ƒ${(m.reward ?? 0).toLocaleString()} credited.`}`);
@@ -7840,7 +7898,8 @@ export default function WorldPlay() {
         const lootItem = m.loot?.item ?? null;
         // Big-payout cascade for meaningful kills, plain coin for chump change
         if (lootMoney >= 500) sfxBigPayout(lootMoney); else sfxCoin();
-        g.salary += lootMoney; setSalary(g.salary);
+        // Socket payloads are not wallet authority.  Loot has no claim identity,
+        // so retain the non-money event and discard its client-supplied FIAT.
         g.floaters.push({ x: g.px, y: g.py - 40, text: `KILLED ${m.targetName}`, color: '#ff4444', life: 70, maxLife: 70 });
         if (lootMoney > 0) g.floaters.push({ x: g.px, y: g.py - 55, text: `+ƒ${lootMoney.toLocaleString()} LOOTED`, color: '#ffdd44', life: 60, maxLife: 60 });
         if (lootItem) g.floaters.push({ x: g.px, y: g.py - 70, text: `LOOT: ${lootItem.name}`, color: '#67e8f9', life: 70, maxLife: 70 });
@@ -7851,7 +7910,7 @@ export default function WorldPlay() {
         setNarr(`> PVP KILL — You defeated ${m.targetName}! Looted ƒ${lootMoney.toLocaleString()} FIAT${lootItem ? ` and ${lootItem.name}` : ''}.`);
       } else if (m.type === 'pvp_death') {
         const lostMoney = m.lostMoney ?? 0;
-        if (typeof m.remainingMoney === 'number') { g.salary = m.remainingMoney; } else { g.salary = Math.max(0, g.salary - lostMoney); }
+        // Never accept a socket's claimed wallet balance or debit amount.
         setSalary(g.salary);
         const lostItems: { name: string; desc: string }[] = [];
         if (m.lostItem) lostItems.push(m.lostItem);
@@ -8634,7 +8693,7 @@ export default function WorldPlay() {
               next.add(sec.id);
               foundSecretsRef.current = next;
               setFoundSecrets(next);
-              if (sec.payload.fiat) { g.salary += sec.payload.fiat; setSalary(g.salary); sfxCoin(); wsSend({ type: 'money_update', money: g.salary }); }
+              if (sec.payload.fiat) { void performGameplayFiatAction('world_secret_reward', `${gameplayFiatSession.current}:secret:${sec.id}:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); }); }
               if (sec.payload.xp) { applyExpGain(g, sec.payload.xp, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp); }
               setNarr(`> SECRET — ${sec.label}: ${sec.payload.note ?? 'Found something hidden.'}`);
               return;
@@ -8747,11 +8806,14 @@ export default function WorldPlay() {
                 setNarr(`> ${tObj.label} — Insufficient funds. Terminal rental costs ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min. You have ƒ${g.salary.toLocaleString()}.`);
                 return;
               }
-              g.officeTerminalRenting = { label: tObj.label, startTime: Date.now(), lastCharge: Date.now() };
-              g.locks.set(lockKey, { ownerName: char.name, company: char.bizType ?? undefined, message: `RENTED — ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min` });
-              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary); recordBizRevenue('office_rent', PUBLIC_OFFICE_TERMINAL_RATE);
-              sfxEnter();
-              setNarr(`> ${tObj.label} — Rented. ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min charged to your account. Press [E] again to release. Terminal locked to: ${char.name}.`);
+              void performGameplayFiatAction('office_terminal_rent', `${gameplayFiatSession.current}:office:${++gameplayFiatInteraction.current}`).then(paid => {
+                if (!paid) return;
+                g.officeTerminalRenting = { label: tObj.label ?? 'TERMINAL', startTime: Date.now(), lastCharge: Date.now() };
+                g.locks.set(lockKey, { ownerName: char.name, company: char.bizType ?? undefined, message: `RENTED — ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min` });
+                recordBizRevenue('office_rent', PUBLIC_OFFICE_TERMINAL_RATE);
+                sfxEnter();
+                setNarr(`> ${tObj.label} — Rented. ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min charged to your account. Press [E] again to release. Terminal locked to: ${char.name}.`);
+              });
               return;
             }
             if (tObj.type === 'vending_machine') {
@@ -8904,14 +8966,14 @@ export default function WorldPlay() {
               const deskRoll = Math.random();
               if (deskRoll > 0.8) {
                 const lootAmt = Math.floor(Math.random() * 15 + 3);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — You rummage through the drawers. Found ƒ${lootAmt} FIAT tucked in the back.`);
               } else if (deskRoll > 0.3) {
                 const deskMsgs = ['Old receipts, a broken stylus, and dust.', 'A half-eaten energy bar and some encrypted notes.', 'Someone\'s expired transit pass and a crumpled resignation letter.', 'Empty. Someone cleared this out before you.'];
                 setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — ${deskMsgs[Math.floor(Math.random() * deskMsgs.length)]}`);
               } else {
                 const smallLoot = Math.floor(Math.random() * 5 + 1);
-                g.salary += smallLoot; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot_small', `${gameplayFiatSession.current}:combat-small:${++gameplayFiatInteraction.current}`);
                 setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — Found ƒ${smallLoot} in loose change under the drawer.`);
               }
               return;
@@ -8923,7 +8985,7 @@ export default function WorldPlay() {
               const lockerRoll = Math.random();
               if (lockerRoll > 0.75) {
                 const lootAmt = Math.floor(Math.random() * 20 + 5);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> ${tObj.type === 'locker' ? 'LOCKER' : 'FILING CABINET'} — Found ƒ${lootAmt} FIAT. Someone left their lunch money and forgot about it.`);
               } else if (lockerRoll > 0.35) {
                 const lockerMsgs = ['Redacted documents. Whoever worked here covered their tracks.', 'Old uniform, worn shoes, a photo of someone\'s family.', 'Maintenance logs going back three years. Nothing useful.', 'Empty hangers. The previous occupant cleared out fast.'];
@@ -8940,7 +9002,7 @@ export default function WorldPlay() {
               const crateRoll = Math.random();
               if (crateRoll > 0.7) {
                 const lootAmt = Math.floor(Math.random() * 25 + 8);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> CRATE — Pried it open. Found ƒ${lootAmt} FIAT in a sealed envelope at the bottom.`);
               } else {
                 const crateMsgs = ['Packed with industrial foam and nothing else.', 'Shipping manifest, some zip ties, and a defunct tracking device.', 'Old hardware parts, none functional.', 'Sealed compartment — no contents.'];
@@ -9019,7 +9081,7 @@ export default function WorldPlay() {
               const examRoll = Math.random();
               if (examRoll > 0.7) {
                 const lootAmt = Math.floor(Math.random() * 8 + 1);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> ${tObj.label ?? tObj.type.toUpperCase()} — Found ƒ${lootAmt} tucked underneath.`);
               } else {
                 const examMsgs = [
@@ -9039,7 +9101,7 @@ export default function WorldPlay() {
               const plantRoll = Math.random();
               if (plantRoll > 0.85) {
                 const lootAmt = Math.floor(Math.random() * 5 + 1);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> PLANT — You find ƒ${lootAmt} hidden in the soil. Someone\'s emergency stash. Energy +2.`);
               } else {
                 const plantMsgs = [
@@ -9059,7 +9121,7 @@ export default function WorldPlay() {
               const copierRoll = Math.random();
               if (copierRoll > 0.6) {
                 const lootAmt = Math.floor(Math.random() * 10 + 2);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> PHOTOCOPIER — You find an unclaimed expense report in the output tray. You file it under your name. +ƒ${lootAmt}.`);
               } else {
                 applyExpGain(g, 5, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
@@ -9126,7 +9188,7 @@ export default function WorldPlay() {
               const serverRoll = Math.random();
               if (serverRoll > 0.7) {
                 const lootAmt = Math.floor(Math.random() * 30 + 10);
-                g.salary += lootAmt; setSalary(g.salary);
+                void performGameplayFiatAction('combat_loot', `${gameplayFiatSession.current}:combat:${++gameplayFiatInteraction.current}`);
                 setNarr(`> SERVER — You extract a cached FIAT transfer from the buffer. +ƒ${lootAmt}. Node rebooting.`);
               } else if (serverRoll > 0.3) {
                 applyExpGain(g, 15, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
@@ -9351,7 +9413,7 @@ export default function WorldPlay() {
             if (lootBody) {
               const amt = lootBody.bounty ?? 0;
               lootBody.looted = true;
-              g.salary += amt; setSalary(g.salary); sfxCoin(); sfxItemPickup();
+              void performGameplayFiatAction('world_pickup', `${gameplayFiatSession.current}:pickup:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) { sfxCoin(); sfxItemPickup(); } });
               g.floaters.push({ x: lootBody.x, y: lootBody.y - 12, text: `+ƒ${amt.toLocaleString()} LOOTED`, color: '#ffdd44', life: 55, maxLife: 55 });
               setNarr(`> LOOT — You search the body. +ƒ${amt.toLocaleString()} FIAT recovered.`);
             } else {
@@ -9360,7 +9422,7 @@ export default function WorldPlay() {
                 g.openedChests.add(nearChest.id); sfxCoin(); sfxItemPickup();
                 reportMissionProgress('chestsOpened', 1);
                 const loot = nearChest.loot;
-                g.salary += loot.fiat; setSalary(g.salary);
+                void performGameplayFiatAction('loot_container', `${gameplayFiatSession.current}:loot:${++gameplayFiatInteraction.current}`);
                 const lootItemNames = loot.items.map(i => i.name).join(', ');
                 g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${loot.fiat} FIAT`, color: '#FFD700', life: 60, maxLife: 60 });
                 setNarr(`> TREASURE — +ƒ${loot.fiat.toLocaleString()} FIAT${lootItemNames ? `, ${lootItemNames}` : ''}.`);
@@ -9898,7 +9960,7 @@ export default function WorldPlay() {
       if (clickedBody) {
         const amt = clickedBody.bounty ?? 0;
         clickedBody.looted = true;
-        g.salary += amt; setSalary(g.salary); sfxCoin();
+        void performGameplayFiatAction('merchant_sale', `${gameplayFiatSession.current}:merchant-sale:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); });
         g.floaters.push({ x: clickedBody.x, y: clickedBody.y - 12, text: `+ƒ${amt.toLocaleString()} LOOTED`, color: '#ffdd44', life: 55, maxLife: 55 });
         setNarr(`> LOOT — You search the body. +ƒ${amt.toLocaleString()} FIAT recovered.`);
         return;
@@ -10226,11 +10288,10 @@ export default function WorldPlay() {
       if (d.ok) {
         const cost = d.cost ?? 0;
         if (typeof d.newBalance === 'number') {
-          gs.current.salary = d.newBalance;
+          setSalary(d.newBalance);
         } else {
-          gs.current.salary = Math.max(0, gs.current.salary - cost);
+          throw new Error('Billboard purchase did not return an authoritative wallet balance');
         }
-        setSalary(gs.current.salary);
         sfxCoin();
         setNarr(`> BILLBOARD PURCHASED — ç${cost.toLocaleString()} FIAT deducted. 7 days of ad space. Update your content now.`);
         fetchBillboards();
@@ -10709,7 +10770,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Deduct the exact coin value: cash first, then gold bars.
           let due = nCoins * COIN_VALUE_FIAT;
           const fromCash = Math.min(cashHeld, due);
-          g.salary -= fromCash; due -= fromCash;
+          void performGameplayFiatAction('cash_bill_payment', `${gameplayFiatSession.current}:bill:${++gameplayFiatInteraction.current}`); due -= fromCash;
           if (due > 0 && g.goldBalance > 0) {
             const goldUsed = Math.min(g.goldBalance, due / FIAT_PER_GOLD);
             g.goldBalance -= goldUsed; due -= goldUsed * FIAT_PER_GOLD;
@@ -11566,9 +11627,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           } else if (g.passport === 'full_city') {
             // Corporate full passport — free crossing
           } else if (g.salary >= CHECKPOINT_FEE) {
-            g.salary -= CHECKPOINT_FEE; setSalary(g.salary);
-            g.floaters.push({ x: g.px, y: g.py - 20, text: `-ƒ${CHECKPOINT_FEE.toLocaleString()} CROSSING FEE`, color: '#ff6644', life: 60, maxLife: 60 });
-            setNarr(`> CHECKPOINT — Guard scans your passport. "ƒ${CHECKPOINT_FEE.toLocaleString()} crossing fee deducted. Move along." [−ƒ${CHECKPOINT_FEE.toLocaleString()} FIAT]`);
+            // Hold at the gate until the authoritative debit succeeds.
+            ny = crossingSouth ? CITY_BOTTOM - PSIZE - 1 : CITY_TOP + PSIZE + 1;
+            void performGameplayFiatAction('checkpoint_fee', `${gameplayFiatSession.current}:checkpoint:${++gameplayFiatInteraction.current}`).then(paid => {
+              if (!paid || paid.duplicate) return;
+              g.py = crossingSouth ? CITY_BOTTOM + PSIZE + 2 : CITY_TOP - PSIZE - 2;
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `-ƒ${CHECKPOINT_FEE.toLocaleString()} CROSSING FEE`, color: '#ff6644', life: 60, maxLife: 60 });
+              setNarr(`> CHECKPOINT — Guard scans your passport. "ƒ${CHECKPOINT_FEE.toLocaleString()} crossing fee deducted. Move along." [−ƒ${CHECKPOINT_FEE.toLocaleString()} FIAT]`);
+            });
           } else {
             if (crossingSouth) ny = CITY_BOTTOM - PSIZE - 1;
             else ny = CITY_TOP + PSIZE + 1;
@@ -14519,7 +14585,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           else pet.stamina = Math.max(0, pet.stamina - 1.0);
         }
         if ((g.hunger <= 0 || g.thirst <= 0) && !gamePausedRef.current) { g.hp = Math.max(0, g.hp - 2); g.deathReason = g.hunger <= 0 && g.thirst <= 0 ? 'Died from starvation and dehydration' : g.hunger <= 0 ? 'Died from starvation' : 'Died from dehydration'; }
-        if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
+        if (g.energy <= 20) { void performGameplayFiatAction('low_energy_fee', `${gameplayFiatSession.current}:energy:${++gameplayFiatInteraction.current}`); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
         // ── Health regeneration outside combat ──
@@ -14558,7 +14624,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const tax = Math.floor(g.salary * 0.18) + Math.floor(g.bountyAmount * 0.15) + (g.salary > 20000 ? Math.floor((g.salary - 20000) * 0.05) : 0);
           g.taxDebt += tax;
           if (g.taxDebt > 0 && g.salary >= g.taxDebt) {
-            g.salary -= g.taxDebt;
+            void performGameplayFiatAction('tax_debt_payment', `${gameplayFiatSession.current}:tax-debt:${++gameplayFiatInteraction.current}`);
             g.floaters.push({ x: g.px, y: g.py - 20, text: `TAX COLLECTED ƒ${g.taxDebt.toLocaleString()}`, color: '#ff8844', life: 80, maxLife: 80 });
             setNarr(`> TAX COLLECTOR — ƒ${g.taxDebt.toLocaleString()} collected as tax on your earnings and fines.`);
             g.taxDebt = 0;
@@ -14664,7 +14730,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const orgPay = hasRealOrg ? 30 : 0;
             const total = jobPay + orgPay;
             if (total > 0) {
-              g.salary += total; setSalary(g.salary);
+              void performGameplayFiatAction('business_cycle_revenue', `${gameplayFiatSession.current}:biz-cycle:${++gameplayFiatInteraction.current}`);
               const label = hasGameJob ? `${g.employedAt ?? 'JOB'} PAYCHECK` : 'ORG SALARY';
               g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${label}`, color: '#38bdf8', life: 80, maxLife: 80 });
               sfxCoin();
@@ -14687,7 +14753,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (g.ownedItems.has('neon_sign')) reTotal = Math.floor(reTotal * 1.1);
           if (reTotal > 0) {
-            g.salary += reTotal; setSalary(g.salary);
+            void performGameplayFiatAction('real_estate_revenue', `${gameplayFiatSession.current}:realestate:${++gameplayFiatInteraction.current}`);
             g.floaters.push({ x: g.px + 30, y: g.py - 50, text: `+ƒ${reTotal.toLocaleString()} RENTAL INCOME`, color: '#cc44ff', life: 80, maxLife: 80 });
             sfxCoin();
           }
@@ -14706,7 +14772,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (totalTax > 0) {
             if (g.salary >= totalTax) {
-              g.salary -= totalTax; setSalary(g.salary);
+              void performGameplayFiatAction('property_tax', `${gameplayFiatSession.current}:property-tax:${++gameplayFiatInteraction.current}`);
               addBankTx(`PROPERTY TAX (${g.propertyDeeds.length} properties)`, -totalTax, g.salary, 'property_tax');
               g.floaters.push({ x: g.px + 30, y: g.py - 30, text: `-ƒ${totalTax.toLocaleString()} PROPERTY TAX`, color: '#ff4488', life: 80, maxLife: 80 });
             } else {
@@ -14736,7 +14802,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.lastUtilityBill = bill.total;
             if (bill.total > 0) {
               if (g.salary >= bill.total) {
-                g.salary -= bill.total; setSalary(g.salary);
+                void performGameplayFiatAction('utility_bill', `${gameplayFiatSession.current}:utility:${++gameplayFiatInteraction.current}`);
                 addBankTx(`UTILITIES (P:ƒ${bill.power} W:ƒ${bill.water} C:ƒ${bill.comms})`, -bill.total, g.salary, 'expense');
                 g.floaters.push({ x: g.px + 30, y: g.py - 70, text: `-ƒ${bill.total.toLocaleString()} UTILITIES`, color: '#67e8f9', life: 80, maxLife: 80 });
                 // Restoring service if previously offline
@@ -14772,7 +14838,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const autoRent = Math.round(tier.rent * getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker'));
             if (daysSinceRent >= cycleDays + RENT_GRACE_DAYS) {
               if (g.salary >= autoRent) {
-                g.salary -= autoRent; setSalary(g.salary);
+                void performGameplayFiatAction('housing_rent', `${gameplayFiatSession.current}:rent:${++gameplayFiatInteraction.current}`);
                 g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
                 g.floaters.push({ x: g.px, y: g.py - 40, text: `-ƒ${autoRent.toLocaleString()} RENT`, color: '#ff4444', life: 90, maxLife: 90 });
                 const periodLabel = tier.rentPeriod === 'week' ? `${cycleDays} days` : 'tomorrow';
@@ -14810,7 +14876,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               divTotal += div;
             }
             if (divTotal > 0) {
-              g.salary += divTotal; setSalary(g.salary);
+              void performGameplayFiatAction('investment_dividend', `${gameplayFiatSession.current}:dividend:${++gameplayFiatInteraction.current}`);
               g.floaters.push({ x: g.px - 20, y: g.py - 55, text: `+ƒ${divTotal.toLocaleString()} DIVIDENDS`, color: '#44aaff', life: 80, maxLife: 80 });
               sfxCoin();
             }
@@ -14824,7 +14890,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (now2 - g.officeTerminalRenting.lastCharge >= 60000) {
             g.officeTerminalRenting.lastCharge = now2;
             if (g.salary >= PUBLIC_OFFICE_TERMINAL_RATE) {
-              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary); recordBizRevenue('office_rent', PUBLIC_OFFICE_TERMINAL_RATE);
+              void performGameplayFiatAction('office_terminal_rent', `${gameplayFiatSession.current}:office-cycle:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) recordBizRevenue('office_rent', PUBLIC_OFFICE_TERMINAL_RATE); });
               g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${PUBLIC_OFFICE_TERMINAL_RATE} TERMINAL RENT`, color: '#ff8844', life: 70, maxLife: 70 });
             } else {
               const lockKey = `po_${g.officeTerminalRenting.label}`;
@@ -14855,7 +14921,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── ECONOMY: Loan overdue check ───────────────────────────────────
         if (g.loan && g.frame > g.loan.dueAt) {
           const penalty = Math.floor(g.loan.amount * 0.05);
-          g.salary = Math.max(0, g.salary - penalty); setSalary(g.salary);
+          void performGameplayFiatAction('world_penalty', `${gameplayFiatSession.current}:penalty:${++gameplayFiatInteraction.current}`);
           g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${penalty.toLocaleString()} DEBT PENALTY`, color: '#ff4444', life: 90, maxLife: 90 });
           addBankTx('PABLO CORP DEBT PENALTY (5%)', -penalty, g.salary);
           setNarr('> BANCO OMBRA ALERT — Your loan is overdue. PABLO CORP Debt Collection is now active. ƒ' + penalty.toLocaleString() + ' FIAT deducted. Repay at BANCO OMBRA immediately.');
@@ -14867,19 +14933,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.oregonTick = 0;
           const inWaste2 = !inCityBounds(g.px, g.py);
           const cityEvents = [
-            () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP seized ƒ${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
+            () => { void performGameplayFiatAction('city_tax_audit', `${gameplayFiatSession.current}:audit:${++gameplayFiatInteraction.current}`); sfxError(); return '> CITY TAX AUDIT — PABLO CORP seized a server-calculated compliance fee. No appeal. No tribunal.'; },
             () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
             () => { g.thirst = Math.max(0, g.thirst - 25); setThirst(Math.floor(g.thirst)); sfxError(); return '> WATER RATION CUT — Sector 2–7 on reduced supply. "Infrastructure maintenance." −25 Thirst.'; },
-            () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> MOBILITY TAX — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} auto-taxed. "Irregular mobility risk score: elevated."`; },
+            () => { void performGameplayFiatAction('mobility_tax', `${gameplayFiatSession.current}:mobility:${++gameplayFiatInteraction.current}`); sfxError(); return '> MOBILITY TAX — Your movement pattern flagged by City-AI. A server-calculated fee was assessed.'; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 8); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO CORP deployed diluted stim-packs city-wide. "Productivity metric: normalized." HP +8.'; },
             () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
-            () => { const bonus = 50 + Math.floor(Math.random() * 100); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
+            () => { void performGameplayFiatAction('found_stash', `${gameplayFiatSession.current}:stash:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); }); return '> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Banco Ombra verified the transfer.'; },
           ];
           const wasteEvents = [
             () => { if (!gamePausedRef.current) { g.hp = Math.max(1, g.hp - 25); g.deathReason = 'Died from acid rain exposure'; setHp(Math.floor(g.hp)); } sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
             () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
             () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
-            () => { const loot = 80 + Math.floor(Math.random() * 120); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered FIAT. Their last entry reads: "Don't go north."  You're going north.`; },
+            () => { void performGameplayFiatAction('dead_runner_cache', `${gameplayFiatSession.current}:runner:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) sfxCoin(); }); return '> DEAD RUNNER — A courier. Expired. Banco Ombra verified their cache transfer.'; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 10); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +10. Someone was looking out for you.'; },
             () => { g.hunger = Math.min(100, g.hunger + 25); g.thirst = Math.min(100, g.thirst + 25); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> WILD GROVE — Impossible. But here: a cluster of growing things. Clean moisture. Hunger +25. Thirst +25.'; },
             () => { g.energy = Math.max(0, g.energy - 20); setEnergy(Math.floor(g.energy)); sfxError(); return '> DEAD ZONE PULSE — Electromagnetic burst from an unknown source. Your equipment flickered. Energy −20. Systems recovering.'; },
@@ -14916,7 +14982,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const wantedMult = 1 + g.wantedLevel * 0.5;
             const tax = Math.floor(pick.amt * nightMult * wantedMult);
             if (g.salary >= tax) {
-              g.salary -= tax; setSalary(g.salary);
+              void performGameplayFiatAction('transaction_tax', `${gameplayFiatSession.current}:transaction-tax:${++gameplayFiatInteraction.current}`);
               g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${tax.toLocaleString()} ${pick.msg}`, color: '#ff4444', life: 80, maxLife: 80 });
               setNarr(`> PABLO CORP TAXES — ${pick.msg}: ƒ${tax.toLocaleString()} collected. "Taxation is civilization."`);
               sfxError();
@@ -14945,7 +15011,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ];
           const t = taxes[Math.floor(Math.random() * taxes.length)];
           if (g.salary >= t.amt) {
-            g.salary -= t.amt; setSalary(g.salary);
+            void performGameplayFiatAction('world_toll', `${gameplayFiatSession.current}:toll:${++gameplayFiatInteraction.current}`);
             g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${t.amt.toLocaleString()} ${t.label}`, color: '#ff8844', life: 80, maxLife: 80 });
             setNarr(`> PABLO CORP TAXES — ${t.label}: ƒ${t.amt.toLocaleString()} auto-collected. "Non-payment is tax evasion. Tax evasion is a crime."`);
             addBankTx(t.label, -t.amt, g.salary);
@@ -14969,7 +15035,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               { amt: 1500, msg: 'NOISE TAX' },
             ];
             const v = assessments[Math.floor(Math.random() * assessments.length)];
-            g.salary -= v.amt; setSalary(g.salary);
+            void performGameplayFiatAction('world_vendor_fee', `${gameplayFiatSession.current}:vendor-fee:${++gameplayFiatInteraction.current}`);
             g.floaters.push({ x: g.px, y: g.py - 30, text: `−ƒ${v.amt.toLocaleString()} ${v.msg}`, color: '#ff6644', life: 60, maxLife: 60 });
             setNarr(`> PABLO CORP TAXES — ${v.msg}: ƒ${v.amt.toLocaleString()} auto-assessed. "The cameras see everything. The tax man sees more."`);
             sfxError();
@@ -14988,7 +15054,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (inGangZone) {
             const taxAmt = 2000 + Math.floor(Math.random() * 4000);
             if (g.salary >= taxAmt) {
-              g.salary -= taxAmt; setSalary(g.salary);
+              void performGameplayFiatAction('world_tax', `${gameplayFiatSession.current}:world-tax:${++gameplayFiatInteraction.current}`);
               g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${taxAmt.toLocaleString()} TERRITORY TAX`, color: '#ff6622', life: 80, maxLife: 80 });
               setNarr(`> ${inGangZone.name} TERRITORY TAX — "Our turf, our tax. ƒ${taxAmt.toLocaleString()} or your corpse." You paid.`);
               sfxError();
@@ -22895,8 +22961,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   }
                   const adoptedBreed = stray.breed ?? 'mutt';
                   const abd = getDogBreed(adoptedBreed);
-                  g.salary -= DOG_ADOPT_FEE;
-                  setSalary(g.salary);
+                  const paid = await performGameplayFiatAction('dog_adoption', `${gameplayFiatSession.current}:dog:${++gameplayFiatInteraction.current}`);
+                  if (!paid || paid.duplicate) return;
                   sfxCoin();
                   g.dogCompanion.active = true;
                   g.dogCompanion.name = name;
@@ -23000,8 +23066,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   }
                   const adoptedCatBreed = stray.breed ?? 'tabby';
                   const abc = getCatBreed(adoptedCatBreed);
-                  g.salary -= CAT_ADOPT_FEE;
-                  setSalary(g.salary);
+                  const paid = await performGameplayFiatAction('cat_adoption', `${gameplayFiatSession.current}:cat:${++gameplayFiatInteraction.current}`);
+                  if (!paid || paid.duplicate) return;
                   sfxCoin();
                   g.catCompanion.active = true;
                   g.catCompanion.name = name;
@@ -24324,9 +24390,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
                       if (char.bizType !== 'real') { sfxError(); setNarr('> SHADOW TOWER — Office leases require a registered REAL ENTERPRISE. Fictitious entities operate from storefronts.'); return; }
                       if (!canAfford) { setNarr(`> Need ƒ${price.toLocaleString()} FIAT. Have ƒ${salary.toLocaleString()}.`); return; }
-                      const g = gs.current; g.salary -= price; setSalary(g.salary); recordBizRevenue('office_rent', price);
-                      localStorage.setItem('sm_office', label); setRentedOffice(label);
-                      setNarr(`> ${label} leased. ƒ${price.toLocaleString()} FIAT deducted. Set a security code from the lease panel.`);
+                      const officeSlug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                      void performGameplayFiatAction(`office_lease_${officeSlug}`, `${gameplayFiatSession.current}:office-modal:${++gameplayFiatInteraction.current}`).then(paid => {
+                        if (!paid || paid.duplicate) return;
+                        recordBizRevenue('office_rent', price);
+                        localStorage.setItem('sm_office', label); setRentedOffice(label);
+                        setNarr(`> ${label} leased. ƒ${price.toLocaleString()} FIAT deducted. Set a security code from the lease panel.`);
+                      });
                     }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(56,189,248,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(56,189,248,.38)' : '1px solid rgba(56,189,248,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#38bdf8' : 'rgba(56,189,248,.16)', fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
                       {isRented ? 'CANCEL' : char.bizType !== 'real' ? 'REAL BIZ REQUIRED' : canAfford ? 'RENT' : 'NO FUNDS'}
                     </button>
@@ -24973,13 +25043,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     if (elapsed >= jobPanel.seconds) {
                       clearInterval(jobTimerRef.current!); jobTimerRef.current = null;
                       const g = gs.current;
-                      g.salary += jobPanel.pay; g.jobCooldowns[jobPanel.bid] = QUICK_JOBS[jobPanel.bid]?.cooldownFrames ?? 900;
-                      g.employedAt = jobPanel.label; g.employedSalary = jobPanel.pay;
-                      setEmpLabel(jobPanel.label);
-                      g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
-                      setSalary(g.salary); sfxCoin();
-                      setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. You are now employed here.`);
-                      setJobPanel(null);
+                       void performGameplayFiatAction(`quick_job_${jobPanel.bid}`, `${gameplayFiatSession.current}:job:${jobPanel.bid}:${++gameplayFiatInteraction.current}`).then(paid => {
+                         if (!paid || paid.duplicate) return;
+                         g.jobCooldowns[jobPanel.bid] = QUICK_JOBS[jobPanel.bid]?.cooldownFrames ?? 900;
+                         g.employedAt = jobPanel.label; g.employedSalary = jobPanel.pay;
+                         setEmpLabel(jobPanel.label);
+                         g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
+                         sfxCoin();
+                         setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. You are now employed here.`);
+                         setJobPanel(null);
+                       });
                     } else {
                       setJobPanel(prev => prev ? { ...prev, progress: elapsed } : null);
                     }
@@ -25126,7 +25199,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const fId = item.id.slice(5);
             if (g.ownedFurniture.includes(fId)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your furniture inventory.`); return; }
           } else if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
-          g.salary -= item.price; setSalary(g.salary); sfxCoin(); recordBizRevenue('vending_food', item.price);
+          const paid = await performGameplayFiatAction(`world_item_${item.id}`, `${gameplayFiatSession.current}:vend:${item.id}:${++gameplayFiatInteraction.current}`);
+          if (!paid || paid.duplicate) return;
+          sfxCoin(); recordBizRevenue('vending_food', item.price);
           // ── Apply effects ──────────────────────────────────────
           if (item.consumable) {
             if (item.id === 'pablo_device') {
@@ -25270,21 +25345,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const cp = commodityPrices.current;
         const totalCargo = Object.values(gs.current.cargo).reduce((a, b) => a + b, 0);
         const loc = isCity ? 'MINX TRADE EXCHANGE' : 'BLACK EXCHANGE — WASTELAND';
-        const doBuy = (cid: string) => {
+        const doBuy = async (cid: string) => {
           const c = COMMODITIES.find(x => x.id === cid)!;
           const price = isCity ? cp[cid].cityBuy : cp[cid].wasteBuy;
           if (totalCargo >= MAX_CARGO) { sfxError(); setNarr(`> HOLD FULL — Max ${MAX_CARGO} units. Sell something first.`); return; }
           if (gs.current.salary < price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${price.toLocaleString()}. Have ƒ${gs.current.salary.toLocaleString()}.`); return; }
-          gs.current.salary -= price; setSalary(gs.current.salary);
+          const paid = await performGameplayFiatAction(`world_commodity_buy_${isCity ? 'city' : 'waste'}_${cid}`, `${gameplayFiatSession.current}:commodity-buy:${cid}:${++gameplayFiatInteraction.current}`);
+          if (!paid || paid.duplicate) return;
           gs.current.cargo[cid] = (gs.current.cargo[cid] || 0) + 1;
           setCargo({ ...gs.current.cargo }); sfxCoin();
           setNarr(`> BOUGHT 1x ${c.name} [ƒ${price.toLocaleString()} FIAT]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : CITY_NAME} and sell for profit.`);
         };
-        const doSell = (cid: string) => {
+        const doSell = async (cid: string) => {
           const c = COMMODITIES.find(x => x.id === cid)!;
           if (!gs.current.cargo[cid] || gs.current.cargo[cid] < 1) { sfxError(); setNarr(`> NO STOCK — You are not carrying any ${c.name}.`); return; }
           const price = isCity ? cp[cid].citySell : cp[cid].wasteSell;
-          gs.current.salary += price; setSalary(gs.current.salary);
+          const paid = await performGameplayFiatAction(`world_commodity_sell_${isCity ? 'city' : 'waste'}_${cid}`, `${gameplayFiatSession.current}:commodity-sell:${cid}:${++gameplayFiatInteraction.current}`);
+          if (!paid || paid.duplicate) return;
           gs.current.cargo[cid] -= 1;
           if (gs.current.cargo[cid] <= 0) delete gs.current.cargo[cid];
           setCargo({ ...gs.current.cargo }); sfxCoin();
@@ -25942,10 +26019,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showMerchant && (() => {
         const g = gs.current;
         const VTM: React.CSSProperties = { fontFamily: "var(--font-sans)" };
-        const doMerchBuy = (item: MerchantItem) => {
+        const doMerchBuy = async (item: MerchantItem) => {
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
           if (g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
-          g.salary -= item.price; setSalary(g.salary); sfxCoin(); recordBizRevenue(item.effect.startsWith('passport_') ? 'passport' : 'merchant_weapon', item.price);
+          const paid = await performGameplayFiatAction(`world_item_${item.id}`, `${gameplayFiatSession.current}:merchant:${item.id}:${++gameplayFiatInteraction.current}`);
+          if (!paid || paid.duplicate) return;
+          sfxCoin(); recordBizRevenue(item.effect.startsWith('passport_') ? 'passport' : 'merchant_weapon', item.price);
           g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
           if (item.effect.startsWith('unlock_')) {
             const wpnId = item.effect.replace('unlock_', '');
@@ -25983,7 +26062,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.passport = 'wasteland'; setPassport('wasteland');
             setNarr(`> WASTELAND PERMIT acquired. Outer sector transit authorized. ƒ${item.price.toLocaleString()} spent.`);
           } else if (item.effect === 'work_permit') {
-            g.salary += 500; setSalary(g.salary);
+            void performGameplayFiatAction('workstation_cycle', `${gameplayFiatSession.current}:workstation-cycle:${++gameplayFiatInteraction.current}`);
             setNarr(`> WORK PERMIT filed. +500 FIAT signing bonus deposited. ƒ${item.price.toLocaleString()} spent.`);
           } else if (item.effect === 'identity_scrub') {
             setNarr(`> IDENTITY SCRUB complete. Criminal record erased. All faction hostility reset. ƒ${item.price.toLocaleString()} spent.`);
@@ -26086,7 +26165,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const amt = parseInt(bankDepAmt) || 0;
           if (amt <= 0 || amt > g.salary) { sfxError(); setNarr('> BANCO OMBRA — Insufficient checking balance.'); return; }
           const tax = amt >= 5000 ? Math.floor(amt * 0.12) : 0;
-          g.salary -= amt; setSalary(g.salary);
+          // Client-side savings transfers are retired: Banco Ombra owns account
+          // transfers and the wallet cache is refreshed from its response.
+          setNarr('> BANCO OMBRA — Use the bank terminal to transfer FIAT between accounts.');
+          return;
           g.savings += (amt - tax); setSavings(g.savings);
           if (tax > 0) addBankTx('PABLO CORP DEPOSIT TAX (12%)', -tax, g.salary, 'deposit_tax');
           addBankTx('CHECKING → SAVINGS DEPOSIT', -amt, g.salary, 'general');
@@ -26098,7 +26180,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (amt <= 0 || amt > g.savings) { sfxError(); setNarr('> BANCO OMBRA — Insufficient savings balance.'); return; }
           const { fee, net } = calcAtmFee(amt, ATM_WITHDRAW_FEE_RATE);
           g.savings -= amt;
-          g.salary += net;
+          setNarr('> BANCO OMBRA — Currency settlement is server-authoritative. Use the bank terminal.');
+          return;
           setSavings(g.savings); setSalary(g.salary);
           addBankTx('SAVINGS → CHECKING WITHDRAWAL', net, g.salary, 'general');
           addBankTx(`ATM WITHDRAWAL FEE (${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}%)`, -fee, g.salary, 'atm_fee');
@@ -26129,7 +26212,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const exchBalanceOf = (cur: ExchangeCurrency): number =>
           cur === 'FIAT' ? g.salary : cur === 'GOLD' ? g.goldBalance : cur === 'BTC' ? g.btcBalance : cur === 'ETH' ? g.ethBalance : 0;
         const exchSetBalance = (cur: ExchangeCurrency, v: number) => {
-          if (cur === 'FIAT') { g.salary = v; setSalary(v); }
+          if (cur === 'FIAT') { setNarr('> BANCO OMBRA — FIAT swaps must be settled at the bank terminal.'); return; }
           else if (cur === 'GOLD') { g.goldBalance = v; setGoldBalance(v); }
           else if (cur === 'BTC') { g.btcBalance = v; setBtcBalance(v); }
           else if (cur === 'ETH') { g.ethBalance = v; setEthBalance(v); }
@@ -26200,7 +26283,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               return;
             }
             const j = await r.json();
-            g.salary -= j.paid; setSalary(g.salary);
+            setNarr('> BANCO OMBRA — Loan repayment must be made through your bank account.'); return;
             addBankTx('DEBT PLAN INSTALLMENT', -j.paid, g.salary, 'loan_interest');
             setDebtPlan(j.plan ?? { active: false });
             sfxCoin();
@@ -26224,7 +26307,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               return;
             }
             const j = await r.json();
-            g.salary -= j.paid; setSalary(g.salary);
+            setNarr('> BANCO OMBRA — Loan repayment must be made through your bank account.'); return;
             addBankTx('DEBT PLAN PAYOFF', -j.paid, g.salary, 'loan_interest');
             setDebtPlan({ active: false });
             sfxCoin();
@@ -26247,7 +26330,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const origFee  = calcOriginationFee(tier);
           const received  = tier.amount - origFee;
           const loan = { amount: tier.amount, interest, issuedAt: g.frame, dueAt: g.frame + tier.durationFrames };
-          g.loan = loan; g.salary += received; setSalary(g.salary);
+          setNarr('> BANCO OMBRA — Loans are issued only through server banking.'); return;
           setBankLoan(loan);
           if (origFee > 0) addBankTx(`ORIGINATION FEE (${(tier.originationFeeRate * 100).toFixed(0)}%)`, -origFee, g.salary, 'loan_origination');
           addBankTx(`LOAN ISSUED @ ${(tier.baseInterestRate * 100).toFixed(0)}%${tier.compounding ? ' COMPOUND' : ' FLAT'}`, received, g.salary, 'general');
@@ -26259,7 +26342,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const loan = g.loan; if (!loan) return;
           const totalDue = loan.amount + loan.interest;
           if (g.salary < totalDue) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${totalDue.toLocaleString()}.`); return; }
-          g.salary -= totalDue; setSalary(g.salary);
+          setNarr('> BANCO OMBRA — Loan payoff must be made through server banking.'); return;
           g.loan = null; setBankLoan(null);
           addBankTx(`LOAN REPAID ƒ${loan.amount.toLocaleString()} + ƒ${loan.interest.toLocaleString()} INT`, -totalDue, g.salary, 'loan_interest');
           sfxCoin();
@@ -26272,10 +26355,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!to || amt <= 0) { sfxError(); return; }
           const fee = Math.ceil(amt * 0.03);
           if (amt + fee > g.salary) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${(amt+fee).toLocaleString()} (inc. 3% tax).`); return; }
-          g.salary -= (amt + fee); setSalary(g.salary);
+          setNarr('> BANCO OMBRA — Wire transfers must be made through server banking.'); return;
           addBankTx(`WIRE → ${to}`, -amt, g.salary, 'general');
           addBankTx('PABLO CORP WIRE TAX (3%)', -fee, g.salary, 'wire_tax');
-          wsSend({ type: 'wire', to, amount: amt, from: char.name });
+          wsSend({ type: 'wire', to, amount: amt, from: char?.name ?? 'BANCO OMBRA' });
           setBankWireAmt(''); setBankWireTo(''); sfxCoin();
           setNarr(`> WIRE SENT — ƒ${amt.toLocaleString()} → ${to}. Fee: ƒ${fee.toLocaleString()}. PABLO CORP logged it.`);
         };
@@ -27086,7 +27169,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             onDeductFiat={() => {
               const g = gs.current;
               if (g.salary < 1) { setNarr('> INSUFFICIENT FIAT — You need at least 1 FIAT to play.'); return false; }
-              g.salary -= 1;
+              void performGameplayFiatAction('metered_usage_fee', `${gameplayFiatSession.current}:metered:${++gameplayFiatInteraction.current}`);
               setSalary(g.salary);
               return true;
             }}
@@ -27137,8 +27220,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <button onClick={() => {
                   const g = gs.current;
                   if (g.salary < 500000) { setNarr('> INSUFFICIENT FIAT — You need 500,000 FIAT.'); setShowSecretLabPrompt(null); gameRef.current?.focus(); return; }
-                  g.salary -= 500000; setSalary(g.salary);
-                  setShowSecretLabPrompt('setpw');
+                  void performGameplayFiatAction('millionaire_purchase', `${gameplayFiatSession.current}:millionaire:${++gameplayFiatInteraction.current}`).then(paid => {
+                    if (!paid || paid.duplicate) return;
+                    setShowSecretLabPrompt('setpw');
+                  });
                 }}
                   style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
                   PURCHASE — 500K
@@ -27244,13 +27329,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   if (g.salary < 100) { setNarr('> NOT ENOUGH FIAT — You need 100 FIAT to keep this newspaper.'); return; }
                   if (g.inventory.length >= INVENTORY_MAX_SLOTS) { setNarr('> INVENTORY FULL — No room for the newspaper.'); return; }
                   const itemId = `newspaper_${np.issue}_${Date.now()}`;
-                  g.salary -= 100; setSalary(g.salary);
-                  const newItem: InventoryItem = { id: itemId, name: `THE MINX #${np.issue}`, desc: `${np.season} edition of THE MINX underground newspaper.`, icon: '📰', stackable: false, qty: 1, value: 50 };
-                  g.inventory.push(newItem);
-                  setInventory([...g.inventory]);
-                  setNarr(`> PURCHASED — THE MINX Issue #${np.issue} (${np.season}) added to inventory. -100 FIAT`);
-                  setShowNewspaper(null);
-                  gameRef.current?.focus();
+                  void performGameplayFiatAction('newspaper_purchase', `${gameplayFiatSession.current}:newspaper:${np.issue}:${++gameplayFiatInteraction.current}`).then(paid => {
+                    if (!paid || paid.duplicate) return;
+                    const newItem: InventoryItem = { id: itemId, name: `THE MINX #${np.issue}`, desc: `${np.season} edition of THE MINX underground newspaper.`, icon: '📰', stackable: false, qty: 1, value: 50 };
+                    g.inventory.push(newItem);
+                    setInventory([...g.inventory]);
+                    setNarr(`> PURCHASED — THE MINX Issue #${np.issue} (${np.season}) added to inventory. -100 FIAT`);
+                    setShowNewspaper(null);
+                    gameRef.current?.focus();
+                  });
                 }} style={{ padding: '6px 18px', background: '#1a1a1a', color: '#f5f0e0', border: 'none', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.08em' }}>KEEP COPY — 100 FIAT</button>
                 <button onClick={() => { setShowNewspaper(null); gameRef.current?.focus(); }} style={{ padding: '6px 18px', background: 'transparent', color: '#1a1a1a', border: '1px solid #1a1a1a', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.65rem', letterSpacing: '.08em' }}>CLOSE</button>
               </div>
@@ -27343,7 +27430,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const defenseBonus = campsiteTurret ? 0.5 : 0;
           if (Math.random() < raidChance * (1 - defenseBonus)) {
             const loot = Math.floor(g.salary * 0.05);
-            g.salary -= loot; setSalary(g.salary);
+            void performGameplayFiatAction('robbery_loss', `${gameplayFiatSession.current}:robbery:${++gameplayFiatInteraction.current}`);
             setNarr(`> CAMP RAIDED — Scavengers hit you while you slept! Lost ƒ${loot.toLocaleString()} FIAT.${campsiteTurret ? ' Turret reduced losses.' : ' Install a TURRET for defense.'}`);
           } else {
             setNarr(`> RESTED — HP +30, Energy +30. Progress saved.${campsiteTurret ? ' Turret active.' : ''}`);
@@ -27431,7 +27518,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const sellItem = (idx: number) => {
           const item = g.inventory[idx];
           if (!item) return;
-          g.salary += item.value;
+          void performGameplayFiatAction('inventory_sale', `${gameplayFiatSession.current}:inventory-sale:${++gameplayFiatInteraction.current}`);
           g.inventory.splice(idx, 1);
           setSalary(g.salary);
           setInventory([...g.inventory]);
@@ -27666,7 +27753,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     if (isShelterSpawn && hamletB) {
                       g.px = hamletB.x + hamletB.w / 2;
                       g.py = hamletB.y + hamletB.h + 20;
-                      g.salary = Math.max(-50000, g.salary - Math.floor(emergencyFee * 0.3));
+                      void performGameplayFiatAction('emergency_fee_partial', `${gameplayFiatSession.current}:emergency-partial:${++gameplayFiatInteraction.current}`);
                       setSalary(g.salary); setHp(g.maxHp);
                       setHunger(70); setThirst(70); setEnergy(60);
                       setPoisoned(false);
@@ -27679,7 +27766,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const spawnB = hamletB ?? clinicB;
                       g.px = spawnB.x + spawnB.w / 2;
                       g.py = spawnB.y + spawnB.h + 20;
-                      g.salary = Math.max(-50000, g.salary - emergencyFee);
+                      void performGameplayFiatAction('emergency_fee', `${gameplayFiatSession.current}:emergency:${++gameplayFiatInteraction.current}`);
                       setSalary(g.salary); setHp(g.maxHp);
                       setHunger(70); setThirst(70); setEnergy(60);
                       setPoisoned(false);
@@ -27715,11 +27802,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ];
         const FARE = 500;
         const origin = STATIONS.find(s => s.id === subwayOrigin);
-        const doRide = (dest: typeof STATIONS[0]) => {
+        const doRide = async (dest: typeof STATIONS[0]) => {
           const g = gs.current;
           if (dest.id === subwayOrigin) { setNarr(`> METRO — You're already at ${dest.label}.`); setShowSubway(false); return; }
           if (g.salary < FARE) { sfxError(); setNarr(`> METRO — Insufficient FIAT. Fare is ƒ${FARE.toLocaleString()}. "No tokens, no transit."`); setShowSubway(false); return; }
-          g.salary -= FARE; setSalary(g.salary); recordBizRevenue('subway', FARE);
+          if (!await performGameplayFiatAction('subway_fare', `${gameplayFiatSession.current}:subway:${++gameplayFiatInteraction.current}`)) return;
+          recordBizRevenue('subway', FARE);
           sfxEnter(); sfxCoin();
           g.subwayTransit = true;
           g.subwayTransitTimer = 90;
@@ -27787,10 +27875,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const merchant = showMerchantShop;
         const allItems = VEND_CATALOG.flatMap(c => c.items);
         const shopItems = merchant.inventory.map(id => allItems.find(i => i.id === id)).filter(Boolean) as VendItem[];
-        const doBuy = (item: VendItem) => {
+        const doBuy = async (item: VendItem) => {
           if (g.salary < item.price) { sfxError(); setNarr(`> ${merchant.name} — Not enough FIAT.`); return; }
           if (g.ownedItems.has(item.id) && !item.consumable) { sfxError(); setNarr(`> ${merchant.name} — Already owned.`); return; }
-          g.salary -= item.price; setSalary(g.salary); recordBizRevenue(item.consumable ? 'vending_food' : 'merchant_weapon', item.price);
+          const paid = await performGameplayFiatAction(`world_item_${item.id}`, `${gameplayFiatSession.current}:shop:${item.id}:${++gameplayFiatInteraction.current}`);
+          if (!paid || paid.duplicate) return;
+          recordBizRevenue(item.consumable ? 'vending_food' : 'merchant_weapon', item.price);
           if (item.consumable && item.effect) {
             const fx = item.effect;
             if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
@@ -28044,7 +28134,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         };
         const zoneRentMult = getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker');
         const effectiveRent = (tier: HousingTier) => Math.round(tier.rent * zoneRentMult);
-        const doUpgrade = (tier: HousingTier) => {
+        const doUpgrade = async (tier: HousingTier) => {
           if (!canUpgrade(tier)) { sfxError(); return; }
           const lockReason = getHomeLockReason(tier);
           if (lockReason) { sfxError(); setNarr(`> HOUSING — ${lockReason}`); return; }
@@ -28053,7 +28143,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const upgRent = Math.round(tier.rent * upgZoneRentMult);
           const movingCost = upgRent * 2;
           if (g.salary < movingCost && tier.rent > 0) { sfxError(); setNarr(`> HOUSING — Moving to ${tier.label} requires ƒ${movingCost.toLocaleString()} deposit (2x ${tier.rentPeriod === 'week' ? 'weekly' : 'nightly'} zone-adjusted rate).`); return; }
-          if (tier.rent > 0) { g.salary -= movingCost; setSalary(g.salary); }
+          if (tier.rent > 0) {
+            setNarr('> BANCO OMBRA — Zone-adjusted housing deposits are temporarily available only through the bank property desk.');
+            return;
+          }
           g.housingTier = tier.id; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
           g.hamletBuildingId = spawn.buildingId;
           sfxCoin();
@@ -28061,15 +28154,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setNarr(`> HOUSING — Moved to ${tier.label}. ${tier.rent > 0 ? `Deposit: ƒ${movingCost.toLocaleString()}. Zone-adjusted rate: ${periodStr}.` : 'No rent. Shared accommodation.'}`);
           setShowHousingPanel(false);
         };
-        const doPayRent = () => {
+        const doPayRent = async () => {
           const tier = HOUSING_TIERS.find(t => t.id === g.housingTier);
           if (!tier || tier.rent <= 0) return;
           const zoneRent = effectiveRent(tier);
           if (g.salary < zoneRent) { sfxError(); setNarr(`> HOUSING — Insufficient FIAT. Zone-adjusted rent is ƒ${zoneRent.toLocaleString()}.`); return; }
-          g.salary -= zoneRent; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
-          setSalary(g.salary); sfxCoin();
-          const nextDue = tier.rentPeriod === 'week' ? `${RENT_PERIOD_DAYS(tier)} days` : 'tomorrow';
-          setNarr(`> HOUSING — Rent paid: ƒ${zoneRent.toLocaleString()} (zone x${zoneRentMult.toFixed(1)}) for ${tier.label}. Next due ${nextDue}.`);
+          setNarr('> BANCO OMBRA — Zone-adjusted rent must be paid through the bank property desk.');
         };
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
@@ -28169,18 +28259,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (next.text && dialogueNpcName) speakNpcLine(dialogueNpcName, next.text);
             const nodeEffect = next.effect;
             if (nodeEffect === 'give_gold') { gs.current.goldBalance += 5; setGoldBalance(gs.current.goldBalance); }
-            if (nodeEffect === 'give_fiat') { gs.current.salary += 2000; setSalary(gs.current.salary); }
+            if (nodeEffect === 'give_fiat') { void performGameplayFiatAction('story_dialogue_reward', `${gameplayFiatSession.current}:dialogue:${++gameplayFiatInteraction.current}`); }
             if (nodeEffect === 'heal') { gs.current.hp = gs.current.maxHp; setHp(gs.current.maxHp); }
             if (nodeEffect === 'pay_fine') {
               const fineAmt = (window as any).__pendingPoliceFine ?? 0;
-              if (fineAmt > 0 && gs.current.salary >= fineAmt) {
-                gs.current.salary -= fineAmt; setSalary(gs.current.salary);
-                gs.current.taxDebt = 0;
-                setWanted(gs.current, Math.max(0, gs.current.wantedLevel - 2), 0);
-                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `−ƒ${fineAmt.toLocaleString()} DEBT PAID`, color: '#44ff88', life: 80, maxLife: 80 });
-                setNarr(`> DEBT SETTLED — ƒ${fineAmt.toLocaleString()} collected. Account cleared. Bounty reduced.`);
-                addBankTx('DEBT COLLECTION', -fineAmt, gs.current.salary);
-              }
+              if (fineAmt > 0) setNarr('> DEBT PAYMENT — Settle variable fines through Banco Ombra; this officer cannot debit your wallet.');
               (window as any).__pendingPoliceFine = 0;
               (window as any).__pendingLateFee = 0;
             }
@@ -28215,16 +28298,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             // ── Banco Ombra dedicated collector effects ──────────────────────────
             if (nodeEffect === 'bo_pay_settle') {
               const boFine = (window as any).__pendingBOFine ?? 0;
-              if (boFine > 0 && gs.current.salary >= boFine) {
-                gs.current.salary -= boFine; setSalary(gs.current.salary);
-                gs.current.taxDebt = 0;
-                setWanted(gs.current, 0, 0);
-                gs.current.boCollectors = [];
-                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 28, text: 'ACCOUNT SETTLED', color: '#44ff88', life: 140, maxLife: 140 });
-                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 10, text: `−ƒ${boFine.toLocaleString()} DEBT CLEARED`, color: '#44ffaa', life: 100, maxLife: 100 });
-                setNarr(`> BANCO OMBRA SETTLED — ƒ${boFine.toLocaleString()} paid. Account cleared. All collectors withdrawn.`);
-                addBankTx('BANCO OMBRA SETTLEMENT', -boFine, gs.current.salary);
-              }
+              if (boFine > 0) setNarr('> BANCO OMBRA — Open the bank terminal to settle this variable debt securely.');
               (window as any).__pendingBOFine = 0;
               (window as any).__pendingBOLateFee = 0;
             }
@@ -28492,7 +28566,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         if (owned) {
                           gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> SUIT — Equipped: ${c.name}. ${c.desc}`);
                         } else if (c.price > 0 && salary >= c.price) {
-                          gs.current.salary -= c.price; setSalary(gs.current.salary); recordBizRevenue('costume', c.price); gs.current.ownedClothes.add(c.id); setOwnedClothes(new Set(gs.current.ownedClothes)); gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> SUIT — Purchased & equipped: ${c.name}. -ƒ${c.price.toLocaleString()}`);
+                          void performGameplayFiatAction(`world_costume_${c.id}`, `${gameplayFiatSession.current}:costume:${c.id}:${++gameplayFiatInteraction.current}`).then(paid => { if (paid) { recordBizRevenue('costume', c.price); gs.current.ownedClothes.add(c.id); setOwnedClothes(new Set(gs.current.ownedClothes)); gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> SUIT — Purchased & equipped: ${c.name}. -ƒ${c.price.toLocaleString()}`); } });
                         } else {
                           setNarr(`> SUIT — Not enough FIAT. ${c.name} costs ƒ${c.price.toLocaleString()}.`);
                         }
@@ -28552,12 +28626,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           'Transportation', 'Security', 'Technology',
         ];
         const industries = adminBizType === 'real' ? REAL_INDUSTRIES : MINX_INDUSTRIES;
-        const doRegister = () => {
+        const doRegister = async () => {
           if (!adminBizName.trim()) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Enter a business name.'); return; }
           if (!adminBizIndustry) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Select an industry.'); return; }
           if (progressionBlockMsg) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — ${progressionBlockMsg}`); return; }
           if (g.salary < regFee) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Minx City business'} registration: ƒ${regFee.toLocaleString()}.`); return; }
-          g.salary -= regFee; setSalary(g.salary); sfxCoin();
+          if (!await performGameplayFiatAction('business_registration', `${gameplayFiatSession.current}:registration:${++gameplayFiatInteraction.current}`)) return;
+          sfxCoin();
           const PLAY_WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot: string }[] = [
             { match: /tech|software|saas|gaming|data|synapse|zaibatsu/i,         bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 12 · DESK 3 · DEV TERMINAL' },
             { match: /media|entert|radio|static|viral|comms/i,                   bid: 'radio',       label: 'PIRATE RADIO',  slot: 'BED 2 · DESK 1 · BROADCAST TERMINAL' },

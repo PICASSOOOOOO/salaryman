@@ -63,6 +63,7 @@ describe("API structure: critical routers are mounted (never 404)", () => {
     { method: "get", path: "/api/autopilot" }, // autopilot
     { method: "get", path: "/api/admin/connections/status" }, // admin
     { method: "get", path: "/api/chat/channels" }, // chat
+    { method: "post", path: "/api/gameplay/fiat/action" }, // gameplay fiat
   ];
 
   it.each(mounted)("$method $path is mounted", async ({ method, path }) => {

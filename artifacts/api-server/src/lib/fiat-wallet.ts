@@ -31,6 +31,7 @@ const STAFF_FIAT_ACCOUNT_SEEDS: readonly FiatAccountSeed[] = [
 export type FiatSpendResult =
   | { ok: true; newBalance: number; spendable: number; duplicate?: boolean }
   | { ok: false; error: string; spendable: number };
+export type FiatCreditResult = { ok: true; newBalance: number; spendable: number; duplicate?: boolean };
 
 export async function ensureFiatAccounts(
   tx: Tx,
@@ -121,6 +122,45 @@ export async function spendFiat(
   }
 
   return { ok: true, newBalance, spendable: spendable - opts.amountFiat };
+}
+
+/** Credit the server wallet inside the caller's transaction.
+ * The idempotency marker is deliberately shared with spendFiat: callers must
+ * provide a stable key for retried gameplay actions.
+ */
+export async function creditFiat(
+  tx: Tx,
+  opts: { userId: string; amountFiat: number; description: string; kind?: string; idempotencyKey?: string },
+): Promise<FiatCreditResult> {
+  if (!Number.isInteger(opts.amountFiat) || opts.amountFiat <= 0) {
+    throw new Error("amountFiat must be a positive integer");
+  }
+  await ensureFiatAccounts(tx, opts.userId);
+  await tx.insert(playerLedgerTable).values({ userId: opts.userId }).onConflictDoNothing();
+  const [ledger] = await tx.select().from(playerLedgerTable)
+    .where(eq(playerLedgerTable.userId, opts.userId)).for("update").limit(1);
+  const accounts = await tx.select().from(bankAccountsTable)
+    .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT"))).for("update");
+  const total = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const marker = opts.idempotencyKey ? `[request:${opts.idempotencyKey}]` : "";
+  const description = marker ? `${opts.description.slice(0, 150)} ${marker}` : opts.description.slice(0, 200);
+  if (marker) {
+    const prior = await tx.select({ id: bankTransactionsTable.id }).from(bankTransactionsTable)
+      .where(and(eq(bankTransactionsTable.userId, opts.userId), eq(bankTransactionsTable.description, description))).limit(1);
+    if (prior.length > 0) {
+      return { ok: true, newBalance: total, spendable: Math.max(0, total - (ledger?.quarantineFiat ?? 0)), duplicate: true };
+    }
+  }
+  const account = accounts.find((row) => row.kind === "checking") ?? accounts[0];
+  if (!account) throw new Error("FIAT account missing after initialization");
+  const balanceAfter = account.balance + opts.amountFiat;
+  await tx.update(bankAccountsTable).set({ balance: balanceAfter, updatedAt: new Date() }).where(eq(bankAccountsTable.id, account.id));
+  await tx.insert(bankTransactionsTable).values({
+    userId: opts.userId, accountId: account.id, kind: opts.kind ?? "credit",
+    description, amount: opts.amountFiat, balanceAfter,
+  });
+  const newBalance = total + opts.amountFiat;
+  return { ok: true, newBalance, spendable: Math.max(0, newBalance - (ledger?.quarantineFiat ?? 0)) };
 }
 
 export async function getSpendableFiat(userId: string): Promise<{ balance: number; spendable: number }> {

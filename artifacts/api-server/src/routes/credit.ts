@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, playerLedgerTable, orgMembersTable, creditScoreHistoryTable } from "@workspace/db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { CREDIT_TIERS, getNextTier, getPtsNeeded, getRoadmapActions, type CreditInputs } from "@workspace/api-zod";
+import { spendFiat } from "../lib/fiat-wallet";
 
 const HISTORY_KEEP = 20;
 
@@ -435,14 +436,10 @@ router.post("/credit/plan/enroll", async (req: Request, res: Response) => {
   res.json({ ok: true, plan: planView(led) });
 });
 
-/** POST /api/credit/plan/pay — pay ONE installment. Client deducts the returned amount from its wallet. */
+/** POST /api/credit/plan/pay — atomically debit the server wallet and pay one installment. */
 router.post("/credit/plan/pay", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
-  // Wallet is client-authoritative; the client reports its available FIAT so we
-  // can reject when a late-fee bump (applied by tickPlan below) makes the live
-  // amount exceed what the client checked against. Omitted wallet = no check.
-  const wallet = Number(req.body?.wallet);
   await getOrCreateLedger(userId);
   await tickPlan(userId);
   const result = await db.transaction(async (tx) => {
@@ -450,7 +447,11 @@ router.post("/credit/plan/pay", async (req: Request, res: Response) => {
       .where(eq(playerLedgerTable.userId, userId)).for("update").limit(1);
     if (!led || led.planBalance <= 0) return { ok: false as const, error: "No active payment plan", status: 400 as const };
     const amount = Math.min(led.planInstallment, led.planBalance);
-    if (Number.isFinite(wallet) && wallet < amount) return { ok: false as const, error: "Insufficient funds", status: 402 as const, required: amount };
+    const paid = await spendFiat(tx, {
+      userId, amountFiat: amount, kind: "credit_plan_payment",
+      description: "Credit payment plan installment",
+    });
+    if (!paid.ok) return { ok: false as const, error: "Insufficient funds", status: 402 as const, required: amount, spendable: paid.spendable };
     const newBalance = led.planBalance - amount;
     const now = Date.now();
     const nextDue = Math.max(now, led.planNextDueAt ? new Date(led.planNextDueAt).getTime() : now);
@@ -459,7 +460,7 @@ router.post("/credit/plan/pay", async (req: Request, res: Response) => {
         planBalance: 0, planPrincipal: 0, planAprBps: 0, planInstallment: 0,
         planTerm: 0, planPaid: 0, planMissed: 0, planNextDueAt: null, planStartedAt: null,
       }).where(eq(playerLedgerTable.userId, userId));
-      return { ok: true as const, paid: amount, balance: 0, done: true };
+      return { ok: true as const, paid: amount, balance: 0, done: true, newBalance: paid.newBalance, spendable: paid.spendable };
     }
     await tx.update(playerLedgerTable).set({
       planBalance: newBalance,
@@ -467,18 +468,17 @@ router.post("/credit/plan/pay", async (req: Request, res: Response) => {
       planMissed: 0, // caught up
       planNextDueAt: new Date(nextDue + INSTALLMENT_INTERVAL_MS),
     }).where(eq(playerLedgerTable.userId, userId));
-    return { ok: true as const, paid: amount, balance: newBalance, done: false };
+    return { ok: true as const, paid: amount, balance: newBalance, done: false, newBalance: paid.newBalance, spendable: paid.spendable };
   });
-  if (!result.ok) { res.status(result.status).json({ error: result.error, ...("required" in result ? { required: result.required } : {}) }); return; }
+  if (!result.ok) { res.status(result.status).json({ error: result.error, ...("required" in result ? { required: result.required } : {}), ...("spendable" in result ? { spendable: result.spendable } : {}) }); return; }
   const led = await getOrCreateLedger(userId);
   res.json({ ...result, plan: planView(led) });
 });
 
-/** POST /api/credit/plan/payoff — clear the whole remaining balance at once. */
+/** POST /api/credit/plan/payoff — atomically debit the server wallet and clear the balance. */
 router.post("/credit/plan/payoff", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
-  const wallet = Number(req.body?.wallet);
   await getOrCreateLedger(userId);
   await tickPlan(userId);
   const result = await db.transaction(async (tx) => {
@@ -486,14 +486,18 @@ router.post("/credit/plan/payoff", async (req: Request, res: Response) => {
       .where(eq(playerLedgerTable.userId, userId)).for("update").limit(1);
     if (!led || led.planBalance <= 0) return { ok: false as const, error: "No active payment plan", status: 400 as const };
     const amount = led.planBalance;
-    if (Number.isFinite(wallet) && wallet < amount) return { ok: false as const, error: "Insufficient funds", status: 402 as const, required: amount };
+    const paid = await spendFiat(tx, {
+      userId, amountFiat: amount, kind: "credit_plan_payoff",
+      description: "Credit payment plan payoff",
+    });
+    if (!paid.ok) return { ok: false as const, error: "Insufficient funds", status: 402 as const, required: amount, spendable: paid.spendable };
     await tx.update(playerLedgerTable).set({
       planBalance: 0, planPrincipal: 0, planAprBps: 0, planInstallment: 0,
       planTerm: 0, planPaid: 0, planMissed: 0, planNextDueAt: null, planStartedAt: null,
     }).where(eq(playerLedgerTable.userId, userId));
-    return { ok: true as const, paid: amount };
+    return { ok: true as const, paid: amount, newBalance: paid.newBalance, spendable: paid.spendable };
   });
-  if (!result.ok) { res.status(result.status).json({ error: result.error, ...("required" in result ? { required: result.required } : {}) }); return; }
+  if (!result.ok) { res.status(result.status).json({ error: result.error, ...("required" in result ? { required: result.required } : {}), ...("spendable" in result ? { spendable: result.spendable } : {}) }); return; }
   res.json({ ...result, plan: null });
 });
 
