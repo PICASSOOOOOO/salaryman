@@ -459,7 +459,7 @@ describe("POST /stripe/webhook", () => {
       const res = await sendWebhook(app, event);
 
       expect(res.status).toBe(200);
-      expect(await checkingBalance()).toBe(FIAT_AMOUNT);
+      expect(await checkingBalance()).toBe(200_000 + FIAT_AMOUNT);
 
       const [row] = await db
         .select()
@@ -477,7 +477,90 @@ describe("POST /stripe/webhook", () => {
       expect(res.status).toBe(200);
       // Still exactly one credit's worth — the conditional pending→completed
       // update no longer matches, so no second credit fires.
-      expect(await checkingBalance()).toBe(FIAT_AMOUNT);
+      expect(await checkingBalance()).toBe(200_000 + FIAT_AMOUNT);
+    });
+
+    it("leaves an unpaid completed checkout pending until async settlement succeeds", async () => {
+      const delayedId = `${SESSION_ID}_delayed`;
+      await db.insert(fiatTopupsTable).values({
+        userId: TOPUP_USER,
+        stripeSessionId: delayedId,
+        packId: "topup_5000",
+        amountCents: 500,
+        fiatAmount: FIAT_AMOUNT,
+        status: "pending",
+      });
+      const before = await checkingBalance();
+      const unpaid = makeEvent("checkout.session.completed", {
+        id: delayedId,
+        object: "checkout.session",
+        client_reference_id: TOPUP_USER,
+        payment_status: "unpaid",
+        metadata: { userId: TOPUP_USER, type: "fiat_topup" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(unpaid);
+      expect((await sendWebhook(app, unpaid)).status).toBe(200);
+      expect(await checkingBalance()).toBe(before);
+
+      const settled = makeEvent("checkout.session.async_payment_succeeded", {
+        id: delayedId,
+        object: "checkout.session",
+        client_reference_id: TOPUP_USER,
+        payment_status: "paid",
+        metadata: { userId: TOPUP_USER, type: "fiat_topup" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(settled);
+      expect((await sendWebhook(app, settled)).status).toBe(200);
+      expect(await checkingBalance()).toBe((before ?? 0) + FIAT_AMOUNT);
+    });
+
+    it("marks delayed failures and expired checkouts terminal without crediting FIAT", async () => {
+      const before = await checkingBalance();
+      for (const [suffix, eventType, expectedStatus] of [
+        ["failed", "checkout.session.async_payment_failed", "failed"],
+        ["expired", "checkout.session.expired", "cancelled"],
+      ] as const) {
+        const id = `${SESSION_ID}_${suffix}`;
+        await db.insert(fiatTopupsTable).values({
+          userId: TOPUP_USER,
+          stripeSessionId: id,
+          packId: "topup_500",
+          amountCents: 50,
+          fiatAmount: 500,
+          status: "pending",
+        });
+        const event = makeEvent(eventType, {
+          id,
+          object: "checkout.session",
+          client_reference_id: TOPUP_USER,
+          payment_status: "unpaid",
+          metadata: { userId: TOPUP_USER, type: "fiat_topup" },
+        });
+        mocks.constructEvent.mockReturnValueOnce(event);
+        expect((await sendWebhook(app, event)).status).toBe(200);
+        const [row] = await db.select().from(fiatTopupsTable).where(eq(fiatTopupsTable.stripeSessionId, id));
+        expect(row.status).toBe(expectedStatus);
+      }
+      expect(await checkingBalance()).toBe(before);
+    });
+
+    it("reconciles and credits a paid signed session even if its pending row was missing", async () => {
+      const before = await checkingBalance();
+      const id = `${SESSION_ID}_reconcile`;
+      const event = makeEvent("checkout.session.completed", {
+        id,
+        object: "checkout.session",
+        client_reference_id: TOPUP_USER,
+        payment_status: "paid",
+        amount_total: 500,
+        currency: "usd",
+        metadata: { userId: TOPUP_USER, packId: "topup_5000", type: "fiat_topup" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+      expect((await sendWebhook(app, event)).status).toBe(200);
+      expect(await checkingBalance()).toBe((before ?? 0) + FIAT_AMOUNT);
+      const [row] = await db.select().from(fiatTopupsTable).where(eq(fiatTopupsTable.stripeSessionId, id));
+      expect(row.status).toBe("completed");
     });
   });
 });

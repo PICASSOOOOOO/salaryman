@@ -5,7 +5,7 @@ import {
   PiggyBank, CreditCard, TrendingUp, Lock, Loader2, Bitcoin, Globe, Gauge, FileWarning,
 } from "lucide-react";
 import InstitutionCutscene from "@/components/InstitutionCutscene";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, clearStableRequestIds, stableRequestId } from "@/lib/api-client";
 import { SUPPORTED_CURRENCIES, setLiveRates, getCityCurrencyCode, getCityCostMultipliers } from "@/lib/currency";
 import { useCurrency } from "@/hooks/use-currency";
 import { getActiveCityId, hydrateActiveCityFromSave } from "@/lib/city-defs";
@@ -34,6 +34,14 @@ type Tx = {
   description: string;
   amount: number;
   balanceAfter: number;
+  createdAt: string;
+};
+type FiatTopupPack = { id: string; fiat: number; usdCents: number };
+type FiatTopup = {
+  stripeSessionId: string;
+  fiatAmount: number;
+  amountCents: number;
+  status: "pending" | "completed" | "failed" | "cancelled";
   createdAt: string;
 };
 
@@ -113,6 +121,10 @@ export default function GameBank() {
   const [toast, setToast] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [topupPacks, setTopupPacks] = useState<FiatTopupPack[]>([]);
+  const [topups, setTopups] = useState<FiatTopup[]>([]);
+  const [topupBusy, setTopupBusy] = useState<string | null>(null);
+  const [topupNotice, setTopupNotice] = useState<string>("");
   const [showCutscene, setShowCutscene] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return !window.localStorage.getItem(CUTSCENE_KEY);
@@ -194,6 +206,59 @@ export default function GameBank() {
   }, [navigate]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  const refreshTopups = useCallback(async () => {
+    const [packsResponse, historyResponse] = await Promise.all([
+      apiFetch("/api/stripe/fiat-topup-packs"),
+      apiFetch("/api/stripe/topup-history", { credentials: "include" }),
+    ]);
+    if (packsResponse.ok) setTopupPacks((await packsResponse.json()).packs ?? []);
+    if (historyResponse.ok) {
+      const history = (await historyResponse.json()).history ?? [];
+      setTopups(history);
+      return history as FiatTopup[];
+    }
+    return [] as FiatTopup[];
+  }, []);
+  useEffect(() => { void refreshTopups(); }, [refreshTopups]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const returnState = params.get("topup");
+    const sessionId = params.get("session_id");
+    if (returnState) clearStableRequestIds("fiat-topup");
+    if (returnState === "cancel") {
+      setTopupNotice("TOP-UP CANCELLED — NO FIAT WAS CREDITED.");
+      return;
+    }
+    if (returnState !== "return" || !sessionId) return;
+    let cancelled = false;
+    let attempts = 0;
+    setTopupNotice("PAYMENT RECEIVED BY STRIPE — WAITING FOR SETTLEMENT CONFIRMATION.");
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const history = await refreshTopups();
+        const row = history.find((entry) => entry.stripeSessionId === sessionId);
+        if (cancelled) return;
+        if (row?.status === "completed") {
+          setTopupNotice(`TOP-UP COMPLETE — ƒ${row.fiatAmount.toLocaleString()} CREDITED.`);
+          void refresh();
+          return;
+        }
+        if (row?.status === "failed") {
+          setTopupNotice("PAYMENT FAILED — NO FIAT WAS CREDITED.");
+          return;
+        }
+        if (row?.status === "cancelled") {
+          setTopupNotice("TOP-UP CANCELLED — NO FIAT WAS CREDITED.");
+          return;
+        }
+      } catch { /* keep polling a delayed webhook */ }
+      if (!cancelled && attempts < 20) window.setTimeout(poll, 1500);
+      else if (!cancelled) setTopupNotice("PAYMENT IS STILL PENDING. FIAT WILL APPEAR AFTER STRIPE CONFIRMS SETTLEMENT.");
+    };
+    void poll();
+    return () => { cancelled = true; };
+  }, [refresh, refreshTopups]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2400);
@@ -229,6 +294,28 @@ export default function GameBank() {
       setToast("TRANSFER POSTED");
     } catch {
       setToast("NETWORK ERROR");
+    }
+  };
+  const startTopup = async (packId: string) => {
+    setTopupBusy(packId);
+    setTopupNotice("");
+    try {
+      const response = await apiFetch("/api/stripe/create-topup-session", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packId, requestId: stableRequestId("fiat-topup", packId) }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) {
+        setTopupNotice((result.error ?? "COULD NOT START TOP-UP").toUpperCase());
+        return;
+      }
+      window.location.href = result.url;
+    } catch {
+      setTopupNotice("NETWORK ERROR — NO PAYMENT WAS STARTED.");
+    } finally {
+      setTopupBusy(null);
     }
   };
 
@@ -288,6 +375,11 @@ export default function GameBank() {
         {error && (
           <div className="mb-4 rounded border border-rose-700/40 bg-rose-950/30 text-rose-200 px-4 py-2 text-[11px] font-mono tracking-widest">
             {error}
+          </div>
+        )}
+        {topupNotice && (
+          <div className="mb-4 rounded border border-amber-600/40 bg-amber-950/20 text-amber-200 px-4 py-2 text-[11px] font-mono tracking-widest">
+            {topupNotice}
           </div>
         )}
 
@@ -366,6 +458,33 @@ export default function GameBank() {
                 NO ACCOUNTS ON FILE
               </div>
             )}
+
+            <div className="rounded-lg border border-emerald-700/30 bg-emerald-950/10 p-4 sm:col-span-2">
+              <div className="flex items-center gap-2 text-emerald-300 text-[10px] font-mono tracking-[0.3em]">
+                <CreditCard className="w-3.5 h-3.5" /> ADD FIAT BY CARD
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+                Stripe payments credit this server bank only after settlement is confirmed. Plaid-linked balances remain view-only.
+              </p>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {topupPacks.map((pack) => (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    disabled={topupBusy !== null}
+                    onClick={() => void startTopup(pack.id)}
+                    className="rounded border border-emerald-700/40 bg-emerald-900/10 px-2 py-2 font-mono text-[10px] tracking-wider text-emerald-200 hover:bg-emerald-900/20 disabled:opacity-40"
+                  >
+                    {topupBusy === pack.id ? "OPENING…" : `${fmtFiat(pack.fiat)} · $${(pack.usdCents / 100).toFixed(2)}`}
+                  </button>
+                ))}
+              </div>
+              {topups[0] && (
+                <p className="text-[9px] text-zinc-600 mt-3 font-mono tracking-widest">
+                  LATEST: {fmtFiat(topups[0].fiatAmount)} · {topups[0].status.toUpperCase()}
+                </p>
+              )}
+            </div>
 
             <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-4 sm:col-span-2">
               <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-mono tracking-[0.3em]">

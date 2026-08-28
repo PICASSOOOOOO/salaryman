@@ -2,6 +2,7 @@ import { Router, raw } from "express";
 import Stripe from "stripe";
 import { db, cosmeticCatalogTable, playerCosmeticsTable, cryptoPurchasesTable, playerCryptoBalanceTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 
 const router = Router();
 
@@ -79,7 +80,7 @@ async function spendCrypto(userId: string, amount: number): Promise<{ ok: boolea
 }
 
 router.get("/cosmetics/bundles", (_req, res) => {
-  res.json({ bundles: CRYPTO_BUNDLES });
+  res.json({ bundles: [] });
 });
 
 router.get("/cosmetics/balance", async (req, res) => {
@@ -88,8 +89,8 @@ router.get("/cosmetics/balance", async (req, res) => {
     return;
   }
   try {
-    const balance = await getOrCreateBalance(req.user.id);
-    res.json({ balance });
+    const balance = await getSpendableFiat(req.user.id);
+    res.json(balance);
   } catch (err: any) {
     res.status(500).json({ error: "Server error" });
   }
@@ -132,20 +133,39 @@ router.post("/cosmetics/buy", async (req, res) => {
     return;
   }
   try {
-    const existing = await db.select().from(playerCosmeticsTable)
-      .where(and(eq(playerCosmeticsTable.userId, req.user.id), eq(playerCosmeticsTable.cosmeticId, cosmeticId)));
-    if (existing.length > 0) {
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx.select().from(playerCosmeticsTable)
+        .where(and(eq(playerCosmeticsTable.userId, req.user.id), eq(playerCosmeticsTable.cosmeticId, cosmeticId)));
+      if (existing.length > 0) return { type: "owned" as const };
+      const paid = await spendFiat(tx, {
+        userId: req.user.id,
+        amountFiat: item.priceCrypto,
+        description: `Cosmetic: ${item.name}`,
+        kind: "cosmetic",
+      });
+      if (!paid.ok) return { type: "insufficient" as const, paid };
+      const inserted = await tx
+        .insert(playerCosmeticsTable)
+        .values({ userId: req.user.id, cosmeticId, equipped: false })
+        .onConflictDoNothing()
+        .returning({ id: playerCosmeticsTable.id });
+      if (inserted.length === 0) throw new Error("COSMETIC_ALREADY_OWNED");
+      return { type: "ok" as const, paid };
+    });
+    if (result.type === "owned") {
       res.status(409).json({ error: "Already owned" });
       return;
     }
-    const result = await spendCrypto(req.user.id, item.priceCrypto);
-    if (!result.ok) {
-      res.status(402).json({ error: "Insufficient FIAT balance" });
+    if (result.type === "insufficient") {
+      res.status(402).json({ error: "Insufficient FIAT balance", spendable: result.paid.spendable });
       return;
     }
-    await db.insert(playerCosmeticsTable).values({ userId: req.user.id, cosmeticId, equipped: false }).onConflictDoNothing();
-    res.json({ ok: true, newBalance: result.balance });
+    res.json({ ok: true, newBalance: result.paid.newBalance, spendable: result.paid.spendable });
   } catch (err: any) {
+    if (err?.message === "COSMETIC_ALREADY_OWNED") {
+      res.status(409).json({ error: "Already owned" });
+      return;
+    }
     console.error("[cosmetics] buy error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -206,51 +226,10 @@ router.post("/cosmetics/checkout", async (req, res) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const { bundleId } = req.body;
-  const bundle = CRYPTO_BUNDLES.find(b => b.id === bundleId);
-  if (!bundle) {
-    res.status(400).json({ error: "Invalid bundle" });
-    return;
-  }
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
-    res.status(500).json({ error: "Stripe not configured" });
-    return;
-  }
-  try {
-    const stripe = getStripe();
-    const baseUrl = getAppBaseUrl();
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: `SALARYMAN — ${bundle.label} (${bundle.amount.toLocaleString()} ƒ FIAT)`,
-            description: `${bundle.amount.toLocaleString()} FIAT (ƒ) premium currency for SALARYMAN`,
-          },
-          unit_amount: bundle.cents,
-        },
-        quantity: 1,
-      }],
-      success_url: `${baseUrl}/world?crypto_success=1&bundle=${bundle.id}`,
-      cancel_url: `${baseUrl}/world?crypto_cancel=1`,
-      client_reference_id: req.user.id,
-      metadata: { userId: req.user.id, bundleId: bundle.id, cryptoAmount: String(bundle.amount), type: "crypto_bundle" },
-    });
-    await db.insert(cryptoPurchasesTable).values({
-      userId: req.user.id,
-      bundleId: bundle.id,
-      cryptoAmount: bundle.amount,
-      amountCents: bundle.cents,
-      stripeSessionId: session.id,
-      status: "pending",
-    });
-    res.json({ url: session.url });
-  } catch (err: any) {
-    console.error("[cosmetics] checkout error:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
+  res.status(410).json({
+    error: "Legacy cosmetic currency packs are retired. Use Banco Ombra FIAT top-ups.",
+    redirect: "/game/bank",
+  });
 });
 
 router.post(

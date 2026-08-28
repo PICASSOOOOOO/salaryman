@@ -8,6 +8,7 @@ import {
   salarymanSavesTable,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { spendFiat } from "./fiat-wallet";
 
 /**
  * Pablo Tax engine.
@@ -435,33 +436,5 @@ export async function setPrimeActive(userId: string, active: boolean) {
  * are supposed to require either Prime or real cash.
  */
 export async function spendEarnedFiat(opts: { userId: string; amountFiat: number; description: string }): Promise<{ ok: true; newBalance: number } | { ok: false; error: string; spendable: number }> {
-  return await db.transaction(async (tx) => {
-    const [led] = await tx.select().from(playerLedgerTable)
-      .where(eq(playerLedgerTable.userId, opts.userId))
-      .for("update")
-      .limit(1);
-    const quarantine = led?.quarantineFiat ?? 0;
-    const accounts = await tx.select().from(bankAccountsTable)
-      .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT")))
-      .for("update");
-    const total = accounts.reduce((s, a) => s + (a.balance || 0), 0);
-    const spendable = Math.max(0, total - quarantine);
-    if (spendable < opts.amountFiat) {
-      return { ok: false as const, error: "Starting balance is quarantined. Earn ƒ in-game first.", spendable };
-    }
-    let remaining = opts.amountFiat;
-    const sorted = [...accounts].sort((a, b) => (b.balance || 0) - (a.balance || 0));
-    let newBalance = total;
-    for (const acct of sorted) {
-      if (remaining <= 0) break;
-      const slice = Math.min(remaining, acct.balance);
-      if (slice <= 0) continue;
-      await tx.update(bankAccountsTable)
-        .set({ balance: acct.balance - slice, updatedAt: new Date() })
-        .where(eq(bankAccountsTable.id, acct.id));
-      remaining -= slice;
-      newBalance -= slice;
-    }
-    return { ok: true as const, newBalance };
-  });
+  return db.transaction(async (tx) => spendFiat(tx, opts));
 }

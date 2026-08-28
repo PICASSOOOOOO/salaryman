@@ -47,6 +47,7 @@ const BANK_MUTATING_ENDPOINTS = [
   "/api/economy/verified-salary/claim", // useVerifiedSalary — credits verified salary
   "/api/items/buy", // Armory — spendEarnedFiat
   "/api/cosmetics/buy", // Cosmetic/Vending — spendCrypto → bank
+  "/api/vending/food/purchase", // VendKing food — atomic bank debit + effect
   "/api/pledge/vend", // VendingMachine — spendEarnedFiat
   "/api/subway/travel", // Subway intra-city fare — debits bank
   "/api/subway/travel-intercity", // Subway cross-city toll — debits bank
@@ -73,6 +74,8 @@ const EXCUSED_NON_BANK_SPENDS = new Set([
   "/api/stripe/create-checkout-session", // PABLO PRIME Stripe subscription checkout
   "/api/stripe/create-bot-checkout-session", // Stripe checkout session
   "/api/billboards/*/purchase", // deducts client-save g.salary, not the bank
+  "/api/services/*/claim", // grants a service listing, no player-bank mutation
+  "/api/twilio/purchase-number", // Stripe/Twilio purchase path, not in-game FIAT
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {

@@ -18,6 +18,7 @@ import Stripe from "stripe";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
+import { spendFiat } from "../lib/fiat-wallet";
 import {
   ITEM_CATALOG,
   ITEM_TYPES,
@@ -191,37 +192,40 @@ router.post("/items/buy", async (req, res) => {
     }
 
     const totalPrice = item.priceFiat * qty;
-    const paid = await spendEarnedFiat({
-      userId,
-      amountFiat: totalPrice,
-      description: `Armory: ${item.name} ×${qty}`,
-    });
-    if (!paid.ok) {
-      res.status(402).json({ error: "insufficient_fiat", required: totalPrice, spendable: paid.spendable });
-      return;
-    }
     try {
-      await db.transaction((tx) => addConsumable(tx, userId, slot, item.id, qty, "fiat"));
-    } catch (err: any) {
-      await refundFiat(userId, totalPrice);
-      console.error("[Items] consumable buy failed, refunded ƒ:", err?.message);
-      res.status(500).json({ error: "Purchase failed — your florins were refunded." });
-      return;
-    }
-    // Batteries & fuel are PABLO POWER & GAS goods — route the sale to the
-    // utility monopoly's revenue ledger (fire-and-forget; never blocks the buy).
-    const utilKind = utilityKindForItem(item.id);
-    if (utilKind) {
-      void recordUtilityRevenue({
-        userId,
-        kind: utilKind,
-        itemId: item.id,
-        units: qty,
-        amountFiat: totalPrice,
-        description: `${item.name} ×${qty}`,
+      const paid = await db.transaction(async (tx) => {
+        const result = await spendFiat(tx, {
+          userId,
+          amountFiat: totalPrice,
+          description: `Armory: ${item.name} ×${qty}`,
+          kind: "item_purchase",
+        });
+        if (!result.ok) return result;
+        await addConsumable(tx, userId, slot, item.id, qty, "fiat");
+        return result;
       });
+      if (!paid.ok) {
+        res.status(402).json({ error: "insufficient_fiat", required: totalPrice, spendable: paid.spendable });
+        return;
+      }
+      // Batteries & fuel are PABLO POWER & GAS goods — route the sale to the
+      // utility monopoly's revenue ledger (fire-and-forget; never blocks the buy).
+      const utilKind = utilityKindForItem(item.id);
+      if (utilKind) {
+        void recordUtilityRevenue({
+          userId,
+          kind: utilKind,
+          itemId: item.id,
+          units: qty,
+          amountFiat: totalPrice,
+          description: `${item.name} ×${qty}`,
+        });
+      }
+      res.json({ owned: true, fiat: totalPrice, quantity: qty, newBalance: paid.newBalance });
+    } catch (err: any) {
+      console.error("[Items] atomic consumable buy failed:", err?.message);
+      res.status(500).json({ error: "Purchase failed — no florins were charged." });
     }
-    res.json({ owned: true, fiat: totalPrice, quantity: qty, newBalance: paid.newBalance });
     return;
   }
 
@@ -268,39 +272,37 @@ router.post("/items/buy", async (req, res) => {
     }
   } catch { /* best-effort — fall back to full price */ }
 
-  const paid = await spendEarnedFiat({
-    userId,
-    amountFiat: effectivePrice,
-    description: `Armory: ${item.name}`,
-  });
-  if (!paid.ok) {
-    res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
-    return;
-  }
-
-  let inserted: { id: number }[];
   try {
-    inserted = await db.insert(playerInventoryTable)
-      .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" })
-      .onConflictDoNothing()
-      .returning({ id: playerInventoryTable.id });
+    const paid = await db.transaction(async (tx) => {
+      const result = await spendFiat(tx, {
+        userId,
+        amountFiat: effectivePrice,
+        description: `Armory: ${item.name}`,
+        kind: "item_purchase",
+      });
+      if (!result.ok) return result;
+      const inserted = await tx
+        .insert(playerInventoryTable)
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" })
+        .onConflictDoNothing()
+        .returning({ id: playerInventoryTable.id });
+      if (inserted.length === 0) throw new Error("ITEM_ALREADY_OWNED");
+      return result;
+    });
+    if (!paid.ok) {
+      res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
+      return;
+    }
+    res.json({ owned: true, fiat: effectivePrice, newBalance: paid.newBalance });
   } catch (err: any) {
-    // Charged but grant errored — refund the FIAT (the spend/grant pair isn't a
-    // single transaction, so this is the compensating leg).
-    await refundFiat(userId, effectivePrice);
-    console.error("[Items] buy grant failed, refunded ƒ:", err?.message);
-    res.status(500).json({ error: "Purchase failed — your florins were refunded." });
+    if (err?.message === "ITEM_ALREADY_OWNED") {
+      res.json({ owned: true, alreadyOwned: true });
+      return;
+    }
+    console.error("[Items] atomic buy failed:", err?.message);
+    res.status(500).json({ error: "Purchase failed — no florins were charged." });
     return;
   }
-  // A concurrent purchase (double-click / retry) can win the race and grant the
-  // item first; our insert then no-ops via onConflictDoNothing. We've already
-  // debited FIAT for it, so refund the duplicate charge instead of charging twice.
-  if (inserted.length === 0) {
-    await refundFiat(userId, effectivePrice);
-    res.json({ owned: true, alreadyOwned: true });
-    return;
-  }
-  res.json({ owned: true, fiat: effectivePrice, newBalance: paid.newBalance });
 });
 
 // ─── Buy premium high-tech with REAL money (Stripe) ──────────────────────────

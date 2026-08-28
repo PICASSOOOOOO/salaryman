@@ -7,6 +7,7 @@ import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
+import { ensureFiatAccounts } from "../lib/fiat-wallet";
 
 const router = Router();
 
@@ -532,9 +533,9 @@ router.post("/stripe/create-topup-session", async (req, res) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const { packId } = req.body as { packId?: string };
+  const { packId, requestId } = req.body as { packId?: string; requestId?: string };
   const pack = FIAT_TOPUP_PACKS.find((p) => p.id === packId);
-  if (!pack) {
+  if (!pack || !requestId || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)) {
     res.status(400).json({ error: "Invalid pack" });
     return;
   }
@@ -558,8 +559,8 @@ router.post("/stripe/create-topup-session", async (req, res) => {
         quantity: 1,
       },
     ],
-    success_url: `${baseUrl}/world?topup=success`,
-    cancel_url: `${baseUrl}/world?topup=cancel`,
+    success_url: `${baseUrl}/game/bank?topup=return&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/game/bank?topup=cancel`,
     client_reference_id: user.id,
     metadata: {
       userId: user.id,
@@ -567,8 +568,9 @@ router.post("/stripe/create-topup-session", async (req, res) => {
       packId: pack.id,
       fiatAmount: String(pack.fiat),
       amountCents: String(pack.usdCents),
+      requestId,
     },
-  });
+  }, { idempotencyKey: `fiat-topup:${user.id}:${requestId}` });
 
   await db.insert(fiatTopupsTable).values({
     userId: user.id,
@@ -577,7 +579,7 @@ router.post("/stripe/create-topup-session", async (req, res) => {
     amountCents: pack.usdCents,
     fiatAmount: pack.fiat,
     status: "pending",
-  });
+  }).onConflictDoNothing();
 
   res.json({ url: session.url });
 });
@@ -601,10 +603,33 @@ router.get("/stripe/topup-history", async (req, res) => {
 // duplicate webhook delivery can't double-credit. Credits the player's checking
 // account atomically (balance = balance + ƒ).
 async function fulfilFiatTopup(session: Stripe.Checkout.Session): Promise<void> {
+  if (session.payment_status !== "paid") {
+    console.log(`[Stripe] fiat_topup ${session.id} is not settled (${session.payment_status ?? "unknown"}) — leaving pending`);
+    return;
+  }
   const userId = session.client_reference_id || session.metadata?.userId;
   if (!userId || !session.id) {
     console.warn("[Stripe] fiat_topup completed but missing userId/session");
     return;
+  }
+  const [known] = await db
+    .select({ id: fiatTopupsTable.id })
+    .from(fiatTopupsTable)
+    .where(eq(fiatTopupsTable.stripeSessionId, session.id))
+    .limit(1);
+  if (!known) {
+    const pack = FIAT_TOPUP_PACKS.find((candidate) => candidate.id === session.metadata?.packId);
+    if (!pack || session.amount_total !== pack.usdCents || session.currency !== "usd") {
+      throw new Error(`FIAT_TOPUP_RECONCILIATION_REJECTED:${session.id}`);
+    }
+    await db.insert(fiatTopupsTable).values({
+      userId,
+      stripeSessionId: session.id,
+      packId: pack.id,
+      amountCents: pack.usdCents,
+      fiatAmount: pack.fiat,
+      status: "pending",
+    }).onConflictDoNothing();
   }
 
   // Claim + credit must be ONE atomic transaction: if the bank credit throws,
@@ -622,23 +647,21 @@ async function fulfilFiatTopup(session: Stripe.Checkout.Session): Promise<void> 
       .returning();
 
     if (!claimed) {
-      // Already fulfilled (duplicate webhook) or row missing — nothing to credit.
+      const [existing] = await tx
+        .select({ status: fiatTopupsTable.status })
+        .from(fiatTopupsTable)
+        .where(eq(fiatTopupsTable.stripeSessionId, session.id))
+        .limit(1);
+      if (!existing) {
+        throw new Error(`FIAT_TOPUP_RESERVATION_MISSING:${session.id}`);
+      }
       return null;
     }
 
     const fiat = claimed.fiatAmount;
-    let [checking] = await tx
-      .select()
-      .from(bankAccountsTable)
-      .where(and(eq(bankAccountsTable.userId, userId), eq(bankAccountsTable.kind, "checking")))
-      .limit(1);
-    if (!checking) {
-      // Seed a minimal checking account if the player somehow has none yet.
-      [checking] = await tx
-        .insert(bankAccountsTable)
-        .values({ userId, kind: "checking", label: "STANDARD CHECKING", balance: 0, apyBps: 0 })
-        .returning();
-    }
+    const accounts = await ensureFiatAccounts(tx, userId);
+    const checking = accounts.find((account) => account.kind === "checking") ?? accounts[0];
+    if (!checking) throw new Error(`FIAT_ACCOUNT_INITIALIZATION_FAILED:${userId}`);
     const [updated] = await tx
       .update(bankAccountsTable)
       .set({ balance: sql`${bankAccountsTable.balance} + ${fiat}`, updatedAt: new Date() })
@@ -661,6 +684,14 @@ async function fulfilFiatTopup(session: Stripe.Checkout.Session): Promise<void> 
     return;
   }
   console.log(`[Stripe] fiat_topup fulfilled: user ${userId} +ƒ${credited} — session ${session.id}`);
+}
+
+async function markFiatTopupTerminal(session: Stripe.Checkout.Session, status: "failed" | "cancelled"): Promise<void> {
+  if (!session.id || session.metadata?.type !== "fiat_topup") return;
+  await db
+    .update(fiatTopupsTable)
+    .set({ status })
+    .where(and(eq(fiatTopupsTable.stripeSessionId, session.id), eq(fiatTopupsTable.status, "pending")));
 }
 
 router.post(
@@ -698,6 +729,9 @@ router.post(
           await handlePledgeWebhookEvent(event);
         } else if (session.metadata?.type === "item") {
           await handleItemWebhookEvent(event);
+        } else if (session.metadata?.type === "fiat_topup") {
+          if (event.type === "checkout.session.async_payment_succeeded") await fulfilFiatTopup(session);
+          else await markFiatTopupTerminal(session, "failed");
         }
         break;
       }
@@ -706,6 +740,8 @@ router.post(
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.metadata?.type === "pledge") {
           await handlePledgeWebhookEvent(event);
+        } else if (session.metadata?.type === "fiat_topup") {
+          await markFiatTopupTerminal(session, "cancelled");
         }
         break;
       }

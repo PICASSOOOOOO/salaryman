@@ -132,11 +132,9 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
 }
 
 // ───────────────────────────── FOOD TAB ─────────────────────────────────────
-// PABLO FRESH food & drink. Florin-only (the player's in-game ƒ, which is the
-// salaryman save's `salary`). Buying restores stamina/energy (and the other
-// survival stats the shared catalog defines) and persists the change to the
-// player's cloud save so it carries straight into the world. Source of truth is
-// lib/vending-food.ts — the SAME list the in-world vending overlay uses.
+// PABLO FRESH food & drink. Prices come from the shared display catalog, while
+// the server resolves the authoritative price and commits wallet debit + effect
+// in one transaction.
 
 interface SalarymanSave {
   slotIndex: number;
@@ -150,17 +148,12 @@ interface SalarymanSave {
   lastSavedAt?: string;
 }
 
-const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 const num = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
-
-/** Florins the player can spend = the save blob's salary (top-level column is a mirror). */
-function saveSalary(s: SalarymanSave): number {
-  return num(s.data.salary, num(s.salary, 0));
-}
 
 function FoodTab() {
   const { isAuthenticated } = useAuth();
   const [save, setSave] = useState<SalarymanSave | null>(null);
+  const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -174,9 +167,12 @@ function FoodTab() {
     if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await apiFetch("/api/salaryman/saves", { credentials: "include" });
-      if (res.ok) {
-        const j = await res.json();
+      const [saveRes, bankRes] = await Promise.all([
+        apiFetch("/api/salaryman/saves", { credentials: "include" }),
+        apiFetch("/api/cosmetics/balance", { credentials: "include" }),
+      ]);
+      if (saveRes.ok) {
+        const j = await saveRes.json();
         const saves: SalarymanSave[] = j.saves ?? [];
         if (saves.length > 0) {
           const sorted = [...saves].sort(
@@ -185,62 +181,41 @@ function FoodTab() {
           setSave(sorted[0]);
         }
       }
+      if (bankRes.ok) {
+        const bank = await bankRes.json();
+        setBalance(num(bank.spendable, num(bank.balance)));
+      }
     } catch { /* surfaced via toast on action */ }
     setLoading(false);
   }, [isAuthenticated]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const balance = save ? saveSalary(save) : 0;
-
   const handleBuy = async (item: VendFoodItem) => {
     if (!isAuthenticated) { showToast("LOGIN REQUIRED", false); return; }
     if (!save) { showToast("NO CHARACTER — CREATE ONE FIRST", false); return; }
-    if (saveSalary(save) < item.price) { showToast("INSUFFICIENT FIAT", false); return; }
+    if (balance < item.price) { showToast("INSUFFICIENT FIAT", false); return; }
 
     setBusyId(item.id);
 
-    // Apply the shared effect onto a copy of the FULL save blob so no other
-    // fields are clobbered (the PUT route still re-merges story/office/etc.).
     const fx = parseFoodEffect(item.effect);
-    const data = { ...save.data };
-    const maxHp = num(data.maxHp, 100);
-    data.hunger = clamp(num(data.hunger, 100) + fx.hunger, 0, 100);
-    data.thirst = clamp(num(data.thirst, 100) + fx.thirst, 0, 100);
-    data.energy = clamp(num(data.energy, 100) + fx.energy, 0, 100);
-    let hp = num(data.hp, maxHp) + fx.hp;
-    if (fx.hpRisk && Math.random() < 0.1) hp -= 5;
-    data.hp = clamp(hp, 0, maxHp);
-    if (fx.curePoison) { data.poisoned = false; data.poisonTick = 0; }
-    if (fx.power) data.powerLevel = clamp(num(data.powerLevel) + fx.power, 0, 100);
-    const newSalary = saveSalary(save) - item.price;
-    data.salary = newSalary;
-
-    const updated: SalarymanSave = { ...save, salary: newSalary, data };
-
     try {
-      const res = await apiFetch(`/api/salaryman/saves/${save.slotIndex}`, {
-        method: "PUT",
+      const res = await apiFetch("/api/vending/food/purchase", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          charName: save.charName,
-          charClass: save.charClass,
-          level: save.level,
-          salary: newSalary,
-          lastZone: save.lastZone,
-          playtime: save.playtime,
-          data,
-        }),
+        body: JSON.stringify({ itemId: item.id, slotIndex: save.slotIndex, requestId: crypto.randomUUID() }),
       });
+      const j = await res.json().catch(() => ({}));
       if (res.ok) {
-        setSave(updated);
+        if (j.data && typeof j.data === "object") setSave((prior) => prior ? { ...prior, data: j.data } : prior);
+        if (typeof j.spendable === "number") setBalance(j.spendable);
+        else if (typeof j.newBalance === "number") setBalance(j.newBalance);
         const energyGain = fx.energy > 0 ? ` · STAMINA +${fx.energy}` : "";
         showToast(`${item.name} CONSUMED${energyGain}`);
       } else if (res.status === 401) {
         showToast("LOGIN REQUIRED", false);
       } else {
-        const j = await res.json().catch(() => ({}));
         showToast(j.error ?? "TRANSACTION FAILED", false);
       }
     } catch {
@@ -413,7 +388,8 @@ function CosmeticsTab() {
       });
       const j = await res.json().catch(() => ({}));
       if (res.ok) {
-        if (typeof j.newBalance === "number") setBalance(j.newBalance);
+        if (typeof j.spendable === "number") setBalance(j.spendable);
+        else if (typeof j.newBalance === "number") setBalance(j.newBalance);
         setInventory(prev => [...prev, { cosmeticId: item.id, equipped: false }]);
         showToast(`ACQUIRED · ${item.name.toUpperCase()}`);
       } else if (res.status === 402) {

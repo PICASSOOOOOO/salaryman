@@ -116,30 +116,19 @@ describe("POST /items/buy", () => {
     expect(await ownedItemIds()).toContain(BAT.id);
   });
 
-  it("concurrent-race: charges once and refunds the duplicate spend", async () => {
+  it("pre-owned item returns without entering the atomic spend", async () => {
     await seedFiat(20000);
-    // Simulate a rival purchase that wins the grant race: the spend succeeds
-    // (debiting the bank), but by the time our insert runs the item already
-    // exists, so the route's onConflictDoNothing no-ops and it must refund.
-    const spendMock = spendEarnedFiat as ReturnType<typeof vi.fn>;
-    const realSpend = (await vi.importActual<typeof import("../lib/pablo-tax")>("../lib/pablo-tax")).spendEarnedFiat;
-    spendMock.mockImplementationOnce(async (opts: Parameters<typeof realSpend>[0]) => {
-      const result = await realSpend(opts); // genuine debit
-      await db.insert(playerInventoryTable).values({
-        userId: ITEMS_USER.id,
-        slotIndex: 0,
-        itemId: BAT.id,
-        acquiredVia: "fiat",
-      }).onConflictDoNothing();
-      return result;
+    await db.insert(playerInventoryTable).values({
+      userId: ITEMS_USER.id,
+      slotIndex: 0,
+      itemId: BAT.id,
+      acquiredVia: "fiat",
     });
 
     const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
     expect(res.status).toBe(200);
     expect(res.body.alreadyOwned).toBe(true);
-    // Debited once during the spend, then refunded the duplicate → net zero.
     expect(await fiatBalance()).toBe(20000);
-    // Exactly one copy owned, no double-grant.
     expect((await ownedItemIds()).filter((i) => i === BAT.id)).toHaveLength(1);
   });
 

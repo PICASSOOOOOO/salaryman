@@ -1,8 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, bankAccountsTable, bankTransactionsTable, usersTable, type BankAccount } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { isOwnerEmail, isActiveDeveloperOrgMember, isPicassoOrgMemberEmail, PICASSO_START_FIAT } from "../lib/plan";
-import { FIAT_PER_USD } from "../lib/pablo-tax";
+import { db, bankAccountsTable, bankTransactionsTable, type BankAccount } from "@workspace/db";
+import { eq, and, desc, sql, inArray, asc } from "drizzle-orm";
+import { ensureFiatAccounts, getSpendableFiat, STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
+export { STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
 
 const router: IRouter = Router();
 
@@ -22,59 +22,26 @@ function emailOf(req: Request): string | null {
   return (req.user as { email?: string | null } | undefined)?.email ?? null;
 }
 
-// Staff (Picasso org / owner / dev-org) get a near-bottomless spendable
-// checking balance so internal staff never burn real cash; normal new players
-// get the lean starter grant. The seed is never quarantined (player_ledger
-// quarantineFiat defaults to 0 and is never written), so it's fully spendable.
-const STAFF_SEED_DEFS = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: PICASSO_START_FIAT, apyBps: 0 },
-  { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 48_000, apyBps: 425 },
-  { kind: "vault",    label: "GOLD VAULT",          balance: 80_000, apyBps: 0 },
-] as const;
-
 // TESTING infusion: new players start with a 200,000ƒ spendable grant so they
 // can afford office/apartment layouts in the pledge store while we test the
 // economy. (The hourly unemployment stipend is separate and stays at 500ƒ/hr.)
 // Lower this back toward the lean starter grant once testing wraps.
 // NOTE: update this constant and nothing else — onboard-housing/quote reads it
 // directly so the debt callout stays in sync automatically.
-export const STARTER_CHECKING_BALANCE = 200_000;
-
-const STARTER_SEED_DEFS = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: STARTER_CHECKING_BALANCE, apyBps: 0 },
-  { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 0,   apyBps: 425 },
-  { kind: "vault",    label: "GOLD VAULT",          balance: 0,   apyBps: 0 },
-] as const;
-
-async function isPicassoOrgUser(userId: string): Promise<boolean> {
-  const [u] = await db
-    .select({ email: usersTable.email })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId));
-  if (isOwnerEmail(u?.email)) return true;
-  return isActiveDeveloperOrgMember(userId);
-}
-
 // First-touch bank seed. Idempotent: only seeds when the player has no
 // accounts yet. Picasso/owner/dev-org staff (detected by the passed-in email
 // allow-list OR a DB-backed owner/dev-org lookup) get the staff seed; everyone
 // else gets the lean starter grant.
 async function ensureSeeded(userId: string, email?: string | null): Promise<BankAccount[]> {
-  const existing = await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
-  if (existing.length > 0) return existing;
-  const picasso = isPicassoOrgMemberEmail(email) || (await isPicassoOrgUser(userId));
-  const defs = picasso ? STAFF_SEED_DEFS : STARTER_SEED_DEFS;
-  const inserted = await db
-    .insert(bankAccountsTable)
-    .values(defs.map((s) => ({ userId, kind: s.kind, label: s.label, balance: s.balance, apyBps: s.apyBps })))
-    .returning();
-  return inserted;
+  void email;
+  return db.transaction((tx) => ensureFiatAccounts(tx, userId));
 }
 
 router.get("/economy/bank/accounts", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const accounts = await ensureSeeded(uid(req), emailOf(req));
-  res.json({ accounts });
+  const wallet = await getSpendableFiat(uid(req));
+  res.json({ accounts, spendable: wallet.spendable });
 });
 
 router.get("/economy/bank/transactions", async (req, res) => {
@@ -104,30 +71,40 @@ router.post("/economy/bank/transfer", async (req, res) => {
     return;
   }
 
-  const accounts = await ensureSeeded(userId, emailOf(req));
-  const from = accounts.find((a) => a.id === Number(fromId));
-  const to = accounts.find((a) => a.id === Number(toId));
-  if (!from || !to) {
+  await ensureSeeded(userId, emailOf(req));
+  const result = await db.transaction(async (tx) => {
+    const accounts = await tx
+      .select()
+      .from(bankAccountsTable)
+      .where(and(
+        eq(bankAccountsTable.userId, userId),
+        inArray(bankAccountsTable.id, [Number(fromId), Number(toId)]),
+      ))
+      .orderBy(asc(bankAccountsTable.id))
+      .for("update");
+    const from = accounts.find((account) => account.id === Number(fromId));
+    const to = accounts.find((account) => account.id === Number(toId));
+    if (!from || !to) return { type: "missing" as const };
+    if (from.balance < amt) return { type: "insufficient" as const };
+    const newFrom = from.balance - amt;
+    const newTo = to.balance + amt;
+    const note = String(memo ?? "TRANSFER").slice(0, 200);
+    await tx.update(bankAccountsTable).set({ balance: newFrom, updatedAt: new Date() }).where(eq(bankAccountsTable.id, from.id));
+    await tx.update(bankAccountsTable).set({ balance: newTo, updatedAt: new Date() }).where(eq(bankAccountsTable.id, to.id));
+    await tx.insert(bankTransactionsTable).values([
+      { userId, accountId: from.id, counterpartyAccountId: to.id, kind: "transfer", description: `→ ${to.label}: ${note}`, amount: -amt, balanceAfter: newFrom },
+      { userId, accountId: to.id, counterpartyAccountId: from.id, kind: "transfer", description: `← ${from.label}: ${note}`, amount: amt, balanceAfter: newTo },
+    ]);
+    return { type: "ok" as const };
+  });
+  if (result.type === "missing") {
     res.status(404).json({ error: "Account not found" });
     return;
   }
-  if (from.balance < amt) {
+  if (result.type === "insufficient") {
     res.status(400).json({ error: "Insufficient funds" });
     return;
   }
-
-  const newFrom = from.balance - amt;
-  const newTo = to.balance + amt;
-  const note = String(memo ?? "TRANSFER").slice(0, 200);
-
-  await db.transaction(async (tx) => {
-    await tx.update(bankAccountsTable).set({ balance: newFrom, updatedAt: new Date() }).where(eq(bankAccountsTable.id, from.id));
-    await tx.update(bankAccountsTable).set({ balance: newTo,   updatedAt: new Date() }).where(eq(bankAccountsTable.id, to.id));
-    await tx.insert(bankTransactionsTable).values([
-      { userId, accountId: from.id, counterpartyAccountId: to.id, kind: "transfer", description: `→ ${to.label}: ${note}`, amount: -amt, balanceAfter: newFrom },
-      { userId, accountId: to.id,   counterpartyAccountId: from.id, kind: "transfer", description: `← ${from.label}: ${note}`, amount:  amt, balanceAfter: newTo },
-    ]);
-  });
 
   const updated = await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
   res.json({ ok: true, accounts: updated });
@@ -135,40 +112,9 @@ router.post("/economy/bank/transfer", async (req, res) => {
 
 router.post("/economy/bank/deposit", async (req, res) => {
   if (!requireAuth(req, res)) return;
-  const userId = uid(req);
-  const { accountId, amount, memo, kind } = req.body ?? {};
-  const amt = Math.round(Number(amount));
-  if (!accountId || !Number.isFinite(amt) || amt === 0) {
-    res.status(400).json({ error: "accountId and non-zero amount required" });
-    return;
-  }
-  const [account] = await db
-    .select()
-    .from(bankAccountsTable)
-    .where(and(eq(bankAccountsTable.id, Number(accountId)), eq(bankAccountsTable.userId, userId)));
-  if (!account) {
-    res.status(404).json({ error: "Account not found" });
-    return;
-  }
-  const newBal = account.balance + amt;
-  if (newBal < 0) {
-    res.status(400).json({ error: "Insufficient funds" });
-    return;
-  }
-
-  await db.transaction(async (tx) => {
-    await tx.update(bankAccountsTable).set({ balance: newBal, updatedAt: new Date() }).where(eq(bankAccountsTable.id, account.id));
-    await tx.insert(bankTransactionsTable).values({
-      userId,
-      accountId: account.id,
-      kind: String(kind ?? (amt > 0 ? "deposit" : "withdraw")).slice(0, 24),
-      description: String(memo ?? "").slice(0, 200),
-      amount: amt,
-      balanceAfter: newBal,
-    });
+  res.status(410).json({
+    error: "Direct balance adjustments are retired. Use salary, earnings, transfers, or confirmed FIAT top-ups.",
   });
-
-  res.json({ ok: true, balance: newBal });
 });
 
 // Gold → real-money cash-out. Converts client-authoritative GOLD into the
@@ -178,50 +124,11 @@ router.post("/economy/bank/deposit", async (req, res) => {
 // a separate step; this just moves value into the withdrawable pool.
 // Cash-out is GOLD-only — starter & unemployment grants are FIAT and never
 // become gold, so they can never be cashed out to real money.
-const FIAT_PER_GOLD = 100_000;
-const GOLD_CASHOUT_FEE_RATE = 0.2;
-
 router.post("/economy/bank/cashout", async (req, res) => {
   if (!requireAuth(req, res)) return;
-  const userId = uid(req);
-  const goldOz = Math.round(Number(req.body?.goldOz));
-  if (!Number.isFinite(goldOz) || goldOz <= 0) {
-    res.status(400).json({ error: "goldOz must be a positive number" });
-    return;
-  }
-  const grossFiat = goldOz * FIAT_PER_GOLD;
-  const fee = Math.ceil(grossFiat * GOLD_CASHOUT_FEE_RATE);
-  const netFiat = grossFiat - fee;
-  const usd = Number((netFiat / FIAT_PER_USD).toFixed(2));
-
-  const accounts = await ensureSeeded(userId, emailOf(req));
-  const checking = accounts.find((a) => a.kind === "checking") ?? accounts[0];
-  if (!checking) {
-    res.status(500).json({ error: "no checking account" });
-    return;
-  }
-
-  // Atomic credit (balance = balance + netFiat) inside a tx so concurrent
-  // cash-outs can't lose updates via stale read-then-write.
-  const newBal = await db.transaction(async (tx) => {
-    const [updated] = await tx
-      .update(bankAccountsTable)
-      .set({ balance: sql`${bankAccountsTable.balance} + ${netFiat}`, updatedAt: new Date() })
-      .where(eq(bankAccountsTable.id, checking.id))
-      .returning({ balance: bankAccountsTable.balance });
-    const balAfter = updated?.balance ?? checking.balance + netFiat;
-    await tx.insert(bankTransactionsTable).values({
-      userId,
-      accountId: checking.id,
-      kind: "gold_cashout",
-      description: `GOLD CASH-OUT: ${goldOz}oz GOLD − ${(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% fee → real-money balance +$${usd.toFixed(2)} USD (ƒ${netFiat.toLocaleString()})`,
-      amount: netFiat,
-      balanceAfter: balAfter,
-    });
-    return balAfter;
+  res.status(409).json({
+    error: "Gold cash-out is unavailable until gold is held in the server ledger.",
   });
-
-  res.json({ ok: true, goldOz, fee, netFiat, usd, balance: newBal });
 });
 
 export default router;

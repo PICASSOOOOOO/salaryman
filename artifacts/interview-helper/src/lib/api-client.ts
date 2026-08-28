@@ -12,6 +12,23 @@ export function apiUrl(path: string): string {
   return `${BASE}api/${path}`;
 }
 
+export function stableRequestId(scope: string, key: string): string {
+  const storageKey = `salaryman_request:${scope}:${key}`;
+  const existing = sessionStorage.getItem(storageKey);
+  if (existing) return existing;
+  const created = crypto.randomUUID();
+  sessionStorage.setItem(storageKey, created);
+  return created;
+}
+
+export function clearStableRequestIds(scope: string): void {
+  const prefix = `salaryman_request:${scope}:`;
+  for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith(prefix)) sessionStorage.removeItem(key);
+  }
+}
+
 // Window event dispatched after a successful money-affecting request so any
 // surface that shows the player's ƒ balance (e.g. the world HUD CurrencyTicker)
 // can refresh immediately instead of waiting for its polling timer.
@@ -29,7 +46,7 @@ export const FIAT_CHANGED_EVENT = 'salaryman:fiat-changed';
 // stale until the next poll. The src/lib/api-client.fiat-affecting.test.ts guard
 // enumerates the real spend endpoints and fails if one isn't covered.
 export const FIAT_AFFECTING =
-  /(economy|bank|transfer|deposit|withdraw|salary|credit\/plan|armory|gear|construction\/.+\/work|real-estate|business-market|marketplace|pledge\/(buy|checkout|purchase|vend)|items\/buy|cosmetics\/buy|subway\/travel|pablo\/command|wallet|payroll)/i;
+  /(economy|bank|transfer|deposit|withdraw|salary|credit\/plan|armory|gear|construction\/.+\/work|real-estate|business-market|marketplace|pledge\/(buy|checkout|purchase|vend)|items\/buy|cosmetics\/buy|vending\/food\/purchase|subway\/travel|pablo\/command|wallet|payroll)/i;
 
 // Paths for the AI features (Pablo chat, image generation, character portraits)
 // whose cost is billed through the Pablo-Tax meter. Unlike the FIAT_AFFECTING

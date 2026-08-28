@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, FIAT_CHANGED_EVENT, stableRequestId } from '@/lib/api-client';
 import { setImmersiveViewActive } from '@/lib/commsAlerts';
 import { toast } from '@/hooks/use-toast';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
@@ -5808,6 +5808,24 @@ export default function WorldPlay() {
   // Live USD market rates for crypto legs; fetched when the bank opens.
   const [bankRates, setBankRates] = useState<{ btcUsd: number; ethUsd: number }>({ btcUsd: 0, ethUsd: 0 });
   const [topupBusy, setTopupBusy] = useState(false);
+  const [serverFiat, setServerFiat] = useState<number | null>(null);
+  const refreshServerFiat = useCallback(async () => {
+    try {
+      const response = await apiFetch('/api/economy/bank/accounts', { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json();
+      const fallback = Array.isArray(data.accounts)
+        ? data.accounts.reduce((sum: number, account: { balance?: number }) => sum + (Number(account.balance) || 0), 0)
+        : 0;
+      setServerFiat(typeof data.spendable === 'number' ? data.spendable : fallback);
+    } catch { /* leave prior balance visible */ }
+  }, []);
+  useEffect(() => {
+    if (!showBank) return;
+    void refreshServerFiat();
+    window.addEventListener(FIAT_CHANGED_EVENT, refreshServerFiat);
+    return () => window.removeEventListener(FIAT_CHANGED_EVENT, refreshServerFiat);
+  }, [showBank, refreshServerFiat]);
 
   // ── Credit score + Banco Ombra debt payment plan ───────────────────────
   // The non-CF path out of debt: restructure server-side `debt` into fixed
@@ -25058,7 +25076,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const cat = vendMode === 'machine'
           ? (VEND_CATALOG.find(c => c.id === 'food') ?? VEND_CATALOG[0])
           : (VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0]);
-        const doVendBuy = (item: VendItem) => {
+        const doVendBuy = async (item: VendItem) => {
           const goldReq = (item as any).goldPrice as number | undefined;
           if (goldReq && goldReq > 0) {
             if (g.goldBalance < goldReq) { sfxError(); setNarr(`> GOLD REQUIRED — ${item.name} costs ${goldReq} GOLD BARS. You have ${g.goldBalance}. Visit the GOLD EXCHANGE.`); return; }
@@ -25067,6 +25085,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
             if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
             setNarr(`> VendKing — ${item.name} acquired for ${goldReq} GOLD BARS.${REAL_ESTATE_INCOME[item.id] ? ' Property registered.' : ''}`);
+            return;
+          }
+          if (vendMode === 'machine') {
+            try {
+              const slotIndex = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
+              const response = await apiFetch('/api/vending/food/purchase', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemId: item.id, slotIndex, requestId: crypto.randomUUID() }),
+              });
+              const result = await response.json().catch(() => ({}));
+              if (!response.ok) {
+                sfxError();
+                setNarr(response.status === 402
+                  ? `> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`
+                  : `> VENDKING — ${result.error ?? 'Transaction failed.'}`);
+                return;
+              }
+              const data = result.data && typeof result.data === 'object' ? result.data : {};
+              if (typeof data.hunger === 'number') { g.hunger = data.hunger; setHunger(g.hunger); }
+              if (typeof data.thirst === 'number') { g.thirst = data.thirst; setThirst(g.thirst); }
+              if (typeof data.energy === 'number') { g.energy = data.energy; setEnergy(g.energy); }
+              if (typeof data.hp === 'number') { g.hp = data.hp; setHp(Math.floor(g.hp)); }
+              if (typeof data.poisoned === 'boolean') { g.poisoned = data.poisoned; setPoisoned(g.poisoned); }
+              if (typeof data.powerLevel === 'number') g.powerLevel = data.powerLevel;
+              sfxCoin();
+              setNarr(`> VendKing — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
+            } catch {
+              sfxError();
+              setNarr('> VENDKING — Network error. No FIAT was charged.');
+            }
             return;
           }
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
@@ -26059,46 +26109,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── GOLD SAVINGS — buy/sell gold (ƒ store of value) + real-money cash-out ──
         const goldRate = FIAT_PER_GOLD;
         const doBankBuyGold = () => {
-          const amt = parseInt(bankGoldBuyAmt) || 0;
-          if (amt <= 0) { sfxError(); return; }
-          const basePrice = amt * goldRate;
-          const spreadFee = Math.ceil(basePrice * GOLD_EXCHANGE_BUY_SPREAD);
-          const totalCost = basePrice + spreadFee;
-          if (g.salary < totalCost) { sfxError(); setNarr('> BANCO OMBRA — Insufficient checking FIAT for gold purchase.'); return; }
-          g.salary -= totalCost; g.goldBalance += amt; recordBizRevenue('gold_exchange', totalCost);
-          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          addBankTx(`GOLD BUY ${amt}oz`, -basePrice, g.salary, 'general');
-          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
-          setBankGoldBuyAmt('');
-          setNarr(`> ATM GOLD DESK — Bought ${amt}oz GOLD for ƒ${totalCost.toLocaleString()}. Spread: ƒ${spreadFee.toLocaleString()}. Stored as savings.`);
+          sfxError();
+          setNarr('> GOLD TRADING PAUSED — GOLD is being moved to the secure server ledger.');
         };
         const doBankSellGold = () => {
-          const amt = parseInt(bankGoldSellAmt) || 0;
-          if (amt <= 0 || g.goldBalance < amt) { sfxError(); setNarr('> BANCO OMBRA — Insufficient GOLD.'); return; }
-          const baseGain = amt * goldRate;
-          const spreadFee = Math.ceil(baseGain * GOLD_EXCHANGE_SELL_SPREAD);
-          const netGain = Math.max(1, baseGain - spreadFee);
-          g.goldBalance -= amt; g.salary += netGain;
-          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          addBankTx(`GOLD SELL ${amt}oz`, netGain, g.salary, 'general');
-          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
-          setBankGoldSellAmt('');
-          setNarr(`> ATM GOLD DESK — Sold ${amt}oz GOLD for ƒ${netGain.toLocaleString()}.`);
+          sfxError();
+          setNarr('> GOLD TRADING PAUSED — GOLD is being moved to the secure server ledger.');
         };
         const doCashOutGold = async () => {
-          const amt = parseInt(bankCashoutAmt) || 0;
-          if (amt <= 0 || g.goldBalance < amt) { sfxError(); setNarr('> BANCO OMBRA — Insufficient GOLD to cash out.'); return; }
-          const grossFiat = amt * goldRate;
-          const fee = Math.ceil(grossFiat * GOLD_CASHOUT_FEE_RATE);
-          const usd = (grossFiat - fee) / FIAT_PER_USD;
-          try {
-            const r = await apiFetch('/api/economy/bank/cashout', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goldOz: amt }) });
-            if (!r.ok) { sfxError(); const e = await r.json().catch(() => ({})); setNarr(`> CASH-OUT DENIED — ${e.error ?? 'unable to cash out'}.`); return; }
-            g.goldBalance -= amt; setGoldBalance(g.goldBalance); sfxCoin();
-            addBankTx(`GOLD CASH-OUT ${amt}oz → REAL-MONEY $${usd.toFixed(2)} USD (−${(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% fee)`, 0, g.salary, 'general');
-            setBankCashoutAmt('');
-            setNarr(`> CASH-OUT COMPLETE — ${amt}oz GOLD → real-money balance +$${usd.toFixed(2)} USD (after ${(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% fee). View & withdraw it from your WALLET. Real payouts are processed via PABLO CORP payroll (Gusto).`);
-          } catch { sfxError(); setNarr('> CASH-OUT FAILED — network error. Try again.'); }
+          sfxError();
+          setNarr('> CASH-OUT PAUSED — GOLD must be verified on the server before it can become FIAT.');
         };
 
         // ── EXCHANGE COUNTER — generic in-game swaps (FIAT/GOLD/BTC/ETH) ──────────
@@ -26117,6 +26137,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const exchInput = parseFloat(exchAmt) || 0;
         const exchQuote = exchangeQuote(exchFrom, exchTo, exchInput, exchRates, EXCHANGE_FEE_RATE);
         const doExchangeSwap = () => {
+          if (exchFrom === 'FIAT' || exchTo === 'FIAT') {
+            sfxError();
+            setNarr('> FIAT EXCHANGE PAUSED — server-bank FIAT cannot be swapped against client-held assets.');
+            return;
+          }
           if (exchFrom === exchTo) { sfxError(); setNarr('> EXCHANGE — Pick two different currencies.'); return; }
           if (!exchQuote.valid) { sfxError(); setNarr('> EXCHANGE — Live rate unavailable for that pair. Try again shortly.'); return; }
           const have = exchBalanceOf(exchFrom);
@@ -26126,9 +26151,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (recv <= 0) { sfxError(); setNarr('> EXCHANGE — Amount too small to convert.'); return; }
           exchSetBalance(exchFrom, roundToCurrency(exchFrom, have - spend));
           exchSetBalance(exchTo, roundToCurrency(exchTo, exchBalanceOf(exchTo) + recv));
-          // FIAT legs flow through checking, so log them for the bank statement.
-          if (exchFrom === 'FIAT') addBankTx(`EXCHANGE ${formatCurrencyAmount('FIAT', spend)} → ${formatCurrencyAmount(exchTo, recv)}`, -spend, g.salary, 'general');
-          if (exchTo === 'FIAT') addBankTx(`EXCHANGE ${formatCurrencyAmount(exchFrom, spend)} → ${formatCurrencyAmount('FIAT', recv)}`, recv, g.salary, 'general');
           recordBizRevenue('gold_exchange', Math.round(exchQuote.feeToAmount * unitValueInFiat(exchTo, exchRates)));
           setExchAmt(''); sfxCoin();
           setNarr(`> EXCHANGE — Swapped ${formatCurrencyAmount(exchFrom, spend)} → ${formatCurrencyAmount(exchTo, recv)} (fee ${(EXCHANGE_FEE_RATE * 100).toFixed(0)}%).`);
@@ -26140,7 +26162,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (topupBusy) return;
           setTopupBusy(true);
           try {
-            const r = await apiFetch('/api/stripe/create-topup-session', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packId }) });
+            const r = await apiFetch('/api/stripe/create-topup-session', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packId, requestId: stableRequestId('fiat-topup', packId) }) });
             const j = await r.json().catch(() => ({}));
             if (!r.ok || !j?.url) { sfxError(); setNarr(`> TOP-UP — ${j?.error ?? 'unable to start checkout'}.`); setTopupBusy(false); return; }
             window.location.href = j.url as string;
@@ -26299,10 +26321,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                 {bankTab === 'accounts' && (<>
                   <div style={{ fontSize: '.45rem', color: 'rgba(255,200,50,.4)', letterSpacing: '.15em', marginBottom: '.15rem', textAlign: 'center' }}>FIAT — IN-GAME CURRENCY</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING (FIAT)', val: `ƒ${salary.toLocaleString()}`, color: '#fbbf24', sub: empLabel.startsWith('OWNER') ? `BUSINESS OWNER — ${(gs.current.businesses ?? []).length} REGISTERED` : empLabel !== 'UNEMPLOYED' ? `EMPLOYED: ${empLabel}` : 'UNEMPLOYED — GET A JOB OR REGISTER A BUSINESS' },
-                      { label: 'SAVINGS (FIAT)', val: `ƒ${savings.toLocaleString()}`, color: '#fbbf24', sub: 'APY: 0.8% / CYCLE' },
+                      { label: 'SPENDABLE FIAT — SERVER BANK', val: serverFiat == null ? '…' : `ƒ${serverFiat.toLocaleString()}`, color: '#fbbf24', sub: 'USED BY VENDKING, POWER, COSMETICS, SALARY, AND TOP-UPS' },
                     ].map(({ label, val, color, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(251,191,36,.25)', padding: '.55rem', background: 'rgba(251,191,36,.03)' }}>
                         <div style={{ fontSize: '.5rem', color: 'rgba(251,191,36,.4)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
@@ -26326,26 +26347,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     </div>
                   </div>
-                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
-                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                      <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
-                      <button onClick={doDeposit} style={actBtn(parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) <= salary)}>DEPOSIT ↓</button>
-                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>PABLO CORP TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
-                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)' }}>No tax (under ƒ5k)</span>}
-                    </div>
-                  </div>
-                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>WITHDRAW — SAVINGS → CHECKING</div>
-                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                      <input value={bankWithAmt} onChange={e => setBankWithAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
-                      <button onClick={doWithdraw} style={actBtn(parseInt(bankWithAmt) > 0 && parseInt(bankWithAmt) <= savings)}>WITHDRAW ↑</button>
-                      {parseInt(bankWithAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>ATM FEE: ƒ{Math.ceil((parseInt(bankWithAmt)||0) * ATM_WITHDRAW_FEE_RATE).toLocaleString()} ({(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}%)</span>}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.8 }}>
-                    Savings earn 0.8% APY per cycle (~3 min). PABLO CORP takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. All withdrawals incur a {(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}% ATM processing fee. BANCO OMBRA is not liable for seizures during martial law.
-                  </div>
+                  <button onClick={() => navigate('/game/bank')} style={{ ...VTB, padding: '.65rem', color: '#38bdf8', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.3)', cursor: 'pointer' }}>
+                    OPEN FULL BANCO OMBRA ACCOUNT ↗
+                  </button>
                 </>)}
 
                 {bankTab === 'loans' && (<>
@@ -27844,59 +27848,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const rate = FIAT_PER_GOLD;
         const frame = g.worldTime;
         const doBuyGold = (amt: number) => {
-          if (amt <= 0) return;
-          const basePrice = amt * rate;
-          const spreadFee = Math.ceil(basePrice * GOLD_EXCHANGE_BUY_SPREAD);
-          const totalCost = basePrice + spreadFee;
-          if (g.salary < totalCost) { sfxError(); setNarr('> GOLD EXCHANGE — Insufficient FIAT.'); return; }
-          g.salary -= totalCost; g.goldBalance += amt; recordBizRevenue('gold_exchange', totalCost);
-          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          addBankTx(`GOLD BUY ${amt}oz`, -basePrice, g.salary, 'general');
-          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
-          setNarr(`> GOLD EXCHANGE — Purchased ${amt}oz GOLD for ƒ${totalCost.toLocaleString()} FIAT. Spread: ƒ${spreadFee.toLocaleString()} (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%).`);
+          void amt;
+          sfxError();
+          setNarr('> FIAT ASSET TRADING PAUSED — this desk is moving to the secure server ledger.');
         };
         const doSellGold = (amt: number) => {
-          if (amt <= 0 || g.goldBalance < amt) { sfxError(); return; }
-          const baseGain = amt * rate;
-          const spreadFee = Math.ceil(baseGain * GOLD_EXCHANGE_SELL_SPREAD);
-          const netGain = Math.max(1, baseGain - spreadFee);
-          g.goldBalance -= amt; g.salary += netGain;
-          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          addBankTx(`GOLD SELL ${amt}oz`, netGain, g.salary, 'general');
-          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
-          setNarr(`> GOLD EXCHANGE — Sold ${amt}oz GOLD for ƒ${netGain.toLocaleString()} FIAT. Spread: ƒ${spreadFee.toLocaleString()} (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%).`);
+          void amt;
+          sfxError();
+          setNarr('> FIAT ASSET TRADING PAUSED — this desk is moving to the secure server ledger.');
         };
         const doBuyAsset = (asset: AssetDef) => {
-          const price = getAssetPrice(asset, frame);
-          if (g.salary < price) { sfxError(); setNarr(`> EXCHANGE — Insufficient FIAT. ${asset.label} costs ƒ${price.toLocaleString()}.`); return; }
-          g.salary -= price; g.assets[asset.id] = (g.assets[asset.id] ?? 0) + 1;
-          setSalary(g.salary); sfxCoin();
-          setNarr(`> EXCHANGE — Purchased 1x ${asset.label} for ƒ${price.toLocaleString()}. Holdings: ${g.assets[asset.id]}.`);
+          void asset;
+          sfxError();
+          setNarr('> FIAT ASSET TRADING PAUSED — this desk is moving to the secure server ledger.');
         };
         const doSellAsset = (asset: AssetDef) => {
-          if ((g.assets[asset.id] ?? 0) <= 0) { sfxError(); return; }
-          const price = getAssetPrice(asset, frame);
-          const gain = Math.floor(price * (1 - getTransactionTax(price)));
-          g.assets[asset.id] = (g.assets[asset.id] ?? 0) - 1;
-          if (g.assets[asset.id] <= 0) delete g.assets[asset.id];
-          g.salary += gain; setSalary(g.salary); sfxCoin();
-          setNarr(`> EXCHANGE — Sold 1x ${asset.label} for ƒ${gain.toLocaleString()}. Holdings: ${g.assets[asset.id] ?? 0}.`);
+          void asset;
+          sfxError();
+          setNarr('> FIAT ASSET TRADING PAUSED — this desk is moving to the secure server ledger.');
         };
         const doBuyStock = (stock: StockDef) => {
-          const price = getStockPrice(stock, frame);
-          if (g.salary < price) { sfxError(); setNarr(`> WORLD STOCK EXCHANGE — Insufficient FIAT. 1 share of ${stock.ticker} costs ƒ${price.toLocaleString()}.`); return; }
-          g.salary -= price; g.stocks[stock.ticker] = (g.stocks[stock.ticker] ?? 0) + 1;
-          setSalary(g.salary); sfxCoin();
-          setNarr(`> WORLD STOCK EXCHANGE — Bought 1x ${stock.ticker} @ ƒ${price.toLocaleString()}. Holdings: ${g.stocks[stock.ticker]} share${g.stocks[stock.ticker] !== 1 ? 's' : ''}.`);
+          void stock;
+          sfxError();
+          setNarr('> FIAT ASSET TRADING PAUSED — this desk is moving to the secure server ledger.');
         };
         const doSellStock = (stock: StockDef) => {
-          if ((g.stocks[stock.ticker] ?? 0) <= 0) { sfxError(); return; }
-          const price = getStockPrice(stock, frame);
-          const gain = Math.floor(price * (1 - getTransactionTax(price)));
-          g.stocks[stock.ticker] = (g.stocks[stock.ticker] ?? 0) - 1;
-          if (g.stocks[stock.ticker] <= 0) delete g.stocks[stock.ticker];
-          g.salary += gain; setSalary(g.salary); sfxCoin();
-          setNarr(`> WORLD STOCK EXCHANGE — Sold 1x ${stock.ticker} @ ƒ${gain.toLocaleString()}. Holdings: ${g.stocks[stock.ticker] ?? 0}.`);
+          void stock;
+          sfxError();
+          setNarr('> FIAT ASSET TRADING PAUSED — this desk is moving to the secure server ledger.');
         };
         type ExchangeTab = 'gold' | 'assets' | 'stocks';
         const tabBtn = (tab: ExchangeTab, label: string, col: string) => (
