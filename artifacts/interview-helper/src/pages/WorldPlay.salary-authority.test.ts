@@ -15,13 +15,13 @@ describe("WorldPlay salary authority", () => {
 
   it("gates dynamic purchases and quick-job state on successful settlement", () => {
     expect(source).toMatch(
-      /const paid = await performGameplayFiatAction\(`world_commodity_buy_[\s\S]{0,300}if \(!paid \|\| paid\.duplicate\) return;[\s\S]{0,200}cargo\[cid\]/,
+      /apiFetch\('\/api\/gameplay\/market\/execute'[\s\S]{0,1200}if \(!executionResponse\.ok \|\| !data\.ok \|\| !data\.cargo \|\| !data\.wallet\)[\s\S]{0,500}gs\.current\.cargo = \{ \.\.\.data\.cargo\.items \}/,
     );
     expect(source).toMatch(
-      /performGameplayFiatAction\(`quick_job_[\s\S]{0,300}\.then\(paid => \{[\s\S]{0,100}if \(!paid \|\| paid\.duplicate\) return;[\s\S]{0,200}jobCooldowns/,
+      /apiFetch\(`\/api\/gameplay\/jobs\/\$\{runId\}\/complete`[\s\S]{0,1000}if \(!response\.ok \|\| !data\.ok \|\| !data\.job[\s\S]{0,600}jobCooldowns/,
     );
     expect(source).not.toMatch(
-      /void performGameplayFiatAction\('(?:dog_adoption|cat_adoption|commodity_buy|commodity_sell)'/,
+      /performGameplayFiatAction\((?:'|`)(?:quick_job_|world_commodity_|commodity_buy|commodity_sell)/,
     );
   });
 
@@ -38,6 +38,17 @@ describe("WorldPlay salary authority", () => {
       expect(block).toMatch(/\.then\(paid => \{/);
       expect(block).toMatch(/if \(!paid \|\| paid\.duplicate\) return;/);
       expect(block, `${effect} must be inside the success callback`).toContain(effect);
+    }
+  });
+
+  it("reconciles successful debt-plan payments from the server wallet", () => {
+    for (const endpoint of ["/api/credit/plan/pay'", "/api/credit/plan/payoff'"]) {
+      const start = source.indexOf(endpoint);
+      expect(start, `${endpoint} call missing`).toBeGreaterThan(-1);
+      const block = source.slice(start, start + 1_500);
+      expect(block).toContain("reconcileAuthoritativeSalary(j.newBalance)");
+      expect(block).not.toContain("wallet: g.salary");
+      expect(block).not.toContain("Loan repayment must be made through your bank account.");
     }
   });
 });

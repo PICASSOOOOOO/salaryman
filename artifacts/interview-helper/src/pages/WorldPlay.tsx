@@ -5626,9 +5626,9 @@ export default function WorldPlay() {
   const [mapLayer,    setMapLayer]    = useState<'surface'|'power'|'net'|'under'|'aerial'>('surface');
   const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
   const [cargo,       setCargo]       = useState<Record<string,number>>(_ss?.cargo && typeof _ss.cargo === 'object' ? { ..._ss.cargo } : {});
-  const [cpTick,      setCpTick]      = useState(0);
   const commodityPrices = useRef<Record<string,CargoPrices>>(initCommodityPrices());
-  const [jobPanel,    setJobPanel]    = useState<{ bid: string; label: string; pay: number; seconds: number; progress: number } | null>(null);
+  const [marketCatalog, setMarketCatalog] = useState<{ location: 'city'|'waste'; prices: Record<string, CargoPrices>; capacity: number } | null>(null);
+  const [jobPanel,    setJobPanel]    = useState<{ bid: string; label: string; pay: number; seconds: number; progress: number; runId?: string; completesAt?: string } | null>(null);
   const jobTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Floor panel & living world
   const [floorPanel,  setFloorPanel]  = useState<FloorPanel | null>(null);
@@ -6734,6 +6734,118 @@ export default function WorldPlay() {
     }
   }, [reconcileAuthoritativeSalary]);
 
+  const completeQuickJob = useCallback(async (runId: string) => {
+    const idempotencyKey = stableRequestId('world-job-complete', runId);
+    try {
+      const response = await apiFetch(`/api/gameplay/jobs/${runId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idempotencyKey }),
+      });
+      const data = await response.json() as {
+        ok?: boolean; error?: string; duplicate?: boolean;
+        job?: { jobId: string; label: string; payFiat: number; cooldownUntil: string };
+        wallet?: { newBalance: number };
+      };
+      if (!response.ok || !data.ok || !data.job || typeof data.wallet?.newBalance !== 'number') {
+        if (data.error !== 'job_not_ready') {
+          sfxError();
+          setNarr(`> JOB FAILED — ${data.error ?? 'Could not settle job.'}`);
+        }
+        return;
+      }
+      reconcileAuthoritativeSalary(data.wallet.newBalance);
+      if (!data.duplicate) {
+        const g = gs.current;
+        const remainingMs = Math.max(0, new Date(data.job.cooldownUntil).getTime() - Date.now());
+        g.jobCooldowns[data.job.jobId] = Math.ceil(remainingMs / (1000 / 60));
+        g.employedAt = data.job.label;
+        g.employedSalary = data.job.payFiat;
+        setEmpLabel(data.job.label);
+        g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${data.job.payFiat}`, color: '#ffdd44', life: 70, maxLife: 70 });
+        sfxCoin();
+        setNarr(`> JOB COMPLETE — ${data.job.label}. +ƒ${data.job.payFiat}. You are now employed here.`);
+      }
+      setJobPanel(null);
+    } catch {
+      sfxError();
+      setNarr('> NETWORK ERROR — Job completion could not be confirmed.');
+    }
+  }, [reconcileAuthoritativeSalary]);
+
+  useEffect(() => {
+    const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
+    void Promise.all([
+      apiFetch(`/api/gameplay/jobs/status?slot=${slot}`),
+      apiFetch(`/api/gameplay/market/cargo?slot=${slot}`),
+    ]).then(async ([jobResponse, cargoResponse]) => {
+      if (jobResponse.ok) {
+        const data = await jobResponse.json() as {
+          activeJob?: { runId: string; jobId: string; label: string; payFiat: number; durationMs: number; startedAt: string; completesAt: string } | null;
+          wallet?: { balance: number };
+        };
+        if (typeof data.wallet?.balance === 'number') reconcileAuthoritativeSalary(data.wallet.balance);
+        if (data.activeJob) {
+          const elapsed = Math.max(0, (Date.now() - new Date(data.activeJob.startedAt).getTime()) / 1000);
+          setJobPanel({
+            bid: data.activeJob.jobId, label: data.activeJob.label, pay: data.activeJob.payFiat,
+            seconds: data.activeJob.durationMs / 1000, progress: Math.min(data.activeJob.durationMs / 1000, elapsed),
+            runId: data.activeJob.runId, completesAt: data.activeJob.completesAt,
+          });
+        }
+      }
+      if (cargoResponse.ok) {
+        const data = await cargoResponse.json() as { cargo?: { items: Record<string, number> }; wallet?: { balance: number } };
+        if (data.cargo?.items) {
+          gs.current.cargo = { ...data.cargo.items };
+          setCargo({ ...data.cargo.items });
+        }
+        if (typeof data.wallet?.balance === 'number') reconcileAuthoritativeSalary(data.wallet.balance);
+      }
+    }).catch(() => { /* world economy hydration retries on the next mount */ });
+  }, [reconcileAuthoritativeSalary]);
+
+  useEffect(() => {
+    if (!jobPanel?.runId || !jobPanel.completesAt) return;
+    const runId = jobPanel.runId;
+    const completesAt = new Date(jobPanel.completesAt).getTime();
+    const startedAt = completesAt - jobPanel.seconds * 1000;
+    const tick = () => {
+      const elapsed = Math.max(0, Math.min(jobPanel.seconds, (Date.now() - startedAt) / 1000));
+      setJobPanel((current) => current?.runId === runId ? { ...current, progress: elapsed } : current);
+      if (Date.now() >= completesAt) {
+        if (jobTimerRef.current) clearInterval(jobTimerRef.current);
+        jobTimerRef.current = null;
+        void completeQuickJob(runId);
+      }
+    };
+    tick();
+    if (Date.now() < completesAt) jobTimerRef.current = setInterval(tick, 250);
+    return () => {
+      if (jobTimerRef.current) clearInterval(jobTimerRef.current);
+      jobTimerRef.current = null;
+    };
+  }, [jobPanel?.runId, jobPanel?.completesAt, jobPanel?.seconds, completeQuickJob]);
+
+  useEffect(() => {
+    if (!showTrade) return;
+    setMarketCatalog(null);
+    void apiFetch('/api/gameplay/market/catalog').then(async response => {
+      const data = await response.json() as { ok?: boolean; error?: string; location?: 'city'|'waste'; prices?: Record<string, CargoPrices>; capacity?: number };
+      if (!response.ok || !data.ok || !data.location || !data.prices || typeof data.capacity !== 'number') {
+        sfxError();
+        setNarr(`> MARKET ACCESS DENIED — ${data.error ?? 'Move closer to an exchange.'}`);
+        setShowTrade(null);
+        return;
+      }
+      setMarketCatalog({ location: data.location, prices: data.prices, capacity: data.capacity });
+    }).catch(() => {
+      sfxError();
+      setNarr('> NETWORK ERROR — Market catalog unavailable.');
+      setShowTrade(null);
+    });
+  }, [showTrade]);
+
   const executeBuildingLogic = useCallback(async (bid: string) => {
     const g = gs.current;
     const isOwnerHome = bid === g.hamletBuildingId;
@@ -7749,6 +7861,11 @@ export default function WorldPlay() {
         g.peers.clear();
         (m.players as Peer[]).filter(p => p.id !== g.myId).forEach(p => g.peers.set(p.id, p));
         setOnline((m.players as Peer[]).filter(p => p.id !== g.myId));
+      } else if (m.type === 'position_correction' && Number.isFinite(m.x) && Number.isFinite(m.y)) {
+        g.px = m.x;
+        g.py = m.y;
+        g.moveTarget = null;
+        g.interiorMoveTarget = null;
       } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; if (m.paused !== undefined) p.paused = m.paused; p.interiorBid = m.interiorBid; } }
       else if (m.type === 'player_speaking') {
         if (m.speaking) g.speakingSet.add(m.id); else g.speakingSet.delete(m.id);
@@ -8604,26 +8721,6 @@ export default function WorldPlay() {
     micVolumeRef.current = micVolume;
     try { localStorage.setItem('sm_mic_vol', String(micVolume)); } catch {}
   }, [micVolume]);
-
-  // ── Commodity price drift (Star Citizen-style supply/demand oscillation) ─────
-  useEffect(() => {
-    const t = setInterval(() => {
-      const cp = commodityPrices.current;
-      for (const c of COMMODITIES) {
-        const drift = (v: number, base: number) => {
-          const swing = base * c.vol * (Math.random() * 0.4 - 0.2);
-          const meanRev = (base - v) * 0.12;
-          return Math.max(Math.round(base * 0.5), Math.round(v + swing + meanRev));
-        };
-        cp[c.id].cityBuy  = drift(cp[c.id].cityBuy,  c.cityBuy);
-        cp[c.id].citySell = drift(cp[c.id].citySell, c.citySell);
-        cp[c.id].wasteBuy = drift(cp[c.id].wasteBuy, c.wasteBuy);
-        cp[c.id].wasteSell= drift(cp[c.id].wasteSell,c.wasteSell);
-      }
-      setCpTick(n => n + 1);
-    }, 28000);
-    return () => clearInterval(t);
-  }, []);
 
   // ── Dialog advance ─────────────────────────────────────────────────────────
   // Auto-speak each Pablo-transmission line (Fallout-style voiced dialog).
@@ -25033,30 +25130,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ height: 6, background: 'rgba(56,189,248,.1)', marginBottom: '1rem', position: 'relative', border: '1px solid rgba(56,189,248,.2)' }}>
               <div style={{ height: '100%', background: '#38bdf8', width: `${(jobPanel.progress / jobPanel.seconds) * 100}%`, transition: 'width 0.25s' }} />
             </div>
-            {jobPanel.progress < jobPanel.seconds ? (
+            {!jobPanel.runId ? (
               <div style={{ display: 'flex', gap: '.75rem' }}>
                 <button onClick={() => {
-                  if (jobTimerRef.current) return;
-                  const startTime = Date.now();
-                  jobTimerRef.current = setInterval(() => {
-                    const elapsed = (Date.now() - startTime) / 1000;
-                    if (elapsed >= jobPanel.seconds) {
-                      clearInterval(jobTimerRef.current!); jobTimerRef.current = null;
-                      const g = gs.current;
-                       void performGameplayFiatAction(`quick_job_${jobPanel.bid}`, `${gameplayFiatSession.current}:job:${jobPanel.bid}:${++gameplayFiatInteraction.current}`).then(paid => {
-                         if (!paid || paid.duplicate) return;
-                         g.jobCooldowns[jobPanel.bid] = QUICK_JOBS[jobPanel.bid]?.cooldownFrames ?? 900;
-                         g.employedAt = jobPanel.label; g.employedSalary = jobPanel.pay;
-                         setEmpLabel(jobPanel.label);
-                         g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
-                         sfxCoin();
-                         setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. You are now employed here.`);
-                         setJobPanel(null);
-                       });
-                    } else {
-                      setJobPanel(prev => prev ? { ...prev, progress: elapsed } : null);
+                  const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
+                  const idempotencyKey = stableRequestId('world-job-start', `${slot}:${jobPanel.bid}:${gameplayFiatSession.current}:${++gameplayFiatInteraction.current}`);
+                  void apiFetch('/api/gameplay/jobs/start', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ slot, jobId: jobPanel.bid, idempotencyKey }),
+                  }).then(async response => {
+                    const data = await response.json() as {
+                      ok?: boolean; error?: string;
+                      job?: { runId: string; jobId: string; label: string; payFiat: number; durationMs: number; completesAt: string };
+                    };
+                    if (!response.ok || !data.ok || !data.job) {
+                      sfxError(); setNarr(`> JOB UNAVAILABLE — ${data.error ?? 'Could not start job.'}`); return;
                     }
-                  }, 250);
+                    setJobPanel({
+                      bid: data.job.jobId, label: data.job.label, pay: data.job.payFiat,
+                      seconds: data.job.durationMs / 1000, progress: 0,
+                      runId: data.job.runId, completesAt: data.job.completesAt,
+                    });
+                  }).catch(() => { sfxError(); setNarr('> NETWORK ERROR — Job could not be started.'); });
                 }} style={{ flex: 1, padding: '.6rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '1.2rem', letterSpacing: '.1em' }}>
                   START JOB
                 </button>
@@ -25066,7 +25161,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </button>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', fontSize: '.6rem', color: '#ffdd44', letterSpacing: '.1em' }}>JOB COMPLETE</div>
+              <div style={{ textAlign: 'center', fontSize: '.6rem', color: '#ffdd44', letterSpacing: '.1em' }}>JOB IN PROGRESS — SERVER TIMING</div>
             )}
           </div>
         </div>
@@ -25341,32 +25436,56 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── COMMODITY TRADE TERMINAL ──────────────────────────────────────── */}
       {showTrade && (() => {
-        const isCity = showTrade === 'city';
-        const cp = commodityPrices.current;
+        const isCity = marketCatalog?.location === 'city';
+        const cp = marketCatalog?.prices ?? commodityPrices.current;
+        const maxCargo = marketCatalog?.capacity ?? MAX_CARGO;
+        const marketReady = marketCatalog !== null;
         const totalCargo = Object.values(gs.current.cargo).reduce((a, b) => a + b, 0);
-        const loc = isCity ? 'MINX TRADE EXCHANGE' : 'BLACK EXCHANGE — WASTELAND';
-        const doBuy = async (cid: string) => {
+        const loc = marketReady ? (isCity ? 'MINX TRADE EXCHANGE' : 'BLACK EXCHANGE — WASTELAND') : 'LINKING MARKET UPLINK';
+        const executeTrade = async (cid: string, side: 'buy' | 'sell') => {
           const c = COMMODITIES.find(x => x.id === cid)!;
-          const price = isCity ? cp[cid].cityBuy : cp[cid].wasteBuy;
-          if (totalCargo >= MAX_CARGO) { sfxError(); setNarr(`> HOLD FULL — Max ${MAX_CARGO} units. Sell something first.`); return; }
-          if (gs.current.salary < price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${price.toLocaleString()}. Have ƒ${gs.current.salary.toLocaleString()}.`); return; }
-          const paid = await performGameplayFiatAction(`world_commodity_buy_${isCity ? 'city' : 'waste'}_${cid}`, `${gameplayFiatSession.current}:commodity-buy:${cid}:${++gameplayFiatInteraction.current}`);
-          if (!paid || paid.duplicate) return;
-          gs.current.cargo[cid] = (gs.current.cargo[cid] || 0) + 1;
-          setCargo({ ...gs.current.cargo }); sfxCoin();
-          setNarr(`> BOUGHT 1x ${c.name} [ƒ${price.toLocaleString()} FIAT]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : CITY_NAME} and sell for profit.`);
+          const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
+          try {
+            const quoteResponse = await apiFetch('/api/gameplay/market/quote', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ slot, commodityId: cid, side, quantity: 1 }),
+            });
+            const quoteData = await quoteResponse.json() as {
+              ok?: boolean; error?: string;
+              quote?: { quoteId: string; unitPriceFiat: number; totalFiat: number };
+            };
+            if (!quoteResponse.ok || !quoteData.ok || !quoteData.quote) {
+              sfxError(); setNarr(`> QUOTE FAILED — ${quoteData.error ?? 'Exchange unavailable.'}`); return;
+            }
+            const idempotencyKey = stableRequestId('world-market-execute', quoteData.quote.quoteId);
+            const executionResponse = await apiFetch('/api/gameplay/market/execute', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ quoteId: quoteData.quote.quoteId, idempotencyKey }),
+            });
+            const data = await executionResponse.json() as {
+              ok?: boolean; error?: string;
+              wallet?: { newBalance?: number; balance?: number };
+              cargo?: { items: Record<string, number>; totalQuantity: number; capacity: number };
+              quote?: { totalFiat: number; unitPriceFiat: number };
+            };
+            if (!executionResponse.ok || !data.ok || !data.cargo || !data.wallet) {
+              sfxError(); setNarr(`> TRADE FAILED — ${data.error ?? 'Exchange rejected the trade.'}`); return;
+            }
+            const balance = data.wallet.newBalance ?? data.wallet.balance;
+            if (typeof balance === 'number') reconcileAuthoritativeSalary(balance);
+            gs.current.cargo = { ...data.cargo.items };
+            setCargo({ ...data.cargo.items });
+            sfxCoin();
+            const exactPrice = data.quote?.totalFiat ?? quoteData.quote.totalFiat;
+            setNarr(side === 'buy'
+              ? `> BOUGHT 1x ${c.name} [ƒ${exactPrice.toLocaleString()} FIAT]. Cargo: ${data.cargo.totalQuantity}/${data.cargo.capacity}. Haul to ${isCity ? 'the Wasteland' : CITY_NAME} and sell for profit.`
+              : `> SOLD 1x ${c.name} [+ƒ${exactPrice.toLocaleString()} FIAT]. Balance: ƒ${(balance ?? gs.current.salary).toLocaleString()}.`);
+          } catch {
+            sfxError(); setNarr('> NETWORK ERROR — Trade could not be completed.');
+          }
         };
-        const doSell = async (cid: string) => {
-          const c = COMMODITIES.find(x => x.id === cid)!;
-          if (!gs.current.cargo[cid] || gs.current.cargo[cid] < 1) { sfxError(); setNarr(`> NO STOCK — You are not carrying any ${c.name}.`); return; }
-          const price = isCity ? cp[cid].citySell : cp[cid].wasteSell;
-          const paid = await performGameplayFiatAction(`world_commodity_sell_${isCity ? 'city' : 'waste'}_${cid}`, `${gameplayFiatSession.current}:commodity-sell:${cid}:${++gameplayFiatInteraction.current}`);
-          if (!paid || paid.duplicate) return;
-          gs.current.cargo[cid] -= 1;
-          if (gs.current.cargo[cid] <= 0) delete gs.current.cargo[cid];
-          setCargo({ ...gs.current.cargo }); sfxCoin();
-          setNarr(`> SOLD 1x ${c.name} [+ƒ${price.toLocaleString()} FIAT]. Balance: ƒ${gs.current.salary.toLocaleString()}.`);
-        };
+        const doBuy = (cid: string) => executeTrade(cid, 'buy');
+        const doSell = (cid: string) => executeTrade(cid, 'sell');
         const bestRoutes = COMMODITIES.map(c => {
           const cityProfit = cp[c.id].wasteSell - cp[c.id].cityBuy;
           const wasteProfit = cp[c.id].citySell - cp[c.id].wasteBuy;
@@ -25374,7 +25493,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }).filter(r => (isCity ? r.cityRoute : r.wasteRoute) > 0)
           .sort((a, b) => (isCity ? b.cityRoute - a.cityRoute : b.wasteRoute - a.wasteRoute))
           .slice(0, 3);
-        void cpTick;
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowTrade(null); }}>
@@ -25388,7 +25506,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontFamily:"var(--font-sans)", fontSize:'1.1rem', color:'#38bdf8' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
+                  <div style={{ fontFamily:"var(--font-sans)", fontSize:'1.1rem', color:'#38bdf8' }}>CARGO {totalCargo}/{maxCargo}</div>
                   <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', marginTop:'.1rem' }}>ƒ{salary.toLocaleString()} FIAT</div>
                   <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', fontFamily:"var(--font-sans)", fontSize:'.95rem' }}>ESC</button>
                 </div>
@@ -25416,8 +25534,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   const sellPrice = isCity ? cp[c.id].citySell : cp[c.id].wasteSell;
                   const remSell   = isCity ? cp[c.id].wasteSell : cp[c.id].citySell;
                   const held = gs.current.cargo[c.id] || 0;
-                  const canBuy = gs.current.salary >= buyPrice && totalCargo < MAX_CARGO;
-                  const canSell = held > 0;
+                  const canBuy = marketReady && gs.current.salary >= buyPrice && totalCargo < maxCargo;
+                  const canSell = marketReady && held > 0;
                   const profit = remSell - buyPrice;
                   return (
                     <div key={c.id} style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', alignItems:'center', padding:'.4rem .3rem', border:held > 0 ? '1px solid rgba(56,189,248,.22)' : '1px solid transparent', background:held > 0 ? 'rgba(56,189,248,.03)' : 'transparent' }}>
@@ -25467,7 +25585,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               )}
               <div style={{ marginTop:'.7rem', fontSize:'.38rem', color:'rgba(56,189,248,.15)', letterSpacing:'.08em' }}>
-                BUY = you pay · SELL = you receive · BEST SELL = value at the other exchange · Max cargo {MAX_CARGO} units · ESC to close
+                BUY = you pay · SELL = you receive · BEST SELL = value at the other exchange · Max cargo {maxCargo} units · ESC to close
               </div>
             </div>
           </div>
@@ -26274,7 +26392,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!inst) return;
           if (g.salary < inst) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${inst.toLocaleString()} for this installment.`); return; }
           try {
-            const r = await apiFetch('/api/credit/plan/pay', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: g.salary }) });
+            const r = await apiFetch('/api/credit/plan/pay', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' });
             if (!r.ok) {
               sfxError();
               const e = await r.json().catch(() => ({}));
@@ -26283,7 +26401,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               return;
             }
             const j = await r.json();
-            setNarr('> BANCO OMBRA — Loan repayment must be made through your bank account.'); return;
+            if (typeof j.newBalance === 'number') reconcileAuthoritativeSalary(j.newBalance);
             addBankTx('DEBT PLAN INSTALLMENT', -j.paid, g.salary, 'loan_interest');
             setDebtPlan(j.plan ?? { active: false });
             sfxCoin();
@@ -26298,7 +26416,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!bal) return;
           if (g.salary < bal) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${bal.toLocaleString()} to clear the balance.`); return; }
           try {
-            const r = await apiFetch('/api/credit/plan/payoff', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: g.salary }) });
+            const r = await apiFetch('/api/credit/plan/payoff', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' });
             if (!r.ok) {
               sfxError();
               const e = await r.json().catch(() => ({}));
@@ -26307,7 +26425,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               return;
             }
             const j = await r.json();
-            setNarr('> BANCO OMBRA — Loan repayment must be made through your bank account.'); return;
+            if (typeof j.newBalance === 'number') reconcileAuthoritativeSalary(j.newBalance);
             addBankTx('DEBT PLAN PAYOFF', -j.paid, g.salary, 'loan_interest');
             setDebtPlan({ active: false });
             sfxCoin();

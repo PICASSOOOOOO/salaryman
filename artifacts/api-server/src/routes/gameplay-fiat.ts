@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { bankTransactionsTable, db } from "@workspace/db";
-import { and, desc, eq, like } from "drizzle-orm";
+import { and, desc, eq, like, sql } from "drizzle-orm";
 import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 
 const router = Router();
@@ -149,11 +149,15 @@ const DISABLED_UNVERIFIABLE_CREDITS = new Set([
 ]);
 
 export function creditClaimPolicy(actionId: string): CreditClaimPolicy {
-  if (actionId.startsWith("world_commodity_sell_")) return { type: "disabled" };
+  if (actionId.startsWith("quick_job_") || actionId.startsWith("world_commodity_") || actionId === "commodity_buy" || actionId === "commodity_sell") {
+    return { type: "disabled" };
+  }
   if (DISABLED_UNVERIFIABLE_CREDITS.has(actionId)) return { type: "disabled" };
-  const cooldownMs = QUICK_JOB_COOLDOWNS_MS[actionId];
-  if (cooldownMs) return { type: "cooldown", cooldownMs };
-  return { type: "once" };
+  // A client-selected action id is not proof that a discovery, encounter, or
+  // story reward occurred. Repeatable jobs and commodity sales use their
+  // dedicated authoritative contracts; every remaining credit stays disabled
+  // until its domain can issue a durable server-owned claim.
+  return { type: "disabled" };
 }
 
 export function isCreditClaimBlocked(
@@ -224,6 +228,9 @@ router.post("/gameplay/fiat/action", async (req: Request, res: Response) => {
   const resolved = resolveGameplayFiatAction(actionId);
   const idempotencyKey = typeof req.body?.idempotencyKey === "string" ? req.body.idempotencyKey : "";
   if (!resolved) { res.status(400).json({ error: "Unknown gameplay FIAT action" }); return; }
+  if (actionId.startsWith("quick_job_") || actionId.startsWith("world_commodity_") || actionId === "commodity_buy" || actionId === "commodity_sell") {
+    res.status(409).json({ error: "action_requires_authoritative_world_contract" }); return;
+  }
   const policy = resolved.direction === "credit" ? creditClaimPolicy(actionId) : null;
   if (policy?.type === "disabled") {
     res.status(409).json({ error: "reward_requires_authoritative_claim" }); return;
@@ -240,6 +247,15 @@ router.post("/gameplay/fiat/action", async (req: Request, res: Response) => {
       // Location discoveries are one-time rewards, not a client-repeatable
       // mint. The idempotency-key replay is still allowed below.
       if (action.direction === "credit" && policy) {
+        // Serialize every claim for the same user/action. Request-key
+        // idempotency alone is insufficient because concurrent requests can use
+        // different keys and otherwise all observe no prior action claim.
+        await tx.execute(sql`
+          SELECT pg_advisory_xact_lock(
+            hashtext(${userId}),
+            hashtext(${`gameplay-credit:${actionId}`})
+          )
+        `);
         const exactDescription = `${action.description.slice(0, 150)} [request:${idempotencyKey}]`;
         const exact = await tx.select({ id: bankTransactionsTable.id }).from(bankTransactionsTable)
           .where(and(eq(bankTransactionsTable.userId, userId), eq(bankTransactionsTable.description, exactDescription))).limit(1);

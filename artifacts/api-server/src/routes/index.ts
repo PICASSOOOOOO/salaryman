@@ -103,6 +103,7 @@ import bankingRouter from "./banking";
 import cityVisasRouter from "./city-visas";
 import vendingRouter from "./vending";
 import gameplayFiatRouter from "./gameplay-fiat";
+import gameplayWorldEconomyRouter from "./gameplay-world-economy";
 
 const router: IRouter = Router();
 
@@ -211,5 +212,6 @@ router.use(bankingRouter);
 router.use(cityVisasRouter);
 router.use(vendingRouter);
 router.use(gameplayFiatRouter);
+router.use(gameplayWorldEconomyRouter);
 
 export default router;

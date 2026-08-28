@@ -118,3 +118,4 @@ export * from "./fleet-vehicles";
 export * from "./utility-revenue";
 export * from "./real-bank-connections";
 export * from "./city-visas";
+export * from "./world-economy";

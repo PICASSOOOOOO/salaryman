@@ -1,0 +1,83 @@
+import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import {
+  AUTHENTICATED_CITY_SPAWN,
+  authoritativePositionForPlayer,
+  handleMessage,
+  validateAuthenticatedMovement,
+  WORLD_BOUNDS,
+} from "../worldServer";
+
+describe("authenticated world movement authority", () => {
+  const source = readFileSync(new URL("../worldServer.ts", import.meta.url), "utf8");
+  it("rejects non-finite and out-of-bounds coordinates", () => {
+    expect(validateAuthenticatedMovement({ x: 100, y: 100 }, { x: Number.NaN, y: 100 }, 100)).toBe(false);
+    expect(validateAuthenticatedMovement({ x: 100, y: 100 }, { x: 100, y: Number.POSITIVE_INFINITY }, 100)).toBe(false);
+    expect(validateAuthenticatedMovement({ x: 100, y: 100 }, { x: WORLD_BOUNDS.maxX + 1, y: 100 }, 100)).toBe(false);
+    expect(validateAuthenticatedMovement({ x: 100, y: 100 }, { x: 100, y: WORLD_BOUNDS.minY - 1 }, 100)).toBe(false);
+  });
+
+  it("accepts a normal movement delta with latency allowance", () => {
+    expect(validateAuthenticatedMovement({ x: 6400, y: 6300 }, { x: 6412, y: 6308 }, 120)).toBe(true);
+  });
+
+  it("rejects a teleport delta", () => {
+    expect(validateAuthenticatedMovement({ x: 6400, y: 6300 }, { x: 7300, y: 7000 }, 120)).toBe(false);
+  });
+
+  it("never lets forged interior presentation coordinates alter the authoritative exterior baseline", () => {
+    const player = {
+      id: "authenticated-player",
+      userId: "authenticated-user",
+      cityId: "minx_city",
+      x: AUTHENTICATED_CITY_SPAWN.x,
+      y: AUTHENTICATED_CITY_SPAWN.y,
+      authoritativeX: AUTHENTICATED_CITY_SPAWN.x,
+      authoritativeY: AUTHENTICATED_CITY_SPAWN.y,
+      lastMoveAt: Date.now(),
+      paused: false,
+    };
+    handleMessage(player as any, JSON.stringify({
+      type: "move",
+      x: 6330,
+      y: 7450,
+      interiorBid: "market",
+    }));
+    expect(player.x).toBe(6330);
+    expect(player.y).toBe(7450);
+    expect(authoritativePositionForPlayer(player)).toEqual(AUTHENTICATED_CITY_SPAWN);
+    expect(player.authoritativeX).toBe(AUTHENTICATED_CITY_SPAWN.x);
+    expect(player.authoritativeY).toBe(AUTHENTICATED_CITY_SPAWN.y);
+  });
+
+  it("emits correction messages for rejected movement", () => {
+    const send = vi.fn();
+    const player = {
+      userId: "authenticated-user",
+      cityId: "minx_city",
+      x: 6400,
+      y: 6300,
+      authoritativeX: 6400,
+      authoritativeY: 6300,
+      lastMoveAt: Date.now(),
+      ws: { send },
+    };
+    handleMessage(player as any, JSON.stringify({ type: "move", x: 9000, y: 9000 }));
+    expect(send).toHaveBeenCalledWith(JSON.stringify({
+      type: "position_correction",
+      x: 6400,
+      y: 6300,
+    }));
+  });
+
+  it("loads or creates persisted authenticated positions before admission", () => {
+    expect(source).toMatch(/worldPlayerPositionsTable[\s\S]{0,1200}AUTHENTICATED_CITY_SPAWN[\s\S]{0,800}const player: Player/);
+  });
+
+  it("keeps the canonical authenticated spawn inside world bounds", () => {
+    expect(AUTHENTICATED_CITY_SPAWN.x).toBeGreaterThanOrEqual(WORLD_BOUNDS.minX);
+    expect(AUTHENTICATED_CITY_SPAWN.x).toBeLessThanOrEqual(WORLD_BOUNDS.maxX);
+    expect(AUTHENTICATED_CITY_SPAWN.y).toBeGreaterThanOrEqual(WORLD_BOUNDS.minY);
+    expect(AUTHENTICATED_CITY_SPAWN.y).toBeLessThanOrEqual(WORLD_BOUNDS.maxY);
+  });
+});

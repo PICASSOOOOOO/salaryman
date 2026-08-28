@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable } from '@workspace/db';
+import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable, worldPlayerPositionsTable } from '@workspace/db';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
@@ -60,7 +60,7 @@ interface LootItem {
   desc: string;
 }
 
-interface Player {
+export interface Player {
   id: string;
   userId?: string;
   name: string;
@@ -95,6 +95,10 @@ interface Player {
   buildingLibContribCount: number;
   buildingLibContribWindow: number;
   collapsed?: boolean;
+  lastMoveAt: number;
+  authoritativeX?: number;
+  authoritativeY?: number;
+  lastPositionPersistAt?: number;
 }
 
 interface BuildingLock {
@@ -137,6 +141,43 @@ const makeId = () => `p${++idCounter}_${Date.now().toString(36)}`;
 
 const PVP_COOLDOWN_MS = 500;
 const PVP_RANGE = 80;
+export const WORLD_BOUNDS = { minX: 0, maxX: 14400, minY: 0, maxY: 12600 } as const;
+// Canonical central-intersection spawn already used by DOWNTOWN_SPAWN_POOLS
+// below and by the world map's INTERSECTION_X / INTERSECTION_Y constants.
+export const AUTHENTICATED_CITY_SPAWN = { x: 6800, y: 6300 } as const;
+const MAX_AUTHENTICATED_MOVE_UNITS_PER_SECOND = 250;
+const MOVE_LATENCY_ALLOWANCE_UNITS = 30;
+const POSITION_PERSIST_INTERVAL_MS = 1_500;
+
+export function validateAuthenticatedMovement(
+  from: { x: number; y: number },
+  next: { x: number; y: number },
+  elapsedMs: number,
+): boolean {
+  if (![from.x, from.y, next.x, next.y, elapsedMs].every(Number.isFinite)) return false;
+  if (next.x < WORLD_BOUNDS.minX || next.x > WORLD_BOUNDS.maxX
+    || next.y < WORLD_BOUNDS.minY || next.y > WORLD_BOUNDS.maxY) return false;
+  const allowed = MOVE_LATENCY_ALLOWANCE_UNITS
+    + MAX_AUTHENTICATED_MOVE_UNITS_PER_SECOND * Math.max(0, elapsedMs) / 1000;
+  return Math.hypot(next.x - from.x, next.y - from.y) <= allowed;
+}
+
+async function persistAuthenticatedPosition(player: Player, force = false): Promise<void> {
+  if (!player.userId || player.authoritativeX === undefined || player.authoritativeY === undefined) return;
+  const now = Date.now();
+  if (!force && now - (player.lastPositionPersistAt ?? 0) < POSITION_PERSIST_INTERVAL_MS) return;
+  player.lastPositionPersistAt = now;
+  await db.insert(worldPlayerPositionsTable).values({
+    userId: player.userId,
+    cityId: player.cityId,
+    x: Math.round(player.authoritativeX),
+    y: Math.round(player.authoritativeY),
+    updatedAt: new Date(),
+  }).onConflictDoUpdate({
+    target: [worldPlayerPositionsTable.userId, worldPlayerPositionsTable.cityId],
+    set: { x: Math.round(player.authoritativeX), y: Math.round(player.authoritativeY), updatedAt: new Date() },
+  });
+}
 const LOOT_MONEY_PCT = 0.15;
 
 const CLASS_HP: Record<string, number> = {
@@ -258,9 +299,17 @@ export const sendToPlayer = (userId: string, msg: object): void => {
 };
 
 /** Return the current world position for a connected player (null if offline). */
+export function authoritativePositionForPlayer(player: Pick<Player, "userId" | "isBot" | "authoritativeX" | "authoritativeY">): { x: number; y: number } | null {
+  if (!player.userId || player.isBot
+    || !Number.isFinite(player.authoritativeX) || !Number.isFinite(player.authoritativeY)) return null;
+  return { x: player.authoritativeX!, y: player.authoritativeY! };
+}
+
 export const getPlayerPosition = (userId: string): { x: number; y: number } | null => {
   for (const p of players.values()) {
-    if (p.userId === userId) return { x: p.x, y: p.y };
+    if (p.userId !== userId) continue;
+    const authoritative = authoritativePositionForPlayer(p);
+    if (authoritative) return authoritative;
   }
   return null;
 };
@@ -490,6 +539,7 @@ const spawnDeckard = (cityId: string) => {
     weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0,
     lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false,
     killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0,
+    lastMoveAt: Date.now(),
   };
   players.set(id, bot);
   deckardState.set(id, { targetX: x, targetY: y, nextSpeakAt: Date.now() + 2500 + Math.random() * 5000 });
@@ -600,17 +650,50 @@ const LOOT_ITEMS = [
 ];
 
 // ── Message handler ───────────────────────────────────────────────────────────
-const handleMessage = (player: Player, raw: string) => {
+export const handleMessage = (player: Player, raw: string) => {
   let msg: any;
   try { msg = JSON.parse(raw); } catch { return; }
 
   switch (msg.type) {
 
     case 'move':
-      player.x = msg.x ?? player.x;
-      player.y = msg.y ?? player.y;
+      if (player.userId) {
+        const nextX = msg.x;
+        const nextY = msg.y;
+        const now = Date.now();
+        const nextInterior = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
+        const enteringInterior = Boolean(nextInterior && nextInterior !== player.interiorBid);
+        const from = nextInterior && player.interiorBid
+          ? { x: player.x, y: player.y }
+          : { x: player.authoritativeX ?? player.x, y: player.authoritativeY ?? player.y };
+        const valid = Number.isFinite(nextX) && Number.isFinite(nextY)
+          && (enteringInterior
+            ? nextX >= WORLD_BOUNDS.minX && nextX <= WORLD_BOUNDS.maxX && nextY >= WORLD_BOUNDS.minY && nextY <= WORLD_BOUNDS.maxY
+            : validateAuthenticatedMovement(from, { x: nextX, y: nextY }, now - player.lastMoveAt));
+        if (!valid) {
+          player.ws?.send(JSON.stringify({
+            type: 'position_correction',
+            x: player.interiorBid ? player.x : player.authoritativeX,
+            y: player.interiorBid ? player.y : player.authoritativeY,
+            interiorBid: player.interiorBid,
+          }));
+          break;
+        }
+        player.lastMoveAt = now;
+        player.x = nextX;
+        player.y = nextY;
+        player.interiorBid = nextInterior;
+        if (!nextInterior) {
+          player.authoritativeX = nextX;
+          player.authoritativeY = nextY;
+          void persistAuthenticatedPosition(player).catch(err => console.error('[World] Position persist failed:', err.message));
+        }
+      } else {
+        player.x = msg.x ?? player.x;
+        player.y = msg.y ?? player.y;
+        player.interiorBid = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
+      }
       if (typeof msg.paused === 'boolean') player.paused = msg.paused;
-      player.interiorBid = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
       broadcastCity(player.cityId, { type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused, interiorBid: player.interiorBid }, player.id);
       break;
 
@@ -1442,6 +1525,7 @@ export const attachWorldServer = (httpServer: Server) => {
     const cityId  = (params.get('city')    ?? SERVER_CITY_ID).slice(0, 40);
     const startX  = parseFloat(params.get('x') ?? '820');
     const startY  = parseFloat(params.get('y') ?? '430');
+    const authenticatedUserId = await resolveSessionUserId(req);
 
     // Capacity is per-CITY, not global: each walled city is its own realm with
     // its own MAX_PLAYERS budget, so a packed Minx never locks newcomers out of
@@ -1454,7 +1538,7 @@ export const attachWorldServer = (httpServer: Server) => {
       // (soft overflow) so a company is never locked out of its own realm.
       // Everyone else is turned away until a slot frees up. The membership
       // lookup runs only on the rare at-cap path, so the happy path stays sync.
-      const userId = await resolveSessionUserId(req);
+      const userId = authenticatedUserId;
       const isBusinessMember = userId ? await isActiveOrgMember(userId) : false;
       if (!isBusinessMember) {
         // Held in the lobby. A registered business owner shouldn't be penalised
@@ -1479,7 +1563,7 @@ export const attachWorldServer = (httpServer: Server) => {
     // gate ensures the player has completed the one-time registration step.
     // Anonymous connections (no session cookie) are admitted unchanged.
     {
-      const visaUserId = await resolveSessionUserId(req);
+      const visaUserId = authenticatedUserId;
       if (visaUserId) {
         const [visaRow] = await db
           .select({ status: playerCityVisasTable.status })
@@ -1496,10 +1580,35 @@ export const attachWorldServer = (httpServer: Server) => {
     }
 
     const id = makeId();
+    let admittedX = startX;
+    let admittedY = startY;
+    if (authenticatedUserId) {
+      const [persisted] = await db.select({
+        x: worldPlayerPositionsTable.x,
+        y: worldPlayerPositionsTable.y,
+      }).from(worldPlayerPositionsTable).where(and(
+        eq(worldPlayerPositionsTable.userId, authenticatedUserId),
+        eq(worldPlayerPositionsTable.cityId, cityId),
+      )).limit(1);
+      const persistedValid = persisted
+        && Number.isFinite(persisted.x) && Number.isFinite(persisted.y)
+        && persisted.x >= WORLD_BOUNDS.minX && persisted.x <= WORLD_BOUNDS.maxX
+        && persisted.y >= WORLD_BOUNDS.minY && persisted.y <= WORLD_BOUNDS.maxY;
+      admittedX = persistedValid ? persisted.x : AUTHENTICATED_CITY_SPAWN.x;
+      admittedY = persistedValid ? persisted.y : AUTHENTICATED_CITY_SPAWN.y;
+      if (!persistedValid) {
+        await db.insert(worldPlayerPositionsTable).values({
+          userId: authenticatedUserId, cityId, x: admittedX, y: admittedY,
+        }).onConflictDoUpdate({
+          target: [worldPlayerPositionsTable.userId, worldPlayerPositionsTable.cityId],
+          set: { x: admittedX, y: admittedY, updatedAt: new Date() },
+        });
+      }
+    }
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, name, class: cls, company, cityId, profileImageUrl: null, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
+    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     players.set(id, player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 
@@ -1507,7 +1616,6 @@ export const attachWorldServer = (httpServer: Server) => {
     // (trusted server-side; never from a client-supplied URL). Done async so
     // the connection isn't blocked; the photo appears on the next presence poll.
     void resolveSessionAvatar(req).then(url => { if (url) player.profileImageUrl = url; });
-    void resolveSessionUserId(req).then(uid => { if (uid) player.userId = uid; });
 
     // Only this city's locks, re-keyed by raw buildingId so the client is unaware
     // of the per-city composite key.
@@ -1531,12 +1639,16 @@ export const attachWorldServer = (httpServer: Server) => {
       ownershipStats: getOwnershipStats(cityId),
       activeWorldEvents: activeEventsForCity,
     }));
+    if (authenticatedUserId) {
+      ws.send(JSON.stringify({ type: 'position_correction', x: admittedX, y: admittedY }));
+    }
 
     broadcastPlayerList();
 
     ws.on('message', (data: Buffer) => handleMessage(player, data.toString()));
 
     ws.on('close', () => {
+      void persistAuthenticatedPosition(player, true).catch(err => console.error('[World] Final position persist failed:', err.message));
       for (const [roomId, room] of videoRooms) {
         if (room.has(id)) {
           room.delete(id);

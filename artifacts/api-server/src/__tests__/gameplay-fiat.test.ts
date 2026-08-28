@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import express, { type Express } from "express";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import request from "supertest";
 import gameplayFiatRouter, {
   GAMEPLAY_FIAT_ACTIONS,
@@ -58,12 +61,26 @@ describe("gameplay FIAT allowlist", () => {
     expect(resolveGameplayFiatAction(forgedBody.actionId)?.amountFiat).toBe(800);
   });
 
+  it("rejects quick-job and commodity settlement through the generic wallet route", async () => {
+    for (const actionId of [
+      "quick_job_scrap",
+      "world_commodity_buy_city_data",
+      "world_commodity_sell_waste_data",
+      "commodity_buy",
+      "commodity_sell",
+    ]) {
+      const response = await request(app).post("/gameplay/fiat/action")
+        .send({ actionId, idempotencyKey: "request-12345", amountFiat: 1 });
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe("action_requires_authoritative_world_contract");
+    }
+  });
+
   it("assigns every fixed credit a non-repeatable or bounded claim policy", () => {
     for (const [actionId, action] of Object.entries(GAMEPLAY_FIAT_ACTIONS)) {
       if (action.direction !== "credit") continue;
       const policy = creditClaimPolicy(actionId);
-      expect(["once", "cooldown", "disabled"]).toContain(policy.type);
-      if (policy.type === "cooldown") expect(policy.cooldownMs).toBeGreaterThan(0);
+      expect(policy.type, `${actionId} must require a domain-owned claim`).toBe("disabled");
     }
   });
 
@@ -81,5 +98,17 @@ describe("gameplay FIAT allowlist", () => {
       if (!isCreditClaimBlocked(policy, creditedAt, creditedAt.getTime() + 1000)) balance += 500;
     }
     expect(balance).toBe(200_000);
+  });
+
+  it("serializes concurrent claims for the same user and action before checking prior credits", () => {
+    const source = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../routes/gameplay-fiat.ts"),
+      "utf8",
+    );
+    const lockIndex = source.indexOf("pg_advisory_xact_lock");
+    const priorClaimIndex = source.indexOf("const prior =", lockIndex);
+    expect(lockIndex).toBeGreaterThan(-1);
+    expect(priorClaimIndex).toBeGreaterThan(lockIndex);
+    expect(source.slice(lockIndex, priorClaimIndex)).toContain("gameplay-credit:${actionId}");
   });
 });
