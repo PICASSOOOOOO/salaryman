@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import {
   db,
   organizationsTable,
+  orgProtectedRecordsTable,
   orgMembersTable,
   orgFeatureGrantsTable,
   orgInvitesTable,
@@ -31,12 +32,17 @@ import {
   isOrgPermissionKey,
   type OrgPermissionKey,
 } from "@workspace/db";
-import { eq, and, or, sql, inArray } from "drizzle-orm";
+import { eq, and, or, sql, inArray, desc } from "drizzle-orm";
 import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 import { getOrgPermissionPolicy, canDoInOrg } from "../lib/org-permissions";
 import { removeAdminDiscordRole } from "../lib/seed-picasso";
+import {
+  decryptProtectedRecord,
+  encryptProtectedRecord,
+  maskProtectedRecord,
+} from "../lib/org-protected-records-crypto";
 
 const router = Router();
 
@@ -646,10 +652,25 @@ router.put("/orgs/:orgId", async (req, res) => {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
-  const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
-  const updates: { name?: string; industry?: string | null; size?: string | null } = {};
+  const {
+    name,
+    industry,
+    size,
+    description,
+    website,
+    businessAddress,
+    contactEmail,
+    contactPhone,
+    legalEntityName,
+    entityType,
+  } = (req.body ?? {}) as Record<string, unknown>;
+  const updates: Partial<typeof organizationsTable.$inferInsert> = {};
 
-  if (name && typeof name === "string") {
+  if (name !== undefined) {
+    if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 120) {
+      res.status(400).json({ error: "Organization name must be 2-120 characters" });
+      return;
+    }
     if (isReservedOrgName(name)) {
       res.status(400).json({ error: "That organization name is reserved and cannot be used" });
       return;
@@ -665,8 +686,56 @@ router.put("/orgs/:orgId", async (req, res) => {
     updates.name = name.trim().toUpperCase();
   }
 
-  if (industry !== undefined) updates.industry = industry ? String(industry).trim() : null;
-  if (size !== undefined) updates.size = size ? String(size).trim() : null;
+  const optionalText = (
+    field: unknown,
+    maxLength: number,
+    label: string,
+  ): string | null | undefined => {
+    if (field === undefined) return undefined;
+    if (typeof field !== "string") throw new Error(`${label} must be text`);
+    const value = field.trim();
+    if (value.length > maxLength) throw new Error(`${label} is too long`);
+    return value || null;
+  };
+
+  try {
+    updates.industry = optionalText(industry, 80, "Industry");
+    updates.size = optionalText(size, 40, "Company size");
+    updates.description = optionalText(description, 4000, "Description");
+    updates.businessAddress = optionalText(businessAddress, 1000, "Business address");
+    updates.contactPhone = optionalText(contactPhone, 50, "Contact phone");
+    updates.legalEntityName = optionalText(legalEntityName, 160, "Legal entity name");
+    updates.entityType = optionalText(entityType, 80, "Entity type");
+
+    const normalizedEmail = optionalText(contactEmail, 254, "Contact email");
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      res.status(400).json({ error: "Contact email is invalid" });
+      return;
+    }
+    updates.contactEmail = normalizedEmail?.toLowerCase() ?? normalizedEmail;
+
+    const normalizedWebsite = optionalText(website, 500, "Website");
+    if (normalizedWebsite) {
+      let parsed: URL;
+      try { parsed = new URL(normalizedWebsite); }
+      catch {
+        res.status(400).json({ error: "Website must be a valid http or https URL" });
+        return;
+      }
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        res.status(400).json({ error: "Website must be a valid http or https URL" });
+        return;
+      }
+    }
+    updates.website = normalizedWebsite;
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid organization details" });
+    return;
+  }
+
+  for (const key of Object.keys(updates) as Array<keyof typeof updates>) {
+    if (updates[key] === undefined) delete updates[key];
+  }
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No valid fields to update" });
@@ -691,6 +760,154 @@ router.put("/orgs/:orgId", async (req, res) => {
   }
 
   res.json({ org: updated });
+});
+
+async function requireProtectedRecordsAccess(userId: string, orgId: number): Promise<boolean> {
+  const caller = await getCallerMembership(userId, orgId);
+  return !!caller && hasRoleAccess(caller.role as OrgRole, "manager");
+}
+
+router.get("/orgs/:orgId/protected-records", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isInteger(orgId) || orgId <= 0) { res.status(400).json({ error: "Invalid org ID" }); return; }
+  if (!await requireProtectedRecordsAccess(req.user.id, orgId)) {
+    res.status(403).json({ error: "Manager access required" });
+    return;
+  }
+
+  const records = await db
+    .select({
+      id: orgProtectedRecordsTable.id,
+      label: orgProtectedRecordsTable.label,
+      maskedValue: orgProtectedRecordsTable.maskedValue,
+      createdAt: orgProtectedRecordsTable.createdAt,
+      updatedAt: orgProtectedRecordsTable.updatedAt,
+    })
+    .from(orgProtectedRecordsTable)
+    .where(eq(orgProtectedRecordsTable.orgId, orgId))
+    .orderBy(desc(orgProtectedRecordsTable.updatedAt));
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ records });
+});
+
+router.post("/orgs/:orgId/protected-records", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isInteger(orgId) || orgId <= 0) { res.status(400).json({ error: "Invalid org ID" }); return; }
+  if (!await requireProtectedRecordsAccess(req.user.id, orgId)) {
+    res.status(403).json({ error: "Manager access required" });
+    return;
+  }
+
+  const label = typeof req.body?.label === "string" ? req.body.label.trim() : "";
+  const value = typeof req.body?.value === "string" ? req.body.value.trim() : "";
+  if (!label || label.length > 120) { res.status(400).json({ error: "Label must be 1-120 characters" }); return; }
+  if (!value || value.length > 4000) { res.status(400).json({ error: "Value must be 1-4000 characters" }); return; }
+
+  const [record] = await db.insert(orgProtectedRecordsTable).values({
+    orgId,
+    label,
+    encryptedValue: encryptProtectedRecord(value, orgId),
+    maskedValue: maskProtectedRecord(value),
+    createdByUserId: req.user.id,
+    updatedByUserId: req.user.id,
+  }).returning({
+    id: orgProtectedRecordsTable.id,
+    label: orgProtectedRecordsTable.label,
+    maskedValue: orgProtectedRecordsTable.maskedValue,
+    createdAt: orgProtectedRecordsTable.createdAt,
+    updatedAt: orgProtectedRecordsTable.updatedAt,
+  });
+  res.status(201).json({ record });
+});
+
+router.put("/orgs/:orgId/protected-records/:recordId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  const recordId = Number(req.params.recordId);
+  if (!Number.isInteger(orgId) || !Number.isInteger(recordId)) { res.status(400).json({ error: "Invalid record ID" }); return; }
+  if (!await requireProtectedRecordsAccess(req.user.id, orgId)) {
+    res.status(403).json({ error: "Manager access required" });
+    return;
+  }
+
+  const updates: Partial<typeof orgProtectedRecordsTable.$inferInsert> = {
+    updatedByUserId: req.user.id,
+    updatedAt: new Date(),
+  };
+  if (req.body?.label !== undefined) {
+    const label = typeof req.body.label === "string" ? req.body.label.trim() : "";
+    if (!label || label.length > 120) { res.status(400).json({ error: "Label must be 1-120 characters" }); return; }
+    updates.label = label;
+  }
+  if (req.body?.value !== undefined && req.body.value !== "") {
+    const value = typeof req.body.value === "string" ? req.body.value.trim() : "";
+    if (!value || value.length > 4000) { res.status(400).json({ error: "Value must be 1-4000 characters" }); return; }
+    updates.encryptedValue = encryptProtectedRecord(value, orgId);
+    updates.maskedValue = maskProtectedRecord(value);
+  }
+  if (updates.label === undefined && updates.encryptedValue === undefined) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  const [record] = await db.update(orgProtectedRecordsTable)
+    .set(updates)
+    .where(and(eq(orgProtectedRecordsTable.id, recordId), eq(orgProtectedRecordsTable.orgId, orgId)))
+    .returning({
+      id: orgProtectedRecordsTable.id,
+      label: orgProtectedRecordsTable.label,
+      maskedValue: orgProtectedRecordsTable.maskedValue,
+      createdAt: orgProtectedRecordsTable.createdAt,
+      updatedAt: orgProtectedRecordsTable.updatedAt,
+    });
+  if (!record) { res.status(404).json({ error: "Protected record not found" }); return; }
+  res.json({ record });
+});
+
+router.post("/orgs/:orgId/protected-records/:recordId/reveal", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  const recordId = Number(req.params.recordId);
+  if (!Number.isInteger(orgId) || !Number.isInteger(recordId)) { res.status(400).json({ error: "Invalid record ID" }); return; }
+  if (!await requireProtectedRecordsAccess(req.user.id, orgId)) {
+    res.status(403).json({ error: "Manager access required" });
+    return;
+  }
+
+  const [record] = await db.select({
+    id: orgProtectedRecordsTable.id,
+    encryptedValue: orgProtectedRecordsTable.encryptedValue,
+  }).from(orgProtectedRecordsTable)
+    .where(and(eq(orgProtectedRecordsTable.id, recordId), eq(orgProtectedRecordsTable.orgId, orgId)))
+    .limit(1);
+  if (!record) { res.status(404).json({ error: "Protected record not found" }); return; }
+
+  try {
+    const value = decryptProtectedRecord(record.encryptedValue, orgId);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ id: record.id, value });
+  } catch {
+    res.status(500).json({ error: "Protected record could not be decrypted" });
+  }
+});
+
+router.delete("/orgs/:orgId/protected-records/:recordId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  const recordId = Number(req.params.recordId);
+  if (!Number.isInteger(orgId) || !Number.isInteger(recordId)) { res.status(400).json({ error: "Invalid record ID" }); return; }
+  if (!await requireProtectedRecordsAccess(req.user.id, orgId)) {
+    res.status(403).json({ error: "Manager access required" });
+    return;
+  }
+
+  const [deleted] = await db.delete(orgProtectedRecordsTable)
+    .where(and(eq(orgProtectedRecordsTable.id, recordId), eq(orgProtectedRecordsTable.orgId, orgId)))
+    .returning({ id: orgProtectedRecordsTable.id });
+  if (!deleted) { res.status(404).json({ error: "Protected record not found" }); return; }
+  res.json({ ok: true });
 });
 
 router.post("/orgs/:orgId/invite", async (req, res) => {
@@ -1307,11 +1524,15 @@ router.delete("/orgs/:orgId", async (req, res) => {
   }
 
   const [org] = await db
-    .select({ id: organizationsTable.id, name: organizationsTable.name })
+    .select({ id: organizationsTable.id, name: organizationsTable.name, isDeveloper: organizationsTable.isDeveloper })
     .from(organizationsTable)
     .where(eq(organizationsTable.id, orgId))
     .limit(1);
   if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+  if (org.isDeveloper || isReservedOrgName(org.name)) {
+    res.status(403).json({ error: "Reserved organizations cannot be deleted" });
+    return;
+  }
 
   // Required safety: caller must echo the exact org name to confirm.
   const confirmName = typeof req.body?.confirmName === "string" ? req.body.confirmName.trim() : "";

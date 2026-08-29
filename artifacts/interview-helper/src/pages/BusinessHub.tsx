@@ -11,6 +11,7 @@ import {
   Lightbulb, BookOpen, Star, Info, Plus, X, UserPlus,
   Edit2, Trash2, Check, Copy, ChevronDown, Mail, Crown,
   Save, ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
+  Eye, EyeOff, LockKeyhole, KeyRound,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -24,7 +25,22 @@ interface Org {
   name: string;
   industry: string | null;
   size: string | null;
+  description: string | null;
+  website: string | null;
+  businessAddress: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  legalEntityName: string | null;
+  entityType: string | null;
   ownerUserId: string | null;
+}
+
+interface ProtectedRecord {
+  id: number;
+  label: string;
+  maskedValue: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Member {
@@ -141,6 +157,21 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: { label: 
   );
 }
 
+function TextAreaField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
+        className="w-full resize-y bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+    </div>
+  );
+}
+
+const EMPTY_EDIT_FORM = {
+  name: '', industry: '', size: '', description: '', website: '', businessAddress: '',
+  contactEmail: '', contactPhone: '', legalEntityName: '', entityType: '',
+};
+
 function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
     <div className="space-y-1">
@@ -173,9 +204,19 @@ export default function BusinessHub() {
   const [copied, setCopied] = useState(false);
 
   const [editingOrg, setEditingOrg] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', industry: '', size: '' });
+  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+
+  const [protectedRecords, setProtectedRecords] = useState<ProtectedRecord[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recordForm, setRecordForm] = useState({ label: '', value: '' });
+  const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
+  const [showRecordForm, setShowRecordForm] = useState(false);
+  const [recordSaving, setRecordSaving] = useState(false);
+  const [recordError, setRecordError] = useState('');
+  const [revealedRecords, setRevealedRecords] = useState<Record<number, string>>({});
 
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [memberEditForm, setMemberEditForm] = useState({ role: '', title: '', salary: '' });
@@ -235,6 +276,29 @@ export default function BusinessHub() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const activeOrgId = orgData?.org?.id ?? null;
+  const canManageOrg = !!orgData?.member && ['owner', 'ceo', 'executive', 'director', 'manager'].includes(orgData.member.role);
+  const loadProtectedRecords = useCallback(async () => {
+    setRevealedRecords({});
+    if (!activeOrgId || !canManageOrg) {
+      setProtectedRecords([]);
+      return;
+    }
+    setRecordsLoading(true);
+    setRecordError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${activeOrgId}/protected-records`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setRecordError(data.error || 'PROTECTED RECORDS COULD NOT BE LOADED');
+      else setProtectedRecords(data.records ?? []);
+    } catch {
+      setRecordError('NETWORK ERROR');
+    }
+    setRecordsLoading(false);
+  }, [activeOrgId, canManageOrg]);
+
+  useEffect(() => { void loadProtectedRecords(); }, [loadProtectedRecords]);
+
   if (!isAuthenticated) return <SignInPage />;
 
   const activeOrg = orgData?.org;
@@ -242,7 +306,7 @@ export default function BusinessHub() {
   const allOrgs = orgData?.allOrgs ?? [];
   const members = orgData?.members ?? [];
   const activeMembers = members.filter(m => m.status === 'active');
-  const isManager = activeMember && ['owner', 'ceo', 'executive', 'director', 'manager'].includes(activeMember.role);
+  const isManager = canManageOrg;
   const isOwner = activeMember?.role === 'owner';
   const netProfit = summary?.financials?.netProfit ?? 0;
   const isPositive = netProfit >= 0;
@@ -296,7 +360,7 @@ export default function BusinessHub() {
       const res = await apiFetch(`/api/orgs/${activeOrg.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editForm.name || undefined, industry: editForm.industry, size: editForm.size }),
+        body: JSON.stringify(editForm),
       });
       const data = await res.json();
       if (!res.ok) { setEditError(data.error || 'UPDATE FAILED'); setEditSaving(false); return; }
@@ -305,6 +369,96 @@ export default function BusinessHub() {
       await loadData();
     } catch { setEditError('NETWORK ERROR'); }
     setEditSaving(false);
+  };
+
+  const openEditOrg = () => {
+    if (!activeOrg) return;
+    setEditForm({
+      name: activeOrg.name,
+      industry: activeOrg.industry || '',
+      size: activeOrg.size || '',
+      description: activeOrg.description || '',
+      website: activeOrg.website || '',
+      businessAddress: activeOrg.businessAddress || '',
+      contactEmail: activeOrg.contactEmail || '',
+      contactPhone: activeOrg.contactPhone || '',
+      legalEntityName: activeOrg.legalEntityName || '',
+      entityType: activeOrg.entityType || '',
+    });
+    setEditingOrg(true);
+    setEditError('');
+  };
+
+  const resetRecordForm = () => {
+    setRecordForm({ label: '', value: '' });
+    setEditingRecordId(null);
+    setShowRecordForm(false);
+    setRecordError('');
+  };
+
+  const handleSaveRecord = async () => {
+    if (!activeOrg || !recordForm.label.trim()) return;
+    if (!editingRecordId && !recordForm.value.trim()) {
+      setRecordError('A VALUE IS REQUIRED FOR A NEW RECORD');
+      return;
+    }
+    setRecordSaving(true);
+    setRecordError('');
+    try {
+      const res = await apiFetch(
+        editingRecordId
+          ? `/api/orgs/${activeOrg.id}/protected-records/${editingRecordId}`
+          : `/api/orgs/${activeOrg.id}/protected-records`,
+        {
+          method: editingRecordId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: recordForm.label, ...(recordForm.value ? { value: recordForm.value } : {}) }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setRecordError(data.error || 'RECORD COULD NOT BE SAVED');
+      else {
+        resetRecordForm();
+        await loadProtectedRecords();
+      }
+    } catch {
+      setRecordError('NETWORK ERROR');
+    }
+    setRecordSaving(false);
+  };
+
+  const handleRevealRecord = async (recordId: number) => {
+    if (!activeOrg) return;
+    if (revealedRecords[recordId] !== undefined) {
+      setRevealedRecords(current => {
+        const next = { ...current };
+        delete next[recordId];
+        return next;
+      });
+      return;
+    }
+    setRecordError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}/protected-records/${recordId}/reveal`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setRecordError(data.error || 'RECORD COULD NOT BE REVEALED');
+      else setRevealedRecords(current => ({ ...current, [recordId]: data.value }));
+    } catch {
+      setRecordError('NETWORK ERROR');
+    }
+  };
+
+  const handleDeleteRecord = async (record: ProtectedRecord) => {
+    if (!activeOrg || !window.confirm(`Delete protected record "${record.label}"?`)) return;
+    setRecordError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}/protected-records/${record.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setRecordError(data.error || 'RECORD COULD NOT BE DELETED');
+      else await loadProtectedRecords();
+    } catch {
+      setRecordError('NETWORK ERROR');
+    }
   };
 
   const handleUpdateMember = async (userId: string) => {
@@ -343,20 +497,20 @@ export default function BusinessHub() {
       `This permanently deletes "${activeOrg.name}" and removes every member, invite, and partnership. This cannot be undone.\n\nType the business name to confirm:`,
     );
     if (typed === null) return;
-    if (typed.trim() !== activeOrg.name) { setEditError('NAME DID NOT MATCH — DELETE CANCELLED'); return; }
+    if (typed.trim() !== activeOrg.name) { setDeleteError('NAME DID NOT MATCH — DELETE CANCELLED'); return; }
     setEditSaving(true);
-    setEditError('');
+    setDeleteError('');
     try {
       const res = await apiFetch(`/api/orgs/${activeOrg.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmName: typed.trim() }),
       });
-      if (!res.ok) { const data = await res.json().catch(() => ({})); setEditError(data.error || 'DELETE FAILED'); setEditSaving(false); return; }
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setDeleteError(data.error || 'DELETE FAILED'); setEditSaving(false); return; }
       setEditingOrg(false);
       invalidateOrgCache();
       await loadData();
-    } catch { setEditError('NETWORK ERROR'); }
+    } catch { setDeleteError('NETWORK ERROR'); }
     setEditSaving(false);
   };
 
@@ -467,20 +621,21 @@ export default function BusinessHub() {
                 options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
               <SelectField label="COMPANY SIZE" value={editForm.size} onChange={v => setEditForm(f => ({ ...f, size: v }))}
                 options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s + ' EMPLOYEES' }))]} />
+               <div className="grid gap-3 sm:grid-cols-2">
+                 <Field label="LEGAL ENTITY NAME" value={editForm.legalEntityName} onChange={v => setEditForm(f => ({ ...f, legalEntityName: v }))} placeholder="REGISTERED COMPANY NAME" />
+                 <Field label="ENTITY TYPE" value={editForm.entityType} onChange={v => setEditForm(f => ({ ...f, entityType: v }))} placeholder="LLC, CORPORATION, SOLE PROPRIETOR" />
+                 <Field label="WEBSITE" value={editForm.website} onChange={v => setEditForm(f => ({ ...f, website: v }))} placeholder="https://example.com" type="url" />
+                 <Field label="CONTACT EMAIL" value={editForm.contactEmail} onChange={v => setEditForm(f => ({ ...f, contactEmail: v }))} placeholder="operations@example.com" type="email" />
+                 <Field label="CONTACT PHONE" value={editForm.contactPhone} onChange={v => setEditForm(f => ({ ...f, contactPhone: v }))} placeholder="+1 555 0100" type="tel" />
+               </div>
+               <TextAreaField label="BUSINESS / LEGAL ADDRESS" value={editForm.businessAddress} onChange={v => setEditForm(f => ({ ...f, businessAddress: v }))} placeholder="REGISTERED BUSINESS ADDRESS" />
+               <TextAreaField label="ORGANIZATION DESCRIPTION" value={editForm.description} onChange={v => setEditForm(f => ({ ...f, description: v }))} placeholder="WHAT THIS ORGANIZATION DOES" />
               {editError && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{editError}</p>}
               <div className="flex items-center gap-2">
                 <button onClick={handleEditOrg} disabled={editSaving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50">
                   {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} SAVE CHANGES
                 </button>
               </div>
-              {isOwner && (
-                <div className="mt-2 pt-3 border-t border-red-500/20">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">DANGER ZONE</p>
-                  <button onClick={handleDeleteOrg} disabled={editSaving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors disabled:opacity-50">
-                    <Trash2 className="w-3.5 h-3.5" /> DELETE BUSINESS
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
             <div className="flex items-center gap-4 flex-wrap">
@@ -507,7 +662,8 @@ export default function BusinessHub() {
               )}
               {isManager && (
                 <button
-                  onClick={() => { setEditForm({ name: activeOrg.name, industry: activeOrg.industry || '', size: activeOrg.size || '' }); setEditingOrg(true); setEditError(''); }}
+                  onClick={openEditOrg}
+                  aria-label="Edit organization settings"
                   className="p-2 rounded-lg hover:bg-muted/20 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Edit2 className="w-4 h-4" />
@@ -516,6 +672,101 @@ export default function BusinessHub() {
             </div>
           )}
         </motion.div>
+      )}
+
+      {activeOrg && isManager && (
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
+          className="rounded-xl bg-card/50 border border-border/50 overflow-hidden" aria-label="Protected records">
+          <div className="flex items-center justify-between gap-3 p-4 border-b border-border/30">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <LockKeyhole className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-[0.15em]">PROTECTED RECORDS</h2>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">ENCRYPTED BUSINESS PAPERWORK · MANAGER ACCESS</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { resetRecordForm(); setShowRecordForm(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/20 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> ADD RECORD
+            </button>
+          </div>
+
+          {showRecordForm && (
+            <div className="p-4 border-b border-border/30 bg-muted/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">{editingRecordId ? 'EDIT PROTECTED RECORD' : 'NEW PROTECTED RECORD'}</span>
+                <button onClick={resetRecordForm} aria-label="Close protected record form" className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="LABEL" value={recordForm.label} onChange={v => setRecordForm(f => ({ ...f, label: v }))} placeholder="TAX ID, LICENSE NUMBER, POLICY NUMBER" />
+                <Field label={editingRecordId ? 'NEW VALUE (OPTIONAL)' : 'VALUE'} value={recordForm.value} onChange={v => setRecordForm(f => ({ ...f, value: v }))} placeholder={editingRecordId ? 'LEAVE BLANK TO KEEP CURRENT' : 'SENSITIVE VALUE'} type="password" />
+              </div>
+              <button onClick={handleSaveRecord} disabled={recordSaving || !recordForm.label.trim()}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-black text-xs font-bold uppercase tracking-wider hover:bg-amber-400 transition-colors disabled:opacity-50">
+                {recordSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />} SAVE ENCRYPTED RECORD
+              </button>
+            </div>
+          )}
+
+          {recordError && <p className="px-4 pt-3 text-[10px] text-red-400 font-bold uppercase tracking-wider">{recordError}</p>}
+          {recordsLoading ? (
+            <div className="flex justify-center p-6"><Loader2 className="w-5 h-5 animate-spin text-amber-400" /></div>
+          ) : protectedRecords.length === 0 ? (
+            <div className="p-6 text-center">
+              <LockKeyhole className="w-7 h-7 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">NO PROTECTED RECORDS SAVED</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {protectedRecords.map(record => {
+                const revealed = revealedRecords[record.id];
+                return (
+                  <div key={record.id} className="p-4 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold uppercase tracking-wider truncate">{record.label}</div>
+                      <div className={`mt-1 text-sm font-mono break-all ${revealed !== undefined ? 'text-amber-300' : 'text-muted-foreground'}`}>
+                        {revealed !== undefined ? revealed : record.maskedValue}
+                      </div>
+                    </div>
+                    <button onClick={() => handleRevealRecord(record.id)} aria-label={revealed !== undefined ? `Hide ${record.label}` : `Reveal ${record.label}`}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors">
+                      {revealed !== undefined ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button onClick={() => { setEditingRecordId(record.id); setRecordForm({ label: record.label, value: '' }); setShowRecordForm(true); setRecordError(''); }}
+                      aria-label={`Edit ${record.label}`} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteRecord(record)} aria-label={`Delete ${record.label}`}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </motion.section>
+      )}
+
+      {activeOrg && isOwner && (
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
+          className="rounded-xl bg-red-500/5 border border-red-500/25 p-4" aria-label="Danger zone">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-red-400">OWNER DANGER ZONE</h2>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">PERMANENTLY DELETE THIS BUSINESS AND ITS ORGANIZATION DATA. NAME CONFIRMATION IS REQUIRED.</p>
+              {deleteError && <p className="mt-2 text-[10px] text-red-400 font-bold uppercase tracking-wider">{deleteError}</p>}
+            </div>
+            <button onClick={handleDeleteOrg} disabled={editSaving}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors disabled:opacity-50">
+              {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} DELETE BUSINESS
+            </button>
+          </div>
+        </motion.section>
       )}
 
       {loading ? (

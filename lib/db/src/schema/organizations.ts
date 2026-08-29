@@ -14,6 +14,13 @@ export const organizationsTable = pgTable("organizations", {
   name: varchar("name", { length: 120 }).notNull(),
   industry: varchar("industry", { length: 80 }),
   size: varchar("size", { length: 40 }),
+  description: text("description"),
+  website: varchar("website", { length: 500 }),
+  businessAddress: text("business_address"),
+  contactEmail: varchar("contact_email", { length: 254 }),
+  contactPhone: varchar("contact_phone", { length: 50 }),
+  legalEntityName: varchar("legal_entity_name", { length: 160 }),
+  entityType: varchar("entity_type", { length: 80 }),
   ownerUserId: varchar("owner_user_id").notNull(),
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
   isDeveloper: boolean("is_developer").notNull().default(false),
@@ -28,6 +35,22 @@ export const organizationsTable = pgTable("organizations", {
 export const insertOrganizationSchema = createInsertSchema(organizationsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizationsTable.$inferSelect;
+
+export const orgProtectedRecordsTable = pgTable("org_protected_records", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  label: varchar("label", { length: 120 }).notNull(),
+  encryptedValue: text("encrypted_value").notNull(),
+  maskedValue: varchar("masked_value", { length: 64 }).notNull(),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  updatedByUserId: varchar("updated_by_user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  index("org_protected_records_org_idx").on(t.orgId, t.updatedAt),
+]);
+
+export type OrgProtectedRecord = typeof orgProtectedRecordsTable.$inferSelect;
 
 export const ORG_ROLES = ["owner", "ceo", "executive", "director", "manager", "specialist"] as const;
 export type OrgRole = (typeof ORG_ROLES)[number];
