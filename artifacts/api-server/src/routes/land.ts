@@ -488,6 +488,60 @@ router.get("/construction/projects", async (req: Request, res: Response) => {
 });
 
 /**
+ * Organization-scoped ownership and build pipeline.
+ * Any active member may view their own organization's associated projects.
+ * The requested organization id is always verified against active membership
+ * before any construction rows are returned.
+ */
+router.get("/construction/org-overview", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const orgId = Number(req.query.orgId);
+  if (!Number.isInteger(orgId) || orgId <= 0) {
+    res.status(400).json({ error: "Valid orgId required" });
+    return;
+  }
+
+  try {
+    const [membership] = await db
+      .select({ orgId: orgMembersTable.orgId })
+      .from(orgMembersTable)
+      .where(
+        and(
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.orgId, orgId),
+          eq(orgMembersTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!membership) {
+      res.status(403).json({ error: "Active organization membership required" });
+      return;
+    }
+
+    await tickConstruction();
+    const projects = await db
+      .select()
+      .from(constructionProjectsTable)
+      .where(eq(constructionProjectsTable.owningOrgId, String(orgId)))
+      .orderBy(desc(constructionProjectsTable.createdAt));
+    const plotIds = [...new Set(projects.map((project) => project.plotId))];
+    const plots = plotIds.length
+      ? await db
+          .select()
+          .from(landPlotsTable)
+          .where(inArray(landPlotsTable.id, plotIds))
+          .orderBy(asc(landPlotsTable.id))
+      : [];
+
+    res.json({ orgId, projects, plots });
+  } catch (e) {
+    console.error("[land] org overview failed", e);
+    res.status(500).json({ error: "Failed to load organization construction overview" });
+  }
+});
+
+/**
  * GET /api/construction/org-labor-summary
  * Returns aggregate debtor-labor stats for the calling user's org across all
  * their construction projects and world-build plans. Two windows: last 7 days

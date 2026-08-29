@@ -550,9 +550,9 @@ export default function BusinessHub() {
             <Briefcase className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-wider uppercase">{boomerMode ? 'BUSINESS MANAGEMENT' : 'OPS-CORE // COMMAND'}</h1>
+            <h1 className="text-xl font-bold tracking-wider uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'ORG SETTINGS // COMMAND'}</h1>
             <p className="text-xs text-muted-foreground tracking-wider uppercase">
-              {activeOrg ? activeOrg.name : 'YOUR BUSINESS HEADQUARTERS'}
+              {activeOrg ? `${activeOrg.name} · IDENTITY, PERMISSIONS & OWNERSHIP` : 'YOUR BUSINESS HEADQUARTERS'}
             </p>
           </div>
         </div>
@@ -841,6 +841,12 @@ export default function BusinessHub() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{activeMembers.length} ACTIVE MEMBER{activeMembers.length !== 1 ? 'S' : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    href="/business/team"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider text-indigo-300 hover:bg-indigo-500/20"
+                  >
+                    <ArrowRight className="w-3 h-3" /> TEAM MANAGEMENT
+                  </Link>
                   {!isOwner && (
                     <button onClick={() => { if (confirm('Are you sure you want to leave this organization?')) handleRemoveMember(user?.id ?? ''); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-colors">

@@ -1,18 +1,19 @@
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import {
-  Building2, Users, Briefcase, UserCog, BookOpen, ArrowRight,
-  ShieldCheck, Loader2, Plus,
+  Building2, Users, Briefcase, BookOpen, ArrowRight,
+  ShieldCheck, Loader2, Plus, Settings,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useOrg } from '@/hooks/use-org';
+import { OrgConstructionOverview } from '@/components/ConstructionOverview';
 
 // ORG hub — a dedicated home for running your organization. It does NOT
 // reimplement any management features; it surfaces the EXISTING org-management
 // surfaces (team roster, hiring/firing, roles & permissions, finances) as
 // linked cards. Distinct from the OFFICE tab (the playable office floor).
-const SECTIONS = [
+const MANAGEMENT_SECTIONS = [
   {
     path: '/business/team',
     label: 'EMPLOYEES',
@@ -32,15 +33,6 @@ const SECTIONS = [
     border: 'border-violet-500/20',
   },
   {
-    path: '/business',
-    label: 'ROLES & PERMISSIONS',
-    desc: 'Set member roles, titles, and salaries. Invite or remove people.',
-    icon: UserCog,
-    color: 'text-sky-400',
-    bg: 'bg-sky-500/10',
-    border: 'border-sky-500/20',
-  },
-  {
     path: '/business/accounting',
     label: 'FINANCES',
     desc: 'Accounting, payroll, bills, expenses, P&L, and the balance sheet.',
@@ -48,6 +40,27 @@ const SECTIONS = [
     color: 'text-emerald-400',
     bg: 'bg-emerald-500/10',
     border: 'border-emerald-500/20',
+  },
+];
+
+const SETTINGS_SECTIONS = [
+  {
+    path: '/business',
+    label: 'ORG SETTINGS',
+    desc: 'Identity, roles and permissions, public presence, protected paperwork, and ownership controls.',
+    icon: Settings,
+    color: 'text-sky-400',
+    bg: 'bg-sky-500/10',
+    border: 'border-sky-500/20',
+  },
+  {
+    path: '/world/land',
+    label: 'LAND & CONSTRUCTION',
+    desc: 'Claim land, review plot status, and submit approved construction designs.',
+    icon: Building2,
+    color: 'text-amber-400',
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-500/20',
   },
 ];
 
@@ -108,10 +121,10 @@ export default function OrgHub() {
       {org ? (
         <>
           <p className="font-mono text-xs text-zinc-500 tracking-widest uppercase mb-3">
-            Manage your organization
+            Team management · people and daily operations
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {SECTIONS.map((s, i) => {
+            {MANAGEMENT_SECTIONS.map((s, i) => {
               const Icon = s.icon;
               return (
                 <motion.button
@@ -138,6 +151,36 @@ export default function OrgHub() {
               );
             })}
           </div>
+
+          <p className="font-mono text-xs text-zinc-500 tracking-widest uppercase mb-3 mt-7">
+            Organization settings · identity, permissions and ownership
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            {SETTINGS_SECTIONS.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <motion.button
+                  key={s.path}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: 0.2 + 0.05 * i }}
+                  onClick={() => navigate(s.path)}
+                  className={`group text-left rounded-xl border ${s.border} bg-white/[0.02] hover:bg-white/[0.04] p-5 transition-colors`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${s.bg} border ${s.border} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-5 h-5 ${s.color}`} />
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                  <h2 className="font-mono text-sm text-zinc-100 tracking-widest uppercase mt-4">{s.label}</h2>
+                  <p className="text-xs text-zinc-500 leading-relaxed mt-1.5">{s.desc}</p>
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <OrgConstructionOverview orgId={org.id} />
         </>
       ) : (
         // Graceful empty state — the user has no org yet. Point them to the

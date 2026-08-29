@@ -7,7 +7,7 @@ import {
   ScrollText, Wallet, RotateCcw, Plus, X, Trash2, Check,
   TrendingUp, UserPlus, Gamepad2, Send, FileText, ShieldAlert,
   Globe, Flag, Lock, Unlock, RefreshCw, Phone,
-  Activity, Coins, MapPin, Briefcase, DollarSign, Server,
+  Activity, Coins, MapPin, Briefcase, DollarSign, Server, HardHat,
   Wifi, CheckCircle2, XCircle, AlertCircle,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
@@ -16,6 +16,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '@/hooks/use-plan';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useLocation } from 'wouter';
+import { AdminConstructionOverview } from '@/components/ConstructionOverview';
 
 interface UserRecord {
   id: string;
@@ -135,7 +136,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship';
+type AdminTab = 'analytics' | 'pulse' | 'construction' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship';
 
 interface SalaryQualRow {
   id: number;
@@ -369,7 +370,7 @@ export default function AdminPanel() {
   // a launcher in the tab strip — accepting it here would render a blank
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
-    'analytics', 'pulse', 'users', 'orgs', 'config', 'toggles', 'broadcast',
+    'analytics', 'pulse', 'construction', 'users', 'orgs', 'config', 'toggles', 'broadcast',
     'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
@@ -1032,6 +1033,7 @@ export default function AdminPanel() {
   const tabs: { key: AdminTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }[] = [
     { key: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
     { key: 'pulse', label: 'WORLD PULSE', icon: Activity },
+    { key: 'construction', label: 'CONSTRUCTION', icon: HardHat },
     { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
     { key: 'users', label: 'USERS', icon: Users },
     { key: 'orgs', label: 'BUSINESSES', icon: Building2 },
@@ -1338,6 +1340,12 @@ export default function AdminPanel() {
                   )}
                 </>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === 'construction' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <AdminConstructionOverview />
             </motion.div>
           )}
 
