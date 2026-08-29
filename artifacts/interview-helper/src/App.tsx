@@ -211,7 +211,6 @@ const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
-const ScrollLanding = lazy(() => import("@/pages/ScrollLanding"));
 const TheaterPage = lazy(() => import("@/pages/TheaterPage"));
 
 const queryClient = new QueryClient({
@@ -337,13 +336,9 @@ function HomeOrCover() {
   // them to /pablo, which re-asked their name → loop. The /immigration
   // gate fixes that: it lives outside GameLock and is the only path that
   // can flip tutorialDone for an authed user.
-  // A logged-out / first-time visitor lands on the wordless, scroll-driven
-  // life cinematic (birth → work → death → an open position). It sits IN FRONT
-  // of the app as the public SEO front door; its terminal powers on and routes
-   // into /console (which shows its own sign-in screen for
-  // logged-out visitors and returns them there after auth). Authenticated users
-  // keep the office-first funnel below — already-onboarded players still skip
-  // straight to their /office.
+  // A logged-out / first-time visitor starts at Pablo's canonical nebula
+  // terminal. Authenticated users keep the office-first funnel below —
+  // already-onboarded players still skip straight to their /office.
   // Hold the gate until the server onboarding check resolves. A returning,
   // already-onboarded user signing in on a fresh device has no local
   // salaryman_tutorial_done flag yet — without this wait we'd flash them through
@@ -354,7 +349,7 @@ function HomeOrCover() {
   if (typeof window !== "undefined") {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
-  if (!isAuthenticated) return <ScrollLanding />;
+  if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <Redirect to="/office" />;
 }
 
