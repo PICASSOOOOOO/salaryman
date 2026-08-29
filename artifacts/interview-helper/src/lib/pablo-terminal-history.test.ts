@@ -13,13 +13,19 @@ const swipe = readFileSync(
 );
 
 describe("Pablo terminal reverse navigation", () => {
-  it("uses browser history for the onboarded terminal back affordance", () => {
+  it("returns onboarded users to the walkable office floor", () => {
     const logo = terminal.slice(
       terminal.indexOf('data-testid="link-logo-loop"') - 400,
       terminal.indexOf('data-testid="link-logo-loop"') + 200,
     );
-    expect(logo).toContain("window.history.back()");
-    expect(terminal).not.toContain('href={hasFinishedOnboarding ? "/office"');
+    expect(logo).toContain('href="/office"');
+    expect(logo).toContain('aria-label="Back to office floor"');
+    expect(terminal).not.toContain('window.history.back()');
+  });
+
+  it("does not offer a map control from the Pablo nebula", () => {
+    expect(terminal).not.toContain('pablo-nav-map');
+    expect(terminal).not.toContain('href="/game/map"');
   });
 
   it("keeps edge-swipe back history-based", () => {

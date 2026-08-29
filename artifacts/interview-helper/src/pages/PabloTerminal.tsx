@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Map as MapIcon, LogIn } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
@@ -2088,22 +2088,21 @@ function PabloTerminalAuthed() {
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)",
         }}
       >
-        {/* Keep visitors inside intake. Once onboarded, this is a real Back
-            affordance: it walks the route history instead of forcing office. */}
+        {/* Keep visitors inside intake. Once onboarded, the SALARYMAN mark is
+            the single exit back to the walkable office floor. */}
         {hasFinishedOnboarding ? (
-          <button
-            type="button"
-            onClick={() => window.history.back()}
+          <Link
+            href="/office"
             className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
             data-testid="link-logo-loop"
-            aria-label="Back to previous page"
-            title="Back"
+            aria-label="Back to office floor"
+            title="Office floor"
           >
             <PicassoLogo size={20} gap={2} glow />
             <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
-          </button>
+          </Link>
         ) : (
           <Link
             href="/pablo"
@@ -2117,36 +2116,6 @@ function PabloTerminalAuthed() {
           </Link>
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Post-onboarding only: small WORLD + OFFICE entry pills so the
-              terminal isn't a one-way trip. The user asked for "office
-              experience straight from terminal like a surveillance tool for
-              working bots" plus a way back to the world — these two pills
-              cover both, gated on hasFinishedOnboarding so brand-new visitors
-              don't get to bypass the intake. */}
-          {hasFinishedOnboarding && (
-            <>
-              <Link
-                href="/game/map"
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-emerald-400/40 bg-black/60 hover:bg-emerald-500/15 text-emerald-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
-                title="Minx City visitor map"
-                data-testid="pablo-nav-map"
-              >
-                <MapIcon className="w-3 h-3" />
-                MAP
-              </Link>
-              {/* Mobile: icon-only version of MAP so it fits on a narrow
-                  header without crowding TEXT/VOICE off-screen. */}
-              <Link
-                href="/game/map"
-                className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-emerald-400/40 bg-black/60 text-emerald-200"
-                title="Minx City visitor map"
-                aria-label="Minx City visitor map"
-                data-testid="pablo-nav-map-mobile"
-              >
-                <MapIcon className="w-3.5 h-3.5" />
-              </Link>
-            </>
-          )}
           {/* Always-visible sign-in affordance for returning users. The
               front door is a fullscreen route with no NavBar, so without
               this button a logged-out visitor has no obvious way to log in
@@ -2185,9 +2154,8 @@ function PabloTerminalAuthed() {
           {hasFinishedOnboarding && (
             <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
           )}
-          {/* No exit X — the SALARYMAN logo at the top-left already routes
-              back to landing, so a second exit affordance is redundant and
-              was causing a black-screen flash on mobile during the intro. */}
+          {/* No exit X — the SALARYMAN logo is the only authenticated exit,
+              and it returns to the walkable office floor. */}
         </div>
       </header>
 
