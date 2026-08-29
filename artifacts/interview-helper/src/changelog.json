@@ -1412,5 +1412,17 @@
       "Make the open-world stamina HUD clearly visible",
       "Add SignInPrompt return-to test and update page imports"
     ]
+  },
+  {
+    "version": "v.17.1.2024",
+    "date": "2026-08-29",
+    "commitHash": "a06f264e308168b9531287b8a937202cb16f3281",
+    "changes": [
+      "Implement construction overview component and land data endpoints",
+      "Update organization routes and business hub UI logic",
+      "Add speech name utility and tests for post-onboarding components.",
+      "Add tests for pablo-voice",
+      "Implement voice support features for Pablo terminal and API server"
+    ]
   }
 ]

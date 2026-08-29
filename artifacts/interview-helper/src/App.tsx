@@ -193,6 +193,7 @@ const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
 const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
 const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
 const BusinessMarketplace = lazy(() => import("@/pages/BusinessMarketplace"));
+const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const BusinessServices = lazy(() => import("@/pages/BusinessServices"));
 const VendingMachine = lazy(() => import("@/pages/VendingMachine"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
@@ -652,6 +653,7 @@ function AppShell() {
 
             {/* BUSINESS module */}
             <Route path="/business/marketplace" component={BusinessMarketplace} />
+            <Route path="/marketplace" component={Marketplace} />
             <Route path="/business/services" component={BusinessServices} />
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />

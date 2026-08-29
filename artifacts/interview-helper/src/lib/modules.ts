@@ -218,6 +218,17 @@ export const MODULES: Module[] = [
       { id: 'org-finances', path: '/business/accounting', label: 'FINANCES', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
     ],
   },
+  {
+    id: 'marketplace',
+    path: '/marketplace',
+    label: 'MARKET',
+    codename: 'CROSS-CITY EXCHANGE',
+    icon: Store,
+    defaultPath: '/marketplace',
+    subs: [
+      { id: 'marketplace-home', path: '/marketplace', label: 'MARKETPLACE', boomerLabel: 'MARKETPLACE', codename: 'X-CITY-MART', icon: Store },
+    ],
+  },
 ];
 
 export const PROFILE_MODULES: SubItem[] = [
@@ -266,6 +277,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/marketing')) return MODULES[7];
   if (pathname.startsWith('/armory')) return MODULES[8];
   if (pathname === '/org' || pathname.startsWith('/org/')) return MODULES[9];
+  if (pathname === '/marketplace') return MODULES[10];
   if (pathname.startsWith('/profile')) return null;
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/platform')) return null;

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon, Bot, ShoppingBag, Phone } from "lucide-react";
+import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon, Bot, ShoppingBag, Phone, Store } from "lucide-react";
 
 /**
  * The TERMINAL — the office computer's operating system. Players reach it by
@@ -50,6 +50,14 @@ export default function GameHub() {
       title: "REAL ESTATE",
       sub: "Dwellings, offices, sublets — priced live to BTC.",
       tone: "from-fuchsia-900/30 to-zinc-950 border-fuchsia-700/40 text-fuchsia-200",
+    },
+    {
+      to: "/marketplace",
+      icon: Store,
+      kicker: "EXCHANGE",
+      title: "MARKETPLACE",
+      sub: "Buy and list businesses, property, rentals, and inventory across both cities.",
+      tone: "from-sky-900/30 to-zinc-950 border-sky-700/40 text-sky-200",
     },
     {
       to: "/game/bank",

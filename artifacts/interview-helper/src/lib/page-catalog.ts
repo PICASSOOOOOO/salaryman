@@ -51,6 +51,7 @@ const ALIASES: Record<string, string[]> = {
   "/business/balance-sheet": ["balance sheet", "net worth", "assets"],
   "/business/profit-loss": ["profit and loss", "p&l", "pnl", "income statement"],
   "/business/marketplace": ["business marketplace", "buy a business", "sell business"],
+  "/marketplace": ["marketplace", "cross-city exchange", "buy items", "sell items", "properties", "vehicles"],
   "/business/autopilot": ["autopilot", "agent autopilot", "automation"],
   "/business/contacts": ["contacts", "address book", "people"],
   "/business/services": ["services board", "gigs", "bounties", "debt bounty", "vehicle rental", "escort", "player services"],
@@ -108,6 +109,7 @@ const ALIASES: Record<string, string[]> = {
 const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
   { path: "/", label: "Pablo (AI Assistant)", group: "Pablo" },
   { path: "/my-office", label: "My Office", group: "Office" },
+  { path: "/marketplace", label: "Marketplace", group: "World" },
   { path: "/office", label: "The Office (Live View)", group: "Office" },
   { path: "/comms", label: "Payphone", group: "Payphone" },
   { path: "/pledge", label: "Pledge Store", group: "Agents" },

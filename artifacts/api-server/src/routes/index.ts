@@ -104,6 +104,7 @@ import cityVisasRouter from "./city-visas";
 import vendingRouter from "./vending";
 import gameplayFiatRouter from "./gameplay-fiat";
 import gameplayWorldEconomyRouter from "./gameplay-world-economy";
+import marketplaceRouter from "./marketplace";
 
 const router: IRouter = Router();
 
@@ -213,5 +214,6 @@ router.use(cityVisasRouter);
 router.use(vendingRouter);
 router.use(gameplayFiatRouter);
 router.use(gameplayWorldEconomyRouter);
+  router.use(marketplaceRouter);
 
 export default router;
