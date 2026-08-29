@@ -9,6 +9,7 @@ import {
   stopOfficeAmbient,
 } from '@/soundEngine';
 import { getMusicEnabled } from '@/lib/audio-settings';
+import { formatSpeechName } from '@/lib/speech-name';
 
 /**
  * PostOnboardingIntro — the cinematic that plays AFTER Pablo's intake +
@@ -47,7 +48,7 @@ export function PostOnboardingIntro({ playerName, onComplete }: Props) {
   const ttsRef = useRef<TTSHandle | null>(null);
   const advTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const first = (playerName || 'NEWCOMER').split(' ')[0];
+  const first = formatSpeechName((playerName || 'NEWCOMER').split(/\s+/)[0]);
 
   // Pablo's spoken elevator greeting. Brief but impactful.
   const LINES: string[] = [

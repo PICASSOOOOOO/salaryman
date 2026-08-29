@@ -25,6 +25,9 @@ import { createRoot, type Root } from "react-dom/client";
 
 // Logged-out visitor: not authed, not loading.
 const loginWithDiscord = vi.fn();
+const { spokenTts } = vi.hoisted(() => ({
+  spokenTts: [] as string[],
+}));
 vi.mock("@workspace/replit-auth-web", () => ({
   useAuth: () => ({
     isLoading: false,
@@ -44,7 +47,8 @@ vi.mock("@/lib/api-client", () => ({
 // TTS double: fire the done callback synchronously so the goLogin redirect
 // (which opens the auth-choice modal) runs without needing fake timers.
 vi.mock("@/lib/tts", () => ({
-  speakWithTTS: (_text: string, onDone?: () => void) => {
+  speakWithTTS: (text: string, onDone?: () => void) => {
+    spokenTts.push(text);
     if (onDone) onDone();
     return { cancel: () => {} };
   },
@@ -111,6 +115,7 @@ async function typeAndSend(text: string) {
 
 beforeEach(() => {
   loginWithDiscord.mockClear();
+  spokenTts.length = 0;
   try {
     window.localStorage.clear();
   } catch {}
@@ -140,7 +145,7 @@ describe("Pablo front-door admittance flow", () => {
   });
 
   it("admits a returning visitor saying 'let me in' straight to the auth choice modal", async () => {
-    window.localStorage.setItem("salaryman_name", "Returning Rita");
+    window.localStorage.setItem("salaryman_name", "RETURNING RITA");
     window.localStorage.setItem("salaryman_email", "rita@example.com");
 
     await mount();
@@ -156,6 +161,8 @@ describe("Pablo front-door admittance flow", () => {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
     }
+    expect(spokenTts).toContain("Cleared, Returning Rita. Heading in.");
+    expect(spokenTts).not.toContain("Cleared, RETURNING RITA. Heading in.");
   });
 
   it("admits a returning visitor saying 'show me your papers' without re-asking name/email", async () => {

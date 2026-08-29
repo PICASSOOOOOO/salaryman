@@ -18,6 +18,7 @@ import {
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
 import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
+import { formatSpeechName } from "@/lib/speech-name";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
 const PABLO_TTS_OPTIONS = { character: "PABLO" } as const;
@@ -1061,7 +1062,7 @@ function PabloTerminalAuthed() {
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
     bumpInterview();
-    const known = getSalarymanName() ?? 'friend';
+    const known = formatSpeechName(getSalarymanName() ?? 'friend');
     const line = `Nice to meet you, ${known}. What's a good email for your account?`;
     setReply(line);
     setStatus("speaking");
@@ -1105,7 +1106,7 @@ function PabloTerminalAuthed() {
       if (!isAuthenticated && hasPendingFeature) {
         interviewPhaseRef.current = 'idle';
         bumpInterview();
-        const ack = `Welcome back, ${cachedName}. Signing you in.`;
+        const ack = `Welcome back, ${formatSpeechName(cachedName)}. Signing you in.`;
         setReply(ack);
         setStatus("speaking");
         ttsRef.current?.cancel();
@@ -1398,7 +1399,8 @@ function PabloTerminalAuthed() {
         // already have on file goes STRAIGHT to the sign-in choice; a brand
         // new one pivots to asking-name with the sharper prompt.
         const known = getSalarymanName();
-        if (admitIfKnown(known ? `Cleared, ${known}. Heading in.` : "Cleared. Heading in.")) return;
+        const spokenKnown = known ? formatSpeechName(known) : null;
+        if (admitIfKnown(spokenKnown ? `Cleared, ${spokenKnown}. Heading in.` : "Cleared. Heading in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: NAME_PROMPT_LINE }]);
@@ -1415,7 +1417,8 @@ function PabloTerminalAuthed() {
         // Returning visitor we already have on file — admit them straight
         // away rather than re-asking for an account they already created.
         const known = getSalarymanName();
-        if (admitIfKnown(known ? `On it, ${known}. Heading in.` : "On it. Heading in.")) return;
+        const spokenKnown = known ? formatSpeechName(known) : null;
+        if (admitIfKnown(spokenKnown ? `On it, ${spokenKnown}. Heading in.` : "On it. Heading in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         const line = "For that I'll need to set you up with an account — what should I call you?";
@@ -1690,7 +1693,7 @@ function PabloTerminalAuthed() {
       setSalarymanEmail(email);
       interviewPhaseRef.current = 'idle';
       bumpInterview();
-      const known = getSalarymanName() ?? 'salaryman';
+      const known = formatSpeechName(getSalarymanName() ?? 'salaryman');
       const line = `Cleared, ${known}. Heading in.`;
       setReply(line);
       setStatus("speaking");

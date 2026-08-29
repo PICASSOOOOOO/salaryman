@@ -116,6 +116,7 @@ import propImgStudioLoft from '@/assets/pledge/prop_studio_loft.png';
 import propImgCornerOffice from '@/assets/pledge/prop_corner_office.png';
 import propImgPenthouse from '@/assets/pledge/prop_penthouse.png';
 import { isTutorialDone, getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
+import { formatSpeechName } from '@/lib/speech-name';
 import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import {
@@ -10425,7 +10426,7 @@ WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the secret code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
 ${salarymanTerm(getSalarymanGender(), 'upper')} STATUS:
-- Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
+- Name: ${formatSpeechName(char.name)} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
 - HP: ${Math.floor(g.hp)}/${g.maxHp} | FIAT: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
 - Zone: ${inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
