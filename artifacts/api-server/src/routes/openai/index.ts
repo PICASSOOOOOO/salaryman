@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { requireFeature } from "../../middlewares/requirePro";
 import { MILA_VOICE_ID } from "../../lib/mila-voice";
+import { PABLO_VOICE_ID } from "../../lib/pablo-voice";
 
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
@@ -22,8 +23,9 @@ const requireClaw = requireFeature("claw_bot");
 // Every named character — NPCs and marketplace bots — is cast against a stock
 // ElevenLabs default voice picked to match their backstory / archetype.
 // All IDs in this map are from the free shared voice library, so they work
-// out-of-the-box with any ElevenLabs API key. Override any single voice via
-// env var: ELEVENLABS_VOICE_<KEY> (e.g. ELEVENLABS_VOICE_PABLO).
+// out-of-the-box with any ElevenLabs API key. Pablo is fixed to the canonical
+// voice below; other characters may be overridden via
+// ELEVENLABS_VOICE_<KEY>.
 //
 // Voice library reference (free, included with every account):
 //   FMgBdHe1YV2Xi0B9anXW = Pablo (custom — kept as the headline voice)
@@ -72,7 +74,7 @@ const requireClaw = requireFeature("claw_bot");
 // ============================================================================
 const CHARACTER_VOICES: Record<string, string> = {
   // === Headline ===
-  PABLO:           "FMgBdHe1YV2Xi0B9anXW", // custom Pablo — the icon
+  PABLO:           PABLO_VOICE_ID,          // custom Pablo — the icon
   MILA:            MILA_VOICE_ID,          // custom Mila — comms/phone assistant voice
 
   // === Major NPCs (Minx City storyline) ===
@@ -178,16 +180,19 @@ const CHARACTER_VOICES: Record<string, string> = {
 };
 
 function resolveVoiceId(character?: string, voiceIdOverride?: string): string {
-  if (voiceIdOverride && /^[A-Za-z0-9]{16,}$/.test(voiceIdOverride)) {
-    return voiceIdOverride;
-  }
   if (character && typeof character === "string") {
     const key = character.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+    // Pablo's identity is voice-bound. Do not let a generic request override
+    // or an accidental ELEVENLABS_VOICE_PABLO setting recast him.
+    if (key === "PABLO") return PABLO_VOICE_ID;
     const envOverride = process.env[`ELEVENLABS_VOICE_${key}`];
     if (envOverride) return envOverride;
     if (CHARACTER_VOICES[key]) return CHARACTER_VOICES[key];
   }
-  return process.env.ELEVENLABS_VOICE_ID || "FMgBdHe1YV2Xi0B9anXW";
+  if (voiceIdOverride && /^[A-Za-z0-9]{16,}$/.test(voiceIdOverride)) {
+    return voiceIdOverride;
+  }
+  return process.env.ELEVENLABS_VOICE_ID || PABLO_VOICE_ID;
 }
 
 async function handleTts(req: any, res: any) {

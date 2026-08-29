@@ -23,10 +23,10 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { captureGameplay, type CaptureScene } from "./gameplay-capture";
+import { PABLO_VOICE_ID } from "./pablo-voice";
 
-// Pablo's headline ElevenLabs voice (mirrors CHARACTER_VOICES.PABLO in the TTS
-// route). Overridable via env to match any future re-cast in one place.
-const PABLO_VOICE_ID = process.env.ELEVENLABS_VOICE_PABLO || "FMgBdHe1YV2Xi0B9anXW";
+// Pablo's headline ElevenLabs voice is shared with the live TTS route so
+// generated narration cannot drift to a different actor.
 
 const FINAL_W = 1280;
 const FINAL_H = 720;

@@ -20,6 +20,8 @@ import {
 import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
+const PABLO_TTS_OPTIONS = { character: "PABLO" } as const;
+
 // Map the visitor's IANA timezone (e.g. "America/Los_Angeles") to one
 // of the in-platform city labels by matching the current UTC offset to
 // the closest entry in TIMEZONE_CITIES. Returns just the city name (no
@@ -1012,14 +1014,14 @@ function PabloTerminalAuthed() {
           ttsRef.current?.cancel();
           await new Promise<void>((resolve) => {
             const done = () => { ttsRef.current = null; resolve(); };
-            ttsRef.current = speakWithTTS(line, done, done);
+            ttsRef.current = speakWithTTS(line, done, done, PABLO_TTS_OPTIONS);
           });
           const followUp = "If you have another address, let's hear it.";
           setReply(followUp);
           setStatus("speaking");
           await new Promise<void>((resolve) => {
             const done = () => { ttsRef.current = null; setStatus("idle"); resolve(); };
-            ttsRef.current = speakWithTTS(followUp, done, done);
+            ttsRef.current = speakWithTTS(followUp, done, done, PABLO_TTS_OPTIONS);
           });
           return false;
         }
@@ -1050,7 +1052,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       after?.();
     };
-    ttsRef.current = speakWithTTS(text, done, done);
+    ttsRef.current = speakWithTTS(text, done, done, PABLO_TTS_OPTIONS);
   }, []);
 
   // Start the pre-auth intake when the visitor chooses to enter. The remaining
@@ -1069,7 +1071,7 @@ function PabloTerminalAuthed() {
     setMode('text');
     autoListenRef.current = false;
     ttsRef.current?.cancel();
-    ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
+    ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); }, PABLO_TTS_OPTIONS);
   }, [bumpInterview]);
 
   // Start the inline intake. The first message itself is preserved and
@@ -1119,7 +1121,7 @@ function PabloTerminalAuthed() {
             if (ok) setAuthChoice({ dest, hint: cachedEmail });
           });
         };
-        ttsRef.current = speakWithTTS(ack, openModal, openModal);
+        ttsRef.current = speakWithTTS(ack, openModal, openModal, PABLO_TTS_OPTIONS);
         // Hard timeout in case TTS stalls.
         window.setTimeout(openModal, 1800);
         return true;
@@ -1254,9 +1256,10 @@ function PabloTerminalAuthed() {
   const speak = useCallback((text: string, character?: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
     ttsRef.current?.cancel();
-    // Explicit character wins (e.g. a Pablo intrusion during Mila mode); else
-    // Mila uses her voice, and Pablo falls through to the unchanged default.
-    const voice = character ?? (personaRef.current === "mila" ? "MILA" : undefined);
+    // Explicit character wins (e.g. a Pablo intrusion during Mila mode);
+    // otherwise always select the active assistant explicitly so Pablo cannot
+    // be recast by the generic ELEVENLABS_VOICE_ID setting.
+    const voice = character ?? (personaRef.current === "mila" ? "MILA" : "PABLO");
     const done = () => { ttsRef.current = null; resolve(); };
     ttsRef.current = speakWithTTS(text, done, done, voice ? { character: voice } : undefined);
   }), []);
@@ -1291,6 +1294,7 @@ function PabloTerminalAuthed() {
         closingLine,
         () => { ttsRef.current = null; setStatus("idle"); },
         () => { ttsRef.current = null; setStatus("idle"); },
+        PABLO_TTS_OPTIONS,
       );
       void screenEmailBeforeAdmitRef.current(cachedEmail).then((ok) => {
         if (ok) setAuthChoice({ dest, hint: cachedEmail });
@@ -1332,6 +1336,7 @@ function PabloTerminalAuthed() {
         ack,
         () => { ttsRef.current = null; setStatus("idle"); },
         () => { ttsRef.current = null; setStatus("idle"); },
+        PABLO_TTS_OPTIONS,
       );
       return;
     }
@@ -1488,7 +1493,7 @@ function PabloTerminalAuthed() {
           setStatus("speaking");
           ttsRef.current?.cancel();
           const done = () => { ttsRef.current = null; setStatus("idle"); if (mode === 'voice') autoListenRef.current = true; };
-          ttsRef.current = speakWithTTS(said, done, done);
+          ttsRef.current = speakWithTTS(said, done, done, PABLO_TTS_OPTIONS);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error("[Pablo] public chat failed:", msg);
@@ -1539,7 +1544,7 @@ function PabloTerminalAuthed() {
         setStatus("speaking");
         ttsRef.current?.cancel();
         const done = () => { ttsRef.current = null; setStatus("idle"); if (mode === 'voice') autoListenRef.current = true; };
-        ttsRef.current = speakWithTTS(combined, done, done);
+        ttsRef.current = speakWithTTS(combined, done, done, PABLO_TTS_OPTIONS);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[Pablo] gatekeeper-question failed:", msg);
@@ -1635,7 +1640,7 @@ function PabloTerminalAuthed() {
           ttsRef.current = null;
           setAuthChoice({ dest, hint: inlineEmail });
         };
-        ttsRef.current = speakWithTTS(line, goLogin, goLogin);
+        ttsRef.current = speakWithTTS(line, goLogin, goLogin, PABLO_TTS_OPTIONS);
         timerId = window.setTimeout(goLogin, 2200);
         return;
       }
@@ -1651,7 +1656,7 @@ function PabloTerminalAuthed() {
       setReply(ack);
       setStatus("speaking");
       ttsRef.current?.cancel();
-      ttsRef.current = speakWithTTS(ack, () => { ttsRef.current = null; askEmailNow(); }, () => { ttsRef.current = null; askEmailNow(); });
+      ttsRef.current = speakWithTTS(ack, () => { ttsRef.current = null; askEmailNow(); }, () => { ttsRef.current = null; askEmailNow(); }, PABLO_TTS_OPTIONS);
       return;
     }
     if (interviewPhaseRef.current === 'asking-email') {
@@ -1699,6 +1704,7 @@ function PabloTerminalAuthed() {
         line,
         () => { ttsRef.current = null; setStatus("idle"); },
         () => { ttsRef.current = null; setStatus("idle"); },
+        PABLO_TTS_OPTIONS,
       );
       return;
     }
