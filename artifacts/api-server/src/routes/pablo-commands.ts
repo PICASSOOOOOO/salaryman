@@ -17,7 +17,6 @@ const KINDS = new Set(["agent", "navigate", "prompt"]);
 const DEFAULT_COMMANDS: Array<{ label: string; description: string; kind: string; payload: string; icon: string; sortOrder: number }> = [
   { label: "Size up the pipeline", description: "Pablo reviews every open deal and tells you what to chase.", kind: "agent", payload: "Review my deal pipeline and tell me which deals to push and which to drop.", icon: "TrendingUp", sortOrder: 10 },
   { label: "Log a new lead", description: "Capture a lead straight into the pipeline.", kind: "agent", payload: "Add a new lead deal to my pipeline based on what I tell you.", icon: "Briefcase", sortOrder: 20 },
-  { label: "Open the war room", description: "Jump to the agent team console.", kind: "navigate", payload: "/console/agents", icon: "Command", sortOrder: 30 },
   { label: "What did I learn?", description: "Pablo recalls the lessons he's saved for you.", kind: "agent", payload: "Recall what you've learned about me and my business and summarize it.", icon: "Brain", sortOrder: 40 },
 ];
 
@@ -27,6 +26,14 @@ async function ensureSeeded(userId: string) {
   // double-insert the defaults. The lock auto-releases at transaction end.
   await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"pablo_cmd_seed:" + userId}))`);
+    // Defaults are persisted per user, so remove the retired command for
+    // previously seeded palettes as well as omitting it for new users.
+    await tx.delete(pabloCommandsTable).where(and(
+      eq(pabloCommandsTable.userId, userId),
+      eq(pabloCommandsTable.label, "Open the war room"),
+      eq(pabloCommandsTable.kind, "navigate"),
+      eq(pabloCommandsTable.payload, "/console/agents"),
+    ));
     const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` })
       .from(pabloCommandsTable)
       .where(eq(pabloCommandsTable.userId, userId));
