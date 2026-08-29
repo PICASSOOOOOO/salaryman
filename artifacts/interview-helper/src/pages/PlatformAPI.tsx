@@ -14,9 +14,9 @@ type Tab = "overview" | "keys" | "webhooks" | "endpoints" | "apps";
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "OVERVIEW", icon: Plug },
   { id: "keys", label: "API KEYS", icon: Key },
+  { id: "apps", label: "CONNECTIONS", icon: Globe },
   { id: "webhooks", label: "WEBHOOKS", icon: Webhook },
   { id: "endpoints", label: "ENDPOINTS", icon: FileText },
-  { id: "apps", label: "CONNECTIONS", icon: Globe },
 ];
 
 function CopyButton({ text }: { text: string }) {
