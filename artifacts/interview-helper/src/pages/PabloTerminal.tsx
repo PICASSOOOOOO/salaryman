@@ -2088,23 +2088,34 @@ function PabloTerminalAuthed() {
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)",
         }}
       >
-        {/* SALARYMAN logo behaviour:
-            - Pre-onboarding (storyteller intro / unauthenticated): stays on
-              the terminal so the visitor can't escape the onboarding funnel.
-            - Post-onboarding (authenticated + tutorial done): jump back into
-              the live world/play surface. The user explicitly asked for the
-              icon to "return back to the terminal" — i.e. their actual
-              destination, not the marketing page they no longer need. */}
-        <Link
-          href={hasFinishedOnboarding ? "/office" : "/pablo"}
-          className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
-          data-testid="link-logo-loop"
-        >
-          <PicassoLogo size={20} gap={2} glow />
-          <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
-            SALARYMAN
-          </span>
-        </Link>
+        {/* Keep visitors inside intake. Once onboarded, this is a real Back
+            affordance: it walks the route history instead of forcing office. */}
+        {hasFinishedOnboarding ? (
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
+            data-testid="link-logo-loop"
+            aria-label="Back to previous page"
+            title="Back"
+          >
+            <PicassoLogo size={20} gap={2} glow />
+            <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+              SALARYMAN
+            </span>
+          </button>
+        ) : (
+          <Link
+            href="/pablo"
+            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
+            data-testid="link-logo-loop"
+          >
+            <PicassoLogo size={20} gap={2} glow />
+            <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+              SALARYMAN
+            </span>
+          </Link>
+        )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Post-onboarding only: small WORLD + OFFICE entry pills so the
               terminal isn't a one-way trip. The user asked for "office
