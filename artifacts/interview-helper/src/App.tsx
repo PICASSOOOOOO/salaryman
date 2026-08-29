@@ -113,7 +113,6 @@ const Comms = lazy(() => import("@/pages/Comms"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Goals = lazy(() => import("@/pages/Goals"));
 const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
@@ -177,6 +176,12 @@ function LegacyUpgradeRedirect() {
   const params = new URLSearchParams(window.location.search);
   params.set("view", "prime");
   return <Redirect to={`/pledge?${params.toString()}`} />;
+}
+
+function PledgeStoreRoute() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("view") === "agents") return <Redirect to="/bots" />;
+  return <PledgeStore />;
 }
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
@@ -721,8 +726,8 @@ function AppShell() {
             {/* ORG module — dedicated org-management hub (separate from OFFICE) */}
             <Route path="/org" component={OrgHub} />
 
-            {/* CONSOLE sub-routes (agents + video moved here) */}
-            <Route path="/console/agents" component={AgentTeam} />
+            {/* Legacy agent status page now belongs to the Agent Command Center. */}
+            <Route path="/console/agents">{() => <Redirect to="/bots" />}</Route>
             <Route path="/console/video" component={VideoAnalyzer} />
             <Route path="/console/vault" component={KnowledgeVault} />
             <Route path="/console/scraper" component={WebScraper} />
@@ -736,7 +741,7 @@ function AppShell() {
             <Route path="/business/accounting" component={Accounting} />
             <Route path="/business/taxes" component={TurboTax} />
             <Route path="/intel/balance-sheet">{() => { window.location.href = '/business/balance-sheet'; return null; }}</Route>
-            <Route path="/intel/agents">{() => <Redirect to="/console/agents" />}</Route>
+            <Route path="/intel/agents">{() => <Redirect to="/bots" />}</Route>
             <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
@@ -780,9 +785,7 @@ function AppShell() {
             <Route path="/bots/:id/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/cutscene/:id" component={CutscenePage} />
             <Route path="/vending">{() => <VendingMachine />}</Route>
-            {/* Bots/Pixel Agents are real-money only now — they live in the
-                Pledge Store, not the florin vending machine. */}
-            <Route path="/store/bots/vending">{() => <Redirect to="/pledge?view=agents" />}</Route>
+            <Route path="/store/bots/vending">{() => <Redirect to="/bots" />}</Route>
             {/* The realty showroom is the functional acquire flow (RealtyStore):
                 rent/buy persists server-side via /api/real-estate/acquire. The
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
@@ -793,15 +796,15 @@ function AppShell() {
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
-            <Route path="/agents">{() => <Redirect to="/console/agents" />}</Route>
+            <Route path="/agents">{() => <Redirect to="/bots" />}</Route>
             <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>
 
             {/* Feedback admin */}
             <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
-            <Route path="/pledge/agents">{() => <Redirect to="/pledge?view=agents" />}</Route>
-            <Route path="/pledge" component={PledgeStore} />
+            <Route path="/pledge/agents">{() => <Redirect to="/bots" />}</Route>
+            <Route path="/pledge" component={PledgeStoreRoute} />
             <Route path="/investors" component={PledgeStore} />
             {/* Legacy alias — keeps existing links working */}
             <Route path="/legal/investors">{() => <Redirect to="/investors" />}</Route>

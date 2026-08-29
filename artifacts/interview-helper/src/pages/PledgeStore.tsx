@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
-import PixelAgents from "@/pages/PixelAgents";
 import Upgrade from "@/pages/Upgrade";
 import { usePlan, type FeatureKey } from "@/hooks/use-plan";
 import {
-  ChevronLeft, Loader2, Check, Sparkles, Bot, Crown, ArrowRight,
+  ChevronLeft, Loader2, Check, Sparkles, Crown,
   ShoppingBag, Radio, Ruler, X, Building2, Layers,
 } from "lucide-react";
 
@@ -89,22 +88,18 @@ export default function PledgeStore() {
   const [notice, setNotice] = useState<string>("");
   const [schematic, setSchematic] = useState<PledgeItem | null>(null);
   const [imgFailed, setImgFailed] = useState<Record<string, boolean>>({});
-  const [view, setView] = useState<"agents" | "store" | "prime">(
+  const [view, setView] = useState<"store" | "prime">(
     typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("view") === "agents"
-      ? "agents"
-      : typeof window !== "undefined" &&
         new URLSearchParams(window.location.search).get("view") === "prime"
       ? "prime"
       : "store",
   );
 
-  const switchView = useCallback((next: "agents" | "store" | "prime") => {
+  const switchView = useCallback((next: "store" | "prime") => {
     setView(next);
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (next === "agents") params.set("view", "agents");
-    else if (next === "prime") params.set("view", "prime");
+    if (next === "prime") params.set("view", "prime");
     else params.delete("view");
     const qs = params.toString();
     window.history.replaceState(null, "", `/pledge${qs ? `?${qs}` : ""}`);
@@ -229,7 +224,7 @@ export default function PledgeStore() {
           </p>
         </div>
 
-        {/* Store / Pixel Agents view switch */}
+        {/* Commerce views only. Agent operations live in /bots. */}
         <div className="flex justify-center mb-8">
           <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
             <button
@@ -244,12 +239,6 @@ export default function PledgeStore() {
             >
               <span className="inline-flex items-center gap-1.5"><Crown className="w-3 h-3" /> PABLO PRIME</span>
             </button>
-            <button
-              onClick={() => switchView("agents")}
-              className={`px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${view === "agents" ? "bg-violet-500/20 text-violet-200" : "text-zinc-400 hover:text-zinc-200"}`}
-            >
-              <span className="inline-flex items-center gap-1.5"><Bot className="w-3 h-3" /> Pixel Agents</span>
-            </button>
           </div>
         </div>
 
@@ -261,28 +250,6 @@ export default function PledgeStore() {
 
         {view === "store" ? (
         <>
-        {/* Premium row — Pixel Agents teaser. PABLO PRIME has its own
-            membership view, while the catalog below contains dollar-backed
-            agent upgrades and the membership listing. */}
-        <div className="grid grid-cols-1 gap-4 mb-10">
-          <div className="relative rounded-2xl border border-violet-500/30 bg-violet-500/[0.07] p-5 overflow-hidden">
-            <div className="flex items-center gap-2 mb-2">
-              <Bot className="w-4 h-4 text-violet-400" />
-              <span className="font-bold tracking-wide">PIXEL AGENTS</span>
-              <span className="ml-auto text-violet-300 font-mono text-xs">Jean Claw</span>
-            </div>
-            <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-              Jean Claw's curated team of specialist agents that actively builds your ventures. See their faces, what each one does, and the divisions they run — then deploy them from the Command Deck.
-            </p>
-            <button
-              onClick={() => switchView("agents")}
-              className="w-full py-2.5 rounded-lg border border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 font-semibold text-sm transition-colors flex items-center justify-center gap-1.5"
-            >
-              Meet the Agents <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
         {/* Category tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
@@ -398,7 +365,7 @@ export default function PledgeStore() {
         {/* Backer form */}
         <BackerForm />
         </>
-        ) : view === "prime" ? (
+        ) : (
           <Upgrade
             embedded
             onPrimeCheckout={() => {
@@ -415,8 +382,6 @@ export default function PledgeStore() {
             }}
             primeCheckoutLoading={buying === "membership_pablo_prime"}
           />
-        ) : (
-          <PixelAgents embedded />
         )}
 
         <p className="text-center text-[10px] text-zinc-600 mt-8 font-mono">

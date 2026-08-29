@@ -69,7 +69,7 @@ function StatusDot({ status }: { status: 'online' | 'offline' | 'unknown' }) {
   );
 }
 
-export default function AgentTeam() {
+export default function AgentTeam({ embedded = false }: { embedded?: boolean } = {}) {
   const { agents, loading, error } = useAgentTeam();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
 
@@ -82,17 +82,17 @@ export default function AgentTeam() {
 
   const { isAuthenticated } = useAuth();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !embedded) {
     return <SignInPage context={boomerMode ? 'Sign in to access your AI agents.' : 'Salaryman credentials required. Agent team access locked.'} />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className={embedded ? "rounded-xl border border-sky-500/20 bg-card/40 relative overflow-hidden" : "min-h-screen flex flex-col bg-background relative overflow-hidden"}>
+      {!embedded && <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />}
+      {!embedded && <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />}
 
-      <main className="flex-1 p-4 md:p-6 relative z-10">
-        <div className="max-w-3xl mx-auto">
+      <main className={embedded ? "p-4 md:p-5 relative z-10" : "flex-1 p-4 md:p-6 relative z-10"}>
+        <div className={embedded ? "max-w-none" : "max-w-3xl mx-auto"}>
 
           {/* Header */}
           <div className="mb-8">
@@ -102,7 +102,7 @@ export default function AgentTeam() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: boomerMode ? undefined : "var(--font-sans)", letterSpacing: boomerMode ? undefined : '0.1em', fontSize: boomerMode ? undefined : '1.4rem' }}>
-                  {boomerMode ? 'AI Team' : 'PABLO NETWORK'}
+                  {boomerMode ? 'Agent Network Status' : 'AGENT NETWORK STATUS'}
                 </h1>
                 <p className="text-xs text-muted-foreground" style={{ fontFamily: boomerMode ? undefined : "var(--font-sans)" }}>
                   {boomerMode ? 'The specialist AIs working behind the scenes' : 'MULTI-AGENT ORCHESTRATION LAYER · ACTIVE SPECIALISTS'}

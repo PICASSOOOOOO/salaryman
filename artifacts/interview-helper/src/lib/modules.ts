@@ -86,10 +86,9 @@ export const MODULES: Module[] = [
     label: 'AGENTS',
     codename: 'PIXEL AGENTS',
     icon: Bot,
-    defaultPath: '/pledge',
+    defaultPath: '/bots',
     subs: [
-      { id: 'store', path: '/pledge', label: 'PLEDGE STORE', boomerLabel: 'PLEDGE STORE', codename: 'STORE', icon: Store },
-      { id: 'my-bots', path: '/bots/my', label: 'MY AGENTS', boomerLabel: 'MY AGENTS', codename: 'ROBO DOC', icon: Bot },
+      { id: 'my-bots', path: '/bots', label: 'AGENT COMMAND CENTER', boomerLabel: 'MY AGENTS', codename: 'AGENT OPS', icon: Bot },
       { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },
     ],
   },
@@ -102,7 +101,6 @@ export const MODULES: Module[] = [
     defaultPath: '/console',
     subs: [
       { id: 'terminal', path: '/console', label: 'SOLVER', boomerLabel: 'SOLVER', codename: 'CIPHER-X', icon: Code2 },
-      { id: 'agents', path: '/console/agents', label: 'AGENTS', boomerLabel: 'AGENTS', codename: 'AGENT NET', icon: Bot },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },
       { id: 'scraper', path: '/console/scraper', label: 'SCRAPER', boomerLabel: 'WEB SCRAPER', codename: 'SIGNAL-INT', icon: Globe },
@@ -259,8 +257,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
       pathname === '/game/character' || pathname === '/game/settings') return MODULES[1];
   if (pathname.startsWith('/phone')) return MODULES[2];
-  if (pathname.startsWith('/bots')) return MODULES[3];
-  if (pathname.startsWith('/pledge')) return MODULES[3];
+  if (pathname.startsWith('/bots') || pathname === '/agents' || pathname === '/console/agents') return MODULES[3];
   if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[4];
   if (pathname.startsWith('/business')) return MODULES[5];
   if (pathname.startsWith('/insurance')) return MODULES[5];

@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import BotCommandCenter from './BotCommandCenter';
 import FinancialOverview from '@/components/FinancialOverview';
+import AgentTeam from './AgentTeam';
 
 function BotNameDisplay({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const upper = name.toUpperCase();
@@ -3499,7 +3500,7 @@ export default function BotFactory() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
-                  {boomerMode ? t('botFactory.title') : t('botFactory.titleCodename')}
+                   {boomerMode ? 'Agent Command Center' : 'AGENT COMMAND CENTER'}
                 </h1>
                 <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                   {boomerMode ? t('botFactory.subtitle') : t('botFactory.subtitleCodename')}
@@ -3554,6 +3555,8 @@ export default function BotFactory() {
                   </div>
                 </div>
               </motion.div>
+
+              <AgentTeam embedded />
 
               {bots.length > 0 && (
                 <BotCommandCenter

@@ -151,7 +151,7 @@ export function MobileModuleNav() {
       pathname.startsWith('/office/') ||
       pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
       pathname === '/game/character' || pathname === '/game/settings';
-    if (tab.id === 'bots') return pathname.startsWith('/bots') || pathname.startsWith('/pledge');
+    if (tab.id === 'bots') return pathname.startsWith('/bots');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
   };
