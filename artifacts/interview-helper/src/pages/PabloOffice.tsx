@@ -22,7 +22,7 @@ import { setLiveRates, getCityCurrency, getCityCurrencyCode, getCityCostMultipli
 import { NetWorthHUD } from '@/components/NetWorthHUD';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
-import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
+import { getSalarymanOfficeTier, type SalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
 import { clearStoryBeginIntent, setStoryBeginIntent, currentSlot } from '@/lib/story-gate';
 import {
@@ -32,7 +32,7 @@ import {
 import { MissionMenu } from '@/components/office/MissionMenu';
 import { getRealQuarter } from '@/gameSystems';
 import { type AssignmentStorySnapshot, type StoryAssignmentDef } from '@/lib/story-assignments';
-import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
+import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, syncOwnedPropertiesLocal, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
@@ -131,7 +131,7 @@ export default function PabloOffice() {
   // Read the user's onboarding office tier once on mount. localStorage
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
-  const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
+  const [tier, setTier] = useState<SalarymanOfficeTier>(() => getSalarymanOfficeTier() ?? 'capsule');
   useEffect(() => {
     setMapContext({
       kind: 'office',
@@ -154,12 +154,12 @@ export default function PabloOffice() {
   // The property you rented/bought from the realty showroom. Drives the
   // establishing image (SAME useArtAsset(artKey) as the realty card) and the
   // tenure badge so the office you own looks like the deed you hold.
-  const [owned] = useState<OwnedProperty | null>(() => getOwnedOffice());
+  const [owned, setOwned] = useState<OwnedProperty | null>(() => getOwnedOffice());
   // The rented home / starter base shares ONE space with the office, so when no
   // office has been bought we fall back to the home deed, then to the entry-tier
   // apartment art. This makes the office, the rented apartment and the starter
   // base all render from the SAME realty illustration.
-  const [ownedHome] = useState<OwnedProperty | null>(() => getOwnedHome());
+  const [ownedHome, setOwnedHome] = useState<OwnedProperty | null>(() => getOwnedHome());
   // The ƒ renovation (theme color / signage / lighting) applied to the office.
   // Main keys customization by building id in data.propertyCustomization; the
   // office maps to the player's workstation building. Read-only mirror so the
@@ -471,6 +471,19 @@ export default function PabloOffice() {
         .then(r => r.ok ? r.json() : null)
         .then(res => {
           if (!res?.saves?.length) return;
+          const selected = res.saves.find((save: { slotIndex?: number }) => Number(save.slotIndex) === slot);
+          const selectedData = (selected?.data ?? {}) as {
+            office?: OwnedProperty;
+            home?: OwnedProperty;
+            officeTier?: SalarymanOfficeTier;
+          };
+          const cloudOffice = selectedData.office ?? null;
+          const cloudHome = selectedData.home ?? null;
+          setOwned(cloudOffice);
+          setOwnedHome(cloudHome);
+          syncOwnedPropertiesLocal(cloudOffice, cloudHome);
+          const cloudTier = cloudOffice?.tier ?? selectedData.officeTier;
+          setTier(cloudTier === 'studio' || cloudTier === 'coworking' || cloudTier === 'suite' ? cloudTier : 'capsule');
           const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
             new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
           if (newest?.data) {
@@ -490,7 +503,7 @@ export default function PabloOffice() {
         })
         .catch(() => {});
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, slot]);
 
   useEffect(() => {
     const onResize = () => {
@@ -1340,6 +1353,26 @@ export default function PabloOffice() {
             style={{ maxWidth: 420, width: '100%', border: '1px solid rgba(56,189,248,.35)', borderRadius: 12, background: '#06090f', padding: '1.1rem 1.2rem', boxShadow: '0 20px 60px -20px rgba(0,0,0,.8)' }}
           >
             <div style={{ fontSize: '.95rem', letterSpacing: '.12em', color: '#38bdf8', marginBottom: '.7rem' }}>OFFICE CONTROLS</div>
+            <p style={{ margin: '0 0 .8rem', color: 'rgba(200,230,255,.76)', fontSize: '.72rem', lineHeight: 1.55 }}>
+              SALARYMAN turns work into a playable company: get supplies, choose a working property, hire agents, and run business operations.
+            </p>
+            <div data-testid="office-commerce-destinations" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '.45rem', marginBottom: '.9rem' }}>
+              {([
+                ['SUPPLIES', '/vending?from=office'],
+                ['PROPERTY', '/store/realty?from=office'],
+                ['AGENTS', '/bots'],
+                ['BUSINESS OPS', '/business'],
+              ] as const).map(([label, path]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => { setShowHelp(false); playNav(); navigateFromOffice(path); }}
+                  style={{ padding: '.55rem .45rem', borderRadius: 6, border: '1px solid rgba(56,189,248,.32)', background: 'rgba(56,189,248,.08)', color: '#bae6fd', font: 'inherit', fontSize: '.62rem', letterSpacing: '.09em', cursor: 'pointer' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '.4rem .8rem', fontSize: '.7rem', color: 'rgba(200,230,255,.85)' }}>
               {([
                 [isTouch ? 'TAP FLOOR' : 'WASD / ARROWS', 'Walk around the office'],

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { eq, and, desc, gt, ne, isNotNull } from "drizzle-orm";
 import { db, realEstateListingsTable, salarymanSavesTable, type RealEstateListing } from "@workspace/db";
+import { isPlayablePropertyKey } from "@workspace/api-zod/playable-properties";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
 import { chargePabloTax, PABLO_TAX_MARKUP, FIAT_PER_USD } from "../lib/pablo-tax";
@@ -500,6 +501,10 @@ router.post("/real-estate/acquire", requireAuth, async (req: Request, res: Respo
     const { artKey, tenure, slot } = (req.body || {}) as { artKey?: string; tenure?: string; slot?: number | string };
     const entry = PROPERTY_CATALOG[String(artKey)];
     if (!entry) { res.status(400).json({ error: "unknown property" }); return; }
+    if (!isPlayablePropertyKey(artKey)) {
+      res.status(409).json({ error: "This property is not available until its playable destination is ready." });
+      return;
+    }
     const ten: "rent" | "own" = tenure === "own" ? "own" : "rent";
     const slotIdx = Math.max(0, parseInt(String(slot ?? 0), 10) || 0);
 

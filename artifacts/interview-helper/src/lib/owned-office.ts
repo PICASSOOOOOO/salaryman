@@ -101,6 +101,12 @@ export function setOwnedPropertyLocal(p: OwnedProperty): void {
   }
 }
 
+/** Replace both local deed mirrors from one authoritative save slot. */
+export function syncOwnedPropertiesLocal(office: OwnedProperty | null, home: OwnedProperty | null): void {
+  patchSave({ office, home });
+  if (office) setSalarymanOfficeTier(office.tier);
+}
+
 /**
  * Read-only: the deed customization (theme color / signage / lighting) applied
  * to the player's personal office, if any. The in-world building customizer

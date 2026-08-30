@@ -1424,5 +1424,21 @@
       "Add tests for pablo-voice",
       "Implement voice support features for Pablo terminal and API server"
     ]
+  },
+  {
+    "version": "v.17.2.2025",
+    "date": "2026-08-30",
+    "commitHash": "006283793e3cdb9e1d0f603d1a0e9bfbde794872",
+    "changes": [
+      "Implement marketplace routes and supporting UI components"
+    ]
+  },
+  {
+    "version": "v.17.3.2025",
+    "date": "2026-08-30",
+    "commitHash": "006283793e3cdb9e1d0f603d1a0e9bfbde794872",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

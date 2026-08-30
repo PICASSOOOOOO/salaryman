@@ -34,9 +34,9 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
     });
   }
 
-  it("bare /game does NOT resolve to the office module (it redirects to /pablo)", () => {
-    // /game is retired and redirected at the router level; getModuleForPath
-    // must not claim it as an office path.
+  it("bare /game does NOT resolve to the office module", () => {
+    // /game owns the GameHub route; getModuleForPath must not claim it as an
+    // office sub-page.
     const mod = getModuleForPath("/game");
     expect(mod?.id ?? null).not.toBe("office");
   });
@@ -48,6 +48,10 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
     expect(subPaths).toContain("/game/bank");
     expect(subPaths).toContain("/game/character");
     expect(subPaths).toContain("/game/settings");
+    expect(subPaths).toContain("/vending?from=office");
+    expect(subPaths).toContain("/store/realty?from=office");
+    expect(subPaths).toContain("/bots");
+    expect(subPaths).toContain("/business");
   });
 });
 
@@ -58,33 +62,24 @@ const APP_SRC = readFileSync(
   "utf8",
 );
 
-describe("/game redirect in App.tsx", () => {
-  it('contains a <Route path="/game"> that redirects to "/pablo"', () => {
-    // Match e.g.  <Route path="/game">{() => <Redirect to="/pablo" />}</Route>
-    // or similar JSX. We check for the path + target together.
+describe("/game route in App.tsx", () => {
+  it('contains an authenticated <Route path="/game"> for GameHub', () => {
     const hasGameRoute = /path=["']\/game["']/.test(APP_SRC);
-    const hasPabloRedirect = /Redirect[^}]*to=["']\/pablo["']/.test(APP_SRC);
+    const hasGameHub = /path=["']\/game["'][^>]*>[\s\S]{0,120}<GameLock><GameHub/.test(APP_SRC);
     expect(
       hasGameRoute,
       'App.tsx must contain a Route for "/game"',
     ).toBe(true);
-    expect(
-      hasPabloRedirect,
-      'App.tsx must have a Redirect to "/pablo" near the /game route',
-    ).toBe(true);
+    expect(hasGameHub, 'The /game route must keep rendering GameHub behind GameLock').toBe(true);
   });
 
-  it("the /game redirect appears before or without any catch-all office handling", () => {
+  it("the /game route appears before office handling", () => {
     const gameIdx = APP_SRC.indexOf('path="/game"');
     expect(gameIdx, 'Could not find path="/game" in App.tsx').toBeGreaterThan(
       -1,
     );
-    // Sanity: Redirect to pablo appears somewhere after the route declaration
-    const pabloRedirectIdx = APP_SRC.indexOf('to="/pablo"', gameIdx);
-    expect(
-      pabloRedirectIdx,
-      'Could not find to="/pablo" after path="/game"',
-    ).toBeGreaterThan(gameIdx);
+    const officeIdx = APP_SRC.indexOf('path="/office"', gameIdx);
+    expect(officeIdx, 'Could not find path="/office" after path="/game"').toBeGreaterThan(gameIdx);
   });
 });
 

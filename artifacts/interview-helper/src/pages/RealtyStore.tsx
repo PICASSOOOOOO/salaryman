@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { isPlayablePropertyKey } from "@workspace/api-zod/playable-properties";
 import { useLocation } from "wouter";
 import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown, Check, Loader2, X, Paintbrush } from "lucide-react";
 import { useArtAsset } from "@/lib/art";
@@ -108,6 +109,8 @@ interface AcquireTarget { t: PropertyTemplate; tenure: "rent" | "own"; }
 export default function RealtyStore() {
   hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
+  const fromOffice = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("from") === "office";
   const { idx, pct } = useMarketIndex();
   const t = useTick(1000);
   const baseMult = idx?.multiplier ?? 1;
@@ -145,7 +148,10 @@ export default function RealtyStore() {
   }, []);
 
   const district = FACTION_DISTRICTS[faction];
-  const { homes, offices } = useMemo(() => getFactionPropertyCatalog(faction), [faction]);
+  const offices = useMemo(() => {
+    const catalog = getFactionPropertyCatalog(faction);
+    return catalog.offices.filter((property) => isPlayablePropertyKey(property.artKey));
+  }, [faction]);
 
   const ownedFor = (kind: Kind) => (kind === "office" ? ownedOffice : ownedHome);
 
@@ -173,6 +179,10 @@ export default function RealtyStore() {
       }
       if (res.status === 404) {
         setResult({ ok: false, msg: "No save yet — enter the world and save once, then come back." });
+        return;
+      }
+      if (res.status === 409) {
+        setResult({ ok: false, msg: j?.error || "That destination is not playable yet." });
         return;
       }
       if (!res.ok || !j?.ok) {
@@ -272,10 +282,10 @@ export default function RealtyStore() {
       <header className="px-4 sm:px-6 pt-4 pb-3 flex items-center justify-between border-b border-pink-500/20 gap-3">
         <button
           type="button"
-          onClick={() => navigate("/world/play")}
+          onClick={() => navigate(fromOffice ? "/office" : "/world/play")}
           className="text-pink-200 text-[10px] tracking-[0.4em] hover:text-white flex items-center gap-2 shrink-0"
         >
-          <ArrowLeft className="w-3 h-3" /> WORLD
+          <ArrowLeft className="w-3 h-3" /> {fromOffice ? "OFFICE" : "WORLD"}
         </button>
         <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "var(--font-sans)" }}>
           ▌ DOWNTOWN REALTY <span className="text-red-400">不動産</span> ▌
@@ -306,7 +316,7 @@ export default function RealtyStore() {
               PROPERTY <span className="text-red-400">テンプレート</span>
             </div>
             <div className="text-zinc-400 text-sm max-w-xl leading-snug">
-              Every dwelling ships with a working terminal. Rent monthly or buy outright — purchase is
+               Every property shown opens as a playable destination. Rent monthly or buy outright — purchase is
                <span className="text-pink-300"> 100 months of rent + 20% premium</span>. Both numbers tick with the
                live BTC index every second.
             </div>
@@ -379,16 +389,9 @@ export default function RealtyStore() {
           <p className="text-pink-100/70 text-xs leading-snug max-w-3xl">{district.locationBlurb}</p>
         </div>
 
-        {/* HOMES */}
-        <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${homes.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
-          {homes.map(p => (
-            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} cityMult={cityMult} localCcy={localCcy} now={t}
-              owned={ownedFor(p.kind)}
-              onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
-              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }}
-              onRenovate={(o) => { setResult(null); setRenovating({ t: p, owned: o }); }} />
-          ))}
+        <div className="mb-8 rounded-lg border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-zinc-400">
+          <span className="font-bold text-zinc-200">Homes are not for sale yet.</span>{" "}
+          Home interiors must be playable before Realty can charge for them.
         </div>
 
         {/* OFFICES */}

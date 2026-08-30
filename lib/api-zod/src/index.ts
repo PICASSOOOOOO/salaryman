@@ -1,6 +1,7 @@
 export * from "./generated/api";
 export * from "./storage";
 export * from "./credit-actions";
+export * from "./playable-properties";
 export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,
