@@ -12,7 +12,8 @@ import {
 import { eq, and, or, ilike, desc } from "drizzle-orm";
 import { broadcastLeadEvent } from "../chatServer";
 import multer from "multer";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { Readable } from "node:stream";
 
 const router = Router();
 
@@ -98,22 +99,25 @@ function rowToLead(values: (string | number | null | undefined)[], idx: Partial<
 }
 
 /** Parse an uploaded buffer (CSV or XLSX) into ParsedLeadRow[]. */
-function parseSheetBuffer(buf: Buffer, mimetype: string, originalName: string): { rows: ParsedLeadRow[]; headerCount: number } {
+async function parseSheetBuffer(buf: Buffer, mimetype: string, originalName: string): Promise<{ rows: ParsedLeadRow[]; headerCount: number }> {
   const isXlsx = /sheet|excel|xlsx|xlsm|xlsb|xls/i.test(mimetype) || /\.(xlsx|xlsm|xlsb|xls)$/i.test(originalName);
-  let aoa: (string | number | null | undefined)[][];
+  const workbook = new ExcelJS.Workbook();
   if (isXlsx) {
-    const wb = XLSX.read(buf, { type: "buffer" });
-    const firstSheet = wb.Sheets[wb.SheetNames[0]];
-    if (!firstSheet) return { rows: [], headerCount: 0 };
-    aoa = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", raw: false }) as any[];
+    await workbook.xlsx.load(buf as any);
   } else {
-    // Treat as CSV (or any text format SheetJS understands).
-    const text = buf.toString("utf8").replace(/^\uFEFF/, ""); // strip BOM
-    const wb = XLSX.read(text, { type: "string", raw: false });
-    const firstSheet = wb.Sheets[wb.SheetNames[0]];
-    if (!firstSheet) return { rows: [], headerCount: 0 };
-    aoa = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", raw: false }) as any[];
+    const csv = buf.toString("utf8").replace(/^\uFEFF/, "");
+    await workbook.csv.read(Readable.from([csv]));
   }
+  const firstSheet = workbook.worksheets[0];
+  if (!firstSheet) return { rows: [], headerCount: 0 };
+  const aoa: (string | number | null | undefined)[][] = [];
+  firstSheet.eachRow({ includeEmpty: true }, row => {
+    const values: string[] = [];
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      values[colNumber - 1] = cell.text;
+    });
+    aoa.push(values);
+  });
   if (!aoa.length) return { rows: [], headerCount: 0 };
   const headerRow = (aoa[0] || []).map(v => String(v ?? "").trim());
   const idx = indexHeaders(headerRow);
@@ -320,16 +324,15 @@ router.get("/leads/export/xlsx", async (req: Request, res: Response) => {
     return (first === "=" || first === "+" || first === "-" || first === "@" || first === "\t" || first === "\r") ? "'" + v : v;
   };
   const aoa: any[][] = [LEAD_FIELDS.map(f => f.header), ...leads.map(l => buildExportRow(l).map(guardCell))];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Leads");
+  ws.addRows(aoa);
   // Column widths matched to typical content so the download opens looking
   // like a real spreadsheet rather than a wall of identically-sized columns.
-  ws["!cols"] = [
-    { wch: 28 }, { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 22 },
-    { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 22 },
-  ];
-  XLSX.utils.book_append_sheet(wb, ws, "Leads");
-  const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  [28, 18, 28, 24, 22, 12, 14, 10, 22].forEach((width, i) => {
+    ws.getColumn(i + 1).width = width;
+  });
+  const buf = Buffer.from(await wb.xlsx.writeBuffer());
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="leads-export-${Date.now()}.xlsx"`);
   res.send(buf);
@@ -634,7 +637,7 @@ router.post("/leads/import-file", sheetUpload.single("file"), async (req: Reques
 
   let parsed: { rows: ParsedLeadRow[]; headerCount: number };
   try {
-    parsed = parseSheetBuffer(file.buffer, file.mimetype || "", file.originalname || "");
+    parsed = await parseSheetBuffer(file.buffer, file.mimetype || "", file.originalname || "");
   } catch (e) {
     res.status(400).json({ error: `Could not read file: ${e instanceof Error ? e.message : "unknown"}` });
     return;
@@ -732,7 +735,7 @@ router.post("/leads/import", async (req: Request, res: Response) => {
     // Route CSV text through the same SheetJS-backed parser the file upload
     // uses. Single code path = identical header matching and edge cases.
     try {
-      const { rows, headerCount } = parseSheetBuffer(Buffer.from(csvText, "utf8"), "text/csv", fileName || "import.csv");
+      const { rows, headerCount } = await parseSheetBuffer(Buffer.from(csvText, "utf8"), "text/csv", fileName || "import.csv");
       if (headerCount === 0) { res.status(400).json({ error: "CSV must have a header row and at least one data row" }); return; }
       if (rows.length === 0) { res.status(400).json({ error: 'CSV must include a "Name" (or full_name / contact_name) column with at least one row' }); return; }
       parsedLeads = rows;

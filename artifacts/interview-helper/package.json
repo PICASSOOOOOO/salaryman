@@ -106,6 +106,6 @@
     "tailwindcss": "catalog:",
     "terser": "^5.47.1",
     "vite": "catalog:",
-    "vitest": "4.1.7"
+    "vitest": "4.1.11"
   }
 }

@@ -45,7 +45,7 @@ catalog:
   '@vitejs/plugin-react': ^5.0.4
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
-  drizzle-orm: ^0.45.1
+  drizzle-orm: ^0.45.2
   framer-motion: ^12.23.24
   lucide-react: ^0.545.0
   # Must be this exact version because expo requires it
@@ -55,7 +55,7 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: ^4.21.0
-  vite: ^7.3.0
+  vite: ^7.3.5
   zod: ^3.25.76
 
 autoInstallPeers: false
@@ -149,7 +149,35 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
-  esbuild: "0.27.3"
+  "@babel/core": "7.29.6"
+  "@tootallnate/once": "2.0.1"
+  axios: "1.20.0"
+  body-parser: "2.3.0"
+  brace-expansion: "2.1.4"
+  dompurify: "3.4.14"
+  esbuild: "0.28.1"
+  fast-uri: "3.1.5"
+  fast-xml-builder: "1.1.7"
+  fast-xml-parser: "5.11.1"
+  follow-redirects: "1.16.0"
+  form-data: "4.0.6"
+  ip-address: "10.3.1"
+  js-cookie: "3.0.7"
+  js-yaml: "4.3.1"
+  linkify-it: "5.0.2"
+  lodash: "4.18.1"
+  markdown-it: "14.2.0"
+  multer: "2.3.0"
+  nanoid: "5.1.16"
+  path-to-regexp: "8.4.2"
+  picomatch: "4.0.7"
+  postcss: "8.5.26"
+  qs: "6.15.2"
+  undici: "8.10.0"
+  uuid: "11.1.1"
+  ws: "8.21.3"
+  yaml: "2.9.0"
+  yt-dlp: "2026.7.4"
   # Force all packages to use the project's React version (required for Uppy v5)
   react: "19.1.0"
   react-dom: "19.1.0"
