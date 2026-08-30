@@ -534,7 +534,7 @@ function AppShell() {
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
       {!isEmbed && <AlphaWipeBanner />}
       {showNavBar && (
-        <div className="sticky top-0 z-50 sm:static sm:z-auto">
+        <div className="sticky top-0 z-50">
           <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />
