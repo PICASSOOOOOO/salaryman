@@ -155,3 +155,4 @@
 - [Authoritative world economy](authoritative-world-economy.md) — FIAT, quick-job runs, cargo, quotes, and economy-gated position are server-owned; client saves/UI only cache returned snapshots.
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
+- [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.

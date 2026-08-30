@@ -74,6 +74,10 @@ import {
   milaAppearance, clothOutfitColor, isWorkAppropriate, workOutfitStyle,
 } from '@/lib/character-identity';
 import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import {
+  changedMessageDue, movementChanged, movementDemanded, snapshotChanged,
+  stableSnapshot, statsChanged, type MovementSnapshot, type StatsSnapshot,
+} from '@/lib/world-runtime';
 import { computeBoWarning } from '@/lib/bo-collector-warning';
 import {
   type CityBuilding, type BuildingTypeSpec,
@@ -4486,6 +4490,25 @@ export default function WorldPlay() {
   const gameRef       = useRef<HTMLDivElement>(null);
   const wsRef         = useRef<WebSocket | null>(null);
   const animRef       = useRef(0);
+  const rafLoopRef    = useRef<FrameRequestCallback | null>(null);
+  const documentVisibleRef = useRef(typeof document === 'undefined' || !document.hidden);
+  const [documentVisible, setDocumentVisible] = useState(documentVisibleRef.current);
+  useEffect(() => {
+    const syncVisibility = () => {
+      const visible = !document.hidden;
+      documentVisibleRef.current = visible;
+      setDocumentVisible(visible);
+      if (!visible) {
+        if (animRef.current) cancelAnimationFrame(animRef.current);
+        animRef.current = 0;
+      } else if (!animRef.current && rafLoopRef.current) {
+        animRef.current = requestAnimationFrame(rafLoopRef.current);
+      }
+    };
+    document.addEventListener('visibilitychange', syncVisibility);
+    syncVisibility();
+    return () => document.removeEventListener('visibilitychange', syncVisibility);
+  }, []);
   const peerConns     = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStream   = useRef<MediaStream | null>(null);
   const audioCtx      = useRef<AudioContext | null>(null);
@@ -5115,14 +5138,14 @@ export default function WorldPlay() {
   // until they work the debt down to zero. This is the engine that pays
   // for Salaryman's development — every ƒ off the debt is also free labor
   // (bug reports / data labels) or revenue (ad views / sponsor clicks).
-  // Subway station auto-discovery probe. Every 4s, sends current player
-  // coords to /api/subway/discover-near. Server gates by station radius and
-  // unlocks any in range. Cheap and self-contained.
+  // Subway discovery is probed outdoors on arrival/visible return and after
+  // meaningful movement, rather than continuously posting stationary coords.
   // Equipped-gear stats loader. The Armory persists the loadout server-side;
   // here we pull the resolved {attack,defense,magic,tech} bundle for the active
   // save slot once on mount and whenever the Armory signals a change (it bumps
   // localStorage 'sm_gear_rev' on equip/unequip). Same numbers the Armory shows.
   useEffect(() => {
+    if (!documentVisible) return;
     let cancelled = false;
     // The item catalog is static, so resolve the visual descriptors (rarity,
     // vehicleKind, type) for each equipped item once and cache them. Keyed by
@@ -5186,11 +5209,18 @@ export default function WorldPlay() {
 
   useEffect(() => {
     let cancelled = false;
+    let probing = false;
+    let lastProbe: { x: number; y: number } | null = null;
     const probe = async () => {
-      if (cancelled) return;
+      if (cancelled || probing || !documentVisibleRef.current) return;
       try {
-        const px = gs.current?.px, py = gs.current?.py;
+        const g = gs.current;
+        if (g.interior) return;
+        const px = g?.px, py = g?.py;
         if (typeof px !== 'number' || typeof py !== 'number') return;
+        if (!movementDemanded({ x: px, y: py }, lastProbe, 48)) return;
+        probing = true;
+        lastProbe = { x: px, y: py };
         await fetch('/api/subway/discover-near', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -5198,10 +5228,12 @@ export default function WorldPlay() {
           body: JSON.stringify({ x: px, y: py }),
         });
       } catch { /* silent */ }
+      finally { probing = false; }
     };
-    const id = window.setInterval(probe, 4000);
+    void probe();
+    const id = window.setInterval(probe, 500);
     return () => { cancelled = true; window.clearInterval(id); };
-  }, []);
+  }, [documentVisible]);
 
   const [inCollectionsFacility, setInCollectionsFacility] = useState(false);
   useEffect(() => {
@@ -5214,10 +5246,10 @@ export default function WorldPlay() {
         if (!cancelled) setInCollectionsFacility(!!j.inCf);
       } catch {}
     };
-    poll();
-    const t = setInterval(poll, 60_000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, []);
+    if (documentVisible) poll();
+    const t = documentVisible ? setInterval(poll, 60_000) : null;
+    return () => { cancelled = true; if (t) clearInterval(t); };
+  }, [documentVisible]);
 
   // ── Ambient world incidents ────────────────────────────────────────────
   // Periodically surfaces a region-appropriate incident through the narrator
@@ -6420,6 +6452,7 @@ export default function WorldPlay() {
   const wsSend = useCallback((m: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(m));
   }, []);
+  const lastSavedSnapshotRef = useRef<string | null>(null);
 
   const canAccessTerminal = useCallback(() => {
     const g = gs.current;
@@ -6434,7 +6467,7 @@ export default function WorldPlay() {
     const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
     localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave, ...catSave }));
     try { window.dispatchEvent(new CustomEvent('sm_wanted_changed', { detail: { wantedLevel: g.wantedLevel ?? 0, bountyAmount: g.bountyAmount ?? 0 } })); } catch {}
-    if (!forceCloud && !canAccessTerminal()) return Promise.resolve();
+    if (!forceCloud && !canAccessTerminal()) return Promise.resolve(true);
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const savePayload = {
       charName: char.name,
@@ -6450,8 +6483,8 @@ export default function WorldPlay() {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(savePayload),
-    }).catch(() => {});
-  }, [char, canAccessTerminal]) as (data: object, forceCloud?: boolean) => Promise<unknown> | undefined;
+    }).then(response => response.ok).catch(() => false);
+  }, [char, canAccessTerminal]) as (data: object, forceCloud?: boolean) => Promise<boolean>;
 
   const doSaveRef = useRef(doSave);
   doSaveRef.current = doSave;
@@ -6531,18 +6564,28 @@ export default function WorldPlay() {
   }, [char]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const saveChanged = () => {
       const g = gs.current;
-      if (g.hasDevice && !g.deviceBroken) {
-        doSaveRef.current(buildSaveData());
-      }
+      if (!g.hasDevice || g.deviceBroken) return;
+      const data = buildSaveData();
+      const decision = snapshotChanged(data, lastSavedSnapshotRef.current);
+      if (!decision.changed) return;
+      void doSaveRef.current(data).then(saved => {
+        if (saved) lastSavedSnapshotRef.current = decision.serialized;
+      });
+    };
+    const interval = setInterval(() => {
+      if (documentVisibleRef.current) saveChanged();
     }, 30000);
+    const flushHidden = () => { if (document.hidden) saveChanged(); };
+    const flushPage = () => saveChanged();
+    document.addEventListener('visibilitychange', flushHidden);
+    window.addEventListener('pagehide', flushPage);
     return () => {
       clearInterval(interval);
-      const g = gs.current;
-      if (g.hasDevice && !g.deviceBroken) {
-        doSaveRef.current(buildSaveData());
-      }
+      document.removeEventListener('visibilitychange', flushHidden);
+      window.removeEventListener('pagehide', flushPage);
+      saveChanged();
     };
   }, [buildSaveData]);
 
@@ -7757,7 +7800,10 @@ export default function WorldPlay() {
       `${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&company=${encodeURIComponent(char.company ?? '')}&x=${x}&y=${y}&city=${encodeURIComponent(getActiveCityId())}`;
     const ws = new WebSocket(makeUrl(char.sx, char.sy));
     wsRef.current = ws;
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     ws.onclose = (ev) => {
+      if (disposed) return;
       if (ev.code === 4001) {
         // Server rejected entry: visa required for this city.
         const params = new URLSearchParams(ws.url.split('?')[1] ?? '');
@@ -7770,11 +7816,8 @@ export default function WorldPlay() {
         wsRef.current = null;
         return;
       }
-      setTimeout(() => {
-        if (wsRef.current === ws) {
-          const nws = new WebSocket(makeUrl(gs.current.px, gs.current.py));
-          wsRef.current = nws;
-        }
+      reconnectTimer = setTimeout(() => {
+        if (!disposed && wsRef.current === ws) setWsReconnectKey(key => key + 1);
       }, 3000);
     };
     ws.onmessage = (ev) => {
@@ -7799,7 +7842,8 @@ export default function WorldPlay() {
         // lobby's own poll handles re-entry.
         setLobbyInfo({ online: m.online, max: m.max, cityId: m.cityId, region: m.region, voucherGranted: m.voucherGranted });
         setServerFull(true);
-        wsRef.current = null;
+        if (wsRef.current === ws) wsRef.current = null;
+        ws.close(1000, 'Capacity lobby');
         return;
       } else if (m.type === 'welcome') {
         setServerFull(false);
@@ -8140,18 +8184,48 @@ export default function WorldPlay() {
       }
     };
     window.addEventListener('keydown', handleEventKey);
-    let lastSyncHp = 0;
-    let lastSyncMoney = 0;
-    const posInterval = setInterval(() => {
+    let lastMove: MovementSnapshot | null = null;
+    let lastStats: StatsSnapshot | null = null;
+    let lastSyncMoney = gs.current.salary;
+    let lastMoveSentAt = -Infinity;
+    let lastStatsSentAt = -Infinity;
+    let lastFinalSignature: string | null = null;
+    const sendLatest = (force = false) => {
+      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
       const g = gs.current;
-      wsSend({ type: 'move', x: g.interior ? g.interior.px : g.px, y: g.interior ? g.interior.py : g.py, paused: gamePausedRef.current, interiorBid: g.interior?.bid ?? undefined });
-      if (g.hp > lastSyncHp) wsSend({ type: 'pve_heal', hp: g.hp });
-      else wsSend({ type: 'sync_stats', hp: g.hp, weaponId: activeWeaponRef.current });
-      lastSyncHp = g.hp;
-      if (g.salary !== lastSyncMoney) {
+      const now = performance.now();
+      const move: MovementSnapshot = {
+        x: g.interior ? g.interior.px : g.px,
+        y: g.interior ? g.interior.py : g.py,
+        paused: gamePausedRef.current,
+        interiorBid: g.interior?.bid,
+      };
+      const stats: StatsSnapshot = { hp: g.hp, weaponId: activeWeaponRef.current };
+      const finalSignature = stableSnapshot({ move, stats, money: g.salary });
+      if (force && finalSignature === lastFinalSignature) return;
+      if (force || changedMessageDue(movementChanged(move, lastMove), documentVisibleRef.current, now, lastMoveSentAt, 80)) {
+        wsSend({ type: 'move', x: move.x, y: move.y, paused: move.paused, interiorBid: move.interiorBid });
+        lastMove = move;
+        lastMoveSentAt = now;
+      }
+      if (force || changedMessageDue(statsChanged(stats, lastStats), documentVisibleRef.current, now, lastStatsSentAt, 80)) {
+        const healed = Boolean(lastStats && stats.hp > lastStats.hp);
+        const weaponChangedNow = !lastStats || stats.weaponId !== lastStats.weaponId;
+        if (healed) wsSend({ type: 'pve_heal', hp: stats.hp });
+        if (!healed || weaponChangedNow) wsSend({ type: 'sync_stats', hp: stats.hp, weaponId: stats.weaponId });
+        lastStats = stats;
+        lastStatsSentAt = now;
+      }
+      if ((force || documentVisibleRef.current) && g.salary !== lastSyncMoney) {
         wsSend({ type: 'money_update', money: g.salary });
         lastSyncMoney = g.salary;
       }
+      if (force) lastFinalSignature = finalSignature;
+    };
+    let posInterval: ReturnType<typeof setInterval> | null = null;
+    const syncPosition = () => {
+      const g = gs.current;
+      sendLatest();
       // Proximity narrator: fire once per event (per session) when the player
       // comes within 500 world units of an active event beacon.
       if (!g.interior) {
@@ -8169,47 +8243,81 @@ export default function WorldPlay() {
           }
         }
       }
-    }, 120);
+    };
+    const startPositionSync = () => {
+      if (posInterval || !documentVisibleRef.current) return;
+      sendLatest();
+      posInterval = setInterval(syncPosition, 80);
+    };
+    const stopPositionSync = () => {
+      if (!posInterval) return;
+      clearInterval(posInterval);
+      posInterval = null;
+    };
+    const handleSocketVisibility = () => {
+      if (document.hidden) {
+        sendLatest(true);
+        stopPositionSync();
+      } else {
+        startPositionSync();
+      }
+    };
+    startPositionSync();
+    document.addEventListener('visibilitychange', handleSocketVisibility);
+
+    return () => {
+      disposed = true;
+      sendLatest(true);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (wsRef.current === ws) wsRef.current = null;
+      ws.close(); stopPositionSync();
+      document.removeEventListener('visibilitychange', handleSocketVisibility);
+      window.removeEventListener('keydown', handleEventKey);
+    };
+  // wsReconnectKey is intentionally included: incrementing it forces a full
+  // re-run so new sockets always get all handlers attached (used by the visa
+  // apply reconnect path — see visa modal handleApply below).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [char.name, wsReconnectKey]);
+
+  useEffect(() => {
+    if (!documentVisible) return;
+    let cancelled = false;
     const fetchEmployees = () => {
+      if (!documentVisibleRef.current) return;
       apiFetch('/api/tools/hiring/employees')
         .then(r => r.ok ? r.json() : { employeesByOwner: {} })
         .then(data => {
+          if (cancelled) return;
           const emps: EmployeeNpcDef[] = [];
           const byOwner: Record<string, { name: string; role: string; businessName: string }[]> = data.employeesByOwner ?? {};
           const ownerBuildings: Record<string, string[]> = {};
           gs.current.locks.forEach((lock, bid) => {
             const owner = lock.ownerName?.toUpperCase();
-            if (owner) {
-              if (!ownerBuildings[owner]) ownerBuildings[owner] = [];
-              ownerBuildings[owner].push(bid);
-            }
+            if (owner) (ownerBuildings[owner] ??= []).push(bid);
           });
           for (const [owner, staff] of Object.entries(byOwner)) {
             const bids = ownerBuildings[owner.toUpperCase()] ?? [];
-            if (bids.length === 0) continue;
-            staff.forEach((e, idx) => {
+            if (!bids.length) continue;
+            staff.forEach((employee, idx) => {
               const bid = bids[idx % bids.length];
-              const bld = BUILDINGS.find(b => b.id === bid);
-              if (bld) {
-                const offsetX = (idx % 3 - 1) * 30;
-                const offsetY = bld.h + 20 + Math.floor(idx / 3) * 25;
-                emps.push({ name: e.name.toUpperCase(), role: e.role, x: bld.x + bld.w / 2 + offsetX, y: bld.y + offsetY, businessName: e.businessName ?? '', buildingId: bid });
-              }
+              const building = BUILDINGS.find(item => item.id === bid);
+              if (building) emps.push({
+                name: employee.name.toUpperCase(), role: employee.role,
+                x: building.x + building.w / 2 + (idx % 3 - 1) * 30,
+                y: building.y + building.h + 20 + Math.floor(idx / 3) * 25,
+                businessName: employee.businessName ?? '', buildingId: bid,
+              });
             });
           }
           gs.current.employeeNpcs = emps;
         })
         .catch(() => {});
     };
-    setTimeout(fetchEmployees, 2000);
-    const empRefreshInterval = setInterval(fetchEmployees, 60000);
-
-    return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); clearInterval(empRefreshInterval); window.removeEventListener('keydown', handleEventKey); };
-  // wsReconnectKey is intentionally included: incrementing it forces a full
-  // re-run so new sockets always get all handlers attached (used by the visa
-  // apply reconnect path — see visa modal handleApply below).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [char.name, wsReconnectKey]);
+    fetchEmployees();
+    const interval = setInterval(fetchEmployees, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [documentVisible]);
 
   // ── Channel bar tick (progress → API call → clear) ─────────────────────────
   useEffect(() => {
@@ -10269,17 +10377,26 @@ export default function WorldPlay() {
       if (r.ok) { const data = await r.json(); setBillboardsData(data); }
     } catch { /* silent */ }
   }, []);
-  useEffect(() => { fetchBillboards(); const iv = setInterval(fetchBillboards, 30000); return () => clearInterval(iv); }, [fetchBillboards]);
+  useEffect(() => {
+    if (!documentVisible) return;
+    fetchBillboards();
+    const iv = setInterval(fetchBillboards, 30000);
+    return () => clearInterval(iv);
+  }, [fetchBillboards, documentVisible]);
 
   useEffect(() => {
+    if (!documentVisible) return;
+    let cancelled = false;
     const loadPlayerBuildings = async () => {
-      const blds = await fetchCityBuildings('minx_prime');
-      playerBuildingsRef.current = blds;
+      // City-building records use the construction server key, which is distinct
+      // from the realtime realm id returned by getActiveCityId().
+      const blds = await fetchCityBuildings('minx_prime', true);
+      if (!cancelled) playerBuildingsRef.current = blds;
     };
     loadPlayerBuildings();
     const iv = setInterval(loadPlayerBuildings, 20000);
-    return () => clearInterval(iv);
-  }, []);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [documentVisible]);
 
   useEffect(() => {
     fetchBuildingTypes().then(data => {
@@ -10289,20 +10406,22 @@ export default function WorldPlay() {
   }, []);
 
   useEffect(() => {
+    if (!documentVisible) return;
+    let cancelled = false;
     const fetchServerStatus = async () => {
       try {
         const res = await fetch(`${import.meta.env.BASE_URL}api/world/server-status`);
         if (res.ok) {
           const data = await res.json();
-          if (typeof data.online === 'number') setOnlinePlayerCount(data.online);
-          if (typeof data.liberationProgress === 'number') setLiberationProgress(data.liberationProgress);
+          if (!cancelled && typeof data.online === 'number') setOnlinePlayerCount(data.online);
+          if (!cancelled && typeof data.liberationProgress === 'number') setLiberationProgress(data.liberationProgress);
         }
       } catch {}
     };
     fetchServerStatus();
     const iv = setInterval(fetchServerStatus, 30000);
-    return () => clearInterval(iv);
-  }, []);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [documentVisible]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -10607,7 +10726,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     let fpsReadings: number[] = [];
     let lastRenderTs = 0;
 
+    const scheduleNextFrame = () => {
+      if (documentVisibleRef.current && !animRef.current) {
+        animRef.current = requestAnimationFrame(loop);
+      }
+    };
     const loop = () => {
+      animRef.current = 0;
+      if (!documentVisibleRef.current) return;
       const g = gs.current;
       // ── FPS cap throttle (Settings -> Display) ──
       // g.fpsInterval is the min ms between RENDERED frames (0 = uncapped, the
@@ -10617,7 +10743,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.fpsInterval > 0) {
         const nowCap = performance.now();
         if (lastRenderTs && nowCap - lastRenderTs < g.fpsInterval) {
-          animRef.current = requestAnimationFrame(loop);
+          scheduleNextFrame();
           return;
         }
         lastRenderTs = nowCap;
@@ -10665,7 +10791,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // freeze" effect that gives weight to impacts without distorting
       // any later state (no velocity drift, no AI ticks during freeze).
       if (performance.now() < g.hitStopUntil) {
-        animRef.current = requestAnimationFrame(loop);
+        scheduleNextFrame();
         return;
       }
       const zoom = zoomRef.current;
@@ -14338,7 +14464,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         ctx.restore();
-        animRef.current = requestAnimationFrame(loop);
+        scheduleNextFrame();
         return;
       }
 
@@ -21728,12 +21854,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      animRef.current = requestAnimationFrame(loop);
+      scheduleNextFrame();
     };
-    animRef.current = requestAnimationFrame(loop);
+    rafLoopRef.current = loop;
+    scheduleNextFrame();
     startCrowdMurmur(); crowdMurmurActiveRef.current = true;
     return () => {
       cancelAnimationFrame(animRef.current);
+      animRef.current = 0;
+      if (rafLoopRef.current === loop) rafLoopRef.current = null;
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('wheel', onWheel);
       stopCrowdMurmur(); crowdMurmurActiveRef.current = false;
