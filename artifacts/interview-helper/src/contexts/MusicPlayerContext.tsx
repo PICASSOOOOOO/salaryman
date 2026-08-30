@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { convertFileToMp3, canBrowserDecode } from "@/lib/audioConvert";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 import { getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 import { BG_OWNERS, claimBackgroundAudio, registerBackgroundAudio } from "@/lib/audio-bus";
@@ -762,6 +761,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const convertStaged = useCallback(async (id: string) => {
     const item = staged.find((s) => s.id === id);
     if (!item) return;
+    const { convertFileToMp3, canBrowserDecode } = await import("@/lib/audioConvert");
     if (!canBrowserDecode(item.origMime)) {
       updateStaged(id, { status: "error", error: "Browser cannot decode this format. Save the original or convert externally." });
       return;

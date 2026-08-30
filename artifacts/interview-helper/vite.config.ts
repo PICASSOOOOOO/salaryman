@@ -91,36 +91,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            if (
-              id.includes("react-syntax-highlighter") ||
-              id.includes("highlight.js") ||
-              id.includes("refractor") ||
-              id.includes("/prism/")
-            ) {
-              return "vendor-syntax";
-            }
-            if (
-              id.includes("react-markdown") ||
-              id.includes("remark") ||
-              id.includes("rehype") ||
-              id.includes("unified") ||
-              id.includes("vfile") ||
-              id.includes("mdast") ||
-              id.includes("hast") ||
-              id.includes("micromark") ||
-              id.includes("unist")
-            ) {
-              return "vendor-markdown";
-            }
             if (id.includes("framer-motion")) {
               return "vendor-framer";
-            }
-            if (
-              id.includes("recharts") ||
-              id.includes("d3-") ||
-              id.includes("/d3/")
-            ) {
-              return "vendor-charts";
             }
             if (id.includes("@tanstack")) {
               return "vendor-tanstack";

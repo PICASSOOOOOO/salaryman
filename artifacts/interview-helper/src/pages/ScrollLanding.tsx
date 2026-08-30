@@ -332,7 +332,7 @@ export default function ScrollLanding() {
   return (
     <div className="relative w-full bg-[#06070b]">
       {/* Continuous Pablo voice-over (separate from the scrubbed video). */}
-      <audio ref={audioRef} src={VO_SRC} preload="auto" />
+      <audio ref={audioRef} src={VO_SRC} preload="none" />
 
       {/* ── SEO / accessibility: the pitch in words, visually hidden. ── */}
       <div className="sr-only">
@@ -378,7 +378,7 @@ export default function ScrollLanding() {
                 poster={POSTER_SRC}
                 muted
                 playsInline
-                preload="auto"
+                preload="metadata"
                 aria-hidden="true"
                 className="absolute inset-0 h-full w-full object-cover"
                 onLoadedMetadata={(e) => {

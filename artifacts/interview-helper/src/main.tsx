@@ -3,8 +3,8 @@ import App from "./App";
 import "./index.css";
 import "./i18n";
 import { initLowGfx } from "./lib/lowGfx";
-import { installGlobalErrorHandlers } from "./lib/errorReporter";
-import { installGlobalUiSound } from "./lib/global-ui-sound";
+import { armAudioAutoUnlock } from "./lib/tts";
+import { installDeferredGlobalUiSound, warmGlobalUiSound } from "./lib/deferred-ui-sound";
 
 // Canonical front door: picassoo.app is THE domain. In production, anyone who
 // lands on the deployment's *.replit.app host (e.g. salaryman.replit.app) or
@@ -25,10 +25,22 @@ import { installGlobalUiSound } from "./lib/global-ui-sound";
 })();
 
 initLowGfx();
-// One document-level listener gives every button / dropdown / toggle a click
-// sound without touching individual call sites.
-installGlobalUiSound();
-// Auto-report window.onerror + unhandledrejection to /api/feedback/error-report.
-// React render errors are caught separately by ErrorBoundary.
-installGlobalErrorHandlers();
+// AudioContext unlock must be armed synchronously: iOS requires the actual
+// first user gesture, not a callback after an async chunk has loaded.
+armAudioAutoUnlock();
+installDeferredGlobalUiSound();
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Keep the first render's dependency graph lean. These global listeners remain
+// app-wide, but their audio/reporting implementations load after the browser has
+// painted React once instead of blocking module evaluation and mount.
+const afterFirstPaint = (start: () => void) => {
+  requestAnimationFrame(() => window.setTimeout(start, 0));
+};
+
+afterFirstPaint(() => {
+  void import("./lib/errorReporter").then(({ installGlobalErrorHandlers }) => {
+    installGlobalErrorHandlers();
+  });
+  warmGlobalUiSound();
+});

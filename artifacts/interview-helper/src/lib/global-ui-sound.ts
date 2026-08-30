@@ -35,6 +35,23 @@ const NAV_LIKE = 'a[href], [role="tab"], .crt-tab';
 
 let installed = false;
 
+export function playGlobalUiSoundForElement(el: HTMLElement) {
+  if (
+    el.hasAttribute("disabled") ||
+    el.getAttribute("aria-disabled") === "true" ||
+    el.closest("[data-no-sfx]")
+  ) {
+    return;
+  }
+  const epoch = getSoundEpoch();
+  const nav = el.matches(NAV_LIKE);
+  setTimeout(() => {
+    if (getSoundEpoch() !== epoch) return;
+    if (nav) playNav();
+    else playClick();
+  }, 0);
+}
+
 export function installGlobalUiSound() {
   if (installed || typeof document === "undefined") return;
   installed = true;
@@ -48,26 +65,12 @@ export function installGlobalUiSound() {
       if (!(target instanceof Element)) return;
       const el = target.closest(INTERACTIVE) as HTMLElement | null;
       if (!el) return;
-      // Respect disabled state and an explicit opt-out hook (data-no-sfx).
-      if (
-        el.hasAttribute("disabled") ||
-        el.getAttribute("aria-disabled") === "true" ||
-        el.closest("[data-no-sfx]")
-      ) {
-        return;
-      }
       // Defer to a fallback: this capture-phase listener runs BEFORE the
       // element's own onClick (target/bubble). If that handler plays its own
       // sound, the epoch advances and we stay silent — otherwise we supply the
       // generic tick/blip. setTimeout(0) lets the full dispatch (incl. React's
       // synthetic onClick at the root) complete before we decide.
-      const epoch = getSoundEpoch();
-      const nav = el.matches(NAV_LIKE);
-      setTimeout(() => {
-        if (getSoundEpoch() !== epoch) return; // a handler already made a sound
-        if (nav) playNav();
-        else playClick();
-      }, 0);
+      playGlobalUiSoundForElement(el);
     },
     { capture: true, passive: true },
   );

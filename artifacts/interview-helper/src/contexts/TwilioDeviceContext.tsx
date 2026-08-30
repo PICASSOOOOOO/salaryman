@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
-import { Device, Call } from '@twilio/voice-sdk';
+import type { Device, Call } from '@twilio/voice-sdk';
 import { registerDeviceDisconnect } from '@/lib/twilio-device-bridge';
 import { setPhoneBusy } from '@/lib/phone-busy';
 
@@ -79,6 +79,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
       updateDeviceState('initializing');
       setDeviceError(null);
       try {
+        const { Device, Call } = await import('@twilio/voice-sdk');
         console.log('[TwilioDevice] fetching token...');
         const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
         if (!r.ok) {

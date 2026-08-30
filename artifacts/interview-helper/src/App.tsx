@@ -9,8 +9,6 @@ import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { GlobalErrorReporter } from "@/components/GlobalErrorReporter";
-import { armAudioAutoUnlock } from "@/lib/tts";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
@@ -21,25 +19,9 @@ import { usePlan } from "@/hooks/use-plan";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
 import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
-import PabloTerminal from "@/pages/PabloTerminal";
-
-// Arm the iOS audio unlock listeners as soon as the bundle loads. They are
-// one-shot and detach themselves after the first user gesture, so this is
-// effectively free until the user taps anywhere.
-if (typeof window !== "undefined") {
-  armAudioAutoUnlock();
-}
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
-import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
-import { OfficeRadio } from "@/components/OfficeRadio";
-import { pauseMusic, stopOfficeAmbient, stopCrowdMurmur } from "@/soundEngine";
-import { AudioControl } from "@/components/AudioControl";
-import { ActiveCallBar } from "@/components/FloatingCallBar";
-import { ChatPanel } from "@/components/ChatPanel";
-import { NotificationToaster } from "@/components/NotificationToaster";
-import { CommandPalette } from "@/components/CommandPalette";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { sanitizeReturnPath } from "@/lib/safe-path";
@@ -51,6 +33,7 @@ import {
 } from "@/lib/story-gate";
 
 const Home = lazy(() => import("@/pages/Home"));
+const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
@@ -70,6 +53,15 @@ const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const SeoModule = lazy(() => import("@/pages/SeoModule"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+
+const GlobalErrorReporter = lazy(() => import("@/components/GlobalErrorReporter").then((m) => ({ default: m.GlobalErrorReporter })));
+const GlobalMusicMiniIndicator = lazy(() => import("@/components/GlobalMusicMiniIndicator").then((m) => ({ default: m.GlobalMusicMiniIndicator })));
+const OfficeRadio = lazy(() => import("@/components/OfficeRadio").then((m) => ({ default: m.OfficeRadio })));
+const AudioControl = lazy(() => import("@/components/AudioControl").then((m) => ({ default: m.AudioControl })));
+const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
+const DeferredChatPanel = lazy(() => import("@/components/DeferredChatPanel").then((m) => ({ default: m.DeferredChatPanel })));
+const NotificationToaster = lazy(() => import("@/components/NotificationToaster").then((m) => ({ default: m.NotificationToaster })));
+const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
 
 const ContactCollector = lazy(() => import("@/pages/ContactCollector"));
 const Hiring = lazy(() => import("@/pages/Hiring"));
@@ -384,13 +376,20 @@ function AppShell() {
   // the background coordinator, so
   // they are handled by the coordinator's claim/release, not stopped here.
   useEffect(() => {
+    let cancelled = false;
     const allowsWorldScore = pathname === "/world/play" || pathname.startsWith("/world/play/");
     const allowsOfficeAmbient =
       pathname === "/office" || pathname.startsWith("/office/") ||
       pathname === "/immigration" || pathname.startsWith("/immigration/") ||
       pathname === "/pablo" || pathname.startsWith("/pablo/");
-    if (!allowsWorldScore) { pauseMusic(); stopCrowdMurmur(); }
-    if (!allowsOfficeAmbient) { stopOfficeAmbient(); }
+    if (!allowsWorldScore || !allowsOfficeAmbient) {
+      void import("@/soundEngine").then(({ pauseMusic, stopCrowdMurmur, stopOfficeAmbient }) => {
+        if (cancelled) return;
+        if (!allowsWorldScore) { pauseMusic(); stopCrowdMurmur(); }
+        if (!allowsOfficeAmbient) { stopOfficeAmbient(); }
+      });
+    }
+    return () => { cancelled = true; };
   }, [pathname]);
 
   const isRootRoute = pathname === "/";
@@ -545,28 +544,30 @@ function AppShell() {
       {/* Site-wide command palette (nav search bar + ⌘K). Mounted wherever the
           nav chrome shows — never on the /pablo front door, embeds, or
           fullscreen routes, so it doesn't touch those experiences. */}
-      {showNavBar && <CommandPalette />}
-      {showFloatingBar && <ActiveCallBar />}
-      {showChat && <ChatPanel />}
+      <Suspense fallback={null}>
+        {showNavBar && <CommandPalette />}
+        {showFloatingBar && <ActiveCallBar />}
+        {showChat && <DeferredChatPanel />}
       {/* Route-independent toaster for the persistent notification stream —
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
-      {isAuthenticated && !isEmbed && <NotificationToaster />}
+        {isAuthenticated && !isEmbed && <NotificationToaster />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
           the app for new arrivals — leaking the music indicator there
           breaks the "you haven't been admitted yet" fiction. */}
-      {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
+        {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
       {/* Pablo Radio — one headless station for every non-phone route. */}
-      {!isEmbed && <OfficeRadio />}
+        {!isEmbed && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the audio from anywhere (full mixer still on /game/settings).
           Hidden on /immigration because PabloOnboarding is full-screen there
           and the FAB would overlap the "ASK ►" / NEXT ► buttons at the bottom
           of the screen on mobile. The subtle onboarding score still plays;
           users can adjust audio once they reach the main game. */}
-      {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
+        {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
+      </Suspense>
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <LoadingFallback /> : null}>
@@ -849,7 +850,7 @@ function App() {
               </NavBarVisibilityProvider>
             </WouterRouter>
             <Toaster />
-            <GlobalErrorReporter />
+            <Suspense fallback={null}><GlobalErrorReporter /></Suspense>
               </MusicPlayerProvider>
             </ActiveCallProvider>
           </TwilioDeviceProvider>

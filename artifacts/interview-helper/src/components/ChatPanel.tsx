@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2, Paperclip, FileText, Download, Folder } from "lucide-react";
-import { MiniNebula } from "@/components/MiniNebula";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
@@ -837,12 +836,18 @@ function _writeAssocBaseline(uid: string, n: number): void {
   } catch { /* storage quota */ }
 }
 
-export function ChatPanel() {
+export function ChatPanel({
+  initiallyOpen = false,
+  initialDmUserId,
+}: {
+  initiallyOpen?: boolean;
+  initialDmUserId?: string;
+} = {}) {
   const { user, isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
   const boomer = boomerMode;
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [activeTab, setActiveTab] = useState<Tab>("pablo");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -946,6 +951,22 @@ export function ChatPanel() {
       setShowUserSearch(false);
     }
   };
+
+  // A direct-message intent may be what caused the lazy ChatPanel chunk to
+  // load. Consume the payload directly after mount rather than racing a
+  // re-dispatched window event against dynamic import completion.
+  useEffect(() => {
+    if (!initialDmUserId || initialDmUserId === currentUserId) return;
+    let active = true;
+    void startPrivateChat(initialDmUserId).then((channelId) => {
+      if (!active || !channelId) return;
+      setOpen(true);
+      setActivePrivateChannelId(channelId);
+      setActiveTab("private");
+      setShowUserSearch(false);
+    });
+    return () => { active = false; };
+  }, [initialDmUserId, currentUserId, startPrivateChat]);
 
   // Esc-to-close — basic dialog accessibility for the bottom-sheet on
   // mobile and the floating panel on desktop. Keyboard users can also
@@ -1298,7 +1319,21 @@ export function ChatPanel() {
           >
             {(
               [
-                { id: "pablo" as Tab, label: "PABLO", icon: <MiniNebula size={16} title="Zoom into Pablo nebula" />, unread: tabPabloUnread },
+                {
+                  id: "pablo" as Tab,
+                  label: "PABLO",
+                  icon: (
+                    <span
+                      aria-hidden
+                      className="block h-4 w-4 rounded-full"
+                      style={{
+                        background: "radial-gradient(circle, #e879f9 0%, #8b5cf6 42%, #312e81 72%, transparent 78%)",
+                        boxShadow: "0 0 6px rgba(236,72,153,.55)",
+                      }}
+                    />
+                  ),
+                  unread: tabPabloUnread,
+                },
                 { id: "global" as Tab, label: "GLOBAL", icon: <Globe size={11} />, unread: tabGlobalUnread },
                 ...(companyChannelId
                   ? [{ id: "company" as Tab, label: channelMeta?.companyName?.toUpperCase().slice(0, 8) ?? "COMPANY", icon: <Building2 size={11} />, unread: tabCompanyUnread }]

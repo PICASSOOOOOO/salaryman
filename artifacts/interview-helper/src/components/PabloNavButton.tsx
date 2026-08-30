@@ -1,5 +1,24 @@
-import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { lazy, Suspense, useState } from "react";
 import { openCommandPalette } from "@/lib/command-palette-bus";
+
+const PabloNebula3D = lazy(() =>
+  import("@/components/PabloNebula3D").then((m) => ({ default: m.PabloNebula3D })),
+);
+
+function LightweightNebula({ size }: { size: number }) {
+  return (
+    <span
+      aria-hidden
+      className="block rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background: "radial-gradient(circle, #e879f9 0%, #8b5cf6 38%, #312e81 68%, transparent 76%)",
+        boxShadow: "0 0 8px rgba(236,72,153,.55)",
+      }}
+    />
+  );
+}
 
 /**
  * Pablo nebula shortcut for the top nav. Renders a tiny live version of
@@ -12,9 +31,13 @@ import { openCommandPalette } from "@/lib/command-palette-bus";
  * (handled inside PabloNebula3D), so this is safe in every browser.
  */
 export function PabloNavButton({ size = 26 }: { size?: number }) {
+  const [enhanced, setEnhanced] = useState(false);
   return (
     <button
       onClick={() => openCommandPalette()}
+      onPointerEnter={() => setEnhanced(true)}
+      onFocus={() => setEnhanced(true)}
+      onTouchStart={() => setEnhanced(true)}
       title="Ask Pablo / search (⌘K)"
       aria-label="Ask Pablo or search"
       data-testid="pablo-nav-nebula"
@@ -32,7 +55,9 @@ export function PabloNavButton({ size = 26 }: { size?: number }) {
         aria-hidden
         style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
       >
-        <PabloNebula3D status="idle" size={size} />
+        <Suspense fallback={<LightweightNebula size={size} />}>
+          {enhanced ? <PabloNebula3D status="idle" size={size} /> : <LightweightNebula size={size} />}
+        </Suspense>
       </span>
     </button>
   );

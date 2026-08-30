@@ -1,5 +1,25 @@
+import { lazy, Suspense, useState } from "react";
 import { useLocation } from "wouter";
-import { PabloNebula3D, type NebulaStatus } from "@/components/PabloNebula3D";
+import type { NebulaStatus } from "@/components/PabloNebula3D";
+
+const PabloNebula3D = lazy(() =>
+  import("@/components/PabloNebula3D").then((m) => ({ default: m.PabloNebula3D })),
+);
+
+function LightweightNebula({ size }: { size: number }) {
+  return (
+    <span
+      aria-hidden
+      className="block rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background: "radial-gradient(circle, #e879f9 0%, #8b5cf6 38%, #312e81 68%, transparent 76%)",
+        boxShadow: "0 0 8px rgba(236,72,153,.55)",
+      }}
+    />
+  );
+}
 
 /**
  * MiniNebula — tiny version of the fullscreen Pablo nebula used as a
@@ -26,6 +46,7 @@ export function MiniNebula({
   title?: string;
 }) {
   const [, navigate] = useLocation();
+  const [enhanced, setEnhanced] = useState(false);
   return (
     <button
       type="button"
@@ -33,6 +54,9 @@ export function MiniNebula({
         e.stopPropagation();
         navigate(target);
       }}
+      onPointerEnter={() => setEnhanced(true)}
+      onFocus={() => setEnhanced(true)}
+      onTouchStart={() => setEnhanced(true)}
       title={title}
       aria-label={title}
       data-testid="mini-nebula"
@@ -55,7 +79,9 @@ export function MiniNebula({
           pointerEvents: "none",
         }}
       >
-        <PabloNebula3D status={status} size={size} />
+        <Suspense fallback={<LightweightNebula size={size} />}>
+          {enhanced ? <PabloNebula3D status={status} size={size} /> : <LightweightNebula size={size} />}
+        </Suspense>
       </span>
     </button>
   );
