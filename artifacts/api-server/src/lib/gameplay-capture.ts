@@ -373,7 +373,12 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
     if (scene === "city") {
       try {
         await page.waitForFunction(
-          () => !document.body.innerText.includes("LOADING..."),
+          () =>
+            !(
+              (globalThis as unknown as {
+                document: { body: { innerText: string } };
+              }).document.body.innerText.includes("LOADING...")
+            ),
           { timeout: 50_000 },
         );
       } catch {
