@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, integer, boolean, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./auth";
@@ -61,6 +61,7 @@ export const chatReadCursorsTable = pgTable("chat_read_cursors", {
   lastReadMessageId: integer("last_read_message_id"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
+  unique("chat_read_cursors_user_channel_unique").on(t.userId, t.channelId),
   index("chat_read_cursors_user_idx").on(t.userId),
   index("chat_read_cursors_channel_idx").on(t.channelId),
 ]);

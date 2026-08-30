@@ -3,8 +3,8 @@ import { createServer, type Server } from "http";
 import { AddressInfo } from "net";
 import { randomUUID } from "crypto";
 import { WebSocket } from "ws";
-import { db, sessionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, playerCityVisasTable, sessionsTable } from "@workspace/db";
+import { eq, inArray } from "drizzle-orm";
 import { createSession, deleteSession } from "../lib/auth";
 import {
   attachWorldServer,
@@ -21,6 +21,7 @@ import {
 let httpServer: Server;
 let port: number;
 const createdSids: string[] = [];
+const createdUserIds: string[] = [];
 const openSockets: WebSocket[] = [];
 
 // Build a session row whose authenticated user carries the given photo, and
@@ -28,9 +29,10 @@ const openSockets: WebSocket[] = [];
 async function createSessionWithPhoto(
   profileImageUrl: string | null,
 ): Promise<string> {
+  const userId = `world-test-${randomUUID()}`;
   const sid = await createSession({
     user: {
-      id: `world-test-${randomUUID()}`,
+      id: userId,
       email: `world-${randomUUID().slice(0, 8)}@example.test`,
       firstName: "WS",
       lastName: "Player",
@@ -38,7 +40,12 @@ async function createSessionWithPhoto(
     },
     access_token: "test-access-token",
   });
+  await db.insert(playerCityVisasTable).values({
+    userId,
+    cityId: "minx_city",
+  });
   createdSids.push(sid);
+  createdUserIds.push(userId);
   return sid;
 }
 
@@ -95,6 +102,11 @@ afterAll(async () => {
   // Belt-and-suspenders: ensure no test session rows linger.
   for (const sid of createdSids) {
     await db.delete(sessionsTable).where(eq(sessionsTable.sid, sid)).catch(() => {});
+  }
+  if (createdUserIds.length) {
+    await db.delete(playerCityVisasTable)
+      .where(inArray(playerCityVisasTable.userId, createdUserIds))
+      .catch(() => {});
   }
 });
 

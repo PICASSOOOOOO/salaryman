@@ -1,8 +1,23 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import type { Server } from 'http';
+import type { IncomingMessage, Server } from 'http';
 import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
+import { getSession, SESSION_COOKIE } from './lib/auth';
+
+async function resolveSessionUserId(req: IncomingMessage): Promise<string | null> {
+  try {
+    const rawSid = req.headers.cookie
+      ?.split(';')
+      .map(cookie => cookie.trim())
+      .find(cookie => cookie.startsWith(`${SESSION_COOKIE}=`))
+      ?.slice(SESSION_COOKIE.length + 1);
+    if (!rawSid) return null;
+    return (await getSession(decodeURIComponent(rawSid)))?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface ChatClient {
   ws: WebSocket;
@@ -15,7 +30,12 @@ interface ChatClient {
   subscribedChannels: Set<number>;
 }
 
-const clients = new Map<string, ChatClient>();
+// A user may have several tabs/devices connected at once. Keep socket identity
+// as the primary lifecycle key, and derive recipient groups from it.
+const clients = new Set<ChatClient>();
+const clientsByUser = new Map<string, Set<ChatClient>>();
+const clientsByChannel = new Map<number, Set<ChatClient>>();
+const clientsByOrg = new Map<number, Set<ChatClient>>();
 
 function send(ws: WebSocket, data: object) {
   if (ws.readyState === WebSocket.OPEN) {
@@ -23,10 +43,62 @@ function send(ws: WebSocket, data: object) {
   }
 }
 
+function sendSerialized(ws: WebSocket, data: string) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(data);
+  }
+}
+
+function addToIndex<K>(index: Map<K, Set<ChatClient>>, key: K, client: ChatClient) {
+  let recipients = index.get(key);
+  if (!recipients) {
+    recipients = new Set();
+    index.set(key, recipients);
+  }
+  recipients.add(client);
+}
+
+function removeFromIndex<K>(index: Map<K, Set<ChatClient>>, key: K, client: ChatClient) {
+  const recipients = index.get(key);
+  if (!recipients) return;
+  recipients.delete(client);
+  if (recipients.size === 0) index.delete(key);
+}
+
+function subscribe(client: ChatClient, channelId: number) {
+  if (client.ws.readyState !== WebSocket.OPEN || client.subscribedChannels.has(channelId)) return;
+  client.subscribedChannels.add(channelId);
+  addToIndex(clientsByChannel, channelId, client);
+}
+
+function unsubscribe(client: ChatClient, channelId: number) {
+  if (!client.subscribedChannels.delete(channelId)) return;
+  removeFromIndex(clientsByChannel, channelId, client);
+}
+
+function registerClient(client: ChatClient) {
+  if (client.ws.readyState !== WebSocket.OPEN) return;
+  clients.add(client);
+  addToIndex(clientsByUser, client.userId, client);
+  if (client.orgId) addToIndex(clientsByOrg, client.orgId, client);
+}
+
+function removeClient(client: ChatClient) {
+  // close and error can both fire; more importantly, removing this exact
+  // client cannot disturb a newer socket belonging to the same user.
+  if (!clients.delete(client)) return;
+  removeFromIndex(clientsByUser, client.userId, client);
+  if (client.orgId) removeFromIndex(clientsByOrg, client.orgId, client);
+  for (const channelId of [...client.subscribedChannels]) {
+    unsubscribe(client, channelId);
+  }
+}
+
 function broadcastToChannel(channelId: number, data: object, excludeUserId?: string) {
-  for (const [, client] of clients) {
+  const serialized = JSON.stringify(data);
+  for (const client of clientsByChannel.get(channelId) ?? []) {
     if (client.subscribedChannels.has(channelId) && client.userId !== excludeUserId) {
-      send(client.ws, data);
+      sendSerialized(client.ws, serialized);
     }
   }
 }
@@ -67,28 +139,28 @@ async function handleSubscribe(client: ChatClient, channelId: number) {
   if (!channel) return;
 
   if (channel.type === 'global') {
-    client.subscribedChannels.add(channelId);
+    subscribe(client, channelId);
     send(client.ws, { type: 'subscribed', channelId });
     return;
   }
 
   if (channel.type === 'pablo') {
     if (channel.user1Id !== client.userId) return;
-    client.subscribedChannels.add(channelId);
+    subscribe(client, channelId);
     send(client.ws, { type: 'subscribed', channelId });
     return;
   }
 
   if (channel.type === 'private') {
     if (channel.user1Id !== client.userId && channel.user2Id !== client.userId) return;
-    client.subscribedChannels.add(channelId);
+    subscribe(client, channelId);
     send(client.ws, { type: 'subscribed', channelId });
     return;
   }
 
   if (channel.type === 'company') {
     if (!client.orgId || channel.orgId !== client.orgId) return;
-    client.subscribedChannels.add(channelId);
+    subscribe(client, channelId);
     send(client.ws, { type: 'subscribed', channelId });
   }
 }
@@ -115,12 +187,14 @@ async function handleSendMessage(
   } else if (channel.type === 'private') {
     if (channel.user1Id !== client.userId && channel.user2Id !== client.userId) return;
     if (!client.subscribedChannels.has(channelId)) {
-      client.subscribedChannels.add(channelId);
+      subscribe(client, channelId);
     }
     const otherUserId = channel.user1Id === client.userId ? channel.user2Id : channel.user1Id;
-    const otherClient = otherUserId ? clients.get(otherUserId) : null;
-    if (otherClient && !otherClient.subscribedChannels.has(channelId)) {
-      otherClient.subscribedChannels.add(channelId);
+    for (const otherClient of otherUserId ? clientsByUser.get(otherUserId) ?? [] : []) {
+      if (!otherClient.subscribedChannels.has(channelId)) {
+        subscribe(otherClient, channelId);
+        send(otherClient.ws, { type: 'new_private_channel', channelId });
+      }
     }
   } else if (channel.type === 'company') {
     if (!client.orgId || channel.orgId !== client.orgId) return;
@@ -183,12 +257,8 @@ async function handleSendMessage(
   if (channel.type === 'private') {
     const otherUserId = channel.user1Id === client.userId ? channel.user2Id : channel.user1Id;
     if (otherUserId) {
-      const otherClient = clients.get(otherUserId);
-      if (otherClient && !otherClient.subscribedChannels.has(channelId)) {
-        send(otherClient.ws, { type: 'new_private_channel', channelId });
-        send(otherClient.ws, payload);
-      }
-      if (!otherClient) {
+      const otherClients = clientsByUser.get(otherUserId);
+      if (!otherClients?.size) {
         db.insert(notificationsTable).values({
           userId: otherUserId,
           type: "dm",
@@ -231,10 +301,9 @@ export function broadcastBotMessage(channelId: number, content: string, senderNa
 }
 
 export function broadcastLeadEvent(orgId: number, event: { type: string; [key: string]: unknown }) {
-  for (const [, client] of clients) {
-    if (client.orgId === orgId) {
-      send(client.ws, { ...event, _channel: 'leads' });
-    }
+  const serialized = JSON.stringify({ ...event, _channel: 'leads' });
+  for (const client of clientsByOrg.get(orgId) ?? []) {
+    sendSerialized(client.ws, serialized);
   }
 }
 
@@ -252,15 +321,13 @@ export function setupChatServer(server: Server) {
 
   wss.on('connection', async (ws: WebSocket, req) => {
     const url = new URL(req.url ?? '', `http://localhost`);
-    const userId = url.searchParams.get('userId');
-    const userName = url.searchParams.get('userName') ?? 'User';
-    const profileImageUrl = url.searchParams.get('profileImageUrl') ?? null;
+    const userId = await resolveSessionUserId(req);
     const orgIdParam = url.searchParams.get('orgId');
     let orgId = orgIdParam ? parseInt(orgIdParam) : null;
     const cityId = (url.searchParams.get('cityId') ?? '').slice(0, 40) || null;
 
     if (!userId) {
-      ws.close(1008, 'userId required');
+      ws.close(1008, 'Authentication required');
       return;
     }
 
@@ -274,7 +341,12 @@ export function setupChatServer(server: Server) {
     }
 
     const [userRow] = await db
-      .select({ username: usersTable.username })
+      .select({
+        username: usersTable.username,
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+        profileImageUrl: usersTable.profileImageUrl,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
@@ -282,18 +354,18 @@ export function setupChatServer(server: Server) {
     const client: ChatClient = {
       ws,
       userId,
-      userName: decodeURIComponent(userName),
+      userName: [userRow?.firstName, userRow?.lastName].filter(Boolean).join(' ') || userRow?.username || 'User',
       username: userRow?.username ?? null,
-      profileImageUrl: profileImageUrl ? decodeURIComponent(profileImageUrl) : null,
+      profileImageUrl: userRow?.profileImageUrl ?? null,
       orgId,
       cityId,
       subscribedChannels: new Set(),
     };
 
-    clients.set(userId, client);
+    registerClient(client);
 
     getOrCreateGlobalChannel().then((globalChannelId) => {
-      client.subscribedChannels.add(globalChannelId);
+      subscribe(client, globalChannelId);
       send(ws, { type: 'ready', globalChannelId, orgId });
 
       if (orgId) {
@@ -304,7 +376,7 @@ export function setupChatServer(server: Server) {
           .then(([org]) => {
             if (org) {
               getOrCreateCompanyChannel(org.id, org.name).then((companyChannelId) => {
-                client.subscribedChannels.add(companyChannelId);
+                subscribe(client, companyChannelId);
                 send(ws, { type: 'company_channel', channelId: companyChannelId });
               });
             }
@@ -339,21 +411,16 @@ export function setupChatServer(server: Server) {
           const channelId = typeof msg.channelId === 'number' ? msg.channelId : parseInt(msg.channelId);
           const lastMessageId = typeof msg.lastMessageId === 'number' ? msg.lastMessageId : parseInt(msg.lastMessageId);
           if (!isNaN(channelId) && !isNaN(lastMessageId)) {
-            const existing = await db
-              .select()
-              .from(chatReadCursorsTable)
-              .where(and(eq(chatReadCursorsTable.channelId, channelId), eq(chatReadCursorsTable.userId, userId)))
-              .limit(1);
-            if (existing[0]) {
-              await db
-                .update(chatReadCursorsTable)
-                .set({ lastReadMessageId: lastMessageId })
-                .where(and(eq(chatReadCursorsTable.channelId, channelId), eq(chatReadCursorsTable.userId, userId)));
-            } else {
-              await db
-                .insert(chatReadCursorsTable)
-                .values({ channelId, userId, lastReadMessageId: lastMessageId });
-            }
+            if (!client.subscribedChannels.has(channelId)) break;
+            await db
+              .insert(chatReadCursorsTable)
+              .values({ channelId, userId, lastReadMessageId: lastMessageId })
+              .onConflictDoUpdate({
+                target: [chatReadCursorsTable.userId, chatReadCursorsTable.channelId],
+                set: {
+                  lastReadMessageId: sql`greatest(coalesce(${chatReadCursorsTable.lastReadMessageId}, 0), ${lastMessageId})`,
+                },
+              });
             send(ws, { type: 'read_ack', channelId, lastMessageId });
           }
           break;
@@ -364,11 +431,11 @@ export function setupChatServer(server: Server) {
     });
 
     ws.on('close', () => {
-      clients.delete(userId);
+      removeClient(client);
     });
 
     ws.on('error', () => {
-      clients.delete(userId);
+      removeClient(client);
     });
   });
 

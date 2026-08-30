@@ -99,6 +99,8 @@ export interface Player {
   authoritativeX?: number;
   authoritativeY?: number;
   lastPositionPersistAt?: number;
+  lastMoveBroadcastAt?: number;
+  moveBroadcastTimer?: ReturnType<typeof setTimeout>;
 }
 
 interface BuildingLock {
@@ -121,6 +123,39 @@ interface FloorLock {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const players = new Map<string, Player>();
+// Keep the hot world paths city-local.  Bots intentionally share `players` with
+// humans, so all mutations go through these helpers to keep the indexes aligned.
+const cityPlayers = new Map<string, Set<string>>();
+const cityHumanRecipients = new Map<string, Set<string>>();
+const cityHumanIds = new Map<string, Set<string>>();
+const cityBotIds = new Map<string, Set<string>>();
+const indexedAdd = (index: Map<string, Set<string>>, cityId: string, id: string) => {
+  let ids = index.get(cityId);
+  if (!ids) index.set(cityId, ids = new Set());
+  ids.add(id);
+};
+const indexedRemove = (index: Map<string, Set<string>>, cityId: string, id: string) => {
+  const ids = index.get(cityId);
+  if (!ids) return;
+  ids.delete(id);
+  if (ids.size === 0) index.delete(cityId);
+};
+const addPlayer = (player: Player) => {
+  players.set(player.id, player);
+  indexedAdd(cityPlayers, player.cityId, player.id);
+  if (player.isBot) indexedAdd(cityBotIds, player.cityId, player.id);
+  else {
+    indexedAdd(cityHumanIds, player.cityId, player.id);
+    if (player.ws) indexedAdd(cityHumanRecipients, player.cityId, player.id);
+  }
+};
+const removePlayer = (player: Player) => {
+  if (player.moveBroadcastTimer) clearTimeout(player.moveBroadcastTimer);
+  players.delete(player.id);
+  indexedRemove(cityPlayers, player.cityId, player.id);
+  indexedRemove(player.isBot ? cityBotIds : cityHumanIds, player.cityId, player.id);
+  if (!player.isBot) indexedRemove(cityHumanRecipients, player.cityId, player.id);
+};
 const buildingLocks = new Map<string, BuildingLock>();
 const floorLocks = new Map<string, FloorLock>();
 const videoRooms = new Map<string, Set<string>>();
@@ -231,7 +266,7 @@ const broadcast = (msg: object, exclude?: string) => {
   const data = JSON.stringify(msg);
   for (const [id, p] of players) {
     if (id === exclude) continue;
-    if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
+    if (p?.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
   }
 };
 
@@ -239,25 +274,24 @@ const broadcast = (msg: object, exclude?: string) => {
 // Used for presence/movement so each city feels like its own part of the world.
 const broadcastCity = (cityId: string, msg: object, exclude?: string) => {
   const data = JSON.stringify(msg);
-  for (const [id, p] of players) {
+  for (const id of cityHumanRecipients.get(cityId) ?? []) {
     if (id === exclude) continue;
-    if (p.cityId !== cityId) continue;
-    if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
+    const p = players.get(id);
+    if (p?.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
   }
 };
 
-const broadcastPlayerList = () => {
-  // Each player only sees others in their own city.
-  for (const [, recip] of players) {
-    if (recip.ws?.readyState !== WebSocket.OPEN) continue;
-    const list = Array.from(players.values())
-      .filter(p => p.cityId === recip.cityId)
-      .map(p => ({
-        id: p.id, name: p.name, class: p.class, company: p.company,
-        x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
-        interiorBid: p.interiorBid,
-      }));
-    recip.ws!.send(JSON.stringify({ type: 'player_list', players: list }));
+const broadcastPlayerList = (cityId: string) => {
+  const list = Array.from(cityPlayers.get(cityId) ?? [], id => players.get(id)!)
+    .map(p => ({
+      id: p.id, name: p.name, class: p.class, company: p.company,
+      x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
+      interiorBid: p.interiorBid,
+    }));
+  const data = JSON.stringify({ type: 'player_list', players: list });
+  for (const id of cityHumanRecipients.get(cityId) ?? []) {
+    const recip = players.get(id);
+    if (recip?.ws?.readyState === WebSocket.OPEN) recip.ws.send(data);
   }
 };
 
@@ -434,27 +468,46 @@ const spawnWorldEvent = async (cityId: string): Promise<void> => {
 
 const expireWorldEvents = async (): Promise<void> => {
   const now = Date.now();
+  const expired: ActiveEvent[] = [];
   for (const [id, ev] of activeWorldEvents) {
     if (now - ev.spawnedAt >= ev.ttlMs) {
       activeWorldEvents.delete(id);
-      try {
-        await db.update(worldEventsTable).set({ status: 'expired', resolvedAt: new Date() }).where(eq(worldEventsTable.id, id));
-      } catch {}
-      broadcastCity(ev.cityId, { type: 'world_event_resolved', id, expired: true });
-      console.log(`[Events] Event ${id} (${ev.eventType}) expired in ${ev.cityId}`);
+      expired.push(ev);
+    }
+  }
+  if (expired.length) {
+    try {
+      await db.update(worldEventsTable).set({ status: 'expired', resolvedAt: new Date() })
+        .where(inArray(worldEventsTable.id, expired.map(ev => ev.id)));
+    } catch {}
+    for (const ev of expired) {
+      broadcastCity(ev.cityId, { type: 'world_event_resolved', id: ev.id, expired: true });
+      console.log(`[Events] Event ${ev.id} (${ev.eventType}) expired in ${ev.cityId}`);
     }
   }
 };
 
-const worldEventTick = async (): Promise<void> => {
-  await expireWorldEvents();
-  const cityIds = new Set<string>([SERVER_CITY_ID]);
-  for (const p of players.values()) if (!p.isBot) cityIds.add(p.cityId);
-  for (const cityId of cityIds) {
-    const cityActive = Array.from(activeWorldEvents.values()).filter(e => e.cityId === cityId).length;
-    if (cityActive < EVENT_CONFIG.maxPerCity && Math.random() < EVENT_CONFIG.spawnChance) {
-      await spawnWorldEvent(cityId);
+let worldEventTickInFlight = false;
+export const worldEventTick = async (): Promise<void> => {
+  if (worldEventTickInFlight) return;
+  worldEventTickInFlight = true;
+  try {
+    await expireWorldEvents();
+    const cityIds = new Set<string>([SERVER_CITY_ID]);
+    // Non-home events are useful only where a human socket can observe/respond.
+    for (const cityId of cityHumanRecipients.keys()) cityIds.add(cityId);
+    const activeByCity = new Map<string, number>();
+    for (const event of activeWorldEvents.values()) {
+      activeByCity.set(event.cityId, (activeByCity.get(event.cityId) ?? 0) + 1);
     }
+    for (const cityId of cityIds) {
+      const cityActive = activeByCity.get(cityId) ?? 0;
+      if (cityActive < EVENT_CONFIG.maxPerCity && Math.random() < EVENT_CONFIG.spawnChance) {
+        await spawnWorldEvent(cityId);
+      }
+    }
+  } finally {
+    worldEventTickInFlight = false;
   }
 };
 
@@ -515,20 +568,16 @@ const deckardState = new Map<string, DeckardState>();
 const deckardMet = new Set<string>(); // `${botId}|${otherId}` once they've been introduced
 let deckardCounter = 0;
 
-const cityHumanCount = (cityId: string) => {
-  let n = 0;
-  for (const p of players.values()) if (p.cityId === cityId && !p.isBot) n++;
-  return n;
-};
+const cityHumanCount = (cityId: string) => cityHumanIds.get(cityId)?.size ?? 0;
 const cityDeckards = (cityId: string) =>
-  Array.from(players.values()).filter(p => p.cityId === cityId && p.isBot);
+  Array.from(cityBotIds.get(cityId) ?? [], id => players.get(id)!);
 
 const spawnDeckard = (cityId: string) => {
   const id = `deckard_${++deckardCounter}_${Date.now().toString(36)}`;
   const name = DECKARD_UNIT_NAMES[(deckardCounter - 1) % DECKARD_UNIT_NAMES.length];
   // Spawn near an existing human so they're immediately in play; fall back to the
   // default plaza spawn coords used by real connections.
-  const humans = Array.from(players.values()).filter(p => p.cityId === cityId && !p.isBot);
+  const humans = Array.from(cityHumanIds.get(cityId) ?? [], id => players.get(id)!);
   const anchor = humans.length ? humans[Math.floor(Math.random() * humans.length)] : null;
   const x = (anchor ? anchor.x : 820) + (Math.random() * 220 - 110);
   const y = (anchor ? anchor.y : 430) + (Math.random() * 220 - 110);
@@ -541,13 +590,13 @@ const spawnDeckard = (cityId: string) => {
     killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0,
     lastMoveAt: Date.now(),
   };
-  players.set(id, bot);
+  addPlayer(bot);
   deckardState.set(id, { targetX: x, targetY: y, nextSpeakAt: Date.now() + 2500 + Math.random() * 5000 });
   console.log(`[Deckard] ${name} on shift in ${cityId} (${cityDeckards(cityId).length} active)`);
 };
 
 const despawnDeckard = (bot: Player) => {
-  players.delete(bot.id);
+  removePlayer(bot);
   deckardState.delete(bot.id);
   for (const k of Array.from(deckardMet)) {
     if (k.startsWith(bot.id + '|') || k.endsWith('|' + bot.id)) deckardMet.delete(k);
@@ -556,7 +605,7 @@ const despawnDeckard = (bot: Player) => {
 };
 
 const pickDeckardTarget = (bot: Player): { x: number; y: number } => {
-  const humans = Array.from(players.values()).filter(p => p.cityId === bot.cityId && !p.isBot);
+  const humans = Array.from(cityHumanIds.get(bot.cityId) ?? [], id => players.get(id)!);
   // Tether: if we've drifted far from everyone, head back toward a human so the
   // crew stays where the testing actually happens.
   let nearestHumanDist = Infinity;
@@ -577,25 +626,27 @@ const deckardTick = () => {
   //    city IDs from accumulating bots forever.
   const cityIds = new Set<string>();
   cityIds.add(SERVER_CITY_ID);
-  for (const p of players.values()) cityIds.add(p.cityId);
-  let rosterChanged = false;
+  for (const cityId of cityHumanIds.keys()) cityIds.add(cityId);
+  for (const cityId of cityBotIds.keys()) cityIds.add(cityId);
+  const rosterChangedCities = new Set<string>();
   for (const cityId of cityIds) {
     const decks = cityDeckards(cityId);
     const keepStaffed = cityId === SERVER_CITY_ID || cityHumanCount(cityId) > 0;
     if (keepStaffed && decks.length < DECKARD_TARGET_MIN) {
       const target = DECKARD_TARGET_MIN + Math.floor(Math.random() * (DECKARD_TARGET_MAX - DECKARD_TARGET_MIN + 1));
       for (let i = decks.length; i < target; i++) spawnDeckard(cityId);
-      rosterChanged = true;
+      rosterChangedCities.add(cityId);
     } else if (!keepStaffed && decks.length > 0) {
       for (const b of decks) despawnDeckard(b);
-      rosterChanged = true;
+      rosterChangedCities.add(cityId);
     }
   }
-  if (rosterChanged) broadcastPlayerList();
+  for (const cityId of rosterChangedCities) broadcastPlayerList(cityId);
 
   // 2. Move + chatter for every Deckard.
   for (const bot of players.values()) {
     if (!bot.isBot) continue;
+    if ((cityHumanRecipients.get(bot.cityId)?.size ?? 0) === 0) continue;
     const st = deckardState.get(bot.id);
     if (!st) continue;
     const dx = st.targetX - bot.x, dy = st.targetY - bot.y;
@@ -613,8 +664,9 @@ const deckardTick = () => {
     if (now >= st.nextSpeakAt) {
       st.nextSpeakAt = now + 6000 + Math.random() * 9000;
       let nearest: Player | null = null; let nd = Infinity;
-      for (const o of players.values()) {
-        if (o.id === bot.id || o.cityId !== bot.cityId) continue;
+      for (const otherId of cityPlayers.get(bot.cityId) ?? []) {
+        const o = players.get(otherId)!;
+        if (o.id === bot.id) continue;
         const d = Math.hypot(o.x - bot.x, o.y - bot.y);
         if (d < nd) { nd = d; nearest = o; }
       }
@@ -650,6 +702,27 @@ const LOOT_ITEMS = [
 ];
 
 // ── Message handler ───────────────────────────────────────────────────────────
+const MOVE_BROADCAST_INTERVAL_MS = 60;
+const broadcastPlayerMove = (player: Player) => {
+  player.moveBroadcastTimer = undefined;
+  player.lastMoveBroadcastAt = Date.now();
+  broadcastCity(player.cityId, {
+    type: 'player_move', id: player.id, x: player.x, y: player.y,
+    paused: player.paused, interiorBid: player.interiorBid,
+  }, player.id);
+};
+const schedulePlayerMove = (player: Player, immediate = false) => {
+  if (immediate) {
+    if (player.moveBroadcastTimer) clearTimeout(player.moveBroadcastTimer);
+    broadcastPlayerMove(player);
+    return;
+  }
+  const delay = Math.max(0, MOVE_BROADCAST_INTERVAL_MS - (Date.now() - (player.lastMoveBroadcastAt ?? 0)));
+  if (delay === 0) return broadcastPlayerMove(player);
+  if (!player.moveBroadcastTimer) {
+    player.moveBroadcastTimer = setTimeout(() => broadcastPlayerMove(player), delay);
+  }
+};
 export const handleMessage = (player: Player, raw: string) => {
   let msg: any;
   try { msg = JSON.parse(raw); } catch { return; }
@@ -657,6 +730,9 @@ export const handleMessage = (player: Player, raw: string) => {
   switch (msg.type) {
 
     case 'move':
+      {
+      const oldInterior = player.interiorBid;
+      const oldPaused = player.paused;
       if (player.userId) {
         const nextX = msg.x;
         const nextY = msg.y;
@@ -689,13 +765,18 @@ export const handleMessage = (player: Player, raw: string) => {
           void persistAuthenticatedPosition(player).catch(err => console.error('[World] Position persist failed:', err.message));
         }
       } else {
-        player.x = msg.x ?? player.x;
-        player.y = msg.y ?? player.y;
+        if (!Number.isFinite(msg.x) || !Number.isFinite(msg.y)
+          || msg.x < WORLD_BOUNDS.minX || msg.x > WORLD_BOUNDS.maxX
+          || msg.y < WORLD_BOUNDS.minY || msg.y > WORLD_BOUNDS.maxY) break;
+        player.x = msg.x;
+        player.y = msg.y;
         player.interiorBid = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
       }
       if (typeof msg.paused === 'boolean') player.paused = msg.paused;
-      broadcastCity(player.cityId, { type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused, interiorBid: player.interiorBid }, player.id);
+      // Presence-state transitions must not wait behind the movement coalescer.
+      schedulePlayerMove(player, oldInterior !== player.interiorBid || oldPaused !== player.paused);
       break;
+      }
 
     case 'sync_stats': {
       if (typeof msg.hp === 'number' && msg.hp < player.hp) {
@@ -1530,9 +1611,8 @@ export const attachWorldServer = (httpServer: Server) => {
     // Capacity is per-CITY, not global: each walled city is its own realm with
     // its own MAX_PLAYERS budget, so a packed Minx never locks newcomers out of
     // HUDA. Count only players currently inside the city being joined.
-    let cityPop = 0;
     // Deckard test bots must NOT consume real human capacity slots.
-    for (const p of players.values()) if (p.cityId === cityId && !p.isBot) cityPop++;
+    const cityPop = cityHumanCount(cityId);
     if (cityPop >= MAX_PLAYERS) {
       // At capacity: businesses (org owners) and their employees still get in
       // (soft overflow) so a company is never locked out of its own realm.
@@ -1609,7 +1689,7 @@ export const attachWorldServer = (httpServer: Server) => {
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
     const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
-    players.set(id, player);
+    addPlayer(player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 
     // Resolve the player's profile photo from their authenticated session
@@ -1633,7 +1713,7 @@ export const attachWorldServer = (httpServer: Server) => {
       id,
       // Per-city count: a player should never perceive other cities' populations.
       // Exclude bots so capacity/headcount reflects real humans only.
-      playerCount: Array.from(players.values()).filter(p => p.cityId === cityId && !p.isBot).length,
+      playerCount: cityHumanCount(cityId),
       maxPlayers: MAX_PLAYERS,
       locks,
       ownershipStats: getOwnershipStats(cityId),
@@ -1643,7 +1723,7 @@ export const attachWorldServer = (httpServer: Server) => {
       ws.send(JSON.stringify({ type: 'position_correction', x: admittedX, y: admittedY }));
     }
 
-    broadcastPlayerList();
+    broadcastPlayerList(cityId);
 
     ws.on('message', (data: Buffer) => handleMessage(player, data.toString()));
 
@@ -1670,10 +1750,10 @@ export const attachWorldServer = (httpServer: Server) => {
       for (const k of Array.from(deckardMet)) {
         if (k.startsWith(id + '|') || k.endsWith('|' + id)) deckardMet.delete(k);
       }
-      players.delete(id);
+      removePlayer(player);
       console.log(`[World] ${name} left, total: ${players.size}`);
       broadcastCity(player.cityId, { type: 'player_left', id, name });
-      broadcastPlayerList();
+      broadcastPlayerList(player.cityId);
     });
 
     ws.on('error', (err) => console.error(`[World] WS error for ${name}:`, err.message));

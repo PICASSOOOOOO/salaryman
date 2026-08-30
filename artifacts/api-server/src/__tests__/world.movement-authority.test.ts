@@ -25,6 +25,18 @@ describe("authenticated world movement authority", () => {
     expect(validateAuthenticatedMovement({ x: 6400, y: 6300 }, { x: 7300, y: 7000 }, 120)).toBe(false);
   });
 
+  it("rejects non-finite and out-of-bounds anonymous movement", () => {
+    const player = {
+      id: "anonymous-player", cityId: "minx_city", x: 100, y: 100,
+      lastMoveAt: Date.now(), paused: false,
+    };
+    // JSON.parse accepts an overflowing numeric literal as Infinity.
+    handleMessage(player as any, '{"type":"move","x":1e999,"y":200}');
+    expect(player).toMatchObject({ x: 100, y: 100 });
+    handleMessage(player as any, JSON.stringify({ type: "move", x: WORLD_BOUNDS.maxX + 1, y: 200 }));
+    expect(player).toMatchObject({ x: 100, y: 100 });
+  });
+
   it("never lets forged interior presentation coordinates alter the authoritative exterior baseline", () => {
     const player = {
       id: "authenticated-player",

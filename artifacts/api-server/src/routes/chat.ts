@@ -88,6 +88,36 @@ async function ensureCompanyChannel(orgId: number, orgName: string): Promise<num
   return ch.id;
 }
 
+// Counts all requested channels in one grouped query. A missing cursor is
+// equivalent to cursor 0, and channels with no matching message rows are
+// intentionally omitted so callers can represent them as zero.
+async function getUnreadCountsByChannel(userId: string, channelIds: number[]): Promise<Map<number, number>> {
+  if (channelIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      channelId: chatMessagesTable.channelId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(chatMessagesTable)
+    .leftJoin(
+      chatReadCursorsTable,
+      and(
+        eq(chatReadCursorsTable.channelId, chatMessagesTable.channelId),
+        eq(chatReadCursorsTable.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        inArray(chatMessagesTable.channelId, channelIds),
+        sql`(${chatReadCursorsTable.lastReadMessageId} IS NULL OR ${chatReadCursorsTable.lastReadMessageId} = 0 OR ${chatMessagesTable.id} > ${chatReadCursorsTable.lastReadMessageId})`,
+      ),
+    )
+    .groupBy(chatMessagesTable.channelId);
+
+  return new Map(rows.map((row) => [row.channelId, row.count]));
+}
+
 // Story Mode flips Pablo from loyalty-broker ally to adversary. The signal is
 // server-authoritative: once ANY of the player's save slots has
 // `data.story.active === true` they've triggered the story (a one-way door,
@@ -274,41 +304,10 @@ router.get("/chat/channels", async (req, res) => {
     ...privateChannels.map((r) => r.channel.id),
   ];
 
-  const cursors = allChannelIds.length > 0
-    ? await db
-        .select()
-        .from(chatReadCursorsTable)
-        .where(
-          and(
-            eq(chatReadCursorsTable.userId, userId),
-            inArray(chatReadCursorsTable.channelId, allChannelIds)
-          )
-        )
-    : [];
-
-  const cursorMap = new Map(cursors.map((c) => [c.channelId, c.lastReadMessageId ?? 0]));
-
+  const unreadByChannel = await getUnreadCountsByChannel(userId, allChannelIds);
   const unreadCounts: Record<number, number> = {};
   for (const cid of allChannelIds) {
-    const lastRead = cursorMap.get(cid) ?? 0;
-    if (lastRead === 0) {
-      const [row] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(chatMessagesTable)
-        .where(eq(chatMessagesTable.channelId, cid));
-      unreadCounts[cid] = row?.count ?? 0;
-    } else {
-      const [row] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(chatMessagesTable)
-        .where(
-          and(
-            eq(chatMessagesTable.channelId, cid),
-            sql`${chatMessagesTable.id} > ${lastRead}`
-          )
-        );
-      unreadCounts[cid] = row?.count ?? 0;
-    }
+    unreadCounts[cid] = unreadByChannel.get(cid) ?? 0;
   }
 
   res.json({
@@ -380,35 +379,8 @@ router.get("/comms/summary", async (req, res) => {
 
   const countedChannelIds = await getCountedCommsChannelIds(userId);
 
-  const cursors = countedChannelIds.length > 0
-    ? await db
-        .select()
-        .from(chatReadCursorsTable)
-        .where(
-          and(
-            eq(chatReadCursorsTable.userId, userId),
-            inArray(chatReadCursorsTable.channelId, countedChannelIds)
-          )
-        )
-    : [];
-  const cursorMap = new Map(cursors.map((c) => [c.channelId, c.lastReadMessageId ?? 0]));
-
-  let unreadMessages = 0;
-  for (const cid of countedChannelIds) {
-    const lastRead = cursorMap.get(cid) ?? 0;
-    const [row] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(chatMessagesTable)
-      .where(
-        lastRead === 0
-          ? eq(chatMessagesTable.channelId, cid)
-          : and(
-              eq(chatMessagesTable.channelId, cid),
-              sql`${chatMessagesTable.id} > ${lastRead}`
-            )
-      );
-    unreadMessages += row?.count ?? 0;
-  }
+  const unreadMessages = [...(await getUnreadCountsByChannel(userId, countedChannelIds)).values()]
+    .reduce((total, count) => total + count, 0);
 
   // Incoming pending associate requests: pending rows that the caller did not
   // initiate.
@@ -457,38 +429,22 @@ router.post("/comms/read-all", async (req, res) => {
     .where(inArray(chatMessagesTable.channelId, countedChannelIds))
     .groupBy(chatMessagesTable.channelId);
 
-  const existing = await db
-    .select({
-      channelId: chatReadCursorsTable.channelId,
-    })
-    .from(chatReadCursorsTable)
-    .where(
-      and(
-        eq(chatReadCursorsTable.userId, userId),
-        inArray(chatReadCursorsTable.channelId, countedChannelIds)
-      )
-    );
-  const existingSet = new Set(existing.map((c) => c.channelId));
-
-  for (const row of maxRows) {
-    if (!row.maxId) continue;
-    if (existingSet.has(row.channelId)) {
-      await db
-        .update(chatReadCursorsTable)
-        .set({ lastReadMessageId: row.maxId })
-        .where(
-          and(
-            eq(chatReadCursorsTable.channelId, row.channelId),
-            eq(chatReadCursorsTable.userId, userId)
-          )
-        );
-    } else {
-      await db.insert(chatReadCursorsTable).values({
-        channelId: row.channelId,
-        userId,
-        lastReadMessageId: row.maxId,
+  const cursorValues = maxRows
+    .filter((row): row is typeof row & { maxId: number } => Boolean(row.maxId))
+    .map((row) => ({
+      channelId: row.channelId,
+      userId,
+      lastReadMessageId: row.maxId,
+    }));
+  if (cursorValues.length) {
+    await db.insert(chatReadCursorsTable)
+      .values(cursorValues)
+      .onConflictDoUpdate({
+        target: [chatReadCursorsTable.userId, chatReadCursorsTable.channelId],
+        set: {
+          lastReadMessageId: sql`greatest(coalesce(${chatReadCursorsTable.lastReadMessageId}, 0), excluded.last_read_message_id)`,
+        },
       });
-    }
   }
 
   res.json({ ok: true });
@@ -786,34 +742,27 @@ router.post("/chat/channels/:channelId/read", async (req, res) => {
     return;
   }
 
-  const existing = await db
-    .select()
-    .from(chatReadCursorsTable)
-    .where(
-      and(
-        eq(chatReadCursorsTable.channelId, channelId),
-        eq(chatReadCursorsTable.userId, userId)
-      )
-    )
+  const authorizedChannelIds = await getCountedCommsChannelIds(userId);
+  const [globalChannel] = await db.select({ id: chatChannelsTable.id })
+    .from(chatChannelsTable)
+    .where(eq(chatChannelsTable.type, "global"))
     .limit(1);
+  if (!authorizedChannelIds.includes(channelId) && globalChannel?.id !== channelId) {
+    res.status(403).json({ error: "Channel access denied" });
+    return;
+  }
 
-  if (existing[0]) {
-    await db
-      .update(chatReadCursorsTable)
-      .set({ lastReadMessageId: lastMessageId })
-      .where(
-        and(
-          eq(chatReadCursorsTable.channelId, channelId),
-          eq(chatReadCursorsTable.userId, userId)
-        )
-      );
-  } else {
-    await db.insert(chatReadCursorsTable).values({
+  await db.insert(chatReadCursorsTable).values({
       channelId,
       userId,
       lastReadMessageId: lastMessageId,
+    })
+    .onConflictDoUpdate({
+      target: [chatReadCursorsTable.userId, chatReadCursorsTable.channelId],
+      set: {
+        lastReadMessageId: sql`greatest(coalesce(${chatReadCursorsTable.lastReadMessageId}, 0), ${lastMessageId})`,
+      },
     });
-  }
 
   res.json({ ok: true });
 });
