@@ -156,3 +156,4 @@
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
 - [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.
+- [Release build heap cap](release-build-heap-cap.md) — full modern+legacy Vite build needs a 3 GiB Node heap cap here; unbounded rendering is OOM-killed despite ample reported free memory.
