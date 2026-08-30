@@ -696,6 +696,25 @@ export default function PabloOffice() {
   // at desks, the rest sleep in capsules — each ordered/clustered by team (and
   // similar skill) and tagged with its team colour for the engine to tint.
   const { deskBots, capsuleBots } = useMemo(() => floorPlacement(bots), [bots]);
+  const activeFloorOccupants = useMemo(() => {
+    // Activated bots take the first bullpen seats so a large staff roster can
+    // never hide bots the user explicitly switched on. Human staff then fill
+    // the remaining desks; de-dupe by name when an employee also has a bot row.
+    const seen = new Set(deskBots.map((bot) => bot.name.trim().toLowerCase()));
+    const staffBots = agents.flatMap((agent) => {
+      const key = agent.label.trim().toLowerCase();
+      if (!key || seen.has(key)) return [];
+      seen.add(key);
+      return [{
+        id: agent.id,
+        name: agent.label,
+        status: 'active',
+        teamColor: agent.id === PABLO_AGENT.id ? '#fbbf24' : agent.id === JEAN_CLAW_AGENT.id ? '#34d399' : '#38bdf8',
+        teamLabel: 'Office Staff',
+      }];
+    });
+    return [...deskBots, ...staffBots];
+  }, [deskBots, agents]);
 
   const activeCount = useMemo(
     () => Object.values(activity).filter((a) => a.active).length,
@@ -961,6 +980,9 @@ export default function PabloOffice() {
               viewportHeight={viewportH}
               playable={!surveillance}
               followCam={followCam}
+              bullpen
+              activeBots={activeFloorOccupants}
+              idleBots={capsuleBots}
               premium
               doorTopRow={11}
               doorBotRow={floorRows}
