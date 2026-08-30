@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { OfficeOccupant } from './IsoOffice';
+import type { OfficePropertyLayout } from '@/lib/office-property-layouts';
 
 /**
  * Top-left see-through neon WIREFRAME of the office floor that shows live
@@ -8,10 +9,12 @@ import type { OfficeOccupant } from './IsoOffice';
  */
 export function OfficeMinimap({
   occupantsRef,
+  layout,
   width = 152,
   height = 96,
 }: {
   occupantsRef: React.MutableRefObject<OfficeOccupant[]>;
+  layout: OfficePropertyLayout;
   width?: number;
   height?: number;
 }) {
@@ -82,14 +85,31 @@ export function OfficeMinimap({
       ctx.strokeRect(pad, top, w, h);
       ctx.shadowBlur = 0;
 
-      // bullpen divider down the middle
+      const mapRect = (col: number, row: number, rw: number, rh: number) => {
+        ctx.strokeRect(
+          pad + (col / layout.cols) * w,
+          top + (row / layout.rows) * h,
+          (rw / layout.cols) * w,
+          (rh / layout.rows) * h,
+        );
+      };
       ctx.strokeStyle = 'rgba(56,230,255,0.28)';
       ctx.lineWidth = 0.8;
-      const dvx = pad + w * 0.46;
-      ctx.beginPath();
-      ctx.moveTo(dvx, top);
-      ctx.lineTo(dvx, top + h);
-      ctx.stroke();
+      layout.rooms.forEach((room) => mapRect(room.x, room.y, room.w, room.h));
+      ctx.strokeStyle = 'rgba(255,210,74,0.34)';
+      mapRect(layout.playerDesk.col, layout.playerDesk.row, layout.playerDesk.w, layout.playerDesk.d);
+      ctx.strokeStyle = 'rgba(109,255,143,0.2)';
+      layout.teamDesks.forEach((desk) => mapRect(desk.col, desk.row, desk.w, desk.d));
+      ctx.fillStyle = 'rgba(236,72,153,0.52)';
+      layout.stations.forEach((station) => {
+        const fp = station.footprint ?? { w: 1.4, d: 1 };
+        ctx.fillRect(
+          pad + (station.col / layout.cols) * w,
+          top + (station.row / layout.rows) * h,
+          Math.max(2, (fp.w / layout.cols) * w),
+          Math.max(2, (fp.d / layout.rows) * h),
+        );
+      });
 
       // live occupants
       for (const o of occ) {
@@ -120,7 +140,7 @@ export function OfficeMinimap({
 
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [width, height, occupantsRef]);
+  }, [width, height, occupantsRef, layout]);
 
   return (
     <div

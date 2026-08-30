@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -12,9 +12,11 @@ vi.mock("@workspace/replit-auth-web", () => ({
     user: { firstName: "Direct", lastName: "Arrival" },
   }),
 }));
-vi.mock("wouter", () => ({ useLocation: () => ["/immigration", vi.fn()] }));
+const navigate = vi.fn();
+const isTutorialDone = vi.fn(() => false);
+vi.mock("wouter", () => ({ useLocation: () => ["/immigration", navigate] }));
 vi.mock("@/lib/tutorial-progress", () => ({
-  isTutorialDone: () => false,
+  isTutorialDone: () => isTutorialDone(),
   markTutorialDone: vi.fn(),
   getSalarymanName: () => null,
   setSalarymanOfficeTier: vi.fn(),
@@ -31,9 +33,15 @@ vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
 vi.mock("@/lib/world-servers", () => ({ getCityById: () => null }));
 vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));
 
-import Immigration from "./Immigration";
+import Immigration, { getPostOnboardingDestination } from "./Immigration";
 
 describe("Immigration", () => {
+  beforeEach(() => {
+    navigate.mockReset();
+    isTutorialDone.mockReturnValue(false);
+    window.history.replaceState({}, "", "/immigration");
+  });
+
   it("opens the registry intake immediately for a new authenticated arrival", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -45,6 +53,33 @@ describe("Immigration", () => {
     });
 
     expect(container.querySelector('[data-testid="immigration-intake"]')).not.toBeNull();
+    root.unmount();
+    container.remove();
+  });
+
+  it("defaults a completed intake handoff to office", () => {
+    expect(getPostOnboardingDestination("")).toBe("/office");
+    expect(getPostOnboardingDestination("?returnTo=/immigration")).toBe("/office");
+  });
+
+  it("preserves a safe sign-in destination while rejecting unsafe ones", () => {
+    expect(getPostOnboardingDestination("?returnTo=%2Fdashboard%3Ftab%3Dtoday")).toBe("/dashboard?tab=today");
+    expect(getPostOnboardingDestination("?returnTo=https%3A%2F%2Fevil.example")).toBe("/office");
+  });
+
+  it("continues to skip intake for a returning onboarded user", async () => {
+    isTutorialDone.mockReturnValue(true);
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<Immigration />);
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector('[data-testid="immigration-intake"]')).toBeNull();
+    expect(navigate).toHaveBeenCalledWith("/", { replace: true });
     root.unmount();
     container.remove();
   });

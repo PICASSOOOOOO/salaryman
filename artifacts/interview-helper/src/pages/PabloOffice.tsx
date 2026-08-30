@@ -38,6 +38,8 @@ import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
 import { setMapContext } from '@/lib/map-context';
 import {
+  getOfficeHudMode,
+  getOfficeObjectDestination,
   getOfficePropertyLayout,
   loadOfficePose,
   saveOfficePose,
@@ -723,8 +725,9 @@ export default function PabloOffice() {
 
   // Full-screen chrome heights. The office fills everything between the compact
   // header and the collapsible economy drawer, so the page itself never scrolls.
-  const HEADER_H = 50;
-  const economyH = 36;
+  const compactHud = getOfficeHudMode(vw) === 'compact';
+  const HEADER_H = compactHud ? 44 : 50;
+  const economyH = compactHud ? 44 : 36;
   const officeAreaH = Math.max(240, vh - HEADER_H - economyH);
 
   // ─── ECONOMY BAR derived readouts (BTC-pegged, real balances) ───
@@ -836,9 +839,9 @@ export default function PabloOffice() {
         else if (g?.eligible) { beginStory(); }
         else { setElevatorLocked(true); }
       },
-      atm: () => { playNav(); navigateFromOffice('/game/bank'); },
-      payphone: () => { playNav(); navigateFromOffice('/comms'); },
-      vending: () => { playNav(); navigateFromOffice('/vending?from=office'); },
+      atm: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('atm')); },
+      payphone: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('payphone')); },
+      vending: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('vending')); },
     };
     const base: OfficeStation[] = officeLayout.stations.map((station) => ({
       ...station,
@@ -911,11 +914,11 @@ export default function PabloOffice() {
           <h1 style={{ margin: 0, fontSize: '1rem', letterSpacing: '.12em', color: '#38bdf8', whiteSpace: 'nowrap' }}>
             THE OFFICE
           </h1>
-          <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.12em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {!compactHud && <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.12em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {getActiveCityName()}{serverOnline !== null ? ` · ${serverOnline}/${serverMax} ONLINE` : ''}
             &nbsp;· HEAD <span style={{ color: '#38bdf8' }}>{agents.length}</span>
             &nbsp;· ACTIVE <span style={{ color: '#22c55e' }}>{activeCount}</span>
-          </span>
+          </span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexShrink: 0 }}>
           <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 5, overflow: 'hidden' }}>
@@ -939,10 +942,10 @@ export default function PabloOffice() {
               );
             })}
           </div>
-          {hkBtn(() => { playClick(); setShowMissions(true); }, '◇ MISSIONS', showMissions)}
-          {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
-          <Link href="/game/map" data-testid="link-office-map" onClick={() => playNav()} style={{ color: '#c7f36b', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>MAP »</Link>
-          <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>
+          {!compactHud && hkBtn(() => { playClick(); setShowMissions(true); }, '◇ MISSIONS', showMissions)}
+          {hkBtn(() => { playClick(); setShowHelp(s => !s); }, compactHud ? '?' : '? HELP · H', showHelp)}
+          {!compactHud && <Link href="/game/map" data-testid="link-office-map" onClick={() => playNav()} style={{ color: '#c7f36b', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>MAP »</Link>}
+          {!compactHud && <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>}
         </div>
       </header>
       )}
@@ -973,6 +976,7 @@ export default function PabloOffice() {
                 keeps the camera locked on the player while LIVE. */}
             <IsoOffice
               key={`${slot}:${officeLayout.propertyKey}`}
+              layout={officeLayout}
               scale={officeScale}
               roomCols={officeLayout.cols}
               roomRows={floorRows}
@@ -980,7 +984,6 @@ export default function PabloOffice() {
               viewportHeight={viewportH}
               playable={!surveillance}
               followCam={followCam}
-              bullpen
               activeBots={activeFloorOccupants}
               idleBots={capsuleBots}
               premium
@@ -995,7 +998,7 @@ export default function PabloOffice() {
               appearance={toWorkAttire(appearance)}
               playerName={playerName}
               onOccupants={handleOccupants}
-              onEnterTerminal={() => { markInteracted(); navigateFromOffice('/pablo'); }}
+              onEnterTerminal={() => { markInteracted(); navigateFromOffice(getOfficeObjectDestination('terminal')); }}
               onMove={markMoved}
               stations={stations}
               backdropSrc={ownedArt}
@@ -1060,7 +1063,7 @@ export default function PabloOffice() {
             {/* Compact property deed badge (top-left) — keeps the deed context
                 without eating a 96px banner of vertical space. Hidden under the
                 CCTV feed, whose camera HUD owns that corner. */}
-            {owned && !surveillance && (
+            {owned && !surveillance && !compactHud && (
               <div style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none', zIndex: 5 }}>
                 <span style={{
                   padding: '.14rem .45rem', borderRadius: 4,
@@ -1076,9 +1079,9 @@ export default function PabloOffice() {
                 See-through neon wireframe of the floor with live occupant dots
                 (player = gold, active bots = green, idle bots = blue). Sits below
                 the deed badge; hidden in surveillance mode (CCTV owns the view). */}
-            {!surveillance && (
+            {!surveillance && !compactHud && (
               <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, pointerEvents: 'none' }}>
-                <OfficeMinimap occupantsRef={occupantsRef} />
+                <OfficeMinimap occupantsRef={occupantsRef} layout={officeLayout} />
               </div>
             )}
 
@@ -1086,7 +1089,7 @@ export default function PabloOffice() {
                 Every money readout is grouped in one top-right cluster: net worth
                 + credit score (NetWorthHUD) on top, then the live WALLET / salary
                 lines. The top-left corner is reserved for the office minimap. */}
-            {!surveillance && (
+            {!surveillance && !compactHud && (
               <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 6, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                 <div style={{ pointerEvents: 'auto', background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
                   <NetWorthHUD

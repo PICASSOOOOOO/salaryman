@@ -472,7 +472,15 @@ function AppShell() {
     // (Pablo's intake gate, outside GameLock) instead of bouncing them
     // through the terminal that already collected their name + email.
     if (isAuthenticated) {
-      navigate("/immigration", { replace: true });
+      // Carry a safe deep-link through the intake so its final handoff can
+      // honor the feature the user originally tried to open. Immigration
+      // defaults to /office when there is no explicit destination.
+      const safePath = sanitizeReturnPath(location);
+      const query =
+        safePath && safePath !== "/" && safePath !== "/immigration"
+          ? `?returnTo=${encodeURIComponent(safePath)}`
+          : "";
+      navigate(`/immigration${query}`, { replace: true });
     } else {
       // Preserve the destination so after sign-in Pablo's OAuth callback lands
       // the user back on the page they tried to reach, not /immigration.

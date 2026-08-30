@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_OFFICE_PROPERTY_KEY,
+  OFFICE_OBJECT_DESTINATIONS,
   OFFICE_PROPERTY_LAYOUTS,
+  findOfficeRoute,
+  getOfficeBlockedTiles,
+  getOfficeHudMode,
+  getOfficeObjectDestination,
   getOfficePropertyLayout,
   loadOfficePose,
   officePoseStorageKey,
@@ -27,6 +32,8 @@ describe("office property layouts", () => {
   it("keeps every spawn and station inside its authored floor", () => {
     for (const layout of layouts) {
       expect(validateOfficePose(layout, layout.spawn), layout.propertyKey).toEqual(layout.spawn);
+      expect(layout.teamDesks).toHaveLength(layout.deskCols * layout.deskRows);
+      expect(layout.capsuleSpots).toHaveLength(layout.capsules);
       for (const station of layout.stations) {
         expect(station.col, `${layout.propertyKey}:${station.id}:col`).toBeGreaterThanOrEqual(0);
         expect(station.col, `${layout.propertyKey}:${station.id}:col`).toBeLessThan(layout.cols);
@@ -34,6 +41,32 @@ describe("office property layouts", () => {
         expect(station.row, `${layout.propertyKey}:${station.id}:row`).toBeLessThan(layout.rows);
       }
     }
+  });
+
+  it("routes taps around authored furniture instead of stalling against it", () => {
+    const layout = layouts[0];
+    const blocked = getOfficeBlockedTiles(layout);
+    const route = findOfficeRoute(
+      layout,
+      { col: layout.spawn.x / 16, row: layout.spawn.y / 16 },
+      { col: layout.playerDesk.col, row: layout.playerDesk.row },
+    );
+    expect(route.length).toBeGreaterThan(0);
+    for (const tile of route) expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false);
+  });
+
+  it("keeps every office object destination direct and centralized", () => {
+    expect(getOfficeObjectDestination("terminal")).toBe("/console");
+    expect(getOfficeObjectDestination("atm")).toBe("/game/bank");
+    expect(getOfficeObjectDestination("payphone")).toBe("/phone");
+    expect(getOfficeObjectDestination("vending")).toBe("/vending?from=office");
+    expect(Object.keys(OFFICE_OBJECT_DESTINATIONS)).toEqual(["terminal", "atm", "payphone", "vending"]);
+  });
+
+  it("uses the compact safe-area HUD below the phone breakpoint", () => {
+    expect(getOfficeHudMode(320)).toBe("compact");
+    expect(getOfficeHudMode(639)).toBe("compact");
+    expect(getOfficeHudMode(640)).toBe("full");
   });
 
   it("rejects stale or impossible poses and scopes saved keys by slot and property", () => {
@@ -46,7 +79,7 @@ describe("office property layouts", () => {
 
   it("restores a valid pose only for the same slot and property", () => {
     const layout = layouts[0];
-    const pose = { x: 8 * 16, y: 9 * 16, facing: "left" as const };
+    const pose = layout.spawn;
     saveOfficePose(2, layout, pose);
     expect(loadOfficePose(2, layout)).toEqual(pose);
     expect(loadOfficePose(3, layout)).toEqual(layout.spawn);

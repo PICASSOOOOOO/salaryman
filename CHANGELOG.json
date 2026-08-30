@@ -1504,5 +1504,15 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.18.2.2035",
+    "date": "2026-08-30",
+    "commitHash": "fb628497f4f2d0fe562fa3c1681642508a8663ac",
+    "changes": [
+      "Update gameplay capture logic",
+      "Update App.tsx component",
+      "Add content to PabloOffice interview helper page"
+    ]
   }
 ]

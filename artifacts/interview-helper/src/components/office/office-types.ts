@@ -29,10 +29,28 @@ export interface OfficeStation {
   onInteract: () => void;
   /** Interaction radius from the sprite centre, native px. Default 24. */
   radius?: number;
+  /** Visible/collision footprint on the floor plane, in tiles. */
+  footprint?: { w: number; d: number };
   /** Reuse an existing furniture PNG (size in TILEs). */
   art?: { src: string; wTiles: number; hTiles: number };
   /** OR draw an inline-SVG pixel sprite. */
   glyph?: StationGlyph;
+}
+
+export interface OfficeFloorRect {
+  id: string;
+  col: number;
+  row: number;
+  w: number;
+  d: number;
+}
+
+export interface OfficeDesk extends OfficeFloorRect {
+  kind: 'player' | 'team';
+}
+
+export interface OfficeCapsule extends OfficeFloorRect {
+  kind: 'capsule';
 }
 
 /**

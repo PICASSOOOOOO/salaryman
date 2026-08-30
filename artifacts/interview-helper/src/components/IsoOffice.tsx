@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
 import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/office/office-types';
+import {
+  findOfficeRoute,
+  getOfficeBlockedTiles,
+  type OfficePropertyLayout,
+} from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
 
 /**
@@ -71,6 +76,8 @@ function capsuleSpots(shift: number, count?: number): { col: number }[] {
 }
 
 export interface IsoOfficeProps {
+  /** Authoritative property geometry. Disables legacy generated floor geometry. */
+  layout?: OfficePropertyLayout;
   scale?: number;
   bullpen?: boolean;
   activeBots?: PixelOfficeBot[];
@@ -139,6 +146,7 @@ function botColor(id: number, l = 55): string {
 }
 
 export function IsoOffice({
+  layout,
   scale = 3,
   bullpen = false,
   activeBots = [],
@@ -173,11 +181,12 @@ export function IsoOffice({
     typeof window !== 'undefined' &&
     (('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0);
 
-  const leftCols = roomCols;
-  const dividerCols = bullpen ? 1 : 0;
-  const rightCols = bullpen ? roomCols : 0;
+  const effectiveBullpen = layout ? false : bullpen;
+  const leftCols = layout?.cols ?? roomCols;
+  const dividerCols = effectiveBullpen ? 1 : 0;
+  const rightCols = effectiveBullpen ? roomCols : 0;
   const cols = leftCols + dividerCols + rightCols;
-  const rows = roomRows;
+  const rows = layout?.rows ?? roomRows;
   const bullpenShift = leftCols + dividerCols;
 
   const doorTopRow = doorTopRowProp ?? (rows - 3);
@@ -189,6 +198,7 @@ export function IsoOffice({
   // Interior executive-office walls → blocked tile set (col,row), same algo as
   // PixelOffice so collision is identical.
   const blockedTiles = useMemo(() => {
+    if (layout) return getOfficeBlockedTiles(layout);
     const s = new Set<string>();
     for (const r of rooms) {
       const side = r.doorSide ?? 'bottom';
@@ -207,11 +217,24 @@ export function IsoOffice({
       }
     }
     return s;
-  }, [rooms]);
+  }, [layout, rooms]);
 
-  const deskRowDesks = useMemo(() => deskRects(0, deskColCount, deskRowCount, leftCols), [deskColCount, deskRowCount, leftCols]);
-  const bullpenDesks = useMemo(() => (bullpen ? deskRects(bullpenShift, deskColCount, deskRowCount, rightCols) : []), [bullpen, bullpenShift, deskColCount, deskRowCount, rightCols]);
-  const capSpots = useMemo(() => (bullpen ? capsuleSpots(bullpenShift, capsuleCount) : []), [bullpen, bullpenShift, capsuleCount]);
+  const deskRowDesks = useMemo(
+    () => layout ? [] : deskRects(0, deskColCount, deskRowCount, leftCols),
+    [layout, deskColCount, deskRowCount, leftCols],
+  );
+  const bullpenDesks = useMemo(
+    () => layout
+      ? layout.teamDesks.map((desk, i) => ({ c: desk.col, r: desk.row, w: desk.w, d: desk.d, ci: i, ri: 0 }))
+      : (effectiveBullpen ? deskRects(bullpenShift, deskColCount, deskRowCount, rightCols) : []),
+    [layout, effectiveBullpen, bullpenShift, deskColCount, deskRowCount, rightCols],
+  );
+  const capSpots = useMemo(
+    () => layout
+      ? layout.capsuleSpots.map((spot) => ({ col: spot.col, row: spot.row, w: spot.w, d: spot.d }))
+      : (effectiveBullpen ? capsuleSpots(bullpenShift, capsuleCount).map((spot) => ({ ...spot, row: 1, w: 1.1, d: 0.85 })) : []),
+    [layout, effectiveBullpen, bullpenShift, capsuleCount],
+  );
 
   // Seated bots fill bullpen desks (front-centre); idle bots fill capsules.
   const seatedBots = useMemo(
@@ -225,8 +248,8 @@ export function IsoOffice({
   );
 
   // Desk computer (LEFT private office) + spawn point.
-  const COMPUTER_X = 4.5 * TILE;
-  const COMPUTER_Y = 5 * TILE;
+  const COMPUTER_X = (layout ? layout.playerDesk.col + layout.playerDesk.w / 2 : 4.5) * TILE;
+  const COMPUTER_Y = (layout ? layout.playerDesk.row + layout.playerDesk.d : 5) * TILE;
 
   // Hard-object collision: each interaction object + the player's own desk is a
   // SOLID prop the player must walk around — no walking through furniture. The
@@ -234,6 +257,7 @@ export function IsoOffice({
   // same tx/ty the renderer uses) so collision only ever lines up with what's
   // painted, never an invisible wall.
   const stationBlocked = useMemo(() => {
+    if (layout) return new Set<string>();
     const set = new Set<string>();
     const addRect = (c0: number, r0: number, c1: number, r1: number) => {
       for (let c = Math.floor(c0); c <= Math.floor(c1); c++)
@@ -253,12 +277,12 @@ export function IsoOffice({
     }
     return set;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stations, onEnterTerminal]);
+  }, [layout, stations, onEnterTerminal]);
 
   // ── Refs the rAF loop reads (so the loop never restarts on prop churn) ──
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const fxRef = useRef<number>(initialPose?.x ?? Math.round((bullpen ? bullpenShift + rightCols / 2 : cols / 2) * TILE));
+  const fxRef = useRef<number>(initialPose?.x ?? Math.round((effectiveBullpen ? bullpenShift + rightCols / 2 : cols / 2) * TILE));
   const fyRef = useRef<number>(initialPose?.y ?? Math.round((rows - 3) * TILE));
   const facingRef = useRef<'left' | 'right'>(initialPose?.facing ?? 'right');
   const walkRef = useRef(0); // 0..1 walk phase for a tiny bob
@@ -267,6 +291,7 @@ export function IsoOffice({
   const backdropImgRef = useRef<HTMLImageElement | null>(null);
   const heldRef = useRef<Set<string>>(new Set());
   const tapTargetRef = useRef<Vec2 | null>(null);
+  const tapPathRef = useRef<Vec2[]>([]);
   const frozenRef = useRef(frozen);
   const scaleRef = useRef(scale);
   const followRef = useRef(followCam);
@@ -300,7 +325,14 @@ export function IsoOffice({
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const [activeBot, setActiveBot] = useState<{ id: number; name: string } | null>(null);
 
-  useEffect(() => { frozenRef.current = frozen; if (frozen) { heldRef.current.clear(); tapTargetRef.current = null; } }, [frozen]);
+  useEffect(() => {
+    frozenRef.current = frozen;
+    if (frozen) {
+      heldRef.current.clear();
+      tapTargetRef.current = null;
+      tapPathRef.current = [];
+    }
+  }, [frozen]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { followRef.current = followCam; }, [followCam]);
   useEffect(() => { suppressLabelsRef.current = suppressLabels; }, [suppressLabels]);
@@ -411,14 +443,17 @@ export function IsoOffice({
         if (k.has('d') || k.has('arrowright')) dx += 1;
         if (k.has('w') || k.has('arrowup')) dy -= 1;
         if (k.has('s') || k.has('arrowdown')) dy += 1;
-        if (dx !== 0 || dy !== 0) tapTargetRef.current = null;
+        if (dx !== 0 || dy !== 0) {
+          tapTargetRef.current = null;
+          tapPathRef.current = [];
+        }
 
         let vx = dx, vy = dy, moving = dx !== 0 || dy !== 0;
         if (!moving && tapTargetRef.current) {
           const ddx = tapTargetRef.current.x - fxRef.current;
           const ddy = tapTargetRef.current.y - fyRef.current;
           const dist = Math.hypot(ddx, ddy);
-          if (dist <= 2) tapTargetRef.current = null;
+          if (dist <= 2) tapTargetRef.current = tapPathRef.current.shift() ?? null;
           else { vx = ddx / dist; vy = ddy / dist; moving = true; }
         }
 
@@ -446,7 +481,7 @@ export function IsoOffice({
           ny = Math.max(WALL_ROWS * TILE + TILE * 0.3, Math.min(worldH - TILE * 0.4, ny));
 
           // Bullpen divider — only crossable through the door band.
-          if (bullpen) {
+          if (effectiveBullpen) {
             const dividerCenter = (leftCols + 0.5) * TILE;
             const inDoor = ny >= doorTopRow * TILE && ny <= doorBotRow * TILE;
             if (!inDoor) {
@@ -467,7 +502,7 @@ export function IsoOffice({
             if (solid(col(nx), row(ny))) ny = fyRef.current;
           }
           if (Math.abs(nx - fxRef.current) < 0.05 && Math.abs(ny - fyRef.current) < 0.05) {
-            tapTargetRef.current = null;
+            tapTargetRef.current = tapPathRef.current.shift() ?? null;
           }
           if (Math.abs(vx) > 0.01) facingRef.current = vx > 0 ? 'right' : 'left';
           fxRef.current = nx;
@@ -496,10 +531,8 @@ export function IsoOffice({
         let bestId: string | null = null;
         let bestDist = Infinity;
         for (const st of stationsRef.current) {
-          const wTiles = st.art ? st.art.wTiles : 1.4;
-          const hTiles = st.art ? st.art.hTiles : 1.6;
-          const sx = (st.col + wTiles / 2) * TILE;
-          const sy = (st.row + hTiles) * TILE;
+          const sx = (st.col + (st.footprint?.w ?? 1.4) / 2) * TILE;
+          const sy = (st.row + (st.footprint?.d ?? 1)) * TILE;
           const d = Math.hypot(cx - sx, cy - sy);
           if (d <= (st.radius ?? 26) && d < bestDist) { bestDist = d; bestId = st.id; }
         }
@@ -517,7 +550,7 @@ export function IsoOffice({
         const sleepingNow = sleepingRef.current, capsNow = capSpotsRef.current;
         for (let i = 0; i < sleepingNow.length; i++) {
           const sp = capsNow[i]; if (!sp) continue;
-          const sx = (sp.col + 0.5) * TILE, sy = 2.2 * TILE;
+          const sx = (sp.col + sp.w / 2) * TILE, sy = (sp.row + sp.d) * TILE;
           const dd = Math.hypot(cx - sx, cy - sy);
           if (dd <= 30 && dd < bestBotDist) { bestBotDist = dd; bestBot = { id: sleepingNow[i].id, name: sleepingNow[i].name }; }
         }
@@ -562,7 +595,7 @@ export function IsoOffice({
 
       drawScene(ctx, {
         P, HW, HH, T, heightPx: (h: number) => heightPx(h, T),
-        cols, rows, leftCols, bullpen, bullpenShift, rightCols,
+        cols, rows, leftCols, bullpen: effectiveBullpen, bullpenShift, rightCols,
         doorTopRow, doorBotRow,
         leftDesks: leftDesksRef.current,
         bullpenDesks: bullpenDesksRef.current,
@@ -622,7 +655,7 @@ export function IsoOffice({
       window.removeEventListener('blur', clearKeys);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playable, bullpen, cols, rows, leftCols, bullpenShift, rightCols, doorTopRow, doorBotRow, worldW, worldH]);
+  }, [playable, effectiveBullpen, cols, rows, leftCols, bullpenShift, rightCols, doorTopRow, doorBotRow, worldW, worldH]);
 
   // ── Tap-to-move: invert the iso projection (screen → world foot) ──
   const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -634,13 +667,39 @@ export function IsoOffice({
     const S = scaleRef.current || 1;
     const T = TILE * S;
     const off = offRef.current;
-    const sx = e.clientX - rect.left - off.x;
-    const sy = e.clientY - rect.top - off.y;
+    const localX = e.clientX - rect.left;
+    const localY = e.clientY - rect.top;
+    const deskTx = COMPUTER_X / TILE;
+    const deskTy = COMPUTER_Y / TILE;
+    const deskPoint = {
+      x: (deskTx - deskTy) * (T * 0.5) + off.x,
+      y: (deskTx + deskTy) * (T * 0.25) + off.y,
+    };
+    // Raised isometric furniture does not invert to its own floor footprint.
+    // Treat the visible home terminal as a direct, generous touch target while
+    // preserving the normal walk-up prompt and keyboard interaction.
+    if (onEnterTerminal && Math.hypot(localX - deskPoint.x, localY - (deskPoint.y - T * 0.55)) <= Math.max(34, T * 0.9)) {
+      onEnterTerminal();
+      return;
+    }
+    const sx = localX - off.x;
+    const sy = localY - off.y;
     const tx = (sx / (T * 0.5) + sy / (T * 0.25)) / 2;
     const ty = (sy / (T * 0.25) - sx / (T * 0.5)) / 2;
     const wx = Math.max(TILE * 0.5, Math.min(worldW - TILE * 0.5, tx * TILE));
     const wy = Math.max(WALL_ROWS * TILE + TILE * 0.3, Math.min(worldH - TILE * 0.4, ty * TILE));
-    tapTargetRef.current = { x: wx, y: wy };
+    if (layout) {
+      const waypoints = findOfficeRoute(
+        layout,
+        { col: fxRef.current / TILE, row: fyRef.current / TILE },
+        { col: wx / TILE, row: wy / TILE },
+      ).map((tile) => ({ x: (tile.col + 0.5) * TILE, y: (tile.row + 0.5) * TILE }));
+      tapTargetRef.current = waypoints.shift() ?? null;
+      tapPathRef.current = waypoints;
+    } else {
+      tapTargetRef.current = { x: wx, y: wy };
+      tapPathRef.current = [];
+    }
     if (!movedOnceRef.current) { movedOnceRef.current = true; onMoveRef.current?.(); }
   };
 
@@ -677,7 +736,7 @@ export function IsoOffice({
       }} />
 
       {/* Room labels. */}
-      {bullpen && (
+      {effectiveBullpen && (
         <>
           <div style={labelStyle('left')}>▸ PRIVATE</div>
           <div style={labelStyle('right')}>BOT BULLPEN ◂</div>
@@ -743,7 +802,9 @@ interface SceneCtx {
   cols: number; rows: number; leftCols: number;
   bullpen: boolean; bullpenShift: number; rightCols: number;
   doorTopRow: number; doorBotRow: number;
-  leftDesks: DeskRect[]; bullpenDesks: DeskRect[]; capSpots: { col: number }[];
+  leftDesks: DeskRect[];
+  bullpenDesks: DeskRect[];
+  capSpots: { col: number; row: number; w: number; d: number }[];
   seated: PixelOfficeBot[]; sleeping: PixelOfficeBot[];
   rooms: OfficeRoom[]; stations: OfficeStation[]; activeStationId: string | null;
   activeBotId: number | null;
@@ -845,7 +906,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   // Capsules (idle bots) along bullpen back wall.
   s.sleeping.forEach((bot, i) => {
     const spot = s.capSpots[i]; if (!spot) return;
-    push(spot.col + 1, 1.4, () => drawCapsule(ctx, s, spot.col, bot, i));
+    push(spot.col + spot.w, spot.row + spot.d, () => drawCapsule(ctx, s, spot, bot, i));
   });
 
   // Seated bots at bullpen desks.
@@ -1257,14 +1318,20 @@ function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: numb
   ctx.textAlign = 'left';
 }
 
-function drawCapsule(ctx: CanvasRenderingContext2D, s: SceneCtx, col: number, bot: PixelOfficeBot, i: number) {
+function drawCapsule(
+  ctx: CanvasRenderingContext2D,
+  s: SceneCtx,
+  spot: { col: number; row: number; w: number; d: number },
+  bot: PixelOfficeBot,
+  i: number,
+) {
   const { P } = s;
-  const tx = col + 0.5, ty = 1.0;
+  const tx = spot.col + spot.w / 2, ty = spot.row + spot.d;
   const p = P(tx, ty);
   const u = (s.T / TILE) * 0.5;
   const pulse = (Math.sin(s.now / 900 + i) + 1) / 2;
   const accent = bot.teamColor ?? 'rgba(140,210,255,0.8)';
-  groundShadow(ctx, s, col - 0.05, ty - 0.325, 1.1, 0.85);
+  groundShadow(ctx, s, spot.col, spot.row, spot.w, spot.d);
   const botActive = s.playable && s.activeBotId === bot.id;
   if (botActive) {
     ctx.save();

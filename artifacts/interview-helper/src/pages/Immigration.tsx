@@ -11,6 +11,7 @@ import { getCityById } from '@/lib/world-servers';
 import { useArtAsset } from '@/lib/art';
 import { EconomyKey } from '@/components/EconomyKey';
 import { ensureOnboardingScore } from '@/lib/onboarding-score';
+import { sanitizeReturnPath } from '@/lib/safe-path';
 
 const SAVE_KEY = 'sm_save';
 
@@ -104,9 +105,25 @@ interface StampLine {
   emphasis?: boolean;
 }
 
+// A feature deep-link can survive the sign-in boundary as returnTo. Keep that
+// explicit user intent, but never let it turn the completed-intake handoff into
+// another trip through immigration. Ordinary arrivals begin office discovery.
+export function getPostOnboardingDestination(search: string): string {
+  const requested = new URLSearchParams(search).get('returnTo');
+  const safeDestination = sanitizeReturnPath(requested);
+  return safeDestination && safeDestination !== '/immigration'
+    ? safeDestination
+    : '/office';
+}
+
 export default function Immigration() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
+  // Read the destination once: the SPA route changes as the cinematic moves
+  // through its phases, but its originating sign-in intent must remain stable.
+  const handoffDestinationRef = useRef(
+    typeof window === 'undefined' ? '/office' : getPostOnboardingDestination(window.location.search),
+  );
   const completedRef = useRef(false);
   const [phase, setPhase] = useState<Phase>('intake');
   const [answers, setAnswers] = useState<OnboardingAnswers | null>(null);
@@ -347,16 +364,13 @@ export default function Immigration() {
     if (phase === 'done') return;
     setPhase('done');
     markTutorialDone();
-    // Powering on the terminal is the through-line of the whole funnel, so a
-    // brand-new user who completes intake lands on the actual TERMINAL — the
-    // console with the tools — instead of the office. This keeps the
-    // power-on → terminal promise consistent for first-time accounts too.
-    navigate('/console', { replace: true });
+    const destination = handoffDestinationRef.current;
+    navigate(destination, { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
     // base so we land inside this app, not at host root.
     setTimeout(() => {
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
-      window.location.href = `${base}console`;
+      window.location.href = `${base}${destination.slice(1)}`;
     }, 400);
   };
 
