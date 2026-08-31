@@ -44,7 +44,7 @@ export function MobileSubNav() {
     <div className="mobile-app-nav bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.04] overflow-hidden relative" style={{ zIndex: 40 }}>
       <div
         ref={scrollRef}
-        className="flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-hide"
+        className="mobile-scroll-region flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-hide"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {currentModule.subs.map(sub => {
@@ -59,7 +59,7 @@ export function MobileSubNav() {
             <button
               key={sub.id}
               onClick={() => navigate(sub.path)}
-              className={`flex items-center gap-1 px-3 py-2 rounded-full text-[10px] font-mono tracking-wider uppercase transition-colors shrink-0 touch-manipulation ${
+              className={`mobile-tap-target flex items-center gap-1 px-3 py-2 rounded-full text-[10px] font-mono tracking-wider uppercase transition-colors shrink-0 touch-manipulation ${
                 isActive
                   ? 'bg-sky-500/15 text-sky-400'
                   : 'text-zinc-500 active:text-zinc-300'
@@ -148,12 +148,12 @@ export function MobileModuleNav() {
 
   return (
     <div className="mobile-app-nav bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08] relative" style={{ zIndex: 60 }}>
-      <div className="flex items-center px-1 h-12">
+      <div className="flex min-h-14 items-center px-[max(.25rem,var(--app-safe-left))] pr-[max(.25rem,var(--app-safe-right))]">
         <button
           onClick={goBack}
           aria-label="Back"
           title="Back"
-          className="flex items-center justify-center w-9 h-9 shrink-0 rounded-md text-zinc-500 active:text-zinc-100 active:bg-white/5 touch-manipulation"
+          className="mobile-tap-target flex items-center justify-center shrink-0 rounded-md text-zinc-500 active:text-zinc-100 active:bg-white/5 touch-manipulation"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -167,7 +167,7 @@ export function MobileModuleNav() {
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation relative ${
+                className={`mobile-tap-target flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation relative ${
                   active ? 'text-emerald-400' : 'text-emerald-500 active:text-emerald-400'
                 }`}
                 style={{ textShadow: '0 0 8px rgba(52,211,153,0.5)' }}
@@ -181,7 +181,7 @@ export function MobileModuleNav() {
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
+              className={`mobile-tap-target flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
                 active ? activeColor : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
@@ -193,7 +193,7 @@ export function MobileModuleNav() {
         <div className="relative flex-1 min-w-0" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(prev => !prev)}
-            className={`relative flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
+            className={`mobile-tap-target relative flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
               hasActiveDropdownItem || dropdownOpen
                 ? 'text-sky-400'
                 : 'text-zinc-600 active:text-zinc-400'
@@ -213,8 +213,8 @@ export function MobileModuleNav() {
           {dropdownOpen && createPortal(
             <div
               ref={dropdownPanelRef}
-              className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1"
-              style={{ top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+              className="mobile-scroll-region fixed w-56 max-w-[calc(100vw-1rem)] max-h-[min(70dvh,30rem)] overflow-y-auto bg-[#111113] border border-white/[0.1] rounded-xl shadow-2xl shadow-black/60 py-1"
+              style={{ top: dropdownPos.top, right: Math.max(8, dropdownPos.right), zIndex: 9999 }}
             >
               {dropdownItems
                 .filter(item => !item.authOnly || isAuthenticated)
@@ -246,7 +246,7 @@ export function MobileModuleNav() {
                         navigate(item.path);
                         setDropdownOpen(false);
                       }}
-                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation ${cls}`}
+                      className={`mobile-tap-target flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation ${cls}`}
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${iconCls}`} />
                       <span className="text-xs font-mono tracking-widest uppercase">{label}</span>
@@ -264,7 +264,7 @@ export function MobileModuleNav() {
                     navigate('/profile');
                     setDropdownOpen(false);
                   }}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation text-zinc-400 active:bg-white/5"
+                  className="mobile-tap-target flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation text-zinc-400 active:bg-white/5"
                 >
                   <User className="w-4 h-4 shrink-0 text-zinc-600" />
                   <span className="text-xs font-mono tracking-widest uppercase">LOGIN</span>
@@ -282,12 +282,12 @@ export function MobileModuleNav() {
         {isAuthenticated && (
           <div className="flex items-center gap-0.5 shrink-0 pl-1 ml-0.5 max-[360px]:pl-0.5 max-[360px]:ml-0 border-l border-white/[0.06]">
             <NotificationBell
-              buttonClassName="relative flex items-center justify-center w-9 h-9 text-zinc-500 active:text-sky-400 transition-colors rounded-md touch-manipulation"
+              buttonClassName="mobile-tap-target relative flex items-center justify-center text-zinc-500 active:text-sky-400 transition-colors rounded-md touch-manipulation"
               iconClassName="w-5 h-5"
             />
             <button
               onClick={() => navigate('/profile')}
-              className="flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity touch-manipulation"
+              className="mobile-tap-target flex items-center justify-center hover:opacity-80 transition-opacity touch-manipulation"
               aria-label="Profile"
             >
               {resolveAvatarUrl(user?.profileImageUrl) ? (

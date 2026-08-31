@@ -2005,7 +2005,7 @@ function PabloTerminalAuthed() {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center overflow-y-auto${boomerMode ? " boomer-terminal" : ""}`}
+      className={`fixed left-0 top-0 z-50 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}`}
       style={{
         // Brand-toned base. Used to be near-black (#0a0a14 → #000), which
         // turned the whole page into a "black screen" on iOS Safari whenever
@@ -2016,6 +2016,8 @@ function PabloTerminalAuthed() {
           "radial-gradient(ellipse at 50% 35%, #1a0a2e 0%, #0a0418 55%, #000 100%)",
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingTop: "env(safe-area-inset-top)",
+        height: "var(--app-viewport-height, 100dvh)",
+        transform: "translateY(var(--app-viewport-top, 0px))",
       }}
     >
       {/* Free-flowing nebula — full-bleed living background. Sized to the
@@ -2052,13 +2054,6 @@ function PabloTerminalAuthed() {
         )}
       </button>
 
-      <div
-        className="fixed right-3 z-40 sm:right-4"
-        style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
-      >
-        <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-      </div>
-
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. The header itself
           gets extra horizontal padding on mobile so the logo + buttons clear
@@ -2071,7 +2066,7 @@ function PabloTerminalAuthed() {
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
           // header below that so its logo + buttons don't collide with them.
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)",
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
         }}
       >
         {/* Keep visitors inside intake. Once onboarded, the SALARYMAN mark is
@@ -2102,6 +2097,7 @@ function PabloTerminalAuthed() {
           </Link>
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
           {/* Always-visible sign-in affordance for returning users. The
               front door is a fullscreen route with no NavBar, so without
               this button a logged-out visitor has no obvious way to log in
@@ -2113,7 +2109,7 @@ function PabloTerminalAuthed() {
               type="button"
               onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/immigration", hint: null }); }}
               data-testid="pablo-sign-in"
-              className="px-2.5 py-1 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
+              className="mobile-tap-target px-2.5 py-1 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 text-[10px] tracking-[0.22em] font-mono transition-colors flex items-center gap-1.5"
               title="Sign in"
             >
               <LogIn className="w-3 h-3" />
@@ -2131,7 +2127,7 @@ function PabloTerminalAuthed() {
             type="button"
             onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
             data-testid="pablo-mode-toggle"
-            className="px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
+            className="mobile-tap-target px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.22em] font-mono transition-colors flex items-center gap-1.5"
             title={mode === "text" ? "Switch to voice" : "Switch to text"}
           >
             {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
@@ -2177,7 +2173,7 @@ function PabloTerminalAuthed() {
       {/* Shared conversation surface for visitors and returning users. */}
       {(transcript || reply || status === "thinking") && (
         <div
-          className="absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
+          className="mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
           style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 140}px)` }}
         >
           {transcript && (
@@ -2234,7 +2230,7 @@ function PabloTerminalAuthed() {
                     key={opt}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setIdleOptions([]); sendToPablo(opt); }}
-                    className="px-2.5 py-1 rounded border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 text-[10px] font-mono tracking-[0.18em]"
+                    className="mobile-tap-target px-3 py-2 rounded border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 text-[10px] font-mono tracking-[0.14em]"
                   >
                     {opt}
                   </button>
@@ -2303,7 +2299,7 @@ function PabloTerminalAuthed() {
           <button
             type="submit"
             disabled={!textInput.trim() || status === "thinking"}
-            className="px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
+            className="mobile-tap-target px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
             aria-label="Send"
             data-testid="pablo-text-send"
           >
@@ -2314,7 +2310,16 @@ function PabloTerminalAuthed() {
 
       {/* Silent error indicator — tiny, doesn't interrupt the nebula */}
       {error && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-red-400/60 tracking-wider">{error}</div>
+        <div
+          className="pointer-events-none absolute left-1/2 z-30 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[10px] font-mono tracking-wider text-red-300/80 backdrop-blur"
+          style={{
+            bottom: mode === "text"
+              ? "calc(env(safe-area-inset-bottom, 0px) + 82px)"
+              : "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+          }}
+        >
+          {error}
+        </div>
       )}
 
       {/* Camera + file + URL go live exclusively post-onboarding. */}

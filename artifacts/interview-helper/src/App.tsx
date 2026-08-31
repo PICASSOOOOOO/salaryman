@@ -208,7 +208,7 @@ function LoadingFallback() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "var(--app-viewport-height, 100dvh)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -347,6 +347,30 @@ function AppShell() {
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated, isLoading } = useAuth();
   const onboardingResolved = useOnboardingResolved();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncViewport = () => {
+      const viewport = window.visualViewport;
+      const height = viewport?.height ?? window.innerHeight;
+      const top = viewport?.offsetTop ?? 0;
+      const keyboardInset = Math.max(0, window.innerHeight - height - top);
+      root.style.setProperty("--app-viewport-height", `${height}px`);
+      root.style.setProperty("--app-viewport-top", `${top}px`);
+      root.style.setProperty("--app-keyboard-inset", `${keyboardInset}px`);
+      root.classList.toggle("app-keyboard-open", keyboardInset > 120);
+    };
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("scroll", syncViewport);
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("scroll", syncViewport);
+      root.classList.remove("app-keyboard-open");
+    };
+  }, []);
 
   const pathname = location.split("?")[0];
   // ── Route-change audio backstop ────────────────────────────────────────────
@@ -560,7 +584,11 @@ function AppShell() {
           and the FAB would overlap the "ASK ►" / NEXT ► buttons at the bottom
           of the screen on mobile. The subtle onboarding score still plays;
           users can adjust audio once they reach the main game. */}
-        {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
+        {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && (
+          <div className="hidden sm:contents">
+            <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />
+          </div>
+        )}
       </Suspense>
       {/* Keep-alive panels */}
       <ErrorBoundary>

@@ -41,7 +41,7 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
         className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-2 text-[10px] font-medium tracking-[0.14em] text-white/75 backdrop-blur-md transition hover:border-violet-300/35 hover:text-white"
       >
         <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
-        <span className="hidden min-[380px]:inline">CONTROLS</span>
+        <span className="hidden min-[520px]:inline">CONTROLS</span>
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 

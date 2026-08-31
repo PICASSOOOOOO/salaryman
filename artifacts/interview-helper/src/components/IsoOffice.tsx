@@ -732,6 +732,8 @@ export function IsoOffice({
         background: 'radial-gradient(130% 110% at 50% 0%, #1a0d3a 0%, #0a0719 52%, #04030d 100%)',
         boxShadow: '0 0 0 1px rgba(150,120,255,.30), inset 0 0 90px rgba(8,4,26,.85)',
         cursor: playable ? 'pointer' : 'default',
+        touchAction: playable ? 'none' : 'auto',
+        userSelect: 'none',
       }}
     >
       <canvas ref={canvasRef} style={{ display: 'block', imageRendering: 'pixelated' }} />
@@ -771,11 +773,14 @@ export function IsoOffice({
           }
           style={{
             position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)',
-            padding: '.5rem .9rem',
+            minHeight: 44,
+            maxWidth: 'calc(100% - 24px)',
+            padding: '.65rem 1rem',
             background: 'linear-gradient(135deg, rgba(236,72,153,.92), rgba(56,189,248,.82))',
             border: '1px solid rgba(244,180,255,.95)', borderRadius: 6, color: '#0a0414',
             font: 'bold .7rem "var(--font-sans)", monospace', letterSpacing: '.16em',
-            cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(236,72,153,.55)', whiteSpace: 'nowrap',
+            cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(236,72,153,.55)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}
         >
           ▸ {showComputerPrompt

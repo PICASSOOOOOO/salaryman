@@ -449,11 +449,18 @@ export default function PabloOffice() {
 
   useEffect(() => {
     const onResize = () => {
-      setVh(window.innerHeight);
-      setVw(window.innerWidth);
+      setVh(window.visualViewport?.height ?? window.innerHeight);
+      setVw(window.visualViewport?.width ?? window.innerWidth);
     };
+    onResize();
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('scroll', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('scroll', onResize);
+    };
   }, []);
 
   // Measure the real office pane so the camera viewport == the box on screen.
