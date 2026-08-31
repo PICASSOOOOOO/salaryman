@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { MODULES, getModuleForPath } from "./modules";
+import { PRIMARY_NAV_ITEMS } from "./app-navigation";
 
 // ─── 1. getModuleForPath returns the OFFICE module (MODULES[1]) ───────────────
 
@@ -83,83 +84,26 @@ describe("/game route in App.tsx", () => {
   });
 });
 
-// ─── 3. Source-scan: NavBar has exactly one OFFICE primary tab ───────────────
+// ─── 3. Shared desktop/mobile primary navigation ─────────────────────────────
 
-const NAVBAR_SRC = readFileSync(
-  path.resolve(import.meta.dirname, "../components/NavBar.tsx"),
-  "utf8",
-);
-
-// ─── 4. Source-scan: MobileBottomBar has exactly one OFFICE primary tab ──────
-
-const MOBILEBAR_SRC = readFileSync(
-  path.resolve(import.meta.dirname, "../components/MobileBottomBar.tsx"),
-  "utf8",
-);
-
-describe("NavBar NAV_PRIMARY — exactly one OFFICE tab", () => {
-  it("NAV_PRIMARY contains exactly one entry with id 'office'", () => {
-    // Count { id: 'office', ... } entries inside the NAV_PRIMARY array literal.
-    // We extract the array body between 'const NAV_PRIMARY = [' and the
-    // first matching '];' to avoid counting unrelated occurrences.
-    const arrayMatch = NAVBAR_SRC.match(
-      /const NAV_PRIMARY\s*=\s*\[([\s\S]*?)\];/,
+describe("PRIMARY_NAV_ITEMS — exactly one OFFICE tab", () => {
+  it("contains exactly one entry with id 'office'", () => {
+    const officeEntries = PRIMARY_NAV_ITEMS.filter(
+      (item) => item.id === "office",
     );
     expect(
-      arrayMatch,
-      "Could not locate the NAV_PRIMARY array in NavBar.tsx",
-    ).not.toBeNull();
-
-    const arrayBody = arrayMatch![1];
-    const officeEntries = (arrayBody.match(/id:\s*['"]office['"]/g) ?? [])
-      .length;
-    expect(
-      officeEntries,
-      `NAV_PRIMARY must have exactly 1 office entry, found ${officeEntries}`,
+      officeEntries.length,
+      `PRIMARY_NAV_ITEMS must have exactly 1 office entry, found ${officeEntries.length}`,
     ).toBe(1);
   });
 
   it("the office tab has the emerald accent (distinguishes it visually)", () => {
-    const arrayMatch = NAVBAR_SRC.match(
-      /const NAV_PRIMARY\s*=\s*\[([\s\S]*?)\];/,
-    );
-    const arrayBody = arrayMatch![1];
-    expect(arrayBody).toMatch(/accent:\s*['"]emerald['"]/);
-  });
-});
-
-describe("MobileBottomBar PRIMARY_TABS — exactly one OFFICE tab", () => {
-  it("PRIMARY_TABS contains exactly one entry with id 'office'", () => {
-    const arrayMatch = MOBILEBAR_SRC.match(
-      /const PRIMARY_TABS\s*=\s*\[([\s\S]*?)\];/,
-    );
-    expect(
-      arrayMatch,
-      "Could not locate the PRIMARY_TABS array in MobileBottomBar.tsx",
-    ).not.toBeNull();
-
-    const arrayBody = arrayMatch![1];
-    const officeEntries = (arrayBody.match(/id:\s*['"]office['"]/g) ?? [])
-      .length;
-    expect(
-      officeEntries,
-      `PRIMARY_TABS must have exactly 1 office entry, found ${officeEntries}`,
-    ).toBe(1);
+    const office = PRIMARY_NAV_ITEMS.find((item) => item.id === "office");
+    expect(office?.accent).toBe("emerald");
   });
 
   it("the office tab routes to /office", () => {
-    const arrayMatch = MOBILEBAR_SRC.match(
-      /const PRIMARY_TABS\s*=\s*\[([\s\S]*?)\];/,
-    );
-    const arrayBody = arrayMatch![1];
-    // Find the office object's path field — should point to /office
-    const officeObjMatch = arrayBody.match(
-      /id:\s*['"]office['"][\s\S]*?path:\s*['"]([^'"]+)['"]/,
-    );
-    expect(
-      officeObjMatch,
-      "Could not find path for office entry in PRIMARY_TABS",
-    ).not.toBeNull();
-    expect(officeObjMatch![1]).toBe("/office");
+    const office = PRIMARY_NAV_ITEMS.find((item) => item.id === "office");
+    expect(office?.path).toBe("/office");
   });
 });

@@ -27,7 +27,11 @@ const h = vi.hoisted(() => ({
 vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => h.authState }));
 vi.mock("wouter", () => ({ useLocation: () => ["", vi.fn()] }));
 vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
-vi.mock("@/hooks/use-mobile", () => ({ getDefaultBoomerMode: () => false }));
+vi.mock("@/hooks/use-mobile", () => ({
+  getDefaultBoomerMode: () => false,
+  useBoomerMode: () => [false, vi.fn()],
+  useIsMobile: () => false,
+}));
 vi.mock("./Colleagues", () => ({ default: () => null }));
 vi.mock("./ColleaguesPanel", () => ({ default: () => null }));
 
