@@ -154,3 +154,4 @@
 - [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.
 - [Release build heap cap](release-build-heap-cap.md) — full modern+legacy Vite build needs a 3 GiB Node heap cap here; unbounded rendering is OOM-killed despite ample reported free memory.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
+- [Onboarding city commit](onboarding-city-commit.md) — commit the selected live city atomically with registration before office handoff; local active-city state is only the immediate cache.

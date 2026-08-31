@@ -210,6 +210,19 @@ export function setActiveCityId(id: string): CityDef {
   return CITY_DEFS[activeCityId];
 }
 
+/**
+ * Extract a playable city from the persisted save shape. `cityId` is the
+ * current realm; `homeCityId` is retained as a backwards-compatible fallback
+ * for saves made before home selection also set the current realm.
+ */
+export function getSavedCityId(save: unknown): string | null {
+  if (!save || typeof save !== 'object') return null;
+  const { cityId, homeCityId } = save as { cityId?: unknown; homeCityId?: unknown };
+  if (typeof cityId === 'string' && CITY_DEFS[cityId]) return cityId;
+  if (typeof homeCityId === 'string' && CITY_DEFS[homeCityId]) return homeCityId;
+  return null;
+}
+
 export function getActiveCityDef(): CityDef {
   return getCityDef(activeCityId);
 }
@@ -250,9 +263,8 @@ export function hydrateActiveCityFromSave(): string {
     const raw = window.localStorage.getItem('sm_save');
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && typeof s.cityId === 'string' && CITY_DEFS[s.cityId]) {
-        return setActiveCityId(s.cityId).name;
-      }
+      const cityId = getSavedCityId(s);
+      if (cityId) return setActiveCityId(cityId).name;
     }
   } catch { /* ignore malformed save cache */ }
   return getActiveCityName();

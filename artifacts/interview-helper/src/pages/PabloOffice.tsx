@@ -37,6 +37,7 @@ import { useArtAsset } from '@/lib/art';
 import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
 import { setMapContext } from '@/lib/map-context';
+import { startPendingHousingAssessmentRetry } from '@/lib/onboarding-housing';
 import {
   getOfficeHudMode,
   getOfficeObjectDestination,
@@ -134,6 +135,7 @@ export default function PabloOffice() {
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier, setTier] = useState<SalarymanOfficeTier>(() => getSalarymanOfficeTier() ?? 'capsule');
+  useEffect(() => startPendingHousingAssessmentRetry(), []);
   useEffect(() => {
     setMapContext({
       kind: 'office',

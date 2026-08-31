@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
-import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useOnboardingResolved } from '@/lib/onboarding-sync';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
 import { getCityById } from '@/lib/world-servers';
+import { setActiveCityId } from '@/lib/city-defs';
+import { markPendingHousingAssessment, settlePendingHousingAssessment } from '@/lib/onboarding-housing';
 import { useArtAsset } from '@/lib/art';
 import { EconomyKey } from '@/components/EconomyKey';
 import { ensureOnboardingScore } from '@/lib/onboarding-score';
@@ -73,6 +74,9 @@ function persistRegistry(answers: OnboardingAnswers): void {
     appearance: answers.appearance,
     // Home city picked on the REAL ESTATE page (was its own relocation phase).
     homeCityId: answers.homeCityId,
+    // WorldPlay and all active-city consumers use this field. Keep it with the
+    // registry choice so the selected live realm is active before navigation.
+    cityId: answers.homeCityId,
     locationConsent: answers.locationConsent,
   });
 }
@@ -175,33 +179,35 @@ export default function Immigration() {
   // any shortfall to debt, dispatch tax collectors. We mirror it here as
   // teletype stamps so the user sees the exact same business onboarding,
   // then navigate home only after the fee receipt is on screen.
-  const handleComplete = (a: OnboardingAnswers) => {
+  const handleComplete = async (a: OnboardingAnswers) => {
     if (completedRef.current) return;
     completedRef.current = true;
     persistRegistry(a);
+    setActiveCityId(a.homeCityId);
     // Mirror tier into a small dedicated key so /office can reflect the
     // user's choice without parsing the whole sm_save blob.
     setSalarymanOfficeTier(a.officeTier);
-    markTutorialDone();
     setAnswers(a);
-    // Home-city assignment is now collected on the REAL ESTATE page of the
-    // intake (no separate relocation phase). Fire-and-forget the registry
-    // record; the choice is already in the save blob via persistRegistry, so a
-    // failed POST is non-fatal. Consent gates whether we send any location
-    // string at all. Then straight into the fee stamping.
-    if (a.homeCityId) {
-      void fetch('/api/world/home-city', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          homeCityId: a.homeCityId,
-          locationConsent: a.locationConsent,
-          coarseLocation: a.locationConsent ? a.coarseLocation : null,
-        }),
-      }).catch(() => { /* non-fatal — choice is already saved locally */ });
-    }
-    setPhase('stamping');
+    // Registration has already committed the selected live city and consent
+    // metadata atomically with the registry row before this callback runs.
+    // Keep first housing assessment intact, but never hold the player on a
+    // presentation-only receipt. The endpoint is idempotent and may finish
+    // after the office has already opened.
+    const prior = readSave();
+    const startingBalance = Math.max(0, Math.floor(Number(prior.savings ?? 0)));
+    markPendingHousingAssessment({ startingBalance, officeTier: a.officeTier });
+    // Usually settles before handoff. If the request fails or navigation
+    // interrupts it, /office keeps retrying the same idempotent assessment.
+    await settlePendingHousingAssessment();
+
+    setPhase('done');
+    markTutorialDone();
+    const destination = handoffDestinationRef.current;
+    navigate(destination, { replace: true });
+    setTimeout(() => {
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
+      window.location.href = `${base}${destination.slice(1)}`;
+    }, 400);
   };
 
   // Drive the stamping sequence in its own effect so the lines render in
@@ -399,19 +405,6 @@ export default function Immigration() {
           charName={charName}
           charClass="ARRIVAL"
           onComplete={handleComplete}
-        />
-      )}
-      {phase === 'stamping' && (
-        <StampingPanel
-          lines={stampLines}
-          showContinue={showContinue}
-          onContinue={finishImmigration}
-        />
-      )}
-      {phase === 'intro' && answers && (
-        <PostOnboardingIntro
-          playerName={answers.playerName}
-          onComplete={handleIntroComplete}
         />
       )}
     </div>

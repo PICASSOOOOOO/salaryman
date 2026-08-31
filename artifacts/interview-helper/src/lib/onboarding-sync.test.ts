@@ -5,10 +5,10 @@
 // looped back through the immigration intake on a fresh device / cleared browser.
 //
 // hydrateOnboardingStatus():
-//   • If the local salaryman_tutorial_done flag is already set, resolve instantly
-//     with NO network call (cleared user on their usual device).
-//   • Else hit GET /world/my-business: a world-business row → flip the local flag
+//   • GET /world/my-business: a world-business row → flip the local flag
 //     so every routing gate treats the user as cleared.
+//   • GET /world/home-city: the server-owned home city becomes both the active
+//     realm and the cached current city, without reading location metadata.
 //   • No row / non-ok / network error → leave the flag unset so a brand-new user
 //     still runs the full intake.
 //   • Resolves the subscribable "resolved" state in every case so gates that hold
@@ -65,14 +65,39 @@ describe("hydrateOnboardingStatus", () => {
     expect(getOnboardingResolved()).toBe(true);
   });
 
-  it("resolves instantly with NO network call when the local flag is already set", async () => {
+  it("hydrates home city without replacing a valid traveled current city", async () => {
     localStorage.setItem(TUTORIAL_KEY, "1");
+    localStorage.setItem("sm_save", JSON.stringify({ cityId: "minx_city", savings: 42 }));
+    apiFetch.mockImplementation((path: string) => Promise.resolve(
+      path === "/api/world/home-city"
+        ? fakeResponse({ homeCityId: "huda_city" })
+        : fakeResponse({ businesses: [] }),
+    ));
 
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await hydrateOnboardingStatus();
 
-    expect(apiFetch).not.toHaveBeenCalled();
+    expect(apiFetch).toHaveBeenCalledWith("/api/world/home-city");
+    expect(JSON.parse(localStorage.getItem("sm_save") ?? "{}")).toMatchObject({
+      cityId: "minx_city",
+      homeCityId: "huda_city",
+      savings: 42,
+    });
     expect(getOnboardingResolved()).toBe(true);
+  });
+
+  it("does not overwrite the local city for an unknown server city", async () => {
+    localStorage.setItem("sm_save", JSON.stringify({ cityId: "minx_city" }));
+    apiFetch.mockImplementation((path: string) => Promise.resolve(
+      path === "/api/world/home-city"
+        ? fakeResponse({ homeCityId: "not_a_live_city" })
+        : fakeResponse({ businesses: [] }),
+    ));
+
+    const { hydrateOnboardingStatus } = await loadModule();
+    await hydrateOnboardingStatus();
+
+    expect(JSON.parse(localStorage.getItem("sm_save") ?? "{}").cityId).toBe("minx_city");
   });
 
   it("leaves the flag unset (but still resolves) when the response is not ok", async () => {
@@ -101,7 +126,7 @@ describe("hydrateOnboardingStatus", () => {
     const { hydrateOnboardingStatus } = await loadModule();
     await Promise.all([hydrateOnboardingStatus(), hydrateOnboardingStatus()]);
 
-    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch).toHaveBeenCalledTimes(2);
   });
 
   it("is a no-op once already resolved", async () => {
@@ -111,7 +136,7 @@ describe("hydrateOnboardingStatus", () => {
     await hydrateOnboardingStatus();
     await hydrateOnboardingStatus();
 
-    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch).toHaveBeenCalledTimes(2);
   });
 
   it("notifies subscribers when the status resolves", async () => {

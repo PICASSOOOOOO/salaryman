@@ -158,7 +158,8 @@ type Step = 'destination' | 'greet' | 'identity' | 'business' | 'estate' | 'subm
 
 // Pages that count toward the progress bar (everything the user actively
 // fills in). submitting/done are terminal and excluded.
-const DATA_STEPS: Step[] = ['destination', 'greet', 'identity', 'business', 'estate'];
+export const REQUIRED_ONBOARDING_STEPS = ['destination', 'identity', 'business'] as const;
+const DATA_STEPS: Step[] = [...REQUIRED_ONBOARDING_STEPS];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "var(--font-sans)" };
@@ -710,9 +711,11 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     const safeDeclaredSalary = parseNonNeg(declaredSalary);
     return {
       bizPath: isBusiness ? 'business' : 'unemployed',
-      businessType: isBusiness ? businessType : 'unemployed',
-      companyName: isBusiness ? companyName.trim().toUpperCase().slice(0, 80) : '',
-      industry: isBusiness ? finalIndustry : '',
+      businessType: isBusiness ? 'minx' : 'unemployed',
+      companyName: isBusiness
+        ? (companyName.trim().toUpperCase().slice(0, 80) || `${finalName} WORKS`)
+        : '',
+      industry: isBusiness ? (finalIndustry || 'GENERAL SERVICES') : '',
       contactEmail: finalEmail,
       playerName: finalName,
       perception: 5,
@@ -727,7 +730,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       faction,
       gender,
       jobClass,
-      pendingOwnerVerification: isBusiness && businessType === 'real' && safeDeclaredSalary > 0,
+      pendingOwnerVerification: false,
       appearance: { ...appearance, gender: genderToAppearance(gender) },
       homeCityId,
       locationConsent,
@@ -761,6 +764,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       pace: 'full',
       faction: a.faction,
       jobClass: a.jobClass,
+      homeCityId: a.homeCityId,
+      locationConsent: a.locationConsent,
     };
     try {
       const res = await apiFetch('/api/world/register', {
@@ -783,34 +788,19 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     } catch (e: any) {
       playError();
       setSubmitErr(e?.message || 'Pablo Corp registry is unreachable. Try again.');
-      setStep(isBusiness ? 'business' : 'estate');
+      setStep('business');
       return;
     }
     playMilestone();
-    setStep('done');
-  }, [buildAnswers]);
+    onComplete(a);
+  }, [buildAnswers, onComplete]);
 
   const canAdvance = (): boolean => {
     if (step === 'destination') return !!homeCityId && !!getCityById(homeCityId)?.isLive;
     if (step === 'identity') {
       return playerName.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
     }
-    if (step === 'business') {
-      if (bizPath === '') return false;
-      if (bizPath === 'unemployed') return true;
-      const companyOk = companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
-      if (!companyOk) return false;
-      const ec = Number(employeeCount);
-      const es = Number(employeeSalary);
-      const ecValid = employeeCount === '' || (Number.isFinite(ec) && ec >= 0);
-      if (!ecValid) return false;
-      if (ec > 0 && !(Number.isFinite(es) && es > 0)) return false;
-      if (declaredSalary !== '') {
-        const ds = Number(declaredSalary);
-        if (!(Number.isFinite(ds) && ds >= 0)) return false;
-      }
-      return true;
-    }
+    if (step === 'business') return bizPath === 'business' || bizPath === 'unemployed';
     if (step === 'estate') return !!officeTier && !!homeCityId;
     return true;
   };
@@ -1038,6 +1028,17 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'identity' && (
             <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Your arrival card.</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Only the details needed to open your account. Change your look and profile later.
+              </div>
+              {Field({ label: 'NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
+              {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
+            </div>
+          )}
+
+          {false && step === 'identity' && (
+            <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Who are you, on paper and on the street?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
                 Name + contact go on every contract. The look is how the city sees you.
@@ -1148,6 +1149,46 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           )}
 
           {step === 'business' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How will you start?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Pick a work path now. Company details, staffing, payroll, appearance, and upgrades stay editable after arrival.
+              </div>
+              <button
+                onClick={() => { setBizPath('business'); playStep(); }}
+                data-testid="onboarding-choice-business"
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', marginTop: '.8rem',
+                  background: bizPath === 'business' ? 'rgba(251,191,36,.15)' : 'rgba(56,189,248,.03)',
+                  border: bizPath === 'business' ? '1.5px solid #fbbf24' : '1px solid rgba(56,189,248,.25)',
+                  padding: '.8rem', cursor: 'pointer', color: '#fbbf24',
+                }}
+              >
+                <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em' }}>{bizPath === 'business' ? '▸ ' : ''}BUILD A BUSINESS</div>
+                <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(251,191,36,.65)', marginTop: '.25rem' }}>START WITH A SIMPLE COMPANY · COMPLETE DETAILS LATER</div>
+              </button>
+              <button
+                onClick={() => { setBizPath('unemployed'); playStep(); }}
+                data-testid="onboarding-choice-unemployed"
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', marginTop: '.55rem',
+                  background: bizPath === 'unemployed' ? 'rgba(56,189,248,.12)' : 'transparent',
+                  border: bizPath === 'unemployed' ? '1.5px solid #38bdf8' : '1px solid rgba(56,189,248,.2)',
+                  padding: '.8rem', cursor: 'pointer', color: '#38bdf8',
+                }}
+              >
+                <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em' }}>{bizPath === 'unemployed' ? '▸ ' : ''}FIND WORK IN THE CITY</div>
+                <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.55)', marginTop: '.25rem' }}>START SOLO · REGISTER A BUSINESS LATER</div>
+              </button>
+              {submitErr && (
+                <div style={{ marginTop: '.65rem', padding: '.5rem', border: '1px solid rgba(255,80,80,.4)', color: '#ff8a8a', ...ST, fontSize: '.5rem' }}>
+                  {submitErr}
+                </div>
+              )}
+            </div>
+          )}
+
+          {false && step === 'business' && (
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your lane, {playerName.split(' ')[0]}.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
@@ -1653,7 +1694,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             }}>
               ▸ STEP OUTSIDE ◂
             </button>
-          ) : step === 'estate' ? (
+          ) : step === 'business' || step === 'estate' ? (
             <button onClick={submit} disabled={!canAdvance()} data-testid="onboarding-submit" style={{
               ...VT, fontSize: '1.05rem', letterSpacing: '.12em',
               padding: '.4rem 1.1rem',

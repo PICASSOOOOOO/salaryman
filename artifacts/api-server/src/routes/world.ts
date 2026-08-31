@@ -5,6 +5,7 @@ import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlaye
 import * as geoip from "geoip-lite";
 
 const router = Router();
+const LIVE_CITY_IDS = new Set(["minx_city", "huda_city"]);
 
 /**
  * Derive the active in-game character's player name for the current request.
@@ -135,6 +136,28 @@ router.get("/world/population", (_req, res) => {
 // Record the player's chosen home city + (optional, consented) coarse location.
 // Stored on the registry row's `meta` bag so we don't churn the schema. Consent
 // is explicit: when the player declines we keep NO location string.
+// This deliberately returns only the city assignment. Location consent and the
+// server-derived country remain write-only metadata and are never sent back to
+// a browser merely to hydrate its active world.
+router.get("/world/home-city", async (req, res) => {
+  try {
+    const userId = req.user?.id ? String(req.user.id) : null;
+    if (!userId) { res.status(401).json({ error: "Not signed in" }); return; }
+    const [row] = await db
+      .select({ meta: worldBusinessesTable.meta })
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.userId, userId))
+      .orderBy(sql`${worldBusinessesTable.createdAt} DESC`)
+      .limit(1);
+    const meta = row?.meta && typeof row.meta === "object" ? row.meta as Record<string, unknown> : null;
+    const homeCityId = typeof meta?.homeCityId === "string" ? meta.homeCityId : null;
+    res.json({ homeCityId });
+  } catch (err: any) {
+    console.error("[World] get home-city error:", err?.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.post("/world/home-city", async (req, res) => {
   try {
     const userId = req.user?.id ? String(req.user.id) : null;
@@ -142,6 +165,7 @@ router.post("/world/home-city", async (req, res) => {
     const { homeCityId, locationConsent } = req.body ?? {};
     const cityId = typeof homeCityId === "string" ? homeCityId.trim().toLowerCase() : "";
     if (!/^[a-z_]{2,40}$/.test(cityId)) { res.status(400).json({ error: "valid homeCityId required" }); return; }
+    if (!LIVE_CITY_IDS.has(cityId)) { res.status(400).json({ error: "home city is not operational" }); return; }
     const consent = Boolean(locationConsent);
     // Country-ONLY, and SERVER-derived from the caller's IP — never trust a
     // client-supplied location string, and never store anything finer than the
@@ -174,7 +198,7 @@ router.post("/world/home-city", async (req, res) => {
 
 router.post("/world/register", async (req, res) => {
   try {
-    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation } = req.body;
+    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation, homeCityId, locationConsent } = req.body;
     if (!playerName || !businessType) {
       res.status(400).json({ error: "playerName and businessType required" });
       return;
@@ -216,10 +240,24 @@ router.post("/world/register", async (req, res) => {
     // so we don't churn the schema for cosmetic intake fields.
     const ALLOWED_FACTIONS = new Set(["suit", "nomad", "replicant"]);
     const ALLOWED_PACES = new Set(["full", "quick"]);
+    const selectedCityId = typeof homeCityId === "string" ? homeCityId.trim().toLowerCase() : "minx_city";
+    if (!LIVE_CITY_IDS.has(selectedCityId)) {
+      res.status(400).json({ error: "home city is not operational" });
+      return;
+    }
+    let coarseLocation: string | null = null;
+    if (locationConsent) {
+      const fwd = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+      const ip = (fwd || req.socket.remoteAddress || "").replace(/^::ffff:/, "");
+      coarseLocation = ip ? geoip.lookup(ip)?.country ?? null : null;
+    }
     const meta = {
       faction: typeof faction === "string" && ALLOWED_FACTIONS.has(faction) ? faction : null,
       jobClass: typeof jobClass === "string" ? jobClass.slice(0, 32) : null,
       pace: typeof pace === "string" && ALLOWED_PACES.has(pace) ? pace : null,
+      homeCityId: selectedCityId,
+      locationConsent: Boolean(locationConsent),
+      coarseLocation,
     };
     const [row] = await db
       .insert(worldBusinessesTable)

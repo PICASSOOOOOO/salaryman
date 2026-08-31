@@ -1,4 +1,5 @@
 import { apiFetch } from "./api-client";
+import { CITY_DEFS, setActiveCityId } from "./city-defs";
 import { isTutorialDone, markTutorialDone } from "./tutorial-progress";
 
 // ── Server-authoritative onboarding-complete signal ──────────────────────────
@@ -47,34 +48,58 @@ function markResolved(): void {
   emit();
 }
 
+function applyServerHomeCity(value: unknown): void {
+  if (typeof window === "undefined" || typeof value !== "string" || !CITY_DEFS[value]) return;
+  try {
+    const raw = window.localStorage.getItem("sm_save");
+    const prior = raw ? JSON.parse(raw) : {};
+    const save = prior && typeof prior === "object" ? prior : {};
+    const currentCityId = typeof save.cityId === "string" && CITY_DEFS[save.cityId]
+      ? save.cityId
+      : value;
+    setActiveCityId(currentCityId);
+    // Home city is identity metadata, not the current traveled realm. Seed the
+    // current city only on a fresh device/save where no valid destination exists.
+    window.localStorage.setItem("sm_save", JSON.stringify({
+      ...save,
+      homeCityId: value,
+      cityId: currentCityId,
+    }));
+  } catch {
+    setActiveCityId(value);
+  }
+}
+
 // Pull the server's onboarding-complete signal once. Idempotent: repeated calls
 // return the same in-flight promise, and once resolved it's a no-op.
-// - If the local flag is already set, the user is cleared — resolve immediately
-//   without a round-trip.
 // - If the server reports a world business row (already onboarded), set the
 //   local flag so every gate flips to "cleared".
+// - The separately scoped home-city read is always made after sign-in, including
+//   on a device that has the local tutorial flag, so the server choice wins
+//   across devices and is available before office/HUD/world routes mount.
 // - On any error / no row, leave the flag untouched so a genuinely brand-new
 //   user still falls through to the full immigration intake.
 export function hydrateOnboardingStatus(): Promise<void> {
   if (resolved) return Promise.resolve();
   if (inFlight) return inFlight;
 
-  // Already cleared on this device — nothing to check.
-  if (isTutorialDone()) {
-    markResolved();
-    return Promise.resolve();
-  }
-
   inFlight = (async () => {
     try {
-      const res = await apiFetch("/api/world/my-business");
-      if (res.ok) {
-        const data = (await res.json()) as { businesses?: unknown };
+      const [businessResult, homeCityResult] = await Promise.allSettled([
+        apiFetch("/api/world/my-business"),
+        apiFetch("/api/world/home-city"),
+      ]);
+      if (businessResult.status === "fulfilled" && businessResult.value.ok) {
+        const data = (await businessResult.value.json()) as { businesses?: unknown };
         if (Array.isArray(data.businesses) && data.businesses.length > 0) {
           // Server says this user already onboarded — flip the local flag so
           // App.tsx / AppShell / NavBar / Immigration all treat them as cleared.
           markTutorialDone();
         }
+      }
+      if (homeCityResult.status === "fulfilled" && homeCityResult.value.ok) {
+        const data = (await homeCityResult.value.json()) as { homeCityId?: unknown };
+        applyServerHomeCity(data.homeCityId);
       }
     } catch {
       // Offline / transient error — keep the local-only flow. A brand-new user
