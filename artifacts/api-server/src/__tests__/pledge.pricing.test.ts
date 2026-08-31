@@ -71,9 +71,11 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
     expect(seat.priceUsd).toBe(100);
   });
 
-  it("exposes only dollar-backed agent and membership categories", () => {
-    expect(catalog.categories).toEqual(["bots", "membership"]);
-    expect(new Set(catalog.items.map((i) => i.category))).toEqual(new Set(["bots", "membership"]));
+  it("exposes Stripe-backed agents, feature passes, and membership categories", () => {
+    expect(catalog.categories).toEqual(["bots", "terminals", "membership"]);
+    expect(new Set(catalog.items.map((i) => i.category))).toEqual(new Set(["bots", "terminals", "membership"]));
+    expect(catalog.items.find((i) => i.id === "term_pablo_pass")).toBeTruthy();
+    expect(catalog.items.find((i) => i.id === "term_phone_pass")).toBeTruthy();
   });
 
   it("keeps non-agent game goods out of the dollar storefront", () => {

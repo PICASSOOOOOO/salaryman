@@ -40,6 +40,18 @@ catalog but charge the stale env amount — a display/charge divergence. So the
 fixed-price override is gated to `noMarkup` (face-value) items ONLY; all cost-plus
 items always charge the inline derived retail.
 
+**Store boundary:** paid software capabilities and subscriptions belong in the
+Stripe-backed Pledge Store, including explicit one-time feature passes. Vending
+machines and ordinary in-world goods use server-authoritative FIAT only and must
+never expose a USD/Stripe checkout.
+
+**Why:** users must see the same authoritative offer at the paywall and checkout,
+without accidentally turning gameplay purchases into real-money transactions.
+
+**How to apply:** never hardcode price hints in feature gates; open the Pledge
+Store options and let its API/Stripe checkout supply the current amount. Keep
+vending and gameplay routes on `spendFiat`.
+
 # AI clearance secrecy
 `CLEARANCE_SECRECY` (chat.ts) is embedded in BOTH Pablo and Mila prompts: never
 reveal real financial/personal/development facts about SALARYMAN/Picasso/any app

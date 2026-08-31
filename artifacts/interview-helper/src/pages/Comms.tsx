@@ -3,14 +3,14 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { MessageSquare, Users, Building2, ArrowRight, Shield, Video } from 'lucide-react';
+import { MessageSquare, Users, Building2, ArrowRight, Shield } from 'lucide-react';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
 import Colleagues from './Colleagues';
 import ColleaguesPanel from './ColleaguesPanel';
-import PhoneConferencePage from './phone/PhoneConferencePage';
 import { apiFetch } from '@/lib/api-client';
+import { ChatPanel } from '@/components/ChatPanel';
 
-type Section = 'chat' | 'associates' | 'orgs' | 'responders' | 'conference';
+export type CommsSection = 'chat' | 'associates' | 'orgs' | 'responders';
 
 interface ResponderEntry {
   rank: number;
@@ -20,11 +20,10 @@ interface ResponderEntry {
   totalReward: number;
 }
 
-const TABS: { id: Section; label: string; icon: typeof MessageSquare }[] = [
+const TABS: { id: CommsSection; label: string; icon: typeof MessageSquare }[] = [
   { id: 'chat', label: 'CHAT', icon: MessageSquare },
   { id: 'associates', label: 'ASSOCIATES', icon: Users },
   { id: 'orgs', label: 'ORGS', icon: Building2 },
-  { id: 'conference', label: 'CONFERENCE', icon: Video },
   { id: 'responders', label: 'RESPONDERS', icon: Shield },
 ];
 
@@ -34,13 +33,10 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   evt_medical: '⛑ MEDICAL',
 };
 
-export default function Comms() {
+export function CommsEmbedded({ section }: { section: CommsSection }) {
   const { isAuthenticated } = useAuth();
   const boomerMode = getDefaultBoomerMode();
   const [, navigate] = useLocation();
-  const [section, setSection] = useState<Section>('chat');
-  const { unreadMessages, pendingRequests } = useCommsSummary();
-
   const [responders, setResponders] = useState<ResponderEntry[]>([]);
   const [respondersLoading, setRespondersLoading] = useState(false);
 
@@ -59,64 +55,12 @@ export default function Comms() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
-      <div className="max-w-4xl mx-auto w-full">
-        <div className="px-4 sm:px-6 pt-4 sm:pt-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
-            <MessageSquare className="inline w-5 h-5 mr-2" />
-            PAYPHONE TERMINAL
-          </h1>
-          <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
-            CHAT, ASSOCIATES, AND ORGS — ALL YOUR PEOPLE IN ONE PLACE.
-          </p>
-
-          <div className="flex gap-1 mt-4 border-b border-cyan-500/10 overflow-x-auto scrollbar-hide">
-            {TABS.map(tab => {
-              const Icon = tab.icon;
-              const active = section === tab.id;
-              const badge = tab.id === 'chat' ? unreadMessages : tab.id === 'associates' ? pendingRequests : 0;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setSection(tab.id)}
-                  className={`flex items-center gap-1.5 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 text-xs font-mono tracking-widest uppercase border-b-2 -mb-px transition-colors ${
-                    active
-                      ? 'border-cyan-400 text-cyan-300'
-                      : 'border-transparent text-cyan-400/40 hover:text-cyan-300/70'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {tab.label}
-                  {badge > 0 && (
-                    <span className="min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1">
-                      {badge > 99 ? '99+' : badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {section === 'chat' && (
-          <div className="p-6 sm:p-10 text-center">
-            <MessageSquare className="w-12 h-12 text-cyan-400/20 mx-auto mb-4" />
-            <p className="text-sm text-cyan-200/80 mb-2">Your conversations live in the chat panel.</p>
-            <p className="text-[11px] text-cyan-400/40 mb-6 max-w-md mx-auto">
-              Talk to coworkers and associates, message Pablo, and attach files from your media library — all in one slide-out panel available anywhere.
-            </p>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('salaryman:open-chat'))}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs tracking-widest uppercase rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-200 hover:bg-cyan-500/25 transition-colors"
-            >
-              OPEN CHAT <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+    <div className="text-cyan-300 font-mono">
+      {section === 'chat' && (
+          <div className="px-2 sm:px-4"><ChatPanel embedded initiallyOpen /></div>
         )}
 
         {section === 'associates' && <Colleagues embedded />}
-
-        {section === 'conference' && <PhoneConferencePage />}
 
         {section === 'orgs' && (
           <div>
@@ -176,6 +120,39 @@ export default function Comms() {
             )}
           </div>
         )}
+    </div>
+  );
+}
+
+export default function Comms() {
+  const [section, setSection] = useState<CommsSection>('chat');
+  const { unreadMessages, pendingRequests } = useCommsSummary();
+  const tabs = TABS;
+  return (
+    <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
+      <div className="max-w-4xl mx-auto w-full">
+        <div className="px-4 sm:px-6 pt-4 sm:pt-6">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
+            <MessageSquare className="inline w-5 h-5 mr-2" /> PAYPHONE TERMINAL
+          </h1>
+          <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
+            CHAT, ASSOCIATES, AND ORGS — ALL YOUR PEOPLE IN ONE PLACE.
+          </p>
+          <div className="flex gap-1 mt-4 border-b border-cyan-500/10 overflow-x-auto scrollbar-hide">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const badge = tab.id === 'chat' ? unreadMessages : tab.id === 'associates' ? pendingRequests : 0;
+              return (
+                <button key={tab.id} onClick={() => setSection(tab.id)}
+                  className={`flex items-center gap-1.5 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 text-xs font-mono tracking-widest uppercase border-b-2 -mb-px transition-colors ${section === tab.id ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-cyan-400/40 hover:text-cyan-300/70'}`}>
+                  <Icon className="w-3.5 h-3.5" /> {tab.label}
+                  {badge > 0 && <span className="min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1">{badge > 99 ? '99+' : badge}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <CommsEmbedded section={section} />
       </div>
     </div>
   );

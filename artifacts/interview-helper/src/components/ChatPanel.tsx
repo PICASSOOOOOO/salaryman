@@ -839,15 +839,17 @@ function _writeAssocBaseline(uid: string, n: number): void {
 export function ChatPanel({
   initiallyOpen = false,
   initialDmUserId,
+  embedded = false,
 }: {
   initiallyOpen?: boolean;
   initialDmUserId?: string;
+  embedded?: boolean;
 } = {}) {
   const { user, isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
   const boomer = boomerMode;
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(initiallyOpen);
+  const [open, setOpen] = useState(embedded || initiallyOpen);
   const [activeTab, setActiveTab] = useState<Tab>("pablo");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -972,13 +974,13 @@ export function ChatPanel({
   // mobile and the floating panel on desktop. Keyboard users can also
   // back out instead of being trapped.
   useEffect(() => {
-    if (!open) return;
+    if (!open || embedded) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, embedded]);
 
   useEffect(() => {
     const onOpenDm = async (e: Event) => {
@@ -1163,12 +1165,12 @@ export function ChatPanel({
 
   if (!isAuthenticated) return null;
 
-  const PANEL_W = isMobile ? "100vw" : 340;
+  const PANEL_W = embedded ? "100%" : isMobile ? "100vw" : 340;
   // Mobile: bottom-sheet sized to ~78% of the viewport so the user can
   // (a) tap the backdrop above to dismiss / see the page behind, and
   // (b) keep the input bar comfortably clear of the on-screen keyboard.
   // Desktop: fixed 480px floating panel.
-  const PANEL_H = isMobile ? "78dvh" : 480;
+  const PANEL_H = embedded ? (isMobile ? "calc(100dvh - 210px)" : 600) : isMobile ? "78dvh" : 480;
 
   const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
@@ -1186,7 +1188,7 @@ export function ChatPanel({
 
   return (
     <>
-      {open && isMobile && (
+      {open && isMobile && !embedded && (
         // Tap-through backdrop above the bottom-sheet so the user can
         // dismiss Comms by tapping anywhere on the visible page area
         // ("go back on the page"). Sits just under the sheet itself.
@@ -1204,8 +1206,10 @@ export function ChatPanel({
       {open && (
         <div
           style={{
-            position: "fixed",
-            ...(isMobile
+            position: embedded ? "relative" : "fixed",
+            ...(embedded
+              ? { borderRadius: 10, margin: "16px auto 0" }
+              : isMobile
               ? {
                   // Bottom-sheet: leave the top of the screen tappable so
                   // the backdrop can be hit and the page behind stays
@@ -1221,13 +1225,13 @@ export function ChatPanel({
             borderBottom: isMobile ? "none" : undefined,
             display: "flex",
             flexDirection: "column",
-            zIndex: 9999,
+            zIndex: embedded ? 1 : 9999,
             boxShadow: isMobile
               ? "0 -8px 32px rgba(0,0,0,0.7)"
               : `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
             fontFamily: fontFor(boomer),
             overflow: "hidden",
-            animation: isMobile ? "chatSheetUp 0.22s ease-out" : "chatSlideUp 0.2s ease-out",
+            animation: embedded ? "none" : isMobile ? "chatSheetUp 0.22s ease-out" : "chatSlideUp 0.2s ease-out",
             // Mobile: respect the iOS home indicator + landscape rounded
             // corners. Top inset is unneeded now that the sheet doesn't
             // reach the notch.
@@ -1241,7 +1245,7 @@ export function ChatPanel({
               : null),
           }}
         >
-          {isMobile && (
+          {isMobile && !embedded && (
             // Drag-handle affordance — visual cue that the sheet is
             // dismissable. Tapping it also closes, same as the X.
             <button
@@ -1295,7 +1299,7 @@ export function ChatPanel({
                 PAYPHONE
               </span>
             </div>
-            <button
+            {!embedded && <button
               onClick={() => setOpen(false)}
               style={{
                 background: "none",
@@ -1307,7 +1311,7 @@ export function ChatPanel({
               }}
             >
               <X size={isMobile ? 20 : 14} />
-            </button>
+            </button>}
           </div>
 
           <div
@@ -1546,7 +1550,7 @@ export function ChatPanel({
         </div>
       )}
 
-      <button
+      {!embedded && <button
         onClick={() => setOpen(o => !o)}
         data-testid="button-comms-toggle"
         style={{
@@ -1616,7 +1620,7 @@ export function ChatPanel({
             {totalUnread > 99 ? "99+" : totalUnread}
           </span>
         )}
-      </button>
+      </button>}
 
       <style>{`
         @keyframes chatSlideUp {

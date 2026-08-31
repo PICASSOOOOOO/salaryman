@@ -23,7 +23,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
 
   useEffect(() => {
     if (shouldRedirect) {
-      navigate("/pricing");
+      navigate("/pledge");
     }
   }, [shouldRedirect, navigate]);
 
@@ -44,19 +44,15 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
   }
 
   const displayName = feature ?? "Premium";
-  const priceHint = featureKey
-    ? (featureKey === "phone_system" ? "$95/mo" : "$5/mo")
-    : "";
-
   if (inline) {
     return (
       <span
         onClick={() => openPledgePopup({ reason: `Unlock ${displayName} with a one-time pledge.` })}
-        title={`${displayName} — unlock with a pledge${priceHint ? ` (${priceHint})` : ""}`}
+        title={`${displayName} — view the current Stripe-backed pledge price`}
         className="inline-flex items-center gap-1 cursor-pointer text-amber-400/70 hover:text-amber-400 transition-colors"
       >
         <Lock className="w-3 h-3" />
-        <span className="text-[10px] font-mono uppercase tracking-wider">{priceHint || "PRO"}</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider">PAID</span>
       </span>
     );
   }
@@ -72,10 +68,10 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-amber-300 mb-0.5">
-            {displayName} — Subscription Required{priceHint ? ` (${priceHint})` : ""}
+            {displayName} — Paid Access Required
           </p>
           <p className="text-xs text-muted-foreground">
-            This module requires a separate subscription.{" "}
+            Choose a one-time feature pass or PABLO PRIME. Stripe shows the authoritative price before payment.{" "}
             <span className="text-amber-400/80 group-hover:text-amber-400 underline underline-offset-2 transition-colors">
               View pricing →
             </span>

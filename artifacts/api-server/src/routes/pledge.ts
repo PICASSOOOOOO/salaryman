@@ -357,8 +357,13 @@ const FULL_CATALOG: PledgeItem[] = [
   PRIME_LISTING,
 ];
 const DOLLAR_STORE_CATEGORIES = new Set<PledgeCategory>(["bots", "membership"]);
-const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => DOLLAR_STORE_CATEGORIES.has(item.category));
-const PUBLIC_CATEGORIES = ["bots", "membership"] as const;
+// Paid feature passes belong in the same Stripe-backed storefront as PRIME.
+// `popup` is deliberately explicit so unrelated in-world terminal cosmetics
+// remain FIAT-only and never leak into real-money checkout.
+const PUBLIC_CATALOG = FULL_CATALOG.filter(
+  (item) => DOLLAR_STORE_CATEGORIES.has(item.category) || item.popup,
+);
+const PUBLIC_CATEGORIES = ["bots", "terminals", "membership"] as const;
 
 // Client-safe projection. This is the ONLY shape that reaches the client:
 // the derived retail price ONLY — never costUsd, markup, or internal
@@ -547,7 +552,7 @@ router.get("/pledge/catalog", async (_req, res) => {
 // when a paid terminal feature is locked — instead of redirecting to a promo
 // page. Same checkout + entitlement plumbing as the full store.
 router.get("/pledge/popup", (_req, res) => {
-  res.json({ items: PUBLIC_CATALOG.filter((i) => i.popup).map((i) => toPublicItem(i)) });
+  res.json({ items: FULL_CATALOG.filter((i) => i.popup).map((i) => toPublicItem(i)) });
 });
 
 // ─── Owned entitlements ──────────────────────────────────────────────────────

@@ -168,6 +168,7 @@ import { type ExchangeCurrency, SWAP_CURRENCIES, exchangeQuote, roundToCurrency,
 import { formatFromUsd, getCurrency } from '@/lib/currency';
 import { VEND_FOOD_ITEMS } from '@/lib/vending-food';
 import { clearMapContext, setBuildingMapContext } from '@/lib/map-context';
+import { getPayphoneHubDestination } from '@/lib/office-property-layouts';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
@@ -7279,11 +7280,15 @@ export default function WorldPlay() {
     }
     else if (IS_PUBLIC_TERMINAL(bid)) {
       sfxEnter();
+      // The neon terminal is a physical payphone, not a Pablo terminal. Its
+      // handset opens the same canonical phone hub as the office payphone.
+      if (bid === 'term_neon') {
+        navigate(getPayphoneHubDestination());
+        return;
+      }
       gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
-      // Pick a boot variant: vans use kiosk shell; the neon-district public
-      // terminal feels like a payphone; everything else is a kiosk.
-      const bootVariant: TerminalBootVariant =
-        IS_VAN(bid) ? 'kiosk' : (bid === 'term_neon' ? 'payphone' : 'kiosk');
+      // Public terminals and vans retain their existing Pablo kiosk behavior.
+      const bootVariant: TerminalBootVariant = 'kiosk';
       playTerminalBoot(bootVariant);
       setShowPablo(true);
       completeQuestTask('find_terminal', 'open_terminal');
@@ -23063,7 +23068,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           entering={lobbyEntering}
           voucherGranted={lobbyInfo.voucherGranted}
           onBackToTerminal={() => navigate('/pablo')}
-          onUsePayphone={() => navigate('/comms')}
+          onUsePayphone={() => navigate(getPayphoneHubDestination())}
         />
       )}
 

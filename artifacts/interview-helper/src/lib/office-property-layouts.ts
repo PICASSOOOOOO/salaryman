@@ -244,10 +244,12 @@ export function findOfficeRoute(
   return route.reverse();
 }
 
+export const PAYPHONE_HUB_DESTINATION = "/phone?tab=chat";
+
 export const OFFICE_OBJECT_DESTINATIONS = {
   terminal: "/console",
   atm: "/game/bank",
-  payphone: "/phone",
+  payphone: PAYPHONE_HUB_DESTINATION,
   vending: "/vending?from=office",
 } as const;
 
@@ -255,6 +257,11 @@ export type OfficeDestinationObject = keyof typeof OFFICE_OBJECT_DESTINATIONS;
 
 export function getOfficeObjectDestination(object: OfficeDestinationObject): string {
   return OFFICE_OBJECT_DESTINATIONS[object];
+}
+
+/** The canonical phone product hub used by every physical payphone. */
+export function getPayphoneHubDestination(): string {
+  return PAYPHONE_HUB_DESTINATION;
 }
 
 export function getOfficeHudMode(width: number): "compact" | "full" {

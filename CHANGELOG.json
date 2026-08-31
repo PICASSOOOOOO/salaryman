@@ -1514,5 +1514,30 @@
       "Update App.tsx component",
       "Add content to PabloOffice interview helper page"
     ]
+  },
+  {
+    "version": "v.18.3.2037",
+    "date": "2026-08-31",
+    "commitHash": "7b12f63dcfa687df5fd9a16ca8ecbf311d53a516",
+    "changes": [
+      "Update world API routes and remove deprecated intake test file",
+      "Update office components and bump version"
+    ]
+  },
+  {
+    "version": "v.18.4.2037",
+    "date": "2026-08-31",
+    "commitHash": "7b12f63dcfa687df5fd9a16ca8ecbf311d53a516",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.5.2037",
+    "date": "2026-08-31",
+    "commitHash": "7b12f63dcfa687df5fd9a16ca8ecbf311d53a516",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

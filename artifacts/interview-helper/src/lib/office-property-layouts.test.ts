@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_OFFICE_PROPERTY_KEY,
   OFFICE_OBJECT_DESTINATIONS,
+  PAYPHONE_HUB_DESTINATION,
   OFFICE_PROPERTY_LAYOUTS,
   findOfficeRoute,
   getOfficeBlockedTiles,
   getOfficeHudMode,
   getOfficeObjectDestination,
+  getPayphoneHubDestination,
   getOfficePropertyLayout,
   loadOfficePose,
   officePoseStorageKey,
@@ -58,7 +60,9 @@ describe("office property layouts", () => {
   it("keeps every office object destination direct and centralized", () => {
     expect(getOfficeObjectDestination("terminal")).toBe("/console");
     expect(getOfficeObjectDestination("atm")).toBe("/game/bank");
-    expect(getOfficeObjectDestination("payphone")).toBe("/phone");
+    expect(getOfficeObjectDestination("payphone")).toBe(PAYPHONE_HUB_DESTINATION);
+    expect(getPayphoneHubDestination()).toBe(PAYPHONE_HUB_DESTINATION);
+    expect(PAYPHONE_HUB_DESTINATION).toBe("/phone?tab=chat");
     expect(getOfficeObjectDestination("vending")).toBe("/vending?from=office");
     expect(Object.keys(OFFICE_OBJECT_DESTINATIONS)).toEqual(["terminal", "atm", "payphone", "vending"]);
   });

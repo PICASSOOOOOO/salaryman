@@ -15,7 +15,6 @@ import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navba
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { PledgeStorePopupProvider } from "@/components/PledgeStorePopup";
 import { useAuth } from "@workspace/replit-auth-web";
-import { usePlan } from "@/hooks/use-plan";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
 import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
@@ -101,7 +100,6 @@ const OrgHub = lazy(() => import("@/pages/OrgHub"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
-const Comms = lazy(() => import("@/pages/Comms"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -142,24 +140,9 @@ const OrgAccounts = lazy(() => import("@/pages/OrgAccounts"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
-// Paywall gate for /phone* routes. The phone system (dialer, voicemail,
-// AI secretary, call center, etc.) is a paid feature inside the PABLO
-// bundle. Free users land on /upgrade instead of a screen of 403s.
-// While the plan is loading we render nothing (avoids a flicker that
-// would briefly redirect a paid user to /upgrade on cold load). The
-// `redirectTo` prop preserves the tab query param when /phone/:rest
-// rewrites land here, so paid users still get their deep link.
+// /phone is the shared communications hub. Free tabs stay available to
+// every signed-in user; Calll Home applies entitlement UX inside paid tabs.
 function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
-  const { isOwner, features, trials, loading } = usePlan();
-  if (loading) return null;
-  // Match CalllHomePage's own access check — trial holders count as
-  // entitled. Without this, a phone_system trial user is bounced to
-  // /upgrade by the gate and never reaches the in-page trial UX.
-  const allowed =
-    isOwner ||
-    features.has('phone_system') ||
-    trials.some(t => t.featureKey === 'phone_system');
-  if (!allowed) return <Redirect to="/upgrade" />;
   if (redirectTo) return <Redirect to={redirectTo} />;
   return <CalllHomePage />;
 }
@@ -419,7 +402,7 @@ function AppShell() {
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
+  const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute && !pathname.startsWith("/phone");
 
   // GLOBAL GATE / FRONT DOOR. Before a visitor passes security (signs in),
   // the ONLY surface they can reach is the front door — the Pablo nebula —
@@ -708,8 +691,8 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
-            <Route path="/comms" component={Comms} />
-            <Route path="/social/colleagues">{() => <Redirect to="/comms" />}</Route>
+            <Route path="/comms">{() => <Redirect to="/phone?tab=chat" />}</Route>
+            <Route path="/social/colleagues">{() => <Redirect to="/phone?tab=associates" />}</Route>
             <Route path="/creative/stems" component={StemStudio} />
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
@@ -752,18 +735,21 @@ function AppShell() {
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
 
-            {/* PHONE module — unified Calll Home hub. Paid feature
-                (PABLO bundle): users without phone_system are bounced
-                to /upgrade so they can subscribe instead of landing
-                on a screen full of broken 403s. */}
+            {/* PHONE module — one hub; free comms stay open while paid tabs
+                render their Stripe-backed access options in-shell. */}
             <Route path="/phone">{() => <PhoneGate />}</Route>
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
               const TAB_MAP: Record<string, string> = {
                 contacts: 'contacts', dialer: 'cmd', active: 'cmd', cmd: 'cmd',
-                history: 'log', voicemail: 'vm', conference: 'conf',
-                sessions: 'cmd', coach: 'ai', secretary: 'ai', numbers: 'contacts',
+                history: 'log', recordings: 'rec', recording: 'rec',
+                voicemail: 'vm', conference: 'conf', sms: 'sms',
+                sessions: 'cmd', coach: 'ai', secretary: 'ai',
+                numbers: 'numbers', 'call-center': 'cc',
               };
-              const tab = TAB_MAP[params.rest?.split('/')[0] ?? ''] ?? '';
+              // Wouter's wildcard parameter shape differs across versions.
+              // The browser pathname is authoritative for these legacy links.
+              const legacySegment = window.location.pathname.slice('/phone/'.length).split('/')[0] ?? params.rest ?? '';
+              const tab = TAB_MAP[legacySegment] ?? '';
               return <PhoneGate redirectTo={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
