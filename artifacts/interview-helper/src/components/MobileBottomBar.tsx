@@ -126,6 +126,7 @@ export function MobileModuleNav() {
   }, [dropdownOpen]);
 
   const pathname = location.split('?')[0];
+  const isHome = pathname === "/";
 
   // ADMIN hub is visible only to platform owners and approved staff (devs / testers).
   // Regular org members do NOT see this — AdminPanel is gated at the route level too.
@@ -267,7 +268,9 @@ export function MobileModuleNav() {
                   className="mobile-tap-target flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation text-zinc-400 active:bg-white/5"
                 >
                   <User className="w-4 h-4 shrink-0 text-zinc-600" />
-                  <span className="text-xs font-mono tracking-widest uppercase">LOGIN</span>
+                  <span className="text-xs font-mono tracking-widest uppercase">
+                    {isHome ? "START WORK" : "LOGIN"}
+                  </span>
                 </button>
               )}
             </div>,
