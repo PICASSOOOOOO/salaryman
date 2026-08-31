@@ -857,3 +857,17 @@ id = "Pr1fwScjFx9Pjzizyl5mi"
 uri = "file://TESTER_60MIN_PLAYTEST.md"
 type = "text"
 title = "SALARYMAN — 60-Minute Tester Play-Test Script"
+
+[[outputs]]
+id = "fo8wkNWnW5Bk7pyzrycN7"
+uri = "file://attached_assets/shadow-tower-office-kit-preview.png"
+type = "image"
+title = "Shadow Tower Office Kit Preview"
+description = "Preview of the coordinated public terminal, directory, secretary, private desk terminal, ATM, and vending assets."
+
+[[outputs]]
+id = "5veZ2QM-eYosQRvq15KYL"
+uri = "file://attached_assets/shadow-tower-office-kit.zip"
+type = "unspecified"
+title = "Shadow Tower Office Asset Kit"
+description = "Optimized transparent PNG game assets with placement, collision, and usage metadata."
