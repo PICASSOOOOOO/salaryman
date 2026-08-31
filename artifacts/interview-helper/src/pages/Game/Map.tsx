@@ -7,8 +7,15 @@ import { CORE_ANCHORS } from '@/lib/city-config';
 import { BUILDING_INTERIOR_MAP, INTERIOR_DEFS } from '@/pages/worldInteriorData';
 import { getMapContext, type MapContext } from '@/lib/map-context';
 import { getOfficeFloorPlan } from '@/lib/office-floor-plan';
+import {
+  UNDERGROUND_BOUNDS,
+  UNDERGROUND_POIS,
+  isUndergroundTile,
+  parseLayerTile,
+  type WorldLayer,
+} from '@/lib/vertical-world';
 
-type MapView = 'city' | 'building';
+type MapView = WorldLayer | 'building';
 
 function readCurrentPosition(): { x: number; y: number } | null {
   try {
@@ -21,6 +28,60 @@ function readCurrentPosition(): { x: number; y: number } | null {
   } catch {
     return null;
   }
+}
+
+function readWorldLayer(): WorldLayer {
+  try {
+    const save = JSON.parse(localStorage.getItem('sm_save') || '{}') as { worldLayer?: WorldLayer };
+    return save.worldLayer === 'underground' ? 'underground' : 'surface';
+  } catch {
+    return 'surface';
+  }
+}
+
+function UndergroundMap({ exploredTiles, currentPosition }: {
+  exploredTiles: string[];
+  currentPosition: { x: number; y: number } | null;
+}) {
+  const discovered = new Set(exploredTiles.filter(isUndergroundTile));
+  const spanX = UNDERGROUND_BOUNDS.right - UNDERGROUND_BOUNDS.left;
+  const spanY = UNDERGROUND_BOUNDS.bottom - UNDERGROUND_BOUNDS.top;
+  const px = (x: number) => ((x - UNDERGROUND_BOUNDS.left) / spanX) * 100;
+  const py = (y: number) => ((y - UNDERGROUND_BOUNDS.top) / spanY) * 100;
+  const isPoiKnown = (x: number, y: number) => {
+    const qx = Math.floor(x / 256), qy = Math.floor(y / 256);
+    return [...discovered].some(tile => {
+      const parsed = parseLayerTile(tile);
+      return parsed?.layer === 'underground' && Math.abs(parsed.x - qx) <= 1 && Math.abs(parsed.y - qy) <= 1;
+    });
+  };
+  return (
+    <div className="relative h-full min-h-[420px] overflow-hidden bg-[#03040b]">
+      <div className="absolute inset-5 border border-fuchsia-300/25 bg-[linear-gradient(rgba(56,189,248,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,.05)_1px,transparent_1px)] bg-[size:28px_28px] shadow-[inset_0_0_90px_rgba(124,58,237,.18)]">
+        <div className="absolute left-[50%] top-[20%] h-[58%] w-3 -translate-x-1/2 bg-fuchsia-300/15 shadow-[0_0_18px_rgba(217,70,239,.45)]" />
+        <div className="absolute left-[15%] top-[52%] h-3 w-[70%] bg-cyan-300/15 shadow-[0_0_18px_rgba(34,211,238,.35)]" />
+        {UNDERGROUND_POIS.map(poi => {
+          const known = isPoiKnown(poi.x, poi.y);
+          return (
+            <div key={poi.id} className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
+              style={{ left: `${px(poi.x)}%`, top: `${py(poi.y)}%`, opacity: known ? 1 : .22 }}>
+              <div className="mx-auto h-3 w-3 rotate-45 border" style={{ borderColor: poi.color, boxShadow: known ? `0 0 14px ${poi.color}` : undefined }} />
+              <p className="mt-2 whitespace-nowrap font-mono text-[9px] tracking-widest" style={{ color: poi.color }}>
+                {known ? poi.title : 'UNKNOWN SIGNAL'}
+              </p>
+            </div>
+          );
+        })}
+        {currentPosition && (
+          <div data-testid="marker-underground-player" className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_16px_#fff]"
+            style={{ left: `${px(currentPosition.x)}%`, top: `${py(currentPosition.y)}%` }} />
+        )}
+      </div>
+      <div className="absolute bottom-3 left-4 font-mono text-[9px] tracking-[.25em] text-fuchsia-200/70">
+        MINX UNDERCITY · LEVEL B1 · SIGNAL-REVEALED
+      </div>
+    </div>
+  );
 }
 
 function readOfficeTier(): string {
@@ -48,7 +109,8 @@ export default function GameMap() {
   const [err, setErr] = useState<string | null>(null);
   const [events, setEvents] = useState<WorldEventMarker[]>(readActiveEvents);
   const [context, setContext] = useState<MapContext | null>(getMapContext);
-  const [view, setView] = useState<MapView>('city');
+  const activeWorldLayer = useMemo(readWorldLayer, []);
+  const [view, setView] = useState<MapView>(activeWorldLayer);
   const currentPosition = useMemo(readCurrentPosition, []);
 
   useEffect(() => {
@@ -143,9 +205,14 @@ export default function GameMap() {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-cyan-300/20 bg-slate-950/70 p-1">
             <button type="button" data-testid="button-map-city"
-              onClick={() => setView('city')}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px] font-mono tracking-widest transition-colors ${view === 'city' ? 'bg-cyan-400/15 text-cyan-200' : 'text-slate-500 hover:text-slate-200'}`}>
-              <MapIcon className="w-3.5 h-3.5" /> CITY MAP
+              onClick={() => setView('surface')}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px] font-mono tracking-widest transition-colors ${view === 'surface' ? 'bg-cyan-400/15 text-cyan-200' : 'text-slate-500 hover:text-slate-200'}`}>
+              <MapIcon className="w-3.5 h-3.5" /> SURFACE
+            </button>
+            <button type="button" data-testid="button-map-underground"
+              onClick={() => setView('underground')}
+              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px] font-mono tracking-widest transition-colors ${view === 'underground' ? 'bg-fuchsia-400/15 text-fuchsia-200' : 'text-slate-500 hover:text-slate-200'}`}>
+              <MapIcon className="w-3.5 h-3.5" /> UNDERGROUND
             </button>
             <button type="button" data-testid="button-map-building"
               onClick={() => setView('building')}
@@ -154,14 +221,14 @@ export default function GameMap() {
             </button>
           </div>
           <span className="text-[10px] font-mono tracking-widest text-slate-600">
-            {view === 'building' && buildingDef ? buildingLabel : 'MINX CITY // SAFE CORE'}
+            {view === 'building' && buildingDef ? buildingLabel : view === 'underground' ? 'MINX CITY // LEVEL B1' : 'MINX CITY // SAFE CORE'}
           </span>
           {view === 'building' && !buildingDef && (
             <span className="text-[10px] font-mono tracking-widest text-amber-300/70">NO INTERIOR SIGNAL</span>
           )}
         </div>
 
-        {events.length > 0 && view === 'city' && (
+        {events.length > 0 && view === 'surface' && (
           <div className="mb-3 flex flex-wrap gap-2">
             {events.map((event) => (
               <button key={event.id} type="button" data-testid={`button-event-response-${event.id}`}
@@ -175,11 +242,11 @@ export default function GameMap() {
 
         <div className="rounded-xl border border-cyan-300/15 bg-[#050c14] overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,.45)]"
           style={{ minHeight: view === 'building' ? 520 : undefined }}>
-          {loading && view === 'city' ? (
+          {loading && view !== 'building' ? (
             <div className="aspect-[4/3] grid place-items-center text-cyan-300/60 font-mono text-xs tracking-[.28em]">
               <span data-testid="status-map-loading">SYNCING CITY SIGNALS…</span>
             </div>
-          ) : err && view === 'city' ? (
+          ) : err && view !== 'building' ? (
             <div className="aspect-[4/3] grid place-items-center text-rose-300/80 font-mono text-xs" data-testid="status-map-error">{err}</div>
           ) : view === 'building' && buildingDef ? (
             <BuildingFloorPlan def={buildingDef} buildingLabel={buildingLabel} floor={context?.kind === 'building' ? context.floor : undefined} />
@@ -192,11 +259,18 @@ export default function GameMap() {
                   Enter a mapped building or return to the office to load its live floor schematic.
                 </p>
                 <button type="button" data-testid="button-return-city"
-                  onClick={() => setView('city')}
+                  onClick={() => setView('surface')}
                   className="mt-4 rounded border border-cyan-300/25 px-3 py-2 text-[10px] font-mono tracking-widest text-cyan-200 hover:bg-cyan-300/10">
                   RETURN TO CITY MAP
                 </button>
               </div>
+            </div>
+          ) : view === 'underground' ? (
+            <div className="aspect-[4/3]">
+              <UndergroundMap
+                exploredTiles={exploredTiles}
+                currentPosition={activeWorldLayer === 'underground' ? currentPosition : null}
+              />
             </div>
           ) : (
             <div className="aspect-[4/3]">
@@ -212,7 +286,7 @@ export default function GameMap() {
           )}
         </div>
 
-        {view === 'city' ? (
+        {view === 'surface' ? (
           <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] font-mono tracking-widest text-slate-500">
             <span className="flex items-center gap-1.5"><Compass className="w-3 h-3 text-cyan-300" /> CLICK ATLAS TO MARK WAYPOINT</span>
             {waypoint && (
@@ -221,7 +295,12 @@ export default function GameMap() {
                 <RotateCcw className="w-3 h-3" /> CLEAR WAYPOINT
               </button>
             )}
-            <span className="ml-auto" data-testid="text-explored-count">DISCOVERED TILES: {exploredTiles.length}</span>
+            <span className="ml-auto" data-testid="text-explored-count">DISCOVERED TILES: {exploredTiles.filter(tile => !isUndergroundTile(tile)).length}</span>
+          </div>
+        ) : view === 'underground' ? (
+          <div className="mt-3 flex items-center gap-2 text-[10px] font-mono tracking-widest text-fuchsia-200/60">
+            <span>UNDERGROUND VIEW · LANDMARKS REVEAL AS YOU EXPLORE</span>
+            <span className="ml-auto" data-testid="text-underground-explored-count">DISCOVERED TILES: {exploredTiles.filter(isUndergroundTile).length}</span>
           </div>
         ) : (
           <div className="mt-3 flex items-center gap-2 text-[10px] font-mono tracking-widest text-slate-500">

@@ -6,6 +6,8 @@ import { eq, sql } from "drizzle-orm";
  * Fog-of-war + waypoint endpoints.
  *
  * Tile IDs are coarse "qx,qy" strings derived client-side (worldX>>8 etc).
+ * Vertical/non-surface layers prefix that coordinate (`u:qx,qy`) so their
+ * fog-of-war never overlaps surface exploration.
  * We dedupe in Postgres so the client can fire-and-forget batches every few
  * seconds without worrying about local set hygiene. Waypoint is a single
  * world coordinate with an optional label that the compass HUD reads.
@@ -21,7 +23,7 @@ function requireAuth(req: Request, res: Response): boolean {
 function uid(req: Request): string { return String((req.user as { id: string }).id); }
 
 const MAX_TILES_PER_BATCH = 200;
-const TILE_ID_RE = /^-?\d+,-?\d+$/;
+const TILE_ID_RE = /^(?:[a-z][a-z0-9_-]*:)?-?\d+,-?\d+$/;
 const MAX_LABEL_LEN = 80;
 
 async function getOrCreate(userId: string) {
@@ -45,7 +47,7 @@ router.get("/exploration", async (req: Request, res: Response) => {
 
 /**
  * POST /api/exploration/visit
- * Body: { tiles: string[] }  // each "qx,qy", e.g. "27,23"
+ * Body: { tiles: string[] }  // "qx,qy" or layered "u:qx,qy"
  * Merges into stored set. Caps batch size to keep payload sane.
  */
 router.post("/exploration/visit", async (req: Request, res: Response) => {

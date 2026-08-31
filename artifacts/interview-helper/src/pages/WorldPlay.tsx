@@ -12,6 +12,18 @@ import {
 } from '../lib/city-defs';
 import StorageLockerOverlay from './StorageLockerOverlay';
 import UtilityStation from './UtilityStation';
+import {
+  type WorldLayer,
+  UNDERGROUND_BOUNDS,
+  UNDERGROUND_ENTRY,
+  UNDERGROUND_EXIT,
+  UNDERGROUND_POIS,
+  UNDERGROUND_SOLIDS,
+  undergroundTileId,
+  surfaceTileId,
+  isUndergroundPoint,
+  buildVerticalPlan,
+} from '../lib/vertical-world';
 
 // City-aware building label: PABLO's tower reads "SHADOW TOWER" in Minx City but is
 // rebranded "MYRIAD" in Huda City. Exterior signage / world map / proximity narration.
@@ -4829,7 +4841,13 @@ export default function WorldPlay() {
     exitedVehicles: [] as { type: string; x: number; y: number; frame: number }[],
     subwayTransit: false,
     subwayTransitTimer: 0,
-    subwayTransitDest: null as null | { x: number; y: number; label: string },
+    subwayTransitDest: null as null | { x: number; y: number; label: string; layer?: WorldLayer },
+    // Vertical world layer. Existing saves default to the surface; the
+    // underground uses the same player/collision loop and only swaps its
+    // world presentation and walkable geometry.
+    worldLayer: ((_ss?.worldLayer === 'underground' ? 'underground' : 'surface') as WorldLayer),
+    undergroundReturn: (_ss?.undergroundReturn && typeof _ss.undergroundReturn === 'object'
+      ? { ..._ss.undergroundReturn } : null) as null | { x: number; y: number },
     subwayGrace: 0,
     gasPoison: false,
     gasExposureTick: 0,
@@ -6455,7 +6473,16 @@ export default function WorldPlay() {
     const g = gs.current;
     const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, breed: g.dogCompanion.breed, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured, stamina: g.dogCompanion.stamina, stayAt: g.dogCompanion.stayAt } } : {};
     const catSave = g.catCompanion.active ? { catCompanion: { active: true, name: g.catCompanion.name, breed: g.catCompanion.breed, hp: g.catCompanion.hp, maxHp: g.catCompanion.maxHp, injured: g.catCompanion.injured, stamina: g.catCompanion.stamina, stayAt: g.catCompanion.stayAt } } : {};
-    const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
+    const persistFields = {
+      businesses: [...(g.businesses ?? [])],
+      employedAt: g.employedAt,
+      employedSalary: g.employedSalary,
+      hasBusiness: char.hasBusiness,
+      bizType: char.bizType,
+      company: char.company,
+      worldLayer: g.worldLayer,
+      undergroundReturn: g.undergroundReturn,
+    };
     localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave, ...catSave }));
     try { window.dispatchEvent(new CustomEvent('sm_wanted_changed', { detail: { wantedLevel: g.wantedLevel ?? 0, bountyAmount: g.bountyAmount ?? 0 } })); } catch {}
     if (!forceCloud && !canAccessTerminal()) return Promise.resolve(true);
@@ -6465,7 +6492,7 @@ export default function WorldPlay() {
       charClass: char.class,
       level: g.level,
       salary: g.salary,
-      lastZone: inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND',
+      lastZone: g.worldLayer === 'underground' ? 'THE UNDERCITY' : inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND',
       playtime: g.frame,
       data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, cityId: getActiveCityId(), ...dogSave, ...catSave },
     };
@@ -6531,6 +6558,8 @@ export default function WorldPlay() {
       rentReminded: g.rentReminded,
       businesses: [...(g.businesses ?? [])],
       floorOccupancy: { ...(g.floorOccupancy ?? {}) },
+      worldLayer: g.worldLayer,
+      undergroundReturn: g.undergroundReturn,
       secretLab: g.secretLab,
       ownedVehicles: [...(g.ownedVehicles ?? [])],
       parkedLoadout: [...(g.parkedLoadout ?? [])],
@@ -8881,6 +8910,33 @@ export default function WorldPlay() {
       if (e.key === 'e' || e.key === 'E') {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
+          if (!g.interior && g.worldLayer === 'underground' && g.near === '__underground_exit') {
+            g.keys.delete('e');
+            g.subwayTransit = true;
+            g.subwayTransitTimer = 70;
+            g.subwayTransitDest = {
+              x: g.undergroundReturn?.x ?? 6800,
+              y: g.undergroundReturn?.y ?? 6300,
+              label: 'METRO CENTRAL',
+              layer: 'surface',
+            };
+            setNarr('> DEEP LINE ELEVATOR — Rising to the surface. The pressure changes before the doors move.');
+            return;
+          }
+          if (!g.interior && g.worldLayer === 'underground' && g.near?.startsWith('__underground_poi:')) {
+            const poi = UNDERGROUND_POIS.find(p => p.id === g.near!.slice('__underground_poi:'.length));
+            if (poi?.id === 'computer-cafe') {
+              g.atPublicTerminal = true;
+              setAtPublicTerminal(true);
+              playTerminalBoot('office');
+              setShowPablo(true);
+              setNarr('> NULL CAFE — A public terminal wakes. Job boards, free classes, and city chat share the same screen.');
+            } else if (poi) {
+              setNarr(`> ${poi.title} — ${poi.description}${poi.social ? ` ${poi.social}` : ''}`);
+              sfxEnter();
+            }
+            return;
+          }
           // World secrets: if standing on an undiscovered secret outdoors,
           // claim it. We only short-circuit the rest of the E handler when
           // there isn't another legitimate interaction (building/NPC) on
@@ -10792,6 +10848,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const zoom = zoomRef.current;
       const cw = logW / zoom, ch = logH / zoom;
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
+      // Persist coarse fog-of-war cells. Surface retains the legacy "x,y"
+      // shape; underground cells use "u:x,y" so the two maps never reveal one
+      // another even though they share world coordinates.
+      if (!g.interior && !g.subwayTransit && g.frame % 180 === 0) {
+        const tile = g.worldLayer === 'underground'
+          ? undergroundTileId(g.px, g.py)
+          : surfaceTileId(g.px, g.py);
+        if (g.worldLayer === 'underground') {
+          try { localStorage.setItem('sm_underground_discovered', '1'); } catch {}
+        }
+        void apiFetch('/api/exploration/visit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ tiles: [tile] }),
+        }).catch(() => {});
+      }
       // Write collector positions to sm_live every ~1 second so WorldMapPanel
       // can show near-real-time positions instead of waiting for the 30s save.
       if (__nowTs - lastLiveWrite >= 1000) {
@@ -11457,7 +11529,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Kept fully independent of the combat/mutant `poisoned` status so it
       // never cures or extends other poison sources. The fog overlay is the
       // visual cue; damage is driven by gasExposureTick alone.
-      if (!g.interior && !g.subwayTransit && !frozenRef.current) {
+      if (!g.interior && g.worldLayer === 'surface' && !g.subwayTransit && !frozenRef.current) {
         // Once the story is active the home base is permanently relocated to
         // the underground camp — its coords become the gas-safe center instead
         // of the old hamlet building.
@@ -11712,6 +11784,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
       const col = (px: number, py: number) => {
+        if (g.worldLayer === 'underground') {
+          if (!isUndergroundPoint(px, py)) return true;
+          return UNDERGROUND_SOLIDS.some(s =>
+            px + PSIZE > s.x && px - PSIZE < s.x + s.w
+            && py + PSIZE > s.y && py - PSIZE < s.y + s.h,
+          );
+        }
         // Walled cities (e.g. Huda) confine the player inside the enclave.
         if (__colCity.walls && hitsCityWall(__colCity, px, py, PSIZE)) return true;
         // Vehicles + hard props (the player's own active vehicle is g.vehicle
@@ -14459,16 +14538,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return;
       }
 
-      // Proximity check — buildings
+      // Proximity check — the active vertical layer owns its own interactables.
+      // Underground POIs deliberately reuse `g.near` so keyboard, controller,
+      // and mobile all flow through the same interaction key path.
       let nb: string | null = null;
-      for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { nb = b.id; break; } }
+      if (g.worldLayer === 'underground') {
+        if (Math.hypot(g.px - UNDERGROUND_EXIT.x, g.py - UNDERGROUND_EXIT.y) < 78) {
+          nb = '__underground_exit';
+        } else {
+          const poi = UNDERGROUND_POIS.find(p => Math.hypot(g.px - p.x, g.py - p.y) < p.radius);
+          if (poi) nb = `__underground_poi:${poi.id}`;
+        }
+      } else {
+        for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { nb = b.id; break; } }
+      }
       g.near = nb;
       if (nb !== lastNear) {
         if (lastNear && RADIO_BUILDINGS.has(lastNear) && (!nb || !RADIO_BUILDINGS.has(nb)) && !g.hasRadioImplant) {
           hideRadio();
         }
         lastNear = nb; setNear(nb);
-        if (nb) {
+        if (nb?.startsWith('__underground_poi:')) {
+          const poi = UNDERGROUND_POIS.find(p => p.id === nb!.slice('__underground_poi:'.length));
+          if (poi) setNarr(`> ${poi.title} — ${poi.description} [E] to interact.`);
+        } else if (nb === '__underground_exit') {
+          setNarr('> DEEP LINE ELEVATOR — [E] return to Metro Central / surface.');
+        } else if (nb) {
           const b = BUILDINGS.find(b => b.id === nb);
           const lk = g.locks.get(nb);
           if (nb === 'pablo_tower') setNarr('> ' + towerNarrName() + ' — The city trembles at its shadow. [E] to approach.');
@@ -15770,13 +15865,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.subwayTransitTimer <= 0 && g.subwayTransitDest) {
           g.px = g.subwayTransitDest.x; g.py = g.subwayTransitDest.y;
           const arrLabel = g.subwayTransitDest.label;
+          if (g.subwayTransitDest.layer) g.worldLayer = g.subwayTransitDest.layer;
           g.subwayTransit = false;
           g.subwayTransitDest = null;
           // Surfacing from the deep line is safe for a few seconds — the gas
           // sits higher than the platforms. Lets DEEP LINE stops open into the
           // poison without instant damage. ~6s at 60fps.
           g.subwayGrace = 360;
-          setNarr(`> METRO — Arrived at ${arrLabel}. "Please watch the gap. Surface air is unsafe — keep moving."`);
+          if (g.worldLayer === 'underground') {
+            setNarr(`> METRO — Arrived at ${arrLabel}. The doors open below the city: neon, pipes, voices, no sky.`);
+          } else {
+            setNarr(`> METRO — Arrived at ${arrLabel}. "Please watch the gap. Surface air is unsafe — keep moving."`);
+          }
+          doSaveRef.current(buildSaveData());
           sfxEnter();
         }
       }
@@ -16062,6 +16163,121 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
         return h - Math.floor(h);
       };
+
+      // ── UNDERCITY vertical layer ──────────────────────────────────────────
+      // This is a true world-engine layer: movement/camera/collision continue
+      // to use the main loop, while surface terrain and entities are replaced
+      // by the district's own subterranean geometry and atmosphere.
+      if (g.worldLayer === 'underground') {
+        ctx.fillStyle = '#03040b';
+        ctx.fillRect(-ox, -oy, cw, ch);
+
+        const chamber = ctx.createLinearGradient(0, UNDERGROUND_BOUNDS.top + oy, 0, UNDERGROUND_BOUNDS.bottom + oy);
+        chamber.addColorStop(0, '#0a1022');
+        chamber.addColorStop(.55, '#100b1d');
+        chamber.addColorStop(1, '#050914');
+        ctx.fillStyle = chamber;
+        ctx.fillRect(
+          UNDERGROUND_BOUNDS.left + ox,
+          UNDERGROUND_BOUNDS.top + oy,
+          UNDERGROUND_BOUNDS.right - UNDERGROUND_BOUNDS.left,
+          UNDERGROUND_BOUNDS.bottom - UNDERGROUND_BOUNDS.top,
+        );
+
+        // Service-grid floor and glowing conduit routes.
+        ctx.strokeStyle = 'rgba(87,118,160,.13)';
+        ctx.lineWidth = 1;
+        for (let x = UNDERGROUND_BOUNDS.left; x <= UNDERGROUND_BOUNDS.right; x += 96) {
+          ctx.beginPath(); ctx.moveTo(x + ox, UNDERGROUND_BOUNDS.top + oy); ctx.lineTo(x + ox, UNDERGROUND_BOUNDS.bottom + oy); ctx.stroke();
+        }
+        for (let y = UNDERGROUND_BOUNDS.top; y <= UNDERGROUND_BOUNDS.bottom; y += 96) {
+          ctx.beginPath(); ctx.moveTo(UNDERGROUND_BOUNDS.left + ox, y + oy); ctx.lineTo(UNDERGROUND_BOUNDS.right + ox, y + oy); ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(192,132,252,.28)';
+        ctx.lineWidth = 16;
+        ctx.beginPath();
+        ctx.moveTo(UNDERGROUND_ENTRY.x + ox, UNDERGROUND_ENTRY.y + oy);
+        ctx.lineTo(UNDERGROUND_ENTRY.x + ox, 7900 + oy);
+        ctx.lineTo(5920 + ox, 7900 + oy);
+        ctx.moveTo(UNDERGROUND_ENTRY.x + ox, 7900 + oy);
+        ctx.lineTo(7900 + ox, 7790 + oy);
+        ctx.moveTo(6500 + ox, 7900 + oy);
+        ctx.lineTo(6500 + ox, 8240 + oy);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(34,211,238,.65)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([18, 12]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        for (const wall of UNDERGROUND_SOLIDS) {
+          const wx = wall.x + ox, wy = wall.y + oy;
+          ctx.fillStyle = '#161827';
+          ctx.fillRect(wx, wy, wall.w, wall.h);
+          ctx.fillStyle = 'rgba(56,189,248,.22)';
+          ctx.fillRect(wx, wy, wall.w, 3);
+        }
+
+        for (const poi of UNDERGROUND_POIS) {
+          const sx = poi.x + ox, sy = poi.y + oy;
+          const pulse = 18 + Math.sin(g.frame * .04 + poi.x) * 4;
+          ctx.fillStyle = `${poi.color}22`;
+          ctx.beginPath(); ctx.arc(sx, sy, pulse, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = poi.color;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(sx - 34, sy - 24, 68, 48);
+          ctx.fillStyle = '#070914';
+          ctx.fillRect(sx - 30, sy - 20, 60, 40);
+          ctx.fillStyle = poi.color;
+          ctx.font = 'bold 8px "Share Tech Mono"';
+          ctx.textAlign = 'center';
+          ctx.fillText(poi.title, sx, sy - 34);
+          ctx.font = '6px "Share Tech Mono"';
+          ctx.fillText(poi.subtitle, sx, sy + 38);
+        }
+
+        // Pipes and suspended lamps create depth without changing collision.
+        for (let i = 0; i < 14; i++) {
+          const lx = UNDERGROUND_BOUNDS.left + 120 + i * 195 + ox;
+          const ly = UNDERGROUND_BOUNDS.top + 70 + (i % 3) * 18 + oy;
+          ctx.strokeStyle = i % 2 ? 'rgba(34,211,238,.5)' : 'rgba(236,72,153,.45)';
+          ctx.beginPath(); ctx.moveTo(lx, ly - 35); ctx.lineTo(lx, ly); ctx.stroke();
+          ctx.shadowColor = i % 2 ? '#22d3ee' : '#ec4899'; ctx.shadowBlur = 12;
+          ctx.fillStyle = i % 2 ? '#67e8f9' : '#f9a8d4';
+          ctx.fillRect(lx - 5, ly, 10, 3);
+          ctx.shadowBlur = 0;
+        }
+
+        // Player marker uses the shared paper-doll renderer.
+        drawPlayerSprite(ctx, g.appearance ?? defaultAppearance(char.class), {
+          px: g.px + ox,
+          py: g.py + oy,
+          pCls: char.class.toLowerCase(),
+        });
+        if (g.near === '__underground_exit' || g.near?.startsWith('__underground_poi:')) {
+          ctx.fillStyle = g.blink ? '#e9d5ff' : 'rgba(233,213,255,.5)';
+          ctx.font = '9px "Share Tech Mono"';
+          ctx.textAlign = 'center';
+          ctx.fillText('[E] INTERACT', g.px + ox, g.py + oy - 24);
+        }
+        ctx.fillStyle = 'rgba(4,2,12,.32)';
+        for (let y = 0; y < ch; y += 4) ctx.fillRect(-ox, -oy + y, cw, 1);
+        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 10px "Share Tech Mono"';
+        ctx.textAlign = 'left';
+        ctx.fillText('MINX CITY // UNDERGROUND LEVEL B1', -ox + 18, -oy + 26);
+        if (g.subwayTransit) {
+          ctx.fillStyle = 'rgba(0,0,0,.82)';
+          ctx.fillRect(-ox, -oy, cw, ch);
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 22px "Share Tech Mono"';
+          ctx.textAlign = 'center';
+          ctx.fillText('VERTICAL TRANSIT', -ox + cw / 2, -oy + ch / 2);
+        }
+        ctx.restore();
+        animRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
       // ── Smooth terrain rendering — offscreen chunk cache ─────────────────
       // Replaces per-tile diamond rendering with pre-rendered biome textures
@@ -21802,7 +22018,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
 
-
       if (g.subwayTransit) {
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,.85)';
@@ -24708,6 +24923,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const isFloorOwner = !!flInfo?.owner;
                     const isCurrent = currentFloor === fl;
                     const bfloor = dir?.floors.find(f => f.floor === fl);
+                    const floorHasBusiness = !!gs.current.businesses?.some(
+                      (biz: OwnedBusiness) => biz.buildingId === elevatorPrompt.bid && biz.floor === fl,
+                    );
+                    // Corporate/office floors and registered business floors
+                    // are never anonymous open-plan space. If a server restart
+                    // dropped an in-memory lock, the first visit must restore
+                    // the password instead of silently opening the floor.
+                    const requiresFloorPassword = isOfficeBuilding(elevatorPrompt.bid) || floorHasBusiness;
                     return (
                       <div key={fl}>
                         <button onClick={() => {
@@ -24720,6 +24943,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           // (cleared once per session) unless you already hold the floor.
                           if (isTowerExecFloor(elevatorPrompt.bid, fl) && !execAccess && !isFloorOwner && !_isOrgOwnerOfFloor) {
                             setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'exec_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                            return;
+                          }
+                          if (requiresFloorPassword && !hasPw) {
+                            setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'set_pw' } : null);
+                            setElevatorPw('');
+                            setElevatorPwError('');
+                            setNarr(`> FLOOR ${fl} — This office/business floor requires a password before it can open.`);
                             return;
                           }
                           if (hasPw && !isFloorOwner) {
@@ -24754,7 +24984,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {elevatorPrompt.mode === 'set_pw' && (
               <div>
                 <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>CLAIM FLOOR {elevatorPrompt.floor} — SET PASSWORD</div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>This will lock the floor. Only you and your company can enter freely. Others need the password. Min 6 characters, 1 number, 1 symbol.</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>Office and business floors are password protected. Set the access code now; only you and your company can enter freely, while visitors need the password. Min 6 characters, 1 number, 1 symbol.</div>
                 <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
                   if (e.key === 'Enter' && elevatorPw.trim()) {
                     const err = VALID_PASSWORD(elevatorPw.trim());
@@ -27864,7 +28094,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           sfxEnter(); sfxCoin();
           g.subwayTransit = true;
           g.subwayTransitTimer = 90;
-          g.subwayTransitDest = { x: dest.x, y: dest.y, label: dest.label };
+          if (dest.id === 'sub_under' && g.worldLayer === 'surface') {
+            g.undergroundReturn = { x: g.px, y: g.py };
+          }
+          g.subwayTransitDest = dest.id === 'sub_under'
+            ? { ...UNDERGROUND_ENTRY, layer: 'underground' }
+            : { x: dest.x, y: dest.y, label: dest.label, layer: 'surface' };
           setNarr(`> METRO — Boarding at ${origin?.label ?? '???'}. Destination: ${dest.label}. [−ƒ${FARE.toLocaleString()} FIAT] "PABLO CORP MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
           setShowSubway(false);
         };
