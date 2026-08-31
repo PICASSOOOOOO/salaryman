@@ -66,7 +66,7 @@ export function PhonePageLayout({
       ...(boomer ? {} : { fontFamily: "var(--font-sans)" }),
       color: slate(0.85),
       position: 'relative',
-      paddingBottom: 100 }}>
+      paddingBottom: 'calc(100px + var(--app-safe-bottom))' }}>
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
         <div style={{

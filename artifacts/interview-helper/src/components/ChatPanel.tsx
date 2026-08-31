@@ -1237,9 +1237,9 @@ export function ChatPanel({
             // reach the notch.
             ...(isMobile
               ? {
-                  paddingBottom: "env(safe-area-inset-bottom, 0px)",
-                  paddingLeft: "env(safe-area-inset-left, 0px)",
-                  paddingRight: "env(safe-area-inset-right, 0px)",
+                  paddingBottom: "var(--app-safe-bottom)",
+                  paddingLeft: "var(--app-safe-left)",
+                  paddingRight: "var(--app-safe-right)",
                   boxSizing: "border-box",
                 }
               : null),
@@ -1560,7 +1560,7 @@ export function ChatPanel({
           // bottom-RIGHT corner with comfortable padding — that area is
           // usually clear, and it keeps the ask-bot prompt off the user's
           // profile. Respect the iOS home-indicator safe-area inset on mobile.
-          bottom: isMobile ? `calc(env(safe-area-inset-bottom, 0px) + 24px + var(--fab-bottom-offset, 0px))` : `calc(16px + var(--fab-bottom-offset, 0px))`,
+          bottom: isMobile ? `calc(var(--app-safe-bottom) + 24px + var(--fab-bottom-offset, 0px))` : `calc(16px + var(--fab-bottom-offset, 0px))`,
           // Landscape iPhones push the home indicator / rounded corner
           // into the right edge — respect that inset so the FAB doesn't
           // hug the bezel.

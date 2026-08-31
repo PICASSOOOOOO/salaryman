@@ -8,6 +8,7 @@ import AlphaWipeBanner from "@/components/AlphaWipeBanner";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
+import { installAppHistoryTracking } from "@/lib/app-navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
@@ -198,6 +199,8 @@ const queryClient = new QueryClient({
   },
 });
 
+installAppHistoryTracking();
+
 const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
@@ -346,7 +349,6 @@ function AppShell() {
   const onboardingResolved = useOnboardingResolved();
 
   const pathname = location.split("?")[0];
-
   // ── Route-change audio backstop ────────────────────────────────────────────
   // Pages own starting their background audio and stopping it on unmount, but a
   // page that forgets to clean up would leak its procedural score/bed (module
@@ -523,9 +525,10 @@ function AppShell() {
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && <AlphaWipeBanner />}
+      {!isEmbed && !showNavBar && <AlphaWipeBanner />}
       {showNavBar && (
-        <div className="sticky top-0 z-50">
+        <div className="app-chrome">
+          {!isEmbed && <AlphaWipeBanner />}
           <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />

@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, FlaskConical, Network, Settings, ShieldCheck } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, FlaskConical, ArrowLeft } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -23,27 +23,13 @@ import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
 import { useTranslation } from 'react-i18next';
-
-// Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
-const NAV_PRIMARY = [
-  { id: 'pablo', path: '/pablo', label: 'PABLO', icon: Terminal },
-  { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
-  { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
-  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' as const },
-  // ORG — dedicated org-management hub. Label is replaced at render time with
-  // the live org name (falls back to 'ORG'). Distinct from OFFICE above.
-  { id: 'org', path: '/org', label: 'ORG', icon: Network, authOnly: true },
-];
-const NAV_MORE = [
-  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
-  { id: 'console', path: '/console', label: 'TERMINAL', icon: Code2 },
-  { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
-  { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
-  { id: 'marketing', path: '/marketing', label: 'MARKETING', icon: Megaphone },
-  { id: 'settings', path: '/settings', label: 'SETTINGS', icon: Settings, authOnly: true },
-];
-// ADMIN hub entry — appended at render time only for owners/admins/moderators.
-const NAV_ADMIN = { id: 'admin', path: '/profile/admin', label: 'ADMIN', icon: ShieldCheck } as const;
+import {
+  MORE_NAV_ITEMS,
+  PRIMARY_NAV_ITEMS,
+  isAppNavItemActive,
+  canGoBackInApp,
+  shouldShowModuleSubnav,
+} from '@/lib/app-navigation';
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -88,34 +74,18 @@ export function NavBar() {
   // referenced here so a future change can re-introduce variant chrome
   // (e.g. a "PRO" badge on the tab) without having to re-thread state.
   void planLoading; void isOwner; void features;
-  const visiblePrimary = NAV_PRIMARY;
-
-  const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
-    if (tab.id === 'pablo') return pathname === '/pablo';
-    if (tab.id === 'office') return pathname === '/office' || pathname === '/my-office' ||
-      pathname.startsWith('/office/') ||
-      pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
-      pathname === '/game/character' || pathname === '/game/settings';
-    if (tab.id === 'bots') return pathname.startsWith('/bots');
-    if (tab.id === 'phone') return pathname.startsWith('/phone');
-    if (tab.id === 'org') return pathname === '/org' || pathname.startsWith('/org/');
-    return false;
-  };
+  const visiblePrimary = PRIMARY_NAV_ITEMS;
 
   // ADMIN hub is visible only to platform owners and approved staff (devs / testers).
   // Regular org members do NOT see this — AdminPanel is gated at the route level too.
   const canAdmin = isOwner || isApprovedDev || isApprovedTester;
-  const moreItems = [...NAV_MORE, ...(canAdmin ? [NAV_ADMIN] : [])];
-
-  const isMoreActive = (item: typeof moreItems[0]) => {
-    if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    if (item.id === 'settings') return pathname.startsWith('/settings');
-    if (item.id === 'admin') return pathname.startsWith('/profile/admin') ||
-      pathname.startsWith('/profile/moderator') || pathname.startsWith('/profile/world-map');
-    return pathname.startsWith('/' + item.id);
+  const moreItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
+  const goBack = () => {
+    if (canGoBackInApp()) window.history.back();
+    else navigate(isAuthenticated ? '/office' : '/pablo', { replace: true });
   };
 
-  const hasActiveMore = moreItems.some(isMoreActive);
+  const hasActiveMore = moreItems.some(item => isAppNavItemActive(item, pathname));
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -158,12 +128,12 @@ export function NavBar() {
   };
 
   return (
-    <header className="app-header shrink-0 hidden sm:block bg-[#0a0a0b] border-b border-white/[0.06]">
+    <header className="app-header desktop-app-nav shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
 
       {/* Top strip — brand + plan / trial info (hidden on mobile). The brand
           (logo + PABLO TERMINAL subtitle) now lives up here, stacked above the
           ALPHA badge, so the main nav row below stays slim. */}
-      <div className="hidden sm:flex items-start justify-between px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.015]">
+      <div className="flex items-start justify-between px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.015]">
         <div className="flex flex-col gap-1">
           <div
             className="flex items-center gap-2.5 cursor-pointer group/logo"
@@ -273,9 +243,17 @@ export function NavBar() {
 
         {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match.
             ml-auto keeps the cluster pinned to the right edge. */}
-        <nav className="hidden sm:flex items-center gap-1 shrink-0 ml-auto">
-          {visiblePrimary.filter(t => !(t as { authOnly?: boolean }).authOnly || isAuthenticated).map(tab => {
-            const active = isPrimaryActive(tab);
+        <nav className="flex items-center gap-1 shrink-0 ml-auto">
+          <button
+            onClick={goBack}
+            aria-label="Back"
+            title="Back"
+            className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-500 hover:text-zinc-100 hover:bg-white/5 border border-transparent"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          {visiblePrimary.filter(t => !t.authOnly || isAuthenticated).map(tab => {
+            const active = isAppNavItemActive(tab, pathname);
             const Icon = tab.icon;
             const isOffice = tab.accent === 'emerald';
             const activeCls = isOffice
@@ -318,7 +296,7 @@ export function NavBar() {
               <div ref={morePanelRef} className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
                 {/* Ordered by label length — most letters at top, fewest at bottom. */}
                 {moreItems.filter(it => !(it as { authOnly?: boolean }).authOnly || isAuthenticated).sort((a, b) => b.label.length - a.label.length).map(item => {
-                  const active = isMoreActive(item);
+                  const active = isAppNavItemActive(item, pathname);
                   const Icon = item.icon;
                   const isEmerald = (item as { accent?: string }).accent === 'emerald';
                   let cls = 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100';
@@ -431,8 +409,8 @@ export function NavBar() {
       </div>
 
       {/* Sub-nav row — shows subs for whichever module the user is currently inside (desktop only) */}
-      {currentModule && currentModule.subs.length > 0 && (
-        <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.015] overflow-x-auto scrollbar-hide">
+      {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length) && (
+        <div className="flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.015] overflow-x-auto scrollbar-hide">
           <span className="font-mono text-xs text-zinc-600 tracking-widest uppercase mr-2 shrink-0">
             {boomerMode ? t(`nav.${currentModule.id}`, currentModule.label) : t(`codenames.${currentModule.id}`, currentModule.codename)}
           </span>

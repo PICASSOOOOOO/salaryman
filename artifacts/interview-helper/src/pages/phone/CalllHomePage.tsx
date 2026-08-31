@@ -463,7 +463,7 @@ export default function CalllHomePage() {
           </div>
         </div>
 
-        <div style={{ paddingBottom: 48 }}>
+        <div style={{ paddingBottom: 'calc(48px + var(--app-safe-bottom))' }}>
             <CalllHomeProvider switchTab={setActiveTab}>
               <Suspense fallback={
                 <div style={{

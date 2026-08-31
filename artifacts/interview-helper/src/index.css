@@ -50,6 +50,9 @@
      floating action buttons (chat FAB, audio control) lift above the bar.
      Default 0px = no offset. */
   --fab-bottom-offset: 0px;
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-left: env(safe-area-inset-left, 0px);
+  --app-safe-right: env(safe-area-inset-right, 0px);
 }
 
 /* Game routes retain their comfortable reading scale without imposing a retro display face. */
@@ -231,9 +234,32 @@ body:not(.game-route) .rounded-lg {
 header {
   position: relative;
   z-index: 20;
-  padding-top: max(env(safe-area-inset-top, 0px), 0px);
   flex-shrink: 0;
   visibility: visible !important;
+}
+
+.app-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: var(--app-safe-left);
+  padding-right: var(--app-safe-right);
+  background: #0a0a0b;
+}
+
+.desktop-app-nav { display: none; }
+.mobile-app-nav { display: block; }
+
+/* Short landscape phone/PWA viewports need the icon-first chrome even when
+   their CSS width crosses Tailwind's tablet breakpoint. */
+@media (min-width: 640px) and (min-height: 501px) {
+  .desktop-app-nav { display: block; }
+  .mobile-app-nav { display: none; }
+}
+
+.app-bottom-safe {
+  padding-bottom: var(--app-safe-bottom);
 }
 
 /* ─── Mobile nav safe area ─── */

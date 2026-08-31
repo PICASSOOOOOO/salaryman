@@ -46,7 +46,7 @@ export function DeferredChatPanel() {
       aria-label="Open chat"
       title="Chat"
       onClick={() => setLoadPanel(true)}
-      className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+24px+var(--fab-bottom-offset,0px))] right-[calc(env(safe-area-inset-right,0px)+20px)] z-[8500] flex h-[60px] w-[60px] items-center justify-center rounded-full border-2 border-emerald-400/40 bg-slate-950 text-2xl text-emerald-300 shadow-[0_4px_18px_rgba(0,0,0,.7),0_0_12px_rgba(52,211,153,.18)] sm:bottom-4 sm:right-4 sm:z-[901] sm:h-[42px] sm:w-[42px] sm:border-[1.5px] sm:text-lg"
+      className="fixed bottom-[calc(var(--app-safe-bottom)+24px+var(--fab-bottom-offset,0px))] right-[calc(var(--app-safe-right)+20px)] z-[8500] flex h-[60px] w-[60px] items-center justify-center rounded-full border-2 border-emerald-400/40 bg-slate-950 text-2xl text-emerald-300 shadow-[0_4px_18px_rgba(0,0,0,.7),0_0_12px_rgba(52,211,153,.18)] sm:bottom-[calc(16px+var(--fab-bottom-offset,0px))] sm:right-4 sm:z-[901] sm:h-[42px] sm:w-[42px] sm:border-[1.5px] sm:text-lg"
     >
       <span aria-hidden>◇</span>
       {total > 0 && (

@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, Network, Settings, ShieldCheck } from 'lucide-react';
+import { User, ChevronDown, ArrowLeft } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,13 @@ import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { NotificationBell } from './NotificationBell';
+import {
+  MORE_NAV_ITEMS,
+  PRIMARY_NAV_ITEMS,
+  isAppNavItemActive,
+  canGoBackInApp,
+  shouldShowModuleSubnav,
+} from '@/lib/app-navigation';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
@@ -31,10 +38,10 @@ export function MobileSubNav() {
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
 
-  if (!currentModule || currentModule.subs.length === 0) return null;
+  if (!currentModule || !shouldShowModuleSubnav(currentModule.id, currentModule.subs.length)) return null;
 
   return (
-    <div className="sm:hidden bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.04] overflow-hidden relative" style={{ zIndex: 40 }}>
+    <div className="mobile-app-nav bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.04] overflow-hidden relative" style={{ zIndex: 40 }}>
       <div
         ref={scrollRef}
         className="flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-hide"
@@ -67,31 +74,6 @@ export function MobileSubNav() {
     </div>
   );
 }
-
-const PRIMARY_TABS = [
-  { id: 'pablo', path: '/pablo', label: 'PABLO', icon: Terminal },
-  { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
-  { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
-  // OFFICE drops you INTO the one playable office (the premium pixel
-  // diorama). It has on-screen D-pad touch controls, so the old reason
-  // for diverting mobile to a passive CCTV feed no longer applies.
-  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, authOnly: true },
-];
-
-const DROPDOWN_ITEMS = [
-  // ORG — dedicated org-management hub. Label is replaced at render time with
-  // the live org name (falls back to 'ORG'). Distinct from the OFFICE primary tab.
-  { id: 'org', path: '/org', label: 'ORG', icon: Network, authOnly: true },
-  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
-  { id: 'console', path: '/console', label: 'TERMINAL', icon: Code2 },
-  { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
-  { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
-  { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
-  { id: 'settings', path: '/settings', label: 'SETTINGS', icon: Settings, authOnly: true },
-  { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },
-];
-// ADMIN hub entry — appended at render time only for owners/admins/moderators.
-const DROPDOWN_ADMIN = { id: 'admin', path: '/profile/admin', label: 'ADMIN', icon: ShieldCheck, authOnly: true } as const;
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
@@ -145,53 +127,38 @@ export function MobileModuleNav() {
 
   const pathname = location.split('?')[0];
 
-  const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
-    if (tab.id === 'pablo') return pathname === '/pablo' || pathname.startsWith('/pablo/');
-    if (tab.id === 'office') return pathname === '/office' || pathname === '/my-office' ||
-      pathname.startsWith('/office/') ||
-      pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
-      pathname === '/game/character' || pathname === '/game/settings';
-    if (tab.id === 'bots') return pathname.startsWith('/bots');
-    if (tab.id === 'phone') return pathname.startsWith('/phone');
-    return false;
-  };
-
   // ADMIN hub is visible only to platform owners and approved staff (devs / testers).
   // Regular org members do NOT see this — AdminPanel is gated at the route level too.
   const canAdmin = planIsOwner || isApprovedDev || isApprovedTester;
-  const dropdownItems = [...DROPDOWN_ITEMS, ...(canAdmin ? [DROPDOWN_ADMIN] : [])];
-
-  const isDropdownItemActive = (item: typeof dropdownItems[0]) => {
-    if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    if (item.id === 'org') return pathname === '/org' || pathname.startsWith('/org/');
-    if (item.id === 'settings') return pathname.startsWith('/settings');
-    if (item.id === 'admin') return pathname.startsWith('/profile/admin') ||
-      pathname.startsWith('/profile/moderator') || pathname.startsWith('/profile/world-map');
-    // PROFILE highlights only on the personal profile, not the admin sub-paths.
-    if (item.id === 'profile') return pathname === '/profile' || pathname.startsWith('/profile/') &&
-      !pathname.startsWith('/profile/admin') && !pathname.startsWith('/profile/moderator') &&
-      !pathname.startsWith('/profile/world-map');
-    // Office Cam dropdown is now redundant with the OFFICE primary
-    // tab (both go to /office/surveillance), so it stays hidden.
-    if (item.id === 'office-cam') return false;
-    return pathname.startsWith('/' + item.id);
+  const dropdownItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
+  const goBack = () => {
+    if (canGoBackInApp()) window.history.back();
+    else navigate(isAuthenticated ? '/office' : '/pablo', { replace: true });
   };
 
-  const hasActiveDropdownItem = dropdownItems.some(d => isDropdownItemActive(d));
+  const hasActiveDropdownItem = dropdownItems.some(item => isAppNavItemActive(item, pathname));
 
   // Phone is a paid feature (PABLO bundle), but we now show the tab to
   // EVERYONE so prospects can discover it. PhoneGate enforces actual
   // access at the route level and renders the paywall/upgrade screen
   // for users without phone_system.
   void planLoading; void planIsOwner; void planFeatures;
-  const visibleTabs = PRIMARY_TABS
+  const visibleTabs = PRIMARY_NAV_ITEMS
     .filter(tab => !tab.authOnly || isAuthenticated);
 
   return (
-    <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08] relative" style={{ zIndex: 60 }}>
+    <div className="mobile-app-nav bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08] relative" style={{ zIndex: 60 }}>
       <div className="flex items-center px-1 h-12">
+        <button
+          onClick={goBack}
+          aria-label="Back"
+          title="Back"
+          className="flex items-center justify-center w-9 h-9 shrink-0 rounded-md text-zinc-500 active:text-zinc-100 active:bg-white/5 touch-manipulation"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         {visibleTabs.map(tab => {
-          const active = isTabActive(tab);
+          const active = isAppNavItemActive(tab, pathname);
           const Icon = tab.icon;
           const isOffice = tab.id === 'office';
           const activeColor = isOffice ? 'text-emerald-400' : 'text-sky-400';
@@ -255,7 +222,7 @@ export function MobileModuleNav() {
                 .slice()
                 .sort((a, b) => b.label.length - a.label.length)
                 .map(item => {
-                  const active = isDropdownItemActive(item);
+                  const active = isAppNavItemActive(item, pathname);
                   const Icon = item.icon;
                   const label = item.id === 'profile' && !isAuthenticated
                     ? 'LOGIN'
