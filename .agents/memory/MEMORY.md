@@ -157,3 +157,4 @@
 - [Onboarding city commit](onboarding-city-commit.md) — commit the selected live city atomically with registration before office handoff; local active-city state is only the immediate cache.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — desktop/mobile share one destination model; short landscape uses icon chrome; Back trusts only history from the current document session.
 - [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ100=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
+- [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — ElevenLabs needs the one-time `sk_` secret, never the dashboard key ID; Pablo/Mila must fail closed instead of falling back to another accent.
