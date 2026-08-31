@@ -31,6 +31,8 @@ const stations = (cols: number, rows: number): Omit<OfficeStation, "onInteract">
   { id: "atm", label: "ATM", col: cols - 8, row: 1, glyph: "atm", radius: 30, footprint: { w: 1.6, d: 1 } },
   { id: "payphone", label: "PAYPHONE", col: 1, row: Math.max(6, Math.floor(rows * 0.38)), glyph: "payphone", radius: 30, footprint: { w: 1.2, d: 1 } },
   { id: "vending", label: "VENDING", col: 1, row: Math.max(10, Math.floor(rows * 0.68)), glyph: "vending", radius: 30, footprint: { w: 1.6, d: 1 } },
+  { id: "breaker", label: "CIRCUIT BREAKER", col: cols - 12, row: 1, radius: 28, footprint: { w: 1.2, d: 1 } },
+  { id: "copier", label: "DOCUMENTS", col: 1, row: Math.max(4, Math.floor(rows * 0.22)), radius: 28, footprint: { w: 1.4, d: 1 } },
 ];
 
 const room = (id: string, label: string, x: number, y: number, w: number, h: number, accent: string): OfficeRoom => ({
@@ -251,6 +253,8 @@ export const OFFICE_OBJECT_DESTINATIONS = {
   atm: "/game/bank",
   payphone: PAYPHONE_HUB_DESTINATION,
   vending: "/vending?from=office",
+  breaker: "/settings?section=display",
+  copier: "/business/documents",
 } as const;
 
 export type OfficeDestinationObject = keyof typeof OFFICE_OBJECT_DESTINATIONS;

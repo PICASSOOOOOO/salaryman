@@ -3,14 +3,13 @@ import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
-import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
+import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
-import { useLowGfx } from "@/lib/lowGfx";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
@@ -827,7 +826,6 @@ function PabloTerminalAuthed() {
   // visitors on slow phones / integrated GPUs can drop the WebGL nebula
   // for the static 2D fallback during onboarding without digging into
   // settings (the same toggle also lives in Profile for authed users).
-  const [lowGfx, setLowGfxValue] = useLowGfx();
   // Boomer mode reskins the whole terminal into a simplified late-70s
   // high-contrast, spacious interface with accessibility-friendly sizing.
   // glass). Defaults ON for everyone, so this is the common look.
@@ -2054,33 +2052,12 @@ function PabloTerminalAuthed() {
         )}
       </button>
 
-      {/* GFX quality toggle. Top-right corner, always reachable during the
-          checkpoint / onboarding flow (and after) so visitors on weak GPUs
-          or older phones can drop the animated WebGL nebula in favor of
-          the cheap 2D radial-gradient fallback without leaving the page.
-          Stops propagation so the click doesn't also wake the mic via the
-          full-bleed orb button underneath. */}
-      {!boomerMode && (
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setLowGfxValue(!lowGfx); }}
-        className="fixed z-30 right-3 sm:right-4 pointer-events-auto px-2.5 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] tracking-[0.22em] text-pink-200 hover:text-pink-100 transition-colors"
-        style={{
-          fontFamily: "'Inter', sans-serif",
-          borderColor: lowGfx ? "rgba(236,72,153,0.55)" : "rgba(236,72,153,0.30)",
-          boxShadow: lowGfx ? "0 0 12px rgba(236,72,153,0.25)" : "none",
-          // Pull below iOS notch / Android status bar so the time + battery icons
-          // never sit on top of the GFX toggle. 12px floor on devices with no
-          // safe-area inset (desktop, older Android).
-          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-        }}
-        aria-pressed={lowGfx}
-        title={lowGfx ? "Low graphics on — tap for high" : "High graphics — tap for low (recommended on slow phones)"}
-        data-testid="pablo-gfx-toggle"
+      <div
+        className="fixed right-3 z-40 sm:right-4"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
       >
-        GFX · {lowGfx ? "LO" : "HI"}
-      </button>
-      )}
+        <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
+      </div>
 
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. The header itself
@@ -2160,9 +2137,6 @@ function PabloTerminalAuthed() {
             {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
             {mode === "text" ? "VOICE" : "TEXT"}
           </button>
-          {hasFinishedOnboarding && (
-            <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
-          )}
           {/* No exit X — the SALARYMAN logo is the only authenticated exit,
               and it returns to the walkable office floor. */}
         </div>
@@ -2305,8 +2279,8 @@ function PabloTerminalAuthed() {
         </div>
       )}
 
-      {/* Text input stays available alongside the explicit voice control. */}
-      {(
+      {/* Text and voice controls are mutually exclusive. */}
+      {mode === "text" && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
           className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
@@ -2362,6 +2336,8 @@ function PabloTerminalAuthed() {
               position: "fixed", inset: 0, zIndex: 100000,
               background: "rgba(0,0,0,0.88)", backdropFilter: "blur(6px)",
               display: "flex", alignItems: "center", justifyContent: "center",
+              overflowY: "auto",
+              padding: "max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom))",
             }}
           >
             <motion.div
@@ -2371,7 +2347,8 @@ function PabloTerminalAuthed() {
               transition={{ duration: 0.2 }}
               style={{
                 background: "#0a0a0b", border: "1px solid rgba(56,189,248,0.2)",
-                padding: "2.25rem 1.75rem", maxWidth: 360, width: "90%", textAlign: "center",
+                padding: "2.25rem 1.75rem", maxWidth: 360, width: "100%", textAlign: "center",
+                maxHeight: "calc(100svh - 2rem)", overflowY: "auto",
                 boxShadow: "0 0 40px rgba(56,189,248,0.06)",
               }}
             >

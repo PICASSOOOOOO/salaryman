@@ -733,6 +733,8 @@ export default function PabloOffice() {
       atm: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('atm')); },
       payphone: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('payphone')); },
       vending: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('vending')); },
+      breaker: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('breaker')); },
+      copier: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('copier')); },
     };
     const base: OfficeStation[] = officeLayout.stations.map((station) => ({
       ...station,

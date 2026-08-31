@@ -23,6 +23,7 @@ import { ReferralPanel } from '@/components/ReferralPanel';
 import { useLowGfx } from '@/lib/lowGfx';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
+import GameSettings from '@/pages/Game/Settings';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -2009,6 +2010,14 @@ export default function Profile() {
 export function SettingsPage() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
+  const requestedSection = typeof window === 'undefined'
+    ? 'game'
+    : new URLSearchParams(window.location.search).get('section');
+  const gameTab = requestedSection === 'display' ||
+    requestedSection === 'terminal' || requestedSection === 'streaming' ||
+    requestedSection === 'data'
+    ? requestedSection
+    : 'game';
 
   if (!isAuthenticated) {
     return <SignInPage context="Sign in to manage your settings." />;
@@ -2024,7 +2033,16 @@ export function SettingsPage() {
             title={boomerMode ? 'SETTINGS' : 'SETTINGS'}
             subtitle="Organization, city, and general preferences"
           />
-          <AccountTab view="settings" />
+          <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto pb-1">
+            <a href="#account-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">ACCOUNT &amp; CITY</a>
+            <a href="#game-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">GAME &amp; AUDIO</a>
+          </nav>
+          <section id="account-settings" className="scroll-mt-24">
+            <AccountTab view="settings" />
+          </section>
+          <section id="game-settings" className="scroll-mt-24 border-t border-white/[0.06] pt-10">
+            <GameSettings embedded initialTab={gameTab} />
+          </section>
         </Suspense>
       </main>
     </div>

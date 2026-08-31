@@ -101,10 +101,16 @@ function zoomLabel(z: number): string {
   return "Cinematic";
 }
 
-export default function GameSettings({ embedded = false }: { embedded?: boolean } = {}) {
+export default function GameSettings({
+  embedded = false,
+  initialTab = "game",
+}: {
+  embedded?: boolean;
+  initialTab?: TabId;
+} = {}) {
   hydrateActiveCityFromSave();
   const [s, setS] = useState<GameSettings>(load);
-  const [tab, setTab] = useState<TabId>("game");
+  const [tab, setTab] = useState<TabId>(initialTab);
   const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
   const [lowGfx, setLowGfx] = useLowGfx();
   const [perfRecheckDone, setPerfRecheckDone] = useState(false);

@@ -64,7 +64,16 @@ describe("office property layouts", () => {
     expect(getPayphoneHubDestination()).toBe(PAYPHONE_HUB_DESTINATION);
     expect(PAYPHONE_HUB_DESTINATION).toBe("/phone?tab=chat");
     expect(getOfficeObjectDestination("vending")).toBe("/vending?from=office");
-    expect(Object.keys(OFFICE_OBJECT_DESTINATIONS)).toEqual(["terminal", "atm", "payphone", "vending"]);
+    expect(getOfficeObjectDestination("breaker")).toBe("/settings?section=display");
+    expect(getOfficeObjectDestination("copier")).toBe("/business/documents");
+    expect(Object.keys(OFFICE_OBJECT_DESTINATIONS)).toEqual([
+      "terminal", "atm", "payphone", "vending", "breaker", "copier",
+    ]);
+    for (const layout of layouts) {
+      expect(layout.stations.map((station) => station.id)).toEqual(
+        expect.arrayContaining(["elevator", "atm", "payphone", "vending", "breaker", "copier"]),
+      );
+    }
   });
 
   it("uses the compact safe-area HUD below the phone breakpoint", () => {

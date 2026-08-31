@@ -560,7 +560,7 @@ function AppShell() {
           and the FAB would overlap the "ASK ►" / NEXT ► buttons at the bottom
           of the screen on mobile. The subtle onboarding score still plays;
           users can adjust audio once they reach the main game. */}
-        {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
+        {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
       </Suspense>
       {/* Keep-alive panels */}
       <ErrorBoundary>
@@ -622,7 +622,7 @@ function AppShell() {
                 link drops you into the office with surveillance pre-selected. */}
             <Route path="/office/surveillance">{() => <Redirect to="/office?mode=surveillance" />}</Route>
             <Route path="/my-office" component={MyOffice} />
-            <Route path="/game/settings">{() => <GameLock><GameSettings /></GameLock>}</Route>
+            <Route path="/game/settings">{() => <Redirect to="/settings?section=game" />}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
             <Route path="/game/map">{() => <GameLock><GameMap /></GameLock>}</Route>
             <Route path="/game/directory">{() => <GameLock><CityDirectory /></GameLock>}</Route>

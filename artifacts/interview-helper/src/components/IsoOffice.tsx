@@ -111,7 +111,7 @@ export interface IsoOfficeProps {
   /** Reserved for API parity with PixelOffice; iso is always the lit grade. */
   premium?: boolean;
   crtTint?: boolean;
-  /** Deed customization (accent hex / lighting); reserved — iso uses its own grade. */
+  /** Deed customization applied to floor trim, ambient light and furniture accents. */
   accentColor?: string | null;
   lighting?: 'dim' | 'normal' | 'bright';
   mode?: 'wander' | 'still' | 'at-desk';
@@ -176,6 +176,8 @@ export function IsoOffice({
   onOccupants,
   initialPose,
   onPoseChange,
+  accentColor = null,
+  lighting = 'normal',
 }: IsoOfficeProps) {
   const isTouch =
     typeof window !== 'undefined' &&
@@ -320,6 +322,8 @@ export function IsoOffice({
   const capSpotsRef = useRef(capSpots);
   const suppressLabelsRef = useRef(suppressLabels);
   const playerNameRef = useRef(playerName);
+  const accentColorRef = useRef(accentColor);
+  const lightingRef = useRef(lighting);
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -337,6 +341,8 @@ export function IsoOffice({
   useEffect(() => { followRef.current = followCam; }, [followCam]);
   useEffect(() => { suppressLabelsRef.current = suppressLabels; }, [suppressLabels]);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+  useEffect(() => { accentColorRef.current = accentColor; }, [accentColor]);
+  useEffect(() => { lightingRef.current = lighting; }, [lighting]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onPoseChangeRef.current = onPoseChange; }, [onPoseChange]);
@@ -621,6 +627,8 @@ export function IsoOffice({
         viewW, viewH,
         suppressLabels: suppressLabelsRef.current,
         playerName: playerNameRef.current,
+        accentColor: accentColorRef.current,
+        lighting: lightingRef.current,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -816,10 +824,14 @@ interface SceneCtx {
   backdrop: HTMLImageElement | null; viewW: number; viewH: number;
   suppressLabels?: boolean;
   playerName?: string;
+  accentColor?: string | null;
+  lighting: 'dim' | 'normal' | 'bright';
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, heightPx, cols, rows, T } = s;
+  const accent = /^#[0-9a-f]{6}$/i.test(s.accentColor ?? '') ? s.accentColor! : '#ec4899';
+  const light = s.lighting === 'dim' ? 0.62 : s.lighting === 'bright' ? 1.24 : 1;
 
   // ---- Realty backdrop ----
   // When the player's property art is loaded, paint it COVER-fit as the room's
@@ -838,9 +850,9 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
       ctx.drawImage(img, (s.viewW - dw) / 2, (s.viewH - dh) / 2, dw, dh);
       // Darken so the foreground sprites/furniture read against the art.
       const ov = ctx.createLinearGradient(0, 0, 0, s.viewH);
-      ov.addColorStop(0, 'rgba(10,6,24,0.55)');
-      ov.addColorStop(0.6, 'rgba(10,6,24,0.32)');
-      ov.addColorStop(1, 'rgba(8,4,18,0.62)');
+      ov.addColorStop(0, `rgba(10,6,24,${Math.min(0.78, 0.55 / light)})`);
+      ov.addColorStop(0.6, `rgba(10,6,24,${Math.min(0.65, 0.32 / light)})`);
+      ov.addColorStop(1, `rgba(8,4,18,${Math.min(0.82, 0.62 / light)})`);
       ctx.fillStyle = ov;
       ctx.fillRect(0, 0, s.viewW, s.viewH);
     }
@@ -866,6 +878,12 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     ctx.fillStyle = fg;
   }
   ctx.fill();
+  ctx.save();
+  ctx.globalAlpha = s.lighting === 'bright' ? 0.22 : s.lighting === 'dim' ? 0.08 : 0.14;
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = Math.max(1, T / 20);
+  ctx.stroke();
+  ctx.restore();
 
   // Grid lines.
   ctx.lineWidth = 1;
