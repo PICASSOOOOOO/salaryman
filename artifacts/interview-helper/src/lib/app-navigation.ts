@@ -105,6 +105,14 @@ export function canGoBackInApp(): boolean {
   return typeof window !== "undefined" && isSafeAppHistoryState(window.history.state, historySessionId);
 }
 
+export function getAppHomePath(isAuthenticated: boolean): string {
+  return isAuthenticated ? "/office" : "/";
+}
+
+export function getAppBackPath(isAuthenticated: boolean): string {
+  return isAuthenticated ? "/office" : "/pablo";
+}
+
 export function installAppHistoryTracking(): void {
   if (historyTrackingInstalled || typeof window === "undefined") return;
   historyTrackingInstalled = true;

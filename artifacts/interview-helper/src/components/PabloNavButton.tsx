@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { openCommandPalette } from "@/lib/command-palette-bus";
+import { useLocation } from "wouter";
 
 const PabloNebula3D = lazy(() =>
   import("@/components/PabloNebula3D").then((m) => ({ default: m.PabloNebula3D })),
@@ -22,24 +22,25 @@ function LightweightNebula({ size }: { size: number }) {
 
 /**
  * Pablo nebula shortcut for the top nav. Renders a tiny live version of
- * the fullscreen Pablo nebula shader; clicking opens the site-wide command
- * palette ("ask Pablo / jump to a window") — the same entry point the old
- * standalone search bar used. The ⌘K shortcut still opens it too. Same
- * component as the fullscreen one (PabloNebula3D) so the visual matches.
+ * the fullscreen Pablo nebula shader; clicking opens Pablo's canonical
+ * conversation surface. The separate ⌘K shortcut still opens app search.
+ * This uses the same component as the fullscreen one (PabloNebula3D), so
+ * the visual identity remains consistent.
  *
  * Falls back to the 2D CSS orb automatically if WebGL is unavailable
  * (handled inside PabloNebula3D), so this is safe in every browser.
  */
 export function PabloNavButton({ size = 26 }: { size?: number }) {
+  const [, navigate] = useLocation();
   const [enhanced, setEnhanced] = useState(false);
   return (
     <button
-      onClick={() => openCommandPalette()}
+      onClick={() => navigate("/pablo")}
       onPointerEnter={() => setEnhanced(true)}
       onFocus={() => setEnhanced(true)}
       onTouchStart={() => setEnhanced(true)}
-      title="Ask Pablo / search (⌘K)"
-      aria-label="Ask Pablo or search"
+      title="Open Pablo"
+      aria-label="Open Pablo"
       data-testid="pablo-nav-nebula"
       className="relative inline-flex items-center justify-center rounded-full overflow-hidden hover:scale-110 active:scale-95 transition-transform shrink-0"
       style={{

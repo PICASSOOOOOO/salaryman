@@ -2109,7 +2109,7 @@ function PabloTerminalAuthed() {
               type="button"
               onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/immigration", hint: null }); }}
               data-testid="pablo-sign-in"
-              className="mobile-tap-target px-2.5 py-1 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 text-[10px] tracking-[0.22em] font-mono transition-colors flex items-center gap-1.5"
+               className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
               title="Sign in"
             >
               <LogIn className="w-3 h-3" />
@@ -2127,7 +2127,7 @@ function PabloTerminalAuthed() {
             type="button"
             onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
             data-testid="pablo-mode-toggle"
-            className="mobile-tap-target px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.22em] font-mono transition-colors flex items-center gap-1.5"
+             className="app-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
             title={mode === "text" ? "Switch to voice" : "Switch to text"}
           >
             {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}

@@ -203,7 +203,7 @@ export function AudioControl({
         aria-label={open ? "Close audio controls" : "Open audio controls"}
         title="Music & sound"
         data-testid="audio-control-toggle"
-        className={`app-control mobile-tap-target group w-8 h-8 flex items-center justify-center rounded-lg backdrop-blur-sm hover:opacity-100 hover:scale-105 focus-visible:opacity-100 active:opacity-100 ${
+        className={`app-action app-control mobile-tap-target group w-8 h-8 rounded-lg backdrop-blur-sm hover:opacity-100 hover:scale-105 focus-visible:opacity-100 active:opacity-100 ${
           open ? "opacity-100" : muted ? "opacity-75" : "opacity-40"
         } ${
           open

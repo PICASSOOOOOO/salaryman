@@ -5,6 +5,8 @@ import {
   APP_HISTORY_SESSION_KEY,
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
+  getAppBackPath,
+  getAppHomePath,
   isAppNavItemActive,
   readAppHistoryDepth,
   isSafeAppHistoryState,
@@ -32,6 +34,13 @@ describe("shared app navigation", () => {
     expect(shouldShowModuleSubnav("phone", 10)).toBe(false);
     expect(shouldShowModuleSubnav("business", 10)).toBe(true);
     expect(shouldShowModuleSubnav("business", 0)).toBe(false);
+  });
+
+  it("keeps signed-out entry and authenticated office fallbacks distinct", () => {
+    expect(getAppHomePath(false)).toBe("/");
+    expect(getAppHomePath(true)).toBe("/office");
+    expect(getAppBackPath(false)).toBe("/pablo");
+    expect(getAppBackPath(true)).toBe("/office");
   });
 });
 

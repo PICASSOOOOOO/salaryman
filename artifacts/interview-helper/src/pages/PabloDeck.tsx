@@ -11,6 +11,9 @@ import {
   Briefcase, Wifi, TrendingUp,
   Cpu, Brain, Command as CommandIcon, Zap, ChevronDown,
 } from "lucide-react";
+import { PicassoLogo } from "@/components/PicassoLogo";
+import { PabloControlsMenu } from "@/components/PabloControlsMenu";
+import { canGoBackInApp, getAppBackPath } from "@/lib/app-navigation";
 
 interface DeckBot {
   id: number;
@@ -675,18 +678,42 @@ export default function PabloDeck() {
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate("/office")} className="p-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10" aria-label="Back">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6">
+          <button
+            onClick={() => canGoBackInApp() ? window.history.back() : navigate(getAppBackPath(true), { replace: true })}
+            className="app-action app-control h-8 w-8 p-0"
+            aria-label="Back"
+            title="Back"
+          >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <div className="flex-1">
+          <button
+            type="button"
+            onClick={() => navigate("/office")}
+            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
+            aria-label="Back to office floor"
+            title="Office floor"
+          >
+            <PicassoLogo size={20} gap={2} glow />
+            <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors">
+              SALARYMAN
+            </span>
+          </button>
+          <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1">
             <h1 className="font-mono text-xl sm:text-2xl tracking-wider flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-violet-300" /> PABLO COMMAND DECK
             </h1>
             <p className="text-xs text-zinc-400 font-mono">Deploy your agents. Build your empire. Hear the report.</p>
           </div>
-          <button onClick={() => navigate("/pledge")} className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 font-mono text-xs transition">
-            <ShoppingBag className="w-3.5 h-3.5" /> PLEDGE STORE
+          <PabloControlsMenu showHummingbird />
+          <button
+            onClick={() => navigate("/pledge")}
+            className="app-action app-control border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25"
+            aria-label="Open Pledge Store"
+            title="Pledge Store"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span className="hidden min-[420px]:inline">PLEDGE STORE</span>
           </button>
         </div>
 

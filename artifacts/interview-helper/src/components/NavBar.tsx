@@ -28,6 +28,8 @@ import {
   PRIMARY_NAV_ITEMS,
   isAppNavItemActive,
   canGoBackInApp,
+  getAppBackPath,
+  getAppHomePath,
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 
@@ -83,7 +85,7 @@ export function NavBar() {
   const moreItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
   const goBack = () => {
     if (canGoBackInApp()) window.history.back();
-    else navigate(isAuthenticated ? '/office' : '/pablo', { replace: true });
+    else navigate(getAppBackPath(isAuthenticated), { replace: true });
   };
 
   const hasActiveMore = moreItems.some(item => isAppNavItemActive(item, pathname));
@@ -138,14 +140,14 @@ export function NavBar() {
         <div className="flex flex-col gap-1">
           <div
             className="flex items-center gap-2.5 cursor-pointer group/logo"
-            onClick={() => navigate(isAuthenticated ? '/office' : '/')}
+            onClick={() => navigate(getAppHomePath(isAuthenticated))}
             role="link"
             tabIndex={0}
             aria-label={isAuthenticated ? 'Return to office floor' : 'Go to SALARYMAN home'}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                navigate(isAuthenticated ? '/office' : '/');
+                navigate(getAppHomePath(isAuthenticated));
               }
             }}
           >
@@ -409,7 +411,7 @@ export function NavBar() {
               <button
                 onClick={() => login()}
                 title={isHome ? "Start Work" : t('nav.login')}
-                 className="app-control flex items-center gap-1.5 px-3 text-xs font-mono tracking-widest uppercase"
+               className="app-action app-control"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 {isHome ? "START WORK" : t('nav.login')}

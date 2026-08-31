@@ -229,7 +229,7 @@ function FullscreenPabloAccess({ inGame }: { inGame: boolean }) {
   return (
     <Link
       href="/pablo"
-      className="app-control mobile-tap-target fixed z-[260] inline-flex h-8 w-8 items-center justify-center rounded-lg bg-black/55 backdrop-blur-md"
+      className="app-action app-control mobile-tap-target fixed z-[260] h-8 w-8 rounded-lg bg-black/55 backdrop-blur-md"
       style={{
         top: inGame ? "calc(env(safe-area-inset-top, 0px) + 8px)" : "calc(env(safe-area-inset-top, 0px) + 12px)",
         right: inGame ? "calc(env(safe-area-inset-right, 0px) + 80px)" : "calc(env(safe-area-inset-right, 0px) + 12px)",

@@ -66,8 +66,8 @@ export const MODULES: Module[] = [
   {
     id: 'phone',
     path: '/phone',
-    label: 'PHONE',
-    codename: 'TTC',
+    label: 'COMMS',
+    codename: 'COMMS',
     icon: Phone,
     defaultPath: '/phone/dialer',
     subs: [

@@ -18,6 +18,7 @@ import {
   PRIMARY_NAV_ITEMS,
   isAppNavItemActive,
   canGoBackInApp,
+  getAppBackPath,
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 
@@ -134,7 +135,7 @@ export function MobileModuleNav() {
   const dropdownItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
   const goBack = () => {
     if (canGoBackInApp()) window.history.back();
-    else navigate(isAuthenticated ? '/office' : '/pablo', { replace: true });
+    else navigate(getAppBackPath(isAuthenticated), { replace: true });
   };
 
   const hasActiveDropdownItem = dropdownItems.some(item => isAppNavItemActive(item, pathname));

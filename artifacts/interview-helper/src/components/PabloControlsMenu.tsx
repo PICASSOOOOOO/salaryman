@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'wouter';
 import { ChevronDown, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
@@ -35,10 +36,10 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
       <button
         type="button"
         aria-label="Open settings"
-        aria-haspopup="menu"
+          aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="app-control mobile-tap-target flex items-center gap-1.5 bg-black/45 px-3 text-[10px] font-medium tracking-[0.14em] backdrop-blur-md"
+          className="app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
       >
         <SlidersHorizontal className="app-control-icon" aria-hidden />
         <span className="hidden min-[520px]:inline">SETTINGS</span>
@@ -47,7 +48,7 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
 
       {open && (
         <div
-          role="menu"
+          role="dialog"
           aria-label="Pablo settings"
           className="absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[min(18rem,calc(100vw-1rem))] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
         >
@@ -58,7 +59,6 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
             </div>
             <button
               type="button"
-              role="menuitem"
               aria-label={settings.muted ? 'Unmute audio' : 'Mute audio'}
               onClick={toggleMuted}
               className="rounded-lg border border-white/10 bg-white/[0.05] p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
@@ -83,8 +83,7 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
 
           <button
             type="button"
-            role="menuitemcheckbox"
-            aria-checked={lowGfx}
+            aria-pressed={lowGfx}
             onClick={() => setLowGfx(!lowGfx)}
             className="mt-3 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-left transition hover:bg-white/[0.07]"
           >
@@ -109,6 +108,15 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
               />
             </div>
           )}
+
+          <Link
+            href="/settings?section=game"
+            onClick={() => setOpen(false)}
+            className="app-action app-control mt-3 w-full border-white/10 bg-white/[0.035] text-white/70 hover:bg-white/[0.08] hover:text-white"
+          >
+            <SlidersHorizontal className="app-control-icon" aria-hidden />
+            OPEN FULL SETTINGS
+          </Link>
         </div>
       )}
     </div>
