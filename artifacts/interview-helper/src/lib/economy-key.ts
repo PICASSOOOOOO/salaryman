@@ -1,12 +1,10 @@
-// Single source of truth for the fixed in-game economy conversion legend —
+// Single source of truth for the canonical in-game economy conversion legend —
 // the "economy key" shown on the Game Economy page AND across onboarding, so a
 // brand-new player always understands what ƒ (FIAT) is worth before committing
 // to any money figure (salary, payroll, rent, starting balance).
 //
-// The rate is FIXED and display-only — it never settles a charge. Changing the
-// legend here changes it everywhere the key renders (Economy page + every
-// onboarding step). Keep it in lockstep with the conversion the bank/economy
-// backend actually uses ($20 USD = ƒ20,000 FIAT = 0.1 oz GOLD).
+// The authored rail is $1 = ƒ100 = 0.1 GOLD. BTC is intentionally omitted here:
+// its changing equivalent is shown only on the live Economy page.
 
 export interface EconomyRail {
   /** Stable rail key — used to look up accent colors per surface. */
@@ -17,10 +15,10 @@ export interface EconomyRail {
   value: string;
 }
 
-// $20 USD = ƒ20,000 FIAT = 0.1 oz GOLD.
+// $1 USD = ƒ100 FIAT = 0.1 GOLD.
 export const ECONOMY_RAILS: EconomyRail[] = [
-  { code: 'USD', label: 'USD', value: '$20' },
-  { code: 'FIAT', label: 'FIAT', value: 'ƒ20,000' },
+  { code: 'USD', label: 'USD', value: '$1' },
+  { code: 'FIAT', label: 'FIAT', value: 'ƒ100' },
   { code: 'GOLD', label: 'GOLD', value: '0.1 oz' },
 ];
 
@@ -29,4 +27,4 @@ export const ECONOMY_KEY_LINE = ECONOMY_RAILS.map((r) => r.value).join(' = ');
 
 // Short reassurance matching the Game Economy page wording — anything earned
 // in-game is real money, the rate is fixed.
-export const ECONOMY_KEY_NOTE = 'Fixed rate. Anything you earn in-game is real money.';
+export const ECONOMY_KEY_NOTE = 'FIAT is the base currency. GOLD measures in-game wealth.';

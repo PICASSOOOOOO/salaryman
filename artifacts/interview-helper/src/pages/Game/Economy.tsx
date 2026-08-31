@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronLeft, ArrowRight, Receipt, Building2, Banknote } from "lucide-react";
+import { ChevronLeft, ArrowRight, Receipt, Building2, Banknote, RefreshCw } from "lucide-react";
 import { CurrencyTicker } from "@/components/CurrencyTicker";
 import { apiFetch } from "@/lib/api-client";
 import { ECONOMY_RAILS } from "@/lib/economy-key";
@@ -13,6 +13,36 @@ type EconomyStats = {
   poorest: { name: string; total: number }[];
   bountiedCount: number;
   asOf: number;
+};
+
+type GoldSnapshot = {
+  fiatBalance: number;
+  spendableFiat: number;
+  gold: number;
+  feeBps: number;
+  base: { usd: number; fiat: number; gold: number; fiatPerGold: number };
+  market: {
+    status: "live" | "stale" | "unavailable";
+    source: string;
+    asOf: number;
+    btcUsd: number | null;
+    btcPerUsd: number | null;
+    goldSpotUsd: number | null;
+    goldSpotSource: string | null;
+    goldSpotAsOf: number | null;
+  };
+};
+
+type GoldQuote = {
+  quoteId: string;
+  expiresAt: string;
+  side: "buy" | "sell";
+  goldTenths: number;
+  gold: number;
+  grossFiat: number;
+  feeFiat: number;
+  settledFiat: number;
+  idempotencyKey: string;
 };
 
 function fmtFiat(n: number): string {
@@ -39,6 +69,25 @@ const RAIL_ACCENT: Record<string, { border: string; bg: string; label: string; v
 export default function GameEconomy() {
   const [stats, setStats] = useState<EconomyStats | null>(null);
   const [statsErr, setStatsErr] = useState<string | null>(null);
+  const [gold, setGold] = useState<GoldSnapshot | null>(null);
+  const [goldError, setGoldError] = useState("");
+  const [goldAmount, setGoldAmount] = useState("0.1");
+  const [goldSide, setGoldSide] = useState<"buy" | "sell">("buy");
+  const [goldQuote, setGoldQuote] = useState<GoldQuote | null>(null);
+  const [goldBusy, setGoldBusy] = useState(false);
+  const slot = typeof window === "undefined" ? 0 : parseInt(localStorage.getItem("sm_slot") ?? "0", 10) || 0;
+
+  const loadGold = async () => {
+    try {
+      const r = await apiFetch(`/api/economy/gold?slot=${slot}`, { credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Gold ledger unavailable");
+      setGold(j as GoldSnapshot);
+      setGoldError("");
+    } catch (e) {
+      setGoldError(e instanceof Error ? e.message : "Gold ledger unavailable");
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -59,6 +108,56 @@ export default function GameEconomy() {
     const id = setInterval(load, 60_000);
     return () => { alive = false; clearInterval(id); };
   }, []);
+
+  useEffect(() => {
+    void loadGold();
+    const id = setInterval(() => void loadGold(), 60_000);
+    return () => clearInterval(id);
+  }, [slot]);
+
+  const requestGoldQuote = async () => {
+    const tenths = Math.round(Number(goldAmount) * 10);
+    if (!Number.isSafeInteger(tenths) || tenths <= 0) return;
+    setGoldBusy(true);
+    setGoldError("");
+    try {
+      const r = await apiFetch("/api/economy/gold/quote", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot, side: goldSide, goldTenths: tenths }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Quote unavailable");
+      setGoldQuote({ ...(j as Omit<GoldQuote, "idempotencyKey">), idempotencyKey: crypto.randomUUID() });
+    } catch (e) {
+      setGoldQuote(null);
+      setGoldError(e instanceof Error ? e.message : "Quote unavailable");
+    } finally {
+      setGoldBusy(false);
+    }
+  };
+
+  const executeGoldQuote = async () => {
+    if (!goldQuote) return;
+    setGoldBusy(true);
+    try {
+      const r = await apiFetch("/api/economy/gold/convert", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot, quoteId: goldQuote.quoteId, idempotencyKey: goldQuote.idempotencyKey }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Conversion failed");
+      setGoldQuote(null);
+      await loadGold();
+    } catch (e) {
+      setGoldError(e instanceof Error ? e.message : "Conversion failed");
+    } finally {
+      setGoldBusy(false);
+    }
+  };
 
   const ACCENT: Record<string, { border: string; title: string }> = {
     zinc:    { border: "border-zinc-700/40",    title: "text-zinc-300" },
@@ -101,6 +200,71 @@ export default function GameEconomy() {
           <CurrencyTicker />
         </div>
 
+        <Card title="LIVE FIAT ↔ GOLD · BANCO OMBRA" accent="amber">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-white/[0.06] bg-black/30 p-3">
+            <div>
+              <div className="text-lg font-mono text-zinc-100">ƒ100 = 0.1 GOLD = $1</div>
+              <div className="text-[10px] font-mono text-zinc-500 mt-1">
+                {gold?.market.btcPerUsd
+                  ? `$1 = ${gold.market.btcPerUsd.toFixed(8)} BTC · ${gold.market.status.toUpperCase()} ${gold.market.source.toUpperCase()} · ${new Date(gold.market.asOf).toLocaleString()}`
+                  : "BTC/USD UNAVAILABLE · CONVERSION DISABLED"}
+              </div>
+              {gold?.market.goldSpotUsd && (
+                <div className="text-[10px] font-mono text-amber-300/70 mt-1">
+                  REFERENCE SPOT GOLD ${gold.market.goldSpotUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}/oz
+                  {" · "}{gold.market.goldSpotSource?.toUpperCase()} · {gold.market.goldSpotAsOf ? new Date(gold.market.goldSpotAsOf).toLocaleString() : "—"}
+                </div>
+              )}
+            </div>
+            <button onClick={() => void loadGold()} className="rounded border border-white/10 p-2 text-zinc-400 hover:text-white" title="Refresh live quote">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-3 text-center font-mono">
+            <div className="rounded border border-fuchsia-700/30 bg-fuchsia-950/20 p-3">
+              <div className="text-[9px] tracking-widest text-zinc-500">SPENDABLE FIAT</div>
+              <div className="text-lg text-fuchsia-200 mt-1">{gold ? fmtFiat(gold.spendableFiat) : "ƒ —"}</div>
+            </div>
+            <div className="rounded border border-amber-700/30 bg-amber-950/20 p-3">
+              <div className="text-[9px] tracking-widest text-zinc-500">IN-GAME GOLD</div>
+              <div className="text-lg text-amber-200 mt-1">{gold ? `${gold.gold.toFixed(1)} GOLD` : "—"}</div>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-[auto_1fr_auto] gap-2 mt-3">
+            <div className="flex rounded border border-white/10 overflow-hidden">
+              {(["buy", "sell"] as const).map((side) => (
+                <button key={side} onClick={() => { setGoldSide(side); setGoldQuote(null); }} className={`px-3 py-2 text-[10px] font-mono tracking-widest ${goldSide === side ? "bg-amber-500/15 text-amber-200" : "text-zinc-500"}`}>
+                  {side.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <input value={goldAmount} onChange={(e) => { setGoldAmount(e.target.value.replace(/[^\d.]/g, "")); setGoldQuote(null); }} inputMode="decimal" aria-label="GOLD amount" className="rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm" />
+            <button disabled={goldBusy || gold?.market.status !== "live"} onClick={() => void requestGoldQuote()} className="rounded border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[10px] font-mono tracking-widest text-amber-200 disabled:opacity-40">
+              PREVIEW
+            </button>
+          </div>
+
+          {goldQuote && (
+            <div className="mt-3 rounded border border-emerald-600/30 bg-emerald-950/20 p-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="font-mono text-[11px]">
+                {goldQuote.side === "buy"
+                  ? `${fmtFiat(goldQuote.settledFiat)} → ${goldQuote.gold.toFixed(1)} GOLD`
+                  : `${goldQuote.gold.toFixed(1)} GOLD → ${fmtFiat(goldQuote.settledFiat)}`}
+                <span className="text-zinc-500"> · fee {fmtFiat(goldQuote.feeFiat)} · expires {new Date(goldQuote.expiresAt).toLocaleTimeString()}</span>
+              </div>
+              <button disabled={goldBusy} onClick={() => void executeGoldQuote()} className="rounded border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-[10px] font-mono tracking-widest text-emerald-200 disabled:opacity-40">
+                CONFIRM
+              </button>
+            </div>
+          )}
+          {goldError && <p className="mt-2 text-[10px] font-mono text-rose-300">{goldError.toUpperCase()}</p>}
+          <p className="mt-3 text-[10px] text-zinc-500">
+            Settlement is atomic in the server ledger. GOLD represents in-game wealth only; there are no crypto deposits, withdrawals, or bank cash-outs.
+          </p>
+        </Card>
+
         {/* Conversion table — rendered from the shared ECONOMY_RAILS source of
             truth, the same legend surfaced on every onboarding step. */}
         <Card title="CONVERSION · ONE RAIL" accent="amber">
@@ -116,7 +280,7 @@ export default function GameEconomy() {
             })}
           </div>
           <p className="text-[11px] text-zinc-400 mt-3">
-            Anything you earn in-game is real money. Withdraw it back to your bank. Because of that, the in-game economy is deliberately stingy — enemies, loot, and treasure pay almost nothing on purpose.
+             FIAT is the base currency for prices, wages, balances, and transaction history. GOLD is an in-game wealth measure; BTC is a live market reference only.
           </p>
         </Card>
 

@@ -42,7 +42,7 @@ export function EconomyKey({
       }}
     >
       <div style={{ ...ST, fontSize: '.4rem', letterSpacing: '.16em', color: 'rgba(56,189,248,.42)', marginBottom: '.3rem' }}>
-        ECONOMY KEY · FIXED RATE
+        ECONOMY KEY · BASE RAIL
       </div>
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: '.25rem', columnGap: '.35rem' }}>
         {ECONOMY_RAILS.map((r, i) => (

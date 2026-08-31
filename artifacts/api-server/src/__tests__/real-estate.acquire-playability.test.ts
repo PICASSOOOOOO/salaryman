@@ -23,7 +23,7 @@ describe("POST /api/real-estate/acquire playable inventory", () => {
 
     const response = await request(app)
       .post("/api/real-estate/acquire")
-      .send({ artKey: "property_loft", tenure: "own", slot: 0 });
+      .send({ artKey: "property_loft", tenure: "own", slot: 0, requestId: "00000000-0000-4000-8000-000000000001" });
 
     expect(response.status).toBe(409);
     expect(response.body.error).toMatch(/not available/i);
@@ -37,7 +37,7 @@ describe("POST /api/real-estate/acquire playable inventory", () => {
 
     const response = await request(app)
       .post("/api/real-estate/acquire")
-      .send({ artKey: "property_apartment_office", tenure: "rent", slot: 2 });
+      .send({ artKey: "property_apartment_office", tenure: "rent", slot: 2, requestId: "00000000-0000-4000-8000-000000000002" });
 
     expect(response.status).toBe(200);
     expect(response.body.owned).toMatchObject({

@@ -15,6 +15,7 @@ import {
   salarymanSavesTable,
   worldBusinessesTable,
   playerNetWorthSnapshotsTable,
+  playerGoldAccountsTable,
 } from "@workspace/db";
 import { eq, desc, and, inArray, sql, gte } from "drizzle-orm";
 import { getPabloTaxSnapshot, FIAT_PER_USD, GOLD_OZ_PER_USD } from "../lib/pablo-tax";
@@ -35,7 +36,7 @@ const router = Router();
  * round-trip: bank balance breakdown (earned vs quarantined), gold,
  * Pablo Tax meter, Prime status, recent line items, pending invoices.
  *
- * Currency display is rendered client-side from the canonical $1 = ƒ1000
+ * Currency display is rendered client-side from the canonical $1 = ƒ100
  * = 0.005oz gold conversions so this endpoint can stay rate-free.
  */
 router.get("/wallet/snapshot", async (req: Request, res: Response) => {
@@ -53,6 +54,7 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
     projectRows,
     memoryRows,
     latestSaves,
+    goldAccounts,
     netWorthRows,
   ] = await Promise.all([
     db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId)),
@@ -89,11 +91,12 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
       .where(eq(pabloMemoriesTable.userId, userId))
       .orderBy(sql`${pabloMemoriesTable.weight} DESC`, desc(pabloMemoriesTable.createdAt))
       .limit(8),
-    db.select({ data: salarymanSavesTable.data, updatedAt: salarymanSavesTable.lastSavedAt })
+    db.select({ data: salarymanSavesTable.data, updatedAt: salarymanSavesTable.lastSavedAt, slotIndex: salarymanSavesTable.slotIndex })
       .from(salarymanSavesTable)
       .where(eq(salarymanSavesTable.userId, userId))
       .orderBy(desc(salarymanSavesTable.lastSavedAt))
       .limit(1),
+    db.select().from(playerGoldAccountsTable).where(eq(playerGoldAccountsTable.userId, userId)),
     db.select({
       // Net worth = income − outgoing (payroll/bill/expense). Mirrors the
       // canonical ledger semantics in enterprise.ts (income types are credits,
@@ -178,9 +181,10 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
   // True combined net worth: liquid fiat + gold-equivalent + property values
   // minus outstanding tax debt. More authoritative than the cashflow-only
   // netWorthRows sum (which only covers balance_sheet_transactions).
-  const FIAT_PER_GOLD_RATE = 100_000; // matches client gameSystems.ts FIAT_PER_GOLD
+  const FIAT_PER_GOLD_RATE = 1_000; // matches client gameSystems.ts FIAT_PER_GOLD
   const saveSalary = num(save.salary, 0);
-  const saveGold   = num(save.goldBalance, 0);
+  const activeGold = goldAccounts.find((account) => account.slotIndex === (latestSaves[0]?.slotIndex ?? 0));
+  const saveGold = (activeGold?.balanceTenths ?? 0) / 10;
   const savePropertyValue = Array.isArray(save.propertyDeeds)
     ? (save.propertyDeeds as Array<{ currentValue?: number; purchasePrice?: number }>)
         .reduce((s, d) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0)

@@ -5,6 +5,7 @@ import { isPlayablePropertyKey } from "@workspace/api-zod/playable-properties";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
 import { chargePabloTax, PABLO_TAX_MARKUP, FIAT_PER_USD } from "../lib/pablo-tax";
+import { spendFiat } from "../lib/fiat-wallet";
 
 // Legacy Pablo Tax is now NARROWED to a one-time transfer tax on large physical
 // purchases — buying (not renting) property. AI usage no longer pays Pablo Tax;
@@ -31,7 +32,19 @@ const VALID_LISTING_TYPES = new Set(["sale", "rent"]);
 const BTC_BASELINE_USD = 50_000;
 const ETH_BASELINE_USD = 3_000;
 const MARKET_CACHE_TTL_MS = 60_000;
-let marketCache: { btcUsd: number; ethUsd: number; multiplier: number; asOf: number; source: string } | null = null;
+const MARKET_MAX_STALE_MS = 15 * 60_000;
+export type LiveMarketIndex = {
+  btcUsd: number;
+  ethUsd: number;
+  goldUsd: number | null;
+  multiplier: number;
+  asOf: number;
+  source: string;
+  goldSource: string | null;
+  goldAsOf: number | null;
+  status: "live" | "stale" | "unavailable";
+};
+let marketCache: LiveMarketIndex | null = null;
 
 // Presentation-only city cost-of-living baselines. Settlement routes continue to
 // use the single BTC-scaled FIAT price; these values are returned for client
@@ -79,20 +92,55 @@ async function fetchCryptoUsd(): Promise<{ btcUsd: number; ethUsd: number; sourc
   return { btcUsd, ethUsd, source: "coingecko" };
 }
 
-async function getMarketIndex(): Promise<{ btcUsd: number; ethUsd: number; multiplier: number; asOf: number; source: string }> {
+async function fetchGoldUsd(): Promise<{ goldUsd: number; asOf: number; source: string }> {
+  const res = await fetch("https://api.gold-api.com/price/XAU", {
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!res.ok) throw new Error(`gold-api ${res.status}`);
+  const j = (await res.json()) as { price?: unknown; updatedAt?: unknown };
+  const goldUsd = Number(j.price);
+  if (!Number.isFinite(goldUsd) || goldUsd <= 0) throw new Error("gold-api bad payload");
+  const upstreamAt = Date.parse(String(j.updatedAt ?? ""));
+  return { goldUsd, asOf: Number.isFinite(upstreamAt) ? upstreamAt : Date.now(), source: "gold-api" };
+}
+
+export async function getMarketIndex(): Promise<LiveMarketIndex> {
   const now = Date.now();
-  if (marketCache && now - marketCache.asOf < MARKET_CACHE_TTL_MS) return marketCache;
+  if (marketCache && now - marketCache.asOf < MARKET_CACHE_TTL_MS && marketCache.status === "live") return marketCache;
   try {
-    const { btcUsd, ethUsd, source } = await fetchCryptoUsd();
+    const [{ btcUsd, ethUsd, source }, gold] = await Promise.all([
+      fetchCryptoUsd(),
+      fetchGoldUsd().catch(() => null),
+    ]);
     const raw = btcUsd / BTC_BASELINE_USD;
     const multiplier = Math.max(0.4, Math.min(4.0, raw));
-    marketCache = { btcUsd, ethUsd, multiplier, asOf: now, source };
+    marketCache = {
+      btcUsd,
+      ethUsd,
+      goldUsd: gold?.goldUsd ?? null,
+      multiplier,
+      asOf: now,
+      source,
+      goldSource: gold?.source ?? null,
+      goldAsOf: gold?.asOf ?? null,
+      status: "live",
+    };
     return marketCache;
-  } catch (e) {
-    // If the upstream fails, serve last known value (or fall back to neutral 1.0).
-    if (marketCache) return marketCache;
-    marketCache = { btcUsd: BTC_BASELINE_USD, ethUsd: ETH_BASELINE_USD, multiplier: 1.0, asOf: now, source: "fallback" };
-    return marketCache;
+  } catch {
+    if (marketCache && now - marketCache.asOf <= MARKET_MAX_STALE_MS) {
+      return { ...marketCache, status: "stale" };
+    }
+    return {
+      btcUsd: 0,
+      ethUsd: 0,
+      goldUsd: null,
+      multiplier: 1,
+      asOf: now,
+      source: "unavailable",
+      goldSource: null,
+      goldAsOf: null,
+      status: "unavailable",
+    };
   }
 }
 
@@ -288,11 +336,11 @@ async function refreshArtIfPending(l: RealEstateListing): Promise<RealEstateList
 // show BTC → USD → ƒ → Gold without round-tripping for each unit.
 //
 // Conversion constants are AUTHORED by the game economy, not market data:
-//   $20 USD = 0.1 GOLD (oz, in-game) = ƒ20,000
-// → $1 USD = ƒ1000 = 0.005 oz GOLD
-//   1 oz GOLD = $200 USD = ƒ200,000
-const USD_TO_FIAT = 1000;        // 1 USD => ƒ1000
-const USD_TO_GOLD_OZ = 0.005;    // 1 USD => 0.005 oz gold (1 oz = $200)
+// Canonical game rail: $1 USD = ƒ100 = 0.1 GOLD.
+// BTC remains a live market reference: the response includes the BTC amount
+// worth $1 so every economy surface can display the exact same cross-rate.
+const USD_TO_FIAT = 100;
+const USD_TO_GOLD_OZ = 0.1;
 router.get("/real-estate/market-index", async (_req: Request, res: Response) => {
   try {
     const [idx, fx] = await Promise.all([getMarketIndex(), getFxRates()]);
@@ -301,6 +349,8 @@ router.get("/real-estate/market-index", async (_req: Request, res: Response) => 
       conversion: {
         usdToFiat: USD_TO_FIAT,
         usdToGoldOz: USD_TO_GOLD_OZ,
+        fiatPerGold: USD_TO_FIAT / USD_TO_GOLD_OZ,
+        btcPerUsd: idx.btcUsd > 0 ? 1 / idx.btcUsd : null,
         // Pre-computed cross rates for convenience (1 BTC in each unit)
         btcToFiat: idx.btcUsd * USD_TO_FIAT,
         btcToGoldOz: idx.btcUsd * USD_TO_GOLD_OZ,
@@ -498,7 +548,11 @@ router.post("/real-estate/acquire", requireAuth, async (req: Request, res: Respo
   try {
     const u = req.user as any;
     const userId = String(u.id);
-    const { artKey, tenure, slot } = (req.body || {}) as { artKey?: string; tenure?: string; slot?: number | string };
+    const { artKey, tenure, slot, requestId } = (req.body || {}) as { artKey?: string; tenure?: string; slot?: number | string; requestId?: string };
+    if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(requestId)) {
+      res.status(400).json({ error: "A valid requestId is required." });
+      return;
+    }
     const entry = PROPERTY_CATALOG[String(artKey)];
     if (!entry) { res.status(400).json({ error: "unknown property" }); return; }
     if (!isPlayablePropertyKey(artKey)) {
@@ -533,10 +587,15 @@ router.post("/real-estate/acquire", requireAuth, async (req: Request, res: Respo
         .for("update");
       if (!save) return { status: 404 as const, body: { error: "No save found — play and save first." } };
 
-      const balance = Number(save.salary ?? 0);
-      if (balance < price) return { status: 402 as const, body: { error: "Insufficient funds", required: price, balance } };
-
-      const newBalance = balance - price;
+      const paid = await spendFiat(tx, {
+        userId,
+        amountFiat: price,
+        description: `${ten === "own" ? "Purchase" : "Lease"} ${entry.name}`,
+        kind: "property",
+        idempotencyKey: `property:${requestId}`,
+      });
+      if (!paid.ok) return { status: 402 as const, body: { error: "Insufficient funds", required: price, balance: paid.spendable } };
+      const newBalance = paid.newBalance;
       const data = (save.data ?? {}) as Record<string, unknown>;
       data.salary = newBalance;
       if (entry.kind === "office") data.office = owned; else data.home = owned;

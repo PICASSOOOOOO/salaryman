@@ -855,12 +855,8 @@ export const handleMessage = (player: Player, raw: string) => {
     }
 
     case 'gold_exchange': {
-      if (typeof msg.goldBalance === 'number' && msg.goldBalance >= 0) {
-        // Gold balance is tracked client-side; server just validates money sync
-        if (typeof msg.money === 'number' && msg.money >= 0) {
-          player.money = msg.money;
-        }
-      }
+      // Legacy client exchange messages are intentionally ignored. GOLD and
+      // FIAT settle only through authenticated ledger routes.
       break;
     }
 

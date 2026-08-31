@@ -145,7 +145,7 @@ router.post("/economy/verified-salary/claim", async (req: Request, res: Response
 // Real-world market snapshot: forex (USD/EUR/JPY/GBP), stock indices
 // (S&P 500, NASDAQ, Nikkei), and commodity spot prices (Gold, Oil).
 // Each ticker also carries an `fiatImpact` line showing how the rate maps
-// to in-game ƒ (using the fixed FIAT_PER_USD = 1000 ƒ/$1 USD rate).
+// to in-game ƒ (using the canonical FIAT_PER_USD = 100 ƒ/$1 USD rate).
 //
 // Forex rates are fetched live from frankfurter.app (free, no API key).
 // Stock indices and commodities are estimated (no free no-key real-time

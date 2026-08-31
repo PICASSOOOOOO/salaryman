@@ -9,17 +9,15 @@
  *   • Each property has a monthly RENT in ƒ (FIAT — never ¥).
  *   • PURCHASE price = rent × 100 × 1.20  (the +20% is the "skip 8.3 years
  *     of rent" buyer's premium).
- *   • Both numbers are scaled live by /api/real-estate/market-index (BTC).
- *   • A 1 Hz client-side wave on top of the server multiplier makes every
- *     price visibly tick every second — so the showroom looks like a live
- *     trading floor. The wave anchors back to the next server sample.
+ *   • Final settlement is server-authoritative. Live market details stay on
+ *     the Economy page rather than turning the showroom into a ticker.
  *
  * Office tour: instead of static stills, each card slow-pans the cover art
  * (Ken Burns) so the player can see the layout while zoomed in. The art is
  * still a Nano Banana frame, but the camera moves through it.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isPlayablePropertyKey } from "@workspace/api-zod/playable-properties";
 import { useLocation } from "wouter";
 import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown, Check, Loader2, X, Paintbrush } from "lucide-react";
@@ -52,25 +50,7 @@ interface MarketIndex {
 }
 
 function useMarketIndex(): { idx: MarketIndex | null; pct: number } {
-  const [idx, setIdx] = useState<MarketIndex | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await apiFetch("api/real-estate/market-index");
-        if (!res.ok) return;
-        const j = (await res.json()) as MarketIndex;
-        if (alive) setIdx(j);
-      } catch { /* keep last */ }
-    };
-    void load();
-    // 30s server poll keeps us anchored to real BTC; the per-second wave
-    // below is just visual breathing in between.
-    const id = setInterval(load, 30_000);
-    return () => { alive = false; clearInterval(id); };
-  }, []);
-  const pct = idx ? (idx.multiplier - 1) * 100 : 0;
-  return { idx, pct };
+  return { idx: null, pct: 0 };
 }
 
 /** 1 Hz tick — drives the per-second price flicker. */
@@ -111,12 +91,11 @@ export default function RealtyStore() {
   const [, navigate] = useLocation();
   const fromOffice = typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("from") === "office";
-  const { idx, pct } = useMarketIndex();
-  const t = useTick(1000);
-  const baseMult = idx?.multiplier ?? 1;
+  const t = 0;
+  const baseMult = 1;
   const activeCityId = getActiveCityId();
   const localCcy = getCityCurrency(activeCityId);
-  const cityMult = idx?.cityMultipliers?.[activeCityId]?.property ?? getCityMultiplier(activeCityId, baseMult);
+  const cityMult = getCityMultiplier(activeCityId, baseMult);
   const formatLocalDisplay = (n: number) =>
     `${localCcy.symbol}${Math.round(n).toLocaleString("en-US")} ${localCcy.code}`;
 
@@ -126,6 +105,7 @@ export default function RealtyStore() {
   const [renovating, setRenovating] = useState<{ t: PropertyTemplate; owned: OwnedProperty } | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const acquireRequestId = useRef<string | null>(null);
 
   // The player's faction (chosen at onboarding) decides which district's catalog
   // we surface. Defaults to SUITS / Corporate Core until the registry resolves.
@@ -165,7 +145,12 @@ export default function RealtyStore() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ artKey: target.t.artKey, tenure: target.tenure, slot }),
+        body: JSON.stringify({
+          artKey: target.t.artKey,
+          tenure: target.tenure,
+          slot,
+          requestId: acquireRequestId.current ??= crypto.randomUUID(),
+        }),
       });
       const j = await res.json().catch(() => ({}));
       if (res.status === 401) {
@@ -197,6 +182,7 @@ export default function RealtyStore() {
       setOwnedPropertyLocal(owned);
       if (typeof j.newBalance === "number") setFiatBalanceLocal(j.newBalance);
       if (owned.kind === "office") setOwnedOffice(owned); else setOwnedHome(owned);
+      acquireRequestId.current = null;
       const verb = target.tenure === "own" ? "Bought" : "Leased";
        const displayPrice = Number(j.price ?? 0) * cityMult;
        setResult({ ok: true, msg: `${verb} ${target.t.name} for ${formatLocalDisplay(displayPrice)} display rate (settled in ƒ). ${owned.kind === "office" ? "Opening your office…" : "Keys are yours."}` });
@@ -254,9 +240,6 @@ export default function RealtyStore() {
     }
   }
 
-  const trend = pct >= 0;
-  const TrendIcon = trend ? TrendingUp : TrendingDown;
-  const trendClr = trend ? "text-emerald-300" : "text-red-300";
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 relative">
@@ -290,22 +273,19 @@ export default function RealtyStore() {
         <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "var(--font-sans)" }}>
           ▌ DOWNTOWN REALTY <span className="text-red-400">不動産</span> ▌
         </div>
-        <div className={`flex items-center gap-1 text-[10px] tracking-[0.3em] shrink-0 ${trendClr}`} title={idx ? `BTC ≈ $${idx.btcUsd.toLocaleString("en-US")} • ${idx.source}` : "loading market…"}>
-          <TrendIcon className="w-3 h-3" />
-          BTC {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
-        </div>
+        <div className="text-[10px] tracking-[0.3em] text-zinc-500 shrink-0">FIAT PRICING</div>
       </header>
 
       {/* Live ticker bar — Akira-style scrolling status */}
       <div className="px-4 sm:px-6 py-2 border-b border-red-500/20 bg-gradient-to-r from-black via-red-950/20 to-black flex items-center justify-between text-[10px] tracking-[0.3em] gap-3">
         <span className="text-red-400" style={{ fontFamily: "var(--font-sans)" }}>
-          市場 LIVE · UPDATING EVERY SECOND
+          市場 · SETTLED IN FIAT
         </span>
         <span className="text-zinc-500 hidden sm:inline">
-          INDEX ×{(baseMult * (1 + liveWave(t, 0))).toFixed(4)} · BTC ${idx ? Math.round(idx.btcUsd * (1 + liveWave(t, 1.3))).toLocaleString("en-US") : "—"}
+          LIVE MARKET DETAILS · ECONOMY PAGE
         </span>
         <span className="text-pink-300" style={{ fontFamily: "var(--font-sans)" }}>
-           {localCcy.symbol}{Math.round(10_000 * baseMult * cityMult * (1 + liveWave(t, 0.4))).toLocaleString("en-US")} {localCcy.code} / mo · ENTRY
+           {localCcy.symbol}{Math.round(10_000 * baseMult * cityMult).toLocaleString("en-US")} {localCcy.code} / mo · ENTRY
         </span>
       </div>
 
@@ -317,8 +297,8 @@ export default function RealtyStore() {
             </div>
             <div className="text-zinc-400 text-sm max-w-xl leading-snug">
                Every property shown opens as a playable destination. Rent monthly or buy outright — purchase is
-               <span className="text-pink-300"> 100 months of rent + 20% premium</span>. Both numbers tick with the
-               live BTC index every second.
+               <span className="text-pink-300"> 100 months of rent + 20% premium</span>. Final settlement is
+               confirmed in FIAT.
             </div>
             <div className="mt-2 flex items-center gap-2 text-[10px] tracking-[0.2em] text-zinc-500">
               <span className="px-2 py-0.5 rounded border border-amber-400/30 text-amber-200">{activeCityId === "huda_city" ? "HUDA RATE" : "MINX RATE"}</span>
@@ -408,8 +388,8 @@ export default function RealtyStore() {
 
         <div className="mt-8 px-4 py-3 rounded border border-pink-400/30 bg-black/60 text-pink-200/80 text-sm leading-snug max-w-3xl">
           <span className="text-pink-400 mr-2">PABLO:</span>
-          "Rent is leverage. Buy is conviction. The ticker doesn't lie — if BTC moves while you're reading, so does
-          the price you'll pay. Every owned property can be relisted or sublet from your portfolio."
+          "Rent is leverage. Buy is conviction. The final FIAT price is confirmed before settlement.
+          Every owned property can be relisted or sublet from your portfolio."
         </div>
       </div>
 

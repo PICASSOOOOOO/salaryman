@@ -71,7 +71,7 @@ const SPONSORS: Array<{ id: string; name: string; tag: string }> = [
   { id: 'rick',        name: 'RICK',        tag: 'entry-level grind. cheap. silent. effective.' },
   { id: 'desk-corp',   name: 'DESK-CORP',   tag: 'rent your second desk. ƒ3000/mo. no questions.' },
   { id: 'capsule-co',  name: 'CAPSULE-CO',  tag: 'sleep tubes. ƒ2500/mo. now with light leak.' },
-  { id: 'gold-vault',  name: 'GOLD VAULT',  tag: 'convert ƒ → 0.005oz/ƒ1000. the only real money.' },
+  { id: 'gold-vault',  name: 'GOLD VAULT',  tag: 'ƒ100 = 0.1 GOLD. track in-game wealth.' },
 ];
 
 export function CollectionsFacility({ onReleased }: { onReleased: () => void }) {

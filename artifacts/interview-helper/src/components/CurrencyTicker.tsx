@@ -8,14 +8,20 @@ import { STREAMER_MASK } from "@/lib/streamer-mode";
 
 type Idx = {
   btcUsd: number;
+  goldUsd: number | null;
   multiplier: number;
   asOf: number;
   source: string;
+  status: "live" | "stale" | "unavailable";
+  goldSource: string | null;
+  goldAsOf: number | null;
   conversion: {
     usdToFiat: number;
     usdToGoldOz: number;
     btcToFiat: number;
     btcToGoldOz: number;
+    fiatPerGold: number;
+    btcPerUsd: number | null;
   };
   // Live USD→currency fiat FX rates (optional — older servers omit it).
   fx?: Record<string, number>;
@@ -108,6 +114,15 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
     );
   }
 
+  if (idx.status === "unavailable" || !idx.btcUsd) {
+    return (
+      <div className="flex items-center gap-2 text-[10px] font-mono text-rose-300 tracking-widest">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+        LIVE MARKET UNAVAILABLE · CONVERSION DISABLED
+      </div>
+    );
+  }
+
   const dir = prevBtc == null ? 0 : Math.sign(idx.btcUsd - prevBtc);
   const arrow = dir > 0 ? "▴" : dir < 0 ? "▾" : "·";
   const arrowCls = dir > 0 ? "text-emerald-400" : dir < 0 ? "text-red-400" : "text-zinc-600";
@@ -160,6 +175,10 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
       <span className="flex items-center gap-1 text-amber-200">
         <Coins className="w-3 h-3 text-amber-400/80" />
         {fmt(oneCurInGold, 4)} oz
+      </span>
+      <span className="text-zinc-700">·</span>
+      <span className={idx.status === "live" ? "text-emerald-300" : "text-amber-300"}>
+        {idx.status.toUpperCase()} · {idx.source.toUpperCase()} · {new Date(idx.asOf).toLocaleTimeString()}
       </span>
       {showPlayerFiat && playerFiat != null && (
         <>

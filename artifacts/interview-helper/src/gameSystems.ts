@@ -265,7 +265,8 @@ export function getRadiationLevel(px: number, py: number): { inZone: boolean; in
 }
 
 // ── Gold Exchange ────────────────────────────────────────────────────────────
-export const FIAT_PER_GOLD = 100000;
+// Canonical wealth rail: ƒ100 = 0.1 GOLD = $1 USD.
+export const FIAT_PER_GOLD = 1000;
 export const GEMSTONE_PER_GOLD = 1;
 export const BASE_TAX_RATE = 0.10;
 export const TAX_INCREASE_PER_YEAR = 0.001;
@@ -299,7 +300,7 @@ export const GOLD_EXCHANGE_SELL_SPREAD = 0.05;
 // applies: starter & unemployment grants are FIAT-only and never become gold,
 // so they are excluded from real-money withdrawal by construction.
 export const GOLD_CASHOUT_FEE_RATE = 0.20;
-export const FIAT_PER_USD = 1000;
+export const FIAT_PER_USD = 100;
 
 // ── BANCO OMBRA Exchange Counter ─────────────────────────────────────────────
 // Flat configurable spread taken on every in-game currency swap (FIAT/GOLD/BTC/

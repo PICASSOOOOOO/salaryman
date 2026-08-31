@@ -288,6 +288,13 @@
       "when": 1788148800000,
       "tag": "0040_chat_read_cursor_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1788235200000,
+      "tag": "0041_live_gold_economy",
+      "breakpoints": true
     }
   ]
 }

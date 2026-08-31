@@ -14,7 +14,7 @@ import { z } from "zod/v4";
  *
  * Once `accruedCents - prepaidCents >= NEXT_BILL_THRESHOLD_CENTS` (default
  * $20), the billing waterfall fires:
- *   1. ƒ FIAT (in-game) at $1 = ƒ1000
+ *   1. ƒ FIAT (in-game) at $1 = ƒ100
  *   2. Gold balance at $1 = 0.005 oz
  *   3. USD via Stripe (requires connected payment method)
  *   4. BTC at spot rate (requires connected wallet)

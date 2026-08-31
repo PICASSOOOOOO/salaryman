@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable, playerLedgerTable, playerCityVisasTable } from "@workspace/db";
+import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable, playerLedgerTable, playerCityVisasTable, playerGoldAccountsTable } from "@workspace/db";
 import { CHARACTER_TEMPLATE_CATALOG } from "../lib/salaryman-art";
 import { eq, ne, and, or, inArray, sql } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
@@ -28,7 +28,7 @@ const router: IRouter = Router();
 // This is fire-and-forget (caller `.catch()`es); a failure here NEVER breaks the
 // save response.
 
-const FIAT_PER_GOLD_SAVE = 100_000; // mirrors gameSystems.ts FIAT_PER_GOLD
+const FIAT_PER_GOLD_SAVE = 1_000; // mirrors gameSystems.ts FIAT_PER_GOLD
 const NEGATIVE_DAY_INTERVAL_MS = 3_600_000; // 1 real hour = 1 in-game day
 
 function num(v: unknown, fallback = 0): number {
@@ -362,6 +362,16 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // snapshot; neither the top-level nor JSON blob can mint or restore FIAT.
     const wallet = await getSpendableFiat(req.user.id);
     applyAuthoritativeSalarySnapshot(incoming, wallet.balance);
+    // GOLD is also server-owned. The migration seeded existing holdings once;
+    // all later browser saves receive the ledger value and can never mint GOLD.
+    await db.insert(playerGoldAccountsTable)
+      .values({ userId: req.user.id, slotIndex: slot })
+      .onConflictDoNothing();
+    const [goldAccount] = await db.select({ balanceTenths: playerGoldAccountsTable.balanceTenths })
+      .from(playerGoldAccountsTable)
+      .where(and(eq(playerGoldAccountsTable.userId, req.user.id), eq(playerGoldAccountsTable.slotIndex, slot)))
+      .limit(1);
+    incoming.goldBalance = (goldAccount?.balanceTenths ?? 0) / 10;
     // Dog companion names are GLOBALLY unique — enforced at this authoritative
     // write path so a duplicate can NEVER persist even if a client bypasses the
     // /dog-name-available preflight (or two adoptions race past it). We only

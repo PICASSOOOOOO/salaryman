@@ -104,6 +104,7 @@ import cityVisasRouter from "./city-visas";
 import vendingRouter from "./vending";
 import gameplayFiatRouter from "./gameplay-fiat";
 import gameplayWorldEconomyRouter from "./gameplay-world-economy";
+import goldEconomyRouter from "./gold-economy";
 import marketplaceRouter from "./marketplace";
 
 const router: IRouter = Router();
@@ -164,6 +165,7 @@ router.use(adminRouter);
 router.use(businessOpsRouter);
 router.use(bankRouter);
 router.use(economyRouter);
+router.use(goldEconomyRouter);
 router.use(cfRouter);
 router.use(creditRouter);
 router.use(taxCollectorRouter);

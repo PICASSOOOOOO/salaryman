@@ -14,7 +14,7 @@ export { INSTALL_TARGET_TYPES, type InstallTargetType };
  *
  * Pricing model (driven by `techTier`):
  *  - Every item has a FIAT price (ƒ) — low-tech gear is cheap, high-tech is
- *    very expensive. FIAT is the in-game currency ($1 = ƒ1000).
+ *    very expensive. FIAT is the in-game currency ($1 = ƒ100).
  *  - Premium high-tech items (tier ≥ 4) ALSO carry a real-money `priceUsd`
  *    so they can be bought with a Stripe card checkout, not just ground out
  *    in FIAT.

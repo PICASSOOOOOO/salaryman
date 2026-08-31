@@ -88,6 +88,7 @@ export * from "./real-estate-listings";
 export * from "./business-listings";
 export * from "./art-assets";
 export * from "./bank";
+export * from "./player-gold";
 export * from "./player-ledger";
 export * from "./player-exploration";
 export * from "./cf-submissions";

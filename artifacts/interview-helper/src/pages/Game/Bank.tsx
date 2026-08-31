@@ -62,7 +62,7 @@ const TX_TONE: Record<string, string> = {
   payroll:  "text-emerald-300",
 };
 
-type Tab = "overview" | "ledger" | "transfer" | "finance" | "debt" | "statements" | "cards";
+type Tab = "overview" | "ledger" | "transfer" | "debt" | "statements" | "cards";
 
 type MarketIndex = {
   btcUsd: number;
@@ -117,7 +117,6 @@ export default function GameBank() {
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window === "undefined") return "overview";
     const requested = new URLSearchParams(window.location.search).get("tab");
-    if (requested === "finance") return "finance";
     if (requested === "debt" || requested === "credit") return "debt";
     return "overview";
   });
@@ -138,23 +137,10 @@ export default function GameBank() {
   const { code: curCode, info: cur, setCurrency } = useCurrency();
   const localCode = getCityCurrencyCode(getActiveCityId());
 
-  // BTC / FX market index (BTC-pegged economy spine).
+  // Detailed live market data is intentionally confined to the Economy page.
   const [market, setMarket] = useState<MarketIndex | null>(null);
   useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const r = await apiFetch("/api/real-estate/market-index");
-        if (!r.ok) return;
-        const j = (await r.json()) as MarketIndex;
-        if (!alive) return;
-        setLiveRates(j.fx);
-        setMarket(j);
-      } catch { /* ignore */ }
-    };
-    void load();
-    const id = setInterval(load, 60_000);
-    return () => { alive = false; clearInterval(id); };
+    setMarket(null);
   }, []);
 
   // Credit dossier: score, loan eligibility odds, active plan / debt.
@@ -408,7 +394,6 @@ export default function GameBank() {
             ["overview",   "OVERVIEW",   PiggyBank],
             ["ledger",     "TRANSACTIONS", Receipt],
             ["transfer",   "TRANSFER",   ArrowLeftRight],
-            ["finance",    "FINANCE",    Bitcoin],
             ["debt",       "DEBT",       FileWarning],
             ["statements", "STATEMENTS", Lock],
             ["cards",      "CARDS",      CreditCard],
@@ -541,9 +526,6 @@ export default function GameBank() {
           <TransferForm accounts={accounts} onTransfer={transfer} />
         )}
 
-        {tab === "finance" && (
-          <MarketPanel market={market} curCode={curCode} cur={cur} localCode={localCode} />
-        )}
 
         {tab === "debt" && (
           <DebtPanel credit={credit} loan={loan} plan={plan} loading={creditLoading} onChanged={refreshDebtWorkspace} />

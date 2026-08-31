@@ -17,8 +17,7 @@ import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/sou
 import { getAmbianceEnabled, getMusicEnabled, subscribeAudioSettings } from '@/lib/audio-settings';
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
-import { apiFetch, FIAT_CHANGED_EVENT } from '@/lib/api-client';
-import { setLiveRates, getCityCurrency, getCityCurrencyCode, getCityCostMultipliers } from '@/lib/currency';
+import { apiFetch } from '@/lib/api-client';
 import { NetWorthHUD } from '@/components/NetWorthHUD';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
@@ -247,8 +246,7 @@ export default function PabloOffice() {
     })();
     return () => { mounted = false; };
   }, []);
-  // Full-screen office chrome: collapsible economy drawer, help/tutorial overlays.
-  const [economyOpen, setEconomyOpen] = useState(false);
+  // Full-screen office chrome: help/tutorial overlays.
   const [showHelp, setShowHelp] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
   // Discovery onboarding — the story is no longer started by a BEGIN STORY
@@ -289,66 +287,6 @@ export default function PabloOffice() {
     return () => clearInterval(iv);
   }, [surveillance]);
 
-  // ECONOMY BAR live data. The bar reads the AUTHORITATIVE bank ledger (sum of
-  // FIAT accounts) — not the legacy client `citySave.salary` — plus the live
-  // market index (BTC price, USD→ƒ/Gold conversions, FX). This keeps the office
-  // economy bar consistent with Banco Ombra and the nav ticker.
-  const [bankFiat, setBankFiat] = useState<number | null>(null);
-  const [goldOz, setGoldOz] = useState<number>(0);
-  const [market, setMarket] = useState<{
-    btcUsd: number;
-    multiplier: number;
-    conversion: { usdToFiat: number; usdToGoldOz: number; btcToFiat: number; btcToGoldOz: number };
-    fx?: Record<string, number>;
-    cityMultipliers?: Record<string, { labor: number; property: number }>;
-  } | null>(null);
-
-  // Live FIAT + GOLD balances from the bank ledger.
-  useEffect(() => {
-    if (embed) return;
-    let alive = true;
-    const load = async () => {
-      try {
-        const r = await apiFetch('/api/economy/bank/accounts');
-        if (!r.ok) { if (alive) setBankFiat(null); return; }
-        const j = (await r.json()) as { accounts?: { balance?: number; currency?: string }[] };
-        if (!alive) return;
-        const accts = j.accounts ?? [];
-        setBankFiat(accts.filter((a) => (a.currency ?? 'FIAT') === 'FIAT').reduce((s, a) => s + (a.balance ?? 0), 0));
-        setGoldOz(accts.filter((a) => a.currency === 'GOLD').reduce((s, a) => s + (a.balance ?? 0), 0));
-      } catch { if (alive) setBankFiat(null); }
-    };
-    load();
-    const id = setInterval(load, 30_000);
-    let debounce: ReturnType<typeof setTimeout> | null = null;
-    const onFiatChanged = () => { if (debounce) clearTimeout(debounce); debounce = setTimeout(load, 400); };
-    window.addEventListener(FIAT_CHANGED_EVENT, onFiatChanged);
-    return () => {
-      alive = false;
-      clearInterval(id);
-      if (debounce) clearTimeout(debounce);
-      window.removeEventListener(FIAT_CHANGED_EVENT, onFiatChanged);
-    };
-  }, [embed]);
-
-  // Live market index (BTC / FX / conversions). Feeds the display-currency layer.
-  useEffect(() => {
-    if (embed) return;
-    let alive = true;
-    const load = async () => {
-      try {
-        const r = await apiFetch('/api/real-estate/market-index');
-        if (!r.ok) return;
-        const j = await r.json();
-        if (!alive) return;
-        setLiveRates(j.fx);
-        setMarket(j);
-      } catch { /* ignore */ }
-    };
-    load();
-    const id = setInterval(load, 60_000);
-    return () => { alive = false; clearInterval(id); };
-  }, [embed]);
 
   // Quick keys (desktop): Z cycle camera, C toggle CCTV/live, H/? help, Esc → hub.
   // WASD/E are owned by PixelOffice and never overlap these. Suspended while the
@@ -732,55 +670,6 @@ export default function PabloOffice() {
   const economyH = compactHud ? 44 : 36;
   const officeAreaH = Math.max(240, vh - HEADER_H - economyH);
 
-  // ─── ECONOMY BAR derived readouts (BTC-pegged, real balances) ───
-  // Local currency is auto-derived from the realm/city the player is in
-  // (Huda → VND, Minx → USD). All money math goes through the live market
-  // index so the bar stays consistent with Banco Ombra & the nav ticker.
-  const localCcyCode = getCityCurrencyCode(getActiveCityId());
-  const localCcy = getCityCurrency(getActiveCityId());
-  const GOLD_CASHOUT_FEE = 0.2; // mirrors server GOLD_CASHOUT_FEE_RATE
-  const walletFiat = bankFiat;
-  const usdPerOz = market && market.conversion.usdToGoldOz > 0 ? 1 / market.conversion.usdToGoldOz : 0;
-  const fiatPerOz = market ? usdPerOz * market.conversion.usdToFiat : 0;
-  const netWorthFiat = walletFiat != null ? walletFiat + goldOz * fiatPerOz : null;
-  const withdrawUsd = goldOz * usdPerOz * (1 - GOLD_CASHOUT_FEE);
-  const btcInLocal = market ? market.btcUsd * localCcy.ratePerUsd : 0;
-  const fiatPerLocal = market ? market.conversion.usdToFiat / localCcy.ratePerUsd : 0;
-  const fallbackCityRates = getCityCostMultipliers(getActiveCityId(), market?.multiplier ?? 1);
-  const activeCityRates = market?.cityMultipliers?.[getActiveCityId()] ?? fallbackCityRates;
-  const minxCityRates = market?.cityMultipliers?.minx_city ?? getCityCostMultipliers('minx_city', market?.multiplier ?? 1);
-  const hudaCityRates = market?.cityMultipliers?.huda_city ?? getCityCostMultipliers('huda_city', market?.multiplier ?? 1);
-  const cheapestCity = hudaCityRates.property <= minxCityRates.property ? 'HUDA' : 'MINX';
-  const cheapestProperty = Math.min(hudaCityRates.property, minxCityRates.property);
-  const activeCityLabel = getActiveCityId() === 'huda_city' ? 'HUDA' : 'MINX';
-  const citySpreadPct = cheapestProperty > 0 ? Math.max(0, (activeCityRates.property / cheapestProperty - 1) * 100) : 0;
-  const spreadSummary = activeCityLabel === cheapestCity
-    ? `${activeCityLabel} LOWEST`
-    : `${activeCityLabel} +${Math.round(citySpreadPct)}% vs ${cheapestCity}`;
-  // Salary readout: verified hourly wage once a work visa clears, else the flat
-  // unemployment stipend per game-day.
-  const salaryReadout = verifiedSalary?.verified
-    ? `ƒ${verifiedSalary.hourlyRate.toLocaleString()}/HR`
-    : `ƒ${(salary?.perGameDay ?? 500).toLocaleString()}/DAY`;
-  const salaryLabel = verifiedSalary?.verified ? 'SALARY' : 'STIPEND';
-  const econFmt = (n: number, max = 0) =>
-    isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: max }) : '—';
-  const economyCells: [string, string, string][] = [
-    [salaryLabel, salaryReadout, 'rgba(56,189,248,.85)'],
-    ['WALLET', walletFiat != null ? `ƒ${walletFiat.toLocaleString()}` : '—', 'rgba(180,255,100,.9)'],
-    ['NET WORTH', netWorthFiat != null ? `ƒ${Math.round(netWorthFiat).toLocaleString()}` : '—', 'rgba(120,200,255,.9)'],
-    ['GOLD', `${econFmt(goldOz, 3)} oz`, 'rgba(255,204,0,.9)'],
-    ['BTC', market ? `${localCcy.symbol}${econFmt(btcInLocal)}` : '—', 'rgba(251,146,60,.9)'],
-    ['EXCHANGE', market ? `1 ${localCcyCode} → ƒ${econFmt(fiatPerLocal, 2)}` : '—', 'rgba(217,140,255,.9)'],
-    ['LOCAL', `${localCcyCode} ${localCcy.symbol}`, 'rgba(120,255,190,.9)'],
-    ['WITHDRAW', market ? `$${econFmt(withdrawUsd, 2)}` : '—', 'rgba(120,255,190,.9)'],
-    ['SPREAD', market ? spreadSummary : '—', 'rgba(255,190,100,.95)'],
-  ];
-  // Collapsed-strip summary: live wallet + BTC so the headline reads true even
-  // before the drawer is opened.
-  const economyStrip = walletFiat != null
-    ? `ƒ${walletFiat.toLocaleString()} WALLET${market ? ` · BTC ${localCcy.symbol}${econFmt(btcInLocal)} · SPREAD ${spreadSummary}` : ''}`
-    : 'LOADING…';
   // Camera viewport — full-bleed now that the global NavBar is hidden on /office.
   // Prefer the measured pane (exact fill, safe-area aware); fall back to the
   // vh-minus-chrome estimate for the very first paint before the observer fires.
@@ -1297,76 +1186,28 @@ export default function PabloOffice() {
         )}
       </div>
 
-      {/* ECONOMY — collapsible BOTTOM drawer (the top/bottom split). Click the
-          bar to expand the city ledger; collapsed it's just a thin strip so the
-          floor stays full-bleed. Hidden in the embedded monitor. */}
+      {/* One Economy system: the office only links to the canonical page. */}
       {!embed && (
-      <section
-         onClick={() => { playNav(); navigateFromOffice('/game/bank?tab=finance'); }}
-        title="Open Banco Ombra"
-        style={{
-          flex: '0 0 auto',
-          height: economyH,
-          boxSizing: 'border-box',
-          borderTop: '1px solid rgba(56,189,248,.25)',
-          background: 'rgba(5,8,10,.9)',
-          position: 'relative',
-          cursor: 'pointer',
-        }}
-      >
-        <div
+        <button
+          type="button"
+          onClick={() => { playNav(); navigateFromOffice('/game/economy'); }}
           style={{
-            height: 36, boxSizing: 'border-box',
+            flex: '0 0 auto',
+            height: 36,
+            boxSizing: 'border-box',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%',
+            border: 0,
+            borderTop: '1px solid rgba(56,189,248,.25)',
+            background: 'rgba(5,8,10,.9)',
             color: 'rgba(56,189,248,.7)',
             font: 'inherit', fontSize: '.6rem', letterSpacing: '.2em', padding: '0 .9rem',
+            cursor: 'pointer',
           }}
         >
-          <span>ECONOMY · {economyStrip}</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
-            <span style={{ color: 'rgba(56,189,248,.5)' }}>BANCO OMBRA →</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); playClick(); setEconomyOpen(o => !o); }}
-              style={{
-                border: 'none', background: 'transparent', cursor: 'pointer',
-                font: 'inherit', fontSize: '.6rem', letterSpacing: '.2em', color: 'rgba(56,189,248,.7)', padding: 0,
-              }}
-            >
-              {economyOpen ? '▾ HIDE' : '▴ SHOW'}
-            </button>
-          </span>
-        </div>
-        {economyOpen && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              bottom: '100%',
-              left: 0,
-              right: 0,
-              background: 'rgba(5,8,10,.96)',
-              borderTop: '1px solid rgba(56,189,248,.25)',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-              gap: '.4rem 1.1rem',
-              padding: '.6rem .9rem',
-              zIndex: 20,
-            }}
-          >
-            {economyCells.map(([label, value, color]) => (
-              <div
-                key={label}
-                 onClick={() => { playNav(); navigateFromOffice('/game/bank?tab=finance'); }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '1px', cursor: 'pointer' }}
-              >
-                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
-                <span style={{ fontSize: '.85rem', color }}>{value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+          <span>ECONOMY · ONE FIAT/GOLD SYSTEM</span>
+          <span style={{ color: 'rgba(56,189,248,.5)' }}>OPEN ECONOMY →</span>
+        </button>
       )}
 
       {/* HELP overlay (key: H / ?) — quick-key cheat sheet. */}

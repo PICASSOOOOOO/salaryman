@@ -137,20 +137,6 @@ export default function BusinessServices() {
     laborMultiplier,
   };
 
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const r = await apiFetch("api/real-estate/market-index");
-        if (!r.ok) return;
-        const j = await r.json();
-        if (alive) setMarket(j);
-      } catch { /* keep local fallback */ }
-    };
-    void load();
-    const id = setInterval(load, 60_000);
-    return () => { alive = false; clearInterval(id); };
-  }, []);
 
   const loadListings = useCallback(async () => {
     try {
