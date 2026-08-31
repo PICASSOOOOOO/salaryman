@@ -6,6 +6,8 @@ SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered execut
 
 **Core product direction:** SALARYMAN is an office simulator. The office is a living, playable workplace rather than a decorative lobby or menu launcher: rooms, desks, staff routines, purchasable furnishings, utilities, privacy, proximity audio, phones, terminals, and business tools should be represented as believable office operations. Dense app features should be discoverable through physical office objects and remain accessible through the in-world terminal.
 
+**Current roadmap gate:** The outside world remains locked while the office simulation is mastered. Prioritize the office experience, phone systems, productivity tools, automation, staff workflows, and the physical-object pathways that connect them. Resume the original open-world game direction only after these simulation systems are stable, useful, and coherent.
+
 ## User Preferences
 
 I prefer concise and direct communication. When suggesting code changes, prioritize modern TypeScript features and functional programming paradigms where appropriate. For development workflow, I favor an iterative approach with clear, small, and testable changes. Please ask for confirmation before implementing significant architectural changes or altering core game mechanics. Do not make changes to the `artifacts/api-server/src/lib/resend.ts` file regarding Resend API key handling.
