@@ -195,6 +195,11 @@ function resolveVoiceId(character?: string, voiceIdOverride?: string): string {
   return process.env.ELEVENLABS_VOICE_ID || PABLO_VOICE_ID;
 }
 
+function isSignatureVoice(character?: string): boolean {
+  const key = character?.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  return key === "PABLO" || key === "MILA";
+}
+
 async function handleTts(req: any, res: any) {
   const { text, character, voiceId: voiceIdOverride } = req.body as {
     text?: string;
@@ -234,17 +239,29 @@ async function handleTts(req: any, res: any) {
         const buffer = Buffer.from(await elRes.arrayBuffer());
         res.setHeader("Content-Type", "audio/mpeg");
         res.setHeader("Content-Length", buffer.length);
+        res.setHeader("X-TTS-Provider", "elevenlabs");
+        res.setHeader("X-TTS-Character", character || "default");
         res.end(buffer);
         return;
       }
       const errBody = await elRes.text();
       console.warn("ElevenLabs TTS failed:", elRes.status, errBody);
-      if (elRes.status === 402) {
-        console.warn("ElevenLabs requires a paid plan for this voice. Falling back to browser TTS.");
-      }
     } catch (err) {
       console.warn("ElevenLabs TTS error:", err);
     }
+  }
+
+  // Pablo and Mila are voice-bound characters. A generic OpenAI fallback
+  // silently recasts them and discards their assigned ElevenLabs accent,
+  // making a credential/configuration problem sound like a creative choice.
+  // Fail explicitly instead; the client keeps the written reply visible.
+  if (isSignatureVoice(character)) {
+    res.status(503).json({
+      error: "Assigned character voice is temporarily unavailable",
+      provider: "elevenlabs",
+      character,
+    });
+    return;
   }
 
   try {
@@ -267,6 +284,7 @@ async function handleTts(req: any, res: any) {
         const buffer = Buffer.from(await directRes.arrayBuffer());
         res.setHeader("Content-Type", "audio/mpeg");
         res.setHeader("Content-Length", buffer.length);
+      res.setHeader("X-TTS-Provider", "openai");
         res.end(buffer);
         return;
       }
@@ -279,6 +297,7 @@ async function handleTts(req: any, res: any) {
     const buffer = await textToSpeech(text, "onyx", "mp3");
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Content-Length", buffer.length);
+    res.setHeader("X-TTS-Provider", "openai");
     res.end(buffer);
   } catch (err) {
     console.error("TTS error (all engines failed):", err);
