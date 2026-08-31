@@ -4,6 +4,8 @@
 
 SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered executive productivity platform. It unifies business operations through integrated AI agents, communication tools, creative suites, and CRM functionalities. The platform offers specialized AI bots, a free AI assistant named "Pablo," interview preparation tools, content creation, and video intelligence. Its primary goal is to enhance professional productivity and creative output using advanced AI.
 
+**Core product direction:** SALARYMAN is an office simulator. The office is a living, playable workplace rather than a decorative lobby or menu launcher: rooms, desks, staff routines, purchasable furnishings, utilities, privacy, proximity audio, phones, terminals, and business tools should be represented as believable office operations. Dense app features should be discoverable through physical office objects and remain accessible through the in-world terminal.
+
 ## User Preferences
 
 I prefer concise and direct communication. When suggesting code changes, prioritize modern TypeScript features and functional programming paradigms where appropriate. For development workflow, I favor an iterative approach with clear, small, and testable changes. Please ask for confirmation before implementing significant architectural changes or altering core game mechanics. Do not make changes to the `artifacts/api-server/src/lib/resend.ts` file regarding Resend API key handling.
