@@ -138,7 +138,16 @@ export function NavBar() {
         <div className="flex flex-col gap-1">
           <div
             className="flex items-center gap-2.5 cursor-pointer group/logo"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(isAuthenticated ? '/office' : '/')}
+            role="link"
+            tabIndex={0}
+            aria-label={isAuthenticated ? 'Return to office floor' : 'Go to SALARYMAN home'}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                navigate(isAuthenticated ? '/office' : '/');
+              }
+            }}
           >
             <div className="w-7 h-7 rounded-md flex items-center justify-center">
               <PicassoLogo size={22} gap={2} glow />
@@ -267,10 +276,15 @@ export function NavBar() {
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${active ? activeCls : idleCls}`}
+                className={`app-control relative flex items-center gap-1.5 px-2.5 text-xs font-mono tracking-widest uppercase ${active ? activeCls : idleCls}`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 {tab.id === 'org' ? (userOrg?.name ?? 'ORG') : tab.label}
+                 {tab.id === 'comms' && commsCount > 0 && (
+                   <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+                     {commsCount > 99 ? '99+' : commsCount}
+                   </span>
+                 )}
               </button>
             );
           })}
@@ -279,7 +293,7 @@ export function NavBar() {
           <div className="relative" ref={moreRef}>
             <button
               onClick={() => setMoreOpen(o => !o)}
-              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
+                 className={`app-control relative flex items-center gap-1.5 px-2.5 text-xs font-mono tracking-widest uppercase ${
                 hasActiveMore || moreOpen
                   ? 'bg-sky-500/10 text-sky-300 border-sky-500/25'
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/5'
@@ -287,11 +301,6 @@ export function NavBar() {
             >
               MORE
               <ChevronDown className={`w-2.5 h-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
-              {commsCount > 0 && !moreOpen && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
-                  {commsCount > 99 ? '99+' : commsCount}
-                </span>
-              )}
             </button>
             {moreOpen && createPortal(
               <div ref={morePanelRef} className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
@@ -400,7 +409,7 @@ export function NavBar() {
               <button
                 onClick={() => login()}
                 title={isHome ? "Start Work" : t('nav.login')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 hover:bg-white/8 transition-colors"
+                 className="app-control flex items-center gap-1.5 px-3 text-xs font-mono tracking-widest uppercase"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 {isHome ? "START WORK" : t('nav.login')}

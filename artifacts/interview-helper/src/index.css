@@ -123,6 +123,24 @@ body:not(.game-route) .rounded-lg {
     -webkit-user-select: none;
     user-select: none;
   }
+  .app-control {
+    min-height: 32px;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgb(212 212 216);
+    transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, opacity 150ms ease, transform 150ms ease;
+  }
+  .app-control:hover {
+    border-color: rgba(125, 211, 252, 0.35);
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+  }
+  .app-control-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+  }
   /* iOS auto-zooms <input> when font-size <16px. Force 16px on mobile. */
   @media (max-width: 640px) {
     input, select, textarea {
@@ -130,6 +148,9 @@ body:not(.game-route) .rounded-lg {
     }
     .mobile-tap-target {
       min-width: 44px;
+      min-height: 44px;
+    }
+    .app-control {
       min-height: 44px;
     }
     .mobile-scroll-region {

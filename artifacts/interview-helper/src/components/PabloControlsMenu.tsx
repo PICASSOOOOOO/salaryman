@@ -34,21 +34,21 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
     <div ref={rootRef} className="relative" data-testid="pablo-controls-menu">
       <button
         type="button"
-        aria-label="Open Pablo controls"
+        aria-label="Open settings"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-2 text-[10px] font-medium tracking-[0.14em] text-white/75 backdrop-blur-md transition hover:border-violet-300/35 hover:text-white"
+        className="app-control mobile-tap-target flex items-center gap-1.5 bg-black/45 px-3 text-[10px] font-medium tracking-[0.14em] backdrop-blur-md"
       >
-        <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
-        <span className="hidden min-[520px]:inline">CONTROLS</span>
+        <SlidersHorizontal className="app-control-icon" aria-hidden />
+        <span className="hidden min-[520px]:inline">SETTINGS</span>
         <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
       {open && (
         <div
           role="menu"
-          aria-label="Pablo controls"
+          aria-label="Pablo settings"
           className="absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[min(18rem,calc(100vw-1rem))] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
         >
           <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] p-2.5">

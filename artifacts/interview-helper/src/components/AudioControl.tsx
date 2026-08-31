@@ -182,12 +182,12 @@ export function AudioControl({
           </div>
 
           <Link
-            href="/game/settings"
+            href="/settings?section=game"
             onClick={() => setOpen(false)}
             className="mt-3 flex items-center gap-1.5 text-[9px] tracking-[0.2em] text-zinc-500 hover:text-cyan-300"
           >
             <SlidersHorizontal className="w-3 h-3" />
-            ALL SOUND SETTINGS
+            SOUND SETTINGS
           </Link>
         </div>
       )}
@@ -203,7 +203,7 @@ export function AudioControl({
         aria-label={open ? "Close audio controls" : "Open audio controls"}
         title="Music & sound"
         data-testid="audio-control-toggle"
-        className={`group w-7 h-7 flex items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-200 hover:opacity-100 hover:scale-105 focus-visible:opacity-100 active:opacity-100 ${
+        className={`app-control mobile-tap-target group w-8 h-8 flex items-center justify-center rounded-lg backdrop-blur-sm hover:opacity-100 hover:scale-105 focus-visible:opacity-100 active:opacity-100 ${
           open ? "opacity-100" : muted ? "opacity-75" : "opacity-40"
         } ${
           open
@@ -216,9 +216,9 @@ export function AudioControl({
         }`}
       >
         {muted ? (
-          <VolumeX className="w-3.5 h-3.5 text-rose-300/90" />
+          <VolumeX className="app-control-icon text-rose-300/90" />
         ) : (
-          <Volume2 className="w-3.5 h-3.5 text-zinc-400 group-hover:text-cyan-300 transition-colors" />
+          <Volume2 className="app-control-icon text-zinc-400 group-hover:text-cyan-300 transition-colors" />
         )}
       </button>
     </div>

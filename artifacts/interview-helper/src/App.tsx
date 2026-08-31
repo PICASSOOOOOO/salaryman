@@ -31,6 +31,7 @@ import {
   clearStoryBeginIntent,
   fetchServerStoryActive,
 } from "@/lib/story-gate";
+import { MessageCircle } from "lucide-react";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -221,6 +222,24 @@ function LoadingFallback() {
     >
       LOADING...
     </div>
+  );
+}
+
+function FullscreenPabloAccess({ inGame }: { inGame: boolean }) {
+  return (
+    <Link
+      href="/pablo"
+      className="app-control mobile-tap-target fixed z-[260] inline-flex h-8 w-8 items-center justify-center rounded-lg bg-black/55 backdrop-blur-md"
+      style={{
+        top: inGame ? "calc(env(safe-area-inset-top, 0px) + 8px)" : "calc(env(safe-area-inset-top, 0px) + 12px)",
+        right: inGame ? "calc(env(safe-area-inset-right, 0px) + 80px)" : "calc(env(safe-area-inset-right, 0px) + 12px)",
+      }}
+      aria-label="Open Pablo"
+      title="Open Pablo"
+      data-testid="fullscreen-pablo-access"
+    >
+      <MessageCircle className="app-control-icon text-violet-300" aria-hidden />
+    </Link>
   );
 }
 
@@ -429,6 +448,12 @@ function AppShell() {
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute && !pathname.startsWith("/phone");
+  const showFullscreenPabloAccess =
+    isAuthenticated &&
+    isFullscreenRoute &&
+    !isEmbed &&
+    !pathname.startsWith("/pablo") &&
+    !pathname.startsWith("/immigration");
 
   // GLOBAL GATE / FRONT DOOR. Before a visitor passes security (signs in),
   // the ONLY surface they can reach is the front door — the Pablo nebula —
@@ -570,6 +595,7 @@ function AppShell() {
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
         {isAuthenticated && !isEmbed && <NotificationToaster />}
+        {showFullscreenPabloAccess && <FullscreenPabloAccess inGame={isGameRoute} />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into

@@ -7,7 +7,6 @@ import {
   Megaphone,
   MessageSquare,
   Network,
-  Phone,
   Settings,
   ShieldCheck,
   Terminal,
@@ -27,14 +26,13 @@ export type AppNavItem = {
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "pablo", path: "/pablo", label: "PABLO", icon: Terminal },
-  { id: "phone", path: "/phone?tab=chat", label: "PHONE", icon: Phone },
+  { id: "comms", path: "/phone?tab=chat", label: "COMMS", icon: MessageSquare },
   { id: "bots", path: "/pledge", label: "AGENTS", icon: Bot },
   { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
   { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "comms", path: "/phone?tab=chat", label: "COMMS", icon: MessageSquare, authOnly: true },
   { id: "console", path: "/console", label: "TERMINAL", icon: Code2 },
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase },
   { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
@@ -54,7 +52,6 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
         ["/game/map", "/game/economy", "/game/bank", "/game/character", "/game/settings"].includes(pathname);
     case "bots":
       return pathname.startsWith("/bots") || pathname === "/pledge";
-    case "phone":
     case "comms":
       return pathname.startsWith("/phone") || pathname === "/comms";
     case "org":

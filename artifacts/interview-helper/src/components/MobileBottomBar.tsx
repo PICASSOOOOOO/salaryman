@@ -182,11 +182,16 @@ export function MobileModuleNav() {
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
-              className={`mobile-tap-target flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
+              className={`mobile-tap-target relative flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
                 active ? activeColor : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
               <Icon className={`w-6 h-6 ${active ? activeColor : ''}`} />
+              {tab.id === 'comms' && isAuthenticated && commsCount > 0 && (
+                <span className="absolute top-0 right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+                  {commsCount > 99 ? '99+' : commsCount}
+                </span>
+              )}
             </button>
           );
         })}
@@ -204,11 +209,6 @@ export function MobileModuleNav() {
             <span className="text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none">
               MORE
             </span>
-            {isAuthenticated && commsCount > 0 && !dropdownOpen && (
-              <span className="absolute top-0 right-2 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
-                {commsCount > 99 ? '99+' : commsCount}
-              </span>
-            )}
           </button>
 
           {dropdownOpen && createPortal(

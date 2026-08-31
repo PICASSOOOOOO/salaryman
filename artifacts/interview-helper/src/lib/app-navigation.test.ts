@@ -14,14 +14,14 @@ import {
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
-    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "bots", "office", "org"]);
+    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "comms", "bots", "office", "org"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "comms", "console", "business", "creative", "marketing", "settings", "profile", "admin",
+      "console", "business", "creative", "marketing", "settings", "profile", "admin",
     ]);
   });
 
   it("shares active matching across desktop and mobile renderers", () => {
-    const phone = PRIMARY_NAV_ITEMS.find(item => item.id === "phone")!;
+    const phone = PRIMARY_NAV_ITEMS.find(item => item.id === "comms")!;
     const office = PRIMARY_NAV_ITEMS.find(item => item.id === "office")!;
     expect(isAppNavItemActive(phone, "/phone/recordings")).toBe(true);
     expect(isAppNavItemActive(office, "/game/map")).toBe(true);
