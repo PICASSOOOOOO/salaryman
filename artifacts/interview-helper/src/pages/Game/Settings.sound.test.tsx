@@ -5,7 +5,7 @@
 // DISPLAY and TERMINAL tabs. This one closes the last untested corner: the
 // GAME tab.
 //
-// The GAME tab's audio controls (Master / Music / SFX / Voice / Pablo Radio volume) and the
+// The GAME tab's audio controls (Master / Music / SFX / Voice / Shadow Radio volume) and the
 // "Mute all" toggle do NOT flow through the page's own game-settings store.
 // They go through the central audio store (`src/lib/audio-settings.ts`), which
 // persists VERBOSE keys (masterVolume, musicVolume, sfxVolume, voiceVolume,
@@ -144,7 +144,7 @@ describe("GameSettings General audio volume persistence", () => {
       ["Music", "musicVolume", "0.6"],
       ["SFX", "sfxVolume", "0.45"],
       ["Voice", "voiceVolume", "0.25"],
-      ["Pablo Radio volume", "soundtrackVolume", "0.7"],
+      ["Shadow Radio volume", "soundtrackVolume", "0.7"],
     ];
 
     for (const [label, key, value] of cases) {
@@ -180,7 +180,7 @@ describe("GameSettings General audio mute toggle", () => {
     expect(b.controlScheme).toBe("arrows");
 
     // Every slider is now disabled.
-    for (const label of ["Master", "Music", "SFX", "Voice", "Pablo Radio volume"]) {
+    for (const label of ["Master", "Music", "SFX", "Voice", "Shadow Radio volume"]) {
       expect(rowControl<HTMLInputElement>(label, "input[type=range]").disabled).toBe(true);
     }
 

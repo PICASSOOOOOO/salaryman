@@ -41,6 +41,23 @@ describe("Shadow Tower office projection", () => {
     route.forEach(tile => expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false));
   });
 
+  it("routes a tap on solid furniture to its nearest reachable walk-up tile", () => {
+    const plan = getShadowTowerPlan("minx_city", 2, "company");
+    const layout = officePropertyLayoutFromPlan(plan);
+    const blocked = getOfficeBlockedTiles(layout);
+    const radio = plan.objects.find((object) => object.kind === "radio")!;
+    const blockedCenter = {
+      col: radio.footprint.x + Math.floor(radio.footprint.cols / 2),
+      row: radio.footprint.y + Math.floor(radio.footprint.rows / 2),
+    };
+    expect(blocked.has(`${blockedCenter.col},${blockedCenter.row}`)).toBe(true);
+    const route = findOfficeRoute(layout, { col: plan.spawn.x, row: plan.spawn.y }, blockedCenter);
+    expect(route.length).toBeGreaterThan(0);
+    const destination = route.at(-1)!;
+    expect(blocked.has(`${destination.col},${destination.row}`)).toBe(false);
+    expect(Math.hypot(destination.col - blockedCenter.col, destination.row - blockedCenter.row)).toBeLessThanOrEqual(2);
+  });
+
   it("exposes upgrade objects and extra workstations from the same plan", () => {
     const layout = getShadowTowerOfficeLayout("huda_city", 9, "founder_team", ["extra_workstations", "operations_terminal"]);
     expect(layout.teamDesks).toHaveLength(SHADOW_TOWER_LISTINGS.founder_team.capacity + 4);

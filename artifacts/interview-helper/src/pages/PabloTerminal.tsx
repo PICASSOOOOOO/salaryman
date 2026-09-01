@@ -2098,9 +2098,9 @@ function PabloTerminalAuthed() {
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-          {/* Always-visible sign-in affordance for returning users. The
+          {/* Always-visible start-work affordance for returning users. The
               front door is a fullscreen route with no NavBar, so without
-              this button a logged-out visitor has no obvious way to log in
+               this button a logged-out visitor has no obvious way to enter
               — they'd have to know to TYPE "log in" to Pablo. Opens the
               same APPLY FOR A VISA modal (Replit + Discord) the chat funnel
               uses, so the actual OAuth path is identical and well-tested. */}
@@ -2110,10 +2110,10 @@ function PabloTerminalAuthed() {
               onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/immigration", hint: null }); }}
               data-testid="pablo-sign-in"
                className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-              title="Sign in"
+               title="Start work"
             >
               <LogIn className="w-3 h-3" />
-              SIGN IN
+               START WORK
             </button>
           )}
           {/* TEXT/VOICE toggle is now visible during the intro too. The
@@ -2391,7 +2391,7 @@ function PabloTerminalAuthed() {
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.15)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.7)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.5)"; }}
               >
-                SIGN IN
+                CONTINUE WITH REPLIT
               </button>
 
               {authProviders.discord && (

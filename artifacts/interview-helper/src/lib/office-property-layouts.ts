@@ -1,5 +1,7 @@
 import {
   getRecreationPlan,
+  getMezzaninePlan,
+  getRestFloorPlan,
   getShadowTowerPlan,
   type ShadowTowerArchetype,
   type ShadowTowerCity,
@@ -34,12 +36,17 @@ const glyphFor = (kind: string): OfficeStation["glyph"] =>
     kind === "atm" ? "atm" :
       kind === "vending_machine" ? "vending" :
         kind === "radio" ? "music" :
-          kind === "payphone" ? "payphone" : "comms";
+          kind === "payphone" ? "payphone" :
+            kind === "bed" ? "water_cooler" :
+              kind === "nurse_station" || kind === "doctor_station" ? "comms" :
+                kind === "work_board" ? "comms" : "comms";
 const labelFor = (id: string, kind: string) =>
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
     kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
-      kind === "radio" ? "PABLO RADIO" : kind === "payphone" ? "PAYPHONE" :
-      id.startsWith("rec-") ? id.slice(4).replace(/-/g, " ").toUpperCase() : id.toUpperCase().replace(/-/g, " ");
+      kind === "radio" ? "SHADOW RADIO" : kind === "payphone" ? "PAYPHONE" :
+      kind === "bed" ? "REST BED" : kind === "nurse_station" ? "NURSE" :
+        kind === "doctor_station" ? "DOCTOR" : kind === "work_board" ? "WORLD WORK BOARD" :
+          id.startsWith("rec-") ? id.slice(4).replace(/-/g, " ").toUpperCase() : id.toUpperCase().replace(/-/g, " ");
 
 export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey = `${plan.city}:${plan.floorNumber}`): OfficePropertyLayout {
   const objects = plan.objects;
@@ -60,9 +67,10 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
     radius: Math.max(30, Math.hypot(object.footprint.cols * 8, object.footprint.rows * 8) + 22),
     footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
   }));
-  const archetype = plan.floorType === "recreation"
-    ? "RECREATION · REC"
-    : workstations.length > 10 ? "COMPANY FLOOR" : "FOUNDER + TEAM FLOOR";
+  const archetype = plan.floorType === "recreation" ? "RECREATION · REC"
+    : plan.floorType === "mezzanine" ? "PUBLIC MEZZANINE · COMPUTER CAFE"
+      : plan.floorType === "rest" ? "REST WARD · CLINIC"
+        : workstations.length > 10 ? "COMPANY FLOOR" : "FOUNDER + TEAM FLOOR";
   return {
     propertyKey, label: archetype, representation: `${plan.city.replace("_", " ").toUpperCase()} · FLOOR ${plan.floorNumber}`,
     cols: plan.cols, rows: plan.rows, deskCols: workstations.length, deskRows: 1, capsules: 0,
@@ -80,6 +88,11 @@ export function getShadowTowerOfficeLayout(city: ShadowTowerCity, floorNumber: n
 
 export function getRecreationOfficeLayout(city: ShadowTowerCity): OfficePropertyLayout {
   return officePropertyLayoutFromPlan(getRecreationPlan(city), `${city}:recreation`);
+}
+
+export function getPublicFloorOfficeLayout(city: ShadowTowerCity, floor: 2 | 3): OfficePropertyLayout {
+  const plan = floor === 2 ? getMezzaninePlan(city) : getRestFloorPlan(city);
+  return officePropertyLayoutFromPlan(plan, `${city}:public:${floor}`);
 }
 
 /** Compatibility keys resolve to an archetype, never legacy geometry. */
@@ -117,7 +130,18 @@ export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, 
     if (next.col < 0 || next.row < 0 || next.col >= layout.cols || next.row >= layout.rows || blocked.has(key(next)) || previous.has(key(next))) continue;
     previous.set(key(next), queue[i]); queue.push(next);
   }
-  if (!previous.has(key(goal))) return []; const route: OfficeTile[] = []; let cursor: OfficeTile | null = goal;
+  // Taps land on what the player sees. For furniture that is usually the
+  // object's solid center tile, not the walkable interaction tile beside it.
+  // Resolve any blocked/unreachable tap to the closest tile the flood-fill can
+  // actually reach so touch, mouse and automated walk-up behavior agree.
+  const destination = previous.has(key(goal))
+    ? goal
+    : queue.reduce((nearest, candidate) => {
+        const distance = Math.hypot(candidate.col - goal.col, candidate.row - goal.row);
+        const nearestDistance = Math.hypot(nearest.col - goal.col, nearest.row - goal.row);
+        return distance < nearestDistance ? candidate : nearest;
+      }, start);
+  const route: OfficeTile[] = []; let cursor: OfficeTile | null = destination;
   while (cursor && key(cursor) !== key(start)) { route.push(cursor); cursor = previous.get(key(cursor)) ?? null; }
   return route.reverse();
 }

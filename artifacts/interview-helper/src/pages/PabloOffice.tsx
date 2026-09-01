@@ -52,6 +52,8 @@ interface CitySave {
   hp: number;
   maxHp: number;
   savings: number;
+  stamina: number;
+  taxDebt: number;
   createdAt?: string;
 }
 
@@ -208,7 +210,7 @@ export default function PabloOffice() {
   // There are only two views: LIVE (walk around, follow camera locked on the
   // player) and SURVEILLANCE (read-only CCTV, fixed full-floor overview). No
   // separate camera-zoom toggle — the view follows directly from the mode.
-  // Pablo Corp unemployment stipend — live wallet + floating "+ƒ" payouts.
+  // Compatibility wallet read; unemployed players receive no passive FIAT.
   // Server credits 500ƒ per in-game hour for the first 30 game days; the hook
   // polls + emits a pay event each time a whole game-hour lands.
   const { state: salary, payEvents: salaryPays } = useUnemploymentSalary(true);
@@ -359,6 +361,8 @@ export default function PabloOffice() {
       hp: Number(s.hp ?? 100),
       maxHp: Number(s.maxHp ?? 100),
       savings: Number(s.savings ?? 0),
+      stamina: Number((s.rec && typeof s.rec === 'object' ? (s.rec as { stamina?: unknown }).stamina : undefined) ?? s.energy ?? 100),
+      taxDebt: Number(s.taxDebt ?? s.inGameDebt ?? 0),
       createdAt: (s.createdAt as string | undefined) ?? fallbackCreatedAt,
     });
     let localLevel = 0;
@@ -722,7 +726,7 @@ export default function PabloOffice() {
         if (enabled) playSuccess();
         else playClick();
         toast({
-          title: enabled ? 'PABLO RADIO · ON AIR' : 'PABLO RADIO · OFF AIR',
+          title: enabled ? 'SHADOW RADIO · ON AIR' : 'SHADOW RADIO · OFF AIR',
           description: enabled
             ? 'Call Home is now playing on every tuned radio.'
             : 'The broadcast is paused. Your station position is saved.',
@@ -987,11 +991,13 @@ export default function PabloOffice() {
               <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 6, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                 <div style={{ pointerEvents: 'auto', background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
                   <NetWorthHUD
-                    netWorth={salary?.spendable ?? 0}
+                    netWorth={(salary?.spendable ?? 0) + (citySave?.savings ?? 0) + (citySave?.goldBalance ?? 0) * 1_000 - (citySave?.taxDebt ?? 0)}
                     cash={salary?.spendable ?? 0}
                     savings={citySave?.savings ?? 0}
                     gold={citySave?.goldBalance ?? 0}
-                    showStamina={false}
+                    fiatPerGold={1_000}
+                    stamina={citySave?.stamina ?? 100}
+                    showStamina
                     creditScore={officeCreditInfo?.score}
                     creditTier={officeCreditInfo?.tier}
                     compact
@@ -1011,9 +1017,9 @@ export default function PabloOffice() {
                     ƒ{(salary.spendable ?? 0).toLocaleString()}
                   </span>
                 </div>
-                {!salary.expired && (
-                  <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(180,255,100,.6)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
-                    SALARY ƒ{salary.perGameDay?.toLocaleString()}/DAY · ƒ{salary.perGameDay?.toLocaleString()} IN {Math.max(1, Math.ceil(salary.nextDayInMs / 60_000))}M
+                {!verifiedSalary?.verified && (
+                  <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(251,191,36,.68)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                    UNEMPLOYED · NO PASSIVE FIAT · USE THE WORK BOARD
                   </div>
                 )}
                 {verifiedSalary?.awaitingVerification && (

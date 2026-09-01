@@ -7,8 +7,8 @@ import {
   shadowTowerSelectedFloorsTable, shadowTowerWorkstationAssignmentsTable, type OrgRole,
 } from "@workspace/db";
 import {
-  SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getShadowTowerPlan,
-  isSupportedShadowTowerUpgrade, selectShadowTowerArchetype, type ShadowTowerCity,
+  BUSINESS_FLOOR_KINDS, BUSINESS_FLOOR_TEMPLATES, SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getShadowTowerPlan,
+  isSupportedShadowTowerUpgrade, quoteBusinessFitout, selectShadowTowerArchetype, type BusinessFloorKind, type BusinessFloorLaborMode, type ShadowTowerCity,
 } from "@workspace/api-zod/shadow-tower";
 import { spendFiat } from "../lib/fiat-wallet";
 import { canDoInOrg } from "../lib/org-permissions";
@@ -62,6 +62,14 @@ function safeFloor(floor: typeof shadowTowerFloorsTable.$inferSelect) {
 }
 
 router.get("/shadow-tower/catalog", (_req, res) => res.json({ listings: Object.values(SHADOW_TOWER_LISTINGS) }));
+router.get("/shadow-tower/business-templates", (_req, res) => res.json({
+  templates: Object.values(BUSINESS_FLOOR_TEMPLATES),
+  customizationOptions: [
+    { id: "palette:neon", label: "Neon palette" }, { id: "palette:industrial", label: "Industrial palette" },
+    { id: "signage:custom", label: "Custom sign package" }, { id: "fixture:premium", label: "Premium fixtures" },
+    { id: "fixture:security", label: "Security package" }, { id: "fixture:guest", label: "Guest comfort package" },
+  ],
+}));
 
 // Hydration endpoint: persisted selection wins; deterministic fallback never leaks a verifier.
 router.get("/shadow-tower/floors/current", requireAuth, async (req, res) => {
@@ -180,6 +188,47 @@ router.post("/shadow-tower/floors/:id/upgrades", requireAuth, async (req, res) =
   });
   if ("error" in result) { res.status(result.error === "forbidden" ? 403 : result.error === "funds" ? 402 : result.error === "expired" ? 410 : 404).json({ error: result.error }); return; }
   res.json({ floor: safeFloor(result.floor), duplicate: result.duplicate });
+});
+
+// Select a business-specific interior program without allowing the client to
+// mutate the shared floor shell. Materials are always paid; self-build records
+// labor units for the work board, while hire pays the server-derived crew fee.
+const FITOUT_OPTIONS = new Set(["palette:neon", "palette:industrial", "signage:custom", "fixture:premium", "fixture:security", "fixture:guest"]);
+router.post("/shadow-tower/floors/:id/business-fitout", requireAuth, async (req, res) => {
+  const id = Number(req.params.id); const actor = userId(req);
+  const kind = req.body?.kind as BusinessFloorKind;
+  const laborMode = req.body?.laborMode as BusinessFloorLaborMode;
+  const requestId = String(req.body?.requestId ?? "");
+  const options = Array.isArray(req.body?.options) ? req.body.options.filter((v: unknown): v is string => typeof v === "string" && FITOUT_OPTIONS.has(v)).slice(0, 6) : [];
+  if (!Number.isInteger(id) || !BUSINESS_FLOOR_KINDS.includes(kind) || !["self", "hire"].includes(laborMode) || !/^[0-9a-f-]{36}$/i.test(requestId)) {
+    res.status(400).json({ error: "Valid business kind, laborMode and requestId required" }); return;
+  }
+  const quote = quoteBusinessFitout(kind, laborMode, options.length);
+  const result = await db.transaction(async (tx) => {
+    const [floor] = await tx.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update").limit(1);
+    if (!floor) return { status: 404 as const, body: { error: "Floor not found" } };
+    const permitted = floor.ownerUserId === actor || !!(floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed);
+    if (!permitted) return { status: 403 as const, body: { error: "Owner or organization settings permission required" } };
+    const settings = (floor.settings && typeof floor.settings === "object" ? floor.settings : {}) as Record<string, unknown>;
+    const fitout = settings.businessFitout && typeof settings.businessFitout === "object" ? settings.businessFitout as Record<string, unknown> : {};
+    const processed = Array.isArray(fitout.processedRequestIds) ? fitout.processedRequestIds.filter((v): v is string => typeof v === "string") : [];
+    if (processed.includes(requestId)) return { status: 200 as const, body: { ok: true, duplicate: true, fitout } };
+    const paid = await spendFiat(tx, {
+      userId: actor, amountFiat: quote.totalFiat, description: `${BUSINESS_FLOOR_TEMPLATES[kind].label} fit-out`,
+      kind: "business_fitout", idempotencyKey: `business-fitout:${id}:${requestId}`,
+    });
+    if (!paid.ok) return { status: 402 as const, body: { error: "Insufficient funds", required: quote.totalFiat, balance: paid.spendable } };
+    const nextFitout = {
+      kind, options, laborMode, ...quote,
+      status: laborMode === "self" ? "labor_required" : "crew_paid",
+      selectedAt: new Date().toISOString(),
+      processedRequestIds: [...processed, requestId].slice(-80),
+    };
+    const [updated] = await tx.update(shadowTowerFloorsTable).set({ settings: { ...settings, businessFitout: nextFitout }, updatedAt: new Date() })
+      .where(eq(shadowTowerFloorsTable.id, id)).returning();
+    return { status: 200 as const, body: { ok: true, floor: safeFloor(updated), fitout: nextFitout, wallet: paid } };
+  });
+  res.status(result.status).json(result.body);
 });
 
 router.put("/shadow-tower/floors/:id/access", requireAuth, async (req, res) => {

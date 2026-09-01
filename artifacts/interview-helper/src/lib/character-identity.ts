@@ -247,6 +247,8 @@ export interface TemplateLook {
   hairColor?: string;
   hairStyle?: string;
   faceStyle?: string;
+  outfitStyle?: string;
+  outfitColor?: string;
 }
 
 // Adopt a full ready-made character template: body gender + faction garb (via
@@ -267,6 +269,8 @@ export function applyCharacterTemplate(
   if (isHex(look.hairColor)) next.hairColor = look.hairColor;
   if (look.hairStyle && APPEARANCE_HAIR_STYLES.some(h => h.id === look.hairStyle)) next.hairStyle = look.hairStyle as HairStyle;
   if (look.faceStyle && APPEARANCE_FACE_STYLES.some(f => f.id === look.faceStyle)) next.faceStyle = look.faceStyle as FaceStyle;
+  if (look.outfitStyle && APPEARANCE_OUTFIT_STYLES.some(o => o.id === look.outfitStyle)) next.outfitStyle = look.outfitStyle as OutfitStyle;
+  if (isHex(look.outfitColor)) next.outfitColor = look.outfitColor;
   return next;
 }
 

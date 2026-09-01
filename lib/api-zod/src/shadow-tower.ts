@@ -7,7 +7,7 @@ export const SHADOW_TOWER_CITIES = ["minx_city", "huda_city"] as const;
 export type ShadowTowerCity = (typeof SHADOW_TOWER_CITIES)[number];
 export const SHADOW_TOWER_UPGRADES = ["secure_access", "extra_workstations", "operations_terminal"] as const;
 export type ShadowTowerUpgrade = (typeof SHADOW_TOWER_UPGRADES)[number];
-export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation"] as const;
+export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation", "mezzanine", "rest"] as const;
 export type ShadowTowerFloorType = (typeof SHADOW_TOWER_FLOOR_TYPES)[number];
 
 const pointSchema = z.object({ x: z.number().int().nonnegative(), y: z.number().int().nonnegative() }).strict();
@@ -17,7 +17,7 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar"]),
+  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board"]),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
@@ -109,6 +109,51 @@ export function getRecreationPlan(city: ShadowTowerCity): ShadowTowerPlan {
   return plan;
 }
 
+/** Public floor 2: free access, paid computer time, and a free work board. */
+export function getMezzaninePlan(city: ShadowTowerCity): ShadowTowerPlan {
+  const computers = workstationObjects(8).map((object, index) => ({
+    ...object,
+    id: `cafe-computer-${index + 1}`,
+    footprint: rect(5 + (index % 4) * 4, 5 + Math.floor(index / 4) * 5, 2, 1),
+  }));
+  const objects: ShadowTowerPlan["objects"] = [
+    { id: "mezzanine-elevator", kind: "elevator", footprint: rect(0, 0, 2, 2), interactive: true },
+    { id: "cafe-counter-wall", kind: "executive_room", footprint: rect(19, 1, 6, 1), interactive: false },
+    { id: "cafe-host", kind: "executive_desk", footprint: rect(21, 2, 2, 1), interactive: true },
+    ...computers,
+    { id: "world-work-board", kind: "work_board", footprint: rect(3, 1, 5, 1), interactive: true },
+    { id: "public-atm", kind: "atm", footprint: rect(10, 1, 1, 1), interactive: true },
+    { id: "cafe-vending", kind: "vending_machine", footprint: rect(15, 1, 2, 1), interactive: true },
+  ];
+  return {
+    floorType: "mezzanine", city, floorNumber: 2, cols: 26, rows: 16,
+    spawn: { x: 2, y: 3 }, upgrades: [], objects,
+    collisionFootprints: objects.map((object) => object.footprint),
+  };
+}
+
+/** Public floor 3: free supervised rest ward for stamina recovery. */
+export function getRestFloorPlan(city: ShadowTowerCity): ShadowTowerPlan {
+  const beds = Array.from({ length: 8 }, (_, index) => ({
+    id: `rest-bed-${index + 1}`, kind: "bed" as const,
+    footprint: rect(5 + (index % 4) * 4, 5 + Math.floor(index / 4) * 5, 2, 1), interactive: true,
+  }));
+  const objects: ShadowTowerPlan["objects"] = [
+    { id: "rest-elevator", kind: "elevator", footprint: rect(0, 0, 2, 2), interactive: true },
+    { id: "clinic-wall", kind: "executive_room", footprint: rect(18, 1, 7, 1), interactive: false },
+    { id: "doctor", kind: "executive_desk", footprint: rect(22, 2, 2, 1), interactive: true },
+    { id: "nurse-desk", kind: "workstation", footprint: rect(18, 3, 2, 1), interactive: true },
+    { id: "nurse-station", kind: "nurse_station", footprint: rect(3, 1, 4, 1), interactive: true },
+    { id: "doctor-station", kind: "doctor_station", footprint: rect(9, 1, 4, 1), interactive: true },
+    ...beds,
+  ];
+  return {
+    floorType: "rest", city, floorNumber: 3, cols: 26, rows: 16,
+    spawn: { x: 2, y: 3 }, upgrades: [], objects,
+    collisionFootprints: objects.map((object) => object.footprint),
+  };
+}
+
 function occupiedCells(footprint: z.infer<typeof footprintSchema>) {
   const cells: string[] = [];
   for (let x = footprint.x; x < footprint.x + footprint.cols; x++) for (let y = footprint.y; y < footprint.y + footprint.rows; y++) cells.push(`${x},${y}`);
@@ -132,6 +177,13 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
     const requiredRec = ["elevator", "vending_machine", "bar"];
     for (const kind of requiredRec) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "rec_station").length !== 7) errors.push("requires exactly seven recreation stations");
+  } else if (plan.floorType === "mezzanine") {
+    if (plan.objects.filter((o) => o.kind === "workstation").length < 4) errors.push("mezzanine requires public computers");
+    if (plan.objects.filter((o) => o.kind === "work_board").length !== 1) errors.push("mezzanine requires one work board");
+    if (plan.objects.filter((o) => o.kind === "elevator").length !== 1) errors.push("mezzanine requires one elevator");
+  } else if (plan.floorType === "rest") {
+    if (plan.objects.filter((o) => o.kind === "bed").length < 4) errors.push("rest floor requires beds");
+    for (const kind of ["nurse_station", "doctor_station", "elevator"]) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`rest floor requires one ${kind}`);
   } else {
     const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio", "payphone"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
@@ -183,4 +235,53 @@ export function consolidateShadowTowerBots(bots: readonly ShadowTowerBotLike[]):
     else groups.set(key, { purpose, permissionSignature, canonicalBotId: bot.id, botIds: [bot.id] });
   }
   return [...groups.values()].sort((a, b) => a.canonicalBotId - b.canonicalBotId);
+}
+
+// ── Business fit-out stock bones ─────────────────────────────────────────────
+// These are interior programs, not alternate floor geometry. Every fit-out keeps
+// the authoritative Shadow Tower shell, spawn, elevator and collision contract;
+// it assigns consistent zones/fixtures inside that shell.
+export const BUSINESS_FLOOR_KINDS = ["office", "restaurant", "cafe", "mechanic", "retail", "clinic", "studio", "warehouse"] as const;
+export type BusinessFloorKind = (typeof BUSINESS_FLOOR_KINDS)[number];
+export type BusinessFloorLaborMode = "self" | "hire";
+export type BusinessFloorZone = { id: string; label: string; purpose: string; minTiles: number };
+export type BusinessFloorTemplate = {
+  kind: BusinessFloorKind;
+  label: string;
+  description: string;
+  baseMaterialsFiat: number;
+  hiredLaborFiat: number;
+  laborUnits: number;
+  zones: readonly BusinessFloorZone[];
+  requiredFixtures: readonly string[];
+};
+
+export const BUSINESS_FLOOR_TEMPLATES: Record<BusinessFloorKind, BusinessFloorTemplate> = {
+  office: { kind: "office", label: "Professional Office", description: "Reception, team floor, meeting room and executive workspace.", baseMaterialsFiat: 18_000, hiredLaborFiat: 24_000, laborUnits: 12, zones: [{ id: "reception", label: "Reception", purpose: "arrival", minTiles: 12 }, { id: "team", label: "Team Floor", purpose: "work", minTiles: 36 }, { id: "meeting", label: "Meeting Room", purpose: "meetings", minTiles: 16 }, { id: "executive", label: "Executive Office", purpose: "management", minTiles: 14 }], requiredFixtures: ["reception_desk", "workstations", "meeting_table", "storage"] },
+  restaurant: { kind: "restaurant", label: "Restaurant", description: "Guest dining, commercial kitchen, service pass, storage and wash station.", baseMaterialsFiat: 32_000, hiredLaborFiat: 48_000, laborUnits: 24, zones: [{ id: "entry", label: "Host + Entry", purpose: "arrival", minTiles: 10 }, { id: "dining", label: "Dining Room", purpose: "service", minTiles: 42 }, { id: "kitchen", label: "Commercial Kitchen", purpose: "production", minTiles: 28 }, { id: "storage", label: "Cold + Dry Storage", purpose: "inventory", minTiles: 12 }, { id: "wash", label: "Wash Station", purpose: "sanitation", minTiles: 10 }], requiredFixtures: ["host_stand", "dining_sets", "cookline", "service_pass", "cold_storage", "wash_sink"] },
+  cafe: { kind: "cafe", label: "Cafe", description: "Counter service, compact prep, public seating and pickup flow.", baseMaterialsFiat: 22_000, hiredLaborFiat: 30_000, laborUnits: 16, zones: [{ id: "counter", label: "Order Counter", purpose: "service", minTiles: 16 }, { id: "prep", label: "Prep Bar", purpose: "production", minTiles: 16 }, { id: "seating", label: "Cafe Seating", purpose: "guest", minTiles: 30 }, { id: "pickup", label: "Pickup", purpose: "circulation", minTiles: 8 }], requiredFixtures: ["counter", "espresso_bar", "display_case", "tables", "dish_sink"] },
+  mechanic: { kind: "mechanic", label: "Mechanic Shop", description: "Vehicle bays, lift clearance, parts cage, tool wall and customer desk.", baseMaterialsFiat: 38_000, hiredLaborFiat: 52_000, laborUnits: 28, zones: [{ id: "reception", label: "Service Desk", purpose: "arrival", minTiles: 12 }, { id: "bays", label: "Repair Bays", purpose: "service", minTiles: 52 }, { id: "parts", label: "Parts Cage", purpose: "inventory", minTiles: 16 }, { id: "tools", label: "Tool + Fabrication", purpose: "production", minTiles: 20 }], requiredFixtures: ["service_desk", "vehicle_lifts", "tool_wall", "parts_racks", "compressor", "wash_bay"] },
+  retail: { kind: "retail", label: "Retail Shop", description: "Customer floor, secure checkout, stock room and receiving.", baseMaterialsFiat: 20_000, hiredLaborFiat: 28_000, laborUnits: 14, zones: [{ id: "sales", label: "Sales Floor", purpose: "service", minTiles: 44 }, { id: "checkout", label: "Checkout", purpose: "payment", minTiles: 10 }, { id: "stock", label: "Stock Room", purpose: "inventory", minTiles: 18 }, { id: "receiving", label: "Receiving", purpose: "logistics", minTiles: 10 }], requiredFixtures: ["display_units", "checkout", "security_gate", "stock_racks"] },
+  clinic: { kind: "clinic", label: "Clinic", description: "Reception, exam rooms, treatment bay, pharmacy and clean storage.", baseMaterialsFiat: 42_000, hiredLaborFiat: 58_000, laborUnits: 30, zones: [{ id: "reception", label: "Reception", purpose: "arrival", minTiles: 14 }, { id: "exam", label: "Exam Rooms", purpose: "care", minTiles: 32 }, { id: "treatment", label: "Treatment Bay", purpose: "care", minTiles: 24 }, { id: "pharmacy", label: "Pharmacy", purpose: "inventory", minTiles: 12 }, { id: "clean", label: "Clean Storage", purpose: "sanitation", minTiles: 10 }], requiredFixtures: ["reception_desk", "exam_beds", "medical_storage", "wash_station", "pharmacy_cabinet"] },
+  studio: { kind: "studio", label: "Creative Studio", description: "Production stage, editing suite, workshop and client review area.", baseMaterialsFiat: 26_000, hiredLaborFiat: 36_000, laborUnits: 20, zones: [{ id: "production", label: "Production Floor", purpose: "creation", minTiles: 42 }, { id: "edit", label: "Edit Suite", purpose: "post", minTiles: 16 }, { id: "workshop", label: "Workshop", purpose: "fabrication", minTiles: 18 }, { id: "review", label: "Client Review", purpose: "service", minTiles: 14 }], requiredFixtures: ["production_rig", "edit_desks", "equipment_storage", "review_screen"] },
+  warehouse: { kind: "warehouse", label: "Warehouse + Logistics", description: "Receiving, pallet storage, packing, dispatch and maintenance lanes.", baseMaterialsFiat: 30_000, hiredLaborFiat: 44_000, laborUnits: 24, zones: [{ id: "receiving", label: "Receiving", purpose: "logistics", minTiles: 24 }, { id: "storage", label: "Pallet Storage", purpose: "inventory", minTiles: 54 }, { id: "packing", label: "Packing", purpose: "production", minTiles: 22 }, { id: "dispatch", label: "Dispatch", purpose: "logistics", minTiles: 20 }], requiredFixtures: ["loading_dock", "pallet_racks", "packing_benches", "dispatch_board", "maintenance_cage"] },
+};
+
+export function resolveBusinessFloorKind(industry: unknown): BusinessFloorKind {
+  const value = String(industry ?? "").toLowerCase();
+  if (/restaurant|food|hospitality|dining/.test(value)) return "restaurant";
+  if (/cafe|coffee|bakery/.test(value)) return "cafe";
+  if (/mechanic|automotive|transportation|repair/.test(value)) return "mechanic";
+  if (/medical|health|clinic|pharma/.test(value)) return "clinic";
+  if (/creative|media|design|photo|film|music/.test(value)) return "studio";
+  if (/warehouse|logistics|supply|manufactur/.test(value)) return "warehouse";
+  if (/retail|store|shop|sales/.test(value)) return "retail";
+  return "office";
+}
+
+export function quoteBusinessFitout(kind: BusinessFloorKind, laborMode: BusinessFloorLaborMode, optionCount: number) {
+  const template = BUSINESS_FLOOR_TEMPLATES[kind];
+  const customizationFiat = Math.max(0, Math.min(6, Math.trunc(optionCount))) * 2_500;
+  const laborFiat = laborMode === "hire" ? template.hiredLaborFiat : 0;
+  return { materialsFiat: template.baseMaterialsFiat + customizationFiat, laborFiat, totalFiat: template.baseMaterialsFiat + customizationFiat + laborFiat, laborUnits: laborMode === "self" ? template.laborUnits : 0 };
 }

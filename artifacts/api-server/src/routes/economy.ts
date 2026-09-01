@@ -100,11 +100,8 @@ router.get("/economy/stats", async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/economy/salary/claim — accrue + pay the Pablo Corp unemployment
-// stipend (500ƒ per in-game hour for the first 30 in-game days). Server-
-// authoritative and safe to poll: pays only whole game-hours and returns
-// paid=0 when nothing is owed yet. The office HUD polls this and animates a
-// floating "+ƒ" whenever `paid > 0`.
+// POST /api/economy/salary/claim — compatibility wallet read for older clients.
+// Unemployed and fictitious-business players receive no passive FIAT.
 router.post("/economy/salary/claim", async (req: Request, res: Response) => {
   if (!req.isAuthenticated?.() || !req.user) {
     res.status(401).json({ error: "Login required" });

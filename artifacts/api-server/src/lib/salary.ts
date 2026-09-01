@@ -3,37 +3,20 @@ import { and, eq } from "drizzle-orm";
 import { getVerifiedMonthlySalary } from "./verified-salary";
 
 /**
- * Pablo Corp "unemployment stipend" — the flat early-game wage.
+ * Compatibility endpoint for the retired unemployment stipend.
  *
- * Every arrival is paid a flat ƒ500 lump ONCE PER IN-GAME DAY, regardless of
- * faction or spawn, so a brand-new, broke player can immediately spend on the
- * terminal tools (and survive) before they ever take a job or register a
- * business. The money is real, spendable checking balance — it is NOT
- * quarantined like the onboarding starting grant.
- *
- * The stipend is the "unemployment check": it keeps paying until the player
- * earns a WORK VISA (their real-world income is VERIFIED — see verified-salary).
- * There is NO fixed trial window; an unverified player draws the stipend
- * indefinitely, and the moment they become verified the stipend stops and the
- * (uncapped) verified salary takes over. This enforces the income cap: until a
- * work visa, the only automatic income is the flat ƒ500/day stipend — no
- * fictitious salary accrues unless it is genuinely earned.
- *
- * In-game time matches the world clock: ONE in-game day spans ONE real hour
- * (REAL_MS_PER_GAME_DAY = 3.6M ms), the same cadence the visual day/night clock
- * runs on. So the stipend pays its daily lump every real hour.
- *
- * Accrual is server-authoritative and idempotent under polling: we advance
- * salaryLastClaimAt by WHOLE game-days only, so repeated claims never
- * double-pay and any sub-day remainder rolls into the next tick.
+ * Unemployed players and unverified/fictitious businesses earn no passive
+ * FIAT. Money must come from settled work, services, sales, sponsored games,
+ * or a verified real salary. The old endpoint remains so deployed clients can
+ * read their wallet without creating a second balance API.
  */
 export const REAL_MS_PER_GAME_DAY = 3_600_000; // 1 real hour = 1 in-game day
-export const SALARY_PER_GAME_DAY = 500; // flat daily unemployment stipend (ƒ)
+export const SALARY_PER_GAME_DAY = 0;
 
 export interface SalaryClaimResult {
   paid: number; // ƒ credited on THIS call (drives the +ƒ HUD animation)
   total: number; // lifetime stipend paid to this player
-  perGameDay: number; // 500
+  perGameDay: number; // 0 — no passive unemployment income
   startedAt: number; // epoch ms the stipend clock began
   expiresAt: number; // epoch ms the stipend ended (0 while still active)
   expired: boolean; // stipend is over — the player earned a work visa (verified)
@@ -77,12 +60,8 @@ export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
     }
     if (lastMs == null) lastMs = startedMs;
 
-    // The stipend ends the moment the player earns a WORK VISA — i.e. their
-    // real-world income is verified and the (uncapped) verified salary takes
-    // over. Until then the unemployment check keeps paying ƒ500/game-day with
-    // no fixed window. A verified player accrues nothing here but we still
-    // advance the cursor so they never collect a back-paid lump if verification
-    // is ever revoked.
+    // The retired stipend always pays zero. Keep advancing its compatibility
+    // cursor so an old client cannot accumulate a back-paid lump.
     const verified = (await getVerifiedMonthlySalary(userId, tx)) > 0;
     const gameDays = verified ? 0 : Math.max(0, Math.floor((now - lastMs) / REAL_MS_PER_GAME_DAY));
     const paid = gameDays * SALARY_PER_GAME_DAY;
@@ -102,6 +81,13 @@ export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
         .set({ salaryLastClaimAt: advanced })
         .where(eq(playerLedgerTable.userId, userId));
       lastMs = now;
+    }
+
+    if (!verified && gameDays > 0 && paid === 0) {
+      const newLast = new Date(lastMs + gameDays * REAL_MS_PER_GAME_DAY);
+      await tx.update(playerLedgerTable).set({ salaryLastClaimAt: newLast })
+        .where(eq(playerLedgerTable.userId, userId));
+      lastMs = newLast.getTime();
     }
 
     if (paid > 0) {
@@ -139,13 +125,10 @@ export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
 
     const totalFiat = accounts.reduce((s, a) => s + (a.balance || 0), 0);
     const spendable = Math.max(0, totalFiat - quarantine);
-    // No fixed window any more: the stipend only "expires" when the player is
-    // verified (work visa). While active there is no countdown, just the time
-    // until the next whole game-day's lump accrues.
-    const expired = verified;
+    const expired = true;
     const remainingMs = 0;
     const intoDay = Math.max(0, now - lastMs);
-    const nextDayInMs = expired ? 0 : Math.max(0, REAL_MS_PER_GAME_DAY - intoDay);
+    const nextDayInMs = 0;
 
     return {
       paid,

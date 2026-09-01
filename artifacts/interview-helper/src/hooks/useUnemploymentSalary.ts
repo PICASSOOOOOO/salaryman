@@ -19,15 +19,7 @@ export interface SalaryPayEvent {
   amount: number;
 }
 
-/**
- * Polls the Pablo Corp unemployment stipend endpoint (server-authoritative,
- * idempotent) while the office HUD is mounted. Once per in-game day the server
- * credits a lump stipend; this hook surfaces the running spendable balance and
- * emits a short-lived "pay event" so the HUD can float a "+ƒ" animation.
- *
- * A game day is 1 real hour, so we poll every 30s — frequent enough to collect
- * a new day's stipend within half a minute, cheap enough to leave running.
- */
+/** Compatibility wallet poll. Unemployed players receive no passive FIAT. */
 export function useUnemploymentSalary(active = true) {
   const [state, setState] = useState<SalaryState | null>(null);
   const [payEvents, setPayEvents] = useState<SalaryPayEvent[]>([]);

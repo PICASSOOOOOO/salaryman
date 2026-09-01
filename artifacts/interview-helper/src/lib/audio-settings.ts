@@ -2,7 +2,7 @@
 // The app historically split audio across three systems with no shared volume:
 //   1. soundEngine.ts        — procedural SFX + ambient score (_sfxVol/_musicVol)
 //   2. MusicPlayerContext    — Hummingbird user-music stream (own vol slider)
-//   3. Pablo Radio/callhome  — the global Call Home broadcast
+//   3. Shadow Radio/callhome — the global Call Home broadcast
 // Game/Settings.tsx persisted volumes to localStorage but never applied them to
 // the engine, so the sliders did nothing live and the terminal had no controls.
 //
@@ -10,7 +10,7 @@
 // settings live. It persists to the same `sm_game_settings_v1` key the game
 // settings page already uses (extended with `soundtrackVolume` + `muted`), applies
 // changes to soundEngine immediately, and notifies subscribers (Hummingbird, the
-// Pablo Radio) so they can scale their own streams. Use it from anywhere — the
+// Shadow Radio) so they can scale their own streams. Use it from anywhere — the
 // game settings page, the terminal, and the Hummingbird hub all read/write here.
 
 import { setSfxVolume, setMusicVolume, setMuted as setEngineMuted } from "../soundEngine";
@@ -23,9 +23,9 @@ export interface AudioSettings {
   music: number;      // 0–1 AMBIANCE — procedural ambient bed (in-game only)
   sfx: number;        // 0–1 sound effects
   voice: number;      // 0–1 TTS / advisor voices
-  soundtrack: number; // 0–1 PABLO RADIO — Call Home tracks
+  soundtrack: number; // 0–1 SHADOW RADIO — Call Home tracks
   muted: boolean;     // master mute
-  musicEnabled: boolean;    // PABLO RADIO — opt-in, default OFF, global except phone
+  musicEnabled: boolean;    // SHADOW RADIO — opt-in, default OFF, global except phone
   ambianceEnabled: boolean; // AMBIANCE (low ambient bed) — default ON, in-game, toggleable off
 }
 
@@ -37,7 +37,7 @@ export const AUDIO_DEFAULTS: AudioSettings = {
   music: 0.14,       // AMBIANCE is intentionally EXTREMELY LOW
   sfx: 0.9,
   voice: 1.0,
-  soundtrack: 0.22,  // Pablo Radio level once the player opts in
+  soundtrack: 0.22,  // Shadow Radio level once the player opts in
   muted: false,
   musicEnabled: false,   // music never auto-plays — the player turns it on
   ambianceEnabled: true, // low ambient bed plays during the game by default
@@ -106,7 +106,7 @@ function duckFactor(channel: VolumeChannel): number {
   return voiceActive && DUCKED_CHANNELS.has(channel) ? 0 : 1;
 }
 
-// Push the current state into soundEngine. Hummingbird + Pablo Radio subscribe
+// Push the current state into soundEngine. Hummingbird + Shadow Radio subscribe
 // separately and scale their own streams by `master` (and their own channel).
 function applyToEngine() {
   const m = state.muted ? 0 : 1;
@@ -120,7 +120,7 @@ export function getAudioSettings(): AudioSettings {
   return state;
 }
 
-// Pablo Radio is opt-in and never auto-plays.
+// Shadow Radio is opt-in and never auto-plays.
 export function getMusicEnabled(): boolean {
   return state.musicEnabled;
 }
@@ -133,7 +133,7 @@ export function getAmbianceEnabled(): boolean {
 // Effective per-channel gain a consumer should apply to its own stream.
 export function channelGain(channel: VolumeChannel): number {
   if (state.muted) return 0;
-  // The `music` channel is AMBIANCE; the `soundtrack` channel is opt-in Pablo Radio.
+  // The `music` channel is AMBIANCE; the `soundtrack` channel is opt-in Shadow Radio.
   if (channel === "music" && !state.ambianceEnabled) return 0;
   if (channel === "soundtrack" && !state.musicEnabled) return 0;
   return Math.max(0, Math.min(1, state[channel] * state.master * duckFactor(channel)));

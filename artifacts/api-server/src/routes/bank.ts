@@ -117,6 +117,41 @@ router.post("/economy/bank/deposit", async (req, res) => {
   });
 });
 
+// Move already-earned/spendable FIAT from checking into savings. This is a
+// transfer, never an income event; "all" consolidates the whole checking
+// balance and the two ledger rows keep the money supply unchanged.
+router.post("/economy/bank/consolidate-savings", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  await ensureSeeded(userId, emailOf(req));
+  const requested = req.body?.amount === "all" ? null : Math.round(Number(req.body?.amount));
+  if (requested !== null && (!Number.isFinite(requested) || requested <= 0)) {
+    res.status(400).json({ error: "amount must be a positive integer or all" }); return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const accounts = await tx.select().from(bankAccountsTable)
+      .where(and(eq(bankAccountsTable.userId, userId), inArray(bankAccountsTable.kind, ["checking", "savings"])))
+      .orderBy(asc(bankAccountsTable.id)).for("update");
+    const checking = accounts.find((account) => account.kind === "checking");
+    const savings = accounts.find((account) => account.kind === "savings");
+    if (!checking || !savings) return { type: "missing" as const };
+    const amount = requested ?? checking.balance;
+    if (amount <= 0 || checking.balance < amount) return { type: "insufficient" as const, balance: checking.balance };
+    const checkingAfter = checking.balance - amount;
+    const savingsAfter = savings.balance + amount;
+    await tx.update(bankAccountsTable).set({ balance: checkingAfter, updatedAt: new Date() }).where(eq(bankAccountsTable.id, checking.id));
+    await tx.update(bankAccountsTable).set({ balance: savingsAfter, updatedAt: new Date() }).where(eq(bankAccountsTable.id, savings.id));
+    await tx.insert(bankTransactionsTable).values([
+      { userId, accountId: checking.id, counterpartyAccountId: savings.id, kind: "transfer", description: "CHECKING → SAVINGS CONSOLIDATION", amount: -amount, balanceAfter: checkingAfter },
+      { userId, accountId: savings.id, counterpartyAccountId: checking.id, kind: "transfer", description: "FIAT SAVINGS CONSOLIDATION", amount, balanceAfter: savingsAfter },
+    ]);
+    return { type: "ok" as const, amount };
+  });
+  if (result.type === "missing") res.status(404).json({ error: "Checking or savings account not found" });
+  else if (result.type === "insufficient") res.status(400).json({ error: "Insufficient checking balance", balance: result.balance });
+  else res.json({ ok: true, consolidated: result.amount, accounts: await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId)) });
+});
+
 // Gold → real-money cash-out. Converts client-authoritative GOLD into the
 // player's withdrawable real-money USD pool (= the server checking balance the
 // wallet snapshot reports as "AVAILABLE $"), minus a flat fee. The actual

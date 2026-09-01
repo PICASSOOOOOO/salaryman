@@ -13,6 +13,7 @@ import { useArtAsset } from '@/lib/art';
 import { EconomyKey } from '@/components/EconomyKey';
 import { ensureOnboardingScore } from '@/lib/onboarding-score';
 import { sanitizeReturnPath } from '@/lib/safe-path';
+import { apiFetch } from '@/lib/api-client';
 
 const SAVE_KEY = 'sm_save';
 
@@ -366,11 +367,23 @@ export default function Immigration() {
     setPhase('intro');
   };
 
-  const handleIntroComplete = () => {
+  const handleIntroComplete = async () => {
     if (phase === 'done') return;
     setPhase('done');
     markTutorialDone();
-    const destination = handoffDestinationRef.current;
+    let destination = handoffDestinationRef.current;
+    // The default post-intake destination is ownership-aware. Players with an
+    // active organization go to their office; everyone else starts work on the
+    // public mezzanine rather than being placed on a private floor they do not own.
+    if (destination === '/office') {
+      try {
+        const response = await apiFetch('/api/orgs/mine', { credentials: 'include' });
+        const data = response.ok ? await response.json() as { orgs?: unknown[] } : {};
+        destination = Array.isArray(data.orgs) && data.orgs.length > 0 ? '/office' : '/tower/mezzanine';
+      } catch {
+        destination = '/tower/mezzanine';
+      }
+    }
     navigate(destination, { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
     // base so we land inside this app, not at host root.

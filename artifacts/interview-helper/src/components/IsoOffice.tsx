@@ -877,6 +877,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     drawCityWall(ctx, s, 'right'); // along (0,0)->(cols,0)
     drawCityWall(ctx, s, 'left');  // along (0,0)->(0,rows)
   }
+  drawOfficeMediaDecor(ctx, s);
 
   // ---- Divider wall ----
   if (s.bullpen) drawDividerWall(ctx, s);
@@ -1245,6 +1246,10 @@ const PAYPHONE_CFG: MachineCfg = {
 };
 
 function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  // Public cafe computers are already rendered by the authoritative team-desk
+  // furniture pass. Their station records exist only for proximity/action
+  // handling; drawing another marker here would stack a fake prop on the desk.
+  if (st.id.startsWith('cafe-computer-')) return;
   const w = st.footprint?.w ?? 1;
   const d = st.footprint?.d ?? 1;
   // Each object gets a distinct, recognisable render so it reads as part of the
@@ -1253,6 +1258,7 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   if (st.glyph === 'atm') { drawMachine(ctx, s, st, tx, ty, ATM_CFG); return; }
   if (st.glyph === 'vending') { drawMachine(ctx, s, st, tx, ty, VENDING_CFG); return; }
   if (st.glyph === 'payphone') { drawMachine(ctx, s, st, tx, ty, PAYPHONE_CFG); return; }
+  if (st.glyph === 'music') { drawShadowRadio(ctx, s, st, tx, ty); return; }
 
   // Generic fallback kiosk for any other glyph.
   groundShadow(ctx, s, st.col, st.row, w, d);
@@ -1273,6 +1279,58 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
     ctx.fillText((active ? '▸ ' : '') + st.label, top.x, top.y - s.heightPx(15) - 8 * (s.T / TILE) * 0.5);
     ctx.textAlign = 'left';
   }
+}
+
+function drawShadowRadio(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  const active = s.playable && s.activeStationId === st.id;
+  const { P } = s;
+  const p = P(tx, ty);
+  const u = Math.max(.65, (s.T / TILE) * .5);
+  const pulse = (Math.sin(s.now / 260) + 1) / 2;
+
+  groundShadow(ctx, s, st.col, st.row, st.footprint?.w ?? 1, st.footprint?.d ?? 1, .42);
+  // Low, wide cassette boombox silhouette—deliberately unlike the generic
+  // terminal cubes so the radio is identifiable before the prompt appears.
+  isoBox(
+    ctx, s, st.col - .24, st.row + .05, 1.48, .72, 10,
+    active ? '#3f285d' : '#251a35',
+    '#100b18',
+    '#1b1028',
+    active ? 'rgba(251,191,36,.95)' : 'rgba(244,114,182,.55)',
+  );
+  const faceY = p.y - s.heightPx(8);
+  ctx.save();
+  if (active) {
+    ctx.shadowColor = 'rgba(251,191,36,.9)';
+    ctx.shadowBlur = 12 + pulse * 8;
+  }
+  ctx.fillStyle = '#09070d';
+  ctx.fillRect(p.x - 18 * u, faceY - 4 * u, 36 * u, 12 * u);
+  ctx.strokeStyle = active ? '#fbbf24' : 'rgba(244,114,182,.7)';
+  ctx.lineWidth = Math.max(1, u);
+  ctx.strokeRect(p.x - 18 * u, faceY - 4 * u, 36 * u, 12 * u);
+  for (const x of [-11, 11]) {
+    ctx.beginPath();
+    ctx.fillStyle = '#17121f';
+    ctx.arc(p.x + x * u, faceY + 2 * u, 5 * u, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(103,232,249,.45)';
+    ctx.stroke();
+  }
+  ctx.fillStyle = active ? '#fbbf24' : '#67e8f9';
+  ctx.fillRect(p.x - 4 * u, faceY - 1 * u, 8 * u, 4 * u);
+  ctx.fillStyle = `rgba(251,191,36,${.45 + pulse * .55})`;
+  ctx.fillRect(p.x + 13 * u, faceY - 7 * u, 2 * u, 2 * u);
+  ctx.restore();
+
+  // Unlike secondary furniture labels, the station identity is persistent on
+  // desktop and touch layouts: a radio without a readable name is not actionable.
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = active ? '#fde68a' : 'rgba(253,230,138,.82)';
+  ctx.font = `700 ${Math.max(8, 4.2 * u)}px "Fira Code", monospace`;
+  ctx.fillText((active ? '▸ ' : '') + 'SHADOW RADIO · 107.3', p.x, faceY - 11 * u);
+  ctx.restore();
 }
 
 function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: number) {
@@ -1391,6 +1449,94 @@ function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRo
   }
 }
 
+const OFFICE_COMMERCIALS = [
+  { brand: 'BANCO OMBRA', line: 'CREDIT FOR THE COMMITTED', color: '#7CFC9B' },
+  { brand: 'CALL HOME', line: 'THE NIGHT SHIFT BROADCAST', color: '#67e8f9' },
+  { brand: 'MYRIAD', line: 'A BETTER CITY IS LOADING', color: '#f0abfc' },
+  { brand: 'SHADOW RADIO', line: '107.3 · ALWAYS AFTER DARK', color: '#fbbf24' },
+] as const;
+
+function drawOfficeMediaDecor(ctx: CanvasRenderingContext2D, s: SceneCtx) {
+  const { P, T } = s;
+  const u = Math.max(0.55, T / 32);
+  const commercial = OFFICE_COMMERCIALS[Math.floor(s.now / 4200) % OFFICE_COMMERCIALS.length];
+
+  // Old wall-mounted CRT: an actual looping in-world commercial screen, not a
+  // floating HUD. Scan bar and copy change over time while retaining the same
+  // low-resolution office rendering language.
+  const tv = P(12.5, 0);
+  const tw = 58 * u, th = 37 * u;
+  const tx = tv.x - tw / 2, ty = tv.y - s.heightPx(54);
+  ctx.save();
+  ctx.fillStyle = 'rgba(10,8,13,.96)';
+  rrect(ctx, tx - 5 * u, ty - 5 * u, tw + 10 * u, th + 11 * u, 5 * u);
+  ctx.strokeStyle = 'rgba(148,163,184,.35)';
+  ctx.lineWidth = Math.max(1, u);
+  rrectStroke(ctx, tx - 5 * u, ty - 5 * u, tw + 10 * u, th + 11 * u, 5 * u);
+  const glow = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
+  glow.addColorStop(0, hexA(commercial.color, .32));
+  glow.addColorStop(.55, 'rgba(8,15,28,.96)');
+  glow.addColorStop(1, 'rgba(236,72,153,.24)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(tx, ty, tw, th);
+  ctx.fillStyle = 'rgba(255,255,255,.11)';
+  ctx.fillRect(tx, ty + ((s.now / 28) % th), tw, Math.max(1, u));
+  ctx.textAlign = 'center';
+  ctx.fillStyle = commercial.color;
+  ctx.font = `700 ${Math.max(7, 6 * u)}px "Fira Code", monospace`;
+  ctx.fillText(commercial.brand, tv.x, ty + 15 * u);
+  ctx.fillStyle = 'rgba(226,232,240,.65)';
+  ctx.font = `${Math.max(5, 3.4 * u)}px "Fira Code", monospace`;
+  ctx.fillText(commercial.line, tv.x, ty + 24 * u);
+  ctx.fillStyle = 'rgba(255,255,255,.16)';
+  for (let y = ty + 2 * u; y < ty + th; y += 4 * u) ctx.fillRect(tx, y, tw, .5 * u);
+  ctx.restore();
+
+  // Worn magazines and handbills scattered around the floor. Their imperfect
+  // angles, faded ink and fictional companies make the workplace feel used.
+  const magazines = [
+    { c: 7.1, r: 9.5, rot: -.22, title: 'MINX', sub: 'CITY ISSUE', color: '#38bdf8' },
+    { c: 10.2, r: 7.7, rot: .16, title: 'OMBRE', sub: 'MARKETS', color: '#7CFC9B' },
+    { c: 14.2, r: 10.2, rot: -.08, title: 'NIGHT', sub: 'SHIFT', color: '#f472b6' },
+  ];
+  for (const mag of magazines) {
+    const p = P(mag.c, mag.r);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(mag.rot);
+    ctx.globalAlpha = .62;
+    ctx.fillStyle = '#d6d3d1';
+    ctx.fillRect(-8 * u, -5 * u, 16 * u, 10 * u);
+    ctx.fillStyle = mag.color;
+    ctx.fillRect(-8 * u, -5 * u, 16 * u, 2 * u);
+    ctx.fillStyle = '#18181b';
+    ctx.textAlign = 'center';
+    ctx.font = `700 ${Math.max(4, 3.2 * u)}px "Fira Code", monospace`;
+    ctx.fillText(mag.title, 0, 0);
+    ctx.font = `${Math.max(3, 2.2 * u)}px "Fira Code", monospace`;
+    ctx.fillText(mag.sub, 0, 3.5 * u);
+    ctx.restore();
+  }
+
+  // Faded floor stickers: environmental storytelling rather than UI labels.
+  const stickers = [
+    { c: 4.2, r: 5.1, text: 'PABLO CORP', color: 'rgba(251,191,36,.28)' },
+    { c: 12.2, r: 4.3, text: 'NO SLEEP', color: 'rgba(244,114,182,.25)' },
+    { c: 17.0, r: 7.0, text: 'HIRE HUMANS', color: 'rgba(103,232,249,.22)' },
+  ];
+  for (const sticker of stickers) {
+    const p = P(sticker.c, sticker.r);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(-.12);
+    ctx.fillStyle = sticker.color;
+    ctx.font = `700 ${Math.max(5, 3.5 * u)}px "Fira Code", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(sticker.text, 0, 0);
+    ctx.restore();
+  }
+}
+
 function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' | 'right') {
   const { P, cols, rows } = s;
   const WALL_H = 4.2; // logical tiles tall
@@ -1434,6 +1580,28 @@ function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' |
       ctx.fillRect(base.x - 1 + ((w % 2) * 2), base.y - 4 - w * 6, 1.4, 1.4);
     }
   }
+  // Exterior billboards visible through the glass. They sit inside the clipped
+  // skyline so they read as part of the city outside, not office UI.
+  const exteriorBrands = side === 'right'
+    ? ['BANCO OMBRA', 'MYRIAD', 'CALL HOME']
+    : ['NIGHT MART', 'PABLO CORP', 'SHADOW 107.3'];
+  exteriorBrands.forEach((brand, index) => {
+    const f = .18 + index * .29;
+    const base = side === 'right' ? P(f * cols, 0) : P(0, f * rows);
+    const bw = Math.max(26, s.T * 1.55);
+    const by = base.y - h * (.48 + (index % 2) * .12);
+    ctx.globalAlpha = .45;
+    ctx.fillStyle = index % 2 ? 'rgba(236,72,153,.22)' : 'rgba(34,211,238,.18)';
+    ctx.fillRect(base.x - bw / 2, by - 10, bw, 14);
+    ctx.strokeStyle = index % 2 ? 'rgba(244,114,182,.45)' : 'rgba(103,232,249,.4)';
+    ctx.strokeRect(base.x - bw / 2, by - 10, bw, 14);
+    ctx.fillStyle = 'rgba(226,232,240,.72)';
+    ctx.font = `700 ${Math.max(5, s.T * .17)}px "Fira Code", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(brand, base.x, by);
+  });
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
   ctx.restore();
 
   // neon top trim

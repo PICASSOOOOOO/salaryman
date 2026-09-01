@@ -10,7 +10,7 @@ import { BG_OWNERS, claimBackgroundAudio, registerBackgroundAudio, releaseBackgr
 import { isPhoneBusy, subscribePhoneBusy } from "../lib/phone-busy";
 import { speakGameTTS, type TTSHandle } from "../lib/tts";
 
-// ── Pablo Radio (MUSIC) ─────────────────────────────────────────────────────
+// ── Shadow Radio (MUSIC) ────────────────────────────────────────────────────
 // One app-wide, opt-in station. Unlike the retired WorldPlay player, this element
 // never unmounts on navigation, so changing pages (or toggling it) tunes back
 // into the same programme instead of restarting a track.
@@ -23,10 +23,10 @@ const TRACKS: string[] = Array.from({ length: 31 }, (_, i) => {
 
 const STATION_STATE_KEY = "salaryman.pablo-radio.position.v1";
 const DJ_LINES = [
-  "You're listening to Pablo Radio. Keep building.",
+  "You're listening to Shadow Radio. Keep building.",
   "Pablo here. The market never sleeps, but you should eventually.",
   "Another track from the vault. Back to work, Salaryman.",
-  "Signal check. You're still on Pablo Radio.",
+  "Signal check. You're still on Shadow Radio.",
   "The city is loud tonight. Stay sharp.",
 ];
 
@@ -181,7 +181,7 @@ export function OfficeRadio() {
     return subscribeAudioSettings(reconcile);
   }, []);
 
-  // Phone pages and live calls are the only route/state that pauses Pablo Radio.
+  // Phone pages and live calls are the only route/state that pauses Shadow Radio.
   useEffect(() => {
     phoneBlockedRef.current = isPhoneRoute(location) || isPhoneBusy();
     reconcile();

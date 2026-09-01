@@ -297,7 +297,7 @@ interface CharacterTemplateOption {
   faction: OnboardingAnswers['faction'];
   imageUrl: string | null;
   status: string;
-  appearance: { skinTone?: string; hairColor?: string; hairStyle?: string; faceStyle?: string };
+  appearance: { skinTone?: string; hairColor?: string; hairStyle?: string; faceStyle?: string; outfitStyle?: string; outfitColor?: string };
 }
 
 // One card in the intake LOOK gallery. Pulls its realistic portrait via the
@@ -1422,7 +1422,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               {bizPath === 'unemployed' && <EconomyKey style={{ marginTop: '.3rem' }} />}
               {bizPath === 'business' && businessType === 'real' && (
                 <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.3rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
-                  WORK VISA PENDING — Until your income is verified, PABLO CORP treats you as legally unemployed: you draw the unemployment stipend (ƒ500/in-game hour), NOT your declared salary. Once an org owner attests your figure on the registry — or you connect a payroll provider (Gusto/ADP) — your declared take-home replaces the stipend.
+                  WORK VISA PENDING — Until your income is verified, PABLO CORP treats you as legally unemployed: no passive FIAT is issued. Earn through settled work, services, sales, or sponsored activity. Once an org owner attests your figure on the registry — or you connect a payroll provider (Gusto/ADP) — your verified take-home can begin accruing.
                 </div>
               )}
               <div style={{ marginTop: '.3rem' }}>

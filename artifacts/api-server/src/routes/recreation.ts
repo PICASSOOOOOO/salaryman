@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { and, eq, sql } from "drizzle-orm";
 import { db, playerInventoryTable, salarymanSavesTable } from "@workspace/db";
-import { getRecreationPlan, type ShadowTowerCity } from "@workspace/api-zod/shadow-tower";
+import { getMezzaninePlan, getRecreationPlan, getRestFloorPlan, type ShadowTowerCity } from "@workspace/api-zod/shadow-tower";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 import {
   REC_GAMES, REC_ITEMS, REC_SPONSORS, findRecItem, isRecGameId,
@@ -40,6 +40,83 @@ router.get("/shadow-tower/recreation", (req, res) => {
     floor: { id: "public-rec", city, floorNumber: 1, classification: "public", tenure: "system", archetype: "recreation" },
     plan: getRecreationPlan(city as ShadowTowerCity), assignments: [], botGroups: [],
   });
+});
+
+router.get("/shadow-tower/public-floor/:floor", (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const floor = Number(req.params.floor);
+  if (floor !== 2 && floor !== 3) {
+    res.status(404).json({ error: "Public floor not found" });
+    return;
+  }
+  const city = req.query.city === "huda_city" ? "huda_city" : "minx_city";
+  res.json({
+    floor: {
+      id: floor === 2 ? "public-mezzanine" : "public-rest",
+      city, floorNumber: floor, classification: "public", tenure: "system",
+      archetype: floor === 2 ? "mezzanine" : "rest",
+    },
+    plan: floor === 2 ? getMezzaninePlan(city as ShadowTowerCity) : getRestFloorPlan(city as ShadowTowerCity),
+  });
+});
+
+const PUBLIC_TERMINAL_HOURLY_FIAT = 25;
+
+router.post("/public-floor/terminal-hour", async (req, res) => {
+  const userId = requireAuth(req, res); const slotIndex = slotOf(req.body?.slotIndex);
+  if (!userId || slotIndex == null || !validRequestId(req.body?.requestId)) {
+    if (userId) res.status(400).json({ error: "Valid slot and requestId required" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const save = await lockedSave(tx, userId, slotIndex);
+    if (!save) return { type: "missing" as const };
+    const data = save.data as Record<string, unknown>;
+    const publicFloor = data.publicFloor && typeof data.publicFloor === "object"
+      ? { ...(data.publicFloor as Record<string, unknown>) }
+      : {};
+    const processed = Array.isArray(publicFloor.processed) ? publicFloor.processed.filter((id): id is string => typeof id === "string") : [];
+    if (processed.includes(req.body.requestId)) return { type: "ok" as const, duplicate: true, passExpiresAt: publicFloor.passExpiresAt };
+    const paid = await spendFiat(tx, {
+      userId, amountFiat: PUBLIC_TERMINAL_HOURLY_FIAT,
+      description: "Shadow Tower public computer cafe — one hour",
+      kind: "public_terminal",
+      idempotencyKey: `public-terminal:${req.body.requestId}`,
+    });
+    if (!paid.ok) return { type: "funds" as const, paid };
+    const now = Date.now();
+    const currentExpiry = typeof publicFloor.passExpiresAt === "string" ? new Date(publicFloor.passExpiresAt).getTime() : 0;
+    const passExpiresAt = new Date(Math.max(now, Number.isFinite(currentExpiry) ? currentExpiry : 0) + 3_600_000).toISOString();
+    publicFloor.passExpiresAt = passExpiresAt;
+    publicFloor.processed = [...processed, req.body.requestId].slice(-80);
+    await tx.update(salarymanSavesTable).set({ data: { ...data, publicFloor }, lastSavedAt: new Date() })
+      .where(eq(salarymanSavesTable.id, save.id));
+    return { type: "ok" as const, passExpiresAt, priceFiat: PUBLIC_TERMINAL_HOURLY_FIAT, wallet: paid };
+  });
+  if (result.type === "missing") res.status(409).json({ error: "Create a character before using the cafe" });
+  else if (result.type === "funds") res.status(402).json({ error: "insufficient_fiat", required: PUBLIC_TERMINAL_HOURLY_FIAT, spendable: result.paid.spendable });
+  else res.json(result);
+});
+
+router.post("/public-floor/rest", async (req, res) => {
+  const userId = requireAuth(req, res); const slotIndex = slotOf(req.body?.slotIndex);
+  if (!userId || slotIndex == null || !validRequestId(req.body?.requestId)) {
+    if (userId) res.status(400).json({ error: "Valid slot and requestId required" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const save = await lockedSave(tx, userId, slotIndex);
+    if (!save) return null;
+    const rec = normalizeRecState(save.data.rec);
+    if (rec.processed.includes(req.body.requestId)) return { rec, duplicate: true };
+    rec.stamina = Math.min(100, rec.stamina + 35);
+    rec.staminaUpdatedAt = new Date().toISOString();
+    rec.processed = [...rec.processed, req.body.requestId].slice(-80);
+    await saveRec(tx, save, rec);
+    return { rec, attendedBy: rec.stamina < 50 ? "DOCTOR" : "NURSE", observationSeconds: 60 };
+  });
+  if (!result) res.status(409).json({ error: "Create a character before resting" });
+  else res.json(result);
 });
 
 router.get("/recreation/state", async (req, res) => {

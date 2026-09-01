@@ -560,11 +560,11 @@ router.get("/stripe/donation-history", async (req, res) => {
   res.json({ history, totalCents, donorTitle });
 });
 
-// ── Real-money FIAT top-up ────────────────────────────────────────────────────
-// Public pack list so the ATM exchange counter can render prices without
-// hard-coding them client-side.
+// Direct USD→FIAT sale is retired. USD checkout for gameplay merchandise stays
+// in the Pledge Store; keep old top-up settlement/history code below only so an
+// already-paid Stripe session can still reconcile safely.
 router.get("/stripe/fiat-topup-packs", (_req, res) => {
-  res.json({ packs: FIAT_TOPUP_PACKS, fiatPerUsd: 1000 });
+  res.status(410).json({ error: "Direct USD purchases are available only in the Pledge Store.", packs: [] });
 });
 
 router.post("/stripe/create-phone-number-session", async (req, res) => {
@@ -745,59 +745,8 @@ async function markPhoneNumberPurchaseTerminal(session: Stripe.Checkout.Session,
 // manipulated. A pending row is pre-inserted and fulfilled exactly once by the
 // webhook on confirmed payment.
 router.post("/stripe/create-topup-session", async (req, res) => {
-  if (!req.isAuthenticated?.()) {
-    res.status(401).json({ error: "Login required" });
-    return;
-  }
-  const { packId, requestId } = req.body as { packId?: string; requestId?: string };
-  const pack = FIAT_TOPUP_PACKS.find((p) => p.id === packId);
-  if (!pack || !requestId || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)) {
-    res.status(400).json({ error: "Invalid pack" });
-    return;
-  }
-
-  const user = req.user;
-  const stripe = getStripe();
-  const baseUrl = getAppBaseUrl();
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: `BANCO OMBRA — ƒ${pack.fiat.toLocaleString()} FIAT top-up`,
-            description: `Credits ƒ${pack.fiat.toLocaleString()} to your SALARYMAN bank (1000ƒ = $1).`,
-          },
-          unit_amount: pack.usdCents,
-        },
-        quantity: 1,
-      },
-    ],
-    success_url: `${baseUrl}/game/bank?topup=return&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/game/bank?topup=cancel`,
-    client_reference_id: user.id,
-    metadata: {
-      userId: user.id,
-      type: "fiat_topup",
-      packId: pack.id,
-      fiatAmount: String(pack.fiat),
-      amountCents: String(pack.usdCents),
-      requestId,
-    },
-  }, { idempotencyKey: `fiat-topup:${user.id}:${requestId}` });
-
-  await db.insert(fiatTopupsTable).values({
-    userId: user.id,
-    stripeSessionId: session.id,
-    packId: pack.id,
-    amountCents: pack.usdCents,
-    fiatAmount: pack.fiat,
-    status: "pending",
-  }).onConflictDoNothing();
-
-  res.json({ url: session.url });
+  void req;
+  res.status(410).json({ error: "Direct USD purchases are available only in the Pledge Store." });
 });
 
 router.get("/stripe/topup-history", async (req, res) => {

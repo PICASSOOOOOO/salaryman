@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   ArrowLeft, Building2, Store, TrendingUp, Check, Loader2, X, Tag, Briefcase,
   ShoppingCart, Plus, Trash2,
@@ -320,6 +320,10 @@ export default function BusinessMarketplace() {
 
         {/* PORTFOLIO */}
         <SectionHeader icon={Briefcase} title="MY PORTFOLIO" kana="ポートフォリオ" subtitle={`${owned.length} owned · ${myListings.length} listed`} />
+        <Link href="/business/floor-plans" className="mb-3 flex items-center justify-between border border-cyan-400/30 bg-cyan-400/5 px-4 py-3 text-xs text-cyan-200">
+          <span>BUSINESS FLOOR PLANNER · RESTAURANT · MECHANIC · CAFE · CLINIC · MORE</span>
+          <span>CUSTOMIZE →</span>
+        </Link>
         {owned.length === 0 && myListings.length === 0 ? (
           <div className="text-zinc-600 text-xs tracking-wide px-3 py-6 border border-dashed border-zinc-700/50 rounded text-center">
             You don't own any businesses yet. Buy one from the showroom to start your portfolio.

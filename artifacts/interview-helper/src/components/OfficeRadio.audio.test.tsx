@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// Pablo Radio has one global owner. This guards the lifecycle that used to be
+// Shadow Radio has one global owner. This guards the lifecycle that used to be
 // split between the office and WorldPlay: no re-created player on toggles, and
 // phone traffic always pauses then resumes the same player.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";

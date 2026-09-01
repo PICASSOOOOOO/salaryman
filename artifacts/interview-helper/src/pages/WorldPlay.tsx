@@ -5850,7 +5850,7 @@ export default function WorldPlay() {
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
-  // ── Exchange counter (FIAT/GOLD/BTC/ETH swaps + real-money USD top-up) ──
+  // ── Exchange counter (FIAT/GOLD/BTC/ETH; direct USD stays Pledge Store-only) ──
   const [serverFiat, setServerFiat] = useState<number | null>(null);
   const refreshServerFiat = useCallback(async () => {
     try {
@@ -23065,11 +23065,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.music * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; audioCfg.set({ music: v }); }} style={{ width: '100%', accentColor: '#00c8ff', height: 3, cursor: 'pointer' }} />
                 </div>
                 <button onClick={() => { handleRadioToggle(); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: radioOn ? 'rgba(56,189,248,.06)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.25)' : '1px solid rgba(56,189,248,.1)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "var(--font-sans)", textAlign: 'left' }}>
-                  📻 PABLO RADIO — {radioOn ? 'ON' : 'OFF'}
+                  📻 SHADOW RADIO — {radioOn ? 'ON' : 'OFF'}
                 </button>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
-                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "var(--font-sans)" }}>PABLO RADIO VOL</span>
+                    <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "var(--font-sans)" }}>SHADOW RADIO VOL</span>
                     <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "var(--font-sans)" }}>{Math.round(audioCfg.settings.soundtrack * 100)}%</span>
                   </div>
                   <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.soundtrack * 100)} onChange={e => { audioCfg.set({ soundtrack: parseInt(e.target.value) / 100 }); }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
@@ -25455,7 +25455,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── PABLO RADIO HUD ── The app-wide player lives in OfficeRadio. */}
+      {/* ── SHADOW RADIO HUD ── The app-wide player lives in OfficeRadio. */}
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
@@ -26633,6 +26633,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setBankDepAmt(''); sfxCoin();
           setNarr(`> DEPOSITED ƒ${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` PABLO CORP TAX: ƒ${tax.toLocaleString()}.` : ' No tax.'} Savings: ƒ${g.savings.toLocaleString()}.`);
         };
+        const consolidateSavings = async () => {
+          const requested = bankDepAmt.trim() || 'all';
+          try {
+            const r = await apiFetch('/api/economy/bank/consolidate-savings', {
+              method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: requested === 'all' ? 'all' : Number(requested) }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) { sfxError(); setNarr(`> SAVINGS CONSOLIDATION — ${j.error ?? 'TRANSFER FAILED'}.`); return; }
+            const checking = j.accounts?.find((a: { kind: string }) => a.kind === 'checking');
+            const savingsAccount = j.accounts?.find((a: { kind: string }) => a.kind === 'savings');
+            reconcileAuthoritativeSalary(Number(checking?.balance ?? 0));
+            setSavings(Number(savingsAccount?.balance ?? 0));
+            setBankDepAmt('');
+            sfxCoin();
+            setNarr(`> FIAT CONSOLIDATED — ƒ${Number(j.consolidated ?? 0).toLocaleString()} MOVED TO HIGH-YIELD SAVINGS. NO MONEY CREATED.`);
+            void refreshServerFiat();
+          } catch { sfxError(); setNarr('> SAVINGS CONSOLIDATION — NETWORK ERROR.'); }
+        };
         const doWithdraw = () => {
           const amt = parseInt(bankWithAmt) || 0;
           if (amt <= 0 || amt > g.savings) { sfxError(); setNarr('> BANCO OMBRA — Insufficient savings balance.'); return; }
@@ -26830,7 +26849,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <button onClick={() => navigate('/game/bank')} style={{ ...VTB, padding: '.65rem', color: '#38bdf8', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.3)', cursor: 'pointer' }}>
                     OPEN FULL BANCO OMBRA ACCOUNT ↗
                   </button>
+                  <div style={{ border: '1px solid rgba(52,211,153,.25)', padding: '.65rem', background: 'rgba(52,211,153,.03)' }}>
+                    <div style={{ fontSize: '.55rem', color: '#34d399', letterSpacing: '.13em', marginBottom: '.35rem' }}>CONSOLIDATE FIAT INTO SAVINGS</div>
+                    <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
+                      <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value)} inputMode="numeric" placeholder="AMOUNT · BLANK = ALL CHECKING" style={{ ...inp, flex: 1, minWidth: 190 }} />
+                      <button onClick={() => void consolidateSavings()} style={actBtn(true)}>SAVE FIAT</button>
+                    </div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.35)', marginTop: '.3rem' }}>TRANSFER ONLY · NO REWARD · NO MONEY CREATED · SAVINGS EARNS THE POSTED APY</div>
+                  </div>
                 </>)}
+
 
                 {bankTab === 'loans' && (<>
                   <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.65rem' }}>

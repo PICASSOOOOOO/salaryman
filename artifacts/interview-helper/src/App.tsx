@@ -48,6 +48,7 @@ const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const RecreationFloor = lazy(() => import("@/pages/RecreationFloor"));
+const PublicTowerFloor = lazy(() => import("@/pages/PublicTowerFloor"));
 const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
@@ -171,6 +172,7 @@ const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
 const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
 const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
 const BusinessMarketplace = lazy(() => import("@/pages/BusinessMarketplace"));
+const BusinessFloorPlanner = lazy(() => import("@/pages/BusinessFloorPlanner"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const BusinessServices = lazy(() => import("@/pages/BusinessServices"));
 const VendingMachine = lazy(() => import("@/pages/VendingMachine"));
@@ -312,6 +314,22 @@ function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   const onboardingResolved = useOnboardingResolved();
   const [location] = useLocation();
+  const [organizationLanding, setOrganizationLanding] = useState<"/office" | "/tower/mezzanine" | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated || !onboardingResolved) {
+      setOrganizationLanding(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${import.meta.env.BASE_URL}api/orgs/mine`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("organization lookup failed");
+        const data = await response.json() as { orgs?: unknown[] };
+        if (!cancelled) setOrganizationLanding(Array.isArray(data.orgs) && data.orgs.length > 0 ? "/office" : "/tower/mezzanine");
+      })
+      .catch(() => { if (!cancelled) setOrganizationLanding("/tower/mezzanine"); });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, onboardingResolved]);
   // This component is kept-alive (always mounted, just hidden via display:none
   // on non-home routes). wouter's <Redirect> fires once when it mounts, so on a
   // hard load / refresh / bookmark of ANY authed route it would bounce the user
@@ -344,12 +362,12 @@ function HomeOrCover() {
   // to /immigration before hydrateOnboardingStatus() flips the flag and skips
   // them straight to /office. The check resolves instantly when the local flag
   // is already set, so cleared users on their usual device never see a hold.
-  if (isAuthenticated && !onboardingResolved) return <LoadingFallback />;
+  if (isAuthenticated && (!onboardingResolved || organizationLanding == null)) return <LoadingFallback />;
   if (typeof window !== "undefined") {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
-  return <Redirect to="/office" />;
+  return <Redirect to={organizationLanding ?? "/tower/mezzanine"} />;
 }
 
 const FLOATING_BAR_ROUTES = [
@@ -401,7 +419,7 @@ function AppShell() {
   // route does not legitimately run. The destination's own mount effects restart
   // whatever it needs, and soundEngine's running-flag guards make a redundant
   // stop a no-op, so this never fights the page that owns the route. The radio /
-  // Hummingbird and the global Pablo Radio HTMLAudio tiers self-clean through
+  // Hummingbird and the global Shadow Radio HTMLAudio tiers self-clean through
   // the background coordinator, so
   // they are handled by the coordinator's claim/release, not stopped here.
   useEffect(() => {
@@ -603,7 +621,7 @@ function AppShell() {
           the app for new arrivals — leaking the music indicator there
           breaks the "you haven't been admitted yet" fiction. */}
         {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
-      {/* Pablo Radio — one headless station for every non-phone route. */}
+      {/* Shadow Radio — one headless station for every non-phone route. */}
         {!isEmbed && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the audio from anywhere (full mixer still on /game/settings).
@@ -673,6 +691,8 @@ function AppShell() {
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
             <Route path="/recreation">{() => <GameLock><RecreationFloor /></GameLock>}</Route>
+            <Route path="/tower/mezzanine">{() => <GameLock><PublicTowerFloor floor={2} /></GameLock>}</Route>
+            <Route path="/tower/rest">{() => <GameLock><PublicTowerFloor floor={3} /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
                 office surface (same artwork, passive feed). Any lingering deep
                 link drops you into the office with surveillance pre-selected. */}
@@ -704,6 +724,7 @@ function AppShell() {
 
             {/* BUSINESS module */}
             <Route path="/business/marketplace" component={BusinessMarketplace} />
+            <Route path="/business/floor-plans" component={BusinessFloorPlanner} />
             <Route path="/marketplace" component={Marketplace} />
             <Route path="/business/services" component={BusinessServices} />
             <Route path="/business/contacts" component={ContactCollector} />

@@ -242,7 +242,7 @@ export default function GameSettings({
                     {audio.muted ? "MUTED" : "ON"}
                   </button>
                 </Row>
-                <Row label="Pablo Radio broadcast" hint="One live station across SALARYMAN. It pauses while you use the phone.">
+                <Row label="Shadow Radio broadcast" hint="One live station across SALARYMAN. It pauses while you use the phone.">
                   <Toggle on={audio.musicEnabled} onChange={(musicEnabled) => setAudio({ musicEnabled })} />
                 </Row>
                 {([
@@ -250,12 +250,12 @@ export default function GameSettings({
                   ["Music",       "music"],
                   ["SFX",         "sfx"],
                   ["Voice",       "voice"],
-                  ["Pablo Radio volume", "soundtrack"],
+                  ["Shadow Radio volume", "soundtrack"],
                 ] as const).map(([label, key]) => (
                   <Row
                     key={key}
                     label={label}
-                    hint={label === "Pablo Radio volume"
+                    hint={label === "Shadow Radio volume"
                       ? `${Math.round(audio[key] * 100)}% · live Call Home broadcast`
                       : `${Math.round(audio[key] * 100)}%`}
                   >
@@ -267,7 +267,7 @@ export default function GameSettings({
                 ))}
                 <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
                   These apply everywhere — the game, Pablo, and Hummingbird.
-                  Pablo Radio is opt-in and stays tuned as you move around the app.
+                  Shadow Radio is opt-in and stays tuned as you move around the app.
                   Phone calls always take priority over background audio.
                 </p>
               </Sec>

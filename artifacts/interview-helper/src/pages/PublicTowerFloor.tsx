@@ -1,0 +1,189 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@workspace/replit-auth-web";
+import { BedDouble, BriefcaseBusiness, Building2, Clock3, Laptop, Stethoscope, X } from "lucide-react";
+import { IsoOffice } from "@/components/IsoOffice";
+import { WorldBuildStation } from "@/components/WorldBuildStation";
+import { apiFetch } from "@/lib/api-client";
+import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
+import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
+
+type FloorNumber = 2 | 3;
+type PublicPayload = {
+  rec: { stamina: number };
+  wallet: { balance: number; spendable: number };
+};
+
+const requestId = () => crypto.randomUUID();
+
+export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
+  const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+  const [slotIndex, setSlotIndex] = useState<number | null>(null);
+  const [payload, setPayload] = useState<PublicPayload | null>(null);
+  const [panel, setPanel] = useState<"terminal" | "work" | "elevator" | "rest" | null>(null);
+  const [message, setMessage] = useState("WALK TO A STATION · PRESS E OR TAP");
+  const [busy, setBusy] = useState(false);
+  const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null);
+  const layout = useMemo(
+    () => getPublicFloorOfficeLayout(getActiveCityId() === "huda_city" ? "huda_city" : "minx_city", floor),
+    [floor],
+  );
+
+  const load = useCallback(async () => {
+    const savesResponse = await apiFetch("/api/salaryman/saves", { credentials: "include" });
+    if (!savesResponse.ok) return;
+    const saves = (await savesResponse.json()).saves ?? [];
+    if (!saves.length) { setMessage("CREATE A CHARACTER BEFORE ENTERING SHADOW TOWER"); return; }
+    const slot = saves.sort((a: { lastSavedAt?: string }, b: { lastSavedAt?: string }) =>
+      new Date(b.lastSavedAt ?? 0).getTime() - new Date(a.lastSavedAt ?? 0).getTime())[0].slotIndex;
+    setSlotIndex(slot);
+    const stateResponse = await apiFetch(`/api/recreation/state?slot=${slot}`, { credentials: "include" });
+    if (stateResponse.ok) setPayload(await stateResponse.json());
+  }, []);
+
+  useEffect(() => { if (isAuthenticated) void load(); }, [isAuthenticated, load]);
+
+  const post = async (path: string) => {
+    if (slotIndex == null) return null;
+    setBusy(true);
+    try {
+      const response = await apiFetch(path, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slotIndex, requestId: requestId() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error === "insufficient_fiat"
+        ? `INSUFFICIENT FIAT · ƒ${data.required} REQUIRED`
+        : data.error ?? "ACTION REJECTED");
+      return data;
+    } finally { setBusy(false); }
+  };
+
+  const buyTerminalHour = async () => {
+    try {
+      const data = await post("/api/public-floor/terminal-hour");
+      if (!data) return;
+      setPassExpiresAt(data.passExpiresAt);
+      setMessage(`COMPUTER PASS ACTIVE · ƒ${data.priceFiat} · 60 MINUTES`);
+      setPanel(null);
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "TERMINAL PAYMENT FAILED"); }
+  };
+
+  const rest = async () => {
+    try {
+      const data = await post("/api/public-floor/rest");
+      if (!data) return;
+      setPayload((prior) => prior ? { ...prior, rec: data.rec } : prior);
+      setMessage(`${data.attendedBy} ATTENDING · OBSERVATION ${data.observationSeconds}S · STAMINA ${data.rec.stamina}%`);
+      setPanel("rest");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "REST REQUEST FAILED"); }
+  };
+
+  const mezzanine = floor === 2;
+  const stations = useMemo(() => [
+    ...layout.stations.map((station) => ({
+      ...station,
+      onInteract: () => {
+        if (station.id.includes("elevator")) setPanel("elevator");
+        else if (station.id === "world-work-board") setPanel("work");
+        else if (station.id.startsWith("rest-bed")) void rest();
+        else if (station.id === "public-atm") navigate("/game/bank");
+        else if (station.id.includes("vending")) navigate("/vending?from=public-floor");
+        else setMessage(`${station.label} · PUBLIC SERVICE · NO ACCESS FEE`);
+      },
+    })),
+    ...(mezzanine ? layout.teamDesks.map((desk, index) => ({
+      id: desk.id,
+      label: `PUBLIC COMPUTER ${index + 1} · ƒ25/HOUR`,
+      col: desk.col,
+      row: desk.row,
+      radius: 34,
+      footprint: { w: desk.w, d: desk.d },
+      glyph: "comms" as const,
+      onInteract: () => setPanel("terminal"),
+    })) : []),
+  ], [layout, mezzanine, navigate, slotIndex]);
+
+  if (!isAuthenticated) return <div className="min-h-screen grid place-items-center bg-[#070912] text-white"><Link href="/pablo" className="border border-cyan-400 px-5 py-3">START WORK</Link></div>;
+  if (slotIndex == null) return (
+    <div className="min-h-screen grid place-items-center bg-[#060912] text-zinc-100 p-6">
+      <section className="max-w-lg w-full border border-cyan-400/25 bg-[#0a0f1a] p-7 text-center space-y-4">
+        <Building2 className="w-10 h-10 mx-auto text-cyan-300" />
+        <h1 className="font-black tracking-[.16em] text-cyan-200">IMMIGRATION RECORD REQUIRED</h1>
+        <p className="text-sm text-zinc-400">Shadow Tower access is free, but billing, stamina, rest, and labor must attach to a server-authoritative character.</p>
+        <Link href="/immigration" className="inline-block bg-cyan-300 text-black font-black px-5 py-3">COMPLETE ONBOARDING ONCE</Link>
+      </section>
+    </div>
+  );
+  return (
+    <div className="h-[100dvh] bg-[#060912] text-zinc-100 flex flex-col overflow-hidden" data-testid={`public-floor-${floor}`}>
+      <header className="h-14 shrink-0 border-b border-cyan-400/20 bg-[#090d17]/95 px-3 sm:px-5 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-black tracking-[.2em] text-cyan-300 flex items-center gap-2">
+            {mezzanine ? <Laptop className="w-4 h-4" /> : <BedDouble className="w-4 h-4" />}
+            FLOOR {floor} · {mezzanine ? "PUBLIC COMPUTER CAFE" : "REST WARD"}
+          </div>
+          <div className="text-[9px] text-zinc-500 truncate">{getActiveCityName().toUpperCase()} · ACCESS FREE · {message}</div>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] font-mono">
+          <div><span className="text-zinc-500">BANK </span><span className="text-lime-300">ƒ{payload?.wallet.spendable?.toLocaleString() ?? "—"}</span></div>
+          <div><span className="text-zinc-500">STAMINA </span><span className={Number(payload?.rec.stamina ?? 100) <= 20 ? "text-red-400" : "text-cyan-300"}>{payload?.rec.stamina ?? "—"}%</span></div>
+          <button onClick={() => setPanel("elevator")} className="border border-white/15 px-2 py-1 hover:border-cyan-300">FLOORS</button>
+        </div>
+      </header>
+      <main className="flex-1 min-h-0 relative">
+        <IsoOffice
+          layout={layout} viewportWidth={window.innerWidth} viewportHeight={window.innerHeight - 56}
+          playable followCam premium stations={stations} rooms={layout.rooms}
+          deskColCount={layout.deskCols} deskRowCount={layout.deskRows} capsuleCount={0}
+          suppressLabels={window.innerWidth < 680} frozen={!!panel}
+          playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
+        />
+      </main>
+
+      {panel && <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm grid place-items-center p-3">
+        <section className="w-full max-w-3xl max-h-[88dvh] overflow-y-auto border border-cyan-400/30 bg-[#0a0f1a] shadow-2xl rounded-xl">
+          <div className="sticky top-0 z-10 bg-[#0a0f1a]/95 border-b border-white/10 px-4 py-3 flex items-center justify-between">
+            <h2 className="font-black tracking-[.16em] text-cyan-200 flex items-center gap-2">
+              {panel === "terminal" ? <><Clock3 className="w-4 h-4" /> PUBLIC COMPUTER</>
+                : panel === "work" ? <><BriefcaseBusiness className="w-4 h-4" /> WORLD WORK BOARD</>
+                  : panel === "rest" ? <><Stethoscope className="w-4 h-4" /> MEDICAL OBSERVATION</>
+                    : <><Building2 className="w-4 h-4" /> SHADOW TOWER FLOORS</>}
+            </h2>
+            <button onClick={() => setPanel(null)} aria-label="Close"><X className="w-5 h-5" /></button>
+          </div>
+          {panel === "terminal" && <div className="p-6 space-y-4">
+            <p className="text-sm text-zinc-300">Cafe access, seating, and walking are free. Computer use is billed in explicit one-hour blocks.</p>
+            <div className="border border-amber-400/25 bg-amber-400/5 p-4">
+              <strong className="text-amber-300">ƒ25 / HOUR</strong>
+              <p className="text-xs text-zinc-500 mt-1">No subscription. No background billing. Buying another hour extends the current pass.</p>
+            </div>
+            {passExpiresAt && <p className="text-xs text-cyan-300">ACTIVE UNTIL {new Date(passExpiresAt).toLocaleTimeString()}</p>}
+            <button disabled={busy} onClick={() => void buyTerminalHour()} className="w-full bg-cyan-300 text-black font-black py-3 disabled:bg-zinc-700">{busy ? "SETTLING…" : "BUY ONE COMPUTER HOUR · ƒ25"}</button>
+          </div>}
+          {panel === "work" && <div className="p-4">
+            <p className="mb-4 text-xs text-zinc-400">Public work access is free. Debtor labor pays Banco Ombra first; the remainder of eligible paid work reaches checking only after debt settlement.</p>
+            <WorldBuildStation
+              onComplete={(payoff, debt, freed) => setMessage(`BANCO OMBRA RECEIVED ƒ${payoff} · DEBT ƒ${debt}${freed ? " · RELEASED" : ""}`)}
+              onToast={(text) => setMessage(text.toUpperCase())}
+            />
+          </div>}
+          {panel === "rest" && <div className="p-6 text-center space-y-3">
+            <Stethoscope className="w-12 h-12 mx-auto text-cyan-300" />
+            <p className="text-lg font-black">OBSERVATION IN PROGRESS</p>
+            <p className="text-sm text-zinc-400">Rest and medical attendance are free. Stamina recovery is settled by the server.</p>
+            <p className="text-cyan-300">STAMINA {payload?.rec.stamina ?? "—"}%</p>
+          </div>}
+          {panel === "elevator" && <div className="grid sm:grid-cols-4 gap-3 p-5">
+            <Link href="/office" className="border border-white/15 p-4 hover:border-cyan-300"><strong>PRIVATE OFFICE</strong><p className="text-xs text-zinc-500">Your organization floor</p></Link>
+            <Link href="/recreation" className="border border-white/15 p-4 hover:border-cyan-300"><strong>REC</strong><p className="text-xs text-zinc-500">Public recreation</p></Link>
+            <Link href="/tower/mezzanine" className="border border-white/15 p-4 hover:border-cyan-300"><strong>FLOOR 2</strong><p className="text-xs text-zinc-500">Computer cafe + work</p></Link>
+            <Link href="/tower/rest" className="border border-white/15 p-4 hover:border-cyan-300"><strong>FLOOR 3</strong><p className="text-xs text-zinc-500">Rest ward + clinic</p></Link>
+          </div>}
+        </section>
+      </div>}
+    </div>
+  );
+}

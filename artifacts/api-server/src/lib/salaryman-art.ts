@@ -72,6 +72,8 @@ export interface CharacterTemplateLook {
   hairColor: string; // hex
   hairStyle: string; // APPEARANCE_HAIR_STYLES id
   faceStyle: string; // APPEARANCE_FACE_STYLES id
+  outfitStyle?: string;
+  outfitColor?: string;
 }
 
 export interface CharacterTemplateDef {
@@ -83,7 +85,7 @@ export interface CharacterTemplateDef {
   look: CharacterTemplateLook;
 }
 
-export const CHARACTER_TEMPLATE_CATALOG: CharacterTemplateDef[] = [
+const CHARACTER_TEMPLATE_BASE_CATALOG: CharacterTemplateDef[] = [
   {
     id: "char_template_man_suit",
     label: "Corporate Salaryman",
@@ -166,6 +168,25 @@ export const CHARACTER_TEMPLATE_CATALOG: CharacterTemplateDef[] = [
     look: { skinTone: "#c8c4d0", hairColor: "#56e8ff", hairStyle: "bald", faceStyle: "visor" },
   },
 ];
+
+// Three deterministic variations per archetype/faction keep the identity system
+// deep without creating a second source of truth. The base 9 remain stable for
+// old saves/art keys; variants add alternate hair/face/outfit language and an
+// explicit outlander origin where the nomad faction already implies it.
+const CHARACTER_VARIATION_LOOKS: CharacterTemplateLook[] = [
+  { skinTone: "#d4a878", hairColor: "#7a3a18", hairStyle: "undercut", faceStyle: "shades" },
+  { skinTone: "#8a5a3a", hairColor: "#c244aa", hairStyle: "afro", faceStyle: "freckles" },
+];
+export const CHARACTER_TEMPLATE_CATALOG: CharacterTemplateDef[] = CHARACTER_TEMPLATE_BASE_CATALOG.flatMap((template) => [
+  template,
+  ...CHARACTER_VARIATION_LOOKS.map((look, index) => ({
+    ...template,
+    id: `${template.id}_v${index + 2}`,
+    label: `${template.label} · ${index === 0 ? "NIGHT SHIFT" : "WILD CARD"}`,
+    subject: `${template.subject} Alternate identity variation ${index === 0 ? "with an undercut, tinted lenses and a late-shift utility layer" : "with expressive textured hair, visible freckles and a vivid custom outer layer"}.`,
+    look: { ...template.look, ...look, outfitColor: index === 0 ? "#1a4a4a" : "#8a1e2a" },
+  })),
+]);
 
 /** Build the kit entries for every character template (realistic, Unreal-routed). */
 function characterTemplateKitEntries(): ArtKitEntry[] {

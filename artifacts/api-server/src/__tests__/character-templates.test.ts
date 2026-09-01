@@ -11,12 +11,12 @@ const ARCHETYPES = ["man", "woman", "replicant"] as const;
 const FACTIONS = ["suit", "nomad", "replicant"] as const;
 
 describe("character template catalog", () => {
-  it("has exactly 9 entries (3 archetypes × 3 factions) with char_template_ keys", () => {
-    expect(CHARACTER_TEMPLATE_CATALOG).toHaveLength(9);
+  it("has 27 entries (3 variations × 3 archetypes × 3 factions) with stable char_template_ keys", () => {
+    expect(CHARACTER_TEMPLATE_CATALOG).toHaveLength(27);
     const ids = CHARACTER_TEMPLATE_CATALOG.map((t) => t.id);
-    expect(new Set(ids).size).toBe(9); // unique keys
+    expect(new Set(ids).size).toBe(27); // unique keys
     for (const t of CHARACTER_TEMPLATE_CATALOG) {
-      expect(t.id).toBe(`char_template_${t.archetype}_${t.faction}`);
+      expect(t.id).toMatch(new RegExp(`^char_template_${t.archetype}_${t.faction}(?:_v[23])?$`));
       expect(ARCHETYPES).toContain(t.archetype);
       expect(FACTIONS).toContain(t.faction);
       expect(t.label.length).toBeGreaterThan(0);
@@ -94,7 +94,7 @@ describe("templates endpoint projection", () => {
 
   it("degrades to imageUrl:null / status:none when no art row exists", () => {
     const out = project(new Map());
-    expect(out).toHaveLength(9);
+    expect(out).toHaveLength(27);
     for (const o of out) {
       expect(o.imageUrl).toBeNull();
       expect(o.status).toBe("none");

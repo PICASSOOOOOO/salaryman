@@ -4,12 +4,14 @@ import { ChevronDown, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { useLowGfx } from '@/lib/lowGfx';
+import { useAuth } from '@workspace/replit-auth-web';
 
 interface PabloControlsMenuProps {
   showHummingbird: boolean;
 }
 
 export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
+  const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const { settings, set, toggleMuted } = useAudioSettings();
@@ -109,14 +111,16 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
             </div>
           )}
 
-          <Link
-            href="/settings?section=game"
-            onClick={() => setOpen(false)}
-            className="app-action app-control mt-3 w-full border-white/10 bg-white/[0.035] text-white/70 hover:bg-white/[0.08] hover:text-white"
-          >
-            <SlidersHorizontal className="app-control-icon" aria-hidden />
-            OPEN FULL SETTINGS
-          </Link>
+          {isAuthenticated && (
+            <Link
+              href="/settings?section=game"
+              onClick={() => setOpen(false)}
+              className="app-action app-control mt-3 w-full border-white/10 bg-white/[0.035] text-white/70 hover:bg-white/[0.08] hover:text-white"
+            >
+              <SlidersHorizontal className="app-control-icon" aria-hidden />
+              OPEN FULL SETTINGS
+            </Link>
+          )}
         </div>
       )}
     </div>

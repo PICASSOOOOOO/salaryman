@@ -12,7 +12,7 @@ export interface VerifiedSalaryState {
   balance: number;
   spendable: number;
   // Real-business owner who declared a salary but isn't verified yet: they're
-  // "legally unemployed / awaiting a work visa" and stay on the stipend until
+  // "legally unemployed / awaiting a work visa" and earns no passive FIAT until
   // verification clears. Lets the HUD explain the ƒ0 instead of hiding it.
   awaitingVerification: boolean;
   pendingMonthlySalary: number;

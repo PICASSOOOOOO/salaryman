@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getRecreationPlan, getShadowTowerPlan, selectShadowTowerArchetype, validateShadowTowerPlan } from "./shadow-tower";
+import { SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getMezzaninePlan, getRecreationPlan, getRestFloorPlan, getShadowTowerPlan, selectShadowTowerArchetype, validateShadowTowerPlan } from "./shadow-tower";
 
 describe("Shadow Tower contract", () => {
   it("keeps catalog and numbered plans faithful", () => {
@@ -26,5 +26,15 @@ describe("Shadow Tower contract", () => {
     expect(plan.floorType).toBe("recreation");
     expect(plan.objects.filter((item) => item.kind === "rec_station").map((item) => item.id)).toHaveLength(7);
     expect(validateShadowTowerPlan(plan).ok).toBe(true);
+  });
+  it("provides fixed, validated public work and rest floors", () => {
+    const mezzanine = getMezzaninePlan("minx_city");
+    const rest = getRestFloorPlan("huda_city");
+    expect(mezzanine).toMatchObject({ floorType: "mezzanine", floorNumber: 2 });
+    expect(rest).toMatchObject({ floorType: "rest", floorNumber: 3 });
+    expect(validateShadowTowerPlan(mezzanine).ok).toBe(true);
+    expect(validateShadowTowerPlan(rest).ok).toBe(true);
+    expect(mezzanine.objects.filter((item) => item.kind === "work_board")).toHaveLength(1);
+    expect(rest.objects.filter((item) => item.kind === "bed").length).toBeGreaterThanOrEqual(4);
   });
 });

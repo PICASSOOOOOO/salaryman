@@ -10,7 +10,7 @@ export interface RadioStation {
 }
 
 export const RADIO_STATIONS: RadioStation[] = [
-  { id: 'pablo_radio', name: 'PABLO RADIO', freq: '107.3', genre: 'CALL HOME BROADCAST' },
+  { id: 'shadow_radio', name: 'SHADOW RADIO', freq: '107.3', genre: 'CALL HOME BROADCAST' },
 ];
 
 interface RadioHudProps {
@@ -36,7 +36,7 @@ export function RadioHud({ visible, on, fading, topOffset, onToggle }: RadioHudP
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', cursor: 'pointer' }} onClick={onToggle}>
         <div>
-          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.15em', marginBottom: '2px' }}>PABLO RADIO {station.freq}</div>
+          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.15em', marginBottom: '2px' }}>SHADOW RADIO {station.freq}</div>
           <div style={{ fontSize: '1rem', color: on ? '#38bdf8' : 'rgba(56,189,248,.35)', letterSpacing: '.12em', lineHeight: 1 }}>{station.name}</div>
           <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginTop: '2px' }}>{station.genre}</div>
         </div>
@@ -55,7 +55,7 @@ export function RadioHud({ visible, on, fading, topOffset, onToggle }: RadioHudP
           }} />
         </div>
       </div>
-      <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', marginTop: '5px' }}>[R] PABLO RADIO · {on ? 'ON AIR' : 'OFF'}</div>
+      <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', marginTop: '5px' }}>[R] SHADOW RADIO · {on ? 'ON AIR' : 'OFF'}</div>
     </div>
   );
 }
