@@ -104,7 +104,10 @@ export function NotificationToaster() {
     if (suppressForCityDnd) return; // DND while in city/full-screen view
 
     const latest = candidates[candidates.length - 1];
-    const target = latest.link || "/comms";
+    const requestedTarget = latest.link || "/comms";
+    const target = requestedTarget === "/comms" || requestedTarget.startsWith("/phone")
+      ? "/tower/mezzanine?focus=phone"
+      : requestedTarget;
     const action = (
       <ToastAction
         altText="View notification"

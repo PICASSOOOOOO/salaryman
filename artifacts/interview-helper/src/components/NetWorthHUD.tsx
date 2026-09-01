@@ -4,6 +4,7 @@ export interface NetWorthHUDProps {
   netWorth: number;
   netWorthMax?: number;
   cash?: number;
+  bankBalance?: number;
   savings?: number;
   gold?: number;
   fiatPerGold?: number;
@@ -43,6 +44,7 @@ export function NetWorthHUD({
   netWorth,
   netWorthMax = 1_000_000,
   cash,
+  bankBalance,
   savings,
   gold,
   fiatPerGold = 100_000,
@@ -171,7 +173,7 @@ export function NetWorthHUD({
       style={{ display: 'flex', flexDirection: 'column', gap: compact ? 2 : 3, minWidth: barW, fontFamily: "var(--font-sans)", position: 'relative' }}
     >
       {/* Headline: net worth label + value */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, order: 3 }}>
         <span style={{ fontSize: compact ? '.44rem' : '.5rem', color: 'rgba(255,215,0,.55)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>NET WORTH</span>
         <span style={{ fontFamily: "var(--font-sans)", fontSize: compact ? '.85rem' : '.95rem', color: nwFlashColor ?? barColor, textShadow: `0 0 5px ${nwFlashColor ?? barGlow}`, letterSpacing: '.03em', transition: 'color .4s ease' }}>
           {inDebt ? '-' : ''}ƒ{nwLabel}
@@ -186,7 +188,7 @@ export function NetWorthHUD({
         onClick={hasBreakdown ? togglePopover : undefined}
         onMouseEnter={hasBreakdown ? showPopover : undefined}
         style={{
-          width: barW, height: compact ? 4 : 6,
+           width: barW, height: compact ? 4 : 6, order: 4,
           background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden',
           filter: nwFlashColor
             ? `drop-shadow(0 0 6px ${nwFlashColor}) drop-shadow(0 0 3px ${nwFlashColor})`
@@ -207,7 +209,7 @@ export function NetWorthHUD({
         <div
           onClick={() => { clearTimer(); setOpen(false); }}
           style={{
-            position: 'absolute', top: compact ? 24 : 28, left: 0, zIndex: 9999,
+           position: 'absolute', top: compact ? 76 : 98, left: 0, zIndex: 9999,
             background: 'rgba(4,10,6,.93)', border: '1px solid rgba(255,215,0,.28)',
             borderRadius: 5, padding: '.35rem .6rem',
             display: 'flex', flexDirection: 'column', gap: 3,
@@ -239,7 +241,7 @@ export function NetWorthHUD({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(staminaValue)}
-          style={{ display: 'flex', flexDirection: 'column', gap: 3, width: barW }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 3, width: barW, order: 0 }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ fontSize: compact ? '.55rem' : '.62rem', fontWeight: 700, color: staminaColor, letterSpacing: '.12em', textShadow: `0 0 5px ${staminaColor}66` }}>STAMINA</span>
@@ -259,6 +261,21 @@ export function NetWorthHUD({
               ...(stamina <= 20 ? { animation: 'pulse 1s infinite' } : {}),
             }} />
           </div>
+        </div>
+      )}
+
+      {(cash !== undefined || bankBalance !== undefined) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 8 : 10, order: 1 }}>
+          {cash !== undefined && <PopRow label="CASH" value={`ƒ${fmtF(cashF)}`} color="rgba(255,255,255,.82)" />}
+          {cash !== undefined && bankBalance !== undefined && <span style={{ color: 'rgba(255,255,255,.2)', fontSize: '.6rem' }}>·</span>}
+          {bankBalance !== undefined && <PopRow label="BANK" value={`ƒ${fmtF(bankBalance)}`} color="rgba(125,211,252,.9)" />}
+        </div>
+      )}
+
+      {cash !== undefined && bankBalance !== undefined && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, order: 2 }}>
+          <span style={{ fontSize: compact ? '.44rem' : '.5rem', color: 'rgba(125,211,252,.58)', letterSpacing: '.1em' }}>BANK BALANCE</span>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: compact ? '.85rem' : '.95rem', color: 'rgba(186,230,253,.95)' }}>ƒ{fmtF(bankBalance)}</span>
         </div>
       )}
 

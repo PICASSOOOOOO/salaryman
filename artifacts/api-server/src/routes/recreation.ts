@@ -64,8 +64,6 @@ router.get("/shadow-tower/public-floor/:floor", (req, res) => {
   });
 });
 
-const PUBLIC_TERMINAL_HOURLY_FIAT = 25;
-
 router.get("/public-floor/beds", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const cityId = req.query.city === "huda_city" ? "huda_city" : "minx_city";
@@ -217,13 +215,6 @@ router.post("/public-floor/terminal-hour", async (req, res) => {
       : {};
     const processed = Array.isArray(publicFloor.processed) ? publicFloor.processed.filter((id): id is string => typeof id === "string") : [];
     if (processed.includes(req.body.requestId)) return { type: "ok" as const, duplicate: true, passExpiresAt: publicFloor.passExpiresAt };
-    const paid = await spendFiat(tx, {
-      userId, amountFiat: PUBLIC_TERMINAL_HOURLY_FIAT,
-      description: "Shadow Tower public computer cafe — one hour",
-      kind: "public_terminal",
-      idempotencyKey: `public-terminal:${req.body.requestId}`,
-    });
-    if (!paid.ok) return { type: "funds" as const, paid };
     const now = Date.now();
     const currentExpiry = typeof publicFloor.passExpiresAt === "string" ? new Date(publicFloor.passExpiresAt).getTime() : 0;
     const passExpiresAt = new Date(Math.max(now, Number.isFinite(currentExpiry) ? currentExpiry : 0) + 3_600_000).toISOString();
@@ -231,10 +222,9 @@ router.post("/public-floor/terminal-hour", async (req, res) => {
     publicFloor.processed = [...processed, req.body.requestId].slice(-80);
     await tx.update(salarymanSavesTable).set({ data: { ...data, publicFloor }, lastSavedAt: new Date() })
       .where(eq(salarymanSavesTable.id, save.id));
-    return { type: "ok" as const, passExpiresAt, priceFiat: PUBLIC_TERMINAL_HOURLY_FIAT, wallet: paid };
+    return { type: "ok" as const, passExpiresAt, priceFiat: 0, free: true };
   });
   if (result.type === "missing") res.status(409).json({ error: "Create a character before using the cafe" });
-  else if (result.type === "funds") res.status(402).json({ error: "insufficient_fiat", required: PUBLIC_TERMINAL_HOURLY_FIAT, spendable: result.paid.spendable });
   else res.json(result);
 });
 

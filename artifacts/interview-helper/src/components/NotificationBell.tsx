@@ -108,7 +108,13 @@ export function NotificationBell({
                   <button
                     onClick={() => {
                       if (!n.read) markRead([n.id]);
-                      if (n.link) { navigate(n.link); setOpen(false); }
+                      if (n.link) {
+                        const target = n.link === '/comms' || n.link.startsWith('/phone')
+                          ? '/tower/mezzanine?focus=phone'
+                          : n.link;
+                        navigate(target);
+                        setOpen(false);
+                      }
                     }}
                     className="w-full text-left px-3 py-2.5 pr-9"
                   >

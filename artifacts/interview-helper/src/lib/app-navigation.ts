@@ -5,7 +5,6 @@ import {
   Code2,
   Layers,
   Megaphone,
-  MessageSquare,
   Network,
   Settings,
   ShieldCheck,
@@ -26,7 +25,6 @@ export type AppNavItem = {
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "pablo", path: "/pablo", label: "PABLO", icon: Terminal },
-  { id: "comms", path: "/phone?tab=chat", label: "COMMS", icon: MessageSquare },
   { id: "bots", path: "/bots", label: "AGENTS", icon: Bot },
   { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
   { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
@@ -52,8 +50,6 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
         ["/game/map", "/game/economy", "/game/bank", "/game/character", "/game/settings"].includes(pathname);
     case "bots":
       return pathname.startsWith("/bots");
-    case "comms":
-      return pathname.startsWith("/phone") || pathname === "/comms";
     case "org":
       return pathname === "/org" || pathname.startsWith("/org/");
     case "console":

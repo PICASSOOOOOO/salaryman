@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, BriefcaseBusiness, Building2, Check, ClipboardList, DoorOpen, Footprints, KeyRound, LockKeyhole, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, Armchair, Bell, BriefcaseBusiness, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, Leaf, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 import {
@@ -21,7 +21,7 @@ const occupiedFloors = new Map([
   [40, { name: "UNLISTED FLOOR", kind: "SEALED", detail: "The construction plans are incomplete. Access is not.", tone: "secret", icon: LockKeyhole }],
   [4, { name: "SECURITY & CUSTODY", kind: "PUBLIC / GUARDED", detail: "Guards, debt collection, evidence, and holding.", href: "/tower/security", tone: "security", icon: Shield }],
   [3, { name: "INFIRMARY / HOTELS", kind: "PUBLIC", detail: "Free observation and operator-run beds by the hour.", href: "/tower/rest", tone: "rest", icon: Building2 }],
-  [2, { name: "COMPUTER CAFE", kind: "PUBLIC", detail: "Work board, terminals, and elevator music.", href: "/tower/mezzanine", tone: "cafe", icon: Building2 }],
+  [2, { name: "COMPUTER CAFE", kind: "PUBLIC", detail: "Work board, terminals, and elevator music.", href: "/tower/mezzanine?focus=classifieds", tone: "cafe", icon: Building2 }],
   [1, { name: "RECREATION", kind: "PUBLIC", detail: "Games, food, conversation, and a place to begin.", href: "/recreation", tone: "rec", icon: Sparkles }],
 ]);
 
@@ -52,6 +52,7 @@ const floors = Array.from({ length: 67 }, (_, index) => {
 
 export default function TowerDirectory() {
   const [stage, setStage] = useState<BuildingOnboardingStage>(() => getBuildingOnboardingStage());
+  const [now, setNow] = useState(() => new Date());
   const [talking, setTalking] = useState(false);
   const [notice, setNotice] = useState("");
   const [filing, setFiling] = useState(false);
@@ -65,6 +66,10 @@ export default function TowerDirectory() {
   }, []);
 
   useEffect(() => subscribeBuildingOnboarding(setStage), []);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const explainLock = (label: string) => {
     setNotice(`${label} LOCKED · REPORT TO RECEPTION`);
@@ -98,14 +103,15 @@ export default function TowerDirectory() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#050711] px-3 py-5 text-zinc-100 sm:px-8">
+      <style>{`@keyframes lobbyLight{0%,100%{opacity:.48;filter:brightness(.9)}50%{opacity:.9;filter:brightness(1.2)}}@keyframes lobbyPlant{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(3deg)}}@keyframes lobbyStatus{0%,100%{box-shadow:0 0 0 rgba(34,211,238,0)}50%{box-shadow:0 0 14px rgba(34,211,238,.2)}}`}</style>
       <div className="mx-auto max-w-6xl">
         <header className="mb-4 flex items-end justify-between gap-4 border-b border-cyan-300/20 pb-4">
           <div>
-            <p className="animate-pulse text-[10px] tracking-[.35em] text-cyan-300">SHADOW TOWER · ARRIVAL LOBBY</p>
+            <p className="animate-pulse text-[10px] tracking-[.35em] text-cyan-300">SHADOW TOWER · {getActiveCityName().toUpperCase()} · LOBBY FLOOR</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">START HERE.</h1>
-            <p className="mt-2 max-w-xl text-sm text-zinc-400">Reception will give you one clear next step. Work first. Explore when you are ready.</p>
+            <p className="mt-2 text-[10px] font-bold tracking-[.2em] text-zinc-500">RECEPTION · WORK · FLOOR ACCESS</p>
           </div>
-          <Link href="/pablo" className="hidden sm:block text-xs text-zinc-500 hover:text-cyan-300">BACK TO PABLO</Link>
+           <Link href="/office" className="hidden sm:block text-xs text-zinc-500 hover:text-cyan-300">BACK TO OFFICE</Link>
         </header>
 
         {notice && (
@@ -117,7 +123,7 @@ export default function TowerDirectory() {
         <section className="relative mb-5 overflow-hidden border border-cyan-300/25 bg-[#07101a] shadow-[0_30px_90px_rgba(0,0,0,.45)]" data-testid="lobby-map">
           <div className="flex items-center justify-between border-b border-white/10 bg-white/[.025] px-4 py-3">
             <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.22em] text-cyan-200">
-              <MapPinned className="h-4 w-4" /> LOBBY MAP · INTERACTIVE
+              <MapPinned className="h-4 w-4" /> SHADOW TOWER · MAIN LOBBY
             </div>
             <div className="hidden text-[9px] tracking-[.18em] text-zinc-500 sm:block">HOME CITY · {getActiveCityName()}</div>
             <div className={`flex items-center gap-2 text-[9px] tracking-[.18em] ${onboardingLocked ? "text-amber-300" : "text-emerald-300"}`}>
@@ -125,11 +131,44 @@ export default function TowerDirectory() {
               {onboardingLocked ? "RECEPTION REQUIRED" : workTaskActive ? "WORK ROUTE ACTIVE" : "ACCESS READY"}
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2 border-b border-white/10 bg-[#080d14]/85 p-3 sm:grid-cols-4 sm:gap-3 sm:p-4">
+            <div className="flex items-center gap-3 border border-cyan-300/20 bg-cyan-300/[.04] px-3 py-2.5">
+              <Clock3 className="h-5 w-5 shrink-0 text-cyan-200" />
+              <div>
+                <div className="font-mono text-lg font-black tracking-[.08em] text-cyan-100">{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                <div className="text-[8px] font-bold tracking-[.18em] text-zinc-600">LOCAL TOWER TIME</div>
+              </div>
+            </div>
+            <Link href="/business/calendar" className="flex items-center gap-3 border border-violet-300/20 bg-violet-300/[.04] px-3 py-2.5 transition hover:border-violet-200/60">
+              <CalendarDays className="h-5 w-5 shrink-0 text-violet-200" />
+              <div>
+                <div className="font-mono text-lg font-black tracking-[.08em] text-violet-100">{now.getDate()}</div>
+                <div className="text-[8px] font-bold tracking-[.18em] text-zinc-600">{now.toLocaleDateString([], { month: "short" }).toUpperCase()} · CALENDAR</div>
+              </div>
+            </Link>
+            <button type="button" onClick={() => setNotice("MAIL DROP · NO NEW MAIL")} className="flex items-center gap-3 border border-amber-300/20 bg-amber-300/[.04] px-3 py-2.5 text-left transition hover:border-amber-200/60">
+              <Mail className="h-5 w-5 shrink-0 text-amber-200" />
+              <div>
+                <div className="font-mono text-lg font-black tracking-[.08em] text-amber-100">0</div>
+                <div className="text-[8px] font-bold tracking-[.18em] text-zinc-600">MAIL DROP · INBOX</div>
+              </div>
+            </button>
+            <button type="button" onClick={() => setNotice("TOWER NOTICE BOARD · ALL CLEAR")} className="flex items-center gap-3 border border-emerald-300/20 bg-emerald-300/[.04] px-3 py-2.5 text-left transition hover:border-emerald-200/60">
+              <Bell className="h-5 w-5 shrink-0 text-emerald-200" />
+              <div>
+                <div className="font-mono text-lg font-black tracking-[.08em] text-emerald-100">OK</div>
+                <div className="text-[8px] font-bold tracking-[.18em] text-zinc-600">NOTICE BOARD</div>
+              </div>
+            </button>
+          </div>
 
-          <div className="relative min-h-[430px] bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,.08),transparent_35%),linear-gradient(135deg,#0a1420,#050910)] p-4 sm:min-h-[520px] sm:p-8">
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(125,211,252,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(125,211,252,.12)_1px,transparent_1px)] [background-size:34px_34px]" />
+           <div className="relative min-h-[430px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_4%,rgba(226,232,240,.12),transparent_26%),linear-gradient(150deg,#172331,#070b11_72%)] p-4 sm:min-h-[520px] sm:p-8">
+             <div aria-hidden="true" className="pointer-events-none absolute inset-x-[8%] top-0 h-24 bg-[linear-gradient(180deg,rgba(226,232,240,.12),transparent)] opacity-70" />
+             <div aria-hidden="true" className="pointer-events-none absolute left-[18%] top-5 h-1 w-20 bg-white/45 shadow-[0_0_18px_rgba(255,255,255,.7)] sm:w-28" style={{ animation: "lobbyLight 3.6s ease-in-out infinite" }} />
+             <div aria-hidden="true" className="pointer-events-none absolute right-[18%] top-5 h-1 w-20 bg-white/45 shadow-[0_0_18px_rgba(255,255,255,.7)] sm:w-28" style={{ animation: "lobbyLight 3.6s ease-in-out 1.2s infinite" }} />
+             <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[43%] bg-[linear-gradient(155deg,transparent_48%,rgba(148,163,184,.12)_49%,transparent_51%),linear-gradient(25deg,transparent_48%,rgba(148,163,184,.08)_49%,transparent_51%)] [background-size:90px_90px] opacity-60" />
 
-            <div className="relative mx-auto grid h-full max-w-5xl grid-cols-[minmax(72px,.8fr)_minmax(170px,2.2fr)_minmax(82px,1fr)] grid-rows-[120px_1fr_105px] gap-3 sm:grid-cols-[1fr_2.4fr_1.1fr] sm:grid-rows-[145px_1fr_125px] sm:gap-5">
+             <div className="relative mx-auto grid h-full max-w-5xl grid-cols-[minmax(72px,.8fr)_minmax(170px,2.2fr)_minmax(82px,1fr)] grid-rows-[120px_1fr_105px] gap-3 rounded-sm border border-white/15 bg-[#0b121b]/55 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_24px_60px_rgba(0,0,0,.4)] sm:grid-cols-[1fr_2.4fr_1.1fr] sm:grid-rows-[145px_1fr_125px] sm:gap-5 sm:p-5">
               <button
                 type="button"
                 onClick={() => onboardingLocked ? explainLock("STAIRS") : setNotice("STAIRS OPEN · USE THE FLOOR DIRECTORY BELOW")}
@@ -137,17 +176,18 @@ export default function TowerDirectory() {
                 data-testid="lobby-stairs"
               >
                 <Footprints className="mb-2 h-5 w-5" />
-                <span className="[writing-mode:vertical-rl] text-[9px] font-bold tracking-[.18em] sm:[writing-mode:initial]">STAIRS</span>
+                 <span className="[writing-mode:vertical-rl] text-[9px] font-bold tracking-[.18em] sm:[writing-mode:initial]">STAIRWELL</span>
                 {onboardingLocked && <LockKeyhole className="absolute right-2 top-2 h-4 w-4" />}
               </button>
 
-              <div className="relative flex items-center justify-center border border-white/10 bg-white/[.025]">
+               <div className="relative flex items-center justify-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.01))]">
                 <div className="text-center">
-                  <p className="text-[9px] tracking-[.2em] text-zinc-600">ARRIVAL ZONE</p>
-                  <div className="mt-2 flex justify-center gap-2">
-                    <span className="h-10 w-2 border border-cyan-300/20 bg-cyan-300/5" />
-                    <span className="h-10 w-2 border border-cyan-300/20 bg-cyan-300/5" />
-                    <span className="h-10 w-2 border border-cyan-300/20 bg-cyan-300/5" />
+                   <p className="text-[9px] font-bold tracking-[.28em] text-zinc-400">ARRIVAL HALL</p>
+                   <p className="mt-1 text-[9px] tracking-[.12em] text-zinc-600">SHADOW TOWER · {getActiveCityName().toUpperCase()}</p>
+                   <div className="mt-4 flex justify-center gap-4">
+                     <span className="h-9 w-2 rounded-full border border-emerald-200/25 bg-emerald-300/15" />
+                     <span className="h-9 w-2 rounded-full border border-emerald-200/25 bg-emerald-300/15" />
+                     <span className="h-9 w-2 rounded-full border border-emerald-200/25 bg-emerald-300/15" />
                   </div>
                 </div>
               </div>
@@ -158,8 +198,9 @@ export default function TowerDirectory() {
                 className={`relative row-span-2 flex flex-col items-center justify-center border p-2 transition ${onboardingLocked ? "border-red-400/25 bg-red-950/10 text-red-300/55" : "border-zinc-500/35 bg-zinc-900/50 text-zinc-300 hover:border-cyan-300/60"}`}
                 data-testid="lobby-elevator"
               >
-                <DoorOpen className="mb-2 h-6 w-6" />
-                <span className="text-[9px] font-bold tracking-[.18em]">ELEVATOR</span>
+                 <DoorOpen className="mb-2 h-6 w-6 text-cyan-200" />
+                 <span className="text-[9px] font-bold tracking-[.18em]">ELEVATOR A</span>
+                 <span className="mt-2 h-1 w-8 bg-emerald-300/70 shadow-[0_0_10px_rgba(110,231,183,.6)]" />
                 {onboardingLocked && <LockKeyhole className="absolute right-2 top-2 h-4 w-4" />}
               </button>
 
@@ -170,7 +211,8 @@ export default function TowerDirectory() {
                     <div className="absolute left-1/2 top-full h-3 w-px bg-amber-300/60" />
                   </div>
                 )}
-                <button
+                 <div className="absolute bottom-2 left-2 text-[8px] tracking-[.18em] text-cyan-200/45">RECEPTION · FLOOR L</div>
+                 <button
                   type="button"
                   onClick={() => setTalking(true)}
                   className="group flex w-full max-w-sm flex-col items-center border border-cyan-200/35 bg-[#081722] p-4 text-center transition hover:-translate-y-0.5 hover:border-cyan-100"
@@ -186,14 +228,16 @@ export default function TowerDirectory() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-center border border-white/10 bg-white/[.02] text-center text-[9px] tracking-[.2em] text-zinc-600">
-                WAITING AREA
+               <div className="flex items-center justify-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.01))] text-center text-[9px] tracking-[.2em] text-zinc-500">
+                 <span className="flex items-center gap-2"><Armchair className="h-4 w-4 text-zinc-500" /> WAITING LOUNGE</span>
               </div>
 
-              <div className="border border-white/10 bg-white/[.02]" />
+               <div className="flex items-center justify-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.01))]">
+                  <Leaf className="h-7 w-7 text-emerald-300/45" style={{ animation: "lobbyPlant 4.8s ease-in-out infinite", transformOrigin: "bottom center" }} />
+               </div>
 
               <div className="col-span-3 grid grid-cols-[1fr_1.8fr_1fr] gap-3 sm:gap-5">
-                <div className="flex items-center justify-center border border-white/10 bg-white/[.02] text-[9px] tracking-[.15em] text-zinc-600">SECURITY</div>
+                 <div className="flex items-center justify-center border border-white/10 bg-[#080d13]/75 text-[9px] tracking-[.15em] text-zinc-500">SECURITY DESK</div>
                 {onboardingLocked ? (
                   <button
                     type="button"
@@ -205,7 +249,7 @@ export default function TowerDirectory() {
                   </button>
                 ) : (
                   <Link
-                    href="/tower/mezzanine"
+                    href="/tower/mezzanine?focus=classifieds"
                     className={`relative flex items-center justify-center gap-2 border text-[10px] font-black tracking-[.18em] transition hover:-translate-y-0.5 ${workTaskActive ? "border-amber-200/70 bg-amber-300/10 text-amber-100 shadow-[0_0_38px_rgba(252,211,77,.15)]" : "border-cyan-300/35 bg-cyan-300/5 text-cyan-100 hover:border-cyan-200"}`}
                     data-testid="work-access-door"
                   >
@@ -217,7 +261,7 @@ export default function TowerDirectory() {
                     <DoorOpen className="h-4 w-4" /> WORK ACCESS <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
-                <div className="flex items-center justify-center border border-white/10 bg-white/[.02] text-[9px] tracking-[.15em] text-zinc-600">SERVICES</div>
+                 <div className="flex items-center justify-center border border-white/10 bg-[#080d13]/75 text-[9px] tracking-[.15em] text-zinc-500">LOBBY SERVICES</div>
               </div>
             </div>
           </div>
@@ -235,11 +279,9 @@ export default function TowerDirectory() {
               <div>
                 <p className="text-[10px] font-bold tracking-[.3em] text-cyan-200">CLAW PRIME · BUILDING OPERATIONS</p>
                 <h2 className="mt-1 text-xl font-black tracking-[.12em] text-white">{onboardingLocked ? "CHECK IN REQUIRED" : "FRONT DESK SERVICES"}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                  {onboardingLocked
-                    ? "The elevator, stairs, and work door stay locked until the reception team records your work status."
-                    : "Organization setup, employment status, unemployment filings, work access, and building business begin here."}
-                </p>
+                 <p className="mt-2 text-[10px] font-bold tracking-[.16em] text-zinc-500">
+                   {onboardingLocked ? "CHECK IN TO UNLOCK THE BUILDING" : "SELECT A SERVICE TO CONTINUE"}
+                 </p>
                 <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-bold tracking-[.13em]">
                   <span className="border border-violet-300/20 bg-violet-300/5 px-2 py-1 text-violet-200">MILA · SHADOW LIAISON</span>
                   <span className="border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-emerald-200">FINANCE TRACKER · FILINGS</span>
@@ -256,7 +298,7 @@ export default function TowerDirectory() {
             </button>
           ) : (
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <Link href="/tower/mezzanine" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
+              <Link href="/tower/mezzanine?focus=classifieds" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
                 <BriefcaseBusiness className="h-4 w-4" /> REQUEST WORK
               </Link>
               <Link href="/tower/rest" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
@@ -274,9 +316,11 @@ export default function TowerDirectory() {
             </div>
           )}
           {!onboardingLocked && (
-            <p className="mt-3 text-[10px] leading-5 text-zinc-500">
-              Reception handles rental and acquisition intake in both cities. Once a floor is owned, its owner can broker units directly through the Realty Registry.
-            </p>
+             <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-bold tracking-[.14em] text-zinc-600">
+               <span className="border border-white/10 px-2 py-1">RENTAL REGISTRY</span>
+               <span className="border border-white/10 px-2 py-1">EMPLOYMENT DESK</span>
+               <span className="border border-white/10 px-2 py-1">CITY ACCESS</span>
+             </div>
           )}
         </section>
 

@@ -53,6 +53,7 @@ const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const RecreationFloor = lazy(() => import("@/pages/RecreationFloor"));
 const PublicTowerFloor = lazy(() => import("@/pages/PublicTowerFloor"));
+const ElevatorCabin = lazy(() => import("@/pages/ElevatorCabin"));
 const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
@@ -67,7 +68,6 @@ const OfficeRadio = lazy(() => import("@/components/OfficeRadio").then((m) => ({
 const AudioControl = lazy(() => import("@/components/AudioControl").then((m) => ({ default: m.AudioControl })));
 const TowerDirectory = lazy(() => import("@/pages/TowerDirectory"));
 const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
-const DeferredChatPanel = lazy(() => import("@/components/DeferredChatPanel").then((m) => ({ default: m.DeferredChatPanel })));
 const NotificationToaster = lazy(() => import("@/components/NotificationToaster").then((m) => ({ default: m.NotificationToaster })));
 const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
 
@@ -322,7 +322,7 @@ function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   const onboardingResolved = useOnboardingResolved();
   const [location] = useLocation();
-  const [organizationLanding, setOrganizationLanding] = useState<"/office" | "/tower/mezzanine" | null>(null);
+  const [organizationLanding, setOrganizationLanding] = useState<"/office" | "/tower/mezzanine?focus=classifieds" | null>(null);
   useEffect(() => {
     if (!isAuthenticated || !onboardingResolved) {
       setOrganizationLanding(null);
@@ -333,9 +333,9 @@ function HomeOrCover() {
       .then(async (response) => {
         if (!response.ok) throw new Error("organization lookup failed");
         const data = await response.json() as { orgs?: unknown[] };
-        if (!cancelled) setOrganizationLanding(Array.isArray(data.orgs) && data.orgs.length > 0 ? "/office" : "/tower/mezzanine");
+        if (!cancelled) setOrganizationLanding(Array.isArray(data.orgs) && data.orgs.length > 0 ? "/office" : "/tower/mezzanine?focus=classifieds");
       })
-      .catch(() => { if (!cancelled) setOrganizationLanding("/tower/mezzanine"); });
+      .catch(() => { if (!cancelled) setOrganizationLanding("/tower/mezzanine?focus=classifieds"); });
     return () => { cancelled = true; };
   }, [isAuthenticated, onboardingResolved]);
   // This component is kept-alive (always mounted, just hidden via display:none
@@ -375,7 +375,7 @@ function HomeOrCover() {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
-  return <Redirect to={organizationLanding ?? "/tower/mezzanine"} />;
+  return <Redirect to={organizationLanding ?? "/tower/mezzanine?focus=classifieds"} />;
 }
 
 const FLOATING_BAR_ROUTES = [
@@ -474,7 +474,6 @@ function AppShell() {
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute && !pathname.startsWith("/phone");
   const showFullscreenPabloAccess =
     isAuthenticated &&
     isFullscreenRoute &&
@@ -617,7 +616,6 @@ function AppShell() {
       <Suspense fallback={null}>
         {showNavBar && <CommandPalette />}
         {showFloatingBar && <ActiveCallBar />}
-        {showChat && <DeferredChatPanel />}
       {/* Route-independent toaster for the persistent notification stream —
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
@@ -639,7 +637,7 @@ function AppShell() {
           users can adjust audio once they reach the main game. */}
         {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && (
           <div className="hidden sm:contents">
-            <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />
+            <AudioControl chatFabPresent={false} inGame={isGameRoute} />
           </div>
         )}
       </Suspense>
@@ -708,6 +706,7 @@ function AppShell() {
             <Route path="/tower/mezzanine">{() => <GameLock><PublicTowerFloor floor={2} /></GameLock>}</Route>
             <Route path="/tower/rest">{() => <GameLock><PublicTowerFloor floor={3} /></GameLock>}</Route>
             <Route path="/tower/security">{() => <GameLock><PublicTowerFloor floor={4} /></GameLock>}</Route>
+            <Route path="/tower/elevator">{() => <GameLock><ElevatorCabin /></GameLock>}</Route>
             <Route path="/tower">{() => <GameLock><TowerDirectory /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
                 office surface (same artwork, passive feed). Any lingering deep
@@ -787,8 +786,8 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
-            <Route path="/comms">{() => <Redirect to="/phone?tab=chat" />}</Route>
-            <Route path="/social/colleagues">{() => <Redirect to="/phone?tab=associates" />}</Route>
+            <Route path="/comms">{() => <Redirect to="/tower/mezzanine?focus=phone" />}</Route>
+            <Route path="/social/colleagues">{() => <Redirect to="/tower/mezzanine?focus=phone" />}</Route>
             <Route path="/creative/stems" component={StemStudio} />
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />

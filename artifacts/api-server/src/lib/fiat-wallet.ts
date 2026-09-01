@@ -18,14 +18,10 @@ export type FiatAccountSeed = {
 
 export const STARTER_CHECKING_BALANCE = 200_000;
 export const DEFAULT_FIAT_ACCOUNT_SEEDS: readonly FiatAccountSeed[] = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: STARTER_CHECKING_BALANCE, apyBps: 0 },
-  { kind: "savings", label: "HIGH-YIELD SAVINGS", balance: 0, apyBps: 425 },
-  { kind: "vault", label: "GOLD VAULT", balance: 0, apyBps: 0 },
+  { kind: "cash", label: "CASH WALLET", balance: STARTER_CHECKING_BALANCE, apyBps: 0 },
 ];
 const STAFF_FIAT_ACCOUNT_SEEDS: readonly FiatAccountSeed[] = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: PICASSO_START_FIAT, apyBps: 0 },
-  { kind: "savings", label: "HIGH-YIELD SAVINGS", balance: 48_000, apyBps: 425 },
-  { kind: "vault", label: "GOLD VAULT", balance: 80_000, apyBps: 0 },
+  { kind: "cash", label: "CASH WALLET", balance: PICASSO_START_FIAT + 48_000 + 80_000, apyBps: 0 },
 ];
 
 export type FiatSpendResult =
@@ -52,7 +48,23 @@ export async function ensureFiatAccounts(
   }
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), 41001)`);
   const existing = await tx.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
-  if (existing.length > 0) return existing;
+  if (existing.length > 0) {
+    // Before user-opened accounts existed, first touch created a checking
+    // account, APY savings, and a gold vault. Collapse only that exact legacy
+    // seed into cash; never rewrite an account the user named themselves.
+    const legacyLabels = new Set(["STANDARD CHECKING", "HIGH-YIELD SAVINGS", "GOLD VAULT"]);
+    if (!existing.some((row) => row.kind === "cash") && existing.every((row) => legacyLabels.has(row.label))) {
+      const cashBalance = existing.reduce((sum, row) => sum + row.balance, 0);
+      const [cash] = await tx
+        .update(bankAccountsTable)
+        .set({ kind: "cash", label: "CASH WALLET", balance: cashBalance, apyBps: 0, accountNumber: null, updatedAt: new Date() })
+        .where(and(eq(bankAccountsTable.id, existing[0].id), eq(bankAccountsTable.userId, userId)))
+        .returning();
+      await tx.delete(bankAccountsTable).where(and(eq(bankAccountsTable.userId, userId), sql`${bankAccountsTable.id} <> ${existing[0].id}`));
+      return cash ? [cash] : [];
+    }
+    return existing;
+  }
   return tx
     .insert(bankAccountsTable)
     .values(selectedSeeds.map((seed) => ({ userId, ...seed })))
@@ -78,9 +90,13 @@ export async function spendFiat(
   const accounts = await tx
     .select()
     .from(bankAccountsTable)
-    .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT")))
+    .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT"), eq(bankAccountsTable.kind, "cash")))
     .for("update");
-  const total = accounts.reduce((sum, account) => sum + account.balance, 0);
+  // Compatibility for isolated test fixtures that insert a checking row
+  // directly instead of running wallet initialization.
+  const spendAccounts = accounts.length > 0 ? accounts : await tx.select().from(bankAccountsTable)
+    .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT"))).for("update");
+  const total = spendAccounts.reduce((sum, account) => sum + account.balance, 0);
   const spendable = Math.max(0, total - (ledger?.quarantineFiat ?? 0));
   const marker = opts.idempotencyKey ? `[request:${opts.idempotencyKey}]` : "";
   if (marker) {
@@ -100,7 +116,7 @@ export async function spendFiat(
 
   let remaining = opts.amountFiat;
   let newBalance = total;
-  for (const account of [...accounts].sort((a, b) => b.balance - a.balance)) {
+  for (const account of [...spendAccounts].sort((a, b) => b.balance - a.balance)) {
     if (remaining <= 0) break;
     const debit = Math.min(remaining, account.balance);
     if (debit <= 0) continue;
@@ -140,8 +156,10 @@ export async function creditFiat(
   const [ledger] = await tx.select().from(playerLedgerTable)
     .where(eq(playerLedgerTable.userId, opts.userId)).for("update").limit(1);
   const accounts = await tx.select().from(bankAccountsTable)
+    .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT"), eq(bankAccountsTable.kind, "cash"))).for("update");
+  const creditAccounts = accounts.length > 0 ? accounts : await tx.select().from(bankAccountsTable)
     .where(and(eq(bankAccountsTable.userId, opts.userId), eq(bankAccountsTable.currency, "FIAT"))).for("update");
-  const total = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const total = creditAccounts.reduce((sum, account) => sum + account.balance, 0);
   const marker = opts.idempotencyKey ? `[request:${opts.idempotencyKey}]` : "";
   const description = marker ? `${opts.description.slice(0, 150)} ${marker}` : opts.description.slice(0, 200);
   if (marker) {
@@ -151,7 +169,7 @@ export async function creditFiat(
       return { ok: true, newBalance: total, spendable: Math.max(0, total - (ledger?.quarantineFiat ?? 0)), duplicate: true };
     }
   }
-  const account = accounts.find((row) => row.kind === "checking") ?? accounts[0];
+  const account = creditAccounts.find((row) => row.kind === "cash") ?? creditAccounts.find((row) => row.kind === "checking") ?? creditAccounts[0];
   if (!account) throw new Error("FIAT account missing after initialization");
   const balanceAfter = account.balance + opts.amountFiat;
   await tx.update(bankAccountsTable).set({ balance: balanceAfter, updatedAt: new Date() }).where(eq(bankAccountsTable.id, account.id));
@@ -171,8 +189,9 @@ export async function getSpendableFiat(userId: string): Promise<{ balance: numbe
       .from(playerLedgerTable)
       .where(eq(playerLedgerTable.userId, userId))
       .limit(1);
-    const balance = accounts
-      .filter((account) => account.currency === "FIAT")
+    const cashAccounts = accounts.filter((account) => account.currency === "FIAT" && account.kind === "cash");
+    const spendAccounts = cashAccounts.length > 0 ? cashAccounts : accounts.filter((account) => account.currency === "FIAT");
+    const balance = spendAccounts
       .reduce((sum, account) => sum + account.balance, 0);
     return { balance, spendable: Math.max(0, balance - (ledgers[0]?.quarantineFiat ?? 0)) };
   });

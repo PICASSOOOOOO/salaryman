@@ -144,7 +144,6 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
       { id: "atm", kind: "atm", footprint: rect(2, 10, 1, 1), interactive: true },
       { id: "radio", kind: "radio", footprint: rect(20, 6, 1, 1), interactive: true },
       { id: "vending", kind: "vending_machine", footprint: rect(20, 8, 1, 1), interactive: true },
-      { id: "payphone", kind: "payphone", footprint: rect(20, 10, 1, 1), interactive: true },
     ],
     upgrades: enabledUpgrades, collisionFootprints: [],
   };
@@ -171,6 +170,7 @@ export function getRecreationPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "rec-sponsor-wall", kind: "sponsor" as const, footprint: rect(4, 1, 8, 1), interactive: false },
     { id: "rec-bar", kind: "bar" as const, footprint: rect(14, 1, 5, 1), interactive: true },
     { id: "rec-vending", kind: "vending_machine" as const, footprint: rect(20, 1, 2, 1), interactive: true },
+    { id: "rec-payphone", kind: "payphone" as const, footprint: rect(23, 1, 1, 1), interactive: true },
   ];
   const plan: ShadowTowerPlan = {
     floorType: "recreation", city, floorNumber: 1, cols: 30, rows: 18, spawn: { x: 2, y: 3 },
@@ -179,7 +179,7 @@ export function getRecreationPlan(city: ShadowTowerCity): ShadowTowerPlan {
   return plan;
 }
 
-/** Public floor 2: free access, paid computer time, and a free work board. */
+/** Public floor 2: free computer access, a free work board, and office-wing doors. */
 export function getMezzaninePlan(city: ShadowTowerCity): ShadowTowerPlan {
   const computers = workstationObjects(8).map((object, index) => ({
     ...object,
@@ -194,6 +194,9 @@ export function getMezzaninePlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "world-work-board", kind: "work_board", footprint: rect(3, 1, 5, 1), interactive: true },
     { id: "public-atm", kind: "atm", footprint: rect(10, 1, 1, 1), interactive: true },
     { id: "cafe-vending", kind: "vending_machine", footprint: rect(15, 1, 2, 1), interactive: true },
+    { id: "cafe-payphone", kind: "payphone", footprint: rect(12, 1, 1, 1), interactive: true },
+    { id: "office-wing-door-west", kind: "secret_door", footprint: rect(0, 7, 1, 2), interactive: true },
+    { id: "office-wing-door-east", kind: "secret_door", footprint: rect(25, 7, 1, 2), interactive: true },
   ];
   return {
     floorType: "mezzanine", city, floorNumber: 2, cols: 26, rows: 16,
@@ -215,6 +218,7 @@ export function getRestFloorPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "nurse-desk", kind: "workstation", footprint: rect(18, 3, 2, 1), interactive: true },
     { id: "nurse-station", kind: "nurse_station", footprint: rect(3, 1, 4, 1), interactive: true },
     { id: "doctor-station", kind: "doctor_station", footprint: rect(9, 1, 4, 1), interactive: true },
+    { id: "rest-payphone", kind: "payphone", footprint: rect(14, 1, 1, 1), interactive: true },
     ...beds,
   ];
   return {
@@ -237,6 +241,7 @@ export function getSecurityPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "evidence-lockup", kind: "evidence_lockup", footprint: rect(17, 6, 3, 2), interactive: true },
     { id: "black-market-window", kind: "black_market", footprint: rect(21, 10, 3, 2), interactive: true },
     { id: "secret-service-door", kind: "secret_door", footprint: rect(2, 13, 2, 1), interactive: true },
+    { id: "security-payphone", kind: "payphone", footprint: rect(15, 1, 1, 1), interactive: true },
     { id: "security-workstation", kind: "workstation", footprint: rect(15, 12, 3, 1), interactive: false },
   ];
   return {
@@ -281,7 +286,7 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
       if (plan.objects.filter((o) => o.kind === kind).length < 1) errors.push(`security floor requires ${kind}`);
     }
   } else {
-    const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio", "payphone"];
+    const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("requires one usable terminal");
     if (plan.objects.filter((o) => o.kind === "workstation").length < 1) errors.push("requires workstations");

@@ -8,6 +8,8 @@ SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered execut
 
 **Current roadmap gate:** The outside world remains locked while the office simulation is mastered. Prioritize the office experience, phone systems, productivity tools, automation, staff workflows, and the physical-object pathways that connect them. Resume the original open-world game direction only after these simulation systems are stable, useful, and coherent.
 
+**Physical access and payment rules:** Regular users access Comms only through public payphones or physical terminals. Remote/mobile terminals are issued only to ADMIN and MOD staff. Digital payments require an issued debit/credit card or an authorized mobile terminal; otherwise the transaction must be handled as physical cash.
+
 ## User Preferences
 
 I prefer concise and direct communication. When suggesting code changes, prioritize modern TypeScript features and functional programming paradigms where appropriate. For development workflow, I favor an iterative approach with clear, small, and testable changes. Please ask for confirmation before implementing significant architectural changes or altering core game mechanics. Do not make changes to the `artifacts/api-server/src/lib/resend.ts` file regarding Resend API key handling.

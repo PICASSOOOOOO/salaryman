@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
 import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/office/office-types';
+import { isometricKeyboardMovementVector } from '@/lib/movement';
 import {
   findOfficeRoute,
   getOfficeBlockedTiles,
@@ -429,11 +430,9 @@ export function IsoOffice({
       // ── Movement (skipped when frozen / not playable) ──
       if (playable && !frozenRef.current) {
         const k = heldRef.current;
-        let dx = 0, dy = 0;
-        if (k.has('a') || k.has('arrowleft')) dx -= 1;
-        if (k.has('d') || k.has('arrowright')) dx += 1;
-        if (k.has('w') || k.has('arrowup')) dy -= 1;
-        if (k.has('s') || k.has('arrowdown')) dy += 1;
+        const keyboard = isometricKeyboardMovementVector(k);
+        const dx = keyboard.x;
+        const dy = keyboard.y;
         if (dx !== 0 || dy !== 0) {
           tapTargetRef.current = null;
           tapPathRef.current = [];
@@ -460,12 +459,9 @@ export function IsoOffice({
         runRef.current = running && moving;
 
         if (moving) {
-          const norm = (dx !== 0 && dy !== 0 && !tapTargetRef.current) ? Math.SQRT1_2 : 1;
-          // tap vectors are already unit; key diagonals get SQRT1_2
           const isTap = !!tapTargetRef.current;
-          const stepInv = (!isTap && dx !== 0 && dy !== 0) ? Math.SQRT1_2 : 1;
           const runMul = running ? 1.75 : 1;
-          const step = SPEED * runMul * (dt / 1000) * (isTap ? 1 : stepInv) * (norm === norm ? 1 : 1);
+          const step = SPEED * runMul * (dt / 1000);
           let nx = fxRef.current + vx * step;
           let ny = fyRef.current + vy * step;
           nx = Math.max(TILE * 0.5, Math.min(worldW - TILE * 0.5, nx));
@@ -1255,12 +1251,62 @@ function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   }
 }
 
+/** A deliberately quiet self-service ATM: one screen, one card slot, one status light. */
+function drawAtm(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  const { P, heightPx } = s;
+  const active = s.playable && s.activeStationId === st.id;
+  const u = (s.T / TILE) * 0.5;
+  const c = st.col, r = st.row;
+  const w = st.footprint?.w ?? 1, d = st.footprint?.d ?? 1;
+  groundShadow(ctx, s, c, r, w, d, 0.26);
+  isoBox(
+    ctx, s, c, r, w, d, 16,
+    active ? '#202d3d' : '#151e2a',
+    '#0b111a',
+    '#101925',
+    active ? 'rgba(148,163,184,.75)' : 'rgba(100,116,139,.42)',
+  );
+
+  const top = P(tx, ty);
+  const faceW = 9 * u;
+  const faceH = 6 * u;
+  const faceY = top.y - heightPx(16) - faceH * 0.2;
+  ctx.save();
+  ctx.fillStyle = active ? '#13283a' : '#0c1724';
+  ctx.fillRect(top.x - faceW / 2, faceY, faceW, faceH);
+  ctx.strokeStyle = active ? 'rgba(125,211,252,.8)' : 'rgba(100,116,139,.48)';
+  ctx.lineWidth = Math.max(1, u * 0.35);
+  ctx.strokeRect(top.x - faceW / 2, faceY, faceW, faceH);
+
+  // Minimal banking-app layout; no cash icon, teller window, or decorative glow.
+  ctx.fillStyle = active ? 'rgba(186,230,253,.9)' : 'rgba(148,163,184,.72)';
+  ctx.fillRect(top.x - faceW * 0.34, faceY + faceH * 0.22, faceW * 0.68, Math.max(1, u * 0.35));
+  ctx.fillStyle = active ? 'rgba(125,211,252,.7)' : 'rgba(100,116,139,.58)';
+  ctx.fillRect(top.x - faceW * 0.34, faceY + faceH * 0.48, faceW * 0.42, Math.max(1, u * 0.3));
+  ctx.fillRect(top.x - faceW * 0.34, faceY + faceH * 0.67, faceW * 0.58, Math.max(1, u * 0.3));
+
+  // Card slot and a single ready light below the screen.
+  ctx.fillStyle = '#050a10';
+  ctx.fillRect(top.x - faceW * 0.22, faceY + faceH + 2 * u, faceW * 0.44, Math.max(1, u * 0.42));
+  ctx.fillStyle = active ? '#7dd3fc' : '#64748b';
+  ctx.fillRect(top.x - 1.2 * u, faceY + faceH + 4.5 * u, 2.4 * u, 1.2 * u);
+  ctx.restore();
+
+  if (!s.suppressLabels || active) {
+    ctx.fillStyle = active ? '#bae6fd' : 'rgba(148,163,184,.72)';
+    ctx.font = `${Math.max(8, 4.2 * u)}px "Fira Code", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText((active ? '▸ ' : '') + 'ATM', top.x, faceY - 4 * u);
+    ctx.textAlign = 'left';
+  }
+}
+
 const ATM_CFG: MachineCfg = {
-  w: 1.1, h: 19,
-  top: '#0e4034', topA: '#13564a', left: '#05201a', right: '#083026',
-  rim: 'rgba(40,170,120,0.6)', rimA: 'rgba(90,255,200,0.95)',
-  face: 'rgba(14,52,42,0.9)', faceA: 'rgba(120,255,210,0.92)', glow: 'rgba(80,255,200,0.9)',
-  icon: '💵', label: 'rgba(120,220,180,0.85)',
+  w: 1, h: 16,
+  top: '#151e2a', topA: '#202d3d', left: '#0b111a', right: '#101925',
+  rim: 'rgba(100,116,139,.42)', rimA: 'rgba(148,163,184,.75)',
+  face: '#0c1724', faceA: '#13283a', glow: 'rgba(125,211,252,.35)',
+  icon: '', label: 'rgba(148,163,184,.72)',
 };
 const VENDING_CFG: MachineCfg = {
   w: 1.2, h: 20,
@@ -1286,8 +1332,8 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   const d = st.footprint?.d ?? 1;
   // Each object gets a distinct, recognisable render so it reads as part of the
   // room — never an identical kiosk with a floating marker.
-  if (st.glyph === 'elevator') { drawElevator(ctx, s, st, tx, ty); return; }
-  if (st.glyph === 'atm') { drawMachine(ctx, s, st, tx, ty, ATM_CFG); return; }
+  if (st.glyph === 'elevator' || st.id.startsWith('office-wing-door-')) { drawElevator(ctx, s, st, tx, ty); return; }
+  if (st.glyph === 'atm') { drawAtm(ctx, s, st, tx, ty); return; }
   if (st.glyph === 'vending') { drawMachine(ctx, s, st, tx, ty, VENDING_CFG); return; }
   if (st.glyph === 'payphone') { drawMachine(ctx, s, st, tx, ty, PAYPHONE_CFG); return; }
   if (st.glyph === 'music') { drawShadowRadio(ctx, s, st, tx, ty); return; }
@@ -1458,8 +1504,34 @@ function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRo
   // low back + side walls (thin iso boxes)
   isoBox(ctx, s, room.x, room.y, room.w, 0.25, 14, hexA(accent, 0.25), 'rgba(20,12,40,0.85)', 'rgba(30,18,55,0.8)');
   isoBox(ctx, s, room.x, room.y, 0.25, room.h, 14, hexA(accent, 0.2), 'rgba(20,12,40,0.85)', 'rgba(28,16,50,0.8)');
-  // glass front partition (low) — skip door gap visually with a lighter band
-  isoBox(ctx, s, room.x, room.y + room.h - 0.25, room.w, 0.25, 6, hexA(accent, 0.35), hexA(accent, 0.18), hexA(accent, 0.12));
+  // Glass front partition (low), split around the walkable doorway. This is
+  // especially important for the shared elevator hall: the lift reads as a
+  // walled circulation core instead of a freestanding office prop.
+  const frontY = room.y + room.h - 0.25;
+  const side = room.doorSide ?? "bottom";
+  const span = Math.max(0, Math.min(room.doorSpan ?? 2, room.w));
+  const doorAt = Math.max(room.x, Math.min(room.x + room.w - span, room.doorAt ?? room.x + (room.w - span) / 2));
+  if (side === "bottom" && span > 0 && doorAt > room.x) {
+    isoBox(ctx, s, room.x, frontY, doorAt - room.x, 0.25, 6, hexA(accent, 0.35), hexA(accent, 0.18), hexA(accent, 0.12));
+  }
+  if (side === "bottom" && span > 0 && doorAt + span < room.x + room.w) {
+    isoBox(ctx, s, doorAt + span, frontY, room.x + room.w - doorAt - span, 0.25, 6, hexA(accent, 0.35), hexA(accent, 0.18), hexA(accent, 0.12));
+  }
+  if (side !== "bottom" || span === 0) {
+    isoBox(ctx, s, room.x, frontY, room.w, 0.25, 6, hexA(accent, 0.35), hexA(accent, 0.18), hexA(accent, 0.12));
+  }
+  if (side === "bottom" && span > 0) {
+    const doorway = P(doorAt + span / 2, room.y + room.h);
+    ctx.save();
+    ctx.strokeStyle = hexA(accent, 0.65);
+    ctx.lineWidth = Math.max(1, 1.2 * (s.T / TILE));
+    ctx.setLineDash([3 * (s.T / TILE), 2 * (s.T / TILE)]);
+    ctx.beginPath();
+    ctx.moveTo(doorway.x - 4 * (s.T / TILE), doorway.y);
+    ctx.lineTo(doorway.x + 4 * (s.T / TILE), doorway.y);
+    ctx.stroke();
+    ctx.restore();
+  }
   // nameplate — suppressed on mobile/touch
   const top = P(room.x + room.w / 2, room.y);
   if (!s.suppressLabels) {

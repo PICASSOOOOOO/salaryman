@@ -25,7 +25,7 @@ export interface AudioSettings {
   voice: number;      // 0–1 TTS / advisor voices
   soundtrack: number; // 0–1 SHADOW RADIO — Call Home tracks
   muted: boolean;     // master mute
-  musicEnabled: boolean;    // SHADOW RADIO — opt-in, default OFF, global except phone
+  musicEnabled: boolean;    // SHADOW RADIO — default ON at low volume, global except phone
   ambianceEnabled: boolean; // AMBIANCE (low ambient bed) — default ON, in-game, toggleable off
 }
 
@@ -37,9 +37,9 @@ export const AUDIO_DEFAULTS: AudioSettings = {
   music: 0.14,       // AMBIANCE is intentionally EXTREMELY LOW
   sfx: 0.9,
   voice: 1.0,
-  soundtrack: 0.22,  // Shadow Radio level once the player opts in
+  soundtrack: 0.16,  // Shadow Radio starts quietly; the physical source can adjust it
   muted: false,
-  musicEnabled: false,   // music never auto-plays — the player turns it on
+  musicEnabled: true,    // radio is tuned in by default at the low source level above
   ambianceEnabled: true, // low ambient bed plays during the game by default
 };
 
@@ -120,7 +120,7 @@ export function getAudioSettings(): AudioSettings {
   return state;
 }
 
-// Shadow Radio is opt-in and never auto-plays.
+// Shadow Radio is on by default at a low source level and remains toggleable.
 export function getMusicEnabled(): boolean {
   return state.musicEnabled;
 }

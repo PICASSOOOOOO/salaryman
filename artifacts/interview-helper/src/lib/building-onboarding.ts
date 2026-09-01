@@ -71,7 +71,7 @@ export function getPlayerTasks(stage = readStage()): PlayerTask[] {
       id: "enter-work-floor",
       title: "Report to the work floor",
       hint: "Use the marked WORK ACCESS door.",
-      destination: "/tower/mezzanine",
+      destination: "/tower/mezzanine?focus=classifieds",
       status: stage === "work" ? "active" : stage === "complete" ? "complete" : "locked",
     },
   ];

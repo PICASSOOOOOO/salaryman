@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, bankAccountsTable, bankTransactionsTable, type BankAccount } from "@workspace/db";
 import { eq, and, desc, sql, inArray, asc } from "drizzle-orm";
+import { randomInt } from "node:crypto";
 import { ensureFiatAccounts, getSpendableFiat, STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
 export { STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
 
@@ -41,7 +42,46 @@ router.get("/economy/bank/accounts", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const accounts = await ensureSeeded(uid(req), emailOf(req));
   const wallet = await getSpendableFiat(uid(req));
-  res.json({ accounts, spendable: wallet.spendable });
+  res.json({ accounts: accounts.filter((account) => account.kind !== "cash"), spendable: wallet.spendable });
+});
+
+async function nextAccountNumber(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<string> {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const candidate = String(randomInt(1_000_000_000, 10_000_000_000));
+    const [taken] = await tx.select({ id: bankAccountsTable.id }).from(bankAccountsTable)
+      .where(eq(bankAccountsTable.accountNumber, candidate)).limit(1);
+    if (!taken) return candidate;
+  }
+  throw new Error("Unable to allocate a unique account number");
+}
+
+router.post("/economy/bank/accounts", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const kind = req.body?.kind;
+  const label = typeof req.body?.label === "string" ? req.body.label.trim().slice(0, 64) : "";
+  if (kind !== "checking" && kind !== "savings") {
+    res.status(400).json({ error: "Choose checking or savings" });
+    return;
+  }
+  if (label.length < 1) {
+    res.status(400).json({ error: "Account name is required" });
+    return;
+  }
+  await ensureSeeded(userId, emailOf(req));
+  try {
+    const account = await db.transaction(async (tx) => {
+      const accountNumber = await nextAccountNumber(tx);
+      const [created] = await tx.insert(bankAccountsTable).values({
+        userId, kind, label, accountNumber, balance: 0, currency: "FIAT", apyBps: 0,
+      }).returning();
+      return created;
+    });
+    res.status(201).json({ account });
+  } catch (error) {
+    console.error("[Bank] account opening failed:", error);
+    res.status(500).json({ error: "Could not open account" });
+  }
 });
 
 router.get("/economy/bank/transactions", async (req, res) => {

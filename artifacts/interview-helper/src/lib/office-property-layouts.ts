@@ -13,6 +13,11 @@ import type { OfficeCapsule, OfficeDesk, OfficeFloorRect, OfficeRoom, OfficeStat
 export type OfficeFacing = "left" | "right";
 export type OfficePose = { x: number; y: number; facing: OfficeFacing };
 
+export function defaultShadowTowerOfficeName(city: ShadowTowerCity, floorNumber: number): string {
+  const cityCode = city === "huda_city" ? "HUDA" : "MINX";
+  return `${cityCode} · SUITE F${floorNumber}-01`;
+}
+
 /** Renderer-ready projection of the shared Shadow Tower plan. No furniture is invented here. */
 export interface OfficePropertyLayout {
   propertyKey: string;
@@ -42,6 +47,7 @@ const glyphFor = (kind: string): OfficeStation["glyph"] =>
       kind === "nurse_station" || kind === "doctor_station" || kind === "guard_station" || kind === "holding_cell" ? "comms" :
                 kind === "work_board" ? "comms" : "comms";
 const labelFor = (id: string, kind: string) =>
+  id.startsWith("office-wing-door-") ? "OFFICE WING" :
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
     kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
       kind === "radio" ? "SHADOW RADIO" : kind === "payphone" ? "PAYPHONE" :
@@ -61,9 +67,29 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
     id: object.id, kind, col: object.footprint.x, row: object.footprint.y, w: object.footprint.cols, d: object.footprint.rows,
   });
   const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "executive_room").map((object) => ({
-    id: object.id, label: "EXECUTIVE ROOM", x: object.footprint.x, y: object.footprint.y,
+    id: object.id,
+    label: plan.floorType === "office" ? defaultShadowTowerOfficeName(plan.city, plan.floorNumber) : "EXECUTIVE ROOM",
+    x: object.footprint.x, y: object.footprint.y,
     w: object.footprint.cols, h: object.footprint.rows, doorSide: "bottom", doorSpan: object.footprint.cols,
   }));
+  const elevator = objects.find((object) => object.kind === "elevator");
+  if (elevator) {
+    // The lift belongs to the shared circulation core, not to an office. Keep
+    // its footprint against the outside wall and give it its own small hall
+    // with a single entrance into the floor.
+    rooms.unshift({
+      id: `${elevator.id}-hall`,
+      label: "ELEVATOR HALL",
+      x: elevator.footprint.x,
+      y: elevator.footprint.y,
+      w: Math.max(3, elevator.footprint.cols + 1),
+      h: 4,
+      doorSide: "bottom",
+      doorAt: elevator.footprint.x + 1,
+      doorSpan: 1,
+      accent: "#38bdf8",
+    });
+  }
   const stations = objects.filter((object) => object.interactive && object.kind !== "workstation" && object.kind !== "executive_desk").map((object) => ({
     id: object.id, label: labelFor(object.id, object.kind), col: object.footprint.x, row: object.footprint.y,
     // Reach the walkable tile immediately outside large collision footprints.
@@ -158,8 +184,8 @@ export function getOfficeHudMode(width: number): "compact" | "full" { return wid
 export function officePoseStorageKey(slot: string | number, propertyKey: string) { return `salaryman.office.pose.v2:${slot}:${propertyKey}`; }
 export function loadOfficePose(slot: string | number, layout: OfficePropertyLayout): OfficePose {
   if (typeof window === "undefined") return layout.spawn;
-  try { return validateOfficePose(layout, JSON.parse(sessionStorage.getItem(officePoseStorageKey(slot, layout.propertyKey)) || "null")) ?? layout.spawn; } catch { return layout.spawn; }
+  try { return validateOfficePose(layout, JSON.parse(localStorage.getItem(officePoseStorageKey(slot, layout.propertyKey)) || "null")) ?? layout.spawn; } catch { return layout.spawn; }
 }
 export function saveOfficePose(slot: string | number, layout: OfficePropertyLayout, pose: OfficePose) {
-  const valid = validateOfficePose(layout, pose); if (valid && typeof window !== "undefined") sessionStorage.setItem(officePoseStorageKey(slot, layout.propertyKey), JSON.stringify(valid));
+  const valid = validateOfficePose(layout, pose); if (valid && typeof window !== "undefined") localStorage.setItem(officePoseStorageKey(slot, layout.propertyKey), JSON.stringify(valid));
 }

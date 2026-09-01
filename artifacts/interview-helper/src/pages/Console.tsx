@@ -232,6 +232,16 @@ export default function Console() {
           <Radio className="w-3 h-3" />
           PABLO
         </Link>
+          <Link
+            href="/phone?from=terminal"
+            data-testid="console-open-phone"
+            className="inline-flex items-center gap-1.5 shrink-0 rounded px-2 py-1"
+            style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(110,231,183,0.95)', border: '1px solid rgba(110,231,183,0.32)', background: 'rgba(110,231,183,0.06)' }}
+            title="Open Phone System"
+          >
+            <Radio className="w-3 h-3" />
+            PHONE SYSTEM
+          </Link>
         <button
           type="button"
           onClick={() => setShowTowerLife(true)}

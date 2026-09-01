@@ -11,7 +11,7 @@ import { isPhoneBusy, subscribePhoneBusy } from "../lib/phone-busy";
 import { speakGameTTS, type TTSHandle } from "../lib/tts";
 
 // ── Shadow Radio (MUSIC) ────────────────────────────────────────────────────
-// One app-wide, opt-in station. Unlike the retired WorldPlay player, this element
+// One app-wide station, tuned in quietly by default. Unlike the retired WorldPlay player, this element
 // never unmounts on navigation, so changing pages (or toggling it) tunes back
 // into the same programme instead of restarting a track.
 

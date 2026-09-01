@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, text, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,9 @@ export const bankAccountsTable = pgTable(
     userId: varchar("user_id", { length: 64 }).notNull(),
     kind: varchar("kind", { length: 16 }).notNull(),
     label: varchar("label", { length: 64 }).notNull(),
+    // Null is reserved for the internal cash wallet; every visible bank
+    // account receives a unique 10-digit number when it is opened.
+    accountNumber: varchar("account_number", { length: 32 }),
     balance: integer("balance").notNull().default(0),
     currency: varchar("currency", { length: 8 }).notNull().default("FIAT"),
     apyBps: integer("apy_bps").notNull().default(0),
@@ -17,6 +20,7 @@ export const bankAccountsTable = pgTable(
   },
   (t) => ({
     userIdx: index("bank_accounts_user_idx").on(t.userId),
+    accountNumberUnique: uniqueIndex("bank_accounts_account_number_unique").on(t.accountNumber),
   }),
 );
 

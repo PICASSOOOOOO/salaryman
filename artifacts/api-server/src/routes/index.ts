@@ -108,6 +108,7 @@ import goldEconomyRouter from "./gold-economy";
 import marketplaceRouter from "./marketplace";
 import shadowTowerRouter from "./shadow-tower";
 import recreationRouter from "./recreation";
+import towerMarketRouter from "./tower-market";
 
 const router: IRouter = Router();
 
@@ -220,6 +221,7 @@ router.use(gameplayFiatRouter);
 router.use(gameplayWorldEconomyRouter);
 router.use(shadowTowerRouter);
 router.use(recreationRouter);
+router.use(towerMarketRouter);
   router.use(marketplaceRouter);
 
 export default router;

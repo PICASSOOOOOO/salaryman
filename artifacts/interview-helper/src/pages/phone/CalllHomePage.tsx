@@ -11,6 +11,7 @@ import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { CommsEmbedded, type CommsSection } from '@/pages/Comms';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
+import { useAlpha } from '@/hooks/use-alpha';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
@@ -194,11 +195,17 @@ export default function CalllHomePage() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
+  const alpha = useAlpha();
   const { openPledgePopup } = usePledgePopup();
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
   const activeTabIsFree = isFreePayphoneTab(activeTab);
   const telephonyLocked = !hasPhoneAccess && !activeTabIsFree;
+  const accessSource = new URLSearchParams(window.location.search).get('from');
+  const hasPhysicalCommsAccess = accessSource === 'public-floor' || accessSource === 'public-terminal' || accessSource === 'terminal';
+  const hasMobileTerminalAccess = accessSource === 'mobile-terminal' &&
+    (alpha.isAdmin || alpha.isApprovedDev || alpha.isApprovedTester);
+  const hasCommsTerminalAccess = hasPhysicalCommsAccess || hasMobileTerminalAccess;
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })), 1000);
@@ -221,6 +228,35 @@ export default function CalllHomePage() {
 
   if (!isAuthenticated) {
     return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
+  }
+
+  if (activeTabIsFree && (alpha.loading || planLoading)) {
+    return (
+      <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', color: slate(0.55) }}>
+        VERIFYING TERMINAL ACCESS...
+      </div>
+    );
+  }
+
+  if (activeTabIsFree && !hasCommsTerminalAccess) {
+    return (
+      <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', padding: 24, color: slate(0.85) }}>
+        <section style={{ width: '100%', maxWidth: 520, border: `1px solid ${slate(0.22)}`, padding: 24, textAlign: 'center' }}>
+          <Lock size={28} style={{ margin: '0 auto 12px', color: slate(0.65) }} />
+          <h1 style={{ fontSize: '0.9rem', letterSpacing: '0.2em', margin: 0 }}>COMMS TERMINAL REQUIRED</h1>
+          <p style={{ fontSize: '0.62rem', color: slate(0.55), lineHeight: 1.7, margin: '12px 0 18px' }}>
+            Open Comms from a public payphone or terminal. Remote access is reserved for ADMIN and MOD mobile terminals.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/tower/mezzanine?focus=phone')}
+            style={{ border: `1px solid ${slate(0.45)}`, background: slate(0.08), color: slate(0.9), padding: '10px 16px', cursor: 'pointer', letterSpacing: '0.12em' }}
+          >
+            GO TO PUBLIC TERMINAL
+          </button>
+        </section>
+      </div>
+    );
   }
 
   if (planLoading && !activeTabIsFree) {

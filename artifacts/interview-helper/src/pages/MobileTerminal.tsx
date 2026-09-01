@@ -9,6 +9,7 @@ import { getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 import GameSettings from './Game/Settings';
 import { TowerLifeHub } from '@/components/TowerLifeHub';
 import { useAuth } from '@/hooks/use-auth';
+import { useAlpha } from '@/hooks/use-alpha';
 
 interface CargoItem {
   id: string;
@@ -135,6 +136,8 @@ export default function MobileTerminal() {
   hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const alpha = useAlpha();
+  const canUseMobileTerminal = alpha.isAdmin || alpha.isApprovedDev || alpha.isApprovedTester;
   const { isTrial, trialDaysLeft } = usePlan();
   const [saves, setSaves] = useState<CloudSave[]>([]);
   const [activeSave, setActiveSave] = useState<CloudSave | null>(null);
@@ -155,7 +158,7 @@ export default function MobileTerminal() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || alpha.loading || !canUseMobileTerminal) return;
     (async () => {
       try {
         const r = await apiFetch('/api/salaryman/saves', { credentials: 'include' });
@@ -172,7 +175,7 @@ export default function MobileTerminal() {
       }
       setLoading(false);
     })();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, alpha.loading, canUseMobileTerminal]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -220,6 +223,22 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
 
   if (!isAuthenticated) {
     return <SignInPage context={boomerMode ? 'Sign in to access your mobile terminal.' : 'Salaryman credentials required. Terminal MX-75 remote access locked.'} />;
+  }
+
+  if (alpha.loading) {
+    return <div style={{ minHeight: '100dvh', background: '#000800', display: 'grid', placeItems: 'center', color: '#38bdf8', letterSpacing: '.15em' }}>VERIFYING MOBILE TERMINAL...</div>;
+  }
+
+  if (!canUseMobileTerminal) {
+    return (
+      <div style={{ minHeight: '100dvh', background: '#000800', display: 'grid', placeItems: 'center', padding: '1.5rem', color: '#38bdf8', textAlign: 'center' }}>
+        <div>
+          <div style={{ fontSize: '1.25rem', letterSpacing: '.16em', marginBottom: '.75rem' }}>MOBILE TERMINAL NOT ISSUED</div>
+          <div style={{ fontSize: '.7rem', color: 'rgba(56,189,248,.55)', lineHeight: 1.7 }}>Remote terminal access is issued only to ADMIN and MOD staff. Use a public terminal inside Shadow Tower.</div>
+          <button onClick={() => navigate('/tower/mezzanine?focus=phone')} style={{ marginTop: '1rem', padding: '.65rem 1rem', border: '1px solid rgba(56,189,248,.5)', background: 'rgba(56,189,248,.08)', color: '#38bdf8', cursor: 'pointer' }}>GO TO PUBLIC TERMINAL</button>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -291,7 +310,13 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
               <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginTop: '.1rem' }}>MOBILE ACCESS · ALPHA {__BUILD_VERSION__}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ ...vtFont(boomerMode), fontSize: '.75rem', color: '#38bdf8', letterSpacing: '.08em' }}>● ONLINE</div>
+              <button
+                type="button"
+                onClick={() => navigate('/phone?tab=chat&from=mobile-terminal')}
+                style={{ ...vtFont(boomerMode), fontSize: '.75rem', color: '#38bdf8', letterSpacing: '.08em', border: 0, background: 'transparent', cursor: 'pointer' }}
+              >
+                ● COMMS
+              </button>
               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em' }}>REMOTE LINK</div>
             </div>
           </div>

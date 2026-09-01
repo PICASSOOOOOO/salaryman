@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { BedDouble, BriefcaseBusiness, Building2, Clock3, KeyRound, Laptop, Shield, Stethoscope, X } from "lucide-react";
+import { BedDouble, BriefcaseBusiness, Building2, KeyRound, Laptop, Shield, Stethoscope, X } from "lucide-react";
 import { IsoOffice } from "@/components/IsoOffice";
 import { WorldBuildStation } from "@/components/WorldBuildStation";
 import { apiFetch } from "@/lib/api-client";
@@ -29,15 +29,19 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
   const [, navigate] = useLocation();
   const [slotIndex, setSlotIndex] = useState<number | null>(null);
   const [payload, setPayload] = useState<PublicPayload | null>(null);
-  const [panel, setPanel] = useState<"terminal" | "work" | "elevator" | "rest" | "beds" | "security" | null>(null);
+  const [panel, setPanel] = useState<"terminal" | "work" | "elevator" | "rest" | "beds" | "security" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const focus = new URLSearchParams(window.location.search).get("focus");
+    return focus === "classifieds" || focus === "phone" ? "terminal" : null;
+  });
   const [message, setMessage] = useState("WALK TO A STATION · PRESS E OR TAP");
   const [busy, setBusy] = useState(false);
-  const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null);
   const [beds, setBeds] = useState<BedListing[]>([]);
   const layout = useMemo(
     () => getPublicFloorOfficeLayout(getActiveCityId() === "huda_city" ? "huda_city" : "minx_city", floor),
     [floor],
   );
+  const floorPath = floor === 2 ? "/tower/mezzanine" : floor === 3 ? "/tower/rest" : "/tower/security";
 
   const load = useCallback(async () => {
     const savesResponse = await apiFetch("/api/salaryman/saves", { credentials: "include" });
@@ -97,17 +101,6 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     } finally { setBusy(false); }
   };
 
-  const buyTerminalHour = async () => {
-    try {
-      const data = await post("/api/public-floor/terminal-hour");
-      if (!data) return;
-      setPassExpiresAt(data.passExpiresAt);
-      setMessage(`COMPUTER PASS ACTIVE · ƒ${data.priceFiat} · 60 MINUTES`);
-      setPanel(null);
-      await load();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "TERMINAL PAYMENT FAILED"); }
-  };
-
   const rest = async () => {
     try {
       const data = await post("/api/public-floor/rest");
@@ -134,19 +127,20 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     ...layout.stations.map((station) => ({
       ...station,
       onInteract: () => {
-        if (station.id.includes("elevator")) setPanel("elevator");
+        if (station.id.includes("elevator") || station.id.startsWith("office-wing-door-")) navigate(`/tower/elevator?from=${encodeURIComponent(floorPath)}&floor=${floor}`);
         else if (station.id === "world-work-board") setPanel("work");
         else if (station.id.startsWith("rest-bed")) setPanel("beds");
         else if (station.id === "doctor" || station.id.includes("nurse")) void rest();
         else if (security) setPanel("security");
-        else if (station.id === "public-atm") navigate("/game/bank");
+        else if (station.id === "public-atm") navigate(`/game/bank?returnTo=${encodeURIComponent(floorPath)}&returnFloor=${floor}`);
+        else if (station.id.includes("payphone")) navigate("/phone?from=public-floor");
         else if (station.id.includes("vending")) navigate("/vending?from=public-floor");
         else setMessage(`${station.label} · PUBLIC SERVICE · NO ACCESS FEE`);
       },
     })),
     ...(mezzanine ? layout.teamDesks.map((desk, index) => ({
       id: desk.id,
-      label: `PUBLIC COMPUTER ${index + 1} · ƒ25/HOUR`,
+      label: `PUBLIC COMPUTER ${index + 1} · FREE`,
       col: desk.col,
       row: desk.row,
       radius: 34,
@@ -154,7 +148,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
       glyph: "comms" as const,
       onInteract: () => setPanel("terminal"),
     })) : []),
-  ], [layout, mezzanine, navigate, security]);
+  ], [floorPath, floor, layout, mezzanine, navigate, security]);
 
   if (!isAuthenticated) return <div className="min-h-screen grid place-items-center bg-[#070912] text-white"><Link href="/pablo" className="border border-cyan-400 px-5 py-3">START WORK</Link></div>;
   if (slotIndex == null) return (
@@ -173,7 +167,8 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
         <div className="min-w-0">
           <div className="text-sm font-black tracking-[.2em] text-cyan-300 flex items-center gap-2">
             {mezzanine ? <Laptop className="w-4 h-4" /> : security ? <Shield className="w-4 h-4" /> : <BedDouble className="w-4 h-4" />}
-            FLOOR {floor} · {mezzanine ? "PUBLIC COMPUTER CAFE" : security ? "SECURITY & CUSTODY" : "INFIRMARY · HOTELS"}
+            <span className="grid h-7 min-w-9 place-items-center border border-cyan-300/50 bg-cyan-300/10 text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,.15)] animate-pulse">F{floor}</span>
+            {mezzanine ? "PUBLIC COMPUTER CAFE" : security ? "SECURITY & CUSTODY" : "INFIRMARY · HOTELS"}
           </div>
           <div className="text-[9px] text-zinc-500 truncate">{getActiveCityName().toUpperCase()} · ACCESS FREE · {message}</div>
         </div>
@@ -197,7 +192,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
         <section className="w-full max-w-3xl max-h-[88dvh] overflow-y-auto border border-cyan-400/30 bg-[#0a0f1a] shadow-2xl rounded-xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
           <div className="sticky top-0 z-10 bg-[#0a0f1a]/95 border-b border-white/10 px-4 py-3 flex items-center justify-between">
             <h2 className="font-black tracking-[.16em] text-cyan-200 flex items-center gap-2">
-              {panel === "terminal" ? <><Clock3 className="w-4 h-4" /> PUBLIC COMPUTER</>
+              {panel === "terminal" ? <><Laptop className="w-4 h-4" /> PUBLIC COMPUTER · FREE</>
                 : panel === "work" ? <><BriefcaseBusiness className="w-4 h-4" /> WORLD WORK BOARD</>
                   : panel === "rest" ? <><Stethoscope className="w-4 h-4" /> MEDICAL OBSERVATION</>
                     : panel === "beds" ? <><BedDouble className="w-4 h-4" /> BED MARKET</>
@@ -207,13 +202,15 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
             <button onClick={() => setPanel(null)} aria-label="Close"><X className="w-5 h-5" /></button>
           </div>
           {panel === "terminal" && <div className="p-6 space-y-4">
-            <p className="text-sm text-zinc-300">Cafe access, seating, and walking are free. Computer use is billed in explicit one-hour blocks.</p>
-            <div className="border border-amber-400/25 bg-amber-400/5 p-4">
-              <strong className="text-amber-300">ƒ25 / HOUR</strong>
-              <p className="text-xs text-zinc-500 mt-1">No subscription. No background billing. Buying another hour extends the current pass.</p>
+             <p className="text-[10px] font-bold tracking-[.18em] text-zinc-500">PUBLIC CLASSIFIEDS · PHONE SYSTEMS · OPEN ACCESS</p>
+            <div className="border border-emerald-400/25 bg-emerald-400/5 p-4">
+              <strong className="text-emerald-300">FREE PUBLIC COMPUTER ACCESS</strong>
+             <p className="text-xs text-zinc-500 mt-1">Browse Tower Life, use the work board, or open the phone system from any public terminal.</p>
             </div>
-            {passExpiresAt && <p className="text-xs text-cyan-300">ACTIVE UNTIL {new Date(passExpiresAt).toLocaleTimeString()}</p>}
-            <button disabled={busy} onClick={() => void buyTerminalHour()} className="w-full bg-cyan-300 text-black font-black py-3 disabled:bg-zinc-700">{busy ? "SETTLING…" : "BUY ONE COMPUTER HOUR · ƒ25"}</button>
+             <div className="grid gap-2 sm:grid-cols-2">
+               <Link href="/console" className="block w-full bg-cyan-300 text-black text-center font-black py-3 transition hover:bg-cyan-200 active:scale-[.99]">ALL SYSTEMS TERMINAL</Link>
+               <Link href="/phone?from=public-terminal" className="block w-full border border-emerald-300/50 bg-emerald-300/10 text-center font-black py-3 text-emerald-100 transition hover:bg-emerald-300/20 active:scale-[.99]">PHONE SYSTEM</Link>
+             </div>
             <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="PUBLIC TERMINAL · WALL SHEETS" />
           </div>}
           {panel === "work" && <div className="p-4">
@@ -259,7 +256,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
           </div>}
           {panel === "elevator" && <div className="grid sm:grid-cols-4 gap-3 p-5 animate-in fade-in duration-500">
             <Link href="/tower" className="border border-cyan-300/30 p-4 hover:border-cyan-300 sm:col-span-4"><strong>TOWER DIRECTORY</strong><p className="text-xs text-zinc-500">See every floor, access class, and destination.</p></Link>
-            <Link href="/office" className="border border-white/15 p-4 hover:border-cyan-300"><strong>PRIVATE OFFICE</strong><p className="text-xs text-zinc-500">Your organization floor</p></Link>
+            <Link href="/office" className="border border-white/15 p-4 hover:border-cyan-300"><strong>OFFICE WING</strong><p className="text-xs text-zinc-500">Your organization office</p></Link>
             <Link href="/recreation" className="border border-white/15 p-4 hover:border-cyan-300"><strong>REC</strong><p className="text-xs text-zinc-500">Public recreation</p></Link>
             <Link href="/tower/mezzanine" className="border border-white/15 p-4 hover:border-cyan-300"><strong>FLOOR 2</strong><p className="text-xs text-zinc-500">Computer cafe + work</p></Link>
             <Link href="/tower/rest" className="border border-white/15 p-4 hover:border-cyan-300"><strong>FLOOR 3</strong><p className="text-xs text-zinc-500">Rest ward + clinic</p></Link>

@@ -4,6 +4,7 @@ export * from "./credit-actions";
 export * from "./playable-properties";
 export * from "./shadow-tower";
 export * from "./property-market";
+export * from "./tower-commerce";
 export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,

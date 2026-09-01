@@ -1579,6 +1579,52 @@ export function stopTowerAmbient() {
   _towerAmbientMaster = null;
 }
 
+// Enclosed elevator bed: a low motor hum, a quiet fluorescent tone, and a
+// repeating lift pulse. It has its own owner so it cannot leak into the lobby
+// directory or into a destination floor.
+let _elevatorAmbientNodes: AmbientNode[] = [];
+let _elevatorAmbientMaster: GainNode | null = null;
+let _elevatorAmbientRunning = false;
+export function startElevatorAmbient() {
+  if (_elevatorAmbientRunning) return;
+  _elevatorAmbientRunning = true;
+  const c = ctx();
+  const master = c.createGain();
+  _elevatorAmbientMaster = master;
+  master.gain.value = 0;
+  master.connect(c.destination);
+  master.gain.setTargetAtTime((_muted || _musicMuted) ? 0 : _musicVol * 0.24, c.currentTime, 0.8);
+
+  const addTone = (frequency: number, type: OscillatorType, volume: number, detune = 0) => {
+    const oscillator = c.createOscillator();
+    const gainNode = c.createGain();
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    oscillator.detune.value = detune;
+    gainNode.gain.value = volume;
+    oscillator.connect(gainNode);
+    gainNode.connect(master);
+    oscillator.start();
+    _elevatorAmbientNodes.push(
+      { node: oscillator, stop: () => { try { oscillator.stop(); } catch (_e) {} } },
+      { node: gainNode },
+    );
+  };
+  addTone(54, "sine", 0.18);
+  addTone(108, "triangle", 0.035, 3);
+  addTone(220, "sine", 0.018, -4);
+}
+
+export function stopElevatorAmbient() {
+  if (!_elevatorAmbientRunning) return;
+  _elevatorAmbientRunning = false;
+  _elevatorAmbientMaster?.gain.setTargetAtTime(0, _ctx?.currentTime ?? 0, 0.18);
+  for (const entry of _elevatorAmbientNodes) { try { entry.stop?.(); entry.node.disconnect(); } catch (_e) {} }
+  _elevatorAmbientNodes = [];
+  try { _elevatorAmbientMaster?.disconnect(); } catch (_e) {}
+  _elevatorAmbientMaster = null;
+}
+
 export function isOfficeAmbientRunning(): boolean {
   return _officeRunning;
 }

@@ -3,6 +3,7 @@ import {
   analogMovementVector,
   approachAngle,
   approachMovementVelocity,
+  isometricKeyboardMovementVector,
   keyboardMovementVector,
   moveWithCollision,
 } from "./movement";
@@ -16,6 +17,25 @@ describe("movement vectors", () => {
     expect(Math.hypot(northeast.x, northeast.y)).toBeCloseTo(1);
     expect(northeast.x).toBeCloseTo(Math.SQRT1_2);
     expect(northeast.y).toBeCloseTo(-Math.SQRT1_2);
+  });
+
+  it("keeps office controls aligned to screen north/south", () => {
+    expect(isometricKeyboardMovementVector(new Set(["w"]))).toEqual({
+      x: -Math.SQRT1_2,
+      y: -Math.SQRT1_2,
+    });
+    expect(isometricKeyboardMovementVector(new Set(["s"]))).toEqual({
+      x: Math.SQRT1_2,
+      y: Math.SQRT1_2,
+    });
+    expect(isometricKeyboardMovementVector(new Set(["a"]))).toEqual({
+      x: -Math.SQRT1_2,
+      y: Math.SQRT1_2,
+    });
+    expect(isometricKeyboardMovementVector(new Set(["d"]))).toEqual({
+      x: Math.SQRT1_2,
+      y: -Math.SQRT1_2,
+    });
   });
 
   it("preserves analog magnitude after the deadzone", () => {

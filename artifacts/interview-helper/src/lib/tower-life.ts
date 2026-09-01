@@ -86,43 +86,43 @@ export const TOWER_NPCS: TowerNpc[] = [
 export const TOWER_BUSINESSES: TowerBusiness[] = [
   {
     code: "LUMEN-CARE-CLINIC",
-    name: "LUMEN CARE",
-    category: "DOCTOR · MEDICAL",
+    name: "SHADOW TOWER MEDICAL",
+    category: "DOCTOR · HEALTHCARE",
     color: "#7dd3fc",
     logo: "✚",
     floor: "FLOOR 3 · CLINIC ROOM",
-    ad: "One doctor. Quiet observation, practical care, no theatrics.",
-    appointment: "APPOINTMENTS · WALK-INS WHEN THE LIGHT IS GREEN",
+    ad: "Medical care, checkups, and quiet observation for Tower residents.",
+    appointment: "Appointments and walk-ins available",
   },
   {
     code: "BITE-BYTE-DENTAL",
-    name: "BITE//BYTE DENTAL",
-    category: "DENTIST · HUMAN + REPLICANT",
+    name: "TOWER FAMILY DENTAL",
+    category: "DENTIST · ALL AGES",
     color: "#f9a8d4",
     logo: "◈",
     floor: "FLOOR 3 · SUITE 3B",
-    ad: "Teeth, plates, smiles, and the little noises your chassis should not make.",
-    appointment: "BOOKINGS · CANCELLATIONS POSTED TO THE WALL SHEET",
+    ad: "Cleanings, repairs, and comfortable dental care for people and replicants.",
+    appointment: "Book an appointment · same-week openings",
   },
   {
     code: "MENDER-9-SERVICE",
-    name: "MENDER-9 SERVICE",
-    category: "REPLICANT MECHANIC · BUILDING SYSTEMS",
+    name: "TOWER REPAIR & MAINTENANCE",
+    category: "REPAIRS · BUILDING SERVICES",
     color: "#fbbf24",
     logo: "⚙",
     floor: "FLOOR 4 · SERVICE BAY",
-    ad: "Replicant maintenance and building repairs. If it sparks, bring it here.",
-    appointment: "SERVICE QUEUE · PRIORITY TO LIFTS, TERMINALS, AND CARETAKERS",
+    ad: "Fast repairs for lifts, computers, appliances, and everyday building problems.",
+    appointment: "Request service · priority repairs available",
   },
 ];
 
 export const TOWER_GOSSIP = [
   ["CLAW PRIME", "The lift is behaving today. Finance Tracker says that means someone filed the right form."],
-  ["FINANCE TRACKER", "Lumen Care has one opening after lunch. Bite//Byte posted a cancellation beside it."],
-  ["MILA", "Mender-9 is on an errand upstairs. Same code, same mechanic, different floor."],
+  ["FINANCE TRACKER", "Shadow Tower Medical has one opening after lunch. Tower Family Dental posted a cancellation."],
+  ["MILA", "Tower Repair is handling a lift call upstairs. The public service desk is open downstairs."],
   ["MENDER-9", "The terminal on the mezzanine is not broken. It is simply waiting for a better question."],
   ["DR. NOOR VALE", "The building works better when people make appointments instead of emergencies."],
-  ["DR. KIRA BYTE", "A clean filing and a clean smile have more in common than this tower admits."],
+  ["TOWER FAMILY DENTAL", "A clean filing and a clean smile both make the week easier."],
 ] as const;
 
 export function getTowerGossip(index = 0) {

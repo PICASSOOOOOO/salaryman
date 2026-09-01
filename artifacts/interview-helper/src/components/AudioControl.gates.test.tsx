@@ -3,7 +3,7 @@
 // Sibling-in-spirit of pages/Game/Settings.sound.test.tsx. That suite covers the
 // GAME tab's numeric volume sliders + the Mute-all toggle. It does NOT touch the
 // two boolean GATES the audio store also owns:
-//   • musicEnabled    — the opt-in Shadow Radio. Default OFF.
+//   • musicEnabled    — Shadow Radio. Default ON at low volume.
 //   • ambianceEnabled — the low ambient bed. Default ON.
 // These gates decide whether whole CATEGORIES of audio play at all
 // (channelGain()/applyToEngine() branch on them), yet no test exercises the UI
@@ -15,7 +15,7 @@
 // surface that exposes both gates with explicit data-testids, writing through
 // the same central audio store as the settings page. These tests drive that real
 // UI and assert:
-//   - defaults round-trip: musicEnabled false, ambianceEnabled true,
+//   - defaults round-trip: musicEnabled true, ambianceEnabled true,
 //   - clicking each toggle flips ONLY its own flag in the blob,
 //   - the flip does NOT clobber the volume keys or the unrelated game keys that
 //     share the one localStorage blob.
@@ -104,10 +104,10 @@ afterEach(() => {
 });
 
 describe("AudioControl gate defaults round-trip", () => {
-  it("persists musicEnabled=false and ambianceEnabled=true at defaults", async () => {
+  it("persists musicEnabled=true and ambianceEnabled=true at defaults", async () => {
     await mount();
     const b = blob();
-    expect(b.musicEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(true);
     expect(b.ambianceEnabled).toBe(true);
     // The defaults must match the store's declared defaults.
     expect(b.musicEnabled).toBe(AUDIO_DEFAULTS.musicEnabled);
@@ -115,7 +115,7 @@ describe("AudioControl gate defaults round-trip", () => {
 
     // The toggle buttons reflect the same state in their label.
     openPanel();
-    expect(byTestId("audio-control-music-toggle").textContent).toContain("OFF");
+    expect(byTestId("audio-control-music-toggle").textContent).toContain("ON");
     expect(byTestId("audio-control-ambiance-toggle").textContent).toContain("ON");
   });
 });
@@ -124,12 +124,12 @@ describe("AudioControl MUSIC gate toggle", () => {
   it("flips musicEnabled on/off without clobbering volumes or game keys", async () => {
     await mount();
     openPanel();
-    expect(blob().musicEnabled).toBe(false);
+    expect(blob().musicEnabled).toBe(true);
 
-    // Turn MUSIC on.
+    // Turn MUSIC off.
     click(byTestId("audio-control-music-toggle"));
     let b = blob();
-    expect(b.musicEnabled).toBe(true);
+    expect(b.musicEnabled).toBe(false);
     // ambiance gate untouched.
     expect(b.ambianceEnabled).toBe(true);
     // Volume keys preserved (the shared blob's audio half).
@@ -140,15 +140,15 @@ describe("AudioControl MUSIC gate toggle", () => {
     expect(b.controlScheme).toBe("arrows");
     expect(b.invertY).toBe(true);
     expect(b.resolution).toBe("720p");
-    expect(byTestId("audio-control-music-toggle").textContent).toContain("ON");
+    expect(byTestId("audio-control-music-toggle").textContent).toContain("OFF");
 
-    // Turn MUSIC back off — round-trips cleanly.
+    // Turn MUSIC back on — round-trips cleanly.
     click(byTestId("audio-control-music-toggle"));
     b = blob();
-    expect(b.musicEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(true);
     expect(b.ambianceEnabled).toBe(true);
     expect(b.controlScheme).toBe("arrows");
-    expect(byTestId("audio-control-music-toggle").textContent).toContain("OFF");
+    expect(byTestId("audio-control-music-toggle").textContent).toContain("ON");
   });
 });
 
@@ -163,7 +163,7 @@ describe("AudioControl AMBIANCE gate toggle", () => {
     let b = blob();
     expect(b.ambianceEnabled).toBe(false);
     // music gate untouched.
-    expect(b.musicEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(true);
     // Volume keys preserved.
     expect(b.masterVolume).toBe(AUDIO_DEFAULTS.master);
     expect(b.musicVolume).toBe(AUDIO_DEFAULTS.music);
@@ -176,7 +176,7 @@ describe("AudioControl AMBIANCE gate toggle", () => {
     click(byTestId("audio-control-ambiance-toggle"));
     b = blob();
     expect(b.ambianceEnabled).toBe(true);
-    expect(b.musicEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(true);
     expect(b.invertY).toBe(true);
     expect(byTestId("audio-control-ambiance-toggle").textContent).toContain("ON");
   });

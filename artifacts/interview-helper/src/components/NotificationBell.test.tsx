@@ -269,7 +269,7 @@ describe("per-item actions", () => {
     await click(itemBtn);
 
     expect(h.notifState.markRead).toHaveBeenCalledWith([7]);
-    expect(h.navigate).toHaveBeenCalledWith("/comms");
+    expect(h.navigate).toHaveBeenCalledWith("/tower/mezzanine?focus=phone");
     expect(panel()).toBeNull();
   });
 
@@ -281,7 +281,7 @@ describe("per-item actions", () => {
 
     await click(panelButtonByText("New invite"));
     expect(h.notifState.markRead).not.toHaveBeenCalled();
-    expect(h.navigate).toHaveBeenCalledWith("/comms");
+    expect(h.navigate).toHaveBeenCalledWith("/tower/mezzanine?focus=phone");
   });
 
   it("clicking an unread item without a link marks read but does not navigate or close", async () => {

@@ -25,6 +25,27 @@ export function keyboardMovementVector(keys: ReadonlySet<string>): MovementVecto
 }
 
 /**
+ * Keyboard directions for the isometric office. The office is drawn with
+ * north/south as the vertical screen axis, not as one of the two diagonal
+ * tile axes. Convert the player's intuitive screen directions back into
+ * logical tile movement before the renderer projects them.
+ */
+export function isometricKeyboardMovementVector(keys: ReadonlySet<string>): MovementVector {
+  let screenX = 0;
+  let screenY = 0;
+  if (keys.has("a") || keys.has("arrowleft")) screenX -= 1;
+  if (keys.has("d") || keys.has("arrowright")) screenX += 1;
+  if (keys.has("w") || keys.has("arrowup")) screenY -= 1;
+  if (keys.has("s") || keys.has("arrowdown")) screenY += 1;
+
+  // Inverse of the office projection:
+  // screenX = (tileX - tileY) / 2, screenY = (tileX + tileY) / 4.
+  // The constants are intentionally omitted here because only direction is
+  // needed; normalization below gives all directions the same walk speed.
+  return normalizeMovementVector(screenX + screenY, screenY - screenX);
+}
+
+/**
  * Apply a radial deadzone while retaining the stick's remaining analog
  * magnitude. This keeps the edge of the stick at full speed in every angle.
  */

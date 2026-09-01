@@ -21,6 +21,7 @@ type Account = {
   userId: string;
   kind: string;
   label: string;
+  accountNumber?: string | null;
   balance: number;
   currency: string;
   apyBps: number;
@@ -51,7 +52,7 @@ const fmtDateTime = (iso: string) => {
   return d.toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 };
 const accountNumber = (a: Account) =>
-  a.kind === "vault" ? `GLD-V${a.id}` : `••${String(a.id).padStart(4, "0").slice(-4)}`;
+  a.accountNumber ?? "ACCOUNT NUMBER PENDING";
 
 const TX_TONE: Record<string, string> = {
   deposit:  "text-emerald-300",
@@ -135,6 +136,20 @@ const BANK_CUTSCENE = [
 export default function GameBank() {
   hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
+  const returnPath = useMemo(() => {
+    if (typeof window === "undefined") return "/office";
+    const candidate = new URLSearchParams(window.location.search).get("returnTo");
+    return candidate && candidate.startsWith("/") && !candidate.startsWith("//") ? candidate : "/office";
+  }, []);
+  const returnFloor = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const explicit = Number(new URLSearchParams(window.location.search).get("returnFloor"));
+    if (Number.isInteger(explicit) && explicit >= 1 && explicit <= 67) return explicit;
+    if (returnPath === "/tower/mezzanine") return 2;
+    if (returnPath === "/tower/rest") return 3;
+    if (returnPath === "/tower/security") return 4;
+    return null;
+  }, [returnPath]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tx, setTx] = useState<Tx[]>([]);
   const [tab, setTab] = useState<Tab>(() => {
@@ -353,9 +368,12 @@ export default function GameBank() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <header className="mb-6">
-          <Link href="/office" className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
-            ← OFFICE
-          </Link>
+          <div className="flex items-center justify-between gap-3">
+            <Link href={returnPath} className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
+              ← RETURN TO FLOOR
+            </Link>
+            {returnFloor && <span className="border border-emerald-300/30 bg-emerald-300/5 px-2 py-1 font-mono text-[10px] font-bold tracking-[.18em] text-emerald-200 animate-pulse">FROM FLOOR {returnFloor}</span>}
+          </div>
           <div className="mt-2 flex items-center gap-3">
             <Landmark className="w-6 h-6 text-emerald-300" />
             <div className="flex-1">
@@ -402,9 +420,9 @@ export default function GameBank() {
               <p className="text-3xl sm:text-4xl font-mono tracking-wider mt-1">
                 {loading ? <Loader2 className="w-6 h-6 animate-spin inline" /> : fmtFiat(totalAssets)}
               </p>
-              <p className="text-[10px] font-mono text-zinc-500 mt-1 tracking-widest">
-                FDIC-EQUIVALENT INSURED · UP TO ƒ250,000
-              </p>
+               <p className="text-[10px] font-mono text-zinc-500 mt-1 tracking-widest">
+                 BANK BALANCE · CASH IS HELD SEPARATELY
+               </p>
             </div>
             <div className="flex items-center gap-2 text-emerald-300/80 text-[10px] font-mono tracking-widest">
               <ShieldCheck className="w-4 h-4" /> SECURED · 256-BIT
@@ -444,7 +462,7 @@ export default function GameBank() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[9px] font-mono tracking-[0.35em] text-zinc-500">
-                      {a.kind === "checking" ? "CHECKING" : a.kind === "savings" ? "SAVINGS" : "BULLION VAULT"}
+                       {a.kind === "checking" ? "CHECKING" : "SAVINGS"}
                     </p>
                     <p className="font-mono tracking-widest text-sm mt-1">{a.label}</p>
                     <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{accountNumber(a)}</p>
@@ -453,12 +471,8 @@ export default function GameBank() {
                 </div>
                 <p className="text-2xl font-mono tracking-wider mt-3">{fmtFiat(a.balance)}</p>
                 <div className="mt-2 flex items-center gap-3 text-[10px] font-mono text-zinc-500 tracking-widest">
-                  {a.apyBps > 0 ? (
-                    <span className="text-emerald-400">{(a.apyBps / 100).toFixed(2)}% APY</span>
-                  ) : (
-                    <span>NO INTEREST</span>
-                  )}
-                  <span>·</span>
+                   <span>PERSONAL ACCOUNT</span>
+                   <span>·</span>
                   <span>{(txByAccount.get(a.id) ?? []).length} TX</span>
                 </div>
               </button>
@@ -470,14 +484,13 @@ export default function GameBank() {
               </div>
             )}
 
-            <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-4 sm:col-span-2">
+             <OpenAccountCard onOpened={refresh} />
+             <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-4 sm:col-span-2">
               <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-mono tracking-[0.3em]">
                 <TrendingUp className="w-3.5 h-3.5" /> COMING NEXT
               </div>
               <p className="text-[11px] text-zinc-500 mt-2 leading-relaxed">
-                Direct deposit to BTC settlement · ATM checking → savings consolidation ·
-                Bill pay (rent, utilities, hospital) · Loans &amp; mortgages priced live to BTC ·
-                Cross-currency conversion (ƒ ↔ Gold) at the live ticker rate
+                 You choose which accounts to open and what to call them. Savings interest is not available yet.
               </p>
             </div>
           </div>
@@ -539,10 +552,13 @@ export default function GameBank() {
         )}
 
         {tab === "cards" && (
-          <div className="grid sm:grid-cols-2 gap-3">
-            <FakeCard label="STANDARD DEBIT" tier="STANDARD" tone="from-zinc-700 to-zinc-900" />
-            <FakeCard label="EXEC PLATINUM"  tier="EXEC"     tone="from-fuchsia-900 to-zinc-950" locked />
-          </div>
+           <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-8 text-center">
+             <CreditCard className="mx-auto mb-3 h-8 w-8 text-zinc-600" />
+             <p className="font-mono text-sm tracking-widest text-zinc-300">NO CARDS ISSUED</p>
+             <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+               You have not applied for a debit or credit card. Until one is approved, purchases are paid with cash.
+             </p>
+           </div>
         )}
 
         {toast && (
@@ -1134,30 +1150,41 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
   );
 }
 
-function FakeCard({ label, tier, tone, locked }: { label: string; tier: string; tone: string; locked?: boolean }) {
+function OpenAccountCard({ onOpened }: { onOpened: () => void }) {
+  const [kind, setKind] = useState<"checking" | "savings">("checking");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!label.trim() || busy) return;
+    setBusy(true); setError("");
+    try {
+      const r = await apiFetch("/api/economy/bank/accounts", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, label: label.trim() }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setError(d.error ?? "Could not open account"); return; }
+      setLabel(""); onOpened();
+    } finally { setBusy(false); }
+  };
   return (
-    <div className={`rounded-xl border border-white/[0.1] bg-gradient-to-br ${tone} p-5 aspect-[1.6/1] flex flex-col justify-between relative overflow-hidden`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[9px] font-mono tracking-[0.4em] text-white/60">BANCO OMBRA</p>
-          <p className="text-sm font-mono tracking-widest text-white/90 mt-1">{label}</p>
-        </div>
-        <Coins className="w-5 h-5 text-white/50" />
+    <form onSubmit={submit} className="rounded-lg border border-emerald-700/30 bg-emerald-950/10 p-4 sm:col-span-2">
+      <p className="text-[10px] font-mono tracking-[0.3em] text-emerald-400">OPEN AN ACCOUNT</p>
+      <p className="mt-1 text-[11px] text-zinc-500">Choose the type and name it yourself. No interest is paid on savings yet.</p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <select value={kind} onChange={e => setKind(e.target.value as "checking" | "savings")} className="rounded border border-white/10 bg-black/50 px-3 py-2 text-sm text-zinc-200">
+          <option value="checking">Checking</option>
+          <option value="savings">Savings</option>
+        </select>
+        <input value={label} onChange={e => setLabel(e.target.value.slice(0, 64))} placeholder="Account name" className="min-w-0 flex-1 rounded border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-zinc-200 placeholder-zinc-600" />
+        <button disabled={busy || !label.trim()} className="rounded border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-emerald-300 disabled:opacity-40">
+          {busy ? "OPENING…" : "OPEN ACCOUNT"}
+        </button>
       </div>
-      <div>
-        <p className="font-mono tracking-[0.3em] text-white/80 text-sm">•••• •••• •••• 4471</p>
-        <div className="flex justify-between mt-2 text-[10px] font-mono tracking-widest text-white/50">
-          <span>OMBRA MEMBER</span>
-          <span>{tier}</span>
-        </div>
-      </div>
-      {locked && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-center px-4">
-          <Lock className="w-5 h-5 text-zinc-300 mb-2" />
-          <p className="text-[10px] font-mono tracking-[0.3em] text-zinc-300">REQUIRES EXEC TIER</p>
-          <p className="text-[10px] font-mono text-zinc-500 mt-1">Hold ƒ100,000+ avg balance</p>
-        </div>
-      )}
-    </div>
+      {error && <p className="mt-2 text-[11px] text-rose-400">{error}</p>}
+    </form>
   );
 }

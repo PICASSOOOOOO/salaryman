@@ -17361,23 +17361,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const ax = a.x + ox, ay = a.y + oy;
         if (ax < -30 || ax > cw + 30 || ay < -40 || ay > ch + 30) continue;
         const nearAtm = Math.hypot(g.px - a.x, g.py - a.y) < CITY_ATM_RANGE;
-        const pulse = 0.55 + Math.sin(g.frame * 0.05 + a.x * 0.01) * 0.3;
+        const pulse = 0.55 + Math.sin(g.frame * 0.05 + a.x * 0.01) * 0.12;
         const kw = 16, kh = 24;
         const kx = ax - kw / 2, ky = ay - kh;
-        ctx.fillStyle = '#0b1622'; ctx.fillRect(kx, ky, kw, kh);
-        ctx.shadowColor = nearAtm ? '#38bdf8' : '#0a78b4'; ctx.shadowBlur = nearAtm ? 14 : 6;
-        ctx.strokeStyle = nearAtm ? '#38bdf8' : 'rgba(56,189,248,.5)'; ctx.lineWidth = nearAtm ? 2 : 1;
+        ctx.fillStyle = '#101923'; ctx.fillRect(kx, ky, kw, kh);
+        ctx.shadowColor = nearAtm ? 'rgba(125,211,252,.45)' : 'transparent'; ctx.shadowBlur = nearAtm ? 5 : 0;
+        ctx.strokeStyle = nearAtm ? 'rgba(186,230,253,.8)' : 'rgba(100,116,139,.55)'; ctx.lineWidth = nearAtm ? 1.2 : 1;
         ctx.strokeRect(kx, ky, kw, kh);
-        ctx.fillStyle = `rgba(56,189,248,${0.25 + pulse * 0.4})`; ctx.fillRect(kx + 3, ky + 3, kw - 6, 8);
+        ctx.fillStyle = `rgba(125,211,252,${0.16 + pulse * 0.16})`; ctx.fillRect(kx + 3, ky + 3, kw - 6, 7);
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(56,189,248,.4)';
-        for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) ctx.fillRect(kx + 4 + c * 4, ky + 14 + r * 4, 2, 2);
+        ctx.fillStyle = 'rgba(148,163,184,.5)';
+        ctx.fillRect(kx + 5, ky + 14, 6, 1);
+        ctx.fillRect(kx + 5, ky + 17, 4, 1);
+        ctx.fillStyle = nearAtm ? 'rgba(125,211,252,.85)' : 'rgba(100,116,139,.7)';
+        ctx.fillRect(kx + 6, ky + 21, 4, 1);
         ctx.textAlign = 'center';
-        ctx.fillStyle = nearAtm ? '#38bdf8' : 'rgba(56,189,248,.45)';
+        ctx.fillStyle = nearAtm ? '#bae6fd' : 'rgba(148,163,184,.65)';
         ctx.font = '6px "Fira Code"';
         ctx.fillText('ATM', ax, ky - 3);
         if (nearAtm) {
-          ctx.fillStyle = g.blink ? 'rgba(56,189,248,.95)' : 'rgba(56,189,248,.4)';
+          ctx.fillStyle = g.blink ? 'rgba(186,230,253,.95)' : 'rgba(125,211,252,.45)';
           ctx.font = '7px "Fira Code"';
           ctx.fillText('[E] BANCO OMBRA', ax, ky - 11);
         }
@@ -22815,6 +22818,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <NetWorthHUD
               netWorth={nw}
               cash={salary}
+              bankBalance={gs.current.savings ?? 0}
               savings={gs.current.savings ?? 0}
               gold={goldBalance}
               fiatPerGold={FIAT_PER_GOLD}

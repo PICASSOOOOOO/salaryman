@@ -7,7 +7,7 @@ import { OfficeMinimap } from '@/components/OfficeMinimap';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
-import { getAmbianceEnabled, getMusicEnabled, setAudioSettings, subscribeAudioSettings } from '@/lib/audio-settings';
+import { getAmbianceEnabled, getAudioSettings, getMusicEnabled, setAudioSettings, subscribeAudioSettings } from '@/lib/audio-settings';
 import { floorPlacementForAssignments, type MonitorBot } from '@/lib/office-monitor';
 import { apiFetch } from '@/lib/api-client';
 import { NetWorthHUD } from '@/components/NetWorthHUD';
@@ -31,6 +31,7 @@ import { startPendingHousingAssessmentRetry } from '@/lib/onboarding-housing';
 import {
   getOfficeHudMode,
   getOfficeObjectDestination,
+  defaultShadowTowerOfficeName,
   getShadowTowerOfficeLayout,
   officePropertyLayoutFromPlan,
   loadOfficePose,
@@ -233,6 +234,7 @@ export default function PabloOffice() {
   const [showHelp, setShowHelp] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [showRadioControls, setShowRadioControls] = useState(false);
   const [isSavingHallway, setIsSavingHallway] = useState(false);
   // Discovery onboarding — the story is no longer started by a BEGIN STORY
   // button or a front-loaded WELCOME modal. Instead the office surfaces ONE
@@ -240,8 +242,15 @@ export default function PabloOffice() {
   // object → take the elevator), and stepping into the elevator naturally
   // begins the run. Progress persists per slot.
   const slot = currentSlot();
-  const [towerFloor, setTowerFloor] = useState<{ canManage?: boolean; floor: { id: string; city: string; floorNumber: number; tenure: string; leaseExpiresAt?: string | null; archetype: string; settings?: { hallway?: { style: "central" | "gallery" | "executive"; lighting: "dim" | "normal" | "bright" | "warm" | "cool"; signage?: string } } }; plan: ShadowTowerPlan; assignments: Array<{ workstationKey: string; assigneeType: "human" | "bot"; assigneeUserId?: string | null; botId?: number | null }>; botGroups: Array<{ purpose: string; permissionSignature: string; canonicalBotId: number; botIds: number[] }> } | null>(null);
+  const [towerFloor, setTowerFloor] = useState<{ canManage?: boolean; floor: { id: string; city: string; floorNumber: number; tenure: string; orgId?: number | null; ownerUserId?: string | null; leaseExpiresAt?: string | null; archetype: string; settings?: { hallway?: { style: "central" | "gallery" | "executive"; lighting: "dim" | "normal" | "bright" | "warm" | "cool"; signage?: string } } }; plan: ShadowTowerPlan; assignments: Array<{ workstationKey: string; assigneeType: "human" | "bot"; assigneeUserId?: string | null; botId?: number | null }>; botGroups: Array<{ purpose: string; permissionSignature: string; canonicalBotId: number; botIds: number[] }> } | null>(null);
   const officeLayout = useMemo(() => towerFloor ? officePropertyLayoutFromPlan(towerFloor.plan) : getShadowTowerOfficeLayout("minx_city", 1, "founder_team"), [towerFloor]);
+  const officeName = towerFloor?.floor.settings?.hallway?.signage?.trim()
+    || (towerFloor
+      ? defaultShadowTowerOfficeName(towerFloor.plan.city, towerFloor.floor.floorNumber)
+      : defaultShadowTowerOfficeName("minx_city", 1));
+  const officeAddress = towerFloor
+    ? `SHADOW TOWER · ${towerFloor.floor.city.replace("_", " ").toUpperCase()} · FLOOR ${towerFloor.floor.floorNumber}`
+    : "SHADOW TOWER · OFFICE LOCATION PENDING";
   const initialOfficePose = useMemo(() => loadOfficePose(slot, officeLayout), [slot, officeLayout]);
   const officePoseRef = useRef<OfficePose>(initialOfficePose);
   const rememberOfficePose = useCallback(() => {
@@ -752,22 +761,14 @@ export default function PabloOffice() {
         playClick();
         rememberOfficePose();
         playNav();
-        navigateFromOffice('/tower');
+        navigateFromOffice(`/tower/elevator?from=${encodeURIComponent('/office')}&floor=${towerFloor?.floor.floorNumber ?? 66}`);
       },
-      atm: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('atm')); },
+      atm: () => { playNav(); navigateFromOffice(`${getOfficeObjectDestination('atm')}?returnTo=${encodeURIComponent('/office')}&returnFloor=${towerFloor?.floor.floorNumber ?? 66}`); },
       vending: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('vending')); },
       payphone: () => { playNav(); navigateFromOffice('/phone'); },
       radio: () => {
-        const enabled = !getMusicEnabled();
-        setAudioSettings({ musicEnabled: enabled });
-        if (enabled) playSuccess();
-        else playClick();
-        toast({
-          title: enabled ? 'SHADOW RADIO · ON AIR' : 'SHADOW RADIO · OFF AIR',
-          description: enabled
-            ? 'Call Home is now playing on every tuned radio.'
-            : 'The broadcast is paused. Your station position is saved.',
-        });
+        playClick();
+        setShowRadioControls(true);
       },
       terminal: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('terminal')); },
       "operations-terminal": () => { playNav(); navigateFromOffice(getOfficeObjectDestination('terminal')); },
@@ -827,7 +828,7 @@ export default function PabloOffice() {
         paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
-      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}`}</style>
+      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes floorGlow{0%,100%{box-shadow:0 0 0 rgba(56,189,248,0)}50%{box-shadow:0 0 12px rgba(56,189,248,.22)}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}`}</style>
 
       {/* COMPACT HEADER — single fixed-height bar so the floor gets the rest.
           Hidden in embed mode so the /my-office monitor pane is chrome-free. */}
@@ -848,11 +849,14 @@ export default function PabloOffice() {
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', minWidth: 0 }}>
           <h1 style={{ margin: 0, fontSize: '1rem', letterSpacing: '.12em', color: '#38bdf8', whiteSpace: 'nowrap' }}>
+            <span style={{ display: 'inline-grid', placeItems: 'center', minWidth: 34, height: 24, border: '1px solid rgba(56,189,248,.48)', background: 'rgba(56,189,248,.12)', color: '#bae6fd', animation: 'floorGlow 2.8s ease-in-out infinite' }}>
+              F{towerFloor?.floor.floorNumber ?? '—'}
+            </span>
             THE OFFICE
           </h1>
           {!compactHud && <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.12em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {getActiveCityName()}{serverOnline !== null ? ` · ${serverOnline}/${serverMax} ONLINE` : ''}
-            &nbsp;· {towerFloor ? `${towerFloor.floor.city.replace("_", " ").toUpperCase()} · FL ${towerFloor.floor.floorNumber}` : "FOUNDER TEAM DEMO · NOT OWNED"}
+            &nbsp;· {officeName.toUpperCase()} · {officeAddress}
             &nbsp;· CAPACITY <span style={{ color: '#38bdf8' }}>{towerFloor?.assignments.length ?? 0}/{officeLayout.teamDesks.length}</span>
             &nbsp;· ACTIVE <span style={{ color: '#22c55e' }}>{activeCount}</span>
           </span>}
@@ -1007,7 +1011,8 @@ export default function PabloOffice() {
                   background: towerFloor.floor.tenure === 'own' ? 'rgba(52,211,153,.9)' : 'rgba(56,189,248,.85)',
                   color: '#04121a', fontSize: '.5rem', fontWeight: 700, letterSpacing: '.18em',
                 }}>{towerFloor.floor.tenure === 'own' ? 'OWNED' : 'LEASED'}</span>
-                <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{(officeCustomization?.signage && officeCustomization.signage.trim().length > 0) ? officeCustomization.signage.trim().slice(0, 28) : `SHADOW TOWER · FLOOR ${towerFloor.floor.floorNumber}`}</span>
+                <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{officeName.slice(0, 40)}</span>
+                <span style={{ fontSize: '.44rem', color: 'rgba(186,230,253,.62)', letterSpacing: '.08em' }}>{officeAddress}</span>
                 <span style={{ fontSize: '.42rem', color: 'rgba(186,230,253,.62)', letterSpacing: '.08em' }}>{officeLayout.representation}</span>
               </div>
             )}
@@ -1055,6 +1060,7 @@ export default function PabloOffice() {
                   <NetWorthHUD
                     netWorth={(salary?.spendable ?? 0) + (citySave?.savings ?? 0) + (citySave?.goldBalance ?? 0) * 1_000 - (citySave?.taxDebt ?? 0)}
                     cash={salary?.spendable ?? 0}
+                    bankBalance={citySave?.savings ?? 0}
                     savings={citySave?.savings ?? 0}
                     gold={citySave?.goldBalance ?? 0}
                     fiatPerGold={1_000}
@@ -1079,12 +1085,16 @@ export default function PabloOffice() {
                     ƒ{(salary.spendable ?? 0).toLocaleString()}
                   </span>
                 </div>
-                {!verifiedSalary?.verified && (
+                {towerFloor ? (
+                  <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(52,211,153,.78)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                    {towerFloor.canManage ? "OFFICE OWNER / OPERATOR" : "ORGANIZATION MEMBER"} · ACTIVE FLOOR
+                  </div>
+                ) : !verifiedSalary?.verified && (
                   <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(251,191,36,.68)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
-                    UNEMPLOYED · NO PASSIVE FIAT · USE THE WORK BOARD
+                    NO ACTIVE OFFICE OR EMPLOYMENT ON FILE
                   </div>
                 )}
-                {verifiedSalary?.awaitingVerification && (
+                {!towerFloor && verifiedSalary?.awaitingVerification && (
                   <div style={{ fontSize: '.44rem', letterSpacing: '.1em', color: 'rgba(251,191,36,.7)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
                     LEGALLY UNEMPLOYED · WORK VISA PENDING
                   </div>
@@ -1375,6 +1385,50 @@ export default function PabloOffice() {
 
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showRadioControls && (
+        <div
+          onClick={() => setShowRadioControls(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'rgba(2,4,10,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 360, border: '1px solid rgba(251,191,36,.4)', borderRadius: 10, background: '#09070d', padding: '1.2rem', boxShadow: '0 20px 60px rgba(0,0,0,.7)' }}
+          >
+            <div style={{ color: '#fde68a', fontSize: '.85rem', fontWeight: 800, letterSpacing: '.16em' }}>SHADOW RADIO · 107.3</div>
+            <div style={{ marginTop: 5, color: 'rgba(253,230,138,.55)', fontSize: '.62rem', letterSpacing: '.12em' }}>SOURCE CONTROLS</div>
+            <button
+              type="button"
+              onClick={() => {
+                const enabled = !getMusicEnabled();
+                setAudioSettings({ musicEnabled: enabled });
+                if (enabled) playSuccess(); else playClick();
+                setShowRadioControls(false);
+              }}
+              style={{ marginTop: 18, width: '100%', border: '1px solid rgba(251,191,36,.45)', borderRadius: 6, background: getMusicEnabled() ? 'rgba(251,191,36,.16)' : 'transparent', color: '#fde68a', padding: '.65rem', font: 'inherit', fontSize: '.7rem', letterSpacing: '.14em', cursor: 'pointer' }}
+            >
+              {getMusicEnabled() ? 'ON AIR · TURN OFF' : 'OFF AIR · TURN ON'}
+            </button>
+            <label style={{ display: 'block', marginTop: 18 }}>
+              <span style={{ display: 'flex', justifyContent: 'space-between', color: '#d4d4d8', fontSize: '.65rem', letterSpacing: '.12em' }}>
+                <span>RADIO VOLUME</span>
+                <span>{Math.round(getAudioSettings().soundtrack * 100)}%</span>
+              </span>
+              <input
+                aria-label="Radio source volume"
+                type="range"
+                min={0}
+                max={0.5}
+                step={0.02}
+                defaultValue={getAudioSettings().soundtrack}
+                onChange={(event) => setAudioSettings({ soundtrack: Number(event.target.value) })}
+                style={{ width: '100%', marginTop: 9, accentColor: '#fbbf24' }}
+              />
+            </label>
+            <button type="button" onClick={() => setShowRadioControls(false)} style={{ marginTop: 18, width: '100%', border: '1px solid rgba(255,255,255,.12)', borderRadius: 6, background: 'transparent', color: '#a1a1aa', padding: '.55rem', font: 'inherit', fontSize: '.65rem', letterSpacing: '.14em', cursor: 'pointer' }}>CLOSE</button>
           </div>
         </div>
       )}

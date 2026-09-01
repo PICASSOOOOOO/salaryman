@@ -2081,7 +2081,7 @@ function PabloTerminalAuthed() {
           {!isLoading && !isAuthenticated && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/immigration", hint: null }); }}
+              onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/tower/mezzanine?focus=classifieds", hint: null }); }}
               data-testid="pablo-sign-in"
                className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work"
