@@ -5847,6 +5847,8 @@ export default function WorldPlay() {
   const [pledgePurchases, setPledgePurchases] = useState<{ id: number; name: string; category: string; amountCents: number; createdAt: string }[]>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
+  const [bankTopupPacks, setBankTopupPacks] = useState<{ id: string; fiat: number; usdCents: number }[]>([]);
+  const [bankTopupBusy, setBankTopupBusy] = useState<string | null>(null);
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
@@ -5866,6 +5868,9 @@ export default function WorldPlay() {
   useEffect(() => {
     if (!showBank) return;
     void refreshServerFiat();
+    void apiFetch('/api/stripe/fiat-topup-packs').then(async (response) => {
+      if (response.ok) setBankTopupPacks((await response.json()).packs ?? []);
+    }).catch(() => { /* ATM remains usable for transfers if Stripe is offline. */ });
     window.addEventListener(FIAT_CHANGED_EVENT, refreshServerFiat);
     return () => window.removeEventListener(FIAT_CHANGED_EVENT, refreshServerFiat);
   }, [showBank, refreshServerFiat]);
@@ -26652,6 +26657,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             void refreshServerFiat();
           } catch { sfxError(); setNarr('> SAVINGS CONSOLIDATION — NETWORK ERROR.'); }
         };
+        const startAtmTopup = async (packId: string) => {
+          setBankTopupBusy(packId);
+          try {
+            const r = await apiFetch('/api/stripe/create-topup-session', {
+              method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ packId, source: 'atm', requestId: stableRequestId('atm-fiat-topup', packId) }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j.url) { sfxError(); setNarr(`> CARD → FIAT — ${j.error ?? 'PAYMENT COULD NOT START'}.`); return; }
+            window.location.href = j.url;
+          } catch { sfxError(); setNarr('> CARD → FIAT — NETWORK ERROR. NO PAYMENT STARTED.'); }
+          finally { setBankTopupBusy(null); }
+        };
         const doWithdraw = () => {
           const amt = parseInt(bankWithAmt) || 0;
           if (amt <= 0 || amt > g.savings) { sfxError(); setNarr('> BANCO OMBRA — Insufficient savings balance.'); return; }
@@ -26803,9 +26821,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['accounts','loans','wire','history'] as const).map(t => (
+                {(['accounts','exchange','loans','wire','history'] as const).map(t => (
                   <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
-                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
+                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'exchange' ? '[ CARD → FIAT ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
@@ -26856,6 +26874,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <button onClick={() => void consolidateSavings()} style={actBtn(true)}>SAVE FIAT</button>
                     </div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.35)', marginTop: '.3rem' }}>TRANSFER ONLY · NO REWARD · NO MONEY CREATED · SAVINGS EARNS THE POSTED APY</div>
+                  </div>
+                </>)}
+
+                {bankTab === 'exchange' && (<>
+                  <div style={{ border: '1px solid rgba(52,211,153,.3)', padding: '.75rem', background: 'rgba(52,211,153,.04)' }}>
+                    <div style={{ ...VTB, color: '#34d399', fontSize: '1.2rem', letterSpacing: '.14em' }}>BUY FIAT WITH CARD</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(52,211,153,.55)', lineHeight: 1.7, marginTop: '.35rem' }}>
+                      Use a debit or credit card through Stripe Checkout. Fiat is credited to checking only after Stripe confirms payment settlement. No card details touch SALARYMAN.
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '.55rem' }}>
+                    {bankTopupPacks.map(pack => (
+                      <button key={pack.id} disabled={bankTopupBusy !== null} onClick={() => void startAtmTopup(pack.id)}
+                        style={{ ...actBtn(bankTopupBusy === null), padding: '.8rem .5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.2rem' }}>
+                        <strong>ƒ{pack.fiat.toLocaleString()}</strong>
+                        <span style={{ color: '#34d399', fontSize: '.7rem' }}>{bankTopupBusy === pack.id ? 'OPENING…' : `$${(pack.usdCents / 100).toFixed(2)} CARD`}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {bankTopupPacks.length === 0 && <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', textAlign: 'center', padding: '1rem' }}>CARD PACKS UNAVAILABLE · NO CHARGE ATTEMPTED</div>}
+                  <div style={{ fontSize: '.5rem', color: 'rgba(251,191,36,.55)', borderTop: '1px solid rgba(251,191,36,.15)', paddingTop: '.6rem' }}>
+                    STRIPE PURCHASE · NOT INCOME · NOT A LOAN · NOT A CASH-OUT PATH.
                   </div>
                 </>)}
 

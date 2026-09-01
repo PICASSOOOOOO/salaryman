@@ -564,7 +564,7 @@ router.get("/stripe/donation-history", async (req, res) => {
 // in the Pledge Store; keep old top-up settlement/history code below only so an
 // already-paid Stripe session can still reconcile safely.
 router.get("/stripe/fiat-topup-packs", (_req, res) => {
-  res.status(410).json({ error: "Direct USD purchases are available only in the Pledge Store.", packs: [] });
+  res.json({ packs: FIAT_TOPUP_PACKS, fiatPerUsd: 1000 });
 });
 
 router.post("/stripe/create-phone-number-session", async (req, res) => {
@@ -745,8 +745,45 @@ async function markPhoneNumberPurchaseTerminal(session: Stripe.Checkout.Session,
 // manipulated. A pending row is pre-inserted and fulfilled exactly once by the
 // webhook on confirmed payment.
 router.post("/stripe/create-topup-session", async (req, res) => {
-  void req;
-  res.status(410).json({ error: "Direct USD purchases are available only in the Pledge Store." });
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const { packId, source, requestId } = req.body as { packId?: string; source?: string; requestId?: string };
+  const pack = FIAT_TOPUP_PACKS.find((p) => p.id === packId);
+  if (source !== "atm" || !pack || !requestId || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)) {
+    res.status(400).json({ error: "ATM Stripe purchase requires a valid pack and request" });
+    return;
+  }
+  const user = req.user;
+  const stripe = getStripe();
+  const baseUrl = getAppBaseUrl();
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: [{
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: `BANCO OMBRA — ƒ${pack.fiat.toLocaleString()} FIAT`,
+          description: `ATM card purchase: ƒ${pack.fiat.toLocaleString()} credited after Stripe settlement.`,
+        },
+        unit_amount: pack.usdCents,
+      },
+      quantity: 1,
+    }],
+    success_url: `${baseUrl}/game/bank?topup=return&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/game/bank?topup=cancel`,
+    client_reference_id: user.id,
+    metadata: {
+      userId: user.id, type: "fiat_topup", source: "atm", packId: pack.id,
+      fiatAmount: String(pack.fiat), amountCents: String(pack.usdCents), requestId,
+    },
+  }, { idempotencyKey: `fiat-topup:${user.id}:${requestId}` });
+  await db.insert(fiatTopupsTable).values({
+    userId: user.id, stripeSessionId: session.id, packId: pack.id,
+    amountCents: pack.usdCents, fiatAmount: pack.fiat, status: "pending",
+  }).onConflictDoNothing();
+  res.json({ url: session.url });
 });
 
 router.get("/stripe/topup-history", async (req, res) => {
