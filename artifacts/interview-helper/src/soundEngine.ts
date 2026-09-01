@@ -1533,6 +1533,52 @@ export function stopOfficeAmbient() {
   }, 800);
 }
 
+// ── Shadow Tower public-space audio ─────────────────────────────────────────
+// A single owner for elevator/lobby ambience and the deliberately different
+// Shadow floor bed. The nodes are force-stopped on route changes so the
+// elevator motif never leaks into another scene.
+let _towerAmbientNodes: AmbientNode[] = [];
+let _towerAmbientMaster: GainNode | null = null;
+let _towerAmbientRunning = false;
+export function startTowerAmbient(kind: "lobby" | "shadow" = "lobby") {
+  if (_towerAmbientRunning) return;
+  _towerAmbientRunning = true;
+  const c = ctx();
+  _towerAmbientMaster = c.createGain();
+  _towerAmbientMaster.gain.value = 0;
+  _towerAmbientMaster.connect(c.destination);
+  _towerAmbientMaster.gain.setTargetAtTime((_muted || _musicMuted) ? 0 : _musicVol * (kind === "shadow" ? 0.72 : 0.38), c.currentTime, 1.4);
+  const notes = kind === "shadow" ? [38.89, 46.25, 58.27] : [196, 246.94, 293.66];
+  for (const [index, frequency] of notes.entries()) {
+    const gainNode = c.createGain();
+    gainNode.gain.value = kind === "shadow" ? 0.06 : 0.025;
+    const filter = c.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = kind === "shadow" ? 280 : 1200;
+    filter.connect(_towerAmbientMaster);
+    gainNode.connect(filter);
+    const oscillator = c.createOscillator();
+    oscillator.type = kind === "shadow" ? (index === 0 ? "sawtooth" : "sine") : "triangle";
+    oscillator.frequency.value = frequency;
+    oscillator.detune.value = index * 4;
+    oscillator.connect(gainNode);
+    oscillator.start();
+    _towerAmbientNodes.push(
+      { node: oscillator, stop: () => { try { oscillator.stop(); } catch (_e) {} } },
+      { node: gainNode }, { node: filter },
+    );
+  }
+}
+export function stopTowerAmbient() {
+  if (!_towerAmbientRunning) return;
+  _towerAmbientRunning = false;
+  _towerAmbientMaster?.gain.setTargetAtTime(0, _ctx?.currentTime ?? 0, 0.25);
+  for (const entry of _towerAmbientNodes) { try { entry.stop?.(); entry.node.disconnect(); } catch (_e) {} }
+  _towerAmbientNodes = [];
+  try { _towerAmbientMaster?.disconnect(); } catch (_e) {}
+  _towerAmbientMaster = null;
+}
+
 export function isOfficeAmbientRunning(): boolean {
   return _officeRunning;
 }

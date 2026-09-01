@@ -32,6 +32,7 @@ export default function ProfilePicker() {
   const [boomerMode] = useBoomerMode();
   const [profiles, setProfiles] = useState<PlayerProfile[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [economicUserId, setEconomicUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export default function ProfilePicker() {
       if (!r.ok) throw new Error(j?.error || `Load failed (${r.status})`);
       setProfiles(j.profiles || []);
       setActiveId(j.activeProfileId || null);
+      setEconomicUserId(j.economicUserId || null);
     } catch (e: any) {
       setErr(e?.message || "Could not load profiles");
     } finally {
@@ -156,6 +158,11 @@ export default function ProfilePicker() {
               ? "Pick a character to play as. You can keep more than one on this account."
               : "Each account holds up to 12 in-game characters. Use them for testing or alt runs."}
           </p>
+          {economicUserId && (
+            <p className="mt-3 text-[10px] font-mono text-muted-foreground break-all">
+              ECONOMIC USER ID · {economicUserId} · SHARED BY EVERY PROFILE ON THIS ACCOUNT
+            </p>
+          )}
         </div>
 
         {err && (

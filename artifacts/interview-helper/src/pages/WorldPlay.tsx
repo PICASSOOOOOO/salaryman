@@ -269,7 +269,7 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-const ISO_ZOOM_DEFAULT = 3.5;
+const ISO_ZOOM_DEFAULT = 3.7;
 const ISO_ZOOM_MIN = 0.8;
 const ISO_ZOOM_MAX = 4.0;
 // The camera starts zoomed in CLOSE on the character for an immersive framing
@@ -337,6 +337,57 @@ function computeDefaultZoom(): number {
   const w = window.innerWidth || ISO_ZOOM_REFERENCE_WIDTH;
   const scaled = ISO_ZOOM_DEFAULT * (w / ISO_ZOOM_REFERENCE_WIDTH);
   return Math.max(ISO_ZOOM_NARROW_FLOOR, Math.min(ISO_ZOOM_DEFAULT, scaled));
+}
+
+// ── Living food/market details ──────────────────────────────────────────────
+// These are deliberately derived from the frame counter instead of stored world
+// state: they never participate in collision, saves, pets, economy, or network
+// replication. Keeping the motion analytic also makes it deterministic on every
+// client and free of particle allocation.
+type AmbientAnimalKind = 'cat' | 'dog';
+type AmbientAnimalVisual = {
+  kind: AmbientAnimalKind;
+  x: number;
+  y: number;
+  moving: boolean;
+  fleeing: boolean;
+  facing: -1 | 1;
+};
+type AmbientHabitatBuilding = { id: string; x: number; y: number; w: number; h: number };
+
+const AMBIENT_ANIMAL_HABITATS: ReadonlyArray<{ buildingId: string; kind: AmbientAnimalKind; phase: number; side: -1 | 1 }> = [
+  { buildingId: 'noodle_bar', kind: 'cat', phase: 0.35, side: 1 },
+  { buildingId: 'food_court', kind: 'dog', phase: 1.9, side: -1 },
+  { buildingId: 'market', kind: 'cat', phase: 3.4, side: 1 },
+];
+
+function ambientAnimalVisual(
+  habitat: AmbientHabitatBuilding,
+  kind: AmbientAnimalKind,
+  phase: number,
+  side: -1 | 1,
+  frame: number,
+  playerX: number,
+  playerY: number,
+): AmbientAnimalVisual {
+  const anchorX = habitat.x + habitat.w / 2 + side * (habitat.w / 2 + 12);
+  const anchorY = habitat.y + habitat.h + 9;
+  const distance = Math.hypot(playerX - anchorX, playerY - anchorY);
+  const fleeing = distance < 42;
+  // Each 300-frame cycle includes a conspicuous rest, then a short wander.
+  const cycle = (frame * 0.018 + phase) % (Math.PI * 2);
+  const paused = cycle > 4.15;
+  const wander = Math.sin(cycle) * 10;
+  const fleeDir: -1 | 1 = playerX >= anchorX ? -1 : 1;
+  const fleeAmount = fleeing ? Math.max(0, 46 - distance) * 0.9 : 0;
+  return {
+    kind,
+    x: anchorX + (fleeing ? fleeDir * fleeAmount : wander),
+    y: anchorY + (fleeing ? -Math.abs(Math.cos(cycle)) * 3 : Math.cos(cycle * 1.7) * 1.5),
+    moving: fleeing || !paused,
+    fleeing,
+    facing: fleeing ? fleeDir : (Math.cos(cycle) >= 0 ? side : (side * -1) as -1 | 1),
+  };
 }
 
 // ── Billboard locations ─────────────────────────────────────────────────────
@@ -2951,7 +3002,9 @@ const STORE_LINES = [
 const TOWER_LINES = [
   `> SHADOW TOWER — 67 FLOORS. ${CITY_NAME} DESIGNATION: BLOCK ZERO.`,
   '> Floors 2 through 66: commercial suites, available for registration at the elevator directory.',
-  '> Floor 67: PABLO CORP penthouse. Restricted — the only restricted floor in the tower.',
+  '> Floor 66: PICASSO ORG. Private operations, executive floor, normal work.',
+  '> Floor 67: SHADOW CORP summit. Restricted — the only restricted floor in the tower.',
+  '> Floors 40, 52, and 65: unlisted. The elevator skips them. The directory says SEALED.',
   '> The lobby concierge can answer leasing questions. Most floors are vacant. Register yours.',
 ];
 
@@ -3454,7 +3507,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 19, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 20, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 21, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 22, name: 'PICASSO AI — OFFICE', desc: 'PICASSO AI. A registered real enterprise. A normal office floor — reception, open-plan desks, a meeting room, and a corner executive desk along the same floor plate. No penthouse. No theatrics. Staff work here.' },
+      { floor: 22, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 23, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 24, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 25, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
@@ -3472,7 +3525,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 37, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 38, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 39, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 40, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
+      { floor: 40, name: 'UNLISTED FLOOR — SEALED', restricted: true, desc: 'Not available for commercial registration. The elevator skips this floor. Future discovery required.' },
       { floor: 41, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 42, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 43, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
@@ -3484,7 +3537,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 49, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 50, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 51, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 52, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
+      { floor: 52, name: 'UNLISTED FLOOR — SEALED', restricted: true, desc: 'Not available for commercial registration. The municipal file is incomplete. Future discovery required.' },
       { floor: 53, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 54, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 55, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
@@ -3497,9 +3550,9 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 62, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 63, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 64, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 65, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 66, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 67, name: 'PABLO CORP — PENTHOUSE', restricted: true, desc: 'The top of the tower. PABLO CORP executive suite. Staff do not blink. Glass on every side. The chair at the window is never empty.' },
+      { floor: 65, name: 'UNLISTED FLOOR — SEALED', restricted: true, desc: 'Not available for commercial registration. The lift passes without stopping. Future discovery required.' },
+      { floor: 66, name: 'PICASSO ORG — EXECUTIVE FLOOR', desc: 'PICASSO ORG operations. Reception, open-plan desks, a meeting room, and a corner executive desk along the same floor plate.' },
+      { floor: 67, name: 'SHADOW CORP — SUMMIT', restricted: true, desc: 'The top of the tower. SHADOW CORP executive suite. Staff do not blink. Glass on every side. The chair at the window is never empty.' },
     ],
   },
   data_vault: {
@@ -3517,7 +3570,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'CLUB NEON', history: 'Three names since 1982. The lights have not been fully off since 1988.',
     floors: [
       { floor: 1, name: 'MAIN FLOOR / BAR',   desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
-      { floor: 2, name: 'VIP / ROOF TERRACE', desc: 'VIP booth and open-air rooftop. The Shadow Tower rises from here — you can see the penthouse on Floor 67. Some nights it is lit. The bartender says it is random.' },
+      { floor: 2, name: 'VIP / ROOF TERRACE', desc: 'VIP booth and open-air rooftop. The Shadow Tower rises from here — you can see the SHADOW CORP summit on Floor 67. Some nights it is lit. The bartender says it is random.' },
     ],
   },
   machine_bunker: {
@@ -18843,6 +18896,74 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
       }
+
+        // ── Food stalls and stray animals (visual-only, low-GFX optional) ───
+        // A tiny authored pass gives the otherwise static food/market lots a
+        // lived-in read. It is intentionally outside all movement/collision and
+        // economy paths; low graphics mode removes it entirely.
+        if (!lowGfxEnabled()) {
+          const foodHabitats = ['noodle_bar', 'food_court'] as const;
+          for (let fi = 0; fi < foodHabitats.length; fi++) {
+            const b = BUILDINGS.find(candidate => candidate.id === foodHabitats[fi]);
+            if (!b) continue;
+            const sx = b.x + b.w / 2 + ox;
+            const sy = b.y - 5 + oy;
+            if (sx < -36 || sx > cw + 36 || sy < -50 || sy > ch + 36) continue;
+            const aromaPhase = g.frame * 0.026 + fi * 2.1;
+            // Two fixed aroma curls rise from each kitchen vent. The phase and
+            // lateral drift are analytic, so the detail remains deterministic.
+            ctx.save();
+            for (let puff = 0; puff < 2; puff++) {
+              const rise = ((aromaPhase + puff * 1.8) % 5.2) / 5.2;
+              const px = sx + Math.sin(aromaPhase * 1.7 + puff * 2) * (3 + rise * 5);
+              const py = sy - 4 - rise * 25;
+              ctx.fillStyle = `rgba(255,${fi ? 208 : 232},${fi ? 128 : 176},${0.23 * (1 - rise)})`;
+              ctx.beginPath(); ctx.arc(px, py, 2 + rise * 4, 0, Math.PI * 2); ctx.fill();
+            }
+            // A modest warm service light establishes the food habitat without
+            // using a full-screen or CRT-style post-process.
+            const lamp = 0.55 + Math.sin(g.frame * 0.07 + fi) * 0.18;
+            ctx.fillStyle = `rgba(255,186,82,${lamp})`;
+            ctx.fillRect(sx - 1, sy + 2, 3, 3);
+            ctx.fillStyle = `rgba(255,186,82,${lamp * 0.22})`;
+            ctx.beginPath(); ctx.ellipse(sx, sy + 8, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+          }
+
+          for (const habitatDef of AMBIENT_ANIMAL_HABITATS) {
+            const b = BUILDINGS.find(candidate => candidate.id === habitatDef.buildingId);
+            if (!b) continue;
+            const animal = ambientAnimalVisual(b, habitatDef.kind, habitatDef.phase, habitatDef.side, g.frame, g.px, g.py);
+            const ax = animal.x + ox, ay = animal.y + oy;
+            if (ax < -20 || ax > cw + 20 || ay < -20 || ay > ch + 20) continue;
+            const step = animal.moving ? Math.sin(g.frame * 0.25 + habitatDef.phase) * 1.2 : 0;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,.25)';
+            ctx.beginPath(); ctx.ellipse(ax, ay + 4, animal.kind === 'dog' ? 7 : 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+            if (animal.kind === 'cat') {
+              ctx.fillStyle = '#8b6a4d';
+              ctx.beginPath(); ctx.ellipse(ax, ay, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.arc(ax + animal.facing * 4, ay - 2, 2.7, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#4a3428';
+              ctx.fillRect(ax - 2, ay + 2 + step, 1.5, 3); ctx.fillRect(ax + 2, ay + 2 - step, 1.5, 3);
+              ctx.strokeStyle = '#8b6a4d'; ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.moveTo(ax - animal.facing * 4, ay); ctx.quadraticCurveTo(ax - animal.facing * 8, ay - 5, ax - animal.facing * 9, ay - 1); ctx.stroke();
+            } else {
+              ctx.fillStyle = '#a9784f';
+              ctx.beginPath(); ctx.ellipse(ax, ay, 7, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.beginPath(); ctx.arc(ax + animal.facing * 6, ay - 2, 3.2, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#5b4030';
+              ctx.fillRect(ax - 4, ay + 2 + step, 2, 3); ctx.fillRect(ax + 3, ay + 2 - step, 2, 3);
+              ctx.strokeStyle = '#a9784f'; ctx.lineWidth = 1.4;
+              ctx.beginPath(); ctx.moveTo(ax - animal.facing * 6, ay - 1); ctx.quadraticCurveTo(ax - animal.facing * 10, ay - 6, ax - animal.facing * 11, ay - 2); ctx.stroke();
+            }
+            if (animal.fleeing) {
+              ctx.fillStyle = 'rgba(255,220,160,.7)'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
+              ctx.fillText('!', ax, ay - 8);
+            }
+            ctx.restore();
+          }
+        }
 
       // ── World-lock indicators: red keypad glyph above any BUILDING_LOCKS
       //     building the player hasn't unlocked yet. Replaces the generic

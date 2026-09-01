@@ -85,6 +85,7 @@ export * from "./social-connections";
 export * from "./google-links";
 export * from "./music-tracks";
 export * from "./real-estate-listings";
+export * from "./rest-beds";
 export * from "./business-listings";
 export * from "./art-assets";
 export * from "./bank";

@@ -358,6 +358,20 @@
       "when": 1789012800000,
       "tag": "0050_credit_applications",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1789099200000,
+      "tag": "0051_economic_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789185600000,
+      "tag": "0052_rest_bed_marketplace",
+      "breakpoints": true
     }
   ]
 }

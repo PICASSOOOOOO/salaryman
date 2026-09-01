@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, normalizeOrgName } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
 
@@ -288,12 +288,12 @@ router.post("/world/register", async (req, res) => {
 
     let formalOrgId: number | null = null;
     if (finalBizType === "real" && userId && companyName) {
-      const orgName = String(companyName).trim().toUpperCase().slice(0, 80);
+      const orgName = normalizeOrgName(String(companyName)).toUpperCase().slice(0, 80);
       try {
         const [existingOrg] = await db
           .select()
           .from(organizationsTable)
-          .where(sql`lower(${organizationsTable.name}) = lower(${orgName})`);
+          .where(sql`lower(regexp_replace(btrim(${organizationsTable.name}), '\s+', ' ', 'g')) = lower(${orgName})`);
 
         if (!existingOrg) {
           const [newOrg] = await db

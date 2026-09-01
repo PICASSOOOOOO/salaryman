@@ -25,6 +25,7 @@ import {
   ORG_MEMBER_TYPES,
   hasRoleAccess,
   isReservedOrgName,
+  normalizeOrgName,
   orgPermissionsTable,
   ORG_PERMISSION_KEYS,
   ORG_PERMISSION_META,
@@ -43,6 +44,7 @@ import {
   encryptProtectedRecord,
   maskProtectedRecord,
 } from "../lib/org-protected-records-crypto";
+import { hashAccessCode, isHashedAccessCode, verifyAccessCode } from "../lib/access-code";
 
 const router = Router();
 
@@ -543,12 +545,13 @@ router.post("/orgs", async (req, res) => {
   const userId = req.user.id;
 
   const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
-  if (!name || typeof name !== "string" || name.trim().length < 2) {
-    res.status(400).json({ error: "Organization name is required (min 2 characters)" });
+  const normalizedName = typeof name === "string" ? normalizeOrgName(name) : "";
+  if (normalizedName.length < 2 || normalizedName.length > 120) {
+    res.status(400).json({ error: "Organization name must be 2-120 visible characters" });
     return;
   }
 
-  if (isReservedOrgName(name)) {
+  if (isReservedOrgName(normalizedName)) {
     res.status(400).json({ error: "That organization name is reserved and cannot be used" });
     return;
   }
@@ -556,43 +559,36 @@ router.post("/orgs", async (req, res) => {
   const [existingOrg] = await db
     .select()
     .from(organizationsTable)
-    .where(sql`lower(${organizationsTable.name}) = lower(${name.trim()})`);
+    .where(sql`lower(regexp_replace(btrim(${organizationsTable.name}), '\\s+', ' ', 'g')) = lower(${normalizedName})`);
   if (existingOrg) {
     res.status(400).json({ error: "An organization with that name already exists" });
     return;
   }
 
-  let org: typeof organizationsTable.$inferSelect;
   try {
-    const [inserted] = await db
-      .insert(organizationsTable)
-      .values({
-        name: name.trim().toUpperCase(),
-        industry: industry ? String(industry).trim() : null,
-        size: size ? String(size).trim() : null,
-        ownerUserId: userId,
-      })
-      .returning();
-    org = inserted;
+    const org = await db.transaction(async (tx) => {
+      const [inserted] = await tx.insert(organizationsTable).values({
+          name: normalizedName.toUpperCase(),
+          industry: industry ? String(industry).trim() : null,
+          size: size ? String(size).trim() : null,
+          ownerUserId: userId,
+        }).returning();
+      await tx.insert(orgMembersTable).values({
+        orgId: inserted.id, userId, role: "owner", featureBilling: "individual",
+        status: "active", joinedAt: new Date(),
+      });
+      return inserted;
+    });
+    res.status(201).json({ org });
   } catch (err: unknown) {
     const pgErr = err as { code?: string };
     if (pgErr?.code === "23505") {
-      res.status(400).json({ error: "An organization with that name already exists" });
+      res.status(409).json({ error: "An organization with that name already exists" });
       return;
     }
     throw err;
   }
 
-  await db.insert(orgMembersTable).values({
-    orgId: org.id,
-    userId,
-    role: "owner",
-    featureBilling: "individual",
-    status: "active",
-    joinedAt: new Date(),
-  });
-
-  res.json({ org });
 });
 
 router.get("/orgs/:orgId", async (req, res) => {
@@ -667,23 +663,28 @@ router.put("/orgs/:orgId", async (req, res) => {
   const updates: Partial<typeof organizationsTable.$inferInsert> = {};
 
   if (name !== undefined) {
-    if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 120) {
+    if (caller.role !== "owner") {
+      res.status(403).json({ error: "Only the organization owner may change its legal display name" });
+      return;
+    }
+    const normalizedName = typeof name === "string" ? normalizeOrgName(name) : "";
+    if (normalizedName.length < 2 || normalizedName.length > 120) {
       res.status(400).json({ error: "Organization name must be 2-120 characters" });
       return;
     }
-    if (isReservedOrgName(name)) {
+    if (isReservedOrgName(normalizedName)) {
       res.status(400).json({ error: "That organization name is reserved and cannot be used" });
       return;
     }
     const [existingOrg] = await db
       .select()
       .from(organizationsTable)
-      .where(sql`lower(${organizationsTable.name}) = lower(${name.trim()}) AND ${organizationsTable.id} != ${orgId}`);
+      .where(sql`lower(regexp_replace(btrim(${organizationsTable.name}), '\\s+', ' ', 'g')) = lower(${normalizedName}) AND ${organizationsTable.id} != ${orgId}`);
     if (existingOrg) {
       res.status(400).json({ error: "An organization with that name already exists" });
       return;
     }
-    updates.name = name.trim().toUpperCase();
+    updates.name = normalizedName.toUpperCase();
   }
 
   const optionalText = (
@@ -753,7 +754,7 @@ router.put("/orgs/:orgId", async (req, res) => {
   } catch (err: unknown) {
     const pgErr = err as { code?: string };
     if (pgErr?.code === "23505") {
-      res.status(400).json({ error: "An organization with that name already exists" });
+      res.status(409).json({ error: "An organization with that name already exists" });
       return;
     }
     throw err;
@@ -2438,7 +2439,12 @@ router.post("/orgs/doors/enter", async (req, res) => {
       }
     }
 
-    if (typeof passcode === "string" && passcode === lock.passcode) {
+    if (await verifyAccessCode(lock.passcode, passcode)) {
+      if (!isHashedAccessCode(lock.passcode)) {
+        await db.update(orgDoorLocksTable)
+          .set({ passcode: await hashAccessCode(lock.passcode), updatedAt: new Date() })
+          .where(eq(orgDoorLocksTable.id, lock.id));
+      }
       res.json({ allowed: true, locked: true, asMember: false, label: lock.label, spaceType: lock.spaceType });
       return;
     }
@@ -2470,8 +2476,8 @@ router.get("/orgs/:orgId/doors", async (req, res) => {
       .from(orgDoorLocksTable)
       .where(eq(orgDoorLocksTable.orgId, orgId));
     const canManage = hasRoleAccess(caller.role as OrgRole, "manager");
-    // Never leak passcodes to non-managers.
-    const doors = rows.map((d) => canManage ? d : { ...d, passcode: undefined });
+    // Access codes are write-only. Never return plaintext, legacy values, or hashes.
+    const doors = rows.map(({ passcode: _passcode, ...door }) => door);
     res.json({ doors, canManage });
   } catch (e) {
     console.error("[Org Doors] list failed:", e);
@@ -2542,6 +2548,7 @@ router.post("/orgs/:orgId/doors", async (req, res) => {
       return;
     }
 
+    const passcodeHash = await hashAccessCode(passcode);
     const [row] = await db
       .insert(orgDoorLocksTable)
       .values({
@@ -2549,7 +2556,7 @@ router.post("/orgs/:orgId/doors", async (req, res) => {
         doorKey: key,
         label: typeof label === "string" ? label.slice(0, 200) : null,
         spaceType: resolvedSpaceType,
-        passcode,
+        passcode: passcodeHash,
         minRole: resolvedMinRole,
         createdByUserId: req.user.id,
       })
@@ -2558,13 +2565,14 @@ router.post("/orgs/:orgId/doors", async (req, res) => {
         set: {
           label: typeof label === "string" ? label.slice(0, 200) : null,
           spaceType: resolvedSpaceType,
-          passcode,
+          passcode: passcodeHash,
           minRole: resolvedMinRole,
           updatedAt: new Date(),
         },
       })
       .returning();
-    res.json({ ok: true, door: row });
+    const { passcode: _passcode, ...safeDoor } = row;
+    res.json({ ok: true, door: safeDoor });
   } catch (e) {
     console.error("[Org Doors] upsert failed:", e);
     res.status(500).json({ error: "Failed to save door lock" });

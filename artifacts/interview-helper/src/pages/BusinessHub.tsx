@@ -22,6 +22,7 @@ import { OrgLaborRequests } from '@/components/OrgLaborRequests';
 
 interface Org {
   id: number;
+  businessId: string;
   name: string;
   industry: string | null;
   size: string | null;
@@ -616,7 +617,11 @@ export default function BusinessHub() {
                 <span className="text-xs font-bold uppercase tracking-wider text-primary">EDIT BUSINESS DETAILS</span>
                 <button onClick={() => setEditingOrg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
               </div>
-              <Field label="BUSINESS NAME" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} placeholder={activeOrg.name} />
+              {isOwner ? (
+                <Field label="BUSINESS NAME · OWNER CONTROLLED" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} placeholder={activeOrg.name} />
+              ) : (
+                <div className="text-xs text-muted-foreground">BUSINESS NAME · {activeOrg.name} · ONLY THE OWNER MAY CHANGE IT</div>
+              )}
               <SelectField label="INDUSTRY" value={editForm.industry} onChange={v => setEditForm(f => ({ ...f, industry: v }))}
                 options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
               <SelectField label="COMPANY SIZE" value={editForm.size} onChange={v => setEditForm(f => ({ ...f, size: v }))}
@@ -646,6 +651,9 @@ export default function BusinessHub() {
                 <div className="text-sm font-bold tracking-wider uppercase">{activeOrg.name}</div>
                 <div className="text-xs text-muted-foreground tracking-wider uppercase">
                   {activeOrg.industry || 'NO INDUSTRY SET'} {activeOrg.size ? `· ${activeOrg.size}` : ''}
+                </div>
+                <div className="mt-1 text-[10px] font-mono text-muted-foreground break-all">
+                  BUSINESS ID · {activeOrg.businessId}
                 </div>
               </div>
               {activeMember && (

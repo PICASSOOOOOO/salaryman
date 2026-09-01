@@ -2,6 +2,7 @@ import {
   getRecreationPlan,
   getMezzaninePlan,
   getRestFloorPlan,
+  getSecurityPlan,
   getShadowTowerPlan,
   type ShadowTowerArchetype,
   type ShadowTowerCity,
@@ -38,14 +39,17 @@ const glyphFor = (kind: string): OfficeStation["glyph"] =>
         kind === "radio" ? "music" :
           kind === "payphone" ? "payphone" :
             kind === "bed" ? "water_cooler" :
-              kind === "nurse_station" || kind === "doctor_station" ? "comms" :
+      kind === "nurse_station" || kind === "doctor_station" || kind === "guard_station" || kind === "holding_cell" ? "comms" :
                 kind === "work_board" ? "comms" : "comms";
 const labelFor = (id: string, kind: string) =>
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
     kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
       kind === "radio" ? "SHADOW RADIO" : kind === "payphone" ? "PAYPHONE" :
       kind === "bed" ? "REST BED" : kind === "nurse_station" ? "NURSE" :
-        kind === "doctor_station" ? "DOCTOR" : kind === "work_board" ? "WORLD WORK BOARD" :
+        kind === "doctor_station" ? "DOCTOR" : kind === "guard_station" ? "SECURITY" :
+          kind === "holding_cell" ? "HOLDING CELL" : kind === "evidence_lockup" ? "EVIDENCE" :
+          kind === "black_market" ? "BLACK MARKET" : kind === "secret_door" ? "SECRET DOOR" :
+          kind === "work_board" ? "WORLD WORK BOARD" :
           id.startsWith("rec-") ? id.slice(4).replace(/-/g, " ").toUpperCase() : id.toUpperCase().replace(/-/g, " ");
 
 export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey = `${plan.city}:${plan.floorNumber}`): OfficePropertyLayout {
@@ -69,7 +73,8 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
   }));
   const archetype = plan.floorType === "recreation" ? "RECREATION · REC"
     : plan.floorType === "mezzanine" ? "PUBLIC MEZZANINE · COMPUTER CAFE"
-      : plan.floorType === "rest" ? "REST WARD · CLINIC"
+        : plan.floorType === "rest" ? "REST WARD · CLINIC"
+        : plan.floorType === "security" ? "SECURITY FLOOR · CUSTODY"
         : workstations.length > 10 ? "COMPANY FLOOR" : "FOUNDER + TEAM FLOOR";
   return {
     propertyKey, label: archetype, representation: `${plan.city.replace("_", " ").toUpperCase()} · FLOOR ${plan.floorNumber}`,
@@ -90,8 +95,8 @@ export function getRecreationOfficeLayout(city: ShadowTowerCity): OfficeProperty
   return officePropertyLayoutFromPlan(getRecreationPlan(city), `${city}:recreation`);
 }
 
-export function getPublicFloorOfficeLayout(city: ShadowTowerCity, floor: 2 | 3): OfficePropertyLayout {
-  const plan = floor === 2 ? getMezzaninePlan(city) : getRestFloorPlan(city);
+export function getPublicFloorOfficeLayout(city: ShadowTowerCity, floor: 2 | 3 | 4): OfficePropertyLayout {
+  const plan = floor === 2 ? getMezzaninePlan(city) : floor === 3 ? getRestFloorPlan(city) : getSecurityPlan(city);
   return officePropertyLayoutFromPlan(plan, `${city}:public:${floor}`);
 }
 

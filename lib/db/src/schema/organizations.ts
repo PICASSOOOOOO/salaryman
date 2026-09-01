@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric, integer, bigint } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric, integer, bigint, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -6,11 +6,21 @@ import { sql } from "drizzle-orm";
 export const RESERVED_ORG_NAMES = ["picasso", "picassoo", "picasso ai", "picasso ai llc", "picassoo.ai"];
 
 export function isReservedOrgName(name: string): boolean {
-  return RESERVED_ORG_NAMES.includes(name.trim().toLowerCase());
+  return RESERVED_ORG_NAMES.includes(normalizeOrgName(name).toLowerCase());
+}
+
+export function normalizeOrgName(name: string): string {
+  return name
+    .normalize("NFKC")
+    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 export const organizationsTable = pgTable("organizations", {
   id: serial("id").primaryKey(),
+  // Public, immutable business identity. The serial id remains an internal FK.
+  businessId: uuid("business_id").notNull().defaultRandom(),
   name: varchar("name", { length: 120 }).notNull(),
   industry: varchar("industry", { length: 80 }),
   size: varchar("size", { length: 40 }),
@@ -30,6 +40,8 @@ export const organizationsTable = pgTable("organizations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
   uniqueIndex("organizations_name_unique_idx").on(sql`lower(${t.name})`),
+  uniqueIndex("organizations_name_canonical_unique_idx").on(sql`lower(regexp_replace(btrim(${t.name}), '\\s+', ' ', 'g'))`),
+  uniqueIndex("organizations_business_id_unique_idx").on(t.businessId),
 ]);
 
 export const insertOrganizationSchema = createInsertSchema(organizationsTable).omit({ id: true, createdAt: true, updatedAt: true });
@@ -195,7 +207,10 @@ export type OrgPartnership = typeof orgPartnershipsTable.$inferSelect;
 // server from live org membership + role rank (never a client flag): an active
 // member whose role meets `minRole` enters freely; everyone else needs the
 // passcode. Managers+ of the owning org manage the lock.
-export const ORG_DOOR_SPACE_TYPES = ["office", "building", "tent", "van", "makeshift"] as const;
+export const ORG_DOOR_SPACE_TYPES = [
+  "office", "building", "floor", "restricted_office", "executive_suite",
+  "tent", "van", "makeshift",
+] as const;
 export type OrgDoorSpaceType = (typeof ORG_DOOR_SPACE_TYPES)[number];
 
 export const orgDoorLocksTable = pgTable(

@@ -1,30 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
-import { BedDouble, BriefcaseBusiness, Building2, Clock3, Laptop, Stethoscope, X } from "lucide-react";
+import { BedDouble, BriefcaseBusiness, Building2, Clock3, KeyRound, Laptop, Shield, Stethoscope, X } from "lucide-react";
 import { IsoOffice } from "@/components/IsoOffice";
 import { WorldBuildStation } from "@/components/WorldBuildStation";
 import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
+import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 
-type FloorNumber = 2 | 3;
+type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {
   rec: { stamina: number };
   wallet: { balance: number; spendable: number };
 };
 
 const requestId = () => crypto.randomUUID();
+type BedListing = {
+  id: number; name: string; roomType: string; description?: string | null;
+  hourlyRateFiat: number; staminaPerHour: number; rechargeConsumables: boolean;
+  occupiedUntil?: string | null;
+};
 
 export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [slotIndex, setSlotIndex] = useState<number | null>(null);
   const [payload, setPayload] = useState<PublicPayload | null>(null);
-  const [panel, setPanel] = useState<"terminal" | "work" | "elevator" | "rest" | null>(null);
+  const [panel, setPanel] = useState<"terminal" | "work" | "elevator" | "rest" | "beds" | "security" | null>(null);
   const [message, setMessage] = useState("WALK TO A STATION · PRESS E OR TAP");
   const [busy, setBusy] = useState(false);
   const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null);
+  const [beds, setBeds] = useState<BedListing[]>([]);
   const layout = useMemo(
     () => getPublicFloorOfficeLayout(getActiveCityId() === "huda_city" ? "huda_city" : "minx_city", floor),
     [floor],
@@ -40,9 +47,17 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     setSlotIndex(slot);
     const stateResponse = await apiFetch(`/api/recreation/state?slot=${slot}`, { credentials: "include" });
     if (stateResponse.ok) setPayload(await stateResponse.json());
-  }, []);
+    if (floor === 3) {
+      const bedResponse = await apiFetch(`/api/public-floor/beds?city=${getActiveCityId()}`, { credentials: "include" });
+      if (bedResponse.ok) setBeds((await bedResponse.json()).beds ?? []);
+    }
+  }, [floor]);
 
   useEffect(() => { if (isAuthenticated) void load(); }, [isAuthenticated, load]);
+  useEffect(() => {
+    startTowerAmbient(floor === 4 ? "shadow" : "lobby");
+    return () => stopTowerAmbient();
+  }, [floor]);
 
   const post = async (path: string) => {
     if (slotIndex == null) return null;
@@ -81,14 +96,27 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     } catch (error) { setMessage(error instanceof Error ? error.message : "REST REQUEST FAILED"); }
   };
 
+  const bookBed = async (bed: BedListing) => {
+    try {
+      const data = await post(`/api/public-floor/beds/${bed.id}/book`);
+      if (!data) return;
+      setPayload((prior) => prior ? { ...prior, rec: data.rec } : prior);
+      setMessage(`${bed.name.toUpperCase()} RESERVED · STAMINA ${data.rec.stamina}%${data.recharged?.length ? " · CONSUMABLES RECHARGED" : ""}`);
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "BED BOOKING FAILED"); }
+  };
+
   const mezzanine = floor === 2;
+  const security = floor === 4;
   const stations = useMemo(() => [
     ...layout.stations.map((station) => ({
       ...station,
       onInteract: () => {
         if (station.id.includes("elevator")) setPanel("elevator");
         else if (station.id === "world-work-board") setPanel("work");
-        else if (station.id.startsWith("rest-bed")) void rest();
+        else if (station.id.startsWith("rest-bed")) setPanel("beds");
+        else if (station.id === "doctor" || station.id.includes("nurse")) void rest();
+        else if (security) setPanel("security");
         else if (station.id === "public-atm") navigate("/game/bank");
         else if (station.id.includes("vending")) navigate("/vending?from=public-floor");
         else setMessage(`${station.label} · PUBLIC SERVICE · NO ACCESS FEE`);
@@ -104,7 +132,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
       glyph: "comms" as const,
       onInteract: () => setPanel("terminal"),
     })) : []),
-  ], [layout, mezzanine, navigate, slotIndex]);
+  ], [layout, mezzanine, navigate, security]);
 
   if (!isAuthenticated) return <div className="min-h-screen grid place-items-center bg-[#070912] text-white"><Link href="/pablo" className="border border-cyan-400 px-5 py-3">START WORK</Link></div>;
   if (slotIndex == null) return (
@@ -122,34 +150,36 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
       <header className="h-14 shrink-0 border-b border-cyan-400/20 bg-[#090d17]/95 px-3 sm:px-5 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-black tracking-[.2em] text-cyan-300 flex items-center gap-2">
-            {mezzanine ? <Laptop className="w-4 h-4" /> : <BedDouble className="w-4 h-4" />}
-            FLOOR {floor} · {mezzanine ? "PUBLIC COMPUTER CAFE" : "REST WARD"}
+            {mezzanine ? <Laptop className="w-4 h-4" /> : security ? <Shield className="w-4 h-4" /> : <BedDouble className="w-4 h-4" />}
+            FLOOR {floor} · {mezzanine ? "PUBLIC COMPUTER CAFE" : security ? "SECURITY & CUSTODY" : "INFIRMARY · HOTELS"}
           </div>
           <div className="text-[9px] text-zinc-500 truncate">{getActiveCityName().toUpperCase()} · ACCESS FREE · {message}</div>
         </div>
         <div className="flex items-center gap-3 text-[10px] font-mono">
           <div><span className="text-zinc-500">BANK </span><span className="text-lime-300">ƒ{payload?.wallet.spendable?.toLocaleString() ?? "—"}</span></div>
           <div><span className="text-zinc-500">STAMINA </span><span className={Number(payload?.rec.stamina ?? 100) <= 20 ? "text-red-400" : "text-cyan-300"}>{payload?.rec.stamina ?? "—"}%</span></div>
-          <button onClick={() => setPanel("elevator")} className="border border-white/15 px-2 py-1 hover:border-cyan-300">FLOORS</button>
+             <button onClick={() => setPanel("elevator")} className="border border-white/15 px-2 py-1 hover:border-cyan-300 transition-colors">DIRECTORY</button>
         </div>
       </header>
       <main className="flex-1 min-h-0 relative">
         <IsoOffice
           layout={layout} viewportWidth={window.innerWidth} viewportHeight={window.innerHeight - 56}
-          playable followCam premium stations={stations} rooms={layout.rooms}
+          playable followCam premium scale={4.6} stations={stations} rooms={layout.rooms}
           deskColCount={layout.deskCols} deskRowCount={layout.deskRows} capsuleCount={0}
           suppressLabels={window.innerWidth < 680} frozen={!!panel}
           playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
         />
       </main>
 
-      {panel && <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm grid place-items-center p-3">
-        <section className="w-full max-w-3xl max-h-[88dvh] overflow-y-auto border border-cyan-400/30 bg-[#0a0f1a] shadow-2xl rounded-xl">
+      {panel && <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm grid place-items-center p-3 animate-in fade-in duration-300">
+        <section className="w-full max-w-3xl max-h-[88dvh] overflow-y-auto border border-cyan-400/30 bg-[#0a0f1a] shadow-2xl rounded-xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
           <div className="sticky top-0 z-10 bg-[#0a0f1a]/95 border-b border-white/10 px-4 py-3 flex items-center justify-between">
             <h2 className="font-black tracking-[.16em] text-cyan-200 flex items-center gap-2">
               {panel === "terminal" ? <><Clock3 className="w-4 h-4" /> PUBLIC COMPUTER</>
                 : panel === "work" ? <><BriefcaseBusiness className="w-4 h-4" /> WORLD WORK BOARD</>
                   : panel === "rest" ? <><Stethoscope className="w-4 h-4" /> MEDICAL OBSERVATION</>
+                    : panel === "beds" ? <><BedDouble className="w-4 h-4" /> BED MARKET</>
+                    : panel === "security" ? <><Shield className="w-4 h-4" /> SECURITY FLOOR</>
                     : <><Building2 className="w-4 h-4" /> SHADOW TOWER FLOORS</>}
             </h2>
             <button onClick={() => setPanel(null)} aria-label="Close"><X className="w-5 h-5" /></button>
@@ -176,11 +206,43 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
             <p className="text-sm text-zinc-400">Rest and medical attendance are free. Stamina recovery is settled by the server.</p>
             <p className="text-cyan-300">STAMINA {payload?.rec.stamina ?? "—"}%</p>
           </div>}
-          {panel === "elevator" && <div className="grid sm:grid-cols-4 gap-3 p-5">
+          {panel === "beds" && <div className="p-5 space-y-3">
+            <p className="text-sm text-zinc-400">Floor access is free. Independent infirmaries, hotels, hostels, and capsule operators charge only when you reserve a bed. Each hour restores stamina and recharges owned reusable consumables.</p>
+            {beds.length === 0 && <div className="border border-white/10 p-5 text-center text-zinc-500">NO OPERATOR BEDS LISTED · FREE MEDICAL OBSERVATION REMAINS AVAILABLE</div>}
+            {beds.map((bed) => {
+              const occupied = !!bed.occupiedUntil && new Date(bed.occupiedUntil).getTime() > Date.now();
+              return <article key={bed.id} className="border border-white/10 bg-white/[.03] p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/60">
+                <div className="flex items-start justify-between gap-4">
+                  <div><strong>{bed.name}</strong><p className="text-[10px] tracking-widest text-cyan-300">{bed.roomType.toUpperCase()}</p></div>
+                  <strong className="text-lime-300">ƒ{bed.hourlyRateFiat}/HR</strong>
+                </div>
+                <p className="text-xs text-zinc-500 my-2">{bed.description || `Restores ${bed.staminaPerHour}% stamina per hour${bed.rechargeConsumables ? " and recharges reusable consumables" : ""}.`}</p>
+                <button disabled={busy || occupied} onClick={() => void bookBed(bed)} className="w-full bg-cyan-300 text-black font-black py-2 disabled:bg-zinc-700 transition active:scale-[.98]">
+                  {occupied ? `OCCUPIED UNTIL ${new Date(bed.occupiedUntil!).toLocaleTimeString()}` : `RESERVE ONE HOUR · ƒ${bed.hourlyRateFiat}`}
+                </button>
+              </article>;
+            })}
+          </div>}
+          {panel === "security" && <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3"><Shield className="w-10 h-10 text-red-300 animate-pulse" /><div><strong>SHADOW TOWER AUTHORITY</strong><p className="text-xs text-zinc-500">GUARDS · CUSTODY · DEBTOR DUTIES · EVIDENCE</p></div></div>
+            <p className="text-sm text-zinc-300">Violence, theft, robbery, pickpocketing, melee, and ranged incidents are possible inside this building, but guard response is severe. Captured debtors and criminals may be held and assigned lawful duties.</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="border border-red-400/20 p-4"><strong>HOLDING CELLS</strong><p className="text-xs text-zinc-500 mt-1">Server-authoritative custody and timed release.</p></div>
+              <div className="border border-amber-400/20 p-4"><strong>DEBT COLLECTION</strong><p className="text-xs text-zinc-500 mt-1">Duties settle Banco Ombra obligations first.</p></div>
+              <div className="border border-violet-400/20 p-4"><strong>BLACK MARKET</strong><p className="text-xs text-zinc-500 mt-1">Hidden inventory; access must be discovered.</p></div>
+              <div className="border border-cyan-400/20 p-4"><strong>UNDERGROUND</strong><p className="text-xs text-zinc-500 mt-1">Secret doors and personal story branches.</p></div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-zinc-500"><KeyRound className="w-4 h-4" /> Private offices, restricted floors, and executive suites require role access or a valid PIN.</div>
+          </div>}
+          {panel === "elevator" && <div className="grid sm:grid-cols-4 gap-3 p-5 animate-in fade-in duration-500">
+            <Link href="/tower" className="border border-cyan-300/30 p-4 hover:border-cyan-300 sm:col-span-4"><strong>TOWER DIRECTORY</strong><p className="text-xs text-zinc-500">See every floor, access class, and destination.</p></Link>
             <Link href="/office" className="border border-white/15 p-4 hover:border-cyan-300"><strong>PRIVATE OFFICE</strong><p className="text-xs text-zinc-500">Your organization floor</p></Link>
             <Link href="/recreation" className="border border-white/15 p-4 hover:border-cyan-300"><strong>REC</strong><p className="text-xs text-zinc-500">Public recreation</p></Link>
             <Link href="/tower/mezzanine" className="border border-white/15 p-4 hover:border-cyan-300"><strong>FLOOR 2</strong><p className="text-xs text-zinc-500">Computer cafe + work</p></Link>
             <Link href="/tower/rest" className="border border-white/15 p-4 hover:border-cyan-300"><strong>FLOOR 3</strong><p className="text-xs text-zinc-500">Rest ward + clinic</p></Link>
+            <Link href="/tower/security" className="border border-white/15 p-4 hover:border-red-300"><strong>FLOOR 4</strong><p className="text-xs text-zinc-500">Security + custody</p></Link>
+            <div className="border border-amber-300/30 p-4"><strong>FLOOR 66</strong><p className="text-xs text-zinc-500">PICASSO ORG · private operations</p></div>
+            <div className="border border-violet-300/30 bg-violet-950/10 p-4"><strong className="text-violet-200">FLOOR 67 · SHADOW CORP</strong><p className="text-xs text-zinc-500">RESTRICTED · access withheld</p></div>
           </div>}
         </section>
       </div>}

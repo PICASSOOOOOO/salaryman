@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
-import { and, eq, sql } from "drizzle-orm";
-import { db, playerInventoryTable, salarymanSavesTable } from "@workspace/db";
-import { getMezzaninePlan, getRecreationPlan, getRestFloorPlan, type ShadowTowerCity } from "@workspace/api-zod/shadow-tower";
+import { and, desc, eq, sql } from "drizzle-orm";
+import {
+  db, orgAccountsTable, orgAccountTransactionsTable, orgMembersTable,
+  playerInventoryTable, restBedBookingsTable, restBedsTable, salarymanSavesTable,
+  hasRoleAccess, REST_BED_TYPES, type OrgRole,
+} from "@workspace/db";
+import { getMezzaninePlan, getRecreationPlan, getRestFloorPlan, getSecurityPlan, type ShadowTowerCity } from "@workspace/api-zod/shadow-tower";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 import {
   REC_GAMES, REC_ITEMS, REC_SPONSORS, findRecItem, isRecGameId,
@@ -45,22 +49,158 @@ router.get("/shadow-tower/recreation", (req, res) => {
 router.get("/shadow-tower/public-floor/:floor", (req, res) => {
   if (!requireAuth(req, res)) return;
   const floor = Number(req.params.floor);
-  if (floor !== 2 && floor !== 3) {
+  if (floor !== 2 && floor !== 3 && floor !== 4) {
     res.status(404).json({ error: "Public floor not found" });
     return;
   }
   const city = req.query.city === "huda_city" ? "huda_city" : "minx_city";
   res.json({
     floor: {
-      id: floor === 2 ? "public-mezzanine" : "public-rest",
+      id: floor === 2 ? "public-mezzanine" : floor === 3 ? "public-rest" : "public-security",
       city, floorNumber: floor, classification: "public", tenure: "system",
-      archetype: floor === 2 ? "mezzanine" : "rest",
+      archetype: floor === 2 ? "mezzanine" : floor === 3 ? "rest" : "security",
     },
-    plan: floor === 2 ? getMezzaninePlan(city as ShadowTowerCity) : getRestFloorPlan(city as ShadowTowerCity),
+    plan: floor === 2 ? getMezzaninePlan(city as ShadowTowerCity) : floor === 3 ? getRestFloorPlan(city as ShadowTowerCity) : getSecurityPlan(city as ShadowTowerCity),
   });
 });
 
 const PUBLIC_TERMINAL_HOURLY_FIAT = 25;
+
+router.get("/public-floor/beds", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const cityId = req.query.city === "huda_city" ? "huda_city" : "minx_city";
+  const beds = await db.select().from(restBedsTable)
+    .where(and(eq(restBedsTable.cityId, cityId), eq(restBedsTable.active, true)))
+    .orderBy(restBedsTable.hourlyRateFiat, restBedsTable.id);
+  const active = await db.select({
+    bedId: restBedBookingsTable.bedId,
+    endsAt: restBedBookingsTable.endsAt,
+  }).from(restBedBookingsTable)
+    .where(sql`${restBedBookingsTable.endsAt} > now()`)
+    .orderBy(desc(restBedBookingsTable.endsAt));
+  const occupied = new Map(active.map((booking) => [booking.bedId, booking.endsAt]));
+  res.json({ beds: beds.map((bed) => ({ ...bed, occupiedUntil: occupied.get(bed.id) ?? null })) });
+});
+
+router.post("/public-floor/beds", async (req, res) => {
+  const ownerUserId = requireAuth(req, res);
+  if (!ownerUserId) return;
+  const orgId = req.body?.orgId == null ? null : Number(req.body.orgId);
+  if (orgId != null) {
+    const [member] = await db.select({ role: orgMembersTable.role }).from(orgMembersTable).where(and(
+      eq(orgMembersTable.orgId, orgId),
+      eq(orgMembersTable.userId, ownerUserId),
+      eq(orgMembersTable.status, "active"),
+    )).limit(1);
+    if (!member || !hasRoleAccess(member.role as OrgRole, "manager")) {
+      res.status(403).json({ error: "Manager access required to operate an organization bed" });
+      return;
+    }
+  }
+  const name = String(req.body?.name ?? "").trim().slice(0, 120);
+  const roomType = REST_BED_TYPES.includes(req.body?.roomType) ? req.body.roomType : "other";
+  const hourlyRateFiat = Math.floor(Number(req.body?.hourlyRateFiat));
+  const staminaPerHour = Math.floor(Number(req.body?.staminaPerHour ?? 35));
+  if (!name || !Number.isFinite(hourlyRateFiat) || hourlyRateFiat < 1 || hourlyRateFiat > 100_000) {
+    res.status(400).json({ error: "Name and an hourly rate from ƒ1 to ƒ100,000 are required" });
+    return;
+  }
+  const [bed] = await db.insert(restBedsTable).values({
+    ownerUserId,
+    orgId,
+    cityId: req.body?.cityId === "huda_city" ? "huda_city" : "minx_city",
+    bedKey: `bed-${randomUUID()}`,
+    name,
+    roomType,
+    description: typeof req.body?.description === "string" ? req.body.description.trim().slice(0, 300) : null,
+    hourlyRateFiat,
+    staminaPerHour: Math.max(5, Math.min(100, Number.isFinite(staminaPerHour) ? staminaPerHour : 35)),
+    rechargeConsumables: req.body?.rechargeConsumables !== false,
+  }).returning();
+  res.status(201).json({ bed });
+});
+
+router.post("/public-floor/beds/:bedId/book", async (req, res) => {
+  const renterUserId = requireAuth(req, res);
+  const slotIndex = slotOf(req.body?.slotIndex);
+  const hours = Math.floor(Number(req.body?.hours ?? 1));
+  const bedId = Number(req.params.bedId);
+  if (!renterUserId || slotIndex == null || !Number.isInteger(bedId) || hours < 1 || hours > 24 || !validRequestId(req.body?.requestId)) {
+    if (renterUserId) res.status(400).json({ error: "Valid bed, slot, requestId, and 1-24 hours required" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const [duplicate] = await tx.select().from(restBedBookingsTable).where(and(
+      eq(restBedBookingsTable.renterUserId, renterUserId),
+      eq(restBedBookingsTable.requestId, req.body.requestId),
+    )).limit(1);
+    if (duplicate) return { type: "ok" as const, duplicate: true, booking: duplicate };
+    const [bed] = await tx.select().from(restBedsTable)
+      .where(and(eq(restBedsTable.id, bedId), eq(restBedsTable.active, true))).for("update").limit(1);
+    if (!bed) return { type: "missing" as const };
+    const [occupied] = await tx.select().from(restBedBookingsTable)
+      .where(and(eq(restBedBookingsTable.bedId, bed.id), sql`${restBedBookingsTable.endsAt} > now()`))
+      .orderBy(desc(restBedBookingsTable.endsAt)).limit(1);
+    if (occupied) return { type: "occupied" as const, occupiedUntil: occupied.endsAt };
+    const save = await lockedSave(tx, renterUserId, slotIndex);
+    if (!save) return { type: "save" as const };
+    const amountFiat = bed.hourlyRateFiat * hours;
+    const paid = await spendFiat(tx, {
+      userId: renterUserId,
+      amountFiat,
+      description: `${bed.name} — ${hours} bed hour${hours === 1 ? "" : "s"}`,
+      kind: "rest_bed",
+      idempotencyKey: `rest-bed:${renterUserId}:${req.body.requestId}`,
+    });
+    if (!paid.ok) return { type: "funds" as const, paid, amountFiat };
+    if (bed.orgId) {
+      await tx.insert(orgAccountsTable).values({ orgId: bed.orgId, type: "checking", label: "Operating" })
+        .onConflictDoNothing({ target: [orgAccountsTable.orgId, orgAccountsTable.type] });
+      const [account] = await tx.update(orgAccountsTable)
+        .set({ balanceFiat: sql`${orgAccountsTable.balanceFiat} + ${amountFiat}` })
+        .where(and(eq(orgAccountsTable.orgId, bed.orgId), eq(orgAccountsTable.type, "checking")))
+        .returning({ balanceFiat: orgAccountsTable.balanceFiat });
+      await tx.insert(orgAccountTransactionsTable).values({
+        orgId: bed.orgId, accountType: "checking", delta: amountFiat,
+        balanceAfter: account.balanceFiat, description: `${bed.name} bed booking`,
+        category: "hospitality", actorUserId: renterUserId,
+      });
+    } else {
+      await creditFiat(tx, {
+        userId: bed.ownerUserId, amountFiat,
+        description: `${bed.name} bed income`, kind: "rest_bed_income",
+        idempotencyKey: `rest-bed-income:${renterUserId}:${req.body.requestId}`,
+      });
+    }
+    const startsAt = new Date();
+    const endsAt = new Date(startsAt.getTime() + hours * 3_600_000);
+    const [booking] = await tx.insert(restBedBookingsTable).values({
+      bedId: bed.id, renterUserId, slotIndex, requestId: req.body.requestId,
+      hours, amountFiat, startsAt, endsAt,
+    }).returning();
+    const rec = normalizeRecState(save.data.rec);
+    rec.stamina = Math.min(100, rec.stamina + bed.staminaPerHour * hours);
+    rec.staminaUpdatedAt = startsAt.toISOString();
+    const recharged: string[] = [];
+    if (bed.rechargeConsumables) {
+      const owned = await tx.select({ itemId: playerInventoryTable.itemId }).from(playerInventoryTable).where(and(
+        eq(playerInventoryTable.userId, renterUserId), eq(playerInventoryTable.slotIndex, slotIndex),
+      ));
+      for (const item of REC_ITEMS) {
+        if (!("maxCharges" in item) || !owned.some((row) => row.itemId === item.id)) continue;
+        rec.charges[item.id] = item.maxCharges;
+        recharged.push(item.id);
+      }
+    }
+    await saveRec(tx, save, rec);
+    return { type: "ok" as const, bed, booking, rec, recharged, wallet: paid };
+  });
+  if (result.type === "missing") res.status(404).json({ error: "Bed not found" });
+  else if (result.type === "occupied") res.status(409).json({ error: "Bed is occupied", occupiedUntil: result.occupiedUntil });
+  else if (result.type === "save") res.status(409).json({ error: "Create a character before booking" });
+  else if (result.type === "funds") res.status(402).json({ error: "insufficient_fiat", required: result.amountFiat, spendable: result.paid.spendable });
+  else res.json(result);
+});
 
 router.post("/public-floor/terminal-hour", async (req, res) => {
   const userId = requireAuth(req, res); const slotIndex = slotOf(req.body?.slotIndex);

@@ -61,6 +61,7 @@ const GlobalErrorReporter = lazy(() => import("@/components/GlobalErrorReporter"
 const GlobalMusicMiniIndicator = lazy(() => import("@/components/GlobalMusicMiniIndicator").then((m) => ({ default: m.GlobalMusicMiniIndicator })));
 const OfficeRadio = lazy(() => import("@/components/OfficeRadio").then((m) => ({ default: m.OfficeRadio })));
 const AudioControl = lazy(() => import("@/components/AudioControl").then((m) => ({ default: m.AudioControl })));
+const TowerDirectory = lazy(() => import("@/pages/TowerDirectory"));
 const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
 const DeferredChatPanel = lazy(() => import("@/components/DeferredChatPanel").then((m) => ({ default: m.DeferredChatPanel })));
 const NotificationToaster = lazy(() => import("@/components/NotificationToaster").then((m) => ({ default: m.NotificationToaster })));
@@ -693,6 +694,8 @@ function AppShell() {
             <Route path="/recreation">{() => <GameLock><RecreationFloor /></GameLock>}</Route>
             <Route path="/tower/mezzanine">{() => <GameLock><PublicTowerFloor floor={2} /></GameLock>}</Route>
             <Route path="/tower/rest">{() => <GameLock><PublicTowerFloor floor={3} /></GameLock>}</Route>
+            <Route path="/tower/security">{() => <GameLock><PublicTowerFloor floor={4} /></GameLock>}</Route>
+            <Route path="/tower">{() => <GameLock><TowerDirectory /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
                 office surface (same artwork, passive feed). Any lingering deep
                 link drops you into the office with surveillance pre-selected. */}

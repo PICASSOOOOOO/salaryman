@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, jsonb, pgTable, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const sessionsTable = pgTable(
@@ -15,6 +15,9 @@ export const sessionsTable = pgTable(
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const usersTable = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Immutable account-level identity for economy/banking records. Unlike a
+  // profile id, this never changes when the user creates or switches characters.
+  economicId: uuid("economic_id").notNull().defaultRandom(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -47,6 +50,7 @@ export const usersTable = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
   uniqueIndex("users_username_unique_idx").on(sql`lower(${t.username})`),
+  uniqueIndex("users_economic_id_unique_idx").on(t.economicId),
 ]);
 
 export type UpsertUser = typeof usersTable.$inferInsert;

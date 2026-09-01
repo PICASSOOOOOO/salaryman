@@ -88,11 +88,11 @@ router.get("/profiles", async (req: Request, res: Response) => {
       .where(eq(playerProfilesTable.userId, userId))
       .orderBy(playerProfilesTable.createdAt);
     const [me] = await db
-      .select({ activeProfileId: usersTable.activeProfileId })
+      .select({ activeProfileId: usersTable.activeProfileId, economicId: usersTable.economicId })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
-    res.json({ profiles: rows, activeProfileId: me?.activeProfileId ?? null });
+    res.json({ profiles: rows, activeProfileId: me?.activeProfileId ?? null, economicUserId: me?.economicId ?? null });
   } catch (e: any) {
     console.error("[Profiles] list error:", e?.message);
     res.status(500).json({ error: "Failed to load profiles" });

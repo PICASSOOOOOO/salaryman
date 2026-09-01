@@ -7,7 +7,7 @@ export const SHADOW_TOWER_CITIES = ["minx_city", "huda_city"] as const;
 export type ShadowTowerCity = (typeof SHADOW_TOWER_CITIES)[number];
 export const SHADOW_TOWER_UPGRADES = ["secure_access", "extra_workstations", "operations_terminal"] as const;
 export type ShadowTowerUpgrade = (typeof SHADOW_TOWER_UPGRADES)[number];
-export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation", "mezzanine", "rest"] as const;
+export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation", "mezzanine", "rest", "security"] as const;
 export type ShadowTowerFloorType = (typeof SHADOW_TOWER_FLOOR_TYPES)[number];
 
 const pointSchema = z.object({ x: z.number().int().nonnegative(), y: z.number().int().nonnegative() }).strict();
@@ -17,7 +17,7 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board"]),
+  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
@@ -154,6 +154,28 @@ export function getRestFloorPlan(city: ShadowTowerCity): ShadowTowerPlan {
   };
 }
 
+/** Public, system-owned floor 4: guards, custody, evidence, and a concealed route. */
+export function getSecurityPlan(city: ShadowTowerCity): ShadowTowerPlan {
+  const objects: ShadowTowerPlan["objects"] = [
+    { id: "security-elevator", kind: "elevator", footprint: rect(0, 0, 2, 2), interactive: true },
+    { id: "security-command", kind: "executive_room", footprint: rect(18, 1, 7, 1), interactive: false },
+    { id: "security-chief", kind: "executive_desk", footprint: rect(21, 2, 2, 1), interactive: true },
+    { id: "guard-desk", kind: "guard_station", footprint: rect(3, 1, 4, 1), interactive: true },
+    { id: "debt-collector-desk", kind: "guard_station", footprint: rect(9, 1, 5, 1), interactive: true },
+    { id: "holding-cell-a", kind: "holding_cell", footprint: rect(4, 6, 3, 3), interactive: true },
+    { id: "holding-cell-b", kind: "holding_cell", footprint: rect(10, 6, 3, 3), interactive: true },
+    { id: "evidence-lockup", kind: "evidence_lockup", footprint: rect(17, 6, 3, 2), interactive: true },
+    { id: "black-market-window", kind: "black_market", footprint: rect(21, 10, 3, 2), interactive: true },
+    { id: "secret-service-door", kind: "secret_door", footprint: rect(2, 13, 2, 1), interactive: true },
+    { id: "security-workstation", kind: "workstation", footprint: rect(15, 12, 3, 1), interactive: false },
+  ];
+  return {
+    floorType: "security", city, floorNumber: 4, cols: 26, rows: 16,
+    spawn: { x: 2, y: 3 }, upgrades: [], objects,
+    collisionFootprints: objects.map((object) => object.footprint),
+  };
+}
+
 function occupiedCells(footprint: z.infer<typeof footprintSchema>) {
   const cells: string[] = [];
   for (let x = footprint.x; x < footprint.x + footprint.cols; x++) for (let y = footprint.y; y < footprint.y + footprint.rows; y++) cells.push(`${x},${y}`);
@@ -184,6 +206,10 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
   } else if (plan.floorType === "rest") {
     if (plan.objects.filter((o) => o.kind === "bed").length < 4) errors.push("rest floor requires beds");
     for (const kind of ["nurse_station", "doctor_station", "elevator"]) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`rest floor requires one ${kind}`);
+  } else if (plan.floorType === "security") {
+    for (const kind of ["guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door", "elevator"]) {
+      if (plan.objects.filter((o) => o.kind === kind).length < 1) errors.push(`security floor requires ${kind}`);
+    }
   } else {
     const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio", "payphone"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);

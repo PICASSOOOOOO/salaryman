@@ -148,6 +148,7 @@
 - [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ100=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — ElevenLabs needs the one-time `sk_` secret, never the dashboard key ID; Pablo/Mila must fail closed instead of falling back to another accent.
 - [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.
+- [Shadow Tower hierarchy](shadow-tower-hierarchy.md) — tower is 67 floors: public commons low, new org space below Picasso, Picasso Org at 66, Shadow Corp restricted at 67; vacant floors show construction/sale with height pricing.
 - [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.
 - [Extensible income ecosystem](income-ecosystem.md) — user/org connections unlock verified work and settlement; combine templates, floors, skills, shifts, and providers into many legitimate income paths.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
