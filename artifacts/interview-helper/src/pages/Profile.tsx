@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren, Shield, Wrench, Palette } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Palette } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -27,7 +27,6 @@ import GameSettings from '@/pages/Game/Settings';
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
 const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
-const WorldMapPanel = lazy(() => import("@/pages/WorldMapPanel"));
 
 interface DonationRecord {
   id: number;
@@ -444,14 +443,13 @@ function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAff
   );
 }
 
-type ProfileTab = 'account' | 'apis' | 'admin' | 'platform' | 'moderator' | 'world-map';
+type ProfileTab = 'account' | 'apis' | 'admin' | 'platform' | 'moderator';
 
 function getTabFromPath(pathname: string): ProfileTab {
   if (pathname.startsWith('/profile/apis')) return 'apis';
   if (pathname.startsWith('/profile/admin')) return 'admin';
   if (pathname.startsWith('/profile/platform')) return 'platform';
   if (pathname.startsWith('/profile/moderator')) return 'moderator';
-  if (pathname.startsWith('/profile/world-map')) return 'world-map';
   return 'account';
 }
 
@@ -461,7 +459,6 @@ const TAB_CONFIG: { id: ProfileTab; path: string; label: string; boomerLabel: st
   { id: 'admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', icon: ShieldCheck },
   { id: 'platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', icon: Network },
   { id: 'moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', icon: Eye },
-  { id: 'world-map', path: '/profile/world-map', label: 'WORLD MAP', boomerLabel: 'WORLD OVERVIEW', icon: Map },
 ];
 
 function ApisTab() {
@@ -635,213 +632,6 @@ function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
           data-testid="toggle-comms-city-dnd"
         />
       </label>
-    </motion.section>
-  );
-}
-
-interface FirstResponderStats {
-  responderCount: number;
-  emergencyEarnings: number;
-  badgeUnlocked: boolean;
-  history: { eventId: number; eventType: string; rewardPaid: number; respondedAt: string }[];
-}
-
-const EVENT_TYPE_LABEL: Record<string, string> = {
-  evt_blackout: 'GRID RESTORED',
-  evt_fire: 'FIRE SUPPRESSED',
-  evt_medical: 'CASUALTY STABILISED',
-  evt_robbery: 'ROBBERY FOILED',
-};
-
-const EVENT_TYPE_SHORT: Record<string, string> = {
-  evt_blackout: 'Blackout',
-  evt_fire: 'Fire',
-  evt_medical: 'Medical',
-  evt_robbery: 'Robbery',
-};
-
-const FIELD_RECORD_TYPES = ['evt_blackout', 'evt_fire', 'evt_medical', 'evt_robbery'] as const;
-
-interface EventHistoryData {
-  byType: Record<string, { count: number; totalEarned: number }>;
-  securityBadge: boolean;
-}
-
-function FirstResponderCard({ boomerMode }: { boomerMode: boolean }) {
-  const [stats, setStats] = useState<FirstResponderStats | null>(null);
-  const [history, setHistory] = useState<EventHistoryData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    Promise.all([
-      apiFetch('/api/events/my-stats').then(r => r.ok ? r.json() : null).catch(() => null),
-      apiFetch('/api/events/history').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([s, h]) => {
-      if (s) setStats(s);
-      if (h) setHistory(h);
-    }).finally(() => setLoading(false));
-  }, []);
-
-  const count = stats?.responderCount ?? 0;
-  const earned = stats?.emergencyEarnings ?? 0;
-  const badgeUnlocked = stats?.badgeUnlocked ?? false;
-  const securityBadge = history?.securityBadge ?? false;
-  const MILESTONE = 5;
-  const progressPct = Math.min(100, Math.round((count / MILESTONE) * 100));
-
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.05 }}
-      className="bg-card border border-border rounded-2xl p-6"
-      data-testid="first-responder-card"
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
-          <Siren className="w-4 h-4 text-red-400" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-foreground">
-            {boomerMode ? 'EMERGENCY RESPONSES' : 'FIRST RESPONDER'}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {boomerMode ? 'World events you responded to' : 'Crisis response record'}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {badgeUnlocked && (
-            <span className="shrink-0 px-2 py-0.5 rounded-lg border border-red-500/40 bg-red-500/10 text-[10px] font-bold uppercase tracking-wider text-red-400">
-              FIRST RESPONDER
-            </span>
-          )}
-          {securityBadge && (
-            <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-bold uppercase tracking-wider text-amber-400">
-              <Shield className="w-2.5 h-2.5" />
-              SECURITY
-            </span>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40" />
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-red-500/5 border border-red-500/15 rounded-xl px-4 py-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Events Responded</p>
-              <p className="text-2xl font-bold text-foreground">{count}</p>
-            </div>
-            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">ƒ Earned in Emergencies</p>
-              <p className="text-2xl font-bold text-emerald-400">ƒ{earned.toLocaleString()}</p>
-            </div>
-          </div>
-
-          {!badgeUnlocked && (
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                  {boomerMode ? `Progress to "First Responder" title` : 'FIRST RESPONDER BADGE'}
-                </p>
-                <p className="text-[10px] text-muted-foreground font-mono">{count}/{MILESTONE}</p>
-              </div>
-              <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-red-500/60 rounded-full transition-all"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground/60 mt-1">
-                {MILESTONE - count} more response{MILESTONE - count !== 1 ? 's' : ''} to unlock the badge
-              </p>
-            </div>
-          )}
-
-          {history && (
-            <div className="mb-4">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
-                {boomerMode ? 'Breakdown by event type' : 'FIELD RECORD'}
-              </p>
-              <div className="space-y-1.5">
-                {FIELD_RECORD_TYPES.map(type => {
-                  const entry = history.byType[type];
-                  const typeCount = entry?.count ?? 0;
-                  const typeEarned = entry?.totalEarned ?? 0;
-                  const isRobbery = type === 'evt_robbery';
-                  return (
-                    <div
-                      key={type}
-                      className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border ${
-                        isRobbery && securityBadge
-                          ? 'bg-amber-500/5 border-amber-500/20'
-                          : 'bg-muted/15 border-border/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {isRobbery && securityBadge && (
-                          <Shield className="w-3 h-3 text-amber-400 shrink-0" />
-                        )}
-                        <span className={`text-[11px] font-semibold ${typeCount > 0 ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-                          {EVENT_TYPE_SHORT[type]}
-                        </span>
-                        <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
-                          ×{typeCount}
-                        </span>
-                      </div>
-                      <span className={`shrink-0 text-[11px] font-bold font-mono ${typeEarned > 0 ? 'text-emerald-400' : 'text-muted-foreground/40'}`}>
-                        {typeEarned > 0 ? `ƒ${typeEarned.toLocaleString()}` : '—'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {stats && stats.history.length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setExpanded(v => !v)}
-                className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors mb-2"
-              >
-                <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-                {boomerMode ? 'Recent events' : 'RESPONSE HISTORY'}
-              </button>
-              {expanded && (
-                <div className="space-y-1.5">
-                  {stats.history.map((h, i) => (
-                    <div key={i} className="flex items-center justify-between gap-3 bg-muted/20 border border-border/50 rounded-lg px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
-                          {new Date(h.respondedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                        <span className="text-[11px] font-semibold text-foreground truncate">
-                          {EVENT_TYPE_LABEL[h.eventType] ?? h.eventType.replace('evt_', '').toUpperCase()}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-[11px] font-bold text-emerald-400 font-mono">
-                        +ƒ{h.rewardPaid.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {stats && stats.history.length === 0 && count === 0 && (
-            <p className="text-xs text-muted-foreground/60 text-center py-2">
-              {boomerMode ? 'No emergency responses yet. Respond to city events to earn rewards.' : 'No crises on record. Answer the next emergency broadcast to start.'}
-            </p>
-          )}
-        </>
-      )}
     </motion.section>
   );
 }
@@ -1315,8 +1105,6 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
 
             <ReferralPanel boomerMode={boomerMode} />
 
-            <FirstResponderCard boomerMode={boomerMode} />
-
             <MobileInstallSection />
 
           </div>
@@ -1439,7 +1227,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                 className="bg-card border border-border rounded-2xl p-2"
               >
                 {([
-                  { href: '/game/map', icon: Map, label: boomerMode ? 'City Map' : 'MAP', desc: 'Get your bearings.' },
+                  { href: '/tower', icon: Map, label: boomerMode ? 'Tower Directory' : 'TOWER', desc: 'Browse active floors.' },
                   { href: '/game/economy', icon: TrendingUp, label: boomerMode ? 'Economy' : 'ECONOMY', desc: 'Markets &amp; prices.' },
                   { href: '/game/bank', icon: CreditCard, label: boomerMode ? 'Bank' : 'BANK', desc: 'Accounts &amp; transfers.' },
                   { href: '/game/character', icon: Palette, label: boomerMode ? 'Character' : 'CHARACTER', desc: 'Your appearance.' },
@@ -1898,7 +1686,6 @@ const TAB_ANCHOR: Record<ProfileTab, string> = {
   'admin':     'profile-admin',
   'platform':  'profile-platform',
   'moderator': 'profile-moderator',
-  'world-map': 'profile-world-map',
 };
 
 /** Section header used between stacked panels on the consolidated page. */
@@ -1952,7 +1739,7 @@ export default function Profile() {
   );
 }
 
-/** /settings — Org, City, and General grouped settings. */
+/** /settings — organization, building, and general preferences. */
 export function SettingsPage() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
@@ -1977,10 +1764,10 @@ export function SettingsPage() {
           <SectionHeader
             icon={SlidersHorizontal}
             title={boomerMode ? 'SETTINGS' : 'SETTINGS'}
-            subtitle="Organization, city, and general preferences"
+            subtitle="Organization, building, and general preferences"
           />
           <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto pb-1">
-            <a href="#account-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">ACCOUNT &amp; CITY</a>
+            <a href="#account-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">ACCOUNT &amp; BUILDING</a>
             <a href="#game-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">GAME &amp; AUDIO</a>
           </nav>
           <section id="account-settings" className="scroll-mt-24">
@@ -2033,14 +1820,6 @@ export function AdminHub() {
             <ModeratorPanel />
           </section>
 
-          <section className="border-t border-white/[0.06] pt-10">
-            <SectionHeader
-              icon={Map}
-              title={boomerMode ? 'WORLD OVERVIEW' : 'WORLD MAP'}
-              subtitle="Live universe state"
-            />
-            <WorldMapPanel />
-          </section>
         </Suspense>
       </main>
     </div>

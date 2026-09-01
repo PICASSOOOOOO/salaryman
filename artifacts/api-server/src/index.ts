@@ -28,6 +28,7 @@ import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 import { expireOverdueRentals } from './routes/fleet';
+import { purgeOutsideWorldState } from './lib/outside-world';
 
 const rawPort = process.env["PORT"];
 
@@ -53,6 +54,11 @@ const ownerEmails = (process.env.OWNER_EMAILS ?? "").split(",").map(e => e.trim(
 function runDeferredBoot(): void {
   // Batch 1 (next tick): lightweight seeders — fast, low DB pressure.
   setImmediate(() => {
+    purgeOutsideWorldState()
+      .then((purged) => {
+        if (purged) console.log("[World] Exterior state purged for building-only mode.");
+      })
+      .catch((err) => console.error("[World] Exterior purge failed:", err));
     seedMerchProducts().catch(err => {
       console.error("[Merch Seed] Error seeding products:", err);
     });

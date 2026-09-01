@@ -16,7 +16,7 @@ import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
 import { getSalarymanOfficeTier, type SalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
-import { clearStoryBeginIntent, setStoryBeginIntent, currentSlot } from '@/lib/story-gate';
+import { clearStoryBeginIntent, currentSlot } from '@/lib/story-gate';
 import {
   loadDiscovery, saveDiscovery, withMoved, withInteracted,
   currentDiscoveryStep, discoveryCue, type DiscoveryState,
@@ -146,8 +146,6 @@ export default function PabloOffice() {
   const [storyGate, setStoryGate] = useState<{ active: boolean; eligible: boolean; reason?: string } | null>(null);
   // Mirror of the gate for stable station closures (the elevator's onInteract is
   // built once in a useMemo but must read the freshest story state).
-  const storyGateRef = useRef(storyGate);
-  useEffect(() => { storyGateRef.current = storyGate; }, [storyGate]);
   // Server story snapshot (which scenes are done / which is active) for the
   // MISSION MENU. Distinct from the gate which only carries active/eligible.
   const [storySnap, setStorySnap] = useState<AssignmentStorySnapshot | null>(null);
@@ -329,13 +327,15 @@ export default function PabloOffice() {
     return () => { cancelled = true; };
   }, [isAuthenticated, embed]);
 
-  // BEGIN STORY — flip the optimistic gate flag, then send the player to the
-  // city. StoryCityLock opens optimistically on the intent flag so the hop never
-  // flashes a lock; the city's own begin flow performs the server commitment.
+  // Exterior story scenes are paused in building-only mode. Keep the mission
+  // data visible for continuity, but route play back into the tower.
   const beginStory = () => {
-    setStoryBeginIntent();
     playNav();
-    navigateFromOffice('/world/play');
+    toast({
+      title: 'OUTSIDE WORLD LOCKED',
+      description: 'Current operations are focused on the office and occupied tower floors.',
+    });
+    navigateFromOffice('/tower');
   };
 
   // MISSION MENU "PLAY". Once the story is running, every playable scene is tracked
@@ -344,14 +344,13 @@ export default function PabloOffice() {
   // if not it routes you to find work so you can become eligible.
   const handlePlayScene = (def: StoryAssignmentDef) => {
     setShowMissions(false);
-    if (storyGate?.active) { playNav(); navigateFromOffice('/world/play'); return; }
+    if (storyGate?.active) { beginStory(); return; }
     if (def.reserved) {
       if (storyGate?.eligible) beginStory();
       else { playNav(); navigate('/bots/jobs'); }
       return;
     }
-    playNav();
-    navigateFromOffice('/world/play');
+    beginStory();
   };
 
   const handleSaveHallway = async (style: "central" | "gallery" | "executive", lighting: "dim" | "normal" | "bright" | "warm" | "cool", signage: string) => {
@@ -752,10 +751,8 @@ export default function PabloOffice() {
       elevator: () => {
         playClick();
         rememberOfficePose();
-        const g = storyGateRef.current;
-        if (g?.active) { playNav(); navigateFromOffice('/world/play'); }
-        else if (g?.eligible) { beginStory(); }
-        else { setElevatorLocked(true); }
+        playNav();
+        navigateFromOffice('/tower');
       },
       atm: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('atm')); },
       vending: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('vending')); },

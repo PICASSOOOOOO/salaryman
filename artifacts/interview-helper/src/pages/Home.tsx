@@ -740,17 +740,6 @@ export default function Home() {
   const lastSpokenRef = useRef(-1);
 
   useEffect(() => {
-    const sendHeartbeat = () => {
-      if (isAuthenticated) {
-        fetch(`${import.meta.env.BASE_URL}api/world/heartbeat`, { method: 'POST', credentials: 'include' }).catch(() => {});
-      }
-    };
-    sendHeartbeat();
-    const iv = setInterval(sendHeartbeat, 15000);
-    return () => clearInterval(iv);
-  }, [isAuthenticated]);
-
-  useEffect(() => {
     if (!isAuthenticated) return;
     fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)

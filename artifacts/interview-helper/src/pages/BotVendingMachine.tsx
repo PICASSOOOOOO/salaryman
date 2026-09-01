@@ -145,10 +145,10 @@ export default function BotVendingMachine() {
         </div>
         <button
           type="button"
-          onClick={() => navigate("/world/play")}
+          onClick={() => navigate("/office")}
           className="text-cyan-200/70 text-[10px] tracking-[0.4em] hover:text-white"
         >
-          EXIT TO STREET ▸
+          EXIT TO OFFICE ▸
         </button>
       </header>
 

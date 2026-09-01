@@ -3,9 +3,29 @@ import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
 import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, normalizeOrgName } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
+import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 
 const router = Router();
 const LIVE_CITY_IDS = new Set(["minx_city", "huda_city"]);
+
+const OUTSIDE_WORLD_PATHS = [
+  "/world/locate",
+  "/world/population",
+  "/world/online",
+  "/world/heartbeat",
+  "/world/liberation",
+  "/world/buildings",
+  "/world/building-types",
+] as const;
+
+router.use((req, res, next) => {
+  if (OUTSIDE_WORLD_ENABLED) return next();
+  const isExterior = OUTSIDE_WORLD_PATHS.some(
+    (prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`),
+  );
+  if (isExterior) return res.status(410).json(OUTSIDE_WORLD_DISABLED_BODY);
+  return next();
+});
 
 /**
  * Derive the active in-game character's player name for the current request.

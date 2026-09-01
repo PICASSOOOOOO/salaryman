@@ -150,7 +150,7 @@ export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, 
   while (cursor && key(cursor) !== key(start)) { route.push(cursor); cursor = previous.get(key(cursor)) ?? null; }
   return route.reverse();
 }
-export const OFFICE_OBJECT_DESTINATIONS = { terminal: "/console", atm: "/game/bank", vending: "/vending?from=office", elevator: "/world/play" } as const;
+export const OFFICE_OBJECT_DESTINATIONS = { terminal: "/console", atm: "/game/bank", vending: "/vending?from=office", elevator: "/tower" } as const;
 export type OfficeDestinationObject = keyof typeof OFFICE_OBJECT_DESTINATIONS;
 export function getOfficeObjectDestination(object: OfficeDestinationObject) { return OFFICE_OBJECT_DESTINATIONS[object]; }
 export function getPayphoneHubDestination() { return "/phone?tab=chat"; }

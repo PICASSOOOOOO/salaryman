@@ -63,7 +63,7 @@ export default function RealtyStore() {
 
   return <div className="min-h-screen bg-black text-zinc-200">
     <header className="px-4 sm:px-6 pt-4 pb-3 flex items-center justify-between border-b border-pink-500/20">
-      <button type="button" onClick={() => navigate("/world/play")} className="text-pink-200 text-[10px] tracking-[.35em] hover:text-white flex gap-2 items-center"><ArrowLeft className="w-3 h-3" /> WORLD</button>
+      <button type="button" onClick={() => navigate("/tower")} className="text-pink-200 text-[10px] tracking-[.35em] hover:text-white flex gap-2 items-center"><ArrowLeft className="w-3 h-3" /> TOWER</button>
       <div className="text-pink-300 text-xs sm:text-sm tracking-[.3em]">SHADOW TOWER REALTY</div><span className="text-[10px] text-zinc-500">FIAT SETTLEMENT</span>
     </header>
     <main className="max-w-6xl mx-auto px-4 sm:px-8 py-7">

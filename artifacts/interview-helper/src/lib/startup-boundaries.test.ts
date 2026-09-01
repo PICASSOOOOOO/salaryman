@@ -63,4 +63,18 @@ describe("frontend startup boundaries", () => {
     expect(loop).toContain("document.addEventListener('visibilitychange'");
     expect(loop).toContain("document.removeEventListener('visibilitychange'");
   });
+
+  it("keeps the exterior world out of the active application", () => {
+    const app = source("App.tsx");
+    const immigration = source("pages/Immigration.tsx");
+    const tower = source("pages/TowerDirectory.tsx");
+    expect(app).not.toContain('lazy(() => import("@/pages/WorldPlay"))');
+    expect(app).not.toContain('lazy(() => import("@/pages/LandRegistry"))');
+    expect(app).not.toContain('lazy(() => import("@/pages/Subway"))');
+    expect(app).toContain('<Route path="/world/play">{() => <Redirect to="/office" />}</Route>');
+    expect(app).toContain('<Route path="/world/land">{() => <Redirect to="/office" />}</Route>');
+    expect(app).toContain('<Route path="/subway">{() => <Redirect to="/tower" />}</Route>');
+    expect(immigration).toContain("destination = Array.isArray(data.orgs) && data.orgs.length > 0 ? '/office' : '/tower'");
+    expect(tower).toContain('data-testid="reception-desk"');
+  });
 });

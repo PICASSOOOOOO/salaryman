@@ -52,7 +52,7 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'office-floor', path: '/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
       { id: 'office-my', path: '/my-office', label: 'MY OFFICE', boomerLabel: 'MY OFFICE', codename: 'MY-HQ', icon: Building2 },
-      { id: 'office-map', path: '/game/map', label: 'MAP', boomerLabel: 'MAP', codename: 'CHART-X', icon: Map },
+      { id: 'office-map', path: '/tower', label: 'TOWER', boomerLabel: 'TOWER', codename: 'FLOOR-DIR', icon: Map },
       { id: 'office-economy', path: '/game/economy', label: 'ECONOMY', boomerLabel: 'ECONOMY', codename: 'MARKETS', icon: Coins },
       { id: 'office-bank', path: '/game/bank', label: 'BANCO OMBRA', boomerLabel: 'BANCO OMBRA', codename: 'VAULT-X', icon: Landmark },
       { id: 'office-vending', path: '/vending?from=office', label: 'SUPPLIES', boomerLabel: 'SUPPLIES', codename: 'SUPPLIES', icon: ShoppingBag },
@@ -240,7 +240,6 @@ export const PROFILE_MODULES: SubItem[] = [
   { id: 'profile-admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', codename: 'COMMAND', icon: ShieldCheck },
   { id: 'profile-platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
   { id: 'profile-moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', codename: 'WATCHTOWER', icon: Eye },
-  { id: 'profile-world-map', path: '/profile/world-map', label: 'WORLD MAP', boomerLabel: 'WORLD OVERVIEW', codename: 'OVERWATCH', icon: Map },
 ];
 
 export const ADMIN_SUBS: SubItem[] = [

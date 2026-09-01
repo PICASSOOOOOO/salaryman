@@ -3,8 +3,14 @@ import { eq, desc, sql, and, gte } from "drizzle-orm";
 import { db, worldEventsTable, eventResponsesTable, usersTable, playerProfilesTable } from "@workspace/db";
 
 import { getActiveWorldEvents, resolveWorldEvent, sendToPlayer, getPlayerPosition, isNearBankOrStore } from "../worldServer";
+import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 
 const router = Router();
+
+router.use("/events", (_req, res, next) => {
+  if (OUTSIDE_WORLD_ENABLED) return next();
+  return res.status(410).json(OUTSIDE_WORLD_DISABLED_BODY);
+});
 
 router.post("/events/:id/respond", async (req, res) => {
   try {

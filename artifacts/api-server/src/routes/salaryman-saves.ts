@@ -259,6 +259,69 @@ async function hasActiveEnterprise(userId: string): Promise<boolean> {
   return realBiz.length > 0;
 }
 
+router.post("/salaryman/saves/ensure", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const [existing] = await db
+      .select()
+      .from(salarymanSavesTable)
+      .where(eq(salarymanSavesTable.userId, req.user.id))
+      .orderBy(salarymanSavesTable.slotIndex)
+      .limit(1);
+    if (existing) {
+      res.json({ save: existing, created: false });
+      return;
+    }
+
+    const [registry] = await db
+      .select({
+        playerName: worldBusinessesTable.playerName,
+        meta: worldBusinessesTable.meta,
+      })
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.userId, req.user.id))
+      .orderBy(sql`${worldBusinessesTable.createdAt} DESC`)
+      .limit(1);
+    if (!registry) {
+      res.status(409).json({ error: "Complete onboarding before entering a public floor" });
+      return;
+    }
+
+    const meta = (registry.meta ?? {}) as Record<string, unknown>;
+    const charClass = typeof meta.jobClass === "string" && meta.jobClass.trim()
+      ? meta.jobClass.trim().slice(0, 32).toUpperCase()
+      : "OPERATOR";
+    await db.insert(salarymanSavesTable).values({
+      userId: req.user.id,
+      slotIndex: 0,
+      charName: registry.playerName.slice(0, 64),
+      charClass,
+      lastZone: "SHADOW TOWER",
+      data: {},
+    }).onConflictDoNothing();
+
+    const [save] = await db
+      .select()
+      .from(salarymanSavesTable)
+      .where(and(
+        eq(salarymanSavesTable.userId, req.user.id),
+        eq(salarymanSavesTable.slotIndex, 0),
+      ))
+      .limit(1);
+    if (!save) {
+      res.status(500).json({ error: "Unable to create operator record" });
+      return;
+    }
+    res.status(201).json({ save, created: true });
+  } catch (err: any) {
+    console.error("[saves] ensure error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.get("/salaryman/saves", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });

@@ -102,7 +102,7 @@ export function resolveActionHref(action: CutsceneAction): string {
       return "/pablo";
     case "dismiss":
     default:
-      return "/world/play";
+      return "/office";
   }
 }
 

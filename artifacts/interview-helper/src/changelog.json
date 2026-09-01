@@ -1591,5 +1591,29 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.19.2.2074",
+    "date": "2026-09-01",
+    "commitHash": "a137b077f9ba586735ba482e9995647b335ba0db",
+    "changes": [
+      "Update interview helper features and documentation for new release"
+    ]
+  },
+  {
+    "version": "v.19.3.2074",
+    "date": "2026-09-01",
+    "commitHash": "a137b077f9ba586735ba482e9995647b335ba0db",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.4.2074",
+    "date": "2026-09-01",
+    "commitHash": "a137b077f9ba586735ba482e9995647b335ba0db",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

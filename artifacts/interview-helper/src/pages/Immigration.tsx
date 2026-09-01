@@ -372,16 +372,16 @@ export default function Immigration() {
     setPhase('done');
     markTutorialDone();
     let destination = handoffDestinationRef.current;
-    // The default post-intake destination is ownership-aware. Players with an
-    // active organization go to their office; everyone else starts work on the
-    // public mezzanine rather than being placed on a private floor they do not own.
+    // The default post-intake destination is ownership-aware. Existing
+    // organization operators return to their office; a new player reports to
+    // the Shadow Tower lobby and starts all building business at reception.
     if (destination === '/office') {
       try {
         const response = await apiFetch('/api/orgs/mine', { credentials: 'include' });
         const data = response.ok ? await response.json() as { orgs?: unknown[] } : {};
-        destination = Array.isArray(data.orgs) && data.orgs.length > 0 ? '/office' : '/tower/mezzanine';
+        destination = Array.isArray(data.orgs) && data.orgs.length > 0 ? '/office' : '/tower';
       } catch {
-        destination = '/tower/mezzanine';
+        destination = '/tower';
       }
     }
     navigate(destination, { replace: true });

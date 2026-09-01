@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { Building2, KeyRound, LockKeyhole, Shield, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, Building2, ClipboardList, DoorOpen, KeyRound, LockKeyhole, Shield, Sparkles } from "lucide-react";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 
@@ -57,6 +57,43 @@ export default function TowerDirectory() {
           </div>
           <Link href="/pablo" className="hidden sm:block text-xs text-zinc-500 hover:text-cyan-300">BACK TO PABLO</Link>
         </header>
+        <section
+          className="mb-6 border border-cyan-300/35 bg-[radial-gradient(circle_at_85%,#12364a,#08111b)] p-5 shadow-[0_0_40px_rgba(34,211,238,.08)]"
+          data-testid="reception-desk"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-cyan-300/40 bg-cyan-300/10">
+                <ClipboardList className="h-5 w-5 text-cyan-200" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-[.3em] text-cyan-200">RECEPTIONIST · FRONT DESK</p>
+                <h2 className="mt-1 text-xl font-black tracking-[.12em] text-white">CHECK IN HERE</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  New operators handle building business through reception. Request work access,
+                  a bed, security help, an office appointment, or a business service from the desk.
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-[10px] tracking-[.18em] text-emerald-200">
+              <DoorOpen className="h-3.5 w-3.5" /> DESK ACTIVE
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <Link href="/tower/mezzanine" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
+              <BriefcaseBusiness className="h-4 w-4" /> REQUEST WORK
+            </Link>
+            <Link href="/tower/rest" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
+              <Building2 className="h-4 w-4" /> REQUEST LODGING
+            </Link>
+            <Link href="/office" className="flex items-center gap-2 border border-amber-300/25 bg-amber-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/10">
+              <KeyRound className="h-4 w-4" /> OFFICE APPOINTMENT
+            </Link>
+            <Link href="/business" className="flex items-center gap-2 border border-violet-300/25 bg-violet-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-violet-100 transition hover:border-violet-200 hover:bg-violet-300/10">
+              <ClipboardList className="h-4 w-4" /> BUSINESS DESK
+            </Link>
+          </div>
+        </section>
         <div className="grid gap-2">
           {floors.map(({ floor, name, kind, detail, href, tone, icon: Icon, quote }) => {
             const content = <div className={`group relative flex items-center gap-4 overflow-hidden border p-4 transition duration-500 hover:-translate-y-0.5 hover:pl-6 ${

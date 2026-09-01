@@ -154,10 +154,10 @@ export default function CutscenePage() {
         </div>
         <button
           type="button"
-          onClick={() => setLocation("/world/play")}
+          onClick={() => setLocation("/office")}
           className="mt-6 text-xs tracking-[0.3em] text-zinc-500 hover:text-zinc-200"
         >
-          ◂ BACK TO WORLD
+          ◂ BACK TO OFFICE
         </button>
       </div>
     );
@@ -166,7 +166,7 @@ export default function CutscenePage() {
   return (
     <CutsceneRunner
       cutscene={scene}
-      onClose={() => setLocation(isBotId ? `/bots/${id.slice(4)}/office` : "/world/play")}
+      onClose={() => setLocation(isBotId ? `/bots/${id.slice(4)}/office` : "/office")}
     />
   );
 }

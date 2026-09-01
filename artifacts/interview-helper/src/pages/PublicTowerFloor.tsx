@@ -40,8 +40,20 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
   const load = useCallback(async () => {
     const savesResponse = await apiFetch("/api/salaryman/saves", { credentials: "include" });
     if (!savesResponse.ok) return;
-    const saves = (await savesResponse.json()).saves ?? [];
-    if (!saves.length) { setMessage("CREATE A CHARACTER BEFORE ENTERING SHADOW TOWER"); return; }
+    let saves = (await savesResponse.json()).saves ?? [];
+    if (!saves.length) {
+      const ensureResponse = await apiFetch("/api/salaryman/saves/ensure", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!ensureResponse.ok) {
+        setMessage("COMPLETE ONBOARDING BEFORE ENTERING SHADOW TOWER");
+        return;
+      }
+      const ensured = await ensureResponse.json();
+      saves = ensured.save ? [ensured.save] : [];
+    }
+    if (!saves.length) { setMessage("OPERATOR RECORD UNAVAILABLE"); return; }
     const slot = saves.sort((a: { lastSavedAt?: string }, b: { lastSavedAt?: string }) =>
       new Date(b.lastSavedAt ?? 0).getTime() - new Date(a.lastSavedAt ?? 0).getTime())[0].slotIndex;
     setSlotIndex(slot);

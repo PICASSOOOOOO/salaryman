@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
 import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable, worldPlayerPositionsTable } from '@workspace/db';
+import { OUTSIDE_WORLD_ENABLED } from './lib/outside-world';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
@@ -489,6 +490,7 @@ const expireWorldEvents = async (): Promise<void> => {
 
 let worldEventTickInFlight = false;
 export const worldEventTick = async (): Promise<void> => {
+  if (!OUTSIDE_WORLD_ENABLED) return;
   if (worldEventTickInFlight) return;
   worldEventTickInFlight = true;
   try {
@@ -1512,6 +1514,7 @@ const heartbeats = new Map<string, { name: string; ts: number; profileImageUrl: 
 const HEARTBEAT_TTL_MS = 45_000;
 
 export const recordHeartbeat = (userId: string, name: string, profileImageUrl: string | null = null) => {
+  if (!OUTSIDE_WORLD_ENABLED) return;
   heartbeats.set(userId, { name, ts: Date.now(), profileImageUrl });
 };
 
@@ -1522,7 +1525,7 @@ const pruneHeartbeats = () => {
   }
 };
 
-setInterval(pruneHeartbeats, 10_000);
+if (OUTSIDE_WORLD_ENABLED) setInterval(pruneHeartbeats, 10_000);
 
 export const getHeartbeatCount = () => {
   pruneHeartbeats();
@@ -1580,6 +1583,9 @@ export const getOnlinePlayers = () => {
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 export const getServerStatus = () => {
+  if (!OUTSIDE_WORLD_ENABLED) {
+    return { enabled: false, online: 0, max: 0, liberationProgress: 0 };
+  }
   const wsOnline = players.size;
   const hbOnline = getHeartbeatCount();
   return {
@@ -1591,10 +1597,20 @@ export const getServerStatus = () => {
 
 export const attachWorldServer = (httpServer: Server) => {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  console.log('[World] WebSocket server attached at /ws');
-  loadLiberationProgress();
+  console.log(OUTSIDE_WORLD_ENABLED
+    ? '[World] WebSocket server attached at /ws'
+    : '[World] Exterior runtime locked; /ws rejects world sessions');
+  if (OUTSIDE_WORLD_ENABLED) loadLiberationProgress();
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
+    if (!OUTSIDE_WORLD_ENABLED) {
+      ws.send(JSON.stringify({
+        type: 'world_locked',
+        message: 'SALARYMAN is focused on the active office and tower floors.',
+      }));
+      ws.close(1008, 'Outside world locked');
+      return;
+    }
     const params = new URLSearchParams(req.url?.split('?')[1] ?? '');
     const name    = (params.get('name')    ?? 'UNKNOWN').slice(0, 24).toUpperCase();
     const cls     = params.get('class')    ?? 'unknown';
@@ -1755,21 +1771,17 @@ export const attachWorldServer = (httpServer: Server) => {
     ws.on('error', (err) => console.error(`[World] WS error for ${name}:`, err.message));
   });
 
-  setInterval(() => {
-    for (const [, p] of players) {
-      if (p.ws?.readyState === WebSocket.OPEN) p.ws.ping();
-    }
-  }, 25000);
+  if (OUTSIDE_WORLD_ENABLED) {
+    setInterval(() => {
+      for (const [, p] of players) {
+        if (p.ws?.readyState === WebSocket.OPEN) p.ws.ping();
+      }
+    }, 25000);
 
-  // Deckard maintenance crew: keeps 3–5 server-authoritative test bots roaming
-  // the home city AROUND THE CLOCK (always staffed, never despawned even with zero
-  // humans), plus any other city while a human is present, so the live MMO always
-  // has real networked presence/comms to exercise — not just when a human is on.
-  setInterval(deckardTick, DECKARD_TICK_MS);
-
-  // ── World Events scheduler (configurable cadence via EVENT_TICK_MS env var) ─
-  // Spawns active events when under the cap; expires stale ones.
-  setInterval(() => { void worldEventTick(); }, EVENT_CONFIG.tickMs);
+    // Deckard and random world events are exterior-only workloads.
+    setInterval(deckardTick, DECKARD_TICK_MS);
+    setInterval(() => { void worldEventTick(); }, EVENT_CONFIG.tickMs);
+  }
 
   // ── Guest meeting WebSocket server (/ws/meet/:code) ─────────────────────
   const guestWss = new WebSocketServer({ noServer: true });

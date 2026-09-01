@@ -126,7 +126,7 @@ export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_play
       } else if (e.key === "Escape") {
         e.preventDefault();
         onClose?.();
-        setLocation("/world/play");
+        setLocation("/office");
       }
     }
     window.addEventListener("keydown", onKey);
@@ -164,7 +164,7 @@ export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_play
           )}
           <button
             type="button"
-            onClick={() => { onClose?.(); setLocation("/world/play"); }}
+            onClick={() => { onClose?.(); setLocation("/office"); }}
             className="hover:text-zinc-200 transition-colors"
             data-testid="cutscene-close"
           >

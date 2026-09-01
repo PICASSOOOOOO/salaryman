@@ -16,7 +16,6 @@ import { ArrowLeft, ArrowRight, Loader2, Zap } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
-import { getActiveCityName } from "@/lib/city-defs";
 import { VEND_FOOD_ITEMS, parseFoodEffect, type VendFoodItem } from "@/lib/vending-food";
 import { PowerGoodsGrid } from "./UtilityStation";
 
@@ -37,16 +36,14 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
   const [, navigate] = useLocation();
   const machineUrl = useArtAsset("vending_machine_iso");
   const [tab, setTab] = useState<TabId>(initialTab);
-
-  // Context-aware exit: when the machine is opened from the office floor object
-  // (`?from=office`) the single exit returns to the OFFICE; otherwise it returns
-  // to the player's active city (named, never the generic "WORLD"). In-world
-  // overlay usage (`onClose`) just closes back to wherever it was opened.
   const fromOffice =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("from") === "office";
-  const exitLabel = fromOffice ? "OFFICE" : getActiveCityName().toUpperCase();
-  const exitTo = fromOffice ? "/office" : "/world/play";
+
+  // Supplies are an in-building service. The outside city is deliberately
+  // locked while the tower/office experience is being mastered.
+  const exitLabel = "OFFICE";
+  const exitTo = "/office";
   const exit = () => (onClose ? onClose() : navigate(exitTo));
 
   return (

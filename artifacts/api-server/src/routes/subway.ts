@@ -9,8 +9,14 @@ import {
 } from "@workspace/db";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { spendEarnedFiat } from "../lib/pablo-tax";
+import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 
 const router: IRouter = Router();
+
+router.use("/subway", (_req, res, next) => {
+  if (OUTSIDE_WORLD_ENABLED) return next();
+  return res.status(410).json(OUTSIDE_WORLD_DISABLED_BODY);
+});
 
 // Flat cross-city toll, in whole ƒ (florins) — same unit as bank_accounts.balance
 // and the armory's spendEarnedFiat. Only EARNED ƒ pays it (starting funds are
@@ -272,6 +278,7 @@ export default router;
 
 // Seed default stations on boot if the table is empty.
 export async function seedSubwayStations() {
+  if (!OUTSIDE_WORLD_ENABLED) return;
   const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(subwayStationsTable);
   if (Number(count) > 0) return;
   const seed = [

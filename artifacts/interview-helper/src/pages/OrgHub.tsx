@@ -54,7 +54,7 @@ const SETTINGS_SECTIONS = [
     border: 'border-sky-500/20',
   },
   {
-    path: '/world/land',
+    path: '/tower',
     label: 'LAND & CONSTRUCTION',
     desc: 'Claim land, review plot status, and submit approved construction designs.',
     icon: Building2,

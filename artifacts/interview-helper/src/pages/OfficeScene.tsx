@@ -66,11 +66,11 @@ export default function OfficeScene() {
     setStep("exit");
     ttsHandleRef.current?.cancel();
     ttsHandleRef.current = speakWithTTS(HANDOFF, () => {}, () => {});
-    setTimeout(() => navigate("/world/play"), 1500);
+    setTimeout(() => navigate("/office"), 1500);
   };
 
   const skip = () => {
-    navigate("/world/play");
+    navigate("/office");
   };
 
   const officeUrl = officeArt;
@@ -173,7 +173,7 @@ export default function OfficeScene() {
         )}
       </AnimatePresence>
 
-      {/* Wipe-out transition into /world/play */}
+      {/* Wipe-out transition into the live office */}
       <AnimatePresence>
         {step === "exit" && (
           <motion.div
