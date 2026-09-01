@@ -16,9 +16,10 @@ import {
   salarymanSavesTable,
   worldBusinessesTable,
   playerLedgerTable,
+  invoicesTable,
   type BusinessTaxStatus,
 } from "@workspace/db";
-import { eq, and, sql, inArray, asc } from "drizzle-orm";
+import { eq, and, sql, inArray, asc, gte, lt } from "drizzle-orm";
 
 const BUSINESS_TAX_RATE = 0.5;
 
@@ -31,17 +32,32 @@ const TAX_AUDIT_KV_KEY = "business_tax_last_audit_period";
 // Expenses = sum of balance_sheet_transactions (expense / bill / payroll) in
 // the target month. Uses the same guards as the finance-engine reconcile audit.
 async function getMonthlyRevenue(userId: string, periodStart: string, periodEnd: string): Promise<number> {
-  const rows = await db.execute<{ total: string }>(
-    sql`
-      SELECT COALESCE(SUM(total_amount), 0) AS total
-      FROM invoices
-      WHERE user_id = ${userId}
-        AND status = 'paid'
-        AND paid_at >= ${periodStart}::timestamptz
-        AND paid_at <  ${periodEnd}::timestamptz
-    `
-  );
-  return Number(rows.rows[0]?.total ?? 0);
+  // `invoices` is the document-ledger table. It stores line items and tax rate
+  // rather than a duplicated total_amount column; updated_at is the canonical
+  // settlement timestamp because the paid transition updates the row.
+  const rows = await db
+    .select({ lineItems: invoicesTable.lineItems, taxRate: invoicesTable.taxRate })
+    .from(invoicesTable)
+    .where(and(
+      eq(invoicesTable.userId, userId),
+      eq(invoicesTable.status, "paid"),
+      gte(invoicesTable.updatedAt, new Date(periodStart)),
+      lt(invoicesTable.updatedAt, new Date(periodEnd)),
+    ));
+  return rows.reduce((sum, invoice) => {
+    const items = Array.isArray(invoice.lineItems)
+      ? invoice.lineItems as Array<{ quantity?: unknown; rate?: unknown }>
+      : [];
+    const subtotal = items.reduce((itemSum, item) => {
+      const quantity = Number(item.quantity);
+      const rate = Number(item.rate);
+      if (!Number.isFinite(quantity) || !Number.isFinite(rate) || quantity <= 0 || rate < 0) return itemSum;
+      return itemSum + quantity * rate;
+    }, 0);
+    const taxRate = Number(invoice.taxRate);
+    const total = subtotal * (1 + (Number.isFinite(taxRate) ? Math.max(0, taxRate) : 0) / 100);
+    return sum + Math.round(total);
+  }, 0);
 }
 
 async function getMonthlyExpenses(userId: string, periodStart: string, periodEnd: string): Promise<number> {
@@ -73,19 +89,27 @@ async function resolvePlayerCity(userId: string): Promise<string> {
 }
 
 // ── Last-audit period retrieval ───────────────────────────────────────────────
-async function getLastAuditPeriod(): Promise<string | null> {
-  const rows = await db.execute<{ value: string }>(
+export function businessTaxPeriodKey(period: string): number {
+  const match = /^(\d{4})-(\d{2})$/.exec(period);
+  if (!match) throw new Error(`Invalid business tax period: ${period}`);
+  return Number(`${match[1]}${match[2]}`);
+}
+
+async function getLastAuditPeriod(): Promise<number | null> {
+  const rows = await db.execute<{ value: number }>(
     sql`SELECT value FROM world_kv WHERE key = ${TAX_AUDIT_KV_KEY} LIMIT 1`
   );
-  return rows.rows[0]?.value ?? null;
+  const value = Number(rows.rows[0]?.value);
+  return Number.isInteger(value) && value > 0 ? value : null;
 }
 
 async function setLastAuditPeriod(period: string): Promise<void> {
+  const periodKey = businessTaxPeriodKey(period);
   await db.execute(
     sql`
       INSERT INTO world_kv (key, value, updated_at)
-      VALUES (${TAX_AUDIT_KV_KEY}, ${period}, now())
-      ON CONFLICT (key) DO UPDATE SET value = ${period}, updated_at = now()
+      VALUES (${TAX_AUDIT_KV_KEY}, ${periodKey}, now())
+      ON CONFLICT (key) DO UPDATE SET value = ${periodKey}, updated_at = now()
     `
   );
 }
@@ -111,7 +135,7 @@ export async function runBusinessIncomeTaxAudit(): Promise<{ period: string; ass
 
   // Idempotency: skip if we already ran this period.
   const lastPeriod = await getLastAuditPeriod();
-  if (lastPeriod === period) {
+  if (lastPeriod === businessTaxPeriodKey(period)) {
     console.log(`[BusinessTax] Period ${period} already audited — skipping.`);
     return { period, assessed: 0, totalTax: 0, skipped: 0 };
   }
@@ -190,7 +214,7 @@ export async function shouldRunMonthlyTaxAudit(): Promise<boolean> {
   const now = new Date();
   const { period } = priorMonthPeriod(now);
   const lastPeriod = await getLastAuditPeriod();
-  return lastPeriod !== period;
+  return lastPeriod !== businessTaxPeriodKey(period);
 }
 
 // ── flushPendingBusinessTax ───────────────────────────────────────────────────
