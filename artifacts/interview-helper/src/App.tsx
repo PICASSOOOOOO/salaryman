@@ -348,13 +348,13 @@ function HomeOrCover() {
   // the user is genuinely on "/", so deep routes (e.g. /my-office) stay put.
   if (location.split("?")[0] !== "/") return null;
   if (isLoading) return <LoadingFallback />;
-  // Funnel — modeled like immigration, not a revolving door:
+  // Funnel — players begin inside Shadow Tower:
   //   1. Anonymous visitor → /pablo. Pablo tells the story, takes the
   //      passcode, asks for name + email, hands off to OAuth.
-  //   2. Authenticated but uncleared (tutorialDone=false) → /immigration.
-  //      A dedicated, non-game-locked desk where Pablo files the new
-  //      arrival's intent (business / unemployed). Only completing this
-  //      sets tutorialDone, which is what unlocks the rest of the app.
+  //   2. Authenticated but uncleared (tutorialDone=false) → Tower reception.
+  //      The receptionist gives one short building briefing and creates the
+  //      minimum player registry row. Immigration/visa processing is deferred
+  //      until the player explicitly exits the building.
   //   3. Cleared → their OFFICE (office-sim first). The old Home dashboard is
   //      no longer the landing surface; signed-in players live in /office and
   //      reach everything else (the TERMINAL, the city) from there.
@@ -375,7 +375,7 @@ function HomeOrCover() {
   // is already set, so cleared users on their usual device never see a hold.
   if (isAuthenticated && (!onboardingResolved || organizationLanding == null)) return <LoadingFallback />;
   if (typeof window !== "undefined") {
-    if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
+    if (isAuthenticated && !isTutorialDone()) return <Redirect to="/tower" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <Redirect to={organizationLanding ?? "/tower/mezzanine?focus=classifieds"} />;
@@ -495,7 +495,7 @@ function AppShell() {
   // Once authenticated — but not yet cleared through immigration — the
   // intake desk and legal pages open up too (those are post-sign-in).
   const ANON_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/immigration", "/legal", "/alpha", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -531,19 +531,10 @@ function AppShell() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!newUserBlocked) return;
-    // Send authed-but-uncleared users straight to the immigration desk
-    // (Pablo's intake gate, outside GameLock) instead of bouncing them
-    // through the terminal that already collected their name + email.
+    // Send authed-but-uncleared users straight to Shadow Tower reception.
+    // City paperwork is intentionally deferred until they choose to exit.
     if (isAuthenticated) {
-      // Carry a safe deep-link through the intake so its final handoff can
-      // honor the feature the user originally tried to open. Immigration
-      // defaults to /office when there is no explicit destination.
-      const safePath = sanitizeReturnPath(location);
-      const query =
-        safePath && safePath !== "/" && safePath !== "/immigration"
-          ? `?returnTo=${encodeURIComponent(safePath)}`
-          : "";
-      navigate(`/immigration${query}`, { replace: true });
+      navigate("/tower", { replace: true });
     } else {
       // Preserve the destination so after sign-in Pablo's OAuth callback lands
       // the user back on the page they tried to reach, not /immigration.

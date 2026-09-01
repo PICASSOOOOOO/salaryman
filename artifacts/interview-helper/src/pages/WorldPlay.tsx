@@ -270,9 +270,9 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-const ISO_ZOOM_DEFAULT = 3.7;
+const ISO_ZOOM_DEFAULT = 4.4;
 const ISO_ZOOM_MIN = 0.8;
-const ISO_ZOOM_MAX = 4.0;
+const ISO_ZOOM_MAX = 5.0;
 // The camera starts zoomed in CLOSE on the character for an immersive framing
 // ("get a good look at our character"). On very narrow phones we ease out only
 // slightly so the view isn't fully tunnel-boxed — never below a close floor.
@@ -280,7 +280,7 @@ const ISO_ZOOM_MAX = 4.0;
 // the view feel "too wide". Players set their own persistent zoom in
 // Settings → Display → Camera Zoom, and can still pinch / wheel live.
 const ISO_ZOOM_REFERENCE_WIDTH = 1280;
-const ISO_ZOOM_NARROW_FLOOR = 2.6;
+const ISO_ZOOM_NARROW_FLOOR = 3.2;
 // Reads the saved Camera Zoom preference (Settings → Display). Returns null when
 // the player hasn't set one yet so we can fall back to the fixed close default.
 function readCameraZoomPref(): number | null {

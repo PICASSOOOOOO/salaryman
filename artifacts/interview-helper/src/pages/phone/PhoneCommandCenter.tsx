@@ -229,8 +229,8 @@ export default function PhoneCommandCenter() {
             <button className="nav-pill" onClick={() => switchTab('contacts')} title="Open CRM">
               <Users size={12} /> <span style={{ paddingRight: 4 }}>CRM</span>
             </button>
-            <button className="nav-pill" onClick={() => switchTab('auto')} title="Open Autodialer">
-              <Radio size={12} /> <span style={{ paddingRight: 4 }}>AUTO</span>
+            <button className="nav-pill" onClick={() => switchTab('dial')} title="Open Autodialer">
+              <Radio size={12} /> <span style={{ paddingRight: 4 }}>AUTODIALER</span>
             </button>
           </div>
         )}

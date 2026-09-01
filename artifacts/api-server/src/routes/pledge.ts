@@ -74,6 +74,9 @@ export interface PledgeItem {
   // intact. It is consolidated into the storefront for visibility only and is
   // always sold at face value (noMarkup). The feature key is client-safe.
   subscriptionFeature?: string;
+  // Routes the buyer into an existing selection flow instead of generic pledge
+  // checkout. A phone number must be selected and reserved before payment.
+  storeAction?: "phone_number_picker";
   // Surfaced in the reusable Pledge Store popup that replaces the scattered
   // promo-page redirects when a paid terminal feature is locked. Kept to a
   // tiny curated set (1–3 items) — each maps to a single Stripe price the
@@ -346,17 +349,30 @@ const PRIME_LISTING: PledgeItem = {
   icon: "👑",
 };
 
+const PHONE_NUMBER_LISTING: PledgeItem = {
+  id: "phone_number",
+  category: "terminals",
+  name: "Custom Phone Number",
+  blurb: "Your own SALARYMAN line.",
+  effect: "Choose one available Twilio number for a $10 one-time purchase. Phone System access is required for calling and SMS.",
+  costUsd: 10,
+  noMarkup: true,
+  icon: "☎",
+  storeAction: "phone_number_picker",
+};
+
 // The full internal catalog is retained for delayed webhook fulfillment, but
-// the live storefront has exactly two products for now: Call Home and PABLO
-// PRIME. Historical products must not leak back into the customer catalog.
+// the live storefront has exactly three products: Phone System, Custom Phone
+// Number, and PABLO PRIME. Historical products stay fulfillment-only.
 const FULL_CATALOG: PledgeItem[] = [
   ...PLEDGE_CATALOG,
   ...RETIRED_FULFILLMENT_CATALOG,
   ...GEAR_LISTINGS,
   ...BUNDLE_LISTINGS,
   PRIME_LISTING,
+  PHONE_NUMBER_LISTING,
 ];
-const PUBLIC_PRODUCT_IDS = new Set(["term_phone_pass", "membership_pablo_prime"]);
+const PUBLIC_PRODUCT_IDS = new Set(["term_phone_pass", "phone_number", "membership_pablo_prime"]);
 const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => PUBLIC_PRODUCT_IDS.has(item.id));
 const PUBLIC_CATEGORIES = ["terminals", "membership"] as const;
 
@@ -376,6 +392,7 @@ function toPublicItem(item: PledgeItem, stock?: StockInfo) {
     ...(item.spec ? { spec: item.spec } : {}),
     ...(item.limited ? { limited: true } : {}),
     ...(item.subscriptionFeature ? { subscriptionFeature: item.subscriptionFeature } : {}),
+    ...(item.storeAction ? { storeAction: item.storeAction } : {}),
     ...(stock ?? {}),
   };
 }
@@ -585,6 +602,13 @@ router.post("/pledge/checkout", async (req, res) => {
       error: "subscription_item",
       subscriptionFeature: item.subscriptionFeature,
       message: "Use the subscription checkout for this membership.",
+    });
+    return;
+  }
+  if (item.storeAction === "phone_number_picker") {
+    res.status(400).json({
+      error: "phone_number_selection_required",
+      message: "Choose an available number in Phone System before starting checkout.",
     });
     return;
   }

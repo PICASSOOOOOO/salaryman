@@ -23,7 +23,6 @@ interface BuildingSpec {
   rooms: string[];
   summary: string;
 }
-
 interface PledgeItem {
   id: string;
   category: string;
@@ -38,8 +37,8 @@ interface PledgeItem {
   stockRemaining?: number;
   soldOut?: boolean;
   subscriptionFeature?: FeatureKey;
+  storeAction?: "phone_number_picker";
 }
-
 const CATEGORY_LABEL: Record<string, string> = {
   property: "Property",
   bots: "Pixel Agents",
@@ -80,9 +79,7 @@ export default function PledgeStore() {
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
   const { features } = usePlan();
   const [items, setItems] = useState<PledgeItem[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [owned, setOwned] = useState<Set<string>>(new Set());
-  const [activeCat, setActiveCat] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>("");
@@ -113,7 +110,6 @@ export default function PledgeStore() {
       const [catRes, ownedRes] = await Promise.all(reqs);
       const cat = await catRes.json();
       setItems(cat.items ?? []);
-      setCategories(cat.categories ?? []);
       if (ownedRes && ownedRes.ok) {
         const o = await ownedRes.json();
         setOwned(new Set<string>(o.itemIds ?? []));
@@ -146,6 +142,10 @@ export default function PledgeStore() {
     }
     if (!isAuthenticated) {
       login(`/pledge${window.location.search}`);
+      return;
+    }
+    if (item.storeAction === "phone_number_picker") {
+      navigate("/phone?tab=numbers");
       return;
     }
     setBuying(item.id);
@@ -198,7 +198,7 @@ export default function PledgeStore() {
     }
   };
 
-  const visible = activeCat === "all" ? items : items.filter((i) => i.category === activeCat);
+  const visible = items;
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#03060c] text-zinc-100">
@@ -225,7 +225,7 @@ export default function PledgeStore() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Equip your empire.</h1>
           <p className="text-zinc-400 text-sm max-w-xl mx-auto leading-relaxed">
-            Pledge dollars for PABLO PRIME and agent upgrades through secure billing. Property, gear, vehicles, and other in-world advantages are earned or purchased with FIAT (ƒ) from the SALARYMAN game economy.
+          Buy the services that power your SALARYMAN operation: Phone System access, a custom phone number, or PABLO PRIME. In-world advantages are earned or purchased with FIAT (ƒ) from the game economy.
           </p>
         </div>
 
@@ -255,25 +255,6 @@ export default function PledgeStore() {
 
         {view === "store" ? (
         <>
-        {/* Category tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button
-            onClick={() => setActiveCat("all")}
-            className={`px-3 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide border transition-colors ${activeCat === "all" ? "border-amber-400/60 bg-amber-500/15 text-amber-200" : "border-white/10 text-zinc-400 hover:text-zinc-200"}`}
-          >
-            All
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c}
-              onClick={() => setActiveCat(c)}
-              className={`px-3 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide border transition-colors ${activeCat === c ? "border-amber-400/60 bg-amber-500/15 text-amber-200" : "border-white/10 text-zinc-400 hover:text-zinc-200"}`}
-            >
-              {CATEGORY_LABEL[c] ?? c}
-            </button>
-          ))}
-        </div>
-
         {/* Catalog grid */}
         {loading ? (
           <div className="flex items-center justify-center py-20 text-zinc-500">
@@ -357,7 +338,7 @@ export default function PledgeStore() {
                         disabled={buying === item.id}
                         className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black font-semibold text-xs transition-colors flex items-center gap-1.5"
                       >
-                        {buying === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Pledge"}
+                        {buying === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : item.storeAction === "phone_number_picker" ? "Choose a number" : item.subscriptionFeature ? "Start membership" : "Get access"}
                       </button>
                     )}
                   </div>
@@ -367,8 +348,6 @@ export default function PledgeStore() {
           </div>
         )}
 
-        {/* Backer form */}
-        <BackerForm />
         </>
         ) : (
           <Upgrade
@@ -390,7 +369,7 @@ export default function PledgeStore() {
         )}
 
         <p className="text-center text-[10px] text-zinc-600 mt-8 font-mono">
-          Pledges are real-money purchases processed by PICASSO AI LLC. Advantages apply within SALARYMAN.
+          Purchases are processed securely by PICASSO AI LLC. Phone numbers are provisioned after successful payment.
         </p>
       </div>
 
@@ -573,7 +552,6 @@ function Elevation({ floors }: { floors: number }) {
     </svg>
   );
 }
-
 // Top-down floor plan — rooms laid out on a grid.
 function FloorPlan({ rooms }: { rooms: string[] }) {
   const W = 320;
@@ -608,71 +586,3 @@ function FloorPlan({ rooms }: { rooms: string[] }) {
   );
 }
 
-function BackerForm() {
-  const [form, setForm] = useState({ name: "", email: "", company: "", investmentRange: "", message: "" });
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (status === "loading") return;
-    setStatus("loading");
-    try {
-      const res = await apiFetch(apiUrl("investors"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(data.error ?? "Something went wrong.");
-        setStatus("error");
-      } else {
-        setStatus("success");
-      }
-    } catch {
-      setErrorMsg("Network error. Please try again.");
-      setStatus("error");
-    }
-  };
-
-  return (
-    <div className="mt-12 rounded-2xl border border-sky-500/20 bg-sky-500/[0.05] p-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Crown className="w-4 h-4 text-sky-400" />
-        <h2 className="font-bold tracking-wide">Become a Backer</h2>
-      </div>
-      <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
-        Want to back SALARYMAN at a bigger level — or invest in Picasso? Drop your details and we'll be in touch personally.
-      </p>
-
-      {status === "success" ? (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-sm">
-          <Check className="w-5 h-5 shrink-0 mt-0.5" />
-          <span>Inquiry received{form.name ? `, ${form.name}` : ""}. We read every one personally.</span>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input required placeholder="Your name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm focus:border-sky-500/50 outline-none" />
-            <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm focus:border-sky-500/50 outline-none" />
-            <input placeholder="Company (optional)" value={form.company} onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))} className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm focus:border-sky-500/50 outline-none" />
-            <select value={form.investmentRange} onChange={(e) => setForm((f) => ({ ...f, investmentRange: e.target.value }))} className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm focus:border-sky-500/50 outline-none text-zinc-300">
-              <option value="">Backing range...</option>
-              <option value="under_25k">Under $25K</option>
-              <option value="25k_100k">$25K – $100K</option>
-              <option value="100k_500k">$100K – $500K</option>
-              <option value="500k_1m">$500K – $1M</option>
-              <option value="1m_plus">$1M+</option>
-            </select>
-          </div>
-          <textarea placeholder="Anything you want us to know" value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} rows={3} className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm focus:border-sky-500/50 outline-none resize-none" />
-          {status === "error" && <p className="text-xs text-red-400">{errorMsg}</p>}
-          <button type="submit" disabled={status === "loading"} className="px-5 py-2.5 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-60 text-black font-semibold text-sm transition-colors flex items-center gap-2">
-            {status === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send inquiry"}
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}

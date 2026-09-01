@@ -42,7 +42,17 @@ export function isometricKeyboardMovementVector(keys: ReadonlySet<string>): Move
   // screenX = (tileX - tileY) / 2, screenY = (tileX + tileY) / 4.
   // The constants are intentionally omitted here because only direction is
   // needed; normalization below gives all directions the same walk speed.
-  return normalizeMovementVector(screenX + screenY, screenY - screenX);
+  const logicalX = screenX + screenY;
+  const logicalY = screenY - screenX;
+  // Cardinal screen input always maps to a perfect 45° isometric vector.
+  // Returning the platform constant also avoids tiny cross-engine drift.
+  if (Math.abs(logicalX) === 1 && Math.abs(logicalY) === 1) {
+    return {
+      x: Math.sign(logicalX) * Math.SQRT1_2,
+      y: Math.sign(logicalY) * Math.SQRT1_2,
+    };
+  }
+  return normalizeMovementVector(logicalX, logicalY);
 }
 
 /**
@@ -75,9 +85,16 @@ export function approachMovementVelocity(
   const currentSpeed = movementMagnitude(current);
   const targetSpeed = movementMagnitude(target);
   const accelerating = targetSpeed > currentSpeed + 0.001;
-  const rate = accelerating
-    ? Math.max(0.18, targetSpeed * 0.24)
-    : Math.max(0.24, currentSpeed * 0.32);
+  const changingDirection = currentSpeed > 0.01
+    && targetSpeed > 0.01
+    && current.x * target.x + current.y * target.y < currentSpeed * targetSpeed * 0.75;
+  // Ease into a walk, carve through turns, and settle to rest instead of
+  // snapping the sprite onto a new axis in a frame or two.
+  const rate = changingDirection
+    ? Math.max(0.1, targetSpeed * 0.16)
+    : accelerating
+      ? Math.max(0.12, targetSpeed * 0.18)
+      : Math.max(0.16, currentSpeed * 0.22);
   const maxDelta = rate * dt;
   const dx = target.x - current.x;
   const dy = target.y - current.y;

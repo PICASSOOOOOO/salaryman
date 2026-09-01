@@ -133,6 +133,7 @@ const TIER_IMG: Record<OnboardingAnswers['officeTier'], string> = {
 interface PabloOnboardingProps {
   charName: string;
   charClass: string;
+  venue?: 'registry' | 'lobby';
   onComplete: (answers: OnboardingAnswers) => void;
 }
 
@@ -370,7 +371,7 @@ function TemplateCard({
   );
 }
 
-export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboardingProps) {
+export function PabloOnboarding({ charName, charClass, venue = 'registry', onComplete }: PabloOnboardingProps) {
   const [boomerMode] = useBoomerMode();
   const { user } = useAuth();
   const { settings, toggleMuted } = useAudioSettings();
@@ -866,7 +867,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   return (
     <div style={{
       position: 'absolute', inset: 0,
-      background: 'rgba(0,0,0,.92)',
+      background: venue === 'lobby' ? 'rgba(0,0,0,.58)' : 'rgba(0,0,0,.92)',
+      backdropFilter: venue === 'lobby' ? 'blur(2px)' : undefined,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 440, padding: isMobile ? 0 : '2.8rem 1rem 2.2rem',
     }}>
@@ -877,15 +879,15 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         height: isMobile ? '100dvh' : undefined,
         maxHeight: isMobile ? '100dvh' : 'calc(100vh - 5rem)',
         display: 'flex', flexDirection: 'column',
-        background: 'rgba(0,5,0,.99)',
+        background: venue === 'lobby' ? 'rgba(7,17,27,.98)' : 'rgba(0,5,0,.99)',
         border: isMobile ? 'none' : '1px solid rgba(56,189,248,.5)',
         boxShadow: isMobile ? 'none' : '0 0 60px rgba(56,189,248,.06)',
       }}>
         <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
-            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>PABLO CORP</div>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>{venue === 'lobby' ? 'SHADOW TOWER' : 'PABLO CORP'}</div>
             <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
-              CITIZEN REGISTRY · STEP {stepIdx + 1}/{totalSteps}
+              {venue === 'lobby' ? 'RECEPTION CHECK-IN' : 'CITIZEN REGISTRY'} · STEP {stepIdx + 1}/{totalSteps}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
