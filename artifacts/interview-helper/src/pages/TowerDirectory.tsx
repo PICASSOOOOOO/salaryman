@@ -62,6 +62,55 @@ function LobbyPlayerArt() {
   return <canvas ref={canvasRef} width={72} height={150} aria-label="Your character waiting in the lobby" className="h-32 w-20" />;
 }
 
+function TowerQueueLobby() {
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#070b12] text-zinc-100" data-testid="tower-queue-lobby">
+      <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-45" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,14,.42),rgba(3,7,14,.9)_78%)]" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-7 sm:px-10">
+        <header className="flex items-start justify-between border-b border-cyan-200/20 pb-5">
+          <div>
+            <p className="text-[10px] font-black tracking-[.35em] text-cyan-200">SHADOW TOWER · LOBBY</p>
+            <h1 className="mt-3 text-2xl font-black tracking-[.16em] text-white sm:text-5xl">CHECK-IN QUEUE</h1>
+            <p className="mt-2 max-w-xl text-xs leading-6 tracking-[.1em] text-zinc-400">The lobby is busy. Wait behind the next visitor and the reception desk will call you forward.</p>
+          </div>
+          <div className="border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-right text-[9px] font-bold tracking-[.18em] text-emerald-200">
+            DESK ACTIVE
+            <span className="mt-1 block text-zinc-500">QUEUE 04</span>
+          </div>
+        </header>
+        <section className="relative mt-8 flex-1 overflow-hidden border border-white/15 bg-[#09121b]/75 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] sm:p-10">
+          <div className="absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(150deg,transparent_48%,rgba(125,211,252,.1)_49%,transparent_51%),linear-gradient(30deg,transparent_48%,rgba(236,72,153,.08)_49%,transparent_51%)] [background-size:110px_110px]" />
+          <div className="relative grid min-h-[480px] grid-cols-2 items-end gap-3 sm:grid-cols-4 sm:gap-8">
+            <figure className="relative flex flex-col items-center justify-end border-b border-amber-200/25 pb-3">
+              <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Visitor waiting ahead" className="h-40 w-full object-contain object-bottom opacity-75 sm:h-56" />
+              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-amber-200/70">AHEAD · 03</figcaption>
+            </figure>
+            <figure className="relative flex flex-col items-center justify-end border-b border-violet-200/25 pb-3">
+              <img src={`${import.meta.env.BASE_URL}tower-art/character-receptionist.png`} alt="Visitor waiting in the lobby" className="h-44 w-full object-contain object-bottom opacity-65 sm:h-60" />
+              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-violet-200/70">AHEAD · 02</figcaption>
+            </figure>
+            <figure className="relative flex flex-col items-center justify-end border border-cyan-200/45 bg-cyan-300/[.06] pb-3 shadow-[0_0_30px_rgba(34,211,238,.12)]">
+              <span className="absolute left-2 top-2 text-[8px] font-black tracking-[.2em] text-cyan-200">YOU</span>
+              <LobbyPlayerArt />
+              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-cyan-200">WAITING · 01</figcaption>
+            </figure>
+            <figure className="relative flex flex-col items-center justify-end border-b border-emerald-200/25 pb-3">
+              <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Another visitor waiting in the lobby" className="h-36 w-full scale-x-[-1] object-contain object-bottom opacity-45 sm:h-52" />
+              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-emerald-200/60">BEHIND · 00</figcaption>
+            </figure>
+          </div>
+          <div className="relative mt-6 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-5 sm:flex-row">
+            <p className="text-center text-[10px] font-bold tracking-[.22em] text-zinc-500 sm:text-left">PLEASE WAIT · RECEPTION IS PROCESSING THE LINE</p>
+            <Link href="/sign-in?returnTo=%2Ftower" className="border border-cyan-200/55 bg-cyan-300/10 px-5 py-3 text-center text-xs font-black tracking-[.16em] text-cyan-100 transition hover:bg-cyan-300/20">CHECK IN AT RECEPTION</Link>
+          </div>
+        </section>
+        <footer className="pt-5 text-[9px] font-bold tracking-[.24em] text-zinc-600">FLOOR ACCESS · HOSTEL BED · COMPUTER CAFE · RECEPTION REGISTRY</footer>
+      </div>
+    </main>
+  );
+}
+
 // Every commercial row links to the real registry flow. The directory does not
 // render fake claim buttons or imply that a non-existent office is enterable.
 const floors = Array.from({ length: 67 }, (_, index) => {
@@ -246,6 +295,8 @@ export default function TowerDirectory() {
       setFiling(false);
     }
   };
+
+  if (!isAuthenticated) return <TowerQueueLobby />;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#050711] px-3 py-5 text-zinc-100 sm:px-8">
@@ -550,19 +601,27 @@ export default function TowerDirectory() {
 
       {onboardingLocked && arrivalPhase !== "ready" && (
         <div
-          className="fixed inset-0 z-[850] flex items-center justify-center bg-[#03050a] px-5 transition-opacity duration-700"
+          className="fixed inset-0 z-[850] flex items-center justify-center overflow-hidden bg-[#03050a] px-5 transition-opacity duration-700"
           data-testid="lobby-arrival-intro"
           aria-live="polite"
         >
-          <div className={`w-full max-w-xl transition-all duration-700 ${arrivalPhase === "fade" ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
+          <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-25" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,5,10,.55),rgba(3,5,10,.9))]" />
+          <div className={`relative w-full max-w-4xl transition-all duration-700 ${arrivalPhase === "fade" ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
             <div className="mb-7 text-center">
               <p className="text-[9px] font-bold tracking-[.42em] text-cyan-300/70">SHADOW TOWER · LOBBY</p>
               <h2 className="mt-3 text-2xl font-black tracking-[.18em] text-white sm:text-4xl">PLEASE WAIT</h2>
               <p className="mt-3 text-xs tracking-[.14em] text-zinc-500">RECEPTION WILL SEE YOU SHORTLY</p>
             </div>
 
-            <div className="relative grid grid-cols-3 items-end gap-3 border border-cyan-200/20 bg-[linear-gradient(160deg,rgba(22,42,57,.9),rgba(5,9,16,.96))] px-5 pb-5 pt-8 shadow-[0_25px_90px_rgba(0,0,0,.6)] sm:gap-7 sm:px-10">
+            <div className="relative grid grid-cols-5 items-end gap-2 border border-cyan-200/20 bg-[linear-gradient(160deg,rgba(22,42,57,.9),rgba(5,9,16,.96))] px-3 pb-5 pt-8 shadow-[0_25px_90px_rgba(0,0,0,.6)] sm:gap-5 sm:px-8">
               <div className="absolute inset-x-8 bottom-4 h-px bg-cyan-300/20" />
+              <figure className="relative z-10 text-center opacity-45">
+                <div className="mx-auto flex h-24 items-end justify-center border-b border-emerald-300/30 bg-emerald-300/[.03] sm:h-32">
+                  <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Visitor moving through the busy lobby" className="h-28 w-full scale-x-[-1] object-contain object-bottom sm:h-36" />
+                </div>
+                <figcaption className="mt-3 text-[7px] font-bold tracking-[.14em] text-emerald-200/70">LOBBY TRAFFIC</figcaption>
+              </figure>
               <figure className="relative z-10 text-center">
                 <div className="mx-auto flex h-28 items-end justify-center border-b border-cyan-300/30 bg-cyan-300/[.04] sm:h-36">
                   <LobbyPlayerArt />
@@ -574,6 +633,12 @@ export default function TowerDirectory() {
                   <img src={`${import.meta.env.BASE_URL}tower-art/character-receptionist.png`} alt="Another visitor waiting ahead of you" className="h-32 w-full object-contain object-bottom sm:h-40" />
                 </div>
                 <figcaption className="mt-3 text-[8px] font-bold tracking-[.2em] text-amber-200/80">VISITOR · AHEAD</figcaption>
+              </figure>
+              <figure className="relative z-10 text-center">
+                <div className="mx-auto flex h-24 items-end justify-center border-b border-pink-300/30 bg-pink-300/[.03] sm:h-32">
+                  <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Visitor being processed at reception" className="h-28 w-full object-contain object-bottom opacity-70 sm:h-36" />
+                </div>
+                <figcaption className="mt-3 text-[7px] font-bold tracking-[.14em] text-pink-200/70">AT THE DESK</figcaption>
               </figure>
               <figure className="relative z-10 text-center">
                 <div className="mx-auto flex h-28 items-end justify-center border-b border-violet-300/30 bg-violet-300/[.04] sm:h-36">

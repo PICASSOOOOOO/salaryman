@@ -28,7 +28,6 @@ import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
-import { sanitizeReturnPath } from "@/lib/safe-path";
 import {
   readLocalStoryActive,
   readStoryBeginIntent,
@@ -349,9 +348,9 @@ function HomeOrCover() {
   if (location.split("?")[0] !== "/") return null;
   if (isLoading) return <LoadingFallback />;
   // Funnel — players begin inside Shadow Tower:
-  //   1. Anonymous visitor → /pablo. Pablo tells the story, takes the
-  //      passcode, asks for name + email, hands off to OAuth.
-  //   2. Authenticated but uncleared (tutorialDone=false) → Tower reception.
+  //   1. Anonymous visitor → the busy Tower lobby queue, where reception owns
+  //      the sign-in handoff.
+  //   2. Authenticated but uncleared (tutorialDone=false) → the same queue and reception.
   //      The receptionist gives one short building briefing and creates the
   //      minimum player registry row. Immigration/visa processing is deferred
   //      until the player explicitly exits the building.
@@ -364,9 +363,8 @@ function HomeOrCover() {
   // them to /pablo, which re-asked their name → loop. The /immigration
   // gate fixes that: it lives outside GameLock and is the only path that
   // can flip tutorialDone for an authed user.
-  // A logged-out / first-time visitor starts at Pablo's canonical nebula
-  // terminal. Authenticated users keep the office-first funnel below —
-  // already-onboarded players still skip straight to their /office.
+  // Logged-out and authenticated first-time visitors share the Tower lobby
+  // entrance. Already-onboarded players still skip straight to their /office.
   // Hold the gate until the server onboarding check resolves. A returning,
   // already-onboarded user signing in on a fresh device has no local
   // salaryman_tutorial_done flag yet — without this wait we'd flash them through
@@ -377,7 +375,7 @@ function HomeOrCover() {
   if (typeof window !== "undefined") {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/tower" />;
   }
-  if (!isAuthenticated) return <Redirect to="/pablo" />;
+  if (!isAuthenticated) return <Redirect to="/tower" />;
   return <Redirect to={organizationLanding ?? "/tower/mezzanine?focus=classifieds"} />;
 }
 
@@ -484,17 +482,16 @@ function AppShell() {
     !pathname.startsWith("/pablo") &&
     !pathname.startsWith("/immigration");
 
-  // GLOBAL GATE / FRONT DOOR. Before a visitor passes security (signs in),
-  // the ONLY surface they can reach is the front door — the Pablo nebula —
-  // plus the /auth + /api machinery that actually performs the sign-in.
+  // GLOBAL GATE. Before a visitor passes security (signs in), the visible
+  // surface is the Shadow Tower lobby queue, not a separate Pablo entrance,
+  // plus the /auth + /api machinery that performs the sign-in.
   // Typing or deep-linking ANY other URL (/game, /console, /business,
   // /world, /profile, /legal, /alpha, …) silently bounces them back to the
-  // door, so nothing behind the firewall is reachable by guessing a path.
-  // Pablo is the only way in.
+  // queue, so nothing behind the firewall is reachable by guessing a path.
   //
   // Once authenticated — but not yet cleared through immigration — the
   // intake desk and legal pages open up too (those are post-sign-in).
-  const ANON_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/auth", "/api"];
   const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
@@ -533,18 +530,7 @@ function AppShell() {
     if (!newUserBlocked) return;
     // Send authed-but-uncleared users straight to Shadow Tower reception.
     // City paperwork is intentionally deferred until they choose to exit.
-    if (isAuthenticated) {
-      navigate("/tower", { replace: true });
-    } else {
-      // Preserve the destination so after sign-in Pablo's OAuth callback lands
-      // the user back on the page they tried to reach, not /immigration.
-      const safePath = sanitizeReturnPath(location);
-      const query =
-        safePath && safePath !== "/" && !safePath.startsWith("/pablo")
-          ? `?returnTo=${encodeURIComponent(safePath)}`
-          : "";
-      navigate(`/pablo${query}`, { replace: true });
-    }
+    navigate("/tower", { replace: true });
   }, [newUserBlocked, isAuthenticated, location, navigate]);
 
   // Cross-device settings sync: once signed in, pull the player's saved display

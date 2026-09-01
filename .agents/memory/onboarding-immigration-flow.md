@@ -3,8 +3,9 @@ name: SALARYMAN receptionist-first onboarding
 description: First-time registration, housing, and the lockdown finale all happen inside the Shadow Tower lobby.
 ---
 
-New authenticated players enter a visual Shadow Tower lobby sequence immediately after
-the Pablo nebula: fade in, wait behind one rendered NPC, then automatically meet reception.
+New players enter through the visual Shadow Tower lobby itself. There is no Pablo front
+door in the onboarding funnel: fade in to a busy lobby, wait behind another rendered
+visitor in the reception line, then automatically meet reception.
 Reception is the onboarding authority and runs the full character and business intake in
 lobby dialogue boxes. It assigns a free hostel bed on the player's chosen hostel floor and
 free access to the Floor 2 Computer Cafe terminal.
