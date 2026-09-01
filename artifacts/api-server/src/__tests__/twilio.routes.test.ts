@@ -12,11 +12,14 @@ vi.mock("../lib/usage-meter", async (importActual) => ({
   consumeUsage: vi.fn(async () => ({ allowed: true, used: 0, limit: 999999 })),
   recordUsage: vi.fn(async () => 0),
 }));
+vi.mock("@workspace/integrations-openai-ai-server", () => ({
+  openai: { chat: { completions: { create: vi.fn(async () => ({ choices: [{ message: { content: "Got it." } }] })) } } },
+}));
 
 import request from "supertest";
 import type { Express } from "express";
 import twilio from "twilio";
-import { db, callHistoryTable, dialingSessionsTable } from "@workspace/db";
+import { db, callHistoryTable, dialingSessionsTable, usersTable, smsConversationsTable, smsMessagesTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
 import {
@@ -393,6 +396,56 @@ describe("webhook/status", () => {
     expect(row.status).toBe("completed");
     expect(row.durationSeconds).toBe(30);
     expect(row.endedAt).toBeTruthy();
+  });
+});
+
+describe("webhook/sms shared-number reply routing", () => {
+  const defaultDid = "+18882307698";
+  const contactPhone = "+15557778888";
+  const otherUserId = "phone_sms_ambiguity_user";
+
+  beforeEach(async () => {
+    process.env.TWILIO_PHONE_NUMBER = defaultDid;
+    await db.delete(smsMessagesTable).where(eq(smsMessagesTable.toPhone, contactPhone));
+    await db.delete(smsConversationsTable).where(eq(smsConversationsTable.contactPhone, contactPhone));
+    await db.insert(usersTable).values({ id: otherUserId, email: "sms-ambiguity@example.invalid" }).onConflictDoNothing();
+  });
+
+  it("associates a signed reply with the sole recent fallback sender", async () => {
+    const [conversation] = await db.insert(smsConversationsTable).values({
+      userId: TEST_USER.id, contactPhone, contactName: "Recipient",
+    }).returning();
+    await db.insert(smsMessagesTable).values({
+      conversationId: conversation.id, userId: TEST_USER.id, direction: "outbound",
+      body: "Hello", fromPhone: defaultDid, toPhone: contactPhone, status: "sent",
+    });
+    const res = await request(app).post("/api/twilio/webhook/sms")
+      .set("x-twilio-signature", "sig")
+      .send({ From: contactPhone, To: defaultDid, Body: "Reply", MessageSid: "SMinbound-default-1" });
+    expect(res.status).toBe(200);
+    const inbound = await db.select().from(smsMessagesTable)
+      .where(and(eq(smsMessagesTable.twilioMessageSid, "SMinbound-default-1"), eq(smsMessagesTable.userId, TEST_USER.id)));
+    expect(inbound).toHaveLength(1);
+  });
+
+  it("fails closed when two users recently messaged the same recipient from the shared number", async () => {
+    for (const userId of [TEST_USER.id, otherUserId]) {
+      const [conversation] = await db.insert(smsConversationsTable).values({
+        userId, contactPhone, contactName: "Recipient",
+      }).returning();
+      await db.insert(smsMessagesTable).values({
+        conversationId: conversation.id, userId, direction: "outbound",
+        body: "Hello", fromPhone: defaultDid, toPhone: contactPhone, status: "sent",
+      });
+    }
+    const res = await request(app).post("/api/twilio/webhook/sms")
+      .set("x-twilio-signature", "sig")
+      .send({ From: contactPhone, To: defaultDid, Body: "Reply", MessageSid: "SMinbound-ambiguous-1" });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("<Response></Response>");
+    const inbound = await db.select().from(smsMessagesTable)
+      .where(eq(smsMessagesTable.twilioMessageSid, "SMinbound-ambiguous-1"));
+    expect(inbound).toHaveLength(0);
   });
 });
 

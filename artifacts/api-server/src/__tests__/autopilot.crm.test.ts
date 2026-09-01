@@ -7,6 +7,9 @@ vi.mock("../lib/plan", async (importActual) => ({
   ...(await importActual<typeof import("../lib/plan")>()),
   hasFeature: vi.fn(async () => entitled),
 }));
+vi.mock("../lib/platform-twilio-access", () => ({
+  canUsePlatformTwilio: vi.fn(async () => true),
+}));
 
 import twilio from "twilio";
 import { randomUUID } from "crypto";

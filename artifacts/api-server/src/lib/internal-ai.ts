@@ -118,7 +118,7 @@ export async function selectClaudeTools(
     tools: tools.map((tool) => ({
       name: tool.name,
       description: tool.description,
-      input_schema: tool.inputSchema,
+      input_schema: { type: "object" as const, ...tool.inputSchema },
     })),
     tool_choice: { type: "auto" },
   });

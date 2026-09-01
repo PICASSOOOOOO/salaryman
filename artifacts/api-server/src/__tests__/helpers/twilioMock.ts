@@ -44,11 +44,20 @@ export function makeTwilioMock() {
   callsCallable.create = vi.fn(async () => ({ sid: mockState.createdCallSid, status: mockState.createdStatus }));
 
   const incomingList = vi.fn(async () => []);
+  const incomingRemove = vi.fn(async () => true);
   const incomingCreate = vi.fn(async (opts: { phoneNumber?: string; friendlyName?: string } = {}) => ({
     sid: `PNtest${Math.random().toString(36).slice(2, 12).padEnd(28, "0")}`,
     phoneNumber: opts.phoneNumber ?? "+15550000000",
     friendlyName: opts.friendlyName ?? opts.phoneNumber ?? "Twilio Number",
   }));
+  const incomingFetch = vi.fn(async () => ({
+    sid: "PNpaid",
+    phoneNumber: "+15558881111",
+    friendlyName: "Twilio Number",
+  }));
+  const incomingCallable: any = vi.fn(() => ({ remove: incomingRemove, fetch: incomingFetch }));
+  incomingCallable.list = incomingList;
+  incomingCallable.create = incomingCreate;
 
   // availablePhoneNumbers(country).local.list({...}). The returned number is
   // country-prefixed so tests can assert the search respected the country.
@@ -79,7 +88,7 @@ export function makeTwilioMock() {
     calls: callsCallable,
     conferences: conferencesCallable,
     messages: { create: messagesCreate },
-    incomingPhoneNumbers: { list: incomingList, create: incomingCreate },
+    incomingPhoneNumbers: incomingCallable,
     availablePhoneNumbers,
     newKeys: { create: vi.fn().mockResolvedValue({ sid: "SKtest", secret: "secret" }) },
     applications: Object.assign(
@@ -118,6 +127,9 @@ export function makeTwilioMock() {
     conferencesList: conferencesCallable.list,
     conferenceUpdate,
     incomingCreate,
+    incomingList,
+    incomingRemove,
+    incomingFetch,
     availablePhoneNumbers,
   };
 

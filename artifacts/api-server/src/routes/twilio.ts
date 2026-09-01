@@ -1,11 +1,11 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, desc, and, asc, sql } from "drizzle-orm";
+import { eq, desc, and, asc, sql, gte } from "drizzle-orm";
 import {
   db,
   callHistoryTable,
   contactsTable,
   voicemailsTable,
-  phoneNumbersTable,
+  phoneNumbersTable, phoneNumberPurchasesTable,
   secretaryConfigTable,
   dialingSessionsTable,
   conferenceRoomsTable,
@@ -28,25 +28,17 @@ import { randomBytes } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { MILA_VOICE_ID } from "../lib/mila-voice";
 import { getUncachableResendClient } from "../lib/resend";
-import { hasFeature, isOwnerEmail } from "../lib/plan";
+import { hasFeature } from "../lib/plan";
 import { requireFeature } from "../middlewares/requirePro";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
 import { toE164, SUPPORTED_COUNTRIES, regulatoryRequirement, getCountryInfo, isSupportedCountry, countryForCity, DEFAULT_COUNTRY } from "../lib/phone";
 import { resolveUserCountry, resolveUserCity, resolveOwningNumberCountry } from "../lib/phone-context";
+import { getUserOutboundNumber } from "../lib/phone-number-service";
+import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 
 const router = Router();
-
-const PLATFORM_TWILIO_ORG_IDS = new Set([1, 2]);
-
-async function isInPlatformTwilioOrg(userId: string): Promise<boolean> {
-  const memberships = await db
-    .select({ orgId: orgMembersTable.orgId })
-    .from(orgMembersTable)
-    .where(eq(orgMembersTable.userId, userId));
-  return memberships.some(m => PLATFORM_TWILIO_ORG_IDS.has(m.orgId));
-}
 
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
@@ -58,16 +50,12 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
     return;
   }
-  if (!isOwnerEmail(req.user.email)) {
-    const userId = String(req.user.id);
-    const allowed = await isInPlatformTwilioOrg(userId);
-    if (!allowed) {
-      res.status(403).json({
-        error: "Platform phone system is restricted to authorized organizations. Connect your own Twilio API credentials in Settings to enable phone features.",
-        code: "TWILIO_ORG_RESTRICTED",
-      });
-      return;
-    }
+  if (!(await canUsePlatformTwilio(String(req.user.id), req.user.email))) {
+    res.status(403).json({
+      error: "Platform phone system is restricted to authorized organizations. Connect your own Twilio API credentials in Settings to enable phone features.",
+      code: "TWILIO_ORG_RESTRICTED",
+    });
+    return;
   }
   next();
 }
@@ -486,7 +474,7 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
     // Optimistically charge 1 minute on dial; webhook reconciliation can true-up later.
     await recordUsage(userId, "voice_minutes", 1);
     const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
+    const fromNumber = await getUserOutboundNumber(userId);
 
     const confName = `conf-${userId}-${Date.now()}`;
 
@@ -746,7 +734,7 @@ router.post("/twilio/conference/:roomName/add", requireAuth, requireFeature("pho
       return;
     }
     const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
+    const fromNumber = await getUserOutboundNumber(userId);
     const _confHost = getAppHost();
     const _confStatusUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/status` : undefined;
     const _confEventUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/conference-status` : undefined;
@@ -846,7 +834,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
       .returning();
 
     const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
+    const fromNumber = await getUserOutboundNumber(userId);
     const callerName = getAuthUserId(req);
     const dialCountry = await resolveUserCountry(userId);
 
@@ -948,7 +936,7 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       return;
     }
     const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
+    const fromNumber = await getUserOutboundNumber(userId);
     const _nextHost = getAppHost();
     const _nextStatusUrl = _nextHost ? `https://${_nextHost}/api/twilio/webhook/status` : undefined;
     {
@@ -1665,9 +1653,10 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
           completedAt: new Date(),
         }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
 
+        const callerId = await getUserOutboundNumber(userId);
         res.type("text/xml").send(`<Response>
 ${milaVoice("Let me connect you now. Please hold.")}
-<Dial callerId="${getTwilioNumber()}" timeout="30" action="${base}/twilio/webhook/status?userId=${userId}">
+<Dial callerId="${escapeTwiml(callerId)}" timeout="30" action="${base}/twilio/webhook/status?userId=${userId}">
 <Number>${escapeTwiml(fallback)}</Number>
 </Dial>
 </Response>`);
@@ -1701,9 +1690,10 @@ ${milaVoice("I'm sorry, but no agents are currently available. Please leave a me
 
     const confName = `screening_${callSid}_${Date.now()}`;
     const client = getTwilioClient();
+    const agentCallerId = await getUserOutboundNumber(userId);
     client.calls.create({
       to: agent.phone,
-      from: getTwilioNumber(),
+      from: agentCallerId,
       twiml: `<Response>${milaVoice("Incoming screened call for you. Connecting now.")}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
@@ -1785,15 +1775,9 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       if (!g.allowed) { res.status(429).json(tr("voice_minutes", g.used, g.limit)); return; }
     }
 
-    const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
-    if (!userNumbers[0]) {
-      res.status(400).json({ error: "No active phone number found. Configure one in Phone Numbers." });
-      return;
-    }
-
     const secConfigs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
     const outboundDid = secConfigs[0]?.outboundDid ?? null;
-    const fromNumber = outboundDid || userNumbers[0].number;
+    const fromNumber = outboundDid || await getUserOutboundNumber(userId);
 
     const client = getTwilioClient();
     const host = getAppHost(req);
@@ -1891,14 +1875,8 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
       return;
     }
 
-    const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
-    if (!userNumbers[0]) {
-      res.status(400).json({ error: "No active phone number" });
-      return;
-    }
-
     const secConfigs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
-    const campaignFromNumber = secConfigs[0]?.outboundDid || userNumbers[0].number;
+    const campaignFromNumber = secConfigs[0]?.outboundDid || await getUserOutboundNumber(userId);
 
     if (campaign.scheduleJson) {
       try {
@@ -2177,60 +2155,19 @@ router.get("/twilio/phone-numbers", requireAuth, requireFeature("phone_system"),
       .where(eq(phoneNumbersTable.userId, userId))
       .orderBy(phoneNumbersTable.createdAt);
 
-    let twilioNumbers: Array<{ sid: string; number: string; friendlyName: string; capabilities: Record<string, boolean> | null }> = [];
-    try {
-      const client = getTwilioClient();
-      const incoming = await client.incomingPhoneNumbers.list({ limit: 20 });
-      twilioNumbers = incoming.map((n) => ({
-        sid: n.sid,
-        number: n.phoneNumber,
-        friendlyName: n.friendlyName,
-        capabilities: n.capabilities as Record<string, boolean> | null,
-      }));
-    } catch (e: unknown) {
-      console.error("[CalllHome] Twilio numbers fetch error:", e instanceof Error ? e.message : "Unknown");
-    }
-
-    res.json({ numbers, twilioNumbers });
+    const defaultNumber = process.env.TWILIO_PHONE_NUMBER || null;
+    res.json({
+      numbers,
+      defaultNumber,
+      outboundNumber: numbers.find((number) => number.isActive)?.number || defaultNumber,
+    });
   } catch (err: unknown) {
     res.status(500).json({ error: "Failed to fetch phone numbers" });
   }
 });
 
 router.post("/twilio/phone-numbers", requireAuth, requireFeature("phone_system"), async (req, res) => {
-  try {
-    const userId = getAuthUserId(req);
-    const { number, label, greeting, routingMode, twilioSid } = req.body;
-    if (!number) {
-      res.status(400).json({ error: "number required" });
-      return;
-    }
-    const numCity = await resolveUserCity(userId);
-    const numCountry = countryForCity(numCity);
-    const e164 = toE164(number, numCountry);
-    if (!e164) {
-      res.status(400).json({ error: "Invalid phone number" });
-      return;
-    }
-    const [record] = await db
-      .insert(phoneNumbersTable)
-      .values({
-        userId,
-        number: e164,
-        friendlyName: label ?? "My Number",
-        label: label ?? "main",
-        twilioSid,
-        greeting,
-        routingMode: routingMode ?? "voicemail",
-        countryCode: numCountry,
-        cityId: numCity ?? undefined,
-        region: getCountryInfo(numCountry).region,
-      })
-      .returning();
-    res.json({ ok: true, phoneNumber: record });
-  } catch (err: unknown) {
-    res.status(500).json({ error: "Failed to add phone number" });
-  }
+  res.status(410).json({ error: "Adding arbitrary existing numbers is disabled. Buy a verified number through Stripe checkout." });
 });
 
 router.put("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_system"), async (req, res) => {
@@ -2238,16 +2175,29 @@ router.put("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_syste
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
     const { label, greeting, routingMode, isActive } = req.body;
-    const [updated] = await db
-      .update(phoneNumbersTable)
-      .set({
-        ...(label !== undefined && { label, friendlyName: label }),
-        ...(greeting !== undefined && { greeting }),
-        ...(routingMode !== undefined && { routingMode }),
-        ...(isActive !== undefined && { isActive }),
-      })
-      .where(and(eq(phoneNumbersTable.id, id), eq(phoneNumbersTable.userId, userId)))
-      .returning();
+    if (routingMode !== undefined && !["voicemail", "secretary", "forward"].includes(routingMode)) {
+      res.status(400).json({ error: "Invalid routing mode" });
+      return;
+    }
+    const [updated] = await db.transaction(async (tx) => {
+      if (isActive === true) {
+        await tx.update(phoneNumbersTable).set({ isActive: false }).where(eq(phoneNumbersTable.userId, userId));
+      }
+      return tx
+        .update(phoneNumbersTable)
+        .set({
+          ...(label !== undefined && { label: String(label).slice(0, 64), friendlyName: String(label).slice(0, 64) }),
+          ...(greeting !== undefined && { greeting: String(greeting).slice(0, 1000) }),
+          ...(routingMode !== undefined && { routingMode }),
+          ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+        })
+        .where(and(eq(phoneNumbersTable.id, id), eq(phoneNumbersTable.userId, userId)))
+        .returning();
+    });
+    if (!updated) {
+      res.status(404).json({ error: "Phone number not found" });
+      return;
+    }
     res.json({ ok: true, phoneNumber: updated });
   } catch (err: unknown) {
     res.status(500).json({ error: "Failed to update phone number" });
@@ -2258,6 +2208,26 @@ router.delete("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_sy
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
+    const [owned] = await db.select().from(phoneNumbersTable)
+      .where(and(eq(phoneNumbersTable.id, id), eq(phoneNumbersTable.userId, userId))).limit(1);
+    if (!owned) {
+      res.status(404).json({ error: "Phone number not found" });
+      return;
+    }
+    if (owned.twilioSid) {
+      const [paidOwnership] = await db.select({ id: phoneNumberPurchasesTable.id })
+        .from(phoneNumberPurchasesTable)
+        .where(and(
+          eq(phoneNumberPurchasesTable.userId, userId),
+          eq(phoneNumberPurchasesTable.phoneNumber, owned.number),
+          eq(phoneNumberPurchasesTable.twilioSid, owned.twilioSid),
+          eq(phoneNumberPurchasesTable.status, "completed"),
+        ))
+        .limit(1);
+      if (paidOwnership && owned.number !== process.env.TWILIO_PHONE_NUMBER) {
+        await getTwilioClient().incomingPhoneNumbers(owned.twilioSid).remove();
+      }
+    }
     await db.delete(phoneNumbersTable).where(and(eq(phoneNumbersTable.id, id), eq(phoneNumbersTable.userId, userId)));
     res.json({ ok: true });
   } catch (err: unknown) {
@@ -2337,75 +2307,8 @@ router.get("/twilio/available-numbers", requireAuth, requireFeature("phone_syste
   }
 });
 
-// Buy a number from Twilio, wire its voice/SMS/status webhooks (mirrors the
-// admin assign path), and persist it with city/region/country context.
 router.post("/twilio/purchase-number", requireAuth, requireFeature("phone_system"), async (req, res) => {
-  try {
-    const userId = getAuthUserId(req);
-    const { phoneNumber, label } = req.body ?? {};
-    if (!phoneNumber || typeof phoneNumber !== "string") {
-      res.status(400).json({ error: "phoneNumber required" });
-      return;
-    }
-    const cityId = await resolveUserCity(userId);
-    const country = countryForCity(cityId);
-
-    // Block VN (and any future bundle country) when a regulatory bundle is
-    // required — fail with an actionable message instead of a raw Twilio 21649.
-    const reg = regulatoryRequirement(country);
-    if (reg.required && !process.env.TWILIO_REGULATORY_BUNDLE_SID) {
-      res.status(409).json({ error: "regulatory_bundle_required", country, requirement: reg });
-      return;
-    }
-
-    const e164 = toE164(phoneNumber, country);
-    if (!e164) {
-      res.status(400).json({ error: "Invalid phone number" });
-      return;
-    }
-
-    const client = getTwilioClient();
-    const host = getAppHost();
-    const voiceUrl = host ? `https://${host}/api/twilio/webhook/voice` : undefined;
-    const smsUrl = host ? `https://${host}/api/twilio/webhook/sms` : undefined;
-    const statusCallback = host ? `https://${host}/api/twilio/webhook/status` : undefined;
-
-    const purchased = await client.incomingPhoneNumbers.create({
-      phoneNumber: e164,
-      ...(label ? { friendlyName: String(label).slice(0, 64) } : {}),
-      ...(voiceUrl ? { voiceUrl, voiceMethod: "POST" } : {}),
-      ...(smsUrl ? { smsUrl, smsMethod: "POST" } : {}),
-      ...(statusCallback ? { statusCallback, statusCallbackMethod: "POST" } : {}),
-      ...(reg.required && process.env.TWILIO_REGULATORY_BUNDLE_SID
-        ? { bundleSid: process.env.TWILIO_REGULATORY_BUNDLE_SID }
-        : {}),
-    });
-
-    const [record] = await db
-      .insert(phoneNumbersTable)
-      .values({
-        userId,
-        number: purchased.phoneNumber ?? e164,
-        friendlyName: label ?? purchased.friendlyName ?? "My Number",
-        label: label ?? "main",
-        twilioSid: purchased.sid,
-        routingMode: "voicemail",
-        countryCode: country,
-        cityId: cityId ?? undefined,
-        region: getCountryInfo(country).region,
-      })
-      .returning();
-
-    res.json({ ok: true, phoneNumber: record, twilioSid: purchased.sid });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("[CalllHome] purchase-number error:", msg);
-    if (msg.includes("not configured")) {
-      res.status(503).json({ error: "Phone system not configured. Contact admin." });
-    } else {
-      res.status(502).json({ error: "Failed to purchase number", detail: msg });
-    }
-  }
+  res.status(410).json({ error: "Direct provisioning is disabled. Use Stripe checkout to buy a custom number." });
 });
 
 router.post("/twilio/call/:callSid/schedule-followup", requireAuth, requireFeature("phone_system"), async (req, res) => {
@@ -2493,7 +2396,7 @@ router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), a
       return;
     }
     const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
+    const fromNumber = await getUserOutboundNumber(userId);
     const protocol = process.env.NODE_ENV === "production" ? "https" : "https";
     const host = getAppHost();
     const statusCallbackUrl = host ? `${protocol}://${host}/api/twilio/webhook/status` : undefined;
@@ -3405,11 +3308,35 @@ router.post("/twilio/webhook/sms", async (req, res) => {
       return;
     }
     const { From, To, Body, MessageSid, NumMedia } = req.body;
-    const userId = req.query.userId as string;
 
     if (!From || !Body) {
       res.type("text/xml").send("<Response></Response>");
       return;
+    }
+
+    const e164From = toE164(From) ?? From;
+    const e164To = toE164(To) ?? To;
+    let userId: string | undefined;
+    if (e164To) {
+      const [ownedNumber] = await db.select({ userId: phoneNumbersTable.userId })
+        .from(phoneNumbersTable)
+        .where(eq(phoneNumbersTable.number, e164To))
+        .limit(1);
+      userId = ownedNumber?.userId;
+    }
+    if (!userId && e164To === process.env.TWILIO_PHONE_NUMBER) {
+      const recentOutbound = await db.select({ userId: smsMessagesTable.userId })
+        .from(smsMessagesTable)
+        .where(and(
+          eq(smsMessagesTable.direction, "outbound"),
+          eq(smsMessagesTable.fromPhone, e164To),
+          eq(smsMessagesTable.toPhone, e164From),
+          gte(smsMessagesTable.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+        ))
+        .orderBy(desc(smsMessagesTable.createdAt))
+        .limit(20);
+      const candidates = [...new Set(recentOutbound.map((row) => row.userId))];
+      if (candidates.length === 1) userId = candidates[0];
     }
 
     let fromName: string | undefined;
@@ -3417,7 +3344,6 @@ router.post("/twilio/webhook/sms", async (req, res) => {
 
     if (userId) {
       try {
-        const e164From = toE164(From) ?? From;
         const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(200);
         const match = contacts.find((c) => c.phone && (toE164(c.phone) === e164From || c.phone === From));
         if (match) {
@@ -3439,8 +3365,6 @@ router.post("/twilio/webhook/sms", async (req, res) => {
         console.error("[CalllHome] webhook/sms: contact lookup/create error:", e instanceof Error ? e.message : "Unknown");
       }
     }
-
-    const e164From = toE164(From) ?? From;
 
     // Persist the inbound text to the SMS thread tables (the phone/comms hub
     // reads these) AND to the CRM interaction log (legacy / contact timeline).
@@ -3511,10 +3435,14 @@ router.post("/twilio/webhook/sms", async (req, res) => {
         note: `Inbound SMS from ${fromName ?? From}: ${Body}`,
       });
     } else if (!userId) {
-      console.warn(`[CalllHome] webhook/sms: no userId in query, SMS from ${From} not persisted to DB`);
+      console.warn(`[CalllHome] webhook/sms: could not resolve an unambiguous owner for ${To}; SMS from ${From} not persisted`);
     }
 
     console.log(`[CalllHome] webhook/sms: inbound SMS from ${fromName ?? From} (${From}) to ${To}: ${Body.slice(0, 100)}`);
+    if (!userId) {
+      res.type("text/xml").send("<Response></Response>");
+      return;
+    }
 
     // MILA auto-reply: warm, sharp AI concierge over SMS. No state, no toggle —
     // she just chats and is allowed to drop a single binary choice mid-conversation

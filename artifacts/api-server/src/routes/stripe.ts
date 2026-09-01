@@ -1,13 +1,16 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey, hasFeature, isUsdPaidFeature } from "../lib/plan";
-import { FEATURE_KEYS, type FeatureKey, db, donationsTable, fiatTopupsTable, bankAccountsTable, bankTransactionsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
-import { eq, sum, desc, and, sql } from "drizzle-orm";
+import { FEATURE_KEYS, type FeatureKey, db, donationsTable, fiatTopupsTable, phoneNumberPurchasesTable, phoneNumbersTable, usersTable, bankAccountsTable, bankTransactionsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
+import { eq, sum, desc, and, or, isNotNull, lt, sql } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
 import { ensureFiatAccounts } from "../lib/fiat-wallet";
+import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/phone-number-service";
+import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
+import { isSupportedCountry } from "../lib/phone";
 
 const router = Router();
 
@@ -43,6 +46,29 @@ const FIAT_TOPUP_PACKS = [
   { id: "topup_5000",  fiat: 5000,  usdCents: 500 },
   { id: "topup_10000", fiat: 10000, usdCents: 1000 },
 ] as const;
+
+const PHONE_NUMBER_PRICE_CENTS = 1000;
+
+async function getPhoneNumberPriceId(stripe: Stripe): Promise<string> {
+  const products = await stripe.products.search({ query: "metadata['salaryman_type']:'phone_number'" });
+  let product = products.data[0];
+  if (!product) {
+    product = await stripe.products.create({
+      name: "SALARYMAN custom phone number",
+      description: "One-time purchase of one custom Twilio phone number. Phone System subscription required.",
+      metadata: { salaryman_type: "phone_number" },
+    });
+  }
+  const prices = await stripe.prices.list({ product: product.id, active: true, type: "one_time", limit: 100 });
+  const existing = prices.data.find((price) => price.currency === "usd" && price.unit_amount === PHONE_NUMBER_PRICE_CENTS);
+  if (existing) return existing.id;
+  const price = await stripe.prices.create({
+    product: product.id,
+    currency: "usd",
+    unit_amount: PHONE_NUMBER_PRICE_CENTS,
+  });
+  return price.id;
+}
 
 async function activateBotSubscription(userId: string, marketplaceItemId: number, stripeSubscriptionId: string): Promise<void> {
   const [item] = await db
@@ -541,6 +567,179 @@ router.get("/stripe/fiat-topup-packs", (_req, res) => {
   res.json({ packs: FIAT_TOPUP_PACKS, fiatPerUsd: 1000 });
 });
 
+router.post("/stripe/create-phone-number-session", async (req, res) => {
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const user = req.user;
+  if (!(await hasFeature(user.id, user.email, "phone_system"))) {
+    res.status(403).json({ error: "Phone System subscription required", feature: "phone_system" });
+    return;
+  }
+  if (!(await canUsePlatformTwilio(user.id, user.email))) {
+    res.status(403).json({ error: "Platform phone system is restricted to authorized organizations.", code: "TWILIO_ORG_RESTRICTED" });
+    return;
+  }
+  const { phoneNumber, countryCode, label, requestId } = req.body as Record<string, string | undefined>;
+  if (
+    !phoneNumber || !/^\+[1-9]\d{6,14}$/.test(phoneNumber)
+    || !countryCode || !isSupportedCountry(countryCode)
+    || !requestId || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)
+  ) {
+    res.status(400).json({ error: "Invalid number purchase request" });
+    return;
+  }
+  if (countryCode === "VN" && !process.env.TWILIO_REGULATORY_BUNDLE_SID) {
+    res.status(409).json({ error: "A verified Twilio regulatory bundle is required before buying a Vietnam number." });
+    return;
+  }
+  try {
+    await assertPhoneNumberAvailable(phoneNumber, countryCode);
+  } catch (error) {
+    res.status(409).json({ error: error instanceof Error ? error.message : "Number is unavailable" });
+    return;
+  }
+
+  const stripe = getStripe();
+  const reservationId = `reservation:${user.id}:${requestId}`;
+  try {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${phoneNumber}::text))`);
+      const [pending] = await tx.select({ id: phoneNumberPurchasesTable.id })
+        .from(phoneNumberPurchasesTable)
+        .where(and(
+          eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber),
+          sql`${phoneNumberPurchasesTable.status} in ('pending', 'processing')`,
+        )).limit(1);
+      if (pending) throw new Error("PHONE_NUMBER_ALREADY_RESERVED");
+      await tx.insert(phoneNumberPurchasesTable).values({
+        userId: user.id,
+        stripeSessionId: reservationId,
+        phoneNumber,
+        countryCode,
+        label: (label || "main").slice(0, 64),
+        amountCents: PHONE_NUMBER_PRICE_CENTS,
+      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "PHONE_NUMBER_ALREADY_RESERVED") {
+      res.status(409).json({ error: "That number is already reserved by another checkout." });
+      return;
+    }
+    throw error;
+  }
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{ price: await getPhoneNumberPriceId(stripe), quantity: 1 }],
+      success_url: `${getAppBaseUrl()}/phone?tab=numbers&number_checkout=success`,
+      cancel_url: `${getAppBaseUrl()}/phone?tab=numbers&number_checkout=cancel`,
+      client_reference_id: user.id,
+      metadata: {
+        type: "phone_number", userId: user.id, phoneNumber, countryCode,
+        label: (label || "main").slice(0, 64),
+        amountCents: String(PHONE_NUMBER_PRICE_CENTS), requestId,
+      },
+    }, { idempotencyKey: `phone-number:${user.id}:${requestId}` });
+    await db.update(phoneNumberPurchasesTable).set({ stripeSessionId: session.id })
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, reservationId));
+  } catch (error) {
+    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, reservationId));
+    throw error;
+  }
+  res.json({ url: session.url });
+});
+
+async function fulfilPhoneNumberPurchase(session: Stripe.Checkout.Session): Promise<void> {
+  if (session.payment_status !== "paid") return;
+  const userId = session.client_reference_id || session.metadata?.userId;
+  const phoneNumber = session.metadata?.phoneNumber;
+  const countryCode = session.metadata?.countryCode;
+  const label = (session.metadata?.label || "main").slice(0, 64);
+  if (
+    !userId || !phoneNumber || !countryCode
+    || session.amount_total !== PHONE_NUMBER_PRICE_CENTS
+    || session.currency !== "usd"
+  ) throw new Error(`PHONE_NUMBER_RECONCILIATION_REJECTED:${session.id}`);
+
+  await db.insert(phoneNumberPurchasesTable).values({
+    userId, stripeSessionId: session.id, phoneNumber, countryCode, label,
+    amountCents: PHONE_NUMBER_PRICE_CENTS,
+  }).onConflictDoNothing();
+
+  const [buyer] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const currentlyAuthorized = buyer
+    && await hasFeature(userId, buyer.email, "phone_system")
+    && await canUsePlatformTwilio(userId, buyer.email);
+  if (!currentlyAuthorized) {
+    await db.update(phoneNumberPurchasesTable)
+      .set({ status: "authorization_failed", failureReason: "Phone System access is no longer authorized" })
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, session.id));
+    return;
+  }
+
+  const [existingNumber] = await db
+    .select({ id: phoneNumbersTable.id, userId: phoneNumbersTable.userId, twilioSid: phoneNumbersTable.twilioSid })
+    .from(phoneNumbersTable)
+    .where(eq(phoneNumbersTable.number, phoneNumber))
+    .limit(1);
+  if (existingNumber?.userId === userId) {
+    await db.update(phoneNumberPurchasesTable)
+      .set({ status: "completed", twilioSid: existingNumber.twilioSid, completedAt: new Date(), failureReason: null })
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, session.id));
+    return;
+  }
+
+  const leaseCutoff = new Date(Date.now() - 5 * 60 * 1000);
+  const [claimed] = await db.update(phoneNumberPurchasesTable)
+    .set({ status: "processing", failureReason: null, createdAt: new Date() })
+    .where(and(
+      eq(phoneNumberPurchasesTable.stripeSessionId, session.id),
+      or(
+        eq(phoneNumberPurchasesTable.status, "pending"),
+        and(
+          eq(phoneNumberPurchasesTable.status, "processing"),
+          or(
+            isNotNull(phoneNumberPurchasesTable.twilioSid),
+            lt(phoneNumberPurchasesTable.createdAt, leaseCutoff),
+          ),
+        ),
+      ),
+    ))
+    .returning();
+  if (!claimed) {
+    const [current] = await db.select({ status: phoneNumberPurchasesTable.status })
+      .from(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, session.id))
+      .limit(1);
+    if (current?.status === "completed" || current?.status === "authorization_failed") return;
+    throw new Error(`PHONE_NUMBER_FULFILLMENT_BUSY:${session.id}`);
+  }
+
+  try {
+    const provisioned = await provisionPaidPhoneNumber({
+      userId, phoneNumber, countryCode, label, stripeSessionId: session.id,
+    });
+    await db.update(phoneNumberPurchasesTable)
+      .set({ status: "completed", twilioSid: provisioned.sid, completedAt: new Date(), failureReason: null })
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, session.id));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Provisioning failed";
+    await db.update(phoneNumberPurchasesTable)
+      .set({ status: "pending", failureReason: reason.slice(0, 256) })
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, session.id));
+    throw error;
+  }
+}
+
+async function markPhoneNumberPurchaseTerminal(session: Stripe.Checkout.Session, status: "failed" | "cancelled"): Promise<void> {
+  await db.update(phoneNumberPurchasesTable)
+    .set({ status, failureReason: status === "failed" ? "Stripe payment failed" : "Stripe checkout expired" })
+    .where(eq(phoneNumberPurchasesTable.stripeSessionId, session.id));
+}
+
 // Start a Stripe checkout for a fixed FIAT pack. The client sends only a packId;
 // the ƒ amount and price are resolved server-side so the charge can never be
 // manipulated. A pending row is pre-inserted and fulfilled exactly once by the
@@ -749,6 +948,9 @@ router.post(
         } else if (session.metadata?.type === "fiat_topup") {
           if (event.type === "checkout.session.async_payment_succeeded") await fulfilFiatTopup(session);
           else await markFiatTopupTerminal(session, "failed");
+        } else if (session.metadata?.type === "phone_number") {
+          if (event.type === "checkout.session.async_payment_succeeded") await fulfilPhoneNumberPurchase(session);
+          else await markPhoneNumberPurchaseTerminal(session, "failed");
         }
         break;
       }
@@ -759,6 +961,8 @@ router.post(
           await handlePledgeWebhookEvent(event);
         } else if (session.metadata?.type === "fiat_topup") {
           await markFiatTopupTerminal(session, "cancelled");
+        } else if (session.metadata?.type === "phone_number") {
+          await markPhoneNumberPurchaseTerminal(session, "cancelled");
         }
         break;
       }
@@ -787,6 +991,8 @@ router.post(
           }
         } else if (type === "fiat_topup") {
           await fulfilFiatTopup(session);
+        } else if (type === "phone_number") {
+          await fulfilPhoneNumberPurchase(session);
         } else if (type === "season_pass") {
           await handleSeasonPassWebhookEvent(event as any);
         } else if (type === "bot_subscription") {

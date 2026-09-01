@@ -27,9 +27,11 @@ vi.mock("../lib/phone-context", async (importActual) => {
 
 import request from "supertest";
 import type { Express } from "express";
-import { db, phoneNumbersTable } from "@workspace/db";
+import twilio from "twilio";
+import { db, phoneNumbersTable, phoneNumberPurchasesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { buildApp, resetAuthState, cleanupTestData, TEST_USER } from "./helpers/twilioTestApp";
+import { getPhoneNumberCheckoutMarker, getUserOutboundNumber, provisionPaidPhoneNumber } from "../lib/phone-number-service";
 
 let app: Express;
 
@@ -96,54 +98,163 @@ describe("GET /twilio/available-numbers", () => {
   });
 });
 
-describe("POST /twilio/purchase-number", () => {
-  it("400 without a phoneNumber", async () => {
-    const res = await request(app).post("/api/twilio/purchase-number").send({});
-    expect(res.status).toBe(400);
+describe("custom-number safety boundaries", () => {
+  it("selects an active custom sender and falls back to the platform sender", async () => {
+    const previous = process.env.TWILIO_PHONE_NUMBER;
+    process.env.TWILIO_PHONE_NUMBER = "+18882307698";
+    await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.userId, TEST_USER.id));
+    expect(await getUserOutboundNumber(TEST_USER.id)).toBe("+18882307698");
+    await db.insert(phoneNumbersTable).values({
+      userId: TEST_USER.id,
+      number: "+15558884444",
+      label: "active",
+      isActive: true,
+    });
+    expect(await getUserOutboundNumber(TEST_USER.id)).toBe("+15558884444");
+    if (previous === undefined) delete process.env.TWILIO_PHONE_NUMBER;
+    else process.env.TWILIO_PHONE_NUMBER = previous;
   });
 
-  it("buys a US number and persists country/city/region", async () => {
-    cityState.city = "minx_city";
-    const res = await request(app)
-      .post("/api/twilio/purchase-number")
-      .send({ phoneNumber: "+15558881111", label: "sales" });
+  it("does not expose the shared Twilio account inventory", async () => {
+    const res = await request(app).get("/api/twilio/phone-numbers");
     expect(res.status).toBe(200);
-    expect(res.body.ok).toBe(true);
-    expect(res.body.phoneNumber.countryCode).toBe("US");
-    expect(res.body.phoneNumber.cityId).toBe("minx_city");
-    expect(res.body.phoneNumber.region).toBe("AMERICAS — NORTH");
-
-    const [row] = await db
-      .select()
-      .from(phoneNumbersTable)
-      .where(eq(phoneNumbersTable.id, res.body.phoneNumber.id));
-    expect(row.countryCode).toBe("US");
-    expect(row.twilioSid).toBeTruthy();
+    expect(res.body).not.toHaveProperty("twilioNumbers");
   });
 
-  it("blocks a Vietnam purchase with no regulatory bundle configured", async () => {
-    cityState.city = "huda_city";
-    const prev = process.env.TWILIO_REGULATORY_BUNDLE_SID;
-    delete process.env.TWILIO_REGULATORY_BUNDLE_SID;
-    const res = await request(app)
-      .post("/api/twilio/purchase-number")
-      .send({ phoneNumber: "+84912345678" });
-    expect(res.status).toBe(409);
-    expect(res.body.error).toBe("regulatory_bundle_required");
-    expect(res.body.requirement.required).toBe(true);
-    if (prev !== undefined) process.env.TWILIO_REGULATORY_BUNDLE_SID = prev;
+  it("configures purchased numbers with the implemented signed callback routes", async () => {
+    process.env.APP_BASE_URL = "https://phone.example";
+    await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.userId, TEST_USER.id));
+    const sessionId = `cs_callback_${Date.now()}`;
+    await db.insert(phoneNumberPurchasesTable).values({
+      userId: TEST_USER.id,
+      stripeSessionId: sessionId,
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      label: "sales",
+      status: "processing",
+    });
+    await provisionPaidPhoneNumber({
+      userId: TEST_USER.id,
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      label: "sales",
+      stripeSessionId: sessionId,
+    });
+    const create = (twilio as any).__spies.incomingCreate;
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      voiceUrl: `https://phone.example/api/twilio/webhook/voice?userId=${TEST_USER.id}`,
+      smsUrl: `https://phone.example/api/twilio/webhook/sms?userId=${TEST_USER.id}`,
+      statusCallback: `https://phone.example/api/twilio/webhook/status?userId=${TEST_USER.id}`,
+    }));
+    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    delete process.env.APP_BASE_URL;
+  });
+
+  it("rejects takeover of the platform default number", async () => {
+    const previous = process.env.TWILIO_PHONE_NUMBER;
+    process.env.TWILIO_PHONE_NUMBER = "+18882307698";
+    const sessionId = `cs_default_${Date.now()}`;
+    await db.insert(phoneNumberPurchasesTable).values({
+      userId: TEST_USER.id,
+      stripeSessionId: sessionId,
+      phoneNumber: "+18882307698",
+      countryCode: "US",
+      status: "processing",
+    });
+    await expect(provisionPaidPhoneNumber({
+      userId: TEST_USER.id,
+      phoneNumber: "+18882307698",
+      countryCode: "US",
+      label: "main",
+      stripeSessionId: sessionId,
+    })).rejects.toThrow(/platform default/i);
+    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    if (previous === undefined) delete process.env.TWILIO_PHONE_NUMBER;
+    else process.env.TWILIO_PHONE_NUMBER = previous;
+  });
+
+  it("recovers only the Twilio SID already bound to the same checkout", async () => {
+    const sessionId = `cs_recover_${Date.now()}`;
+    await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.userId, TEST_USER.id));
+    await db.insert(phoneNumberPurchasesTable).values({
+      userId: TEST_USER.id,
+      stripeSessionId: sessionId,
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      status: "processing",
+      twilioSid: "PNpaid",
+    });
+    const spies = (twilio as any).__spies;
+    await provisionPaidPhoneNumber({
+      userId: TEST_USER.id,
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      label: "recovered",
+      stripeSessionId: sessionId,
+    });
+    expect(spies.incomingFetch).toHaveBeenCalled();
+    expect(spies.incomingCreate).not.toHaveBeenCalled();
+    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+  });
+
+  it("reconciles the exact checkout-marked Twilio number after a create-before-persist crash", async () => {
+    const sessionId = `cs_marker_recover_${Date.now()}`;
+    await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.userId, TEST_USER.id));
+    await db.insert(phoneNumberPurchasesTable).values({
+      userId: TEST_USER.id,
+      stripeSessionId: sessionId,
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      status: "processing",
+    });
+    const spies = (twilio as any).__spies;
+    spies.incomingList.mockResolvedValueOnce([{
+      sid: "PNcrash-recovered",
+      phoneNumber: "+15558881111",
+      friendlyName: getPhoneNumberCheckoutMarker(sessionId),
+    }]);
+    const result = await provisionPaidPhoneNumber({
+      userId: TEST_USER.id,
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      label: "recovered",
+      stripeSessionId: sessionId,
+    });
+    expect(result.sid).toBe("PNcrash-recovered");
+    expect(spies.incomingCreate).not.toHaveBeenCalled();
+    const [purchase] = await db.select().from(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    expect(purchase.twilioSid).toBe("PNcrash-recovered");
+    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+  });
+
+  it("never releases a legacy/unverified Twilio SID", async () => {
+    const [number] = await db.insert(phoneNumbersTable).values({
+      userId: TEST_USER.id,
+      number: "+15558883333",
+      twilioSid: "PNlegacy-unverified",
+      label: "legacy",
+    }).returning();
+    const res = await request(app).delete(`/api/twilio/phone-numbers/${number.id}`);
+    expect(res.status).toBe(200);
+    expect((twilio as any).__spies.incomingRemove).not.toHaveBeenCalled();
   });
 });
 
-describe("POST /twilio/phone-numbers — country context", () => {
-  it("stamps a Huda player's manually-added number with VN context", async () => {
-    cityState.city = "huda_city";
+describe("POST /twilio/purchase-number", () => {
+  it("never provisions a number before Stripe payment", async () => {
+    const res = await request(app).post("/api/twilio/purchase-number").send({});
+    expect(res.status).toBe(410);
+    expect(res.body.error).toContain("Stripe checkout");
+  });
+});
+
+describe("POST /twilio/phone-numbers", () => {
+  it("rejects arbitrary existing numbers and client-controlled Twilio SIDs", async () => {
     const res = await request(app)
       .post("/api/twilio/phone-numbers")
-      .send({ number: "0912345678", label: "hotline" });
-    expect(res.status).toBe(200);
-    expect(res.body.phoneNumber.number).toBe("+84912345678");
-    expect(res.body.phoneNumber.countryCode).toBe("VN");
-    expect(res.body.phoneNumber.region).toBe("ASIA");
+      .send({ number: "+15558881111", twilioSid: "PNnot-owned" });
+    expect(res.status).toBe(410);
+    expect(res.body.error).toContain("arbitrary");
   });
 });

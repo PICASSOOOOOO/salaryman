@@ -65,7 +65,7 @@ const FEATURE_CARDS: FeatureCard[] = [
       { name: 'ECHO-7 · Live Listen', desc: 'Real-time audio intercept on meetings & interviews. Feeds you answers as people talk.' },
       { name: 'OPTIC-9 · Screen Scan', desc: 'Military-grade screen capture. Identifies code, content, and context — no copy/paste.' },
       { name: 'VOX-4 · Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
-      { name: 'TTC · Phone System', desc: 'Unlimited predictive dialing, SMS campaigns, call coaching, voicemail, conference calling.' },
+      { name: 'TTC · Phone System', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform toll-free number. Custom numbers are $10 one-time each.' },
       { name: 'Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
       { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
       { name: 'CORE COMMAND · PABLO', desc: 'Your all-purpose AI business operative for email, schedules, CRM, documents, and Q&A.' },

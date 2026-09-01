@@ -27,7 +27,7 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     name: "Phone System",
     codename: "CALLLHOME",
     price: 95,
-    desc: "Paid Twilio-connected business calling and messaging. Billed only in USD.",
+    desc: "Paid Twilio-connected calling and two-way SMS with a default platform toll-free number. Custom numbers are $10 one-time each. Billed only in USD.",
   },
   claw_bot: {
     name: "Automation Pixel Agents",

@@ -151,3 +151,4 @@
 - [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.
+- [Paid custom phone numbers](paid-custom-phone-numbers.md) — custom Twilio numbers are $10 one-time; only settled Stripe webhooks may provision, while active-number routing falls back to the platform toll-free line.

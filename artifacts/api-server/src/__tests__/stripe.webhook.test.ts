@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import express, { type Express } from "express";
 import request from "supertest";
-import { db, fiatTopupsTable, bankAccountsTable, bankTransactionsTable } from "@workspace/db";
+import { db, fiatTopupsTable, phoneNumberPurchasesTable, usersTable, bankAccountsTable, bankTransactionsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
 // ─── Hoisted mock handles ─────────────────────────────────────────────────────
@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   handleMerchWebhookEvent: vi.fn().mockResolvedValue(undefined),
   handleSeasonPassWebhookEvent: vi.fn().mockResolvedValue(undefined),
   handleItemWebhookEvent: vi.fn().mockResolvedValue(undefined),
+  provisionPaidPhoneNumber: vi.fn().mockResolvedValue({ sid: "PNpaid", phoneNumber: "+15558881111" }),
+  assertPhoneNumberAvailable: vi.fn().mockResolvedValue(undefined),
+  canUsePlatformTwilio: vi.fn().mockResolvedValue(false),
+  hasFeature: vi.fn().mockResolvedValue(true),
+  checkoutCreate: vi.fn(),
 }));
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -27,6 +32,15 @@ vi.mock("stripe", () => ({
     return {
       webhooks: { constructEvent: mocks.constructEvent },
       subscriptions: { retrieve: mocks.subscriptionsRetrieve },
+      checkout: { sessions: { create: mocks.checkoutCreate } },
+      products: {
+        search: vi.fn().mockResolvedValue({ data: [{ id: "prod_phone" }] }),
+        create: vi.fn(),
+      },
+      prices: {
+        list: vi.fn().mockResolvedValue({ data: [{ id: "price_phone", currency: "usd", unit_amount: 1000 }] }),
+        create: vi.fn(),
+      },
     };
   }),
 }));
@@ -39,6 +53,7 @@ vi.mock("../lib/plan", async (importActual) => {
     ...actual,
     grantFeature: mocks.grantFeature,
     revokeFeatureBySubscription: mocks.revokeFeatureBySubscription,
+    hasFeature: mocks.hasFeature,
   };
 });
 
@@ -65,12 +80,27 @@ vi.mock("../routes/items", () => ({
   default: express.Router(),
 }));
 
+vi.mock("../lib/phone-number-service", () => ({
+  provisionPaidPhoneNumber: mocks.provisionPaidPhoneNumber,
+  assertPhoneNumberAvailable: mocks.assertPhoneNumberAvailable,
+}));
+
+vi.mock("../lib/platform-twilio-access", () => ({
+  canUsePlatformTwilio: mocks.canUsePlatformTwilio,
+}));
+
 // ─── Test app ─────────────────────────────────────────────────────────────────
 
 import stripeRouter from "../routes/stripe";
 
 function buildApp(): Express {
   const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).isAuthenticated = () => true;
+    (req as any).user = { id: TEST_USER, email: "test@example.com" };
+    next();
+  });
   app.use("/api", stripeRouter);
   // Surface unhandled errors as JSON so we can read them in test assertions.
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -114,7 +144,7 @@ const TEST_SUB  = "sub_webhook_test_001";
 describe("POST /stripe/webhook", () => {
   let app: Express;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.STRIPE_SECRET_KEY      = "sk_test_placeholder";
     process.env.STRIPE_WEBHOOK_SECRET  = "whsec_test_placeholder";
     // Feature price env vars — used both to verify FEATURE_PRICE_ENV wiring
@@ -122,6 +152,7 @@ describe("POST /stripe/webhook", () => {
     process.env.STRIPE_PRICE_CLAW_BOT     = "price_test_claw_bot";
     process.env.STRIPE_PRICE_PHONE_SYSTEM = "price_test_phone_system";
     process.env.STRIPE_PRICE_LIVE_LISTEN  = "price_test_live_listen";
+    await db.insert(usersTable).values({ id: TEST_USER, email: "stripe-phone-test@example.invalid" }).onConflictDoNothing();
     app = buildApp();
   });
 
@@ -134,6 +165,10 @@ describe("POST /stripe/webhook", () => {
     mocks.handleMerchWebhookEvent.mockResolvedValue(undefined);
     mocks.handleSeasonPassWebhookEvent.mockResolvedValue(undefined);
     mocks.handleItemWebhookEvent.mockResolvedValue(undefined);
+    mocks.provisionPaidPhoneNumber.mockResolvedValue({ sid: "PNpaid", phoneNumber: "+15558881111" });
+    mocks.hasFeature.mockResolvedValue(true);
+    mocks.canUsePlatformTwilio.mockResolvedValue(true);
+    mocks.checkoutCreate.mockResolvedValue({ id: `cs_checkout_${Date.now()}`, url: "https://checkout.example/session" });
     // Default: constructEvent succeeds and returns a minimal no-op event so
     // tests that don't need a specific event still get a 200.
     mocks.constructEvent.mockReturnValue(makeEvent("unknown.event", {}));
@@ -168,6 +203,156 @@ describe("POST /stripe/webhook", () => {
   });
 
   // ── Subscription feature grant ───────────────────────────────────────────────
+
+  it("rejects number checkout for a subscribed but platform-unauthorized user", async () => {
+    mocks.canUsePlatformTwilio.mockResolvedValueOnce(false);
+    const res = await request(app).post("/api/stripe/create-phone-number-session").send({
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      requestId: "request-unauthorized-1",
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("TWILIO_ORG_RESTRICTED");
+    expect(mocks.assertPhoneNumberAvailable).not.toHaveBeenCalled();
+  });
+
+  it("allows only one outstanding checkout reservation per number", async () => {
+    const phoneNumber = "+15558882222";
+    const previousBaseUrl = process.env.APP_BASE_URL;
+    process.env.APP_BASE_URL = "https://phone.example";
+    mocks.canUsePlatformTwilio.mockResolvedValue(true);
+    const first = await request(app).post("/api/stripe/create-phone-number-session").send({
+      phoneNumber,
+      countryCode: "US",
+      requestId: "request-reserve-first",
+    });
+    const second = await request(app).post("/api/stripe/create-phone-number-session").send({
+      phoneNumber,
+      countryCode: "US",
+      requestId: "request-reserve-second",
+    });
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    expect(second.status).toBe(409);
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber));
+    if (previousBaseUrl === undefined) delete process.env.APP_BASE_URL;
+    else process.env.APP_BASE_URL = previousBaseUrl;
+  });
+
+  it("fulfils a paid custom number exactly once across duplicate webhooks", async () => {
+    const sessionId = `cs_phone_${Date.now()}`;
+    const event = makeEvent("checkout.session.completed", {
+      id: sessionId,
+      payment_status: "paid",
+      amount_total: 1000,
+      currency: "usd",
+      client_reference_id: TEST_USER,
+      metadata: {
+        type: "phone_number",
+        userId: TEST_USER,
+        phoneNumber: "+15558881111",
+        countryCode: "US",
+        label: "sales",
+      },
+    });
+    mocks.constructEvent.mockReturnValue(event);
+    expect((await sendWebhook(app, event)).status).toBe(200);
+    expect((await sendWebhook(app, event)).status).toBe(200);
+    expect(mocks.provisionPaidPhoneNumber).toHaveBeenCalledTimes(1);
+    const [row] = await db.select().from(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    expect(row.status).toBe("completed");
+    expect(row.twilioSid).toBe("PNpaid");
+    await db.delete(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+  });
+
+  it.each([
+    ["checkout.session.expired", "cancelled"],
+    ["checkout.session.async_payment_failed", "failed"],
+  ])("releases a number reservation when %s", async (eventType, expectedStatus) => {
+    const sessionId = `cs_terminal_${eventType}_${Date.now()}`;
+    await db.insert(phoneNumberPurchasesTable).values({
+      userId: TEST_USER,
+      stripeSessionId: sessionId,
+      phoneNumber: "+15558885555",
+      countryCode: "US",
+    });
+    const event = makeEvent(eventType, {
+      id: sessionId,
+      metadata: { type: "phone_number", userId: TEST_USER },
+    });
+    mocks.constructEvent.mockReturnValue(event);
+    expect((await sendWebhook(app, event)).status).toBe(200);
+    const [row] = await db.select().from(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    expect(row.status).toBe(expectedStatus);
+    await db.delete(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+  });
+
+  it("does not provision after Phone System authorization is revoked", async () => {
+    const sessionId = `cs_revoked_${Date.now()}`;
+    const event = makeEvent("checkout.session.completed", {
+      id: sessionId,
+      payment_status: "paid",
+      amount_total: 1000,
+      currency: "usd",
+      client_reference_id: TEST_USER,
+      metadata: {
+        type: "phone_number", userId: TEST_USER, phoneNumber: "+15558886666",
+        countryCode: "US", label: "sales",
+      },
+    });
+    mocks.hasFeature.mockResolvedValueOnce(false);
+    mocks.constructEvent.mockReturnValue(event);
+    expect((await sendWebhook(app, event)).status).toBe(200);
+    expect(mocks.provisionPaidPhoneNumber).not.toHaveBeenCalled();
+    const [row] = await db.select().from(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    expect(row.status).toBe("authorization_failed");
+    await db.delete(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+  });
+
+  it("resumes an interrupted processing purchase whose Twilio SID was already persisted", async () => {
+    const sessionId = `cs_resume_${Date.now()}`;
+    await db.insert(phoneNumberPurchasesTable).values({
+      userId: TEST_USER,
+      stripeSessionId: sessionId,
+      phoneNumber: "+15558887777",
+      countryCode: "US",
+      status: "processing",
+      twilioSid: "PNalready-acquired",
+    });
+    const event = makeEvent("checkout.session.completed", {
+      id: sessionId,
+      payment_status: "paid",
+      amount_total: 1000,
+      currency: "usd",
+      client_reference_id: TEST_USER,
+      metadata: {
+        type: "phone_number", userId: TEST_USER, phoneNumber: "+15558887777",
+        countryCode: "US", label: "recovered",
+      },
+    });
+    mocks.provisionPaidPhoneNumber.mockResolvedValueOnce({
+      sid: "PNalready-acquired",
+      phoneNumber: "+15558887777",
+    });
+    mocks.constructEvent.mockReturnValue(event);
+    expect((await sendWebhook(app, event)).status).toBe(200);
+    expect(mocks.provisionPaidPhoneNumber).toHaveBeenCalledWith(expect.objectContaining({
+      stripeSessionId: sessionId,
+      phoneNumber: "+15558887777",
+    }));
+    const [row] = await db.select().from(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+    expect(row.status).toBe("completed");
+    expect(row.twilioSid).toBe("PNalready-acquired");
+    await db.delete(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, sessionId));
+  });
 
   describe("checkout.session.completed — subscription feature grant", () => {
     it("calls grantFeature(userId, 'claw_bot', ...) for a PABLO PRIME subscription", async () => {

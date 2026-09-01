@@ -134,6 +134,7 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
     try {
       const result = await sendSmsMessage({
         userId: ctx.ownerId,
+        userEmail: ctx.ownerEmail,
         orgId: ctx.orgId,
         phone: lead.phone,
         body,

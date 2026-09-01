@@ -15,7 +15,7 @@ vi.mock("../lib/usage-meter", async (importActual) => ({
 
 import request from "supertest";
 import type { Express } from "express";
-import { db, voicemailsTable } from "@workspace/db";
+import { db, voicemailsTable, phoneNumbersTable } from "@workspace/db";
 import { buildApp, resetAuthState, cleanupTestData, TEST_USER } from "./helpers/twilioTestApp";
 
 let app: Express;
@@ -52,19 +52,18 @@ describe("secretary config", () => {
 });
 
 describe("phone numbers CRUD", () => {
-  it("400 without a number", async () => {
+  it("rejects arbitrary number creation", async () => {
     const res = await request(app).post("/api/twilio/phone-numbers").send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(410);
   });
 
-  it("create, list, update, delete", async () => {
-    const create = await request(app)
-      .post("/api/twilio/phone-numbers")
-      .send({ number: "5552223333", label: "work" });
-    expect(create.status).toBe(200);
-    expect(create.body.ok).toBe(true);
-    expect(create.body.phoneNumber.number).toBe("+15552223333");
-    const id = create.body.phoneNumber.id as number;
+  it("lists, updates, and safely deletes a server-provisioned record", async () => {
+    const [created] = await db.insert(phoneNumbersTable).values({
+      userId: TEST_USER.id,
+      number: "+15552223333",
+      label: "work",
+    }).returning();
+    const id = created.id;
 
     const list = await request(app).get("/api/twilio/phone-numbers").send();
     expect(list.status).toBe(200);

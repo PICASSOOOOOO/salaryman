@@ -14,12 +14,12 @@ import {
   notificationsTable,
 } from "@workspace/db";
 import { getUncachableResendClient } from "../lib/resend";
-import twilio from "twilio";
 import { hasFeature } from "../lib/plan";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
 import { sendSmsMessage } from "../lib/telephony-service";
 import { toE164 } from "../lib/phone";
 import { resolveUserCountry } from "../lib/phone-context";
+import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 
 const router = Router();
 
@@ -35,20 +35,11 @@ async function requireAuth(req: Request, res: Response): Promise<string | null> 
     res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
     return null;
   }
+  if (!(await canUsePlatformTwilio(userId, req.user?.email))) {
+    res.status(403).json({ error: "Platform phone system is restricted to authorized organizations.", code: "TWILIO_ORG_RESTRICTED" });
+    return null;
+  }
   return userId;
-}
-
-function getTwilioClient() {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!accountSid || !authToken) throw new Error("Twilio credentials not configured");
-  return twilio(accountSid, authToken);
-}
-
-function getTwilioNumber() {
-  const num = process.env.TWILIO_PHONE_NUMBER;
-  if (!num) throw new Error("TWILIO_PHONE_NUMBER not configured");
-  return num;
 }
 
 function sleep(ms: number) {
@@ -438,16 +429,19 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     if (!campaign) { res.status(404).json({ error: "Not found" }); return; }
     if (!campaign.messageBody?.trim()) { res.status(400).json({ error: "Message body required" }); return; }
 
-    const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
-
     const campaignCountry = await resolveUserCountry(userId);
 
     if (test) {
       if (!testPhone) { res.status(400).json({ error: "Test phone number required" }); return; }
       const e164 = toE164(testPhone, campaignCountry);
       if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
-      await client.messages.create({ from: fromNumber, to: e164, body: `[TEST] ${campaign.messageBody}` });
+      await sendSmsMessage({
+        userId,
+        userEmail: req.user?.email,
+        phone: e164,
+        body: `[TEST] ${campaign.messageBody}`,
+        defaultCountry: campaignCountry,
+      });
       res.json({ ok: true, message: `Test SMS sent to ${e164}` });
       return;
     }
@@ -493,10 +487,14 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
         const _gateSms = await _consumeUsage_cs(req.user?.id ?? "", req.user?.email, "sms_count", 1);
         if (!_gateSms.allowed) { failed++; continue; }
         try {
-          const msg = await client.messages.create({
-            from: fromNumber,
-            to: e164,
+          const sentSms = await sendSmsMessage({
+            userId: campaign.userId,
+            userEmail: req.user?.email,
+            phone: e164,
             body: campaign.messageBody,
+            contactId: contact.id,
+            contactName: contact.name,
+            defaultCountry: campaignCountry,
           });
           await db.insert(smsCampaignRecipientsTable).values({
             campaignId: campaign.id,
@@ -504,18 +502,8 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
             phone: e164,
             name: contact.name,
             status: "sent",
-            twilioMessageSid: msg.sid,
+            twilioMessageSid: sentSms.message.twilioMessageSid,
           });
-          await recordTelephonyActivity({
-            userId: campaign.userId,
-            channel: "sms",
-            direction: "outbound",
-            phone: e164,
-            contactName: contact.name || undefined,
-            contactId: contact.id || undefined,
-            body: campaign.messageBody,
-            twilioSid: msg.sid,
-          }).catch(() => {});
           sent++;
         } catch (e: any) {
           console.error("[campaigns] sms send error for", contact.phone, e.message);
@@ -624,7 +612,7 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   try {
     // Outbound SMS lives in the shared telephony service so the manual route and
     // the CRM autopilot send + record identically (same CRM dedupe/side-effects).
-    const { message, conversation } = await sendSmsMessage({ userId, phone: e164, body, contactId, contactName });
+    const { message, conversation } = await sendSmsMessage({ userId, userEmail: req.user?.email, phone: e164, body, contactId, contactName });
     await recordUsage(userId, "sms_count", 1);
     res.json({ ok: true, message, conversation });
   } catch (err: any) {

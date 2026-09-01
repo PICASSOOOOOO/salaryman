@@ -11,6 +11,7 @@ export default function PhoneNumbersPage() {
   const isMobile = useIsMobile();
 
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
+  const [defaultNumber, setDefaultNumber] = useState<string | null>(null);
   const [regionDefaults, setRegionDefaults] = useState<{ cityId: string | null; country: string; countryInfo: CountryDialInfo; countries: CountryDialInfo[] } | null>(null);
   const [buyCountry, setBuyCountry] = useState('');
   const [regulatory, setRegulatory] = useState<RegulatoryRequirement | null>(null);
@@ -19,17 +20,19 @@ export default function PhoneNumbersPage() {
   const [searchingNumbers, setSearchingNumbers] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [purchasingNumber, setPurchasingNumber] = useState('');
-  const [newNumberForm, setNewNumberForm] = useState({ number: '', label: '', greeting: '', routingMode: 'voicemail' });
-  const [addingNumber, setAddingNumber] = useState(false);
-  const [addError, setAddError] = useState('');
   const [settingActiveId, setSettingActiveId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const checkoutResult = new URLSearchParams(window.location.search).get('number_checkout');
 
   const fetchPhoneNumbers = useCallback(async () => {
     try {
       const r = await apiFetch('/api/twilio/phone-numbers');
-      if (r.ok) { const d = await r.json(); if (d?.numbers) setPhoneNumbers(d.numbers); }
+      if (r.ok) {
+        const d = await r.json();
+        if (d?.numbers) setPhoneNumbers(d.numbers);
+        setDefaultNumber(d?.defaultNumber ?? null);
+      }
       else if (r.status !== 403) setError(`Failed to load numbers (${r.status})`);
     } catch { setError('Network error loading numbers'); }
   }, []);
@@ -78,42 +81,27 @@ export default function PhoneNumbersPage() {
   };
 
   const purchaseNumber = async (phoneNumber: string) => {
+    if (!window.confirm(`Buy ${formatPhone(phoneNumber)} for $10 one-time?\n\nYour $95/month Phone System subscription includes calls and two-way SMS.`)) return;
     setPurchasingNumber(phoneNumber);
     setSearchError('');
     try {
-      const r = await apiFetch('/api/twilio/purchase-number', {
+      const r = await apiFetch('/api/stripe/create-phone-number-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber }) });
+        body: JSON.stringify({
+          phoneNumber,
+          countryCode: buyCountry,
+          label: 'main',
+          requestId: crypto.randomUUID(),
+        }) });
       const d = await r.json();
-      if (r.ok) {
-        await fetchPhoneNumbers();
-        setAvailableNumbers(prev => prev.filter(n => n.phoneNumber !== phoneNumber));
-      } else if (d.error === 'regulatory_bundle_required') {
-        setSearchError(d.requirement?.message || 'A regulatory bundle is required for this country.');
+      if (r.ok && d.url) {
+        window.location.assign(d.url);
+        return;
       } else {
         setSearchError(d.detail || d.error || 'Purchase failed');
       }
     } catch { setSearchError('Purchase failed'); }
     setPurchasingNumber('');
-  };
-
-  const addPhoneNumber = async () => {
-    if (!newNumberForm.number) return;
-    setAddingNumber(true);
-    setAddError('');
-    try {
-      const r = await apiFetch('/api/twilio/phone-numbers', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newNumberForm) });
-      const d = await r.json().catch(() => null);
-      if (r.ok) {
-        await fetchPhoneNumbers();
-        setNewNumberForm({ number: '', label: '', greeting: '', routingMode: 'voicemail' });
-      } else {
-        setAddError(d?.error || `Failed to add number (${r.status})`);
-      }
-    } catch { setAddError('Network error adding number'); }
-    setAddingNumber(false);
   };
 
   const setActiveNumber = async (id: number) => {
@@ -130,6 +118,8 @@ export default function PhoneNumbersPage() {
   };
 
   const deletePhoneNumber = async (id: number) => {
+    const number = phoneNumbers.find(n => n.id === id);
+    if (!window.confirm(`Release ${number ? formatPhone(number.number) : 'this number'} from Twilio?\n\nThis is permanent. Calls and texts to it will stop immediately.`)) return;
     setDeletingId(id);
     setError('');
     try {
@@ -149,7 +139,7 @@ export default function PhoneNumbersPage() {
       icon={<Hash size={24} style={{ color: slate(0.8) }} />}
       statusLine={
         <span style={{ color: slate(0.55) }}>
-          {phoneNumbers.length} NUMBERS · {activeCount} ACTIVE
+          {phoneNumbers.length} CUSTOM · {activeCount} ACTIVE · DEFAULT {defaultNumber ? formatPhone(defaultNumber) : 'UNAVAILABLE'}
         </span>
       }
     >
@@ -160,6 +150,16 @@ export default function PhoneNumbersPage() {
             {error}
           </div>
           <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
+        </div>
+      )}
+      {checkoutResult === 'success' && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', border: `1px solid ${primary(0.3)}`, borderRadius: 8, color: primary(0.9), fontSize: '0.6rem' }}>
+          PAYMENT RECEIVED — Twilio provisioning is finishing in the background. Refresh this list in a moment.
+        </div>
+      )}
+      {checkoutResult === 'cancel' && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', border: `1px solid ${warning(0.3)}`, borderRadius: 8, color: warning(0.9), fontSize: '0.6rem' }}>
+          CHECKOUT CANCELLED — no number was purchased.
         </div>
       )}
 
@@ -174,6 +174,8 @@ export default function PhoneNumbersPage() {
         <PhoneCard>
           <PhoneCardHeader><Search size={11} /> BUY A NUMBER</PhoneCardHeader>
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: '0.52rem', color: warning(0.9) }}>$10 ONE-TIME PER CUSTOM NUMBER</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>The $95/month Phone System includes two-way SMS and a default platform toll-free number.</div>
             {regionDefaults && (
               <div style={{ fontSize: '0.5rem', color: slate(0.55) }}>
                 Home realm: {regionDefaults.countryInfo.flag} {regionDefaults.countryInfo.region}
@@ -227,24 +229,6 @@ export default function PhoneNumbersPage() {
           </div>
         </PhoneCard>
 
-        {/* Add existing number */}
-        <PhoneCard>
-          <PhoneCardHeader><Plus size={11} /> ADD EXISTING NUMBER</PhoneCardHeader>
-          <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <input value={newNumberForm.number} onChange={e => setNewNumberForm(f => ({ ...f, number: e.target.value }))} placeholder="Phone number..." style={{ ...INPUT_STYLE, fontSize: '0.65rem' }} data-testid="input-new-number" />
-            <input value={newNumberForm.label} onChange={e => setNewNumberForm(f => ({ ...f, label: e.target.value }))} placeholder="Label (e.g. main, support)..." style={{ ...INPUT_STYLE, fontSize: '0.65rem' }} data-testid="input-new-label" />
-            <input value={newNumberForm.greeting} onChange={e => setNewNumberForm(f => ({ ...f, greeting: e.target.value }))} placeholder="Greeting script (optional)..." style={{ ...INPUT_STYLE, fontSize: '0.65rem' }} data-testid="input-new-greeting" />
-            <select value={newNumberForm.routingMode} onChange={e => setNewNumberForm(f => ({ ...f, routingMode: e.target.value }))} style={{ ...INPUT_STYLE, fontSize: '0.65rem' }} data-testid="select-routing-mode">
-              <option value="voicemail" style={{ background: '#030803' }}>Route to Voicemail</option>
-              <option value="secretary" style={{ background: '#030803' }}>Route to Secretary AI</option>
-              <option value="forward" style={{ background: '#030803' }}>Forward to Number</option>
-            </select>
-            {addError && <div style={{ fontSize: '0.5rem', color: destructive(0.8) }}>{addError}</div>}
-            <PhoneBtn onClick={addPhoneNumber} disabled={!newNumberForm.number || addingNumber} style={{ justifyContent: 'center' }} data-testid="button-add-number">
-              {addingNumber ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} ADD NUMBER
-            </PhoneBtn>
-          </div>
-        </PhoneCard>
       </div>
 
       {/* Configured numbers */}
@@ -254,7 +238,7 @@ export default function PhoneNumbersPage() {
           <span style={{ color: slate(0.5), fontVariantNumeric: 'tabular-nums' }}>{phoneNumbers.length}</span>
         </PhoneCardHeader>
         {phoneNumbers.length === 0 ? (
-          <EmptyState message="NO NUMBERS CONFIGURED — BUY OR ADD A NUMBER ABOVE" icon={<Hash size={32} />} />
+          <EmptyState message={defaultNumber ? `USING PLATFORM DEFAULT ${formatPhone(defaultNumber)} — BUY OR ADD A CUSTOM NUMBER ABOVE` : "NO NUMBERS CONFIGURED — BUY OR ADD A NUMBER ABOVE"} icon={<Hash size={32} />} />
         ) : (
           <div>
             {phoneNumbers.map(n => (

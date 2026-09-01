@@ -10,6 +10,8 @@ import { and, eq } from "drizzle-orm";
 import twilio from "twilio";
 import { recordTelephonyActivity } from "./crm-recorder";
 import { toE164 } from "./phone";
+import { getUserOutboundNumber } from "./phone-number-service";
+import { canUsePlatformTwilio } from "./platform-twilio-access";
 
 // Re-export the shared, country-aware normalizer so existing importers
 // (campaigns.ts) keep working through the single source of truth.
@@ -22,15 +24,10 @@ function getTwilioClient() {
   return twilio(accountSid, authToken);
 }
 
-function getTwilioNumber() {
-  const num = process.env.TWILIO_PHONE_NUMBER;
-  if (!num) throw new Error("TWILIO_PHONE_NUMBER not configured");
-  return num;
-}
-
 export interface SendSmsInput {
   /** Handling user — the SMS conversation is scoped to them, exactly like a manual send. */
   userId: string;
+  userEmail?: string | null;
   /** The OTHER party's number (the recipient). */
   phone: string;
   body: string;
@@ -63,14 +60,15 @@ export interface SendSmsResult {
  * own way (the route maps it to an HTTP status; the autopilot logs it).
  */
 export async function sendSmsMessage(input: SendSmsInput): Promise<SendSmsResult> {
-  const { userId, contactId, contactName, orgId, defaultCountry } = input;
+  const { userId, userEmail, contactId, contactName, orgId, defaultCountry } = input;
   const trimmed = (input.body || "").trim();
   if (!trimmed) throw new Error("Message body required");
   const e164 = toE164(input.phone, defaultCountry);
   if (!e164) throw new Error("Invalid phone number");
+  if (!(await canUsePlatformTwilio(userId, userEmail))) throw new Error("Platform Twilio access denied");
 
   const client = getTwilioClient();
-  const fromNumber = getTwilioNumber();
+  const fromNumber = await getUserOutboundNumber(userId);
 
   const msg = await client.messages.create({ from: fromNumber, to: e164, body: trimmed });
 
