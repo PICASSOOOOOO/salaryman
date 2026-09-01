@@ -1398,6 +1398,11 @@ export default function PabloOffice() {
             onClick={e => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 360, border: '1px solid rgba(251,191,36,.4)', borderRadius: 10, background: '#09070d', padding: '1.2rem', boxShadow: '0 20px 60px rgba(0,0,0,.7)' }}
           >
+            <img
+              src={`${import.meta.env.BASE_URL}tower-art/object-shadow-radio.png`}
+              alt="Shadow Radio 107.3"
+              style={{ display: 'block', width: 180, height: 120, objectFit: 'contain', margin: '-.3rem auto .5rem' }}
+            />
             <div style={{ color: '#fde68a', fontSize: '.85rem', fontWeight: 800, letterSpacing: '.16em' }}>SHADOW RADIO · 107.3</div>
             <div style={{ marginTop: 5, color: 'rgba(253,230,138,.55)', fontSize: '.62rem', letterSpacing: '.12em' }}>SOURCE CONTROLS</div>
             <button
@@ -1591,7 +1596,11 @@ export default function PabloOffice() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexDirection: 'column', gap: 8, pointerEvents: 'none',
               }}>
-                <div style={{ fontSize: 30 }}>🔒</div>
+                <img
+                  src={`${import.meta.env.BASE_URL}tower-art/object-elevator.png`}
+                  alt=""
+                  style={{ width: 150, height: 150, objectFit: 'contain', filter: 'drop-shadow(0 10px 18px rgba(0,0,0,.8))' }}
+                />
                 <div style={{
                   fontSize: 9, letterSpacing: '0.35em', color: '#f43f5e',
                   textShadow: '0 0 10px rgba(244,63,94,0.55)',

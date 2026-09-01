@@ -187,15 +187,15 @@ describe("AudioControl gates are independent", () => {
     await mount();
     openPanel();
 
-    // Flip MUSIC on, leave AMBIANCE alone.
+    // Flip MUSIC off, leave AMBIANCE alone.
     click(byTestId("audio-control-music-toggle"));
-    expect(blob().musicEnabled).toBe(true);
+    expect(blob().musicEnabled).toBe(false);
     expect(blob().ambianceEnabled).toBe(true);
 
-    // Now flip AMBIANCE off — MUSIC must stay on.
+    // Now flip AMBIANCE off — MUSIC must stay off.
     click(byTestId("audio-control-ambiance-toggle"));
     const b = blob();
-    expect(b.musicEnabled).toBe(true);
+    expect(b.musicEnabled).toBe(false);
     expect(b.ambianceEnabled).toBe(false);
   });
 });

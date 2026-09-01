@@ -121,6 +121,12 @@ export default function TowerDirectory() {
         )}
 
         <section className="relative mb-5 overflow-hidden border border-cyan-300/25 bg-[#07101a] shadow-[0_30px_90px_rgba(0,0,0,.45)]" data-testid="lobby-map">
+          <img
+            src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,17,.35),rgba(5,7,17,.9))]" />
           <div className="flex items-center justify-between border-b border-white/10 bg-white/[.025] px-4 py-3">
             <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.22em] text-cyan-200">
               <MapPinned className="h-4 w-4" /> SHADOW TOWER · MAIN LOBBY
@@ -215,11 +221,11 @@ export default function TowerDirectory() {
                  <button
                   type="button"
                   onClick={() => setTalking(true)}
-                  className="group flex w-full max-w-sm flex-col items-center border border-cyan-200/35 bg-[#081722] p-4 text-center transition hover:-translate-y-0.5 hover:border-cyan-100"
+                   className="group relative flex w-full max-w-sm flex-col items-center overflow-hidden border border-cyan-200/35 bg-[#081722] p-4 text-center transition hover:-translate-y-0.5 hover:border-cyan-100"
                   data-testid="speak-receptionist"
                 >
-                  <span className="relative mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-cyan-200/40 bg-[radial-gradient(circle,#16445a,#07121d)]">
-                    <UserRound className="h-8 w-8 text-cyan-100" />
+                   <span className="relative mb-3 flex h-24 w-24 items-end justify-center overflow-hidden rounded-full border border-cyan-200/40 bg-[radial-gradient(circle,#16445a,#07121d)]">
+                     <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Claw Prime" className="h-28 w-28 object-contain object-bottom" />
                     <span className="absolute -right-1 top-0 h-3 w-3 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
                   </span>
                   <span className="text-[9px] font-bold tracking-[.28em] text-cyan-300">CLAW PRIME · RECEPTION LEAD</span>
@@ -287,6 +293,16 @@ export default function TowerDirectory() {
                   <span className="border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-emerald-200">FINANCE TRACKER · FILINGS</span>
                 </div>
               </div>
+            </div>
+            <div className="flex items-end gap-2">
+              <figure className="w-20 text-center">
+                <img src={`${import.meta.env.BASE_URL}tower-art/character-receptionist.png`} alt="Shadow Tower receptionist" className="h-24 w-full object-contain object-bottom" />
+                <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-cyan-200/70">RECEPTION</figcaption>
+              </figure>
+              <figure className="w-20 text-center">
+                <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Claw Prime" className="h-24 w-full object-contain object-bottom" />
+                <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-amber-200/70">CLAW PRIME</figcaption>
+              </figure>
             </div>
             <div className="flex shrink-0 items-center gap-2 border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-[10px] tracking-[.18em] text-emerald-200">
               <DoorOpen className="h-3.5 w-3.5" /> DESK ACTIVE

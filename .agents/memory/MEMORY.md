@@ -153,3 +153,4 @@
 - [Low graphics mode](low-gfx-mode.md) — one opt-in Settings switch reduces GPU/canvas work while full mode preserves high-resolution art, animation, and office simulation.
 - [Clerk local identity bridge](clerk-local-identity-bridge.md) — browser auth is Clerk cookies, but app ownership remains keyed by the signed sessionClaims.userId; never bridge sessions to local users by email.
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
+- [Shadow Tower named art](shadow-tower-named-art.md) — finished Tower spaces use a named asset manifest; procedural shapes are interaction scaffolding, not final art.
