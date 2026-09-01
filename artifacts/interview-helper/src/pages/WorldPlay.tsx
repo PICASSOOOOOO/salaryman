@@ -5849,6 +5849,8 @@ export default function WorldPlay() {
   const [bankWithAmt,  setBankWithAmt]  = useState('');
   const [bankTopupPacks, setBankTopupPacks] = useState<{ id: string; fiat: number; usdCents: number }[]>([]);
   const [bankTopupBusy, setBankTopupBusy] = useState<string | null>(null);
+  const [stripeConnectStatus, setStripeConnectStatus] = useState<{ connected: boolean; payoutsEnabled: boolean } | null>(null);
+  const [cashoutAmt, setCashoutAmt] = useState('');
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
@@ -5871,6 +5873,9 @@ export default function WorldPlay() {
     void apiFetch('/api/stripe/fiat-topup-packs').then(async (response) => {
       if (response.ok) setBankTopupPacks((await response.json()).packs ?? []);
     }).catch(() => { /* ATM remains usable for transfers if Stripe is offline. */ });
+    void apiFetch('/api/stripe/connect/status', { credentials: 'include' }).then(async (response) => {
+      if (response.ok) setStripeConnectStatus(await response.json());
+    }).catch(() => { /* show connect action if status cannot be loaded */ });
     window.addEventListener(FIAT_CHANGED_EVENT, refreshServerFiat);
     return () => window.removeEventListener(FIAT_CHANGED_EVENT, refreshServerFiat);
   }, [showBank, refreshServerFiat]);
@@ -26670,6 +26675,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           } catch { sfxError(); setNarr('> CARD → FIAT — NETWORK ERROR. NO PAYMENT STARTED.'); }
           finally { setBankTopupBusy(null); }
         };
+        const startConnectOnboarding = async () => {
+          try {
+            const r = await apiFetch('/api/stripe/connect/onboard', { method: 'POST', credentials: 'include' });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j.url) { sfxError(); setNarr(`> STRIPE CONNECT — ${j.error ?? 'ONBOARDING COULD NOT START'}.`); return; }
+            window.location.href = j.url;
+          } catch { sfxError(); setNarr('> STRIPE CONNECT — NETWORK ERROR.'); }
+        };
+        const cashoutToStripe = async () => {
+          const amountFiat = Math.round(Number(cashoutAmt));
+          if (!Number.isInteger(amountFiat) || amountFiat <= 0) { sfxError(); setNarr('> CASH-OUT — ENTER A FIAT AMOUNT.'); return; }
+          try {
+            const r = await apiFetch('/api/stripe/connect/cashout', {
+              method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amountFiat, requestId: stableRequestId('fiat-cashout', String(amountFiat)) }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) { sfxError(); setNarr(`> CASH-OUT — ${j.error ?? 'TRANSFER FAILED'}.`); return; }
+            setCashoutAmt('');
+            setNarr(`> CASH-OUT SENT — ƒ${amountFiat.toLocaleString()} → $${(Number(j.netUsdCents) / 100).toFixed(2)} USD. 5% SURCHARGE RETAINED BY PABLO CORP.`);
+            void refreshServerFiat();
+          } catch { sfxError(); setNarr('> CASH-OUT — NETWORK ERROR.'); }
+        };
         const doWithdraw = () => {
           const amt = parseInt(bankWithAmt) || 0;
           if (amt <= 0 || amt > g.savings) { sfxError(); setNarr('> BANCO OMBRA — Insufficient savings balance.'); return; }
@@ -26896,6 +26924,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   {bankTopupPacks.length === 0 && <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', textAlign: 'center', padding: '1rem' }}>CARD PACKS UNAVAILABLE · NO CHARGE ATTEMPTED</div>}
                   <div style={{ fontSize: '.5rem', color: 'rgba(251,191,36,.55)', borderTop: '1px solid rgba(251,191,36,.15)', paddingTop: '.6rem' }}>
                     STRIPE PURCHASE · NOT INCOME · NOT A LOAN · NOT A CASH-OUT PATH.
+                  </div>
+                  <div style={{ border: '1px solid rgba(168,85,247,.35)', padding: '.75rem', background: 'rgba(168,85,247,.05)', marginTop: '.25rem' }}>
+                    <div style={{ ...VTB, color: '#c084fc', fontSize: '1.1rem', letterSpacing: '.12em' }}>FIAT → YOUR STRIPE ACCOUNT</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(216,180,254,.6)', lineHeight: 1.7, marginTop: '.35rem' }}>
+                      Cash out eligible earned or purchased Fiat to your own Stripe account. A 5% surcharge stays with Pablo Corp; the remaining USD is transferred to your connected account for payout.
+                    </div>
+                    {!stripeConnectStatus?.connected || !stripeConnectStatus.payoutsEnabled ? (
+                      <button onClick={() => void startConnectOnboarding()} style={{ ...actBtn(true), marginTop: '.55rem', color: '#d8b4fe', borderColor: 'rgba(192,132,252,.5)' }}>
+                        {stripeConnectStatus?.connected ? 'FINISH STRIPE ONBOARDING ↗' : 'CONNECT YOUR STRIPE ACCOUNT ↗'}
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginTop: '.55rem' }}>
+                        <input value={cashoutAmt} onChange={e => setCashoutAmt(e.target.value)} inputMode="numeric" placeholder="FIAT AMOUNT · MIN ƒ5,000" style={{ ...inp, flex: 1, minWidth: 190 }} />
+                        <button onClick={() => void cashoutToStripe()} style={{ ...actBtn(true), color: '#d8b4fe', borderColor: 'rgba(192,132,252,.5)' }}>SEND USD</button>
+                      </div>
+                    )}
+                    <div style={{ fontSize: '.45rem', color: 'rgba(216,180,254,.4)', marginTop: '.45rem' }}>STRIPE CONNECT REQUIRED · PAYOUTS ENABLED · 5% PLATFORM SURCHARGE · NO CARD REFUND</div>
                   </div>
                 </>)}
 

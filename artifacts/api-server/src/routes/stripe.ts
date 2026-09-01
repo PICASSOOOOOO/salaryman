@@ -2,12 +2,12 @@ import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey, hasFeature, isUsdPaidFeature } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey, db, donationsTable, fiatTopupsTable, phoneNumberPurchasesTable, phoneNumbersTable, usersTable, bankAccountsTable, bankTransactionsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
-import { eq, sum, desc, and, or, isNotNull, lt, sql } from "drizzle-orm";
+import { eq, sum, desc, and, or, isNotNull, lt, sql, inArray } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
-import { ensureFiatAccounts } from "../lib/fiat-wallet";
+import { ensureFiatAccounts, spendFiat } from "../lib/fiat-wallet";
 import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { isSupportedCountry } from "../lib/phone";
@@ -46,6 +46,10 @@ const FIAT_TOPUP_PACKS = [
   { id: "topup_5000",  fiat: 5000,  usdCents: 500 },
   { id: "topup_10000", fiat: 10000, usdCents: 1000 },
 ] as const;
+const FIAT_PER_USD = 1000;
+const CASHOUT_FEE_BPS = 500;
+const CASHOUT_MIN_FIAT = 5000;
+const CASHOUT_ELIGIBLE_KINDS = ["fiat_topup", "wage", "world_job", "world_sale", "rec_reward", "income", "payroll"] as const;
 
 const PHONE_NUMBER_PRICE_CENTS = 1000;
 
@@ -798,6 +802,108 @@ router.get("/stripe/topup-history", async (req, res) => {
     .orderBy(desc(fiatTopupsTable.createdAt))
     .limit(50);
   res.json({ history });
+});
+
+router.get("/stripe/connect/status", async (req, res) => {
+  if (!req.isAuthenticated?.()) return void res.status(401).json({ error: "Login required" });
+  const [user] = await db.select({
+    accountId: usersTable.stripeConnectAccountId,
+  }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  if (!user?.accountId) return void res.json({ connected: false, payoutsEnabled: false });
+  const account = await getStripe().accounts.retrieve(user.accountId);
+  const payoutsEnabled = account.payouts_enabled === true && account.details_submitted === true;
+  await db.update(usersTable).set({ stripeConnectPayoutsEnabled: payoutsEnabled }).where(eq(usersTable.id, req.user.id));
+  res.json({
+    connected: true,
+    payoutsEnabled,
+    detailsSubmitted: account.details_submitted === true,
+    country: account.country ?? null,
+    currency: account.default_currency?.toUpperCase() ?? "USD",
+  });
+});
+
+router.post("/stripe/connect/onboard", async (req, res) => {
+  if (!req.isAuthenticated?.()) return void res.status(401).json({ error: "Login required" });
+  const stripe = getStripe();
+  const [user] = await db.select({
+    email: usersTable.email,
+    accountId: usersTable.stripeConnectAccountId,
+  }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  let accountId = user?.accountId ?? null;
+  if (!accountId) {
+    const account = await stripe.accounts.create({
+      type: "express",
+      email: user?.email ?? undefined,
+      capabilities: { transfers: { requested: true } },
+      metadata: { salarymanUserId: req.user.id },
+    }, { idempotencyKey: `connect-account:${req.user.id}` });
+    accountId = account.id;
+    await db.update(usersTable).set({ stripeConnectAccountId: accountId }).where(eq(usersTable.id, req.user.id));
+  }
+  const baseUrl = getAppBaseUrl();
+  const link = await stripe.accountLinks.create({
+    account: accountId,
+    type: "account_onboarding",
+    refresh_url: `${baseUrl}/game?stripe_connect=refresh`,
+    return_url: `${baseUrl}/game?stripe_connect=return`,
+  });
+  res.json({ url: link.url });
+});
+
+router.post("/stripe/connect/cashout", async (req, res) => {
+  if (!req.isAuthenticated?.()) return void res.status(401).json({ error: "Login required" });
+  const amountFiat = Math.round(Number(req.body?.amountFiat));
+  const requestId = String(req.body?.requestId ?? "");
+  if (!Number.isInteger(amountFiat) || amountFiat < CASHOUT_MIN_FIAT || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)) {
+    return void res.status(400).json({ error: `Minimum cash-out is ƒ${CASHOUT_MIN_FIAT.toLocaleString()}` });
+  }
+  const [user] = await db.select({
+    accountId: usersTable.stripeConnectAccountId,
+  }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  const accountId = user?.accountId;
+  if (!accountId) return void res.status(409).json({ error: "Connect your Stripe account first", code: "STRIPE_CONNECT_REQUIRED" });
+  const stripe = getStripe();
+  const connected = await stripe.accounts.retrieve(accountId);
+  if (!connected.payouts_enabled || !connected.details_submitted) {
+    return void res.status(409).json({ error: "Finish Stripe onboarding before cashing out", code: "STRIPE_PAYOUTS_DISABLED" });
+  }
+  const grossUsdCents = Math.floor((amountFiat * 100) / FIAT_PER_USD);
+  const feeCents = Math.max(1, Math.ceil(grossUsdCents * CASHOUT_FEE_BPS / 10_000));
+  const netUsdCents = grossUsdCents - feeCents;
+  if (netUsdCents <= 0) return void res.status(400).json({ error: "Cash-out is below the Stripe transfer minimum" });
+
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${req.user.id}), 42002)`);
+    const prior = await tx.select({ id: bankTransactionsTable.id }).from(bankTransactionsTable)
+      .where(and(eq(bankTransactionsTable.userId, req.user.id), sql`${bankTransactionsTable.description} LIKE ${`%[request:${requestId}]`}`)).limit(1);
+    if (prior.length > 0) return { type: "ok" as const, duplicate: true };
+    const rows = await tx.select({ kind: bankTransactionsTable.kind, amount: bankTransactionsTable.amount })
+      .from(bankTransactionsTable)
+      .where(and(eq(bankTransactionsTable.userId, req.user.id), inArray(bankTransactionsTable.kind, [...CASHOUT_ELIGIBLE_KINDS, "fiat_cashout"])));
+    const eligibleEarned = rows.reduce((total, row) => row.amount > 0 ? total + row.amount : total, 0);
+    const alreadyCashedOut = rows.reduce((total, row) => row.kind === "fiat_cashout" && row.amount < 0 ? total + Math.abs(row.amount) : total, 0);
+    const available = Math.max(0, eligibleEarned - alreadyCashedOut);
+    if (available < amountFiat) return { type: "ineligible" as const, available };
+    const debit = await spendFiat(tx, {
+      userId: req.user.id,
+      amountFiat,
+      kind: "fiat_cashout",
+      description: `STRIPE CONNECT CASH-OUT $${(netUsdCents / 100).toFixed(2)} USD`,
+      idempotencyKey: requestId,
+    });
+    if (!debit.ok) return { type: "insufficient" as const, available: debit.spendable };
+    const transfer = await stripe.transfers.create({
+      amount: netUsdCents,
+      currency: "usd",
+      destination: accountId,
+      description: `SALARYMAN ATM cash-out for ${req.user.id}`,
+      metadata: { salarymanUserId: req.user.id, requestId, amountFiat: String(amountFiat), feeCents: String(feeCents) },
+    }, { idempotencyKey: `fiat-cashout:${req.user.id}:${requestId}` });
+    return { type: "ok" as const, transferId: transfer.id, balance: debit.newBalance };
+  });
+  if (result.type === "ineligible") return void res.status(409).json({ error: "Not enough cash-out-eligible FIAT", eligibleFiat: result.available });
+  if (result.type === "insufficient") return void res.status(409).json({ error: "Insufficient FIAT balance", spendableFiat: result.available });
+  res.json({ ok: true, duplicate: result.duplicate ?? false, amountFiat, grossUsdCents, feeCents, netUsdCents, balance: "balance" in result ? result.balance : undefined });
 });
 
 // Fulfil a confirmed FIAT top-up exactly once. Idempotent: the conditional

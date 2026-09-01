@@ -344,6 +344,13 @@
       "when": 1788840000000,
       "tag": "0048_recording_expiry_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1788926400000,
+      "tag": "0049_stripe_connect_payouts",
+      "breakpoints": true
     }
   ]
 }

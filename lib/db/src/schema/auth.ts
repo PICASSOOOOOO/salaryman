@@ -19,6 +19,8 @@ export const usersTable = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  stripeConnectAccountId: varchar("stripe_connect_account_id", { length: 255 }),
+  stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").notNull().default(false),
   // Account-level public handle (without the leading "@"). Globally unique
   // (case-insensitive via a lower() unique index). Distinct from the
   // per-profile playerName used as the world data join key — do not conflate.
