@@ -111,6 +111,7 @@ export * from "./autopilot";
 export * from "./provider-health";
 export * from "./net-worth-snapshots";
 export * from "./credit-score-history";
+export * from "./credit-applications";
 export * from "./world-events";
 export * from "./resources";
 export * from "./service-listings";

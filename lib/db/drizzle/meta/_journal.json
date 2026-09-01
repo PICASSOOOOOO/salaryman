@@ -351,6 +351,13 @@
       "when": 1788926400000,
       "tag": "0049_stripe_connect_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789012800000,
+      "tag": "0050_credit_applications",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeScore } from "../routes/credit";
+import { applicationAprBps, computeScore } from "../routes/credit";
 
 type Led = Parameters<typeof computeScore>[0];
 
@@ -206,5 +206,17 @@ describe("computeScore — unit tests", () => {
       const score = computeScore(makeInput({ jailVisits, jailMinutesServed, debt, negativeBalanceDays }));
       expect(score).toBe(expected);
     });
+  });
+});
+
+describe("applicationAprBps", () => {
+  it("never prices any manually reviewed product below 15% APR", () => {
+    expect(applicationAprBps(800, 365 * 100, 100)).toBe(1500);
+    expect(applicationAprBps(680, 0, 0)).toBeGreaterThanOrEqual(1500);
+    expect(applicationAprBps(400, 0, 0)).toBeGreaterThanOrEqual(1500);
+  });
+
+  it("rewards stronger credit, longer organization history, and consistent usage", () => {
+    expect(applicationAprBps(760, 365 * 5, 90)).toBeLessThan(applicationAprBps(580, 90, 10));
   });
 });

@@ -89,6 +89,29 @@ type LoanEligibility = {
   eligible: boolean;
   reason: string | null;
 };
+type CreditApplication = {
+  id: number;
+  product: string;
+  requestedFiat: number;
+  approvedFiat: number;
+  aprBps: number;
+  termMonths: number;
+  purpose: string;
+  status: string;
+  orgId: number | null;
+  createdAt: string;
+};
+type CreditApplicationQuote = {
+  applicantScore: number;
+  orgScore: number | null;
+  orgAgeDays: number | null;
+  monthlyIncomeFiat: number;
+  consistencyScore: number;
+  aprBps: number;
+  recommendedMaxFiat: number;
+  eligible: boolean;
+  orgName: string | null;
+};
 type CreditPlan =
   | { active: true; balance: number; principal: number; apr: number; installment: number; term: number; paid: number; missed: number; nextDueAt: string | null; overdue: boolean; defaultsAfter: number }
   | { active: false; debt: number; score: number; apr: number; quotes: { term: number; installment: number; total: number }[] };
@@ -790,6 +813,42 @@ function DebtPanel({
   loading: boolean;
   onChanged: () => void;
 }) {
+  const [scope, setScope] = useState<"individual" | "organization">("individual");
+  const [product, setProduct] = useState<"loan" | "credit_line" | "grant">("loan");
+  const [requestedFiat, setRequestedFiat] = useState("10000");
+  const [termMonths, setTermMonths] = useState("12");
+  const [purpose, setPurpose] = useState("");
+  const [quote, setQuote] = useState<CreditApplicationQuote | null>(null);
+  const [applications, setApplications] = useState<CreditApplication[]>([]);
+  const [applicationBusy, setApplicationBusy] = useState(false);
+  const [applicationNotice, setApplicationNotice] = useState("");
+  const refreshApplications = useCallback(async () => {
+    const [quoteRes, appRes] = await Promise.all([
+      apiFetch(`/api/credit/applications/quote?scope=${scope}`),
+      apiFetch("/api/credit/applications"),
+    ]);
+    if (quoteRes.ok) setQuote(await quoteRes.json());
+    else setQuote(null);
+    if (appRes.ok) setApplications((await appRes.json()).applications ?? []);
+  }, [scope]);
+  useEffect(() => { void refreshApplications(); }, [refreshApplications]);
+  const submitApplication = async () => {
+    setApplicationBusy(true);
+    setApplicationNotice("");
+    try {
+      const r = await apiFetch("/api/credit/applications", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope, product, requestedFiat: Number(requestedFiat), termMonths: Number(termMonths), purpose }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) { setApplicationNotice(body.error ?? "Application could not be submitted."); return; }
+      setPurpose("");
+      setApplicationNotice("Application submitted for manual moderator review. No Fiat has been issued.");
+      await refreshApplications();
+    } finally {
+      setApplicationBusy(false);
+    }
+  };
   if (loading && !credit) {
     return (
       <div className="rounded-lg border border-white/[0.06] bg-black/30 p-6 text-center text-[11px] font-mono text-zinc-500 tracking-widest">
@@ -863,6 +922,53 @@ function DebtPanel({
           </div>
         </div>
       )}
+
+      <div className="rounded-lg border border-violet-700/30 bg-violet-950/10 p-4 space-y-3">
+        <div>
+          <p className="text-[10px] font-mono tracking-[0.3em] text-violet-300">APPLY FOR FIAT CREDIT</p>
+          <p className="mt-1 text-[11px] text-zinc-500">Every application is manually reviewed. Loans and credit never price below 15% APR. Approved funding is deposited only into personal or organization Fiat checking.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)} className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-200">
+            <option value="individual">INDIVIDUAL SALARYMAN</option>
+            <option value="organization">CURRENT ORGANIZATION</option>
+          </select>
+          <select value={product} onChange={(e) => setProduct(e.target.value as typeof product)} className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-200">
+            <option value="loan">TERM LOAN</option>
+            <option value="credit_line">CREDIT LINE</option>
+            <option value="grant">REVIEWED FUNDING GRANT</option>
+          </select>
+          <input value={requestedFiat} onChange={(e) => setRequestedFiat(e.target.value)} inputMode="numeric" placeholder="FIAT REQUESTED" className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-200" />
+          <select value={termMonths} onChange={(e) => setTermMonths(e.target.value)} className="rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-200">
+            {[3, 6, 12, 24, 36, 60].map((m) => <option key={m} value={m}>{m} MONTHS</option>)}
+          </select>
+        </div>
+        <textarea value={purpose} onChange={(e) => setPurpose(e.target.value)} rows={3} maxLength={2000} placeholder="Describe exactly how the Fiat will be used…" className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-200" />
+        {quote && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono">
+            <Stat label="QUOTED APR" value={`${(quote.aprBps / 100).toFixed(2)}%`} />
+            <Stat label="CONSISTENCY" value={`${quote.consistencyScore}/100`} />
+            <Stat label="REVIEW GUIDE" value={fmtFiat(quote.recommendedMaxFiat)} />
+            <Stat label={scope === "organization" ? "ORG AGE" : "CREDIT"} value={scope === "organization" ? `${Math.floor((quote.orgAgeDays ?? 0) / 365)}Y` : String(quote.applicantScore)} />
+          </div>
+        )}
+        <button type="button" onClick={() => void submitApplication()} disabled={applicationBusy || purpose.trim().length < 20}
+          className="rounded-md border border-violet-400/40 bg-violet-500/15 px-3 py-2 text-[10px] font-mono tracking-[0.2em] text-violet-200 hover:bg-violet-500/25 disabled:opacity-40">
+          {applicationBusy ? "SUBMITTING…" : "SUBMIT FOR MANUAL REVIEW"}
+        </button>
+        {applicationNotice && <p className="text-[10px] font-mono text-amber-300/90">{applicationNotice}</p>}
+        {applications.length > 0 && (
+          <div className="border-t border-white/[0.06] pt-3 space-y-1.5">
+            <p className="text-[9px] font-mono tracking-[0.25em] text-zinc-500">APPLICATION HISTORY</p>
+            {applications.slice(0, 5).map((app) => (
+              <div key={app.id} className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-zinc-400">
+                <span>#{app.id} · {app.product.toUpperCase()} · {fmtFiat(app.requestedFiat)}</span>
+                <span className={app.status === "funded" ? "text-emerald-300" : app.status === "declined" ? "text-rose-300" : "text-amber-300"}>{app.status.toUpperCase()} · {(app.aprBps / 100).toFixed(2)}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
     </div>
   );

@@ -9,6 +9,7 @@ import {
   Globe, Flag, Lock, Unlock, RefreshCw, Phone,
   Activity, Coins, MapPin, Briefcase, DollarSign, Server, HardHat,
   Wifi, CheckCircle2, XCircle, AlertCircle,
+  CreditCard,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -136,7 +137,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'construction' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship';
+type AdminTab = 'analytics' | 'pulse' | 'construction' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
 
 interface SalaryQualRow {
   id: number;
@@ -149,6 +150,26 @@ interface SalaryQualRow {
   contactEmail: string | null;
   pendingOwnerVerification: boolean;
   createdAt: string;
+}
+
+interface CreditReviewRow {
+  id: number;
+  applicantUserId: string;
+  orgId: number | null;
+  product: string;
+  requestedFiat: number;
+  approvedFiat: number;
+  aprBps: number;
+  termMonths: number;
+  purpose: string;
+  applicantScore: number;
+  orgScore: number | null;
+  orgAgeDays: number | null;
+  monthlyIncomeFiat: number;
+  consistencyScore: number;
+  status: string;
+  createdAt: string;
+  usage: { id: number; eventType: string; amountFiat: number; createdAt: string; metadata: Record<string, unknown> }[];
 }
 
 interface TwilioInventoryNumber {
@@ -371,7 +392,7 @@ export default function AdminPanel() {
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
     'analytics', 'pulse', 'construction', 'users', 'orgs', 'config', 'toggles', 'broadcast',
-    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship',
+    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship', 'credit',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
     ? (rawTabParam as AdminTab)
@@ -460,6 +481,46 @@ export default function AdminPanel() {
   useEffect(() => {
     if (activeTab === 'salaryqual') void loadSalaryQuals();
   }, [activeTab, loadSalaryQuals]);
+
+  const [creditReviews, setCreditReviews] = useState<CreditReviewRow[]>([]);
+  const [creditReviewsLoading, setCreditReviewsLoading] = useState(false);
+  const [creditReviewBusyId, setCreditReviewBusyId] = useState<number | null>(null);
+  const loadCreditReviews = useCallback(async () => {
+    setCreditReviewsLoading(true);
+    try {
+      const resp = await apiFetch('/api/credit/admin/applications');
+      const data = await resp.json();
+      setCreditReviews(data.applications ?? []);
+    } catch {
+      setCreditReviews([]);
+    } finally {
+      setCreditReviewsLoading(false);
+    }
+  }, []);
+  const decideCredit = useCallback(async (row: CreditReviewRow, decision: 'approved' | 'declined') => {
+    setCreditReviewBusyId(row.id);
+    try {
+      const response = await apiFetch(`/api/credit/admin/applications/${row.id}/decision`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, approvedFiat: row.requestedFiat, aprBps: Math.max(1500, row.aprBps), termMonths: row.termMonths }),
+      });
+      if (response.ok) await loadCreditReviews();
+    } finally {
+      setCreditReviewBusyId(null);
+    }
+  }, [loadCreditReviews]);
+  const fundCredit = useCallback(async (row: CreditReviewRow) => {
+    setCreditReviewBusyId(row.id);
+    try {
+      const response = await apiFetch(`/api/credit/admin/applications/${row.id}/fund`, { method: 'POST' });
+      if (response.ok) await loadCreditReviews();
+    } finally {
+      setCreditReviewBusyId(null);
+    }
+  }, [loadCreditReviews]);
+  useEffect(() => {
+    if (activeTab === 'credit') void loadCreditReviews();
+  }, [activeTab, loadCreditReviews]);
 
   // Pending citizenship applications — awaiting admin approve/deny.
   interface CitizenshipApplication {
@@ -1048,6 +1109,7 @@ export default function AdminPanel() {
     { key: 'costs', label: 'COSTS & SERVERS', icon: DollarSign },
     { key: 'status', label: 'CONNECTION STATUS', icon: Wifi },
     { key: 'salaryqual', label: 'SALARY QUALS', icon: Wallet, badge: salaryQuals.length || undefined },
+    { key: 'credit', label: 'CREDIT REVIEW', icon: CreditCard, badge: creditReviews.filter((row) => row.status === 'pending').length || undefined },
     { key: 'citizenship', label: 'CITIZENSHIP', icon: Flag, badge: citizenshipApps.length || undefined },
   ];
 
@@ -2264,6 +2326,70 @@ export default function AdminPanel() {
                         >
                           <X className="w-3 h-3" /> REJECT
                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'credit' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold tracking-wide flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" /> CREDIT APPLICATION REVIEW
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Every loan, credit-line, and funding-grant request requires a human decision. APR cannot be set below 15%; funding is a separate Fiat-only action.
+                  </p>
+                </div>
+                <button onClick={() => void loadCreditReviews()} className="text-xs px-2 py-1 rounded border border-border hover:bg-accent flex items-center gap-1">
+                  <RotateCcw className="w-3 h-3" /> REFRESH
+                </button>
+              </div>
+              {creditReviewsLoading ? (
+                <p className="text-xs text-muted-foreground">Loading…</p>
+              ) : creditReviews.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No credit applications.</p>
+              ) : (
+                <div className="space-y-3">
+                  {creditReviews.map((row) => (
+                    <div key={row.id} className="border border-border rounded-lg p-4 space-y-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="font-bold text-sm">#{row.id} · {row.product.replace('_', ' ').toUpperCase()} · ƒ{row.requestedFiat.toLocaleString()}</div>
+                          <div className="text-xs text-muted-foreground mt-1">Applicant {row.applicantUserId}{row.orgId ? ` · Org #${row.orgId}` : ' · Individual'}</div>
+                        </div>
+                        <span className={`text-xs font-mono ${row.status === 'funded' ? 'text-emerald-500' : row.status === 'declined' ? 'text-rose-500' : 'text-amber-500'}`}>{row.status.toUpperCase()}</span>
+                      </div>
+                      <p className="text-xs text-foreground/80 whitespace-pre-wrap">{row.purpose}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+                        <div><span className="text-muted-foreground">Credit</span><div className="font-mono">{row.applicantScore}</div></div>
+                        <div><span className="text-muted-foreground">Org score</span><div className="font-mono">{row.orgScore ?? '—'}</div></div>
+                        <div><span className="text-muted-foreground">Org age</span><div className="font-mono">{row.orgAgeDays == null ? '—' : `${row.orgAgeDays}d`}</div></div>
+                        <div><span className="text-muted-foreground">Income</span><div className="font-mono">ƒ{row.monthlyIncomeFiat.toLocaleString()}/mo</div></div>
+                        <div><span className="text-muted-foreground">Usage</span><div className="font-mono">{row.consistencyScore}/100</div></div>
+                        <div><span className="text-muted-foreground">APR</span><div className="font-mono">{(row.aprBps / 100).toFixed(2)}%</div></div>
+                      </div>
+                      {row.usage.length > 0 && (
+                        <div className="rounded border border-border/60 bg-muted/20 p-2 text-[10px] font-mono text-muted-foreground">
+                          {row.usage.slice(0, 5).map((event) => (
+                            <div key={event.id}>{new Date(event.createdAt).toLocaleString()} · {event.eventType.toUpperCase()} {event.amountFiat ? `· ƒ${event.amountFiat.toLocaleString()}` : ''}</div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {row.status === 'pending' && (
+                          <>
+                            <button disabled={creditReviewBusyId === row.id} onClick={() => void decideCredit(row, 'approved')} className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50">APPROVE TERMS</button>
+                            <button disabled={creditReviewBusyId === row.id} onClick={() => void decideCredit(row, 'declined')} className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent disabled:opacity-50">DECLINE</button>
+                          </>
+                        )}
+                        {row.status === 'approved' && (
+                          <button disabled={creditReviewBusyId === row.id} onClick={() => void fundCredit(row)} className="text-xs px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-50">FUND FIAT NOW</button>
+                        )}
                       </div>
                     </div>
                   ))}
