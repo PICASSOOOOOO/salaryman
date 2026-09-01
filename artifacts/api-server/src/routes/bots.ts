@@ -48,9 +48,18 @@ function getUserEmail(req: Request): string | undefined {
   return (req as Request & { user?: { email?: string } }).user?.email;
 }
 
-function requireBotAuth(req: Request, res: Response, next: NextFunction) {
+async function requireBotAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
+    return;
+  }
+  if (!await hasFeature(getUserId(req), getUserEmail(req), "claw_bot")) {
+    res.status(403).json({
+      error: "Paid Automation Pixel Agents subscription required",
+      feature: "claw_bot",
+      currency: "usd",
+      upgrade: "/pricing",
+    });
     return;
   }
   next();
@@ -58,15 +67,11 @@ function requireBotAuth(req: Request, res: Response, next: NextFunction) {
 
 /**
  * Bot factory access gate.
- * Default: allowlist (isOwnerEmail || Picasso org member).
- * Set BOT_FACTORY_INTERNAL_ONLY=false in env to fall back to the claw_bot
- * PRIME feature check (e.g. during a rollout pause or public re-open).
+ * Automation Pixel Agents are a paid USD product. Staff bypasses are resolved
+ * centrally by hasFeature; ordinary users require a Stripe-backed entitlement.
  */
 async function hasBotFactoryAccess(userId: string, email: string | undefined): Promise<boolean> {
-  if (process.env.BOT_FACTORY_INTERNAL_ONLY === "false") {
-    return hasFeature(userId, email, "claw_bot");
-  }
-  return isOwnerEmail(email) || await isPicassoOrgMember(userId);
+  return hasFeature(userId, email, "claw_bot");
 }
 
 async function requireBotFactory(req: Request, res: Response, next: NextFunction) {
@@ -80,7 +85,12 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
     next();
     return;
   }
-  res.status(403).json({ error: "Access restricted to internal users" });
+  res.status(403).json({
+    error: "Paid Automation Pixel Agents subscription required",
+    feature: "claw_bot",
+    currency: "usd",
+    upgrade: "/pricing",
+  });
 }
 
 async function getUserActiveOrgIds(userId: string): Promise<number[]> {
@@ -195,6 +205,15 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
     return;
   }
   const userId = getUserId(req);
+  if (!await hasFeature(userId, getUserEmail(req), "claw_bot")) {
+    res.status(403).json({
+      error: "Paid Automation Pixel Agents subscription required",
+      feature: "claw_bot",
+      currency: "usd",
+      upgrade: "/pricing",
+    });
+    return;
+  }
   const botId = parseInt(parseParam(req.params.id), 10);
   if (!botId || isNaN(botId)) { next(); return; }
   try {
@@ -210,16 +229,14 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
       next();
       return;
     }
-    if (bot.marketplaceItemId) {
-      const [item] = await db.select().from(botMarketplaceTable).where(eq(botMarketplaceTable.id, bot.marketplaceItemId));
-      if (item && item.priceMonthly <= 0) {
-        next();
-        return;
-      }
-    }
     const email = getUserEmail(req);
     if (!await hasBotFactoryAccess(userId, email)) {
-      res.status(403).json({ error: "Access restricted to internal users" });
+      res.status(403).json({
+        error: "Paid Automation Pixel Agents subscription required",
+        feature: "claw_bot",
+        currency: "usd",
+        upgrade: "/pricing",
+      });
       return;
     }
     next();
@@ -1031,7 +1048,12 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
 
     const email = getUserEmail(req);
     if (!await hasBotFactoryAccess(userId, email)) {
-      res.status(403).json({ error: "Access restricted to internal users" });
+      res.status(403).json({
+        error: "Paid Automation Pixel Agents subscription required",
+        feature: "claw_bot",
+        currency: "usd",
+        upgrade: "/pricing",
+      });
       return;
     }
 

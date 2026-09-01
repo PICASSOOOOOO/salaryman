@@ -27,7 +27,6 @@ import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 import { expireOverdueRentals } from './routes/fleet';
-import { runBusinessIncomeTaxAudit, shouldRunMonthlyTaxAudit } from './lib/business-tax';
 
 const rawPort = process.env["PORT"];
 
@@ -245,19 +244,3 @@ function runFleetExpiry(): void {
 }
 setTimeout(runFleetExpiry, 120_000); // 2 min after boot
 setInterval(runFleetExpiry, FLEET_CRON_MS);
-
-// Monthly business income tax audit (50% net-profit tax per city).
-// Checked hourly; actually runs once per calendar month (idempotent period key).
-// Deferred 5 min from boot so the DB seeders have time to settle.
-function runBusinessTaxAudit(): void {
-  shouldRunMonthlyTaxAudit()
-    .then((due) => {
-      if (!due) return;
-      return runBusinessIncomeTaxAudit().then((r) => {
-        console.log(`[BusinessTax] Monthly audit complete: period=${r.period} assessed=${r.assessed} totalTax=${r.totalTax} skipped=${r.skipped}`);
-      });
-    })
-    .catch((err) => console.error("[BusinessTax] Audit error:", err));
-}
-setTimeout(runBusinessTaxAudit, 5 * 60 * 1000); // 5 min after boot
-setInterval(runBusinessTaxAudit, HOUR_MS);

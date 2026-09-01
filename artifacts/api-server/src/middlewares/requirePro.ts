@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import type { FeatureKey } from "@workspace/db";
-import { hasFeature, FEATURE_CATALOG } from "../lib/plan";
+import { hasFeature, FEATURE_CATALOG, isUsdPaidFeature } from "../lib/plan";
 
 export function requireFeature(featureKey: FeatureKey) {
   const catalog = FEATURE_CATALOG[featureKey];
@@ -16,6 +16,7 @@ export function requireFeature(featureKey: FeatureKey) {
         feature: featureKey,
         featureName: catalog.name,
         price: catalog.price,
+        ...(isUsdPaidFeature(featureKey) ? { currency: "usd", paymentRequired: true } : {}),
         upgrade: "/upgrade",
       });
       return;

@@ -8,6 +8,7 @@ import {
   balanceSheetTxTable,
   invoicesTable,
   businessTaxPaymentsTable,
+  platformConnectedAppsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
 import { getAccountingReport } from "../lib/finance-engine";
@@ -24,6 +25,36 @@ function requireAuth(req: Request, res: Response): boolean {
     return false;
   }
   return true;
+}
+
+async function requireTaxProviderConnection(req: Request, res: Response): Promise<boolean> {
+  const userId = req.user!.id;
+  const orgId = String((req as Request & { orgId?: string }).orgId ?? userId);
+  const [connection] = await db
+    .select({ id: platformConnectedAppsTable.id, config: platformConnectedAppsTable.config })
+    .from(platformConnectedAppsTable)
+    .where(and(
+      eq(platformConnectedAppsTable.orgId, orgId),
+      eq(platformConnectedAppsTable.appSlug, "tax-provider"),
+      eq(platformConnectedAppsTable.status, "connected"),
+    ))
+    .limit(1);
+  const config = connection?.config && typeof connection.config === "object"
+    ? connection.config as Record<string, unknown>
+    : {};
+  const credentials = config.credentials && typeof config.credentials === "object"
+    ? config.credentials as Record<string, unknown>
+    : {};
+  const hasProviderCredential = ["apiKey", "login"].some((key) =>
+    typeof credentials[key] === "string" && credentials[key].trim().length > 0
+  );
+  if (connection && hasProviderCredential) return true;
+  res.status(428).json({
+    error: "Connect your tax provider before using tax tools.",
+    code: "tax_provider_connection_required",
+    connect: "/profile?section=platform",
+  });
+  return false;
 }
 
 function today() {
@@ -743,6 +774,7 @@ async function computeScopedEstimate(userIds: string[], opts: TaxOverrides): Pro
 
 router.get("/enterprise/tax", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
+  if (!await requireTaxProviderConnection(req, res)) return;
   const userId = req.user!.id;
 
   const attach = req.query.attach !== "0" && req.query.attach !== "false";
@@ -802,6 +834,7 @@ async function buildTaxReadyInputs(userIds: string[]): Promise<{ grossReceipts: 
 // whole org when the caller holds finance.view.
 router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
+  if (!await requireTaxProviderConnection(req, res)) return;
   const userId = req.user!.id;
 
   const fsRaw = String(req.query.filingStatus ?? "single");
@@ -842,6 +875,7 @@ router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => 
 // the finance.export permission.
 router.get("/enterprise/tax/export", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
+  if (!await requireTaxProviderConnection(req, res)) return;
   const userId = req.user!.id;
 
   const fsRaw = String(req.query.filingStatus ?? "single");

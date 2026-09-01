@@ -160,6 +160,7 @@ router.get("/platform/apps", async (req, res) => {
     { slug: "salesforce", name: "SALESFORCE", description: "Sync leads, contacts, opportunities, and accounts with Salesforce", status: "available", icon: "cloud", category: "crm" },
     { slug: "stripe", name: "STRIPE", description: "Payment processing, subscription management, invoice sync", status: "available", icon: "credit-card", category: "finance" },
     { slug: "quickbooks", name: "QUICKBOOKS", description: "Accounting sync — invoices, expenses, P&L, bank reconciliation. Bring your own QuickBooks API key + login.", status: "available", icon: "calculator", category: "finance" },
+    { slug: "tax-provider", name: "TAX PROVIDER", description: "Bring your own tax-service account and API credentials. SALARYMAN does not include or resell tax filing services.", status: "available", icon: "landmark", category: "finance" },
     { slug: "shopify", name: "SHOPIFY", description: "E-commerce integration — products, orders, inventory, customers", status: "available", icon: "shopping-bag", category: "commerce" },
     { slug: "etsy", name: "ETSY", description: "Marketplace integration — listings, orders, reviews, shop analytics", status: "available", icon: "palette", category: "commerce" },
     { slug: "zapier", name: "ZAPIER", description: "Connect to 6,000+ apps with automated workflows and triggers", status: "available", icon: "zap", category: "automation" },

@@ -19,6 +19,7 @@ import { sanitizeBusinessOpsPrefs } from "../lib/autopilot/business-ops-prefs";
 import { sanitizeCrmPrefs } from "../lib/autopilot/crm-prefs";
 import { sanitizeAccountingPrefs } from "../lib/autopilot/accounting-prefs";
 import { SOCIAL_PLATFORMS } from "../lib/social-service";
+import { requireFeature } from "../middlewares/requirePro";
 
 // Display labels for the marketing platform allow-list, surfaced to the UI.
 const MARKETING_PLATFORM_LABELS: Record<string, string> = {
@@ -51,6 +52,7 @@ const PREFS_SANITIZERS: Record<string, (raw: unknown) => Record<string, unknown>
 };
 
 const router = Router();
+const requireAutomationSubscription = requireFeature("claw_bot");
 
 function getUserId(req: Request): string {
   return (req as Request & { user?: { id?: string } }).user?.id ?? "";
@@ -69,7 +71,7 @@ function requireAuth(req: Request, res: Response): boolean {
  * (merged with defaults), the org's assignable bots, and recent activity.
  * Owner/manager gated via the `autopilot.manage` org permission.
  */
-router.get("/autopilot", async (req, res) => {
+router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = getUserId(req);
   try {
@@ -123,7 +125,7 @@ router.get("/autopilot", async (req, res) => {
  * the dashboard to poll for a live feed and to filter by domain without reloading
  * the whole control surface.
  */
-router.get("/autopilot/activity", async (req, res) => {
+router.get("/autopilot/activity", requireAutomationSubscription, async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = getUserId(req);
   try {
@@ -162,7 +164,7 @@ router.get("/autopilot/activity", async (req, res) => {
  * PUT /api/autopilot/:domain — set one domain's autopilot config (assign bot,
  * toggle on/off, optional caps). Owner/manager gated.
  */
-router.put("/autopilot/:domain", async (req, res) => {
+router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = getUserId(req);
   const domain = String(req.params.domain ?? "");

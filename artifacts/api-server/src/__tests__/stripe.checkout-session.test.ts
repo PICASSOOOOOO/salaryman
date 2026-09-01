@@ -11,9 +11,11 @@ vi.mock("../lib/plan", () => ({
   grantFeature: vi.fn(),
   revokeFeatureBySubscription: vi.fn(),
   FEATURE_CATALOG: {
-    claw_bot: { name: "PABLO PRIME" },
+    claw_bot: { name: "Automation Pixel Agents", price: 149 },
   },
+  isUsdPaidFeature: (value: string) => value === "claw_bot" || value === "phone_system",
   resolveFeatureKey: (value: string) => value === "claw_bot" ? "claw_bot" : undefined,
+  PICASSO_START_FIAT: 999_999_999,
 }));
 
 vi.mock("@workspace/db", () => ({

@@ -1,15 +1,12 @@
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Loader2, Sparkles, Bot } from "lucide-react";
-import { useEffect } from "react";
+import { Check, ChevronRight, Loader2, Sparkles, Bot, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
 
-// Note: Zap/Mic/Monitor/Phone icons were removed along with the legacy
-// à-la-carte ADD_ONS section — PRIME bundles all of those tools now.
-// PABLO PRIME — single bundle. Server auto-grants live_listen / screen_scan
-// / say_this / phone_system as soon as a user holds claw_bot, so this page
-// no longer surfaces them as standalone add-ons.
+// Paid services are deliberately separate: Automation Pixel Agents and the
+// Twilio-backed Phone System each require their own USD subscription.
 const BOT_CATEGORIES = [
   { name: "CORE COMMAND", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
   { name: "THE ACADEMY", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
@@ -21,9 +18,6 @@ const PRIME_FEATURES = [
   "ECHO-7 · LIVE LISTEN — REAL-TIME AUDIO INTERCEPT",
   "OPTIC-9 · SCREEN SCAN — READS YOUR SCREEN",
   "VOX-4 · SAY THIS — LIVE SPEECH COACHING",
-  "TTC · UNLIMITED PHONE + SMS CAMPAIGNS",
-  "SECRETARY · 24/7 CALL HANDLING",
-  "PABLO CALL AGENT · OUTBOUND VOICE BOT",
   "PIXEL AGENTS · 9 CURATED AGENTS · 4 TEAMS",
   "BOT-TO-BOT CHAINING · COMMAND CENTER",
   "ALL FUTURE BOTS & TOOLS INCLUDED",
@@ -36,6 +30,7 @@ export default function Pricing() {
   const { isAuthenticated, login } = useAuth();
   const { features, isOwner, loading } = usePlan();
   const [location, navigate] = useLocation();
+  const [checkoutFeature, setCheckoutFeature] = useState<"claw_bot" | "phone_system" | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -56,6 +51,25 @@ export default function Pricing() {
   }
 
   const clawActive = features.has("claw_bot");
+  const phoneActive = features.has("phone_system");
+
+  const startCheckout = async (feature: "claw_bot" | "phone_system") => {
+    if (!isAuthenticated) { login(); return; }
+    setCheckoutFeature(feature);
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}api/stripe/create-checkout-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ feature }),
+      });
+      const body = await response.json().catch(() => ({})) as { url?: string; error?: string };
+      if (!response.ok || !body.url) throw new Error(body.error || "Checkout unavailable");
+      window.location.assign(body.url);
+    } finally {
+      setCheckoutFeature(null);
+    }
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #06080d 0%, #0a0e1a 50%, #06080d 100%)" }}>
@@ -82,10 +96,10 @@ export default function Pricing() {
             </span>
           </div>
           <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "clamp(36px, 8vw, 56px)", letterSpacing: "0.08em", color: "#fff", lineHeight: 1.1 }}>
-            PABLO PRIME
+            PAID SERVICES
           </h1>
           <p style={{ fontFamily: "var(--font-sans)", fontSize: 13, color: "#94a3b8", letterSpacing: "0.15em", marginTop: 8 }}>
-            EVERY PREMIUM TOOL · ONE SUBSCRIPTION · $149/MO
+            AUTOMATION AND PHONE · SEPARATE USD SUBSCRIPTIONS
           </p>
           <p style={{ fontFamily: "var(--font-sans)", fontSize: 11, color: "#64748b", letterSpacing: "0.1em", marginTop: 4 }}>
             CUSTOMIZE YOUR OFFICE · YOUR BUSINESS · YOUR DIGITAL LIFE
@@ -131,10 +145,10 @@ export default function Pricing() {
                 </div>
                 <div>
                   <h2 style={{ fontFamily: "var(--font-sans)", fontSize: 32, letterSpacing: "0.06em", color: "#ef4444", lineHeight: 1 }}>
-                    PABLO PRIME
+                    AUTOMATION PIXEL AGENTS
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
-                    Every premium tool, one bundle. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and secretary, plus a curated nine-agent workforce managed by Jean Claw across four teams. Customize your office, business, and digital life. One subscription unlocks everything — current and future.
+                    A curated nine-agent automation workforce managed across four teams. Includes automation tools, bot chaining, and business workflows. The Twilio Phone System is billed separately.
                   </p>
                 </div>
               </div>
@@ -183,21 +197,50 @@ export default function Pricing() {
                 </div>
               ) : (
                 <button
-                  onClick={() => {
-                    if (!isAuthenticated) { login(); return; }
-                    navigate("/pledge?view=prime");
-                  }}
+                  onClick={() => startCheckout("claw_bot")}
+                  disabled={checkoutFeature !== null}
                   className="flex items-center gap-2 px-8 py-3.5 rounded-xl text-sm font-bold tracking-wide transition-all"
                   style={{ background: "#ef4444", color: "#fff", boxShadow: "0 0 30px rgba(239,68,68,0.3)" }}
                 >
-                  <Sparkles className="w-4 h-4" />
-                  {isAuthenticated ? "VIEW PABLO PRIME IN STORE" : "SIGN IN TO SUBSCRIBE"}
+                  {checkoutFeature === "claw_bot" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {isAuthenticated ? "SUBSCRIBE IN USD" : "SIGN IN TO SUBSCRIBE"}
                   <ChevronRight className="w-4 h-4" />
                 </button>
               )}
               <span style={{ fontSize: 10, color: "#64748b", fontFamily: "var(--font-sans)", letterSpacing: "0.15em" }}>
                 CANCEL ANYTIME · NO CONTRACTS
               </span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-sky-500/25 p-6 sm:p-8 mb-8"
+          style={{ background: "linear-gradient(135deg, rgba(14,165,233,.07), rgba(2,6,23,.4))" }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl grid place-items-center border border-sky-500/25 bg-sky-500/10">
+                <Phone className="w-6 h-6 text-sky-300" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-sky-300">TWILIO PHONE SYSTEM</h2>
+                <p className="mt-1 text-xs text-slate-400 max-w-xl">
+                  Business calling, SMS, phone numbers, call campaigns, recordings, and the AI secretary. Locked until this separate USD subscription is active.
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 sm:text-right">
+              <div><span className="text-4xl font-extrabold text-sky-300">$95</span><span className="text-xs text-slate-500">/MO USD</span></div>
+              {phoneActive ? (
+                <div className="mt-2 text-sm font-bold text-emerald-400">ACTIVE</div>
+              ) : (
+                <button type="button" onClick={() => startCheckout("phone_system")}
+                  disabled={checkoutFeature !== null}
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">
+                  {checkoutFeature === "phone_system" && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isAuthenticated ? "SUBSCRIBE IN USD" : "SIGN IN TO SUBSCRIBE"}
+                </button>
+              )}
             </div>
           </div>
         </motion.div>

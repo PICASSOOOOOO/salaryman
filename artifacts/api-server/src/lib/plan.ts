@@ -1,4 +1,4 @@
-import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pabloTaxMeterTable, pledgePurchasesTable } from "@workspace/db";
+import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pledgePurchasesTable } from "@workspace/db";
 import { eq, and, gt, sql as sqlFn } from "drizzle-orm";
 
 // PABLO PRIME and the PABLO PACKAGE ($149/mo `claw_bot` bundle) are sold
@@ -10,15 +10,6 @@ import { eq, and, gt, sql as sqlFn } from "drizzle-orm";
 // fired. Treat them as equivalent at read time so anyone who is Prime in
 // either ledger gets the full bundle. New grants/revokes also sync both
 // columns going forward (see stripe.ts).
-async function isPrimeActiveInMeter(userId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ primeActive: pabloTaxMeterTable.primeActive })
-    .from(pabloTaxMeterTable)
-    .where(eq(pabloTaxMeterTable.userId, userId))
-    .limit(1);
-  return !!row && row.primeActive === 1;
-}
-
 export type Tier = "free" | "pro";
 
 // THE PABLO PACKAGE — single $149/mo bundle that unlocks every paid feature
@@ -29,22 +20,31 @@ export type Tier = "free" | "pro";
 // any code still reading individual prices, but Pricing/Upgrade pages no
 // longer sell them standalone.
 export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: string; price: number; desc: string }> = {
-  live_listen: { name: "Live Listen",  codename: "ECHO-7", price: 0, desc: "Included in PABLO." },
-  screen_scan: { name: "Screen Scan",  codename: "OPTIC-9", price: 0, desc: "Included in PABLO." },
-  say_this:    { name: "Say This",     codename: "VOX-4", price: 0, desc: "Included in PABLO." },
-  phone_system:{ name: "Phone System", codename: "CALLLHOME", price: 0, desc: "Included in PABLO." },
+  live_listen: { name: "Live Listen",  codename: "ECHO-7", price: 0, desc: "Included with Automation Pixel Agents." },
+  screen_scan: { name: "Screen Scan",  codename: "OPTIC-9", price: 0, desc: "Included with Automation Pixel Agents." },
+  say_this:    { name: "Say This",     codename: "VOX-4", price: 0, desc: "Included with Automation Pixel Agents." },
+  phone_system:{
+    name: "Phone System",
+    codename: "CALLLHOME",
+    price: 95,
+    desc: "Paid Twilio-connected business calling and messaging. Billed only in USD.",
+  },
   claw_bot: {
-    name: "PABLO",
-    codename: "PABLO PACKAGE",
+    name: "Automation Pixel Agents",
+    codename: "PIXEL AGENT AUTOMATION",
     price: 149,
-    desc: "Everything paid, in one subscription. Jean Claw, Rick, and a curated nine-agent workforce organized across four teams, plus Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary. One price. One platform. One package.",
+    desc: "A curated automation workforce organized across four teams. Billed only in USD. Phone service is separate.",
   },
 };
 
-// Bundle rule: any feature in BUNDLED_BY_PABLO is granted automatically when
-// the user holds an active PABLO (claw_bot) subscription. Add new paid
-// features here and they're instantly part of the bundle.
-const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this", "phone_system"];
+// Automation tools belong to the Pixel Agent subscription. Twilio is a
+// separate cost-bearing service and must never be unlocked by this bundle.
+const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"];
+const USD_PAID_FEATURES = new Set<FeatureKey>(["phone_system", "claw_bot"]);
+
+export function isUsdPaidFeature(feature: FeatureKey): boolean {
+  return USD_PAID_FEATURES.has(feature);
+}
 
 // Picasso TESTERS — internal team mailboxes that get every paid feature
 // for free (phone system, claw_bot bundle, live_listen, screen_scan,
@@ -198,7 +198,6 @@ const LEGACY_ALIASES: Record<string, FeatureKey> = {
 // ledger, identical ownership in both places. Keyed by Pledge Store itemId.
 export const PLEDGE_FEATURE_UNLOCKS: Record<string, FeatureKey[]> = {
   term_pablo_pass: ["live_listen", "screen_scan", "say_this"],
-  term_phone_pass: ["phone_system"],
 };
 
 // Returns the terminal features unlocked by a user's completed pledge
@@ -225,17 +224,11 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
   for (const r of rows) {
     const key = r.featureKey as string;
     if (FEATURE_KEYS.includes(key as FeatureKey)) {
-      features.add(key as FeatureKey);
+      const feature = key as FeatureKey;
+      if (!isUsdPaidFeature(feature) || !!r.stripeSubscriptionId) features.add(feature);
     }
     const alias = LEGACY_ALIASES[key];
-    if (alias) features.add(alias);
-  }
-  // PABLO PRIME / PABLO PACKAGE equivalence — see isPrimeActiveInMeter
-  // comment. If the user is Prime in the tax meter but missing the
-  // claw_bot grant, treat them as if they had it so they get the full
-  // bundle (phone_system included).
-  if (!features.has("claw_bot") && await isPrimeActiveInMeter(userId)) {
-    features.add("claw_bot");
+    if (alias && (!isUsdPaidFeature(alias) || !!r.stripeSubscriptionId)) features.add(alias);
   }
   // Pledge Store passes — owning a terminal-pass pledge (pledge_purchases,
   // the same ledger the in-world game reads) unlocks its mapped features here.
@@ -301,17 +294,25 @@ export async function hasFeature(userId: string, email: string | undefined | nul
       .select()
       .from(userFeaturesTable)
       .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, key)));
-    if (row) return true;
+    if (row) {
+      const resolved = resolveFeatureKey(key);
+      if (!resolved || !isUsdPaidFeature(resolved) || !!row.stripeSubscriptionId) return true;
+    }
   }
-  // PABLO PRIME / PABLO PACKAGE equivalence — see isPrimeActiveInMeter.
-  // Any bundled feature (phone_system, live_listen, screen_scan, say_this)
-  // and claw_bot itself are unlocked if the user is Prime in the meter.
-  if (feature === "claw_bot" || BUNDLED_BY_PABLO.includes(feature)) {
-    if (await isPrimeActiveInMeter(userId)) return true;
+  // A paid automation subscription unlocks its included automation tools, but
+  // never the separately billed Twilio phone system.
+  if (BUNDLED_BY_PABLO.includes(feature)) {
+    const [automation] = await db
+      .select({ stripeSubscriptionId: userFeaturesTable.stripeSubscriptionId })
+      .from(userFeaturesTable)
+      .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, "claw_bot")));
+    if (automation?.stripeSubscriptionId) return true;
   }
   // Pledge Store passes unlock terminal features from the pledge_purchases
   // ledger — the same source of truth the in-world game reads.
   if ((await getPledgeUnlockedFeatures(userId)).includes(feature)) return true;
+  // Cost-bearing products cannot be activated by a trial or an in-game grant.
+  if (isUsdPaidFeature(feature)) return false;
   return hasActiveTrial(userId, email, feature);
 }
 
@@ -375,7 +376,7 @@ export async function getUserTier(userId: string, email?: string | null): Promis
   if (isOwnerEmail(email)) return "pro";
   const rows = await db.select().from(userTiersTable).where(eq(userTiersTable.userId, userId));
   if (rows.length > 0) return rows[0].tier as Tier;
-  return "pro";
+  return "free";
 }
 
 export async function setUserTier(userId: string, tier: Tier, grantedBy: string): Promise<void> {

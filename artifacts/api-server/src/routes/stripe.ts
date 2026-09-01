@@ -1,6 +1,6 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
-import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey, hasFeature } from "../lib/plan";
+import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey, hasFeature, isUsdPaidFeature } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey, db, donationsTable, fiatTopupsTable, bankAccountsTable, bankTransactionsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
 import { eq, sum, desc, and, sql } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
@@ -187,7 +187,24 @@ async function ensureProductForFeature(feature: FeatureKey): Promise<string | un
 
 async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
   const envPrice = process.env[FEATURE_PRICE_ENV[feature]];
-  if (envPrice) return envPrice;
+  const catalog = FEATURE_CATALOG[feature];
+  const expectedUnitAmount = catalog.price * 100;
+  const priceMatches = (price: Stripe.Price) =>
+    price.active &&
+    price.currency.toLowerCase() === "usd" &&
+    price.unit_amount === expectedUnitAmount &&
+    price.type === "recurring" &&
+    price.recurring?.interval === "month";
+
+  if (envPrice) {
+    try {
+      const configured = await getStripe().prices.retrieve(envPrice);
+      if (priceMatches(configured)) return configured.id;
+      console.error(`[Stripe] Ignoring invalid configured price for ${feature}; expected USD ${catalog.price}/month`);
+    } catch (error) {
+      console.error(`[Stripe] Could not validate configured price for ${feature}:`, error instanceof Error ? error.message : error);
+    }
+  }
 
   if (priceIdCache[feature]) return priceIdCache[feature];
 
@@ -196,14 +213,14 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
 
   try {
     const stripe = getStripe();
-    const prices = await stripe.prices.list({ product: productId, active: true, limit: 1 });
-    if (prices.data.length > 0) {
-      priceIdCache[feature] = prices.data[0].id;
-      console.log(`[Stripe] Resolved price for ${feature}: ${prices.data[0].id}`);
-      return prices.data[0].id;
+    const prices = await stripe.prices.list({ product: productId, active: true, limit: 100 });
+    const matchingPrice = prices.data.find(priceMatches);
+    if (matchingPrice) {
+      priceIdCache[feature] = matchingPrice.id;
+      console.log(`[Stripe] Resolved verified USD price for ${feature}: ${matchingPrice.id}`);
+      return matchingPrice.id;
     }
 
-    const catalog = FEATURE_CATALOG[feature];
     const newPrice = await stripe.prices.create({
       product: productId,
       unit_amount: catalog.price * 100,
@@ -250,8 +267,8 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
 
   const rawFeature = req.body?.feature as string | undefined;
   const feature = rawFeature ? resolveFeatureKey(rawFeature) : undefined;
-  if (!feature) {
-    res.status(400).json({ error: "Invalid feature", validFeatures: [...FEATURE_KEYS] });
+  if (!feature || !isUsdPaidFeature(feature)) {
+    res.status(400).json({ error: "Only paid Phone System and Automation Pixel Agent subscriptions are sold here", validFeatures: ["phone_system", "claw_bot"] });
     return;
   }
 

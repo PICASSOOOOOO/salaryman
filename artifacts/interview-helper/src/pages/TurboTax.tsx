@@ -99,8 +99,8 @@ export default function TurboTax() {
         const json = await r.json() as { estimate: TaxEstimate; scheduleC: ScheduleC };
         setData(json.estimate);
         setScheduleC(json.scheduleC);
-      } else if (r.status === 403 || r.status === 400) {
-        const msg = (await r.json().catch(() => ({}))).error || 'Org-wide tax data is not available to you.';
+      } else if (r.status === 428 || r.status === 403 || r.status === 400) {
+        const msg = (await r.json().catch(() => ({}))).error || 'Tax data is not available until you connect your tax provider.';
         setScopeError(msg);
         setData(null);
         setScheduleC(null);

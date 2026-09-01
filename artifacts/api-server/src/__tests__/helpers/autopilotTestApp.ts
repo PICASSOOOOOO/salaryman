@@ -7,6 +7,7 @@ import {
   orgMembersTable,
   autopilotConfigsTable,
   botsTable,
+  userFeaturesTable,
   type OrgRole,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
@@ -58,6 +59,12 @@ export async function createUser(): Promise<{ id: string; email: string }> {
     .values({ email })
     .returning({ id: usersTable.id, email: usersTable.email });
   createdUserIds.push(row.id);
+  await db.insert(userFeaturesTable).values({
+    userId: row.id,
+    featureKey: "claw_bot",
+    grantedBy: "stripe-test",
+    stripeSubscriptionId: `sub_test_${suffix}`,
+  });
   return { id: row.id, email: row.email ?? email };
 }
 
@@ -133,6 +140,7 @@ export async function cleanupTestData() {
     await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   }
   if (createdUserIds.length) {
+    await db.delete(userFeaturesTable).where(inArray(userFeaturesTable.userId, createdUserIds));
     await db.delete(orgMembersTable).where(inArray(orgMembersTable.userId, createdUserIds));
     await db.delete(usersTable).where(inArray(usersTable.id, createdUserIds));
   }
