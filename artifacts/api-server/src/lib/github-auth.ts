@@ -1,8 +1,6 @@
 // GitHub OAuth2 helpers. Like Discord, GitHub is a plain OAuth2 provider (not
-// OIDC), so we drive the authorization-code flow by hand instead of using
-// openid-client. This mirrors lib/discord-auth.ts and feeds the same session
-// layer (createSession / SESSION_COOKIE) so all login methods produce identical
-// sessions.
+// OIDC), so its authorization-code flow is implemented directly. It is used
+// only to connect a GitHub identity to a Clerk-authenticated local account.
 
 export const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 export const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";

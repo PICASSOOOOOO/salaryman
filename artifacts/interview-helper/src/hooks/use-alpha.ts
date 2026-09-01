@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 export type AlphaStatus = "pending" | "approved" | "rejected" | "revoked";
 export type AlphaRole = "alpha_tester" | "alpha_dev";

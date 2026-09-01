@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Radio, Users, Zap, Square, CheckSquare, Loader2, X, Search } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
@@ -43,7 +44,7 @@ export default function PhoneSessionsPage() {
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
+    apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
@@ -74,7 +75,7 @@ export default function PhoneSessionsPage() {
     setError('');
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/dialing/start'), {
+        const r = await apiFetch(apiUrl('twilio/dialing/start'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }) });
         const body = await r.json();
@@ -103,7 +104,7 @@ export default function PhoneSessionsPage() {
   const stopDialingSession = async () => {
     if (!dialingSession) return;
     try {
-      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
       if (r.ok) {
         setDialingSession(null);
       } else {

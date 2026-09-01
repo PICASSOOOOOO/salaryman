@@ -99,7 +99,7 @@ export default function Subway() {
   }
 
   useEffect(() => {
-    fetch("/api/subway/stations", { credentials: "include" })
+    apiFetch("/api/subway/stations", { credentials: "include" })
       .then(r => r.json())
       .then((j) => { setStations(j.stations ?? []); setVouchers(j.vouchers ?? 0); setLoading(false); })
       .catch(() => setLoading(false));

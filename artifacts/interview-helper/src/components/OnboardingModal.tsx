@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, ArrowRight, X, Check, Sparkles } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 
 const ONBOARDING_KEY = 'salaryman_onboarding_done';
 
@@ -38,7 +39,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     const dismissed = localStorage.getItem(ONBOARDING_KEY);
     if (dismissed) return;
 
-    fetch(`${import.meta.env.BASE_URL}api/tools/memory`)
+    apiFetch('/api/tools/memory')
       .then(r => r.json())
       .then(data => {
         if (!data.memory || data.memory.trim() === '') {
@@ -77,7 +78,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     ].filter(Boolean).join('\n');
 
     try {
-      await fetch(`${import.meta.env.BASE_URL}api/tools/memory`, {
+      await apiFetch('/api/tools/memory', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memory }),

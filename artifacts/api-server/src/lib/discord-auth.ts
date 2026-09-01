@@ -1,7 +1,6 @@
 // Discord OAuth2 helpers. Discord is a plain OAuth2 provider (not OIDC), so we
-// drive the authorization-code flow by hand instead of using openid-client.
-// This lives alongside the Replit-Auth OIDC wiring in lib/auth.ts and feeds the
-// same session layer (createSession / SESSION_COOKIE) so both login methods
+// drive the authorization-code flow by hand. This provider is used only for
+// connecting a Discord identity to an already Clerk-authenticated account.
 // produce identical sessions.
 
 export const DISCORD_API_BASE = "https://discord.com/api/v10";

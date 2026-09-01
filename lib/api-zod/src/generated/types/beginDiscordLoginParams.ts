@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type BeginBrowserLoginParams = {
+export type BeginDiscordLoginParams = {
   returnTo?: string;
 };

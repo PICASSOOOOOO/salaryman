@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
 export type CosmeticCategory = 'all' | 'skin' | 'vehicle' | 'weapon' | 'emote' | 'theme';

@@ -47,7 +47,7 @@ const h = vi.hoisted(() => {
 h.toast.mockImplementation(() => ({ id: "toast-1", update: h.toastUpdate, dismiss: vi.fn() }));
 
 vi.mock("@/components/MiniNebula", () => ({ MiniNebula: () => null }));
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ user: null, isAuthenticated: false }),
 }));
 vi.mock("@/hooks/use-chat-socket", () => ({ useChatSocket: () => h.chatState }));

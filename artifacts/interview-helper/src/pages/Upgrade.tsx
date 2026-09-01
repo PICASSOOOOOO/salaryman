@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
 import { getDefaultBoomerMode } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";

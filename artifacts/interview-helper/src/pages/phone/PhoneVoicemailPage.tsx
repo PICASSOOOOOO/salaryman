@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Voicemail, Trash2, Play, Pause, Phone, CheckCircle, Eye, EyeOff, X, AlertTriangle , Volume2, Check } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
@@ -85,7 +86,7 @@ function SendVoicemailToHummingBird({ url, id }: { url: string; id: number }) {
   const send = async () => {
     setBusy(true);
     try {
-      const res = await fetch(url, { credentials: 'include' });
+      const res = await apiFetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error('fetch ' + res.status);
       const blob = await res.blob();
       const ext = (blob.type.split('/')[1] || 'mp3').split(';')[0];
@@ -134,7 +135,7 @@ export default function PhoneVoicemailPage() {
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => {
-    fetch(apiUrl('twilio/voicemail'), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/voicemail'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { rawNavigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.voicemails) { setVoicemails(d.voicemails); setUnread(d.unread ?? 0); } }
@@ -146,7 +147,7 @@ export default function PhoneVoicemailPage() {
 
   const markRead = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { rawNavigate('/pricing'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to mark as read'); return; }
       setVoicemails(prev => prev.map(v => v.id === id ? { ...v, isRead: true } : v));
@@ -156,7 +157,7 @@ export default function PhoneVoicemailPage() {
 
   const deleteVoicemail = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE', credentials: 'include' });
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete voicemail'); return; }
       setVoicemails(prev => prev.filter(v => v.id !== id));
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
@@ -166,7 +167,7 @@ export default function PhoneVoicemailPage() {
     setError('');
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/call'), {
+        const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ recipientNumber: phone, userId: user?.id, callerName: user?.firstName, contactName: name }) });
         const body = await r.json();

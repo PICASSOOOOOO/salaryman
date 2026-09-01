@@ -10,7 +10,7 @@ import {
   MessageSquare, Wallet, Target, Megaphone, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useCurrency } from '@/hooks/use-currency';
 import { formatFromUsd } from '@/lib/currency';

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 const PENDING_HOUSING_KEY = "salaryman_pending_housing";
 const SAVE_KEY = "sm_save";
 
@@ -36,7 +37,7 @@ export async function settlePendingHousingAssessment(): Promise<boolean> {
   const pending = readPendingHousingAssessment();
   if (!pending) return true;
   try {
-    const response = await fetch("/api/onboard-housing/charge", {
+    const response = await apiFetch("/api/onboard-housing/charge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

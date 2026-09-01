@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { X, Bug, MessageSquareText, Loader2, CheckCircle2, ShieldCheck, FlaskConical } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useAlpha } from '@/hooks/use-alpha';
 
 const CATEGORIES = ["Bug", "UI Issue", "Feature Request", "Performance", "Other"] as const;

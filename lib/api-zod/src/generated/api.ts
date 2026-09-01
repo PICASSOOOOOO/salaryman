@@ -108,63 +108,8 @@ export const SolveInterviewQuestionBody = zod.object({
 });
 
 /**
- * @summary Get the currently authenticated user
+ * @summary Start the browser Discord OAuth login flow
  */
-export const GetCurrentAuthUserHeader = zod.object({
-  Authorization: zod.string().optional(),
-});
-
-export const GetCurrentAuthUserResponse = zod.object({
-  user: zod.union([
-    zod.object({
-      id: zod.string(),
-      email: zod.string().email().nullable(),
-      firstName: zod.string().nullable(),
-      lastName: zod.string().nullable(),
-      profileImageUrl: zod.string().nullable(),
-      username: zod.string().nullish(),
-    }),
-    zod.null(),
-  ]),
-});
-
-/**
- * @summary Start the browser OIDC login flow
- */
-export const BeginBrowserLoginQueryParams = zod.object({
+export const BeginDiscordLoginQueryParams = zod.object({
   returnTo: zod.coerce.string().optional(),
-});
-
-/**
- * @summary Clear the session and begin OIDC logout
- */
-export const LogoutBrowserSessionHeader = zod.object({
-  Authorization: zod.string().optional(),
-});
-
-/**
- * @summary Exchange a mobile OIDC code for a session token
- */
-
-export const ExchangeMobileAuthorizationCodeBody = zod.object({
-  code: zod.string().min(1),
-  code_verifier: zod.string().min(1),
-  redirect_uri: zod.string().url().min(1),
-  state: zod.string().min(1),
-  nonce: zod.string().min(1).optional(),
-});
-
-export const ExchangeMobileAuthorizationCodeResponse = zod.object({
-  token: zod.string(),
-});
-
-/**
- * @summary Delete a mobile session token
- */
-export const LogoutMobileSessionHeader = zod.object({
-  Authorization: zod.string().optional(),
-});
-
-export const LogoutMobileSessionResponse = zod.object({
-  success: zod.boolean(),
 });

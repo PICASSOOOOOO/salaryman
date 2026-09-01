@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,7 +7,7 @@ import {
   Lightbulb, Globe, Users, Brain, FileText, Save, ChevronDown, ChevronUp
 } from 'lucide-react';
 
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
@@ -46,7 +47,7 @@ const BASE_URL = import.meta.env.BASE_URL;
 
 function api(path: string, opts?: RequestInit) {
   const fullPath = path.startsWith('/api/') ? `${BASE_URL}${path.slice(1)}` : path;
-  return fetch(fullPath, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  return apiFetch(fullPath, { headers: { 'Content-Type': 'application/json' }, ...opts });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

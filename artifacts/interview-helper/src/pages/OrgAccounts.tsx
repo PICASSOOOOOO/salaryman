@@ -9,7 +9,7 @@ import {
   TrendingDown, ArrowUpRight, ArrowDownRight, CheckCircle,
   AlertCircle, Wallet, PiggyBank, X,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 

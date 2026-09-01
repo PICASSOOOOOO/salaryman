@@ -5,7 +5,7 @@ import {
   TrendingUp, Plus, X, Trash2, Edit2, Loader2, ChevronRight,
   Users, DollarSign, Calendar, ArrowRight, Check,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
@@ -108,7 +108,7 @@ export default function Deals() {
       };
       const url = editingId ? `/api/tools/deals/${editingId}` : '/api/tools/deals';
       const method = editingId ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (res.ok) {
         const data = await res.json();
         if (editingId) {

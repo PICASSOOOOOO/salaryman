@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useCallback, useEffect, useState } from "react";
 
 // Server-authoritative crafting, available to EVERY player (no faction gate).
@@ -57,9 +58,9 @@ export default function CraftingPanel({ slot, onClose, onCrafted }: Props) {
   const refresh = useCallback(async () => {
     try {
       const [rr, res, inv] = await Promise.all([
-        fetch("/api/items/recipes", { credentials: "include" }),
-        fetch("/api/resources/inventory", { credentials: "include" }),
-        fetch(`/api/items/inventory?slot=${slot}`, { credentials: "include" }),
+        apiFetch("/api/items/recipes", { credentials: "include" }),
+        apiFetch("/api/resources/inventory", { credentials: "include" }),
+        apiFetch(`/api/items/inventory?slot=${slot}`, { credentials: "include" }),
       ]);
       const rj = rr.ok ? await rr.json() : { recipes: [] };
       const sj = res.ok ? await res.json() : { inventory: [] };
@@ -88,7 +89,7 @@ export default function CraftingPanel({ slot, onClose, onCrafted }: Props) {
     setBusy(r.id);
     setMsg(null);
     try {
-      const resp = await fetch("/api/items/craft", {
+      const resp = await apiFetch("/api/items/craft", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

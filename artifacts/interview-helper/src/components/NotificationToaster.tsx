@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useCommsAlerts, useCommsCityDnd, useImmersiveViewActive } from "@/lib/commsAlerts";
 import { playNotify } from "@/lib/ui-sound";

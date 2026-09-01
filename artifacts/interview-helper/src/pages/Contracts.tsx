@@ -5,7 +5,7 @@ import {
   ScrollText, FileText, Download, Copy, Loader2, Sparkles,
   ShieldCheck, AlertTriangle, Check, RefreshCw, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
 import { getDefaultBoomerMode } from "@/hooks/use-mobile";
 

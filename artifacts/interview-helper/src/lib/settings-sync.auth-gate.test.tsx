@@ -30,7 +30,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, useEffect } from "react";
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -40,7 +40,7 @@ const LOW_GFX_KEY = "salaryman_low_gfx";
 // Mutable auth state the mocked useAuth reads. Tests flip `isAuthenticated`
 // and re-render to exercise the gate.
 const authState = { isAuthenticated: false };
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => authState,
 }));
 

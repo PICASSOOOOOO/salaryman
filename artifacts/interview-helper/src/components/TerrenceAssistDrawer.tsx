@@ -99,7 +99,7 @@ export default function TerrenceAssistDrawer({ surface, getContext, defaultOpen 
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch(apiUrl('studio/terrence-assist'), {
+      const res = await apiFetch(apiUrl('studio/terrence-assist'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

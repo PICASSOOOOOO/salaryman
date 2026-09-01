@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useState } from "react";
 import { RESOURCE_CATALOG } from "../lib/resource-catalog";
 
@@ -18,7 +19,7 @@ export default function ResourceInventoryPanel({ onClose, onSell, refreshTick }:
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/resources/inventory", { credentials: "include" })
+    apiFetch("/api/resources/inventory", { credentials: "include" })
       .then(r => r.json())
       .then(d => setRows(d.inventory ?? []))
       .catch(() => setRows([]))

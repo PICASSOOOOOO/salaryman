@@ -5,7 +5,7 @@ import {
   TrendingDown, Lightbulb, AlertTriangle, CalendarClock, Percent,
   FileSpreadsheet, FileJson, FileText, Building2, AlertCircle,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 

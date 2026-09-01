@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { speakWithTTS } from '../lib/tts';
 import {
@@ -99,7 +100,7 @@ async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const resp = await fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
+    const resp = await apiFetch('/api/transcribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ audio: base64, mimeType: mimeType || 'audio/webm' }),

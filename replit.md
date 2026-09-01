@@ -48,7 +48,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Monorepo Structure:** Divided into deployable `artifacts`, shared `lib`, and `scripts`.
 - **Database & API:** PostgreSQL with Drizzle ORM; Express 5 API server with Zod validation and OpenAPI 3.1 codegen.
 - **Game World:** Persistent world with a 13-month calendar, 4-season weather, day/night cycles, interactive interiors, and NPCs.
-- **Authentication:** Secured via Replit Auth (OIDC).
+- **Authentication:** Secured via Replit-managed Clerk using browser session cookies, with local user rows retained for authorization and app state.
 - **Communication:** WebRTC for video and proximity voice chat, in-game phone, private messaging, and real-time app-wide chat (Global, Company, Private DM channels) via WebSockets.
 - **AI Voice:** ElevenLabs TTS (OpenAI TTS-1 fallback) for chat and Google Neural2-F for phone calls.
 - **Pablo 3D Mascot:** Animated 3D Maltese dog on landing page using React Three Fiber, with a 2D SVG fallback.
@@ -89,7 +89,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Email:** Resend
 - **AI Models:** Anthropic Claude Sonnet, OpenAI GPT-4o
 - **AI Gateway:** OpenClaw
-- **Authentication:** Replit Auth (OIDC)
+- **Authentication:** Replit-managed Clerk
 - **Telephony:** Twilio SDK
 - **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage)
 - **Database:** PostgreSQL

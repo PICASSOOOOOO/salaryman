@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { motion } from "framer-motion";
 import { Check, ChevronRight, Loader2, Sparkles, Bot, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
 
@@ -57,7 +58,7 @@ export default function Pricing() {
     if (!isAuthenticated) { login(); return; }
     setCheckoutFeature(feature);
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}api/stripe/create-checkout-session`, {
+      const response = await apiFetch('/api/stripe/create-checkout-session', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

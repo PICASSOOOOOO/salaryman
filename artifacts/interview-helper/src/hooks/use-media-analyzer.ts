@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 export type MediaAnalyzerStatus = 'idle' | 'reading' | 'uploading' | 'analyzing' | 'done' | 'error';
@@ -125,7 +126,7 @@ export function useMediaAnalyzer() {
       setPhase('Sending to Pablo...');
 
       const url = `${BASE_URL}api/interview/analyze-media`;
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type }),

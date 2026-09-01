@@ -27,7 +27,7 @@ const h = vi.hoisted(() => ({
 // Mock the leaf concerns (auth, presentational, sound, toast, routing) but keep
 // the REAL useChatSocket / useCommsSummary / useOrg / commsAlerts so the badge
 // is produced by production code.
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => h.authState }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => h.authState }));
 vi.mock("@/components/MiniNebula", () => ({ MiniNebula: () => null }));
 vi.mock("@/hooks/use-mobile", () => ({
   useBoomerMode: () => [false],

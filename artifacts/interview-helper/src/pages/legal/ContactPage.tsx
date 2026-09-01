@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState } from "react";
 import { LegalLayout } from "@/components/LegalLayout";
 import { Loader2, Check, AlertCircle, Mail } from "lucide-react";
@@ -17,7 +18,7 @@ function ContactForm() {
     if (status === "loading") return;
     setStatus("loading");
     try {
-      const res = await fetch(apiUrl("legal/contact"), {
+      const res = await apiFetch(apiUrl("legal/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Building2, ChevronLeft, Compass, Map as MapIcon, RotateCcw } from 'lucide-react';
@@ -117,7 +118,7 @@ export default function GameMap() {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch('/api/exploration', { credentials: 'include' });
+        const response = await apiFetch('/api/exploration', { credentials: 'include' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const body = await response.json();
         if (cancelled) return;
@@ -156,7 +157,7 @@ export default function GameMap() {
   async function placeWaypoint(x: number, y: number) {
     setWaypoint({ x, y, label: null });
     try {
-      await fetch('/api/exploration/waypoint', {
+      await apiFetch('/api/exploration/waypoint', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
@@ -168,7 +169,7 @@ export default function GameMap() {
   async function clearWaypoint() {
     setWaypoint(null);
     try {
-      await fetch('/api/exploration/clear-waypoint', { method: 'POST', credentials: 'include' });
+      await apiFetch('/api/exploration/clear-waypoint', { method: 'POST', credentials: 'include' });
     } catch { /* best effort */ }
   }
 

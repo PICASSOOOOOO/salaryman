@@ -3,6 +3,7 @@ import { setImmersiveViewActive } from '@/lib/commsAlerts';
 import { toast } from '@/hooks/use-toast';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
+import { useClerk } from "@clerk/react";
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { speakWithTTS, speakGameTTS, resolveNpcVoiceKey } from '@/lib/tts';
 import { CITY_NAME } from '../gameSystems';
@@ -4533,6 +4534,7 @@ function MobileQuickBtn({ label, color, onTap }: { label: string; color: string;
 
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
+  const { signOut } = useClerk();
   const [, navigate] = useLocation();
   // Mark this as an immersive city/full-screen view for the duration of the
   // mount, so comms pop-up alerts can honour the user's "Do Not Disturb while
@@ -5223,7 +5225,7 @@ export default function WorldPlay() {
       if (catalogVisuals) return catalogVisuals;
       const m = new Map<string, EquippedGearVisual>();
       try {
-        const cr = await fetch(`/api/items/catalog`, { credentials: 'include' });
+        const cr = await apiFetch(`/api/items/catalog`, { credentials: 'include' });
         if (cr.ok) {
           const cj = await cr.json();
           const items = Array.isArray(cj?.items) ? cj.items : [];
@@ -5240,7 +5242,7 @@ export default function WorldPlay() {
     const loadGear = async () => {
       try {
         const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
-        const r = await fetch(`/api/items/loadout?slot=${slot}`, { credentials: 'include' });
+        const r = await apiFetch(`/api/items/loadout?slot=${slot}`, { credentials: 'include' });
         if (!r.ok || cancelled) return;
         const j = await r.json();
         const s = j?.stats;
@@ -5289,7 +5291,7 @@ export default function WorldPlay() {
         if (!movementDemanded({ x: px, y: py }, lastProbe, 48)) return;
         probing = true;
         lastProbe = { x: px, y: py };
-        await fetch('/api/subway/discover-near', {
+        await apiFetch('/api/subway/discover-near', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -5452,7 +5454,7 @@ export default function WorldPlay() {
     let alive = true;
     const tick = async () => {
       try {
-        const r = await fetch('/api/world/population', { credentials: 'include' });
+        const r = await apiFetch('/api/world/population', { credentials: 'include' });
         if (!r.ok || !alive) return;
         const p = await r.json();
         setLobbyInfo({ online: p.online, max: p.max, cityId: p.cityId, region: p.region });
@@ -5835,7 +5837,7 @@ export default function WorldPlay() {
   const harvestStartRef = useRef<number>(0);
 
   useEffect(() => {
-    fetch('/api/resources/nodes', { credentials: 'include' })
+    apiFetch('/api/resources/nodes', { credentials: 'include' })
       .then(r => r.json())
       .then(d => setResourceNodes(d.nodes ?? []))
       .catch(() => {});
@@ -6241,8 +6243,8 @@ export default function WorldPlay() {
       try {
         const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
         const [cr, ir] = await Promise.all([
-          fetch('/api/items/catalog', { credentials: 'include' }),
-          fetch(`/api/items/inventory?slot=${slot}`, { credentials: 'include' }),
+          apiFetch('/api/items/catalog', { credentials: 'include' }),
+          apiFetch(`/api/items/inventory?slot=${slot}`, { credentials: 'include' }),
         ]);
         if (cancelled || !cr.ok || !ir.ok) return;
         const cj = await cr.json(); const ij = await ir.json();
@@ -6324,7 +6326,7 @@ export default function WorldPlay() {
   const fetchOrgData = async () => {
     setOrgLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: 'include' });
+      const res = await apiFetch('/api/orgs/me', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (data.org) {
@@ -9703,7 +9705,7 @@ export default function WorldPlay() {
                   setNarr(`> ${def.name} — ${def.lore.slice(0, 80)}… Harvesting…`);
                   harvestTimerRef.current = setTimeout(async () => {
                     try {
-                      const r = await fetch(`/api/resources/harvest/${nearNode.id}`, {
+                      const r = await apiFetch(`/api/resources/harvest/${nearNode.id}`, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
@@ -10524,7 +10526,7 @@ export default function WorldPlay() {
     let cancelled = false;
     const fetchServerStatus = async () => {
       try {
-        const res = await fetch(`${import.meta.env.BASE_URL}api/world/server-status`);
+        const res = await apiFetch('/api/world/server-status');
         if (res.ok) {
           const data = await res.json();
           if (!cancelled && typeof data.online === 'number') setOnlinePlayerCount(data.online);
@@ -10554,7 +10556,7 @@ export default function WorldPlay() {
     }
     const pendingRef = (() => { try { return localStorage.getItem('pendingRefToken'); } catch { return null; } })();
     if (pendingRef) {
-      fetch(`${import.meta.env.BASE_URL}api/referrals/accept`, {
+      apiFetch('/api/referrals/accept', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: pendingRef }),
@@ -10574,7 +10576,7 @@ export default function WorldPlay() {
     const orgInviteToken = params.get('org_invite');
     if (orgInviteToken) {
       window.history.replaceState({}, '', window.location.pathname);
-      fetch(`${import.meta.env.BASE_URL}api/orgs/invite/accept`, {
+      apiFetch('/api/orgs/invite/accept', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: orgInviteToken }),
@@ -22339,9 +22341,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   }
                   // Either way: redirect. If beacon queued, no need to wait;
                   // otherwise give the inflight fetch a moment to land.
-                  setTimeout(() => { window.location.href = '/api/logout'; }, beaconQueued ? 50 : 400);
+                  setTimeout(() => { void signOut({ redirectUrl: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" }); }, beaconQueued ? 50 : 400);
                 } catch {
-                  window.location.href = '/api/logout';
+                  void signOut({ redirectUrl: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" });
                 }
               }}
               style={{ background: 'rgba(244,114,182,.08)', border: '1px solid rgba(244,114,182,.4)', color: 'rgba(244,114,182,.8)', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "var(--font-sans)" }}
@@ -23999,7 +24001,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             (async () => {
               try {
                 const startingBalance = Math.max(0, Math.floor(gs.current.savings ?? 0));
-                const r = await fetch('/api/onboard-housing/charge', {
+                const r = await apiFetch('/api/onboard-housing/charge', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
@@ -24480,7 +24482,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setOrgCreateError('');
                     if (!orgCreateName.trim()) { setOrgCreateError('Company name is required'); return; }
                     try {
-                      const res = await fetch(`${import.meta.env.BASE_URL}api/orgs`, {
+                      const res = await apiFetch('/api/orgs', {
                         method: 'POST', credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: orgCreateName.trim(), industry: orgCreateIndustry, size: orgCreateSize }),
@@ -24496,7 +24498,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     if (!orgInviteInput.trim() || !orgData?.org) return;
                     const isEmail = orgInviteInput.includes('@');
                     try {
-                      const res = await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/invite`, {
+                      const res = await apiFetch(`/api/orgs/${orgData.org.id}/invite`, {
                         method: 'POST', credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(isEmail ? { email: orgInviteInput.trim() } : { username: orgInviteInput.trim() }),
@@ -24509,7 +24511,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                   const handleRemoveMember = async (memberId: string) => {
                     if (!orgData?.org) return;
-                    await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/members/${memberId}`, {
+                    await apiFetch(`/api/orgs/${orgData.org.id}/members/${memberId}`, {
                       method: 'DELETE', credentials: 'include',
                     });
                     fetchOrgData();
@@ -24517,7 +24519,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                   const handleUpdateMember = async (memberId: string, updates: Record<string, string>) => {
                     if (!orgData?.org) return;
-                    await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/members/${memberId}`, {
+                    await apiFetch(`/api/orgs/${orgData.org.id}/members/${memberId}`, {
                       method: 'PUT', credentials: 'include',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(updates),
@@ -24607,7 +24609,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                         disabled={alreadyActive}
                                         onClick={async () => {
                                           try {
-                                            const r = await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/stripe-checkout`, {
+                                            const r = await apiFetch(`/api/orgs/${orgData.org.id}/stripe-checkout`, {
                                               method: 'POST', credentials: 'include',
                                               headers: { 'Content-Type': 'application/json' },
                                               body: JSON.stringify({ feature: fk }),

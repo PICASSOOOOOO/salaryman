@@ -7,7 +7,7 @@ import {
   ClipboardList, MessageSquare, UserX, ChevronRight, StickyNote, MapPin, Monitor,
 } from 'lucide-react';
 
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';

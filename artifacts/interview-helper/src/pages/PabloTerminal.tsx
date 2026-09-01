@@ -7,7 +7,7 @@ import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
 import { useBoomerMode } from "@/hooks/use-mobile";
@@ -176,8 +176,8 @@ type Mode = "voice" | "text";
 // Detect a returning user who just wants to sign in. They shouldn't be
 // dragged through new-user identity collection — OAuth covers the account
 // half on its own. We bypass the
-// intro entirely and hand them straight to /api/login. This also avoids
-// a feedback loop where the LLM might return navigate to '/api/login',
+// intro entirely and hand them straight to /sign-in. This also avoids
+// a feedback loop where the LLM might return navigate to '/sign-in',
 // our intro-gate would stash it as a "destination", and the email-step
 // `returnTo` would point back at the auth endpoint itself.
 function detectSignInIntent(text: string): boolean {
@@ -1283,7 +1283,7 @@ function PabloTerminalAuthed() {
     // PabloOnboarding modal picks up the rest of the intake. We check
     // this BEFORE the passcode/interview-phase branches so it works at
     // every step of the intro, and BEFORE hitting the LLM so it never
-    // gets a chance to invent a /api/login navigate that would loop
+    // gets a chance to invent a /sign-in navigate that would loop
     // through our new pre-onboarding gate.
     if (!isAuthenticated && detectSignInIntent(text)) {
       ttsRef.current?.cancel();
@@ -1757,7 +1757,7 @@ function PabloTerminalAuthed() {
         if (action.kind === "navigate") {
           // Never stash a server/auth path as a destination — that becomes
           // the OAuth `returnTo` later, and pointing returnTo back at
-          // /api/login or any /api/* endpoint creates a redirect loop or
+          // /sign-in or any /api/* endpoint creates a redirect loop or
           // a 404 page. If the LLM picked one of those (or anything
           // weirder, like a protocol-relative `//evil.com` open-redirect
           // bait), drop the path and let OAuth bounce them to the
@@ -2354,7 +2354,7 @@ function PabloTerminalAuthed() {
                   if (!c) return;
                   const ret = encodeURIComponent(c.dest);
                   const hint = c.hint ? `&login_hint=${encodeURIComponent(c.hint)}` : "";
-                  window.location.href = `/api/login?returnTo=${ret}${hint}`;
+                  window.location.href = `/sign-in?returnTo=${ret}${hint}`;
                 }}
                 style={{
                   fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "#38bdf8",

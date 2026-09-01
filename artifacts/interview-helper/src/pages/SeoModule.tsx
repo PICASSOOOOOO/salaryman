@@ -1,8 +1,9 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef } from 'react';
 import { Loader2, Search, Globe, FileText, BarChart2, Copy, Check, ChevronRight } from 'lucide-react';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import ReactMarkdown from 'react-markdown';
 
@@ -193,7 +194,7 @@ async function streamRequest(
   onError: (e: string) => void,
   signal: AbortSignal
 ) {
-  const res = await fetch(`/api${endpoint}`, {
+  const res = await apiFetch(`/api${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

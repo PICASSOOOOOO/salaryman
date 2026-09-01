@@ -9,7 +9,6 @@ import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
 import { getAmbianceEnabled, getMusicEnabled, setAudioSettings, subscribeAudioSettings } from '@/lib/audio-settings';
 import { floorPlacementForAssignments, type MonitorBot } from '@/lib/office-monitor';
-import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { NetWorthHUD } from '@/components/NetWorthHUD';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
@@ -43,6 +42,7 @@ import { Settings2, Loader2, Bot, Activity, Check, X } from 'lucide-react';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
 // only loads when a cabinet is actually used).
+import { useAuth } from '@/hooks/use-auth';
 const ArcadeGame = lazy(() => import('@/pages/ArcadeGames'));
 
 interface CitySave {
@@ -297,7 +297,7 @@ export default function PabloOffice() {
   // Live server population (same feed Home uses).
   useEffect(() => {
     const fetchStatus = () => {
-      fetch(`${import.meta.env.BASE_URL}api/world/server-status`)
+      apiFetch('/api/world/server-status')
         .then(r => r.json())
         .then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); })
         .catch(() => {});
@@ -418,7 +418,7 @@ export default function PabloOffice() {
       }
     } catch { /* ignore malformed save cache */ }
     if (isAuthenticated) {
-      fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
+      apiFetch('/api/salaryman/saves', { credentials: 'include' })
         .then(r => r.ok ? r.json() : null)
         .then(res => {
           if (!res?.saves?.length) return;

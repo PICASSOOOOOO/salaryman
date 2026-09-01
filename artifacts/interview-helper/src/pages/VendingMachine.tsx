@@ -13,7 +13,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Loader2, Zap } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
 import { VEND_FOOD_ITEMS, parseFoodEffect, type VendFoodItem } from "@/lib/vending-food";

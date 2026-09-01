@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 export interface OutboundBridgeLeg {
   callSid: string;
   conferenceName?: string;
@@ -40,7 +41,7 @@ export async function cleanupOutboundCalls(
 ): Promise<void> {
   const unique = [...new Set(callSids.filter(Boolean))];
   if (unique.length === 0) return;
-  const response = await fetch(apiUrl("twilio/hangup-all"), {
+  const response = await apiFetch(apiUrl("twilio/hangup-all"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

@@ -7,8 +7,8 @@ import authRouter from "../routes/auth";
 // which login buttons to render. If this route stops reporting a provider as
 // unavailable, the frontend re-introduces a dead-end "Continue with GitHub" /
 // "Continue with Discord" click that just bounces back with ?auth_error=…
-// (github_unavailable / discord_unavailable). Replit Auth (OIDC) is the platform
-// default and must ALWAYS be reported true. GitHub is gated per-host (one OAuth
+// (github_link_error=unavailable / discord_link_error=unavailable). Clerk is the platform
+// identity provider and must ALWAYS be reported true. GitHub is gated per-host (one OAuth
 // App = one callback URL), Discord on a single global credential pair.
 
 const ENV_KEYS = [
@@ -57,10 +57,11 @@ describe("GET /api/auth/providers", () => {
     }
   });
 
-  it("reports replit always true even with nothing else configured", async () => {
+  it("reports Clerk and explicitly does not report Replit Auth", async () => {
     const res = await getProviders(DEV_HOST);
     expect(res.status).toBe(200);
-    expect(res.body.replit).toBe(true);
+    expect(res.body.clerk).toBe(true);
+    expect(res.body.replit).toBe(false);
   });
 
   it("reports github=false when no GitHub OAuth App resolves for the host", async () => {
@@ -131,6 +132,6 @@ describe("GET /api/auth/providers", () => {
 
     const res = await getProviders(DEV_HOST);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ replit: true, discord: true, github: true });
+    expect(res.body).toEqual({ replit: false, clerk: true, discord: true, github: true });
   });
 });

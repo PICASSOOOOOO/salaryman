@@ -1,8 +1,9 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Mic, Search, Phone, Download, AlertTriangle, X, ArrowUpRight, ArrowDownLeft, ChevronRight, ChevronDown, Shield, Voicemail } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
@@ -45,8 +46,8 @@ export default function PhoneRecordingsPage() {
     };
     try {
       const [callsRes, vmRes] = await Promise.all([
-        fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' }).catch(() => null),
-        fetch(apiUrl(`twilio/voicemail`), { credentials: 'include' }).catch(() => null),
+        apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' }).catch(() => null),
+        apiFetch(apiUrl(`twilio/voicemail`), { credentials: 'include' }).catch(() => null),
       ]);
       if (callsRes && callsRes.status === 403) { navigate('/pricing'); return; }
       if (callsRes && callsRes.ok) {

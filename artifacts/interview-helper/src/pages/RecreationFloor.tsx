@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { BatteryCharging, Beer, Gamepad2, Trophy, X, Zap } from "lucide-react";
 import { IsoOffice } from "@/components/IsoOffice";
 import { apiFetch } from "@/lib/api-client";
@@ -129,7 +129,7 @@ export default function RecreationFloor() {
     },
   })), [layout, payload, slotIndex]);
 
-  if (!isAuthenticated) return <div className="min-h-screen bg-[#080b12] text-white grid place-items-center"><Link href="/api/login" className="border border-cyan-400 px-5 py-3">LOG IN TO ENTER REC</Link></div>;
+  if (!isAuthenticated) return <div className="min-h-screen bg-[#080b12] text-white grid place-items-center"><Link href="/sign-in" className="border border-cyan-400 px-5 py-3">LOG IN TO ENTER REC</Link></div>;
   return (
     <div className="h-[100dvh] bg-[#060912] text-zinc-100 flex flex-col overflow-hidden" data-testid="recreation-floor">
       <header className="h-14 shrink-0 border-b border-cyan-400/20 bg-[#090d17]/95 px-3 sm:px-5 flex items-center justify-between gap-3">

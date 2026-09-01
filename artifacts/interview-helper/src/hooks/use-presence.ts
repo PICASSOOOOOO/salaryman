@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 export interface MemberPresence {
@@ -35,7 +36,7 @@ export function usePresence(orgId: number | null | undefined) {
     const id = orgIdRef.current;
     if (!id) return;
     try {
-      await fetch(`/api/orgs/${id}/heartbeat`, {
+      await apiFetch(`/api/orgs/${id}/heartbeat`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -48,7 +49,7 @@ export function usePresence(orgId: number | null | undefined) {
     const id = orgIdRef.current;
     if (!id) return;
     try {
-      const res = await fetch(`/api/orgs/${id}/presence`, { credentials: 'include' });
+      const res = await apiFetch(`/api/orgs/${id}/presence`, { credentials: 'include' });
       if (!res.ok) {
         setError(`Presence ${res.status}`);
         return;

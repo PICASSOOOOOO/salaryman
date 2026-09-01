@@ -1,8 +1,9 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import {
@@ -80,7 +81,7 @@ export default function PhoneDialerPage() {
   }, [navigate]);
 
   useEffect(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
+    apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
         if (r.status === 403) { rawNavigate('/pricing'); return null; }
         return r.ok ? r.json() : null;
@@ -93,7 +94,7 @@ export default function PhoneDialerPage() {
       })
       .catch(() => setError('Network error loading contacts'));
 
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' })
+    apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
         if (r.status === 403) { rawNavigate('/pricing'); return null; }
         return r.ok ? r.json() : null;
@@ -136,7 +137,7 @@ export default function PhoneDialerPage() {
     setCallStarting(true);
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/call'), {
+        const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -162,7 +163,7 @@ export default function PhoneDialerPage() {
     setError('');
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/dialing/start'), {
+        const r = await apiFetch(apiUrl('twilio/dialing/start'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

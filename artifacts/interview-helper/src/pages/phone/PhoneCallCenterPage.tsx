@@ -1,6 +1,7 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { Headphones, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, X, Upload, FileText, Zap, PhoneOutgoing, PhoneIncoming, AlertTriangle, Users } from 'lucide-react';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
@@ -46,7 +47,7 @@ export default function PhoneCallCenterPage() {
 
   useEffect(() => {
     const safeFetch = async (url: string) => {
-      const r = await fetch(url, { credentials: 'include' });
+      const r = await apiFetch(url, { credentials: 'include' });
       if (handleAuthStatus(r)) return null;
       return r.ok ? r.json() : null;
     };
@@ -62,7 +63,7 @@ export default function PhoneCallCenterPage() {
     if (!agentName || !agentPhone) return;
     setAddingAgent(true);
     try {
-      const r = await fetch(apiUrl('twilio/call-center/agents'), {
+      const r = await apiFetch(apiUrl('twilio/call-center/agents'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ name: agentName, phone: agentPhone, email: agentEmail || null }) });
@@ -81,14 +82,14 @@ export default function PhoneCallCenterPage() {
 
   const toggleAgent = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/call-center/agents/${id}/toggle`), { method: 'POST', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/call-center/agents/${id}/toggle`), { method: 'POST', credentials: 'include' });
       if (r.ok) { const d = await r.json(); setAgents(prev => prev.map(a => a.id === id ? d.agent : a)); }
     } catch {}
   };
 
   const removeAgent = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/call-center/agents/${id}`), { method: 'DELETE', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/call-center/agents/${id}`), { method: 'DELETE', credentials: 'include' });
       if (r.ok) { setAgents(prev => prev.filter(a => a.id !== id)); }
     } catch {}
   };
@@ -101,7 +102,7 @@ export default function PhoneCallCenterPage() {
         const parts = l.split(',');
         return { phone: parts[0]?.trim() ?? '', name: parts[1]?.trim() ?? '', company: parts[2]?.trim() ?? '', email: parts[3]?.trim() ?? '' };
       }).filter(l => l.phone);
-      const r = await fetch(apiUrl('twilio/pablo/campaigns'), {
+      const r = await apiFetch(apiUrl('twilio/pablo/campaigns'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }) });
@@ -115,7 +116,7 @@ export default function PhoneCallCenterPage() {
 
   const startCampaign = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), { method: 'POST', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), { method: 'POST', credentials: 'include' });
       if (r.ok) { setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c)); }
     } catch {}
   };

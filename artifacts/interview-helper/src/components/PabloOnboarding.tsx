@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useBoomerMode, useIsMobile } from '@/hooks/use-mobile';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -657,7 +657,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     let alive = true;
     (async () => {
       try {
-        const r = await fetch('/api/world/locate', { credentials: 'include' });
+        const r = await apiFetch('/api/world/locate', { credentials: 'include' });
         if (r.ok && alive) {
           const loc = await r.json() as { country: string | null; region: string | null };
           setCoarseLocation(loc.country ?? null);
@@ -665,7 +665,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         }
       } catch { /* dev/local IP won't resolve — fall back to timezone */ }
       try {
-        const r = await fetch('/api/world/population', { credentials: 'include' });
+        const r = await apiFetch('/api/world/population', { credentials: 'include' });
         if (r.ok && alive) setPopulation(await r.json() as { cityId: string; online: number; max: number });
       } catch { /* non-fatal — caps still render */ }
     })();

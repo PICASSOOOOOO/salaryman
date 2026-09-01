@@ -5,7 +5,7 @@ import {
   FileText, Plus, X, Trash2, Loader2, Edit2, Send,
   Check, DollarSign, ChevronDown, ChevronUp,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 

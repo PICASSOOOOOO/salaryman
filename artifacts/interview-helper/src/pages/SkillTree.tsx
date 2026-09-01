@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { ChevronLeft, Lock, CheckCircle, Zap, Briefcase, Sword } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
 import {
   SKILL_CATALOG,

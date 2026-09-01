@@ -4,8 +4,9 @@
 // Drives a headless Chromium ("camera bot") into the live SALARYMAN city and
 // screen-records ~40s of REAL gameplay (no promo, no narration). The bot:
 //   1. is a dedicated synthetic user with a known save in slot 0,
-//   2. gets a real session minted in-process (no OAuth round-trip),
-//   3. lands directly on /world/play, bypassing the new-user funnel gate by
+//   2. lands directly on /world/play as a guest (Clerk sessions are never
+//      minted by this application),
+//   3. bypasses the new-user funnel gate by
 //      pre-seeding the tutorial-done localStorage flags,
 //   4. roams the avatar with scripted WASD input while Playwright records.
 //
@@ -25,7 +26,6 @@ import {
   playerCityVisasTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { createSession } from "./auth";
 
 // Stable identity for the capture bot. Kept off the real OAuth path entirely.
 const CAPTURE_BOT_ID = "salaryman-capture-bot";
@@ -201,20 +201,6 @@ async function ensureCaptureBot(): Promise<void> {
   }
 }
 
-/** Mint a real session for the bot. Omitting expires_at avoids OIDC refresh. */
-async function mintCaptureSession(): Promise<string> {
-  return createSession({
-    user: {
-      id: CAPTURE_BOT_ID,
-      email: CAPTURE_BOT_EMAIL,
-      firstName: CAPTURE_BOT_NAME,
-      lastName: null,
-      profileImageUrl: null,
-    },
-    access_token: "capture-bot",
-  });
-}
-
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
@@ -240,7 +226,6 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
 
   stage("Preparing capture bot");
   await ensureCaptureBot();
-  const sid = await mintCaptureSession();
 
   let browser: Browser | null = null;
   try {
@@ -256,11 +241,6 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
       deviceScaleFactor: 1,
       recordVideo: { dir: workDir, size: { width: capW, height: capH } },
     });
-
-    // Auth: present the minted session as the `sid` cookie.
-    await context.addCookies([
-      { name: "sid", value: sid, domain: "localhost", path: "/", httpOnly: true, secure: false, sameSite: "Lax" },
-    ]);
 
     // Seed the client state WorldPlay actually reads: it loads the character
     // from localStorage `sm_char` (set by WorldMenu), NOT the server — without

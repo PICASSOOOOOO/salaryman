@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { CompassRose, PamphletBanner, LANDMARK_GUIDE } from '@/components/MapChrome';
 import { type BOCollectorPin, readBoCollectorsFromSave } from '@/lib/world-map-collectors';

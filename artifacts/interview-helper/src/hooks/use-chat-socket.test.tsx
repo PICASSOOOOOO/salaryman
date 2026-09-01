@@ -26,7 +26,7 @@ const h = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => h.authState }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => h.authState }));
 
 import { useChatSocket, type ChatMessage } from "./use-chat-socket";
 

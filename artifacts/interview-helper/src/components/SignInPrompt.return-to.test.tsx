@@ -15,7 +15,7 @@ const authMocks = vi.hoisted(() => ({
   loginWithGithub: vi.fn(),
 }));
 
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => authMocks,
 }));
 

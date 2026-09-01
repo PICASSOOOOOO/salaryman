@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
@@ -104,7 +105,7 @@ function ApiKeysTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(api("/platform/api-keys"), { credentials: "include" });
+    const r = await apiFetch(api("/platform/api-keys"), { credentials: "include" });
     if (r.ok) setKeys(await r.json());
     setLoading(false);
   }, []);
@@ -114,7 +115,7 @@ function ApiKeysTab() {
   const createKey = async () => {
     if (!newKeyName.trim()) return;
     setCreating(true);
-    const r = await fetch(api("/platform/api-keys"), {
+    const r = await apiFetch(api("/platform/api-keys"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -130,7 +131,7 @@ function ApiKeysTab() {
   };
 
   const revokeKey = async (id: number) => {
-    await fetch(api(`/platform/api-keys/${id}`), { method: "DELETE", credentials: "include" });
+    await apiFetch(api(`/platform/api-keys/${id}`), { method: "DELETE", credentials: "include" });
     load();
   };
 
@@ -223,7 +224,7 @@ function WebhooksTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(api("/platform/webhooks"), { credentials: "include" });
+    const r = await apiFetch(api("/platform/webhooks"), { credentials: "include" });
     if (r.ok) setWebhooks(await r.json());
     setLoading(false);
   }, []);
@@ -233,7 +234,7 @@ function WebhooksTab() {
   const create = async () => {
     if (!name.trim() || !url.trim()) return;
     setCreating(true);
-    const r = await fetch(api("/platform/webhooks"), {
+    const r = await apiFetch(api("/platform/webhooks"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -247,7 +248,7 @@ function WebhooksTab() {
   };
 
   const remove = async (id: number) => {
-    await fetch(api(`/platform/webhooks/${id}`), { method: "DELETE", credentials: "include" });
+    await apiFetch(api(`/platform/webhooks/${id}`), { method: "DELETE", credentials: "include" });
     load();
   };
 
@@ -326,7 +327,7 @@ function EndpointsTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(api("/platform/endpoints"), { credentials: "include" })
+    apiFetch(api("/platform/endpoints"), { credentials: "include" })
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false));
@@ -442,7 +443,7 @@ function ConnectModal({ app, onClose, onSaved }: { app: ConnectedApp; onClose: (
 
   const save = async () => {
     setSaving(true);
-    await fetch(api("/platform/apps/connect"), {
+    await apiFetch(api("/platform/apps/connect"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -597,7 +598,7 @@ function AppsTab() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const r = await fetch(api("/platform/apps"), { credentials: "include" });
+    const r = await apiFetch(api("/platform/apps"), { credentials: "include" });
     if (r.ok) setApps(await r.json());
     setLoading(false);
   }, []);
@@ -607,7 +608,7 @@ function AppsTab() {
   const disconnect = async (app: ConnectedApp) => {
     if (!confirm(`Disconnect ${app.name}? Stored credentials will be removed.`)) return;
     setDisconnecting(app.slug);
-    await fetch(api("/platform/apps/disconnect"), {
+    await apiFetch(api("/platform/apps/disconnect"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

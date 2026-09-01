@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
@@ -99,7 +100,7 @@ export function PhoneDialer({
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   const fetchContacts = useCallback(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
+    apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.contacts) setContacts(d.contacts); })
       .catch(() => {});
@@ -107,28 +108,28 @@ export function PhoneDialer({
 
   const fetchHistory = useCallback(() => {
     const q = historySearch ? `?search=${encodeURIComponent(historySearch)}` : '';
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`))
+    apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`))
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.calls) setHistory(d.calls); })
       .catch(() => {});
   }, [userId, BASE, historySearch]);
 
   const fetchVoicemails = useCallback(() => {
-    fetch(apiUrl('twilio/voicemail'))
+    apiFetch(apiUrl('twilio/voicemail'))
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.voicemails) { setVoicemails(d.voicemails); setUnreadVoicemail(d.unread ?? 0); } })
       .catch(() => {});
   }, [BASE]);
 
   const fetchPhoneNumbers = useCallback(() => {
-    fetch(apiUrl('twilio/phone-numbers'))
+    apiFetch(apiUrl('twilio/phone-numbers'))
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.numbers) setPhoneNumbers(d.numbers); })
       .catch(() => {});
   }, [BASE]);
 
   const fetchRegionDefaults = useCallback(() => {
-    fetch(apiUrl('twilio/region-defaults'))
+    apiFetch(apiUrl('twilio/region-defaults'))
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.country) {
@@ -140,7 +141,7 @@ export function PhoneDialer({
   }, [BASE]);
 
   const fetchSecretaryConfig = useCallback(() => {
-    fetch(apiUrl('twilio/secretary/config'))
+    apiFetch(apiUrl('twilio/secretary/config'))
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.config) {
@@ -152,7 +153,7 @@ export function PhoneDialer({
   }, [BASE]);
 
   const fetchConferences = useCallback(() => {
-    fetch(apiUrl('twilio/conference/list'))
+    apiFetch(apiUrl('twilio/conference/list'))
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.rooms) setConferences(d.rooms); })
       .catch(() => {});
@@ -171,7 +172,7 @@ export function PhoneDialer({
   useEffect(() => {
     if (!buyCountry) return;
     let cancelled = false;
-    fetch(apiUrl(`twilio/regulatory?country=${encodeURIComponent(buyCountry)}`))
+    apiFetch(apiUrl(`twilio/regulatory?country=${encodeURIComponent(buyCountry)}`))
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (!cancelled && d?.requirement) setRegulatory(d.requirement); })
       .catch(() => {});
@@ -201,7 +202,7 @@ export function PhoneDialer({
       }
       try {
         const callSids = current.map(c => c.callSid);
-        const r = await fetch(apiUrl('twilio/call-status-batch'), {
+        const r = await apiFetch(apiUrl('twilio/call-status-batch'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ callSids }) });
@@ -248,7 +249,7 @@ export function PhoneDialer({
     const numbers = contacts.filter(c => selected.has(c.id)).map(c => ({ phone: c.phone, name: c.name }));
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/batch-call'), {
+        const r = await apiFetch(apiUrl('twilio/batch-call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ numbers, userId, callerName }) });
         const body = await r.json();
@@ -278,7 +279,7 @@ export function PhoneDialer({
     setLoading(true);
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/call'), {
+        const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
         const body = await r.json();
@@ -297,7 +298,7 @@ export function PhoneDialer({
 
   const toggleMute = async (sid: string, currentMuted: boolean) => {
     try {
-      await fetch(apiUrl(`twilio/call/${sid}/mute`), {
+      await apiFetch(apiUrl(`twilio/call/${sid}/mute`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ muted: !currentMuted }) });
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, muted: !currentMuted } : c));
@@ -306,7 +307,7 @@ export function PhoneDialer({
 
   const toggleHold = async (sid: string, currentHold: boolean) => {
     try {
-      await fetch(apiUrl(`twilio/call/${sid}/hold`), {
+      await apiFetch(apiUrl(`twilio/call/${sid}/hold`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hold: !currentHold }) });
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, onHold: !currentHold } : c));
@@ -316,7 +317,7 @@ export function PhoneDialer({
   const transferCall = async (sid: string) => {
     if (!transferNumber.trim()) return;
     try {
-      await fetch(apiUrl(`twilio/call/${sid}/transfer`), {
+      await apiFetch(apiUrl(`twilio/call/${sid}/transfer`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transferTo: transferNumber }) });
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'transferred' } : c));
@@ -327,7 +328,7 @@ export function PhoneDialer({
 
   const hangupOne = async (sid: string) => {
     try {
-      await fetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
+      await apiFetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
     } catch (e) { console.error("[CalllHome] hangup error:", e); }
   };
@@ -336,7 +337,7 @@ export function PhoneDialer({
     const sids = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).map(c => c.callSid);
     if (sids.length === 0) return;
     try {
-      await fetch(apiUrl('twilio/hangup-all'), {
+      await apiFetch(apiUrl('twilio/hangup-all'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ callSids: sids }) });
       setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
@@ -348,7 +349,7 @@ export function PhoneDialer({
 
   const createConference = async () => {
     try {
-      const r = await fetch(apiUrl('twilio/conference/create'), {
+      const r = await apiFetch(apiUrl('twilio/conference/create'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: confRoomName || 'New Conference' }) });
       if (r.ok) { fetchConferences(); setConfRoomName(''); }
@@ -358,7 +359,7 @@ export function PhoneDialer({
   const addToConference = async (roomName: string) => {
     if (!confAddNumber) return;
     try {
-      await fetch(apiUrl(`twilio/conference/${roomName}/add`), {
+      await apiFetch(apiUrl(`twilio/conference/${roomName}/add`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: confAddNumber, name: confAddName }) });
       setConfAddNumber(''); setConfAddName('');
@@ -367,7 +368,7 @@ export function PhoneDialer({
 
   const endConference = async (roomName: string) => {
     try {
-      await fetch(apiUrl(`twilio/conference/${roomName}/end`), { method: 'POST' });
+      await apiFetch(apiUrl(`twilio/conference/${roomName}/end`), { method: 'POST' });
       fetchConferences();
     } catch (e) { console.error("[CalllHome] end conference error:", e); }
   };
@@ -377,7 +378,7 @@ export function PhoneDialer({
     if (selectedContacts.length === 0) { setError('Select contacts first'); return; }
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/dialing/start'), {
+        const r = await apiFetch(apiUrl('twilio/dialing/start'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: dialingMode === 'predictive' ? { concurrency: dialConcurrency } : { delayBetweenCalls: dialDelay } }) });
         const body = await r.json();
@@ -400,7 +401,7 @@ export function PhoneDialer({
   const stopDialingSession = async () => {
     if (!dialingSession) return;
     try {
-      await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
+      await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
       setDialingSession(null);
     } catch (e) { console.error("[CalllHome] stop dialing error:", e); }
   };
@@ -410,7 +411,7 @@ export function PhoneDialer({
     setAiLoading(true);
     try {
       const liveCall = activeCalls.find(c => !ENDED_STATUSES.includes(c.status));
-      const r = await fetch(apiUrl('twilio/ai/coach'), {
+      const r = await apiFetch(apiUrl('twilio/ai/coach'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: aiCoachQuestion, transcript: aiTranscript, context: liveCall?.name }) });
       const d = await r.json();
@@ -423,7 +424,7 @@ export function PhoneDialer({
     setAiLoading(true);
     try {
       const liveCall = activeCalls.find(c => !ENDED_STATUSES.includes(c.status));
-      const r = await fetch(apiUrl('twilio/ai/suggest'), {
+      const r = await apiFetch(apiUrl('twilio/ai/suggest'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: aiTranscript, contactName: liveCall?.name }) });
       const d = await r.json();
@@ -435,7 +436,7 @@ export function PhoneDialer({
   const saveTranscript = async (callSid: string) => {
     if (!aiTranscript.trim()) return;
     try {
-      await fetch(apiUrl('twilio/ai/transcribe'), {
+      await apiFetch(apiUrl('twilio/ai/transcribe'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ callSid, transcript: aiTranscript }) });
     } catch (e) { console.error("[CalllHome] save transcript error:", e); }
@@ -444,7 +445,7 @@ export function PhoneDialer({
   const saveDictation = async () => {
     if (!dictationText.trim()) return;
     try {
-      await fetch(apiUrl('twilio/ai/dictation'), {
+      await apiFetch(apiUrl('twilio/ai/dictation'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: dictationText, callSid: activeDictationCallSid || undefined }) });
       setDictationText('');
@@ -454,7 +455,7 @@ export function PhoneDialer({
   const saveSecretaryConfig = async () => {
     setSecretarySaving(true);
     try {
-      const r = await fetch(apiUrl('twilio/secretary/config'), {
+      const r = await apiFetch(apiUrl('twilio/secretary/config'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(secretaryForm) });
       const d = await r.json();
@@ -467,7 +468,7 @@ export function PhoneDialer({
     if (!newNumberForm.number) return;
     setAddingNumber(true);
     try {
-      const r = await fetch(apiUrl('twilio/phone-numbers'), {
+      const r = await apiFetch(apiUrl('twilio/phone-numbers'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newNumberForm) });
       if (r.ok) { fetchPhoneNumbers(); setNewNumberForm({ number: '', label: '', greeting: '', routingMode: 'voicemail' }); }
@@ -482,7 +483,7 @@ export function PhoneDialer({
     try {
       const params = new URLSearchParams({ country: buyCountry });
       if (numberSearch.trim()) params.set('contains', numberSearch.trim());
-      const r = await fetch(apiUrl(`twilio/available-numbers?${params.toString()}`));
+      const r = await apiFetch(apiUrl(`twilio/available-numbers?${params.toString()}`));
       const d = await r.json();
       if (r.ok) { setAvailableNumbers(d.numbers ?? []); }
       else { setSearchError(d.error || 'Search failed'); }
@@ -493,7 +494,7 @@ export function PhoneDialer({
   const purchaseNumber = async (phoneNumber: string) => {
     setPurchasingNumber(phoneNumber);
     try {
-      const r = await fetch(apiUrl('twilio/purchase-number'), {
+      const r = await apiFetch(apiUrl('twilio/purchase-number'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }) });
       const d = await r.json();
@@ -511,14 +512,14 @@ export function PhoneDialer({
 
   const deletePhoneNumber = async (id: number) => {
     try {
-      await fetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE' });
+      await apiFetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE' });
       fetchPhoneNumbers();
     } catch (e) { console.error("[CalllHome] delete phone number error:", e); }
   };
 
   const setActiveNumber = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/phone-numbers/${id}`), {
+      const r = await apiFetch(apiUrl(`twilio/phone-numbers/${id}`), {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: true }) });
       if (r.ok) fetchPhoneNumbers();
@@ -527,7 +528,7 @@ export function PhoneDialer({
 
   const markVoicemailRead = async (id: number) => {
     try {
-      await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST' });
+      await apiFetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST' });
       setVoicemails(prev => prev.map(v => v.id === id ? { ...v, isRead: true } : v));
       setUnreadVoicemail(prev => Math.max(0, prev - 1));
     } catch (e) { console.error("[CalllHome] mark voicemail read error:", e); }
@@ -535,7 +536,7 @@ export function PhoneDialer({
 
   const deleteVoicemail = async (id: number) => {
     try {
-      await fetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE' });
+      await apiFetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE' });
       setVoicemails(prev => prev.filter(v => v.id !== id));
     } catch (e) { console.error("[CalllHome] delete voicemail error:", e); }
   };
@@ -545,7 +546,7 @@ export function PhoneDialer({
     try {
       const startAt = new Date(followupForm.startAt);
       const endAt = followupForm.endAt ? new Date(followupForm.endAt) : new Date(startAt.getTime() + 30 * 60 * 1000);
-      await fetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
+      await apiFetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }) });
       setFollowupCallSid(null);
@@ -556,7 +557,7 @@ export function PhoneDialer({
 
   const emailCallSummary = async (callId: number) => {
     try {
-      await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST' });
+      await apiFetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST' });
     } catch (e) { console.error("[CalllHome] email summary error:", e); }
   };
 

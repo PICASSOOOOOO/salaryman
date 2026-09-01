@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useLocation } from 'wouter';
 

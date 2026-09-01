@@ -35,7 +35,7 @@ vi.mock("@/lib/world-map-collectors", () => ({
 }));
 
 // Authenticated so the component renders the full map (not a sign-in prompt).
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ isAuthenticated: true }),
 }));
 

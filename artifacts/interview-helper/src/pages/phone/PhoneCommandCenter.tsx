@@ -1,10 +1,11 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import {
   Phone, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle,
   X, Loader2, Hash, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { useActiveCallContext } from '@/contexts/ActiveCallContext';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
@@ -145,7 +146,7 @@ export default function PhoneCommandCenter() {
   const liveCalls = useMemo(() => activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)), [activeCalls]);
 
   useEffect(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
+    apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.contacts) setContacts(d.contacts.slice(0, 20)); })
       .catch(() => {});
@@ -166,7 +167,7 @@ export default function PhoneCommandCenter() {
     setCallStarting(true);
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/call'), {
+        const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

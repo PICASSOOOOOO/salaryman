@@ -15,7 +15,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, Zap, Fuel, X, BatteryWarning, BatteryCharging, ArrowLeftRight, Trash2, AlertTriangle } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api-client";
 
 export type UtilityMode = "charge" | "gas";

@@ -31,7 +31,7 @@ const h = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 
 vi.mock("@/lib/api-client", () => ({ apiFetch: h.apiFetch }));
 
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ isAuthenticated: true, user: null }),
 }));
 

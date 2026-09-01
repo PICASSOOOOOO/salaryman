@@ -1,4 +1,4 @@
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
 const FONT = "var(--font-sans)";
@@ -15,7 +15,7 @@ interface SignInPromptProps {
   context?: string;
   onDismiss?: () => void;
   inline?: boolean;
-  // Where to land the user after the verified platform sign-in completes.
+  // Where to land the user after sign-in completes.
   returnTo?: string;
 }
 

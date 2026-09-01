@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { Film, Sparkles, Loader2, Download, AlertTriangle, Smartphone, Monitor } from 'lucide-react';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '').replace(/^\//, '');
@@ -42,7 +43,7 @@ export default function VideoStudio() {
   const poll = useCallback((id: string) => {
     const tick = async () => {
       try {
-        const res = await fetch(apiUrl(`studio/video/${id}`), { credentials: 'include' });
+        const res = await apiFetch(apiUrl(`studio/video/${id}`), { credentials: 'include' });
         if (!res.ok) {
           setError(`Status check failed (${res.status})`);
           setBusy(false);
@@ -77,7 +78,7 @@ export default function VideoStudio() {
     setJob(null);
     setBusy(true);
     try {
-      const res = await fetch(apiUrl('studio/video'), {
+      const res = await apiFetch(apiUrl('studio/video'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

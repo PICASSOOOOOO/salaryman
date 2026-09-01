@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
 import Upgrade from "@/pages/Upgrade";
@@ -613,7 +613,7 @@ function BackerForm() {
     if (status === "loading") return;
     setStatus("loading");
     try {
-      const res = await fetch(apiUrl("investors"), {
+      const res = await apiFetch(apiUrl("investors"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

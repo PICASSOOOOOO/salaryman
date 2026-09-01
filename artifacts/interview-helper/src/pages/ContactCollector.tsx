@@ -8,7 +8,7 @@ import {
   StickyNote, PhoneCall, Send, CalendarPlus, Calendar,
 } from 'lucide-react';
 
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useAppMode } from '../hooks/use-app-mode';
 import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';

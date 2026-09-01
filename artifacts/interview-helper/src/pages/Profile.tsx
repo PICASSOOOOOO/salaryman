@@ -8,7 +8,6 @@ import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { useLocation, Link, Redirect } from 'wouter';
 
-import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
 import { useOrg } from '@/hooks/use-org';
@@ -23,6 +22,7 @@ import { ReferralPanel } from '@/components/ReferralPanel';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import GameSettings from '@/pages/Game/Settings';
+import { useAuth } from '@/hooks/use-auth';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));

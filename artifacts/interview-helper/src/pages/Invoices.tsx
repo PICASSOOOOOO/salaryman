@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Plus, X, Trash2, Eye, Download, Loader2, Check, Send, Mail,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAppMode } from '@/hooks/use-app-mode';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -114,7 +114,7 @@ export default function Invoices() {
       const body = { ...form, lineItems, taxRate: form.taxRate };
       const url = editingId ? `/api/tools/documents/invoices/${editingId}` : '/api/tools/documents/invoices';
       const method = editingId ? 'PUT' : 'POST';
-      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const r = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (r.ok) {
         setShowForm(false);
         resetForm();

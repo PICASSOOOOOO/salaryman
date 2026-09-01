@@ -5,7 +5,7 @@ import { User, ChevronDown, ArrowLeft } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { usePlan } from '../hooks/use-plan';
 import { useOrg } from '../hooks/use-org';
 import { useAlpha } from '../hooks/use-alpha';

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
@@ -102,7 +103,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 async function api<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}api${path}`, {
+  const res = await apiFetch(path, {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     ...opts,

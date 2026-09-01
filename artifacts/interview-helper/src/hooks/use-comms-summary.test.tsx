@@ -16,7 +16,7 @@ const h = vi.hoisted(() => ({
   authState: { isAuthenticated: true },
 }));
 
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => h.authState }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => h.authState }));
 
 import { useCommsSummary, invalidateCommsSummary } from "./use-comms-summary";
 

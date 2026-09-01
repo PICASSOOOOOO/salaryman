@@ -37,6 +37,9 @@ h.toast.mockImplementation(() => ({ id: "toast-1", update: h.toastUpdate, dismis
 vi.mock("@/hooks/use-notifications", () => ({
   useNotifications: () => h.notifState,
 }));
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: () => ({ isAuthenticated: true, isLoading: false, user: { id: "me" } }),
+}));
 vi.mock("@/lib/commsAlerts", () => ({
   useCommsAlerts: () => [h.commsAlertsOn, () => {}],
   useCommsCityDnd: () => [false, () => {}],
@@ -75,6 +78,7 @@ async function render() {
 
 beforeEach(() => {
   idSeq = 1;
+  localStorage.clear();
   h.notifState = { notifications: [], unreadCount: 0, loading: false };
   h.commsAlertsOn = true;
   h.playNotify.mockClear();

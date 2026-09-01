@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
 import type { Device, Call } from '@twilio/voice-sdk';
 import { registerDeviceDisconnect } from '@/lib/twilio-device-bridge';
@@ -56,7 +57,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     refreshTimerRef.current = setTimeout(async () => {
       if (!deviceRef.current) return;
       try {
-        const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+        const r = await apiFetch(apiUrl('twilio/token'), { credentials: 'include' });
         if (!r.ok) return;
         const data = await r.json();
         deviceRef.current.updateToken(data.token);
@@ -81,7 +82,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
       try {
         const { Device, Call } = await import('@twilio/voice-sdk');
         console.log('[TwilioDevice] fetching token...');
-        const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+        const r = await apiFetch(apiUrl('twilio/token'), { credentials: 'include' });
         if (!r.ok) {
           const d = await r.json().catch(() => ({}));
           throw new Error(d.error || `Failed to get token (${r.status})`);
@@ -130,7 +131,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
 
         device.on('tokenWillExpire', async () => {
           try {
-            const tr = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+            const tr = await apiFetch(apiUrl('twilio/token'), { credentials: 'include' });
             if (tr.ok) {
               const td = await tr.json();
               device.updateToken(td.token);

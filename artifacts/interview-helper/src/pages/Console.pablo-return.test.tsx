@@ -20,7 +20,7 @@ vi.mock("@/hooks/use-media-analyzer", () => ({
 }));
 vi.mock("@/hooks/use-plan", () => ({ usePlan: () => ({ isPro: false, features: new Set<string>() }) }));
 vi.mock("@/hooks/use-mobile", () => ({ getDefaultBoomerMode: () => false }));
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("@/components/ActionPanel", () => ({ ActionPanel: () => null }));
 vi.mock("@/components/StatusIndicator", () => ({ StatusIndicator: () => null }));

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Palette, Save, Loader2, Check, Upload, Globe, Target, Type, Zap,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 

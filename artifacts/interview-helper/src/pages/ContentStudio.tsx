@@ -6,7 +6,7 @@ import {
   ChevronDown, Zap, Type, AlignLeft, Mail, Megaphone, Tag, Target, Instagram,
   Twitter, Linkedin, Layers, Palette, SlidersHorizontal, Plus, X, Video, Globe
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';

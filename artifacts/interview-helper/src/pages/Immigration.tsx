@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useOnboardingResolved } from '@/lib/onboarding-sync';
@@ -15,6 +14,7 @@ import { ensureOnboardingScore } from '@/lib/onboarding-score';
 import { sanitizeReturnPath } from '@/lib/safe-path';
 import { apiFetch } from '@/lib/api-client';
 import { startBuildingOnboarding } from '@/lib/building-onboarding';
+import { useAuth } from '@/hooks/use-auth';
 
 const SAVE_KEY = 'sm_save';
 
@@ -278,7 +278,7 @@ export default function Immigration() {
       const startingBalance = Math.max(0, Math.floor(Number(prior.savings ?? 0)));
       let out: HousingChargeResult | null = null;
       try {
-        const r = await fetch('/api/onboard-housing/charge', {
+        const r = await apiFetch('/api/onboard-housing/charge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

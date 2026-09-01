@@ -1,7 +1,7 @@
 import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, FlaskConical, ArrowLeft } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useAlpha } from '../hooks/use-alpha';

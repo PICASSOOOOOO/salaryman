@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useBoomerMode } from '@/hooks/use-mobile';

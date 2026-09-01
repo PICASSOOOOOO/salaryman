@@ -4,7 +4,7 @@ import { ChevronDown, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { useLowGfx } from '@/lib/lowGfx';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 
 interface PabloControlsMenuProps {
   showHummingbird: boolean;

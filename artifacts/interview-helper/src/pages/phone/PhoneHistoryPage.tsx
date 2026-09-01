@@ -1,8 +1,9 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft, AlertTriangle, Download, Mic } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
@@ -38,7 +39,7 @@ export default function PhoneHistoryPage() {
   const fetchHistory = useCallback(() => {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
     setLoading(true);
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`), { credentials: 'include' })
+    apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { rawNavigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.calls) setHistory(d.calls); }
@@ -54,7 +55,7 @@ export default function PhoneHistoryPage() {
     setError('');
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/call'), {
+        const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }) });
         const body = await r.json();
@@ -71,7 +72,7 @@ export default function PhoneHistoryPage() {
 
   const emailCallSummary = async (callId: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { rawNavigate('/pricing'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to send email summary'); }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not send email summary'); }
@@ -83,7 +84,7 @@ export default function PhoneHistoryPage() {
     try {
       const startAt = new Date(followupForm.startAt);
       const endAt = followupForm.endAt ? new Date(followupForm.endAt) : new Date(startAt.getTime() + 30 * 60 * 1000);
-      const r = await fetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
+      const r = await apiFetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }) });

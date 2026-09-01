@@ -5,7 +5,7 @@ import {
   Building2, Calendar, TrendingUp, TrendingDown, ChevronDown, ChevronUp,
   ArrowLeft, Briefcase, CreditCard, Receipt, Clock,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useLocation } from 'wouter';

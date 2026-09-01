@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
@@ -40,7 +41,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
   const peersRef = useRef<Peer[]>([]);
 
   useEffect(() => {
-    fetch(apiUrl(`meetings/by-code/${code}`))
+    apiFetch(apiUrl(`meetings/by-code/${code}`))
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data?.meeting) { setStage('notfound'); return; }
@@ -154,7 +155,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
     // Obtain a short-lived guest token before opening the WS
     let guestToken = '';
     try {
-      const tokenResp = await fetch(apiUrl(`meetings/${code}/guest-token`), { method: 'POST' });
+      const tokenResp = await apiFetch(apiUrl(`meetings/${code}/guest-token`), { method: 'POST' });
       if (tokenResp.ok) {
         const tokenData = await tokenResp.json();
         guestToken = tokenData.token ?? '';

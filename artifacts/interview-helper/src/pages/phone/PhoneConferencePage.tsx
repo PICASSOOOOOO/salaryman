@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Users, Plus, PhoneOff, Loader2, X, MicOff, Video, VideoOff, Mic } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
@@ -228,7 +229,7 @@ export default function PhoneConferencePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const fetchConferences = useCallback(() => {
-    fetch(apiUrl('twilio/conference/list'), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/conference/list'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.rooms) setConferences(d.rooms); }
@@ -244,7 +245,7 @@ export default function PhoneConferencePage() {
     setCreating(true);
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/conference/create'), {
+      const r = await apiFetch(apiUrl('twilio/conference/create'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ label: confRoomName || 'New Conference' }) });
@@ -264,7 +265,7 @@ export default function PhoneConferencePage() {
     if (!confAddNumber) return;
     setError('');
     try {
-      const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/add`), {
+      const r = await apiFetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/add`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ phoneNumber: confAddNumber, name: confAddName }) });
@@ -282,7 +283,7 @@ export default function PhoneConferencePage() {
   const endConference = async (roomName: string) => {
     setError('');
     try {
-      const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST', credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { navigate('/pricing'); return; }
       if (r.ok) {
         setVideoRooms(prev => { const next = new Set(prev); next.delete(roomName); return next; });

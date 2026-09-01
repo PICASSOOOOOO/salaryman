@@ -5,7 +5,7 @@ import {
   GripVertical, User, Briefcase, GraduationCap, Award, FolderOpen, Globe,
   Loader2, Save, Palette, Copy,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 
 const UI: React.CSSProperties = { fontFamily: "'Inter', sans-serif" };

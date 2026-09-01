@@ -10,7 +10,7 @@ import {
   Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock, Sparkles, Phone, Table2, Clapperboard, Music,
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';

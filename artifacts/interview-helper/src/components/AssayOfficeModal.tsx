@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useState } from "react";
 import { RESOURCE_CATALOG } from "../lib/resource-catalog";
 
@@ -30,8 +31,8 @@ export default function AssayOfficeModal({ onClose, onSold, slot = 0 }: Props) {
   const refresh = () => {
     setLoading(true);
     Promise.all([
-      fetch("/api/resources/prices", { credentials: "include" }).then(r => r.json()),
-      fetch("/api/resources/inventory", { credentials: "include" }).then(r => r.json()),
+      apiFetch("/api/resources/prices", { credentials: "include" }).then(r => r.json()),
+      apiFetch("/api/resources/inventory", { credentials: "include" }).then(r => r.json()),
     ]).then(([p, i]) => {
       setPrices(p.prices ?? []);
       setDate(p.date ?? "");
@@ -50,7 +51,7 @@ export default function AssayOfficeModal({ onClose, onSold, slot = 0 }: Props) {
     setSelling(resourceId);
     setStatusMsg("");
     try {
-      const r = await fetch("/api/resources/sell", {
+      const r = await apiFetch("/api/resources/sell", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

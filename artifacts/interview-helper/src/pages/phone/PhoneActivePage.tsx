@@ -1,8 +1,9 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight, FileText, MessageSquare, Clock, Shield, Volume2, Hash, User, Activity , PhoneIncoming, VolumeX} from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, SignalMeter, INPUT_STYLE } from './PhoneLayout';
@@ -101,7 +102,7 @@ export default function PhoneActivePage() {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const r = await fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' });
+      const r = await apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' });
       if (r.status === 403) {
         const d = await r.json().catch(() => ({}));
         setError(d.error || 'Access denied — phone system subscription required.');
@@ -143,7 +144,7 @@ export default function PhoneActivePage() {
     setError('');
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
+        const r = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
         const body = await r.json();
         if (r.status === 403) { navigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Failed to advance session');
@@ -190,7 +191,7 @@ export default function PhoneActivePage() {
   const stopSession = async () => {
     if (!dialingSession) return;
     try {
-      await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
+      await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
       setDialingSession(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not stop session');

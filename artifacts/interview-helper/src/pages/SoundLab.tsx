@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ProGate } from '@/components/ProGate';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTrackPicker } from '@/components/TrackPicker';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';

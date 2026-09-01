@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { apiFetch } from '@/lib/api-client';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import SplitWorkspace, { type SplitModule } from '@/components/classroom/SplitWorkspace';
 import {

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 export type InterviewMode = 'hint' | 'solution' | 'explain' | 'complexity' | 'say_it';
@@ -15,7 +16,7 @@ async function streamSSE(
   onError: (msg: string) => void
 ) {
   const resolvedUrl = url.startsWith('/api/') ? `${BASE_URL}${url.slice(1)}` : url;
-  const res = await fetch(resolvedUrl, {
+  const res = await apiFetch(resolvedUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -487,7 +488,7 @@ function loadBusinessMemoryLocal(): string {
 
 async function fetchBusinessMemory(): Promise<string> {
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}api/tools/memory`);
+    const res = await apiFetch('/api/tools/memory');
     if (!res.ok) return loadBusinessMemoryLocal();
     const data = await res.json();
     return data.memory ?? loadBusinessMemoryLocal();
@@ -499,7 +500,7 @@ async function fetchBusinessMemory(): Promise<string> {
 async function saveBusinessMemory(mem: string) {
   try { localStorage.setItem(MEMORY_STORAGE_KEY, mem); } catch {}
   try {
-    await fetch(`${import.meta.env.BASE_URL}api/tools/memory`, {
+    await apiFetch('/api/tools/memory', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memory: mem }),
@@ -524,7 +525,7 @@ async function extractBusinessContext(
   existingContext: string
 ): Promise<string> {
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}api/interview/extract-context`, {
+    const res = await apiFetch('/api/interview/extract-context', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -589,7 +590,7 @@ export function useAdvisorChat() {
     };
 
     try {
-      const res = await fetch(advisorUrl, {
+      const res = await apiFetch(advisorUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -677,7 +678,7 @@ export function useAdvisorChat() {
     let detectedAgent: AgentInfo | null = null;
 
     try {
-      const res = await fetch(advisorUrl, {
+      const res = await apiFetch(advisorUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

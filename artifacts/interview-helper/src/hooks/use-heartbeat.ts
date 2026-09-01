@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 const HEARTBEAT_MS = 5 * 60 * 1000; // every 5 minutes when active
 
@@ -15,7 +16,7 @@ export function useHeartbeat() {
     const ping = async () => {
       if (cancelled || document.visibilityState !== "visible") return;
       try {
-        await fetch("/api/lifecycle/heartbeat", { method: "POST", credentials: "include" });
+        await apiFetch("/api/lifecycle/heartbeat", { method: "POST", credentials: "include" });
       } catch {
         // network failure — silent; next interval will retry
       }

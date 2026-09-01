@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { HummingbirdIcon } from '@/components/HummingbirdIcon';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
@@ -5,7 +6,7 @@ import { speakWithTTS } from '@/lib/tts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Layers, Radio } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useAdvisorChat } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -259,7 +260,7 @@ function usePabloVoice() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-          fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
+          apiFetch('/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audio: base64, mimeType: finalMime }),
@@ -740,12 +741,23 @@ export default function Home() {
   const lastSpokenRef = useRef(-1);
 
   useEffect(() => {
+    const sendHeartbeat = () => {
+      if (isAuthenticated) {
+        apiFetch('/api/world/heartbeat', { method: 'POST', credentials: 'include' }).catch(() => {});
+      }
+    };
+    sendHeartbeat();
+    const iv = setInterval(sendHeartbeat, 15000);
+    return () => clearInterval(iv);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     if (!isAuthenticated) return;
-    fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: 'include' })
+    apiFetch('/api/orgs/me', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setOrgData({ org: data.org, member: data.member, members: data.members ?? [] }); })
       .catch(() => {});
-    fetch(`${import.meta.env.BASE_URL}api/world/my-business`, { credentials: 'include' })
+    apiFetch('/api/world/my-business', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.businesses) setWorldBiz(data.businesses); })
       .catch(() => {});
@@ -756,14 +768,14 @@ export default function Home() {
     setBizRegError('');
     try {
       const playerName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim().toUpperCase() : (user?.email?.split('@')[0] ?? 'PLAYER').toUpperCase();
-      const res = await fetch(`${import.meta.env.BASE_URL}api/world/register`, {
+      const res = await apiFetch('/api/world/register', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ playerName, ...bizRegForm }),
       });
       const data = await res.json();
       if (!res.ok) { setBizRegError(data.error || 'Registration failed'); setBizRegLoading(false); return; }
-      const refreshRes = await fetch(`${import.meta.env.BASE_URL}api/world/my-business`, { credentials: 'include' });
+      const refreshRes = await apiFetch('/api/world/my-business', { credentials: 'include' });
       if (refreshRes.ok) { const d = await refreshRes.json(); setWorldBiz(d.businesses ?? []); }
       setBizRegOpen(false);
       setBizRegForm({ companyName: '', businessType: 'real', industry: '', companySize: '', contactEmail: '' });

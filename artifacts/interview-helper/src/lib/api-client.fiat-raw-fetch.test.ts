@@ -38,13 +38,7 @@ const SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // "no stale entries" test below flags any excuse that no longer appears in
 // source so the list can't rot.
 // ---------------------------------------------------------------------------
-const EXCUSED_RAW_FETCH = new Map<string, string>([
-  [
-    "twilio/call/*/transfer",
-    "Twilio phone-call transfer (live-call routing). Matches FIAT_AFFECTING only " +
-      "via the 'transfer' token; it moves a CALL between agents, not bank ƒ.",
-  ],
-]);
+const EXCUSED_RAW_FETCH = new Map<string, string>();
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -90,7 +84,7 @@ describe("no raw fetch() bypasses the instant ƒ HUD refresh", () => {
 
     // Sanity: the scan must actually find raw fetch call sites (guards against a
     // broken regex that would make this test vacuously pass).
-    expect(calls.length).toBeGreaterThan(20);
+    expect(calls.length).toBeGreaterThan(10);
 
     const moneyRaw = calls.filter((c) => c.mutating && FIAT_AFFECTING.test(c.path));
 

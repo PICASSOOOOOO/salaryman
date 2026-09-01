@@ -35,8 +35,10 @@ function buildApp(): Express {
   app.use(express.json());
   app.use(cookieParser());
   app.use((req, _res, next) => {
-    (req as any).isAuthenticated = () => authState.authed;
-    (req as any).user = authState.user;
+    // Mirror authMiddleware: authorization comes from the resolved local row.
+    (req as any).dbUser = authState.authed ? authState.user : undefined;
+    (req as any).user = (req as any).dbUser;
+    (req as any).isAuthenticated = () => !!(req as any).dbUser;
     next();
   });
   app.use("/api", authRouter);
@@ -89,6 +91,20 @@ describe("GitHub account linking", () => {
     const res = await request(app).get("/api/auth/github/connect?returnTo=/profile").send();
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe("/profile?github_link_error=login_required");
+  });
+
+  it("rejects a callback when the Clerk-local row is no longer present", async () => {
+    const start = await request(app).get("/api/auth/github/connect?returnTo=/profile");
+    const state = new URL(start.headers.location as string).searchParams.get("state");
+    const cookies = (start.headers["set-cookie"] as unknown as string[]).map((value) => value.split(";")[0]);
+    authState.authed = false;
+
+    const callback = await request(app)
+      .get(`/api/auth/github/callback?code=unused&state=${state}`)
+      .set("Cookie", cookies);
+
+    expect(callback.status).toBe(302);
+    expect(callback.headers.location).toBe("/profile?github_link_error=session");
   });
 
   it("reports not linked for an account with no GitHub identity", async () => {

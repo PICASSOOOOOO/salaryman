@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Users, Phone, Search, CheckSquare, Square, Zap, Loader2, X, ArrowRight, Filter, Grid, List } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
@@ -38,7 +39,7 @@ export default function PhoneContactsPage() {
   useEffect(() => {
     if (!userId) return;
     setError('');
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
+    apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
@@ -83,7 +84,7 @@ export default function PhoneContactsPage() {
     setLoading(true);
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/call'), {
+        const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
         const body = await r.json();
@@ -108,7 +109,7 @@ export default function PhoneContactsPage() {
     const numbers = contacts.filter(c => selected.has(c.id)).map(c => ({ phone: c.phone, name: c.name }));
     try {
       const d = await bridgeOutbound(async () => {
-        const r = await fetch(apiUrl('twilio/batch-call'), {
+        const r = await apiFetch(apiUrl('twilio/batch-call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ numbers, userId, callerName }) });
         const body = await r.json();

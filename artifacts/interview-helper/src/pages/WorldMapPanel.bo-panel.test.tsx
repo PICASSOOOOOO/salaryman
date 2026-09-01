@@ -26,7 +26,7 @@ import { createRoot, type Root } from 'react-dom/client';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock('@workspace/replit-auth-web', () => ({
+vi.mock('@/hooks/use-auth', () => ({
   useAuth: () => ({ isAuthenticated: true }),
 }));
 

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@workspace/replit-auth-web";
 import { BedDouble, BriefcaseBusiness, Building2, Clock3, KeyRound, Laptop, Shield, Stethoscope, X } from "lucide-react";
 import { IsoOffice } from "@/components/IsoOffice";
 import { WorldBuildStation } from "@/components/WorldBuildStation";
@@ -10,6 +9,7 @@ import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { completeWorkArrivalTask, getBuildingOnboardingStage } from "@/lib/building-onboarding";
 import { TowerLifeHub } from "@/components/TowerLifeHub";
+import { useAuth } from "@/hooks/use-auth";
 
 type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {

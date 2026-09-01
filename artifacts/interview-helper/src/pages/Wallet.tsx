@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useStreamerMode } from "@/hooks/use-streamer-mode";
@@ -72,7 +73,7 @@ export default function Wallet() {
   useEffect(() => {
     const load = async () => {
       try {
-        const r = await fetch("/api/wallet/snapshot", { credentials: "include" });
+        const r = await apiFetch("/api/wallet/snapshot", { credentials: "include" });
         if (r.status === 401) { setErr("Login required."); return; }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         setSnap(await r.json());

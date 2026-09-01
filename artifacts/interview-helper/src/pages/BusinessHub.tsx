@@ -13,7 +13,7 @@ import {
   Save, ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
   Eye, EyeOff, LockKeyhole, KeyRound,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { invalidateOrgCache } from '@/hooks/use-org';

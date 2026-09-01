@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Notification {
   id: number;
@@ -41,7 +42,7 @@ export function useNotifications() {
       return;
     }
     try {
-      const res = await window.fetch(`${import.meta.env.BASE_URL}api/notifications`, { credentials: "include" });
+      const res = await apiFetch('/api/notifications', { credentials: "include" });
       if (!res.ok) throw new Error("failed");
       const data = await res.json();
       const s: NotificationState = {
@@ -83,7 +84,7 @@ export function useNotifications() {
       loading: prev.loading,
     }));
     try {
-      await window.fetch(`${import.meta.env.BASE_URL}api/notifications/${id}`, {
+      await apiFetch(`/api/notifications/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -95,7 +96,7 @@ export function useNotifications() {
   const clearAll = useCallback(async () => {
     setState(prev => ({ notifications: [], unreadCount: 0, loading: prev.loading }));
     try {
-      await window.fetch(`${import.meta.env.BASE_URL}api/notifications/clear`, {
+      await apiFetch('/api/notifications/clear', {
         method: "POST",
         credentials: "include",
       });
@@ -106,7 +107,7 @@ export function useNotifications() {
 
   const markRead = useCallback(async (ids?: number[]) => {
     try {
-      await window.fetch(`${import.meta.env.BASE_URL}api/notifications/mark-read`, {
+      await apiFetch('/api/notifications/mark-read', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

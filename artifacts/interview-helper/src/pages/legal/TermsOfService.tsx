@@ -14,7 +14,7 @@ export default function TermsOfService() {
       <p>You must be at least 13 years of age to use SALARYMAN. If you are under 18, you must have parental or guardian consent. By accessing the Service you represent and warrant that you meet these requirements. Certain features — including purchasing FIAT (ƒ) virtual currency, Passport, and physical merchandise — require you to be at least 18 years old or have verifiable parental consent.</p>
 
       <h2>3. Account Registration</h2>
-      <p>You may access certain features of SALARYMAN by authenticating via Replit Auth. You are responsible for all activity that occurs under your account. You must not share your credentials or permit others to access your account.</p>
+      <p>You may access certain features of SALARYMAN by signing in to your account. You are responsible for all activity that occurs under your account. You must not share your credentials or permit others to access your account.</p>
 
       <h2>4. Acceptable Use</h2>
       <p>You agree not to:</p>

@@ -6,7 +6,7 @@ import {
   Bot, X, Bookmark, Download,
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { apiFetch } from '@/lib/api-client';
 

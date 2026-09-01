@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { ChevronLeft, Heart, Wallet, Skull, Briefcase } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
 import { resolveAvatarUrl } from "@/lib/avatar";
 import { useStreamerMode } from "@/hooks/use-streamer-mode";

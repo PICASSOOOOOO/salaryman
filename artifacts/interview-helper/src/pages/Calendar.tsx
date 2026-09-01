@@ -1,10 +1,11 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, FileText,
   Bell, Trash2, Edit2, Check, CalendarDays, Calendar as CalendarIcon,
   AlarmClock, Mail, Loader2, Video, Copy, ExternalLink, Download
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
@@ -926,7 +927,7 @@ export default function Calendar() {
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch(apiUrl("calendar/appointments"), { credentials: "include" });
+      const resp = await apiFetch(apiUrl("calendar/appointments"), { credentials: "include" });
       if (resp.ok) {
         const data = await resp.json();
         setAppointments(data.appointments ?? []);
@@ -978,7 +979,7 @@ export default function Calendar() {
         : apiUrl("calendar/appointments");
       const method = editTarget ? "PUT" : "POST";
 
-      const resp = await fetch(url, {
+      const resp = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1006,7 +1007,7 @@ export default function Calendar() {
     if (!editTarget) return;
     setSaving(true);
     try {
-      const resp = await fetch(apiUrl(`calendar/appointments/${editTarget.id}`), {
+      const resp = await apiFetch(apiUrl(`calendar/appointments/${editTarget.id}`), {
         method: "DELETE",
         credentials: "include",
       });
@@ -1025,7 +1026,7 @@ export default function Calendar() {
     if (!meetTitle.trim()) return;
     setMeetCreating(true);
     try {
-      const resp = await fetch(apiUrl("meetings"), {
+      const resp = await apiFetch(apiUrl("meetings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1050,7 +1051,7 @@ export default function Calendar() {
     if (!meetCode || !meetInviteEmail.trim()) return;
     setMeetInviteSending(true);
     try {
-      const resp = await fetch(apiUrl(`meetings/${meetCode}/invite`), {
+      const resp = await apiFetch(apiUrl(`meetings/${meetCode}/invite`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1072,7 +1073,7 @@ export default function Calendar() {
     if (!emailModal || !emailInput.trim()) return;
     setEmailSending(true);
     try {
-      const resp = await fetch(
+      const resp = await apiFetch(
         apiUrl(`calendar/appointments/${emailModal.id}/send-confirmation`),
         {
           method: "POST",

@@ -7,7 +7,7 @@ import {
   Twitter, Linkedin, Instagram, Facebook, Hash, Sparkles,
   FileText, Globe, MessageCircle, Film, Video, Download, Mail, UploadCloud,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
 

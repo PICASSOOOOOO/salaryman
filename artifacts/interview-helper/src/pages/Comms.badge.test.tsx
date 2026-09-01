@@ -24,7 +24,7 @@ const h = vi.hoisted(() => ({
 
 // Mock the leaf concerns (auth, routing, presentational tab bodies, boomer-mode)
 // but keep the REAL useCommsSummary so the badge is produced by production code.
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => h.authState }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => h.authState }));
 vi.mock("wouter", () => ({ useLocation: () => ["", vi.fn()] }));
 vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 vi.mock("@/hooks/use-mobile", () => ({

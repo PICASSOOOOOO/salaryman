@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { User, Loader2, Building2, Briefcase, Users, TrendingUp, ArrowLeft, Wrench } from 'lucide-react';
 import { useLocation, useParams } from 'wouter';
 
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 

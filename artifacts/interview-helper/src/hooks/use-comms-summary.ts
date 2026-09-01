@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 interface CommsSummary {
   unreadMessages: number;
@@ -34,7 +35,7 @@ export function useCommsSummary() {
       return;
     }
     try {
-      const res = await window.fetch(`${import.meta.env.BASE_URL}api/comms/summary`, { credentials: "include" });
+      const res = await apiFetch('/api/comms/summary', { credentials: "include" });
       if (!res.ok) throw new Error("failed");
       const data = await res.json();
       const s: CommsSummary = {

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { ChevronLeft, ExternalLink, Copy, Check, Link2, Loader2, FolderOpen, Music2 } from "lucide-react";
 import { PabloWinampPlayer } from "@/components/PabloWinampPlayer";
 import { HummingbirdIcon } from "@/components/HummingbirdIcon";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import { AudioSettingsPanel } from "@/components/AudioSettingsPanel";

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { apiFetch } from "@/lib/api-client";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { Loader2, Plus, User, Trash2, Pencil, Check, X, Star } from "lucide-react";

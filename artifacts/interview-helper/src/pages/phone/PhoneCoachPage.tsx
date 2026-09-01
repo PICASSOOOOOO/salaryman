@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
@@ -62,7 +63,7 @@ export default function PhoneCoachPage() {
     setAiLoading(true);
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/ai/coach'), {
+      const r = await apiFetch(apiUrl('twilio/ai/coach'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ question, transcript: aiTranscript, context: contactContext }) });
@@ -77,7 +78,7 @@ export default function PhoneCoachPage() {
     setSugLoading(true);
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/ai/suggest'), {
+      const r = await apiFetch(apiUrl('twilio/ai/suggest'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ transcript: aiTranscript, contactName: contactContext }) });
@@ -93,7 +94,7 @@ export default function PhoneCoachPage() {
     if (!aiTranscript.trim()) return;
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/ai/transcribe'), {
+      const r = await apiFetch(apiUrl('twilio/ai/transcribe'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ transcript: aiTranscript }) });
@@ -116,7 +117,7 @@ export default function PhoneCoachPage() {
     if (!dictationText.trim()) return;
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/ai/dictation'), {
+      const r = await apiFetch(apiUrl('twilio/ai/dictation'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ text: dictationText }) });

@@ -5,7 +5,7 @@ import {
   ClipboardList, Plus, X, Trash2, Loader2, Check, Edit2,
   Flag, User, Calendar, Tag,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 

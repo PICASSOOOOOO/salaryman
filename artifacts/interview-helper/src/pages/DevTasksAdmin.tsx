@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { AlertTriangle, Loader2, RefreshCw, ClipboardList, ArrowUpCircle, ChevronDown } from 'lucide-react';
 
 interface FeedbackReport {

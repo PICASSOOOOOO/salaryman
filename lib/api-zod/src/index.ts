@@ -8,7 +8,6 @@ export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,
   type AuthUserEnvelope,
-  type BeginBrowserLoginParams,
   type CreateOpenaiConversationBody as CreateOpenaiConversationBodyType,
   type ErrorEnvelope,
   type HealthStatus,

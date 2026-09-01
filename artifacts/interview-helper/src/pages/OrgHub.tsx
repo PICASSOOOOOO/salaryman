@@ -4,7 +4,7 @@ import {
   Building2, Users, Briefcase, BookOpen, ArrowRight,
   ShieldCheck, Loader2, Plus, Settings,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useOrg } from '@/hooks/use-org';
 import { OrgConstructionOverview } from '@/components/ConstructionOverview';

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
 import { getActiveCityId } from "@/lib/city-defs";
-import { notifyFiatChangedSoon } from "@/lib/api-client";
+import { apiFetch, notifyFiatChangedSoon } from "@/lib/api-client";
 
 export interface ChatMessage {
   id: number;
@@ -104,7 +104,7 @@ export function useChatSocket(): UseChatSocket {
   const refreshChannels = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/chat/channels`, { credentials: "include" });
+      const res = await apiFetch('/api/chat/channels', { credentials: "include" });
       if (!res.ok) return;
       const data: ChannelMeta = await res.json();
       setState(prev => ({
@@ -221,7 +221,7 @@ export function useChatSocket(): UseChatSocket {
       ws.send(JSON.stringify({ type: "send_message", channelId, content, ...(hasAttachment ? { attachmentFileId } : {}) }));
       return;
     }
-    fetch(`${import.meta.env.BASE_URL}api/chat/channels/${channelId}/send`, {
+    apiFetch(`/api/chat/channels/${channelId}/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -271,7 +271,7 @@ export function useChatSocket(): UseChatSocket {
       };
     });
     try {
-      await fetch(`${import.meta.env.BASE_URL}api/comms/read-all`, {
+      await apiFetch('/api/comms/read-all', {
         method: "POST",
         credentials: "include",
       });
@@ -284,8 +284,8 @@ export function useChatSocket(): UseChatSocket {
     try {
       const params = new URLSearchParams({ limit: "50" });
       if (before) params.set("before", String(before));
-      const res = await fetch(
-        `${import.meta.env.BASE_URL}api/chat/channels/${channelId}/messages?${params}`,
+      const res = await apiFetch(
+        `/api/chat/channels/${channelId}/messages?${params}`,
         { credentials: "include" }
       );
       if (!res.ok) return false;
@@ -306,7 +306,7 @@ export function useChatSocket(): UseChatSocket {
 
   const startPrivateChat: StartPrivateFn = useCallback(async (targetUserId) => {
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/chat/private`, {
+      const res = await apiFetch('/api/chat/private', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -335,7 +335,7 @@ export function useChatSocket(): UseChatSocket {
         isBot: m.isBot,
       }));
 
-      const res = await fetch(`${import.meta.env.BASE_URL}api/chat/pablo/message`, {
+      const res = await apiFetch('/api/chat/pablo/message', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,7 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clapperboard, Image, FileText, Share2, Camera, Video } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { useBoomerMode } from '@/hooks/use-mobile';

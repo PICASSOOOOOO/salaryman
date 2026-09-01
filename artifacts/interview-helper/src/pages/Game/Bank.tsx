@@ -193,8 +193,8 @@ export default function GameBank() {
     setError("");
     try {
       const [accRes, txRes] = await Promise.all([
-        fetch("/api/economy/bank/accounts", { credentials: "include" }),
-        fetch("/api/economy/bank/transactions?limit=200", { credentials: "include" }),
+        apiFetch("/api/economy/bank/accounts", { credentials: "include" }),
+        apiFetch("/api/economy/bank/transactions?limit=200", { credentials: "include" }),
       ]);
       if (accRes.status === 401) {
         navigate("/login?next=/game/bank");

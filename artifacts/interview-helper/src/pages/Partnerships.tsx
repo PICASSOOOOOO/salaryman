@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Handshake, Search, Plus, Check, X, Loader2, Building2, ArrowLeft, Clock, CheckCircle2, XCircle } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
@@ -51,7 +52,7 @@ export default function Partnerships() {
 
   const fetchOrgs = useCallback(async () => {
     try {
-      const res = await fetch(apiUrl('orgs/mine'), { credentials: 'include' });
+      const res = await apiFetch(apiUrl('orgs/mine'), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setOrgs(data.orgs ?? []);
@@ -66,7 +67,7 @@ export default function Partnerships() {
     if (!selectedOrgId) return;
     setLoading(true);
     try {
-      const res = await fetch(apiUrl(`orgs/${selectedOrgId}/partnerships`), { credentials: 'include' });
+      const res = await apiFetch(apiUrl(`orgs/${selectedOrgId}/partnerships`), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setPartnerships(data.partnerships ?? []);
@@ -81,7 +82,7 @@ export default function Partnerships() {
     if (q.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const res = await fetch(apiUrl(`orgs/search?q=${encodeURIComponent(q)}`), { credentials: 'include' });
+      const res = await apiFetch(apiUrl(`orgs/search?q=${encodeURIComponent(q)}`), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setSearchResults((data.orgs ?? []).filter((o: OrgOption) => o.id !== selectedOrgId));
@@ -98,7 +99,7 @@ export default function Partnerships() {
     if (!selectedOrgId || !requestForm.partnerOrgName.trim()) return;
     setSubmitting(true);
     try {
-      const res = await fetch(apiUrl(`orgs/${selectedOrgId}/partnerships/request`), {
+      const res = await apiFetch(apiUrl(`orgs/${selectedOrgId}/partnerships/request`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -119,7 +120,7 @@ export default function Partnerships() {
   async function updatePartnership(partnershipId: number, status: string) {
     if (!selectedOrgId) return;
     try {
-      const res = await fetch(apiUrl(`orgs/${selectedOrgId}/partnerships/${partnershipId}`), {
+      const res = await apiFetch(apiUrl(`orgs/${selectedOrgId}/partnerships/${partnershipId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

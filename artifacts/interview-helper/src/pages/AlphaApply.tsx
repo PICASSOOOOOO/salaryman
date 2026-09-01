@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { Loader2, ShieldCheck, FlaskConical, Code2, ArrowLeft, Clock, X, CheckCircle2, AlertTriangle, Users, Gavel, Bug, Map, Coins, MessageSquare, Smartphone, FileText } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { useAlpha, type AlphaRole, type AlphaApplication } from "@/hooks/use-alpha";
 

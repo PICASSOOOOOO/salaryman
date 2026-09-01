@@ -76,6 +76,7 @@ const EXCUSED_NON_BANK_SPENDS = new Set([
   "/api/billboards/*/purchase", // deducts client-save g.salary, not the bank
   "/api/services/*/claim", // grants a service listing, no player-bank mutation
   "/api/twilio/purchase-number", // Stripe/Twilio purchase path, not in-game FIAT
+  "/api/orgs/*/stripe-checkout", // Stripe subscription checkout, not in-game FIAT
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -94,12 +95,16 @@ type Call = { file: string; path: string; mutating: boolean };
 // option object that follows within the same call.
 function scanApiFetchCalls(): Call[] {
   const calls: Call[] = [];
-  const callRe = /apiFetch\(\s*(['"`])([^'"`]+)\1/g;
+  const callRe = /apiFetch\(\s*(?:apiUrl\(\s*)?(['"`])([^'"`]+)\1/g;
   for (const file of walk(SRC_ROOT)) {
     const txt = readFileSync(file, "utf8");
     let m: RegExpExecArray | null;
     while ((m = callRe.exec(txt))) {
-      const path = m[2].replace(/\$\{[^}]*\}/g, "*");
+        const literalPath = m[2].replace(/\$\{[^}]*\}/g, "*");
+        // apiUrl("twilio/...") is the base-aware spelling of /api/twilio/....
+        const path = m[0].includes("apiUrl(")
+          ? `/api/${literalPath.replace(/^\//, "")}`
+          : literalPath;
       const win = txt.slice(m.index, m.index + 280);
       const mutating = /method:\s*['"`](POST|PUT|PATCH|DELETE)['"`]/i.test(win);
       calls.push({ file, path, mutating });

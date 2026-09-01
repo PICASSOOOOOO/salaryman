@@ -6,7 +6,7 @@ import {
   AlertTriangle, Trash2, Power, Save, Copy, Check, RefreshCw,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 
 interface Site {

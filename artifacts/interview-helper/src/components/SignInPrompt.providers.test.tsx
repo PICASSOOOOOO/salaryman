@@ -11,7 +11,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 // useAuth only supplies the click handlers; we don't trigger logins here, we
 // only assert which buttons render. Stub it so the component mounts in jsdom.
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     login: vi.fn(),
     loginWithDiscord: vi.fn(),
@@ -118,7 +118,7 @@ describe("SignInPrompt keeps one verified sign-in method", () => {
   it("hides both GitHub and Discord when only replit is enabled", async () => {
     stubProvidersFetch(async () => ({ replit: true, discord: false, github: false }));
     await mount();
-    // Replit Auth is the platform default and must always remain clickable.
+    // The primary account sign-in option must always remain clickable.
     expect(hasReplitSignIn()).toBe(true);
     expect(hasDiscordButton()).toBe(false);
     expect(hasGithubButton()).toBe(false);

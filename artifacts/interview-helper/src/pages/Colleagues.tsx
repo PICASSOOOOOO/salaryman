@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useUpload } from '@workspace/object-storage-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { AvatarCropModal } from '@/components/AvatarCropModal';

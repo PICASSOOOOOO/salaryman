@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 import express, { type Express } from "express";
 import request from "supertest";
+import cookieParser from "cookie-parser";
 import authRouter from "../routes/auth";
 
 // Route-level companion to github-auth.host-creds.test.ts. The unit test locks
 // in resolveGithubCreds()'s per-host selection; this test proves the live
-// GET /api/auth/github route actually wires that selection into the GitHub
-// authorize redirect — the dev OAuth App on a dev host, the *_PROD app on a
-// published host. A regression here silently breaks login on the live site.
+// GET /api/auth/github/connect route wires that selection into the account-link
+// redirect. GitHub is not an alternate sign-in route in the Clerk era.
 
 const ENV_KEYS = [
   "GITHUB_OAUTH_CLIENT_ID",
@@ -23,13 +23,19 @@ let app: Express;
 
 beforeAll(() => {
   // Mirror the real mount: the auth router lives under "/api" (its own paths
-  // are "/auth/..."). The /auth/github redirect needs neither auth nor cookies
-  // on the request side, so a bare express app is enough.
+  // are "/auth/..."). Inject the local row the Clerk bridge would resolve.
   app = express();
+  app.use(cookieParser());
+  app.use((req, _res, next) => {
+    (req as any).dbUser = { id: "clerk-test-user" };
+    (req as any).user = (req as any).dbUser;
+    (req as any).isAuthenticated = () => true;
+    next();
+  });
   app.use("/api", authRouter);
 });
 
-describe("GET /api/auth/github redirect picks the OAuth App per host", () => {
+describe("GET /api/auth/github/connect redirect picks the OAuth App per host", () => {
   let saved: Record<string, string | undefined>;
 
   beforeEach(() => {
@@ -53,7 +59,7 @@ describe("GET /api/auth/github redirect picks the OAuth App per host", () => {
 
   it("redirects a dev host to GitHub with the DEV client_id + dev callback URL", async () => {
     const res = await request(app)
-      .get("/api/auth/github")
+      .get("/api/auth/github/connect")
       .set("Host", DEV_HOST)
       .set("x-forwarded-proto", "https");
 
@@ -72,7 +78,7 @@ describe("GET /api/auth/github redirect picks the OAuth App per host", () => {
 
   it("redirects a published host to GitHub with the PROD client_id + prod callback URL", async () => {
     const res = await request(app)
-      .get("/api/auth/github")
+      .get("/api/auth/github/connect")
       .set("Host", PROD_HOST)
       .set("x-forwarded-proto", "https");
 
@@ -92,7 +98,7 @@ describe("GET /api/auth/github redirect picks the OAuth App per host", () => {
     // Behind the Replit proxy the published host arrives in x-forwarded-host
     // while the raw Host is an internal name; the prod app must still win.
     const res = await request(app)
-      .get("/api/auth/github")
+      .get("/api/auth/github/connect")
       .set("Host", "internal.local")
       .set("x-forwarded-host", PROD_HOST)
       .set("x-forwarded-proto", "https");
@@ -110,7 +116,7 @@ describe("GET /api/auth/github redirect picks the OAuth App per host", () => {
     delete process.env.GITHUB_OAUTH_CLIENT_SECRET_PROD;
 
     const res = await request(app)
-      .get("/api/auth/github")
+      .get("/api/auth/github/connect")
       .set("Host", PROD_HOST)
       .set("x-forwarded-proto", "https");
 
@@ -123,13 +129,13 @@ describe("GET /api/auth/github redirect picks the OAuth App per host", () => {
     for (const k of ENV_KEYS) delete process.env[k];
 
     const res = await request(app)
-      .get("/api/auth/github")
+      .get("/api/auth/github/connect")
       .set("Host", PROD_HOST)
       .set("x-forwarded-proto", "https");
 
     expect(res.status).toBe(302);
     // No GitHub authorize redirect — bounce back to the app with an error flag.
     expect(res.headers.location).not.toContain("github.com");
-    expect(res.headers.location).toContain("auth_error=github_unavailable");
+    expect(res.headers.location).toContain("github_link_error=unavailable");
   });
 });

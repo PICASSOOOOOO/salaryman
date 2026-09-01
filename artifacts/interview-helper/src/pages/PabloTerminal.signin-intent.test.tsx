@@ -28,7 +28,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 // Logged-out visitor: not authed, not loading.
 const loginWithDiscord = vi.fn();
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     isLoading: false,
     isAuthenticated: false,
@@ -275,7 +275,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
       const modal = qs("pablo-auth-choice");
       expect(modal, "auth choice modal should open").not.toBeNull();
 
-      // Click the modal's SIGN IN button — it builds the /api/login URL and is
+      // Click the modal's SIGN IN button — it builds the /sign-in URL and is
       // the only place the cached-email hint surfaces.
       const signInBtn = Array.from(modal!.querySelectorAll("button")).find(
         (b) => b.textContent?.trim() === "CONTINUE WITH REPLIT",
@@ -286,7 +286,7 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
         signInBtn!.click();
       });
 
-      expect(window.location.href).toContain("/api/login");
+      expect(window.location.href).toContain("/sign-in");
       expect(window.location.href).toContain(
         `login_hint=${encodeURIComponent("returning@example.com")}`,
       );

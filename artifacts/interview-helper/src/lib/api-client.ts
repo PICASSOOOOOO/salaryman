@@ -116,7 +116,7 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
     : path;
   const method = (opts?.method ?? 'GET').toUpperCase();
   const isMutating = method !== 'GET' && method !== 'HEAD';
-  const p = fetch(fullPath, { credentials: 'include', ...opts });
+  const p = fetch(fullPath, { ...opts, credentials: 'include' });
 
   // Session-expiry redirect: when any API call comes back 401 it means the
   // session has lapsed. Bounce the user to /pablo?returnTo=<current-path> so

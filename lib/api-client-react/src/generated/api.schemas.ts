@@ -110,6 +110,6 @@ export interface ErrorEnvelope {
 
 export type AuthorizationSessionHeaderParameter = string;
 
-export type BeginBrowserLoginParams = {
+export type BeginDiscordLoginParams = {
   returnTo?: string;
 };

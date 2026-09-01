@@ -18,7 +18,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 
 // PUT behavior is steerable per test via `putMode`:

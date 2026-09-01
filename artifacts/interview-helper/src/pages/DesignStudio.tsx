@@ -7,7 +7,7 @@ import {
   Copy, Save, Upload, Eye, Grid, ChevronDown, Check, AlertTriangle,
   Layout,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { apiFetch } from '@/lib/api-client';

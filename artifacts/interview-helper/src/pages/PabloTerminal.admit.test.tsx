@@ -28,7 +28,7 @@ const loginWithDiscord = vi.fn();
 const { spokenTts } = vi.hoisted(() => ({
   spokenTts: [] as string[],
 }));
-vi.mock("@workspace/replit-auth-web", () => ({
+vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     isLoading: false,
     isAuthenticated: false,

@@ -34,7 +34,7 @@ export default defineConfig({
   base: basePath,
   plugins: [
     react(),
-    tailwindcss(),
+    tailwindcss({ optimize: false }),
     runtimeErrorOverlay(),
     // Ship a parallel "legacy" bundle (with polyfills) for older browsers
     // — older Safari/iOS, older Edge, older Android Chrome. Modern browsers

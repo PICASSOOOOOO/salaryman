@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import {
   BookOpen, Plus, Trash2,
   Wand2, Download, Loader2, RotateCcw,
@@ -603,7 +604,7 @@ export default function WriterStudio() {
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch(apiUrl('studio/writer'), {
+      const res = await apiFetch(apiUrl('studio/writer'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -701,7 +702,7 @@ export default function WriterStudio() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(apiUrl('studio/parse-document'), {
+      const res = await apiFetch(apiUrl('studio/parse-document'), {
         method: 'POST',
         credentials: 'include',
         body: fd,

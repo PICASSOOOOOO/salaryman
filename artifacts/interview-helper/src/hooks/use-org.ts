@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OrgMember {
   orgId: number;
@@ -41,7 +42,7 @@ export function useOrg(): OrgData {
       return;
     }
     try {
-      const res = await window.fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: "include" });
+      const res = await apiFetch('/api/orgs/me', { credentials: "include" });
       if (!res.ok) throw new Error("failed");
       const data = await res.json();
       const s: OrgData = {

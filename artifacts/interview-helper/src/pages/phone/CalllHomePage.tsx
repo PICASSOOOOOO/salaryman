@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, EyeOff, Eye, Settings2, MessageSquare, Hash } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
 import { slate, warning } from '@/lib/phone-utils';
@@ -208,7 +209,7 @@ export default function CalllHomePage() {
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading) return;
-    fetch(apiUrl('twilio/phone-numbers'), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/phone-numbers'), { credentials: 'include' })
       .then(r => {
         if (r.ok) setSystemStatus('online');
         else if (r.status === 403) setSystemStatus('no_subscription');

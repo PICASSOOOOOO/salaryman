@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 /**
  * Client helper for the Salaryman art kit. Returns a CDN URL for any kit
  * key the server knows about, or null while it's still being baked. The
@@ -33,7 +34,7 @@ export async function fetchArtAsset(key: string): Promise<SalarymanArtAsset | nu
   if (inflight.has(key)) return inflight.get(key)!;
   const p = (async () => {
     try {
-      const res = await fetch(url(`api/art/asset/${encodeURIComponent(key)}`), {
+      const res = await apiFetch(url(`api/art/asset/${encodeURIComponent(key)}`), {
         credentials: "include",
       });
       if (!res.ok) return null;

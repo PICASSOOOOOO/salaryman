@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 export type Tier = "free" | "pro";
 export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system" | "claw_bot";
@@ -72,7 +73,7 @@ export function usePlan(): PlanData {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/plan`);
+      const res = await apiFetch('/api/plan');
       if (!res.ok) throw new Error("plan fetch failed");
       const data = await res.json();
       const featureSet = new Set<FeatureKey>((data.features ?? []) as FeatureKey[]);

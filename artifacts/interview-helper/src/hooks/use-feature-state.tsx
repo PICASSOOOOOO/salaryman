@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 
 interface Slide {
@@ -28,7 +29,7 @@ function streamSSESimple(
 ) {
   const ctrl = new AbortController();
 
-  fetch(url, {
+  apiFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

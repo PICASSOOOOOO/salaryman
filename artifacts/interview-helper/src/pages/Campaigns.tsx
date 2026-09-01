@@ -6,7 +6,7 @@ import {
   AlertCircle, Loader2, X, ChevronRight, Edit2, Eye, Users, Phone,
   Zap, Filter, RefreshCw, Check, Copy, ArrowLeft, Megaphone, Inbox,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ const BASE_URL = import.meta.env.BASE_URL;
 
 function api(path: string, opts?: RequestInit) {
   const fullPath = path.startsWith('/api/') ? `${BASE_URL}${path.slice(1)}` : path;
-  return fetch(fullPath, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  return apiFetch(fullPath, { headers: { 'Content-Type': 'application/json' }, ...opts });
 }
 
 const STATUS_COLORS: Record<string, string> = {

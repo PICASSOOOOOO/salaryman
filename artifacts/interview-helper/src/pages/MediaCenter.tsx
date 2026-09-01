@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 
 const API = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
@@ -53,8 +54,8 @@ interface ScreenSession {
   durationSeconds?: number;
 }
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const res = await fetch(`${API}${path}`, { credentials: "include", ...opts });
+async function mediaApi(path: string, opts?: RequestInit) {
+  const res = await apiFetch(`${API}${path}`, { credentials: "include", ...opts });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -101,7 +102,7 @@ export default function MediaCenter() {
   const sendCallToHummingBird = async (callId: number, label: string) => {
     setDownloadingId(callId);
     try {
-      const res = await fetch(`${API}/media/recording/download/${callId}?format=mp3`, { credentials: "include" });
+      const res = await apiFetch(`${API}/media/recording/download/${callId}?format=mp3`, { credentials: "include" });
       if (!res.ok) throw new Error('fetch ' + res.status);
       const blob = await res.blob();
       const safe = (label || `call-${callId}`).replace(/[^\w\-. ]+/g, '_').slice(0, 60);
@@ -118,7 +119,7 @@ export default function MediaCenter() {
   const fetchCalls = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch("/twilio/history?limit=100");
+      const data = await mediaApi("/twilio/history?limit=100");
       setCalls((data.calls || data).filter((c: CallRecord) => c.recordingUrl));
     } catch {}
     setLoading(false);
@@ -126,7 +127,7 @@ export default function MediaCenter() {
 
   const fetchInbox = useCallback(async () => {
     try {
-      const data = await apiFetch("/media/inbox");
+      const data = await mediaApi("/media/inbox");
       setInbox(data.items || []);
       setUnread(data.unread || 0);
     } catch {}
@@ -134,21 +135,21 @@ export default function MediaCenter() {
 
   const fetchSent = useCallback(async () => {
     try {
-      const data = await apiFetch("/media/sent");
+      const data = await mediaApi("/media/sent");
       setSent(data.items || []);
     } catch {}
   }, []);
 
   const fetchMembers = useCallback(async () => {
     try {
-      const data = await apiFetch("/media/org-members");
+      const data = await mediaApi("/media/org-members");
       setMembers(data.members || []);
     } catch {}
   }, []);
 
   const fetchMonitoring = useCallback(async () => {
     try {
-      const data = await apiFetch("/media/screen-monitoring");
+      const data = await mediaApi("/media/screen-monitoring");
       setMonitoring({ active: data.activeSessions || [], recent: data.recentSessions || [] });
     } catch {}
   }, []);
@@ -168,7 +169,7 @@ export default function MediaCenter() {
   const handleDownload = async (callId: number, format: string) => {
     setDownloadingId(callId);
     try {
-      const res = await fetch(`${API}/media/recording/download/${callId}?format=${format}`, { credentials: "include" });
+      const res = await apiFetch(`${API}/media/recording/download/${callId}?format=${format}`, { credentials: "include" });
       if (!res.ok) throw new Error("Download failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -186,7 +187,7 @@ export default function MediaCenter() {
   const handleShare = async () => {
     if (!shareTarget || !shareToUser) return;
     try {
-      await apiFetch("/media/share", {
+      await mediaApi("/media/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -209,7 +210,7 @@ export default function MediaCenter() {
   const handleShareMedia = async (mediaType: string, title: string, sourceUrl: string) => {
     if (!shareToUser) return;
     try {
-      await apiFetch("/media/share", {
+      await mediaApi("/media/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ toUserId: shareToUser, mediaType, title, sourceUrl, description: shareDesc || undefined }),
@@ -224,7 +225,7 @@ export default function MediaCenter() {
 
   const handleMarkRead = async (id: number) => {
     try {
-      await apiFetch(`/media/inbox/${id}/read`, { method: "POST" });
+      await mediaApi(`/media/inbox/${id}/read`, { method: "POST" });
       setInbox((prev) => prev.map((i) => (i.id === id ? { ...i, isRead: true } : i)));
       setUnread((p) => Math.max(0, p - 1));
     } catch {}
@@ -292,7 +293,7 @@ export default function MediaCenter() {
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
 
       try {
-        const data = await apiFetch("/media/screen-session/start", { method: "POST" });
+        const data = await mediaApi("/media/screen-session/start", { method: "POST" });
         setScreenSessionId(data.sessionId);
       } catch {}
     } catch (err: any) {
@@ -306,7 +307,7 @@ export default function MediaCenter() {
     mediaRecorderRef.current?.stop();
     if (screenSessionId) {
       try {
-        await apiFetch(`/media/screen-session/${screenSessionId}/stop`, {
+        await mediaApi(`/media/screen-session/${screenSessionId}/stop`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ durationSeconds: recordingTime }),

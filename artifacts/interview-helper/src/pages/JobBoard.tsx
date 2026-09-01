@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Briefcase, Building2, DollarSign, MapPin, Clock, Users, ChevronDown,
   ChevronUp, Plus, Loader2, X, CheckCircle, XCircle, Send, AlertTriangle,

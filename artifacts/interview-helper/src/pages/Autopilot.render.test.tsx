@@ -26,7 +26,7 @@ import { createRoot, type Root } from "react-dom/client";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // Signed-in so the page loads its control surface instead of the sign-in prompt.
-vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 
 // apiFetch double: serve the saved control surface for GET /autopilot and an

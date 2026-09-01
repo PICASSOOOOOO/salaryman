@@ -1,9 +1,10 @@
+import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, Upload, PhoneOutgoing, FileText , Check} from 'lucide-react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   slate, warning, primary, destructive, accent,
@@ -42,7 +43,7 @@ export default function PhoneSecretaryPage() {
   }, [navigate]);
 
   useEffect(() => {
-    fetch(apiUrl('twilio/secretary/config'), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/secretary/config'), { credentials: 'include' })
       .then(async r => {
         if (handleAuthStatus(r)) return;
         if (r.ok) {
@@ -64,7 +65,7 @@ export default function PhoneSecretaryPage() {
       })
       .finally(() => setLoading(false));
 
-    fetch(apiUrl('twilio/pablo/campaigns'), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/pablo/campaigns'), { credentials: 'include' })
       .then(async r => { if (r.ok) { const d = await r.json(); setCampaigns(d.campaigns ?? []); } })
       .catch(() => {});
   }, [apiUrl, handleAuthStatus]);
@@ -77,7 +78,7 @@ export default function PhoneSecretaryPage() {
         const parts = l.split(',');
         return { phone: parts[0]?.trim() ?? '', name: parts[1]?.trim() ?? '' };
       }).filter(l => l.phone);
-      const r = await fetch(apiUrl('twilio/pablo/campaigns'), {
+      const r = await apiFetch(apiUrl('twilio/pablo/campaigns'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }) });
@@ -91,7 +92,7 @@ export default function PhoneSecretaryPage() {
 
   const startCampaign = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), {
+      const r = await apiFetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), {
         method: 'POST', credentials: 'include' });
       if (r.ok) {
         setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c));
@@ -114,7 +115,7 @@ export default function PhoneSecretaryPage() {
     setSaving(true);
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/secretary/config'), {
+      const r = await apiFetch(apiUrl('twilio/secretary/config'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(secretaryForm) });

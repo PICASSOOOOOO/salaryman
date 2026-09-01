@@ -1,5 +1,6 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useState } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 
 type Status = {
   daysIdle: number;
@@ -22,7 +23,7 @@ export default function AbandonmentBanner() {
     let active = true;
     const load = async () => {
       try {
-        const r = await fetch("/api/lifecycle/status", { credentials: "include" });
+        const r = await apiFetch("/api/lifecycle/status", { credentials: "include" });
         if (!r.ok) return;
         const j = (await r.json()) as Status;
         if (active) setStatus(j);

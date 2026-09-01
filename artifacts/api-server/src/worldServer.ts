@@ -5,13 +5,13 @@ import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable,
 import { OUTSIDE_WORLD_ENABLED } from './lib/outside-world';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
-import { getSession, SESSION_COOKIE } from './lib/auth';
 import { resolveClassroomLiveAccess } from './routes/education';
 
 // Per-realm population cap. Each realm runs the SAME game on its own always-on
 // server; the cap keeps a single instance healthy and hosting cost predictable.
 // Default 50; raise per deployment (SERVER_MAX_PLAYERS) once a realm's economy
 // justifies more compute, or spin up a second city in the same continent.
+import { resolveClerkWebSocketUser } from "./lib/clerk-websocket-auth";
 export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 50;
 
 // Which realm this (identical) deployment IS. Both servers run the same build;
@@ -1421,38 +1421,12 @@ export const handleMessage = (player: Player, raw: string) => {
 // raw upgrade request (req.cookies isn't populated for WS handshakes, so parse
 // the cookie header ourselves). Returns null when unauthenticated.
 const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null> => {
-  try {
-    const cookieHeader = req.headers.cookie;
-    if (!cookieHeader) return null;
-    const sid = cookieHeader
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith(`${SESSION_COOKIE}=`))
-      ?.slice(SESSION_COOKIE.length + 1);
-    if (!sid) return null;
-    const session = await getSession(decodeURIComponent(sid));
-    return session?.user?.profileImageUrl ?? null;
-  } catch {
-    return null;
-  }
+  return (await resolveClerkWebSocketUser(req))?.profileImageUrl ?? null;
 };
 
 // Resolve the authenticated user id from a raw upgrade request's session cookie.
 const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null> => {
-  try {
-    const cookieHeader = req.headers.cookie;
-    if (!cookieHeader) return null;
-    const sid = cookieHeader
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith(`${SESSION_COOKIE}=`))
-      ?.slice(SESSION_COOKIE.length + 1);
-    if (!sid) return null;
-    const session = await getSession(decodeURIComponent(sid));
-    return session?.user?.id ?? null;
-  } catch {
-    return null;
-  }
+  return (await resolveClerkWebSocketUser(req))?.id ?? null;
 };
 
 // Live WebSocket population, compared against MAX_PLAYERS for the capacity gate.

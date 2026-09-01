@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
       <h2>1. Information We Collect</h2>
       <h3>1.1 Information You Provide</h3>
       <ul>
-        <li><strong>Account data</strong> — name, email address, and profile information provided via Replit Auth</li>
+        <li><strong>Account data</strong> — name, email address, and profile information provided through our authentication service</li>
         <li><strong>Contact &amp; CRM data</strong> — contact information you enter into the Business module</li>
         <li><strong>Communications</strong> — messages and data sent through the Contact form or customer support channels</li>
         <li><strong>Purchase information</strong> — billing details, transaction history for FIAT (ƒ), cosmetic items, subscriptions, and merchandise</li>
@@ -24,7 +24,7 @@ export default function PrivacyPolicy() {
       </ul>
       <h3>1.3 Information from Third Parties</h3>
       <ul>
-        <li>Authentication data from Replit Auth</li>
+        <li>Authentication data from our authentication service provider</li>
         <li>Payment processing data from Stripe (we do not store full card numbers)</li>
         <li>Communication data from Twilio (call metadata, SMS)</li>
       </ul>

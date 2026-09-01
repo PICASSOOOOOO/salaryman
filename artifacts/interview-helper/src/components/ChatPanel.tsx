@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2, Paperclip, FileText, Download, Folder } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth } from "@/hooks/use-auth";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 import { invalidateCommsSummary, useCommsSummary } from "@/hooks/use-comms-summary";
@@ -381,7 +382,7 @@ function AttachPicker({
     const url = parentId == null
       ? `${import.meta.env.BASE_URL}api/tools/documents/files`
       : `${import.meta.env.BASE_URL}api/tools/documents/files?parentId=${parentId}`;
-    fetch(url, { credentials: "include" })
+    apiFetch(url, { credentials: "include" })
       .then(r => r.ok ? r.json() : { items: [] })
       .then(data => { if (active) setItems(data.items ?? []); })
       .catch(() => { if (active) setItems([]); })
@@ -607,7 +608,7 @@ function UserSearchPanel({
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `${import.meta.env.BASE_URL}api/colleagues/contacts`,
           { credentials: "include" }
         );

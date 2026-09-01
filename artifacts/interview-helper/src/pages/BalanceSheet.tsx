@@ -5,7 +5,7 @@ import {
   Users, Receipt, CreditCard, ArrowUpRight, ArrowDownRight, FileText,
   Banknote, Wallet, AlertTriangle, Link2, ExternalLink, Building2, Landmark,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 

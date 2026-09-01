@@ -1,7 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
@@ -9,6 +8,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 import GameSettings from './Game/Settings';
 import { TowerLifeHub } from '@/components/TowerLifeHub';
+import { useAuth } from '@/hooks/use-auth';
 
 interface CargoItem {
   id: string;

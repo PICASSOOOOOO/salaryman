@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { Ruler, Sparkles, Loader2, AlertTriangle, UploadCloud, FileText, Image as ImageIcon, X, Box } from 'lucide-react';
-import { apiUrl } from '@/lib/api-client';
+import { apiFetch, apiUrl } from '@/lib/api-client';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
 const ACCEPT = 'image/*,application/pdf,.dxf,.dwg,.step,.stp,.stl,.iges,.igs,.gcode,.nc,.gbr,.svg,.scad';
@@ -68,7 +68,7 @@ export default function SchematicDecoder() {
     abortRef.current = controller;
     try {
       const dataUrl = await readAsDataUrl(file);
-      const res = await fetch(apiUrl('tools/decode-schematic'), {
+      const res = await apiFetch(apiUrl('tools/decode-schematic'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

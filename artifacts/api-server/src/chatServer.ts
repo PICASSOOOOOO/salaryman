@@ -3,20 +3,9 @@ import type { IncomingMessage, Server } from 'http';
 import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
 import { eq, and, sql } from 'drizzle-orm';
 import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
-import { getSession, SESSION_COOKIE } from './lib/auth';
-
+import { resolveClerkWebSocketUser } from './lib/clerk-websocket-auth';
 async function resolveSessionUserId(req: IncomingMessage): Promise<string | null> {
-  try {
-    const rawSid = req.headers.cookie
-      ?.split(';')
-      .map(cookie => cookie.trim())
-      .find(cookie => cookie.startsWith(`${SESSION_COOKIE}=`))
-      ?.slice(SESSION_COOKIE.length + 1);
-    if (!rawSid) return null;
-    return (await getSession(decodeURIComponent(rawSid)))?.user?.id ?? null;
-  } catch {
-    return null;
-  }
+  return (await resolveClerkWebSocketUser(req))?.id ?? null;
 }
 
 interface ChatClient {

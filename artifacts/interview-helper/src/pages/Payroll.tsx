@@ -5,7 +5,7 @@ import {
   Users, Plus, X, Trash2, Loader2, Check, Play, ChevronDown, ChevronUp,
   DollarSign, AlertCircle, ArrowRightLeft,
 } from 'lucide-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 
