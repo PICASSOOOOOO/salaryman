@@ -28,14 +28,20 @@ export default function ModeratorPanel() {
 
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated) return;
     setLoading(true);
+    setAccessDenied(false);
     apiFetch('/api/world/online')
-      .then(r => r.json())
+      .then(async r => {
+        if (r.status === 403) { setAccessDenied(true); return null; }
+        return r.json();
+      })
       .then(d => {
+        if (!d) return;
         const players = (d.players ?? []).map((p: any) => ({
           userId: p.userId ?? p.id,
           firstName: p.firstName ?? p.username ?? null,
@@ -52,8 +58,12 @@ export default function ModeratorPanel() {
 
     const interval = setInterval(() => {
       apiFetch('/api/world/online')
-        .then(r => r.json())
+        .then(async r => {
+          if (r.status === 403) { setAccessDenied(true); return null; }
+          return r.json();
+        })
         .then(d => {
+          if (!d) return;
           const players = (d.players ?? []).map((p: any) => ({
             userId: p.userId ?? p.id,
             firstName: p.firstName ?? p.username ?? null,
@@ -84,10 +94,17 @@ export default function ModeratorPanel() {
           <Eye className="w-5 h-5 text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'MODERATOR DASHBOARD' : 'WATCHTOWER'}</h2>
-          <p className="text-sm text-muted-foreground">Monitor platform activity, users, and game world</p>
+          <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'MODERATOR WATCHTOWER' : 'WATCHTOWER'}</h2>
+          <p className="text-sm text-muted-foreground">World-wide player oversight, separate from platform administration</p>
         </div>
       </div>
+
+      {accessDenied && (
+        <div className="mb-6 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-4">
+          <p className="text-sm font-semibold text-amber-200">Moderator access required</p>
+          <p className="mt-1 text-xs text-amber-100/70">This watchtower is for approved moderators, administrators, and organization executives viewing their own people.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[

@@ -129,70 +129,7 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
     }
   }
 
-  let createdTotal = 0;
-  let skippedTotal = 0;
-
-  for (const member of targets) {
-    const existingSubs = await db.select().from(botSubscriptionsTable)
-      .where(eq(botSubscriptionsTable.userId, member.userId));
-    const existingByItemId = new Map(existingSubs.map(s => [s.marketplaceItemId, s]));
-
-    for (const item of items) {
-      const existing = existingByItemId.get(item.id);
-      if (existing && existing.botId && existing.status === "active") {
-        skippedTotal++;
-        continue;
-      }
-      try {
-        // Reuse an existing instance for this template if present so a wiped
-        // subscription row can't trigger a fresh duplicate insert.
-        const [present] = await db.select({ id: botsTable.id })
-          .from(botsTable)
-          .where(and(
-            eq(botsTable.ownerId, member.userId),
-            eq(botsTable.marketplaceItemId, item.id),
-          ))
-          .orderBy(botsTable.id)
-          .limit(1);
-
-        const bot = present
-          ? present
-          : (await db.insert(botsTable).values({
-              ownerId: member.userId,
-              orgId: picasso.id,
-              name: item.name,
-              personality: item.personality,
-              systemPrompt: item.systemPrompt,
-              permissions: item.permissions,
-              marketplaceItemId: item.id,
-              status: "active",
-            }).returning())[0];
-
-        if (existing) {
-          await db.update(botSubscriptionsTable)
-            .set({ botId: bot.id, orgId: picasso.id, status: "active" })
-            .where(and(
-              eq(botSubscriptionsTable.userId, member.userId),
-              eq(botSubscriptionsTable.marketplaceItemId, item.id),
-            ));
-        } else {
-          await db.insert(botSubscriptionsTable).values({
-            userId: member.userId,
-            marketplaceItemId: item.id,
-            botId: bot.id,
-            orgId: picasso.id,
-            status: "active",
-          }).onConflictDoUpdate({
-            target: [botSubscriptionsTable.userId, botSubscriptionsTable.marketplaceItemId],
-            set: { botId: bot.id, orgId: picasso.id, status: "active" },
-          });
-        }
-        createdTotal++;
-      } catch (err) {
-        console.error(`[Picasso Bots] Failed to activate ${item.slug} for ${member.userId}:`, err);
-      }
-    }
-  }
-
-  console.log(`[Picasso Bots] Activated ${createdTotal} bot(s), skipped ${skippedTotal} already active. Targets: ${targets.length} member(s).`);
+  // Prime access makes these agents available in the factory; it does not
+  // activate them. Activation is explicit and reserves one real workstation.
+  console.log(`[Picasso Bots] Reconciled ownership metadata for ${targets.length} member(s); no bots auto-activated.`);
 }

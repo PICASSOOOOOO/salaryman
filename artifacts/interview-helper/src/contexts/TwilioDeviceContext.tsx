@@ -41,6 +41,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   const deviceStateRef = useRef<DeviceState>('uninitialized');
   const activeConferenceCallsRef = useRef<Map<string, Call>>(new Map());
   const connectingConferenceRef = useRef<Map<string, Promise<Call>>>(new Map());
+  const initDeviceRef = useRef<() => Promise<void>>(async () => {});
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -101,19 +102,31 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
         });
 
         device.on('error', (err: Error) => {
+          if (deviceRef.current !== device || unmountedRef.current) return;
           console.error('[TwilioDevice] error:', err.message);
           setDeviceError(err.message);
           updateDeviceState('error');
         });
 
         device.on('registered', () => {
+          if (deviceRef.current !== device || unmountedRef.current) return;
           console.log('[TwilioDevice] registered and ready');
           updateDeviceState('ready');
           setDeviceError(null);
         });
 
         device.on('unregistered', () => {
+          if (deviceRef.current !== device || unmountedRef.current) return;
           updateDeviceState('uninitialized');
+          setDeviceError('Phone connection was interrupted. Reconnecting…');
+          if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = setTimeout(() => {
+            if (deviceRef.current === device && !unmountedRef.current) {
+              try { device.destroy(); } catch {}
+              deviceRef.current = null;
+              void initDeviceRef.current();
+            }
+          }, 1_000);
         });
 
         // Phone takes precedence over the media player. As soon as a call
@@ -140,6 +153,9 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
           } catch {}
         });
 
+        // Publish the current Device before registering it so its synchronous
+        // registration events are accepted by the stale-device guards above.
+        deviceRef.current = device;
         await Promise.race([
           device.register(),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Phone device registration timed out')), REGISTER_TIMEOUT_MS)),
@@ -151,7 +167,6 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
           try { device.destroy(); } catch {}
           return;
         }
-        deviceRef.current = device;
         updateDeviceState('ready');
         scheduleTokenRefresh();
         // Successful register → reset the auto-retry backoff so the next
@@ -160,6 +175,10 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
         if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
         console.log('[TwilioDevice] device registered successfully');
       } catch (err: unknown) {
+        if (deviceRef.current && deviceStateRef.current !== 'ready') {
+          try { deviceRef.current.destroy(); } catch {}
+          deviceRef.current = null;
+        }
         const msg = err instanceof Error ? err.message : 'Failed to initialize Twilio device';
         console.error('[TwilioDevice] init failed:', msg);
         setDeviceError(msg);
@@ -190,6 +209,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
       initPromiseRef.current = null;
     }
   }, [apiUrl, scheduleTokenRefresh, updateDeviceState]);
+  initDeviceRef.current = initDevice;
 
   useEffect(() => {
     unmountedRef.current = false;
@@ -208,6 +228,11 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   const reconnect = useCallback(async () => {
     if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
     retryAttemptRef.current = 0;
+    // Let an in-flight registration settle before replacing it. Otherwise a
+    // late event from the old Device can race the new one back to OFFLINE.
+    if (initPromiseRef.current) {
+      await initPromiseRef.current;
+    }
     if (deviceRef.current) {
       try { deviceRef.current.destroy(); } catch {}
       deviceRef.current = null;

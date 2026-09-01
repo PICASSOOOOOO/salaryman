@@ -1,6 +1,5 @@
 import { db, botMarketplaceTable, type PermissionKey } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { primeName } from "./bot-naming";
+import { eq, notInArray } from "drizzle-orm";
 
 const MARKETPLACE_BOTS: Array<{
   slug: string;
@@ -739,18 +738,29 @@ First message: ask what they want researched, then propose a research plan befor
 ];
 
 export async function seedBotMarketplace() {
-  for (const item of MARKETPLACE_BOTS) {
+  const curatedBots = MARKETPLACE_BOTS.filter((item) => item.slug !== "rick-underboss");
+  for (const item of curatedBots) {
     const existing = await db
       .select()
       .from(botMarketplaceTable)
       .where(eq(botMarketplaceTable.slug, item.slug));
 
-    const named = { ...item, name: primeName(item.name, item.slug) };
+    // Prime is the subscription tier, not a surname. Keep the character names
+    // stable so the marketplace, office, and prompts all refer to one identity.
+    const named = { ...item, name: item.name };
     if (existing.length === 0) {
       await db.insert(botMarketplaceTable).values(named);
     } else {
       await db.update(botMarketplaceTable).set({ ...named, active: true }).where(eq(botMarketplaceTable.slug, item.slug));
     }
   }
-  console.log(`[Bot Marketplace] Seeded ${MARKETPLACE_BOTS.length} marketplace bots (curated roster)`);
+  // The curated roster is authoritative. Retired identities must disappear
+  // from the marketplace without deleting existing user-owned bot records.
+  const liveSlugs = curatedBots.map((item) => item.slug);
+  if (liveSlugs.length > 0) {
+    await db.update(botMarketplaceTable)
+      .set({ active: false })
+      .where(notInArray(botMarketplaceTable.slug, liveSlugs));
+  }
+  console.log(`[Bot Marketplace] Seeded ${curatedBots.length} marketplace bots (curated roster)`);
 }

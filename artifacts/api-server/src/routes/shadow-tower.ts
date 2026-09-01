@@ -13,6 +13,7 @@ import {
 import { quoteMarketAdjustedFiat } from "@workspace/api-zod/property-market";
 import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 import { canDoInOrg } from "../lib/org-permissions";
+import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
 import { getMarketIndex } from "./real-estate";
 
 const router = Router();
@@ -64,6 +65,33 @@ function safeFloor(floor: typeof shadowTowerFloorsTable.$inferSelect) {
 }
 
 router.get("/shadow-tower/catalog", (_req, res) => res.json({ listings: Object.values(SHADOW_TOWER_LISTINGS) }));
+router.get("/shadow-tower/availability", async (req, res) => {
+  const city = String(req.query.city ?? "") as ShadowTowerCity;
+  if (!cities.has(city)) { res.status(400).json({ error: "Valid city required" }); return; }
+  const occupied = await db.select({
+    floorNumber: shadowTowerFloorsTable.floorNumber,
+    officeCount: shadowTowerFloorsTable.officeCount,
+    unitNumber: shadowTowerOfficeUnitsTable.unitNumber,
+    status: shadowTowerOfficeUnitsTable.status,
+  }).from(shadowTowerFloorsTable)
+    .leftJoin(shadowTowerOfficeUnitsTable, eq(shadowTowerOfficeUnitsTable.floorId, shadowTowerFloorsTable.id))
+    .where(eq(shadowTowerFloorsTable.city, city));
+  const byFloor = new Map<number, typeof occupied>();
+  for (const row of occupied) byFloor.set(row.floorNumber, [...(byFloor.get(row.floorNumber) ?? []), row]);
+  const floors = Array.from({ length: 60 }, (_, index) => index + 5)
+    .filter(isCommercialShadowTowerFloor)
+    .map((floorNumber) => {
+      const rows = byFloor.get(floorNumber) ?? [];
+      const unavailable = rows.filter((row) => row.status === "occupied").length;
+      return {
+        floorNumber,
+        totalOffices: 4,
+        availableOffices: Math.max(0, 4 - unavailable),
+        status: unavailable === 0 ? "open" : unavailable >= 4 ? "full" : "limited",
+      };
+    });
+  res.json({ city, floors });
+});
 router.get("/shadow-tower/marketplace", async (req, res) => {
   const city = String(req.query.city ?? "") as ShadowTowerCity;
   if (!cities.has(city)) { res.status(400).json({ error: "Valid city required" }); return; }
@@ -196,7 +224,15 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
   const archetype = req.body?.archetype;
   const requestId = String(req.body?.requestId ?? "");
   const requestedOrgId = Number(req.body?.orgId);
-  if (!cities.has(city) || !isCommercialShadowTowerFloor(floorNumber) || !/^[0-9a-f-]{36}$/i.test(requestId) || (archetype !== "founder_team" && archetype !== "company")) { res.status(400).json({ error: "Commercial city, floorNumber, archetype and requestId required" }); return; }
+  if (!cities.has(city) || !Number.isInteger(floorNumber) || !/^[0-9a-f-]{36}$/i.test(requestId) || (archetype !== "founder_team" && archetype !== "company")) { res.status(400).json({ error: "Commercial city, exact floorNumber, archetype and requestId required" }); return; }
+  const email = (req.user as { email?: string | null })?.email ?? undefined;
+  const canAcquireReservedExecutiveFloor =
+    (floorNumber === 66 && (isOwnerEmail(email) || isPicassoOrgMemberEmail(email)))
+    || (floorNumber === 67 && isOwnerEmail(email));
+  if (!isCommercialShadowTowerFloor(floorNumber) && !canAcquireReservedExecutiveFloor) {
+    res.status(403).json({ error: `Floor ${floorNumber} is reserved and was not charged.` });
+    return;
+  }
   const orgId = Number.isInteger(requestedOrgId) && requestedOrgId > 0 ? requestedOrgId : null;
   if (orgId && !(await canDoInOrg(actor, orgId, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
   const [members, activeBots] = await Promise.all([
@@ -225,7 +261,7 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
     }
     const paid = await spendFiat(tx, { userId: actor, amountFiat: price, description: `Shadow Tower ${city} FL ${floorNumber}`, kind: "property", idempotencyKey: `shadow-tower:${requestId}` });
     if (!paid.ok) return { status: 402, body: { error: "Insufficient funds", required: price, balance: paid.spendable } };
-    const [floor] = await tx.insert(shadowTowerFloorsTable).values({ city, floorNumber, orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 30 * 86400_000) : null, archetype }).returning();
+    const [floor] = await tx.insert(shadowTowerFloorsTable).values({ city, floorNumber, orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 365 * 86400_000) : null, archetype }).returning();
     await tx.insert(shadowTowerOfficeUnitsTable).values([
       { floorId: floor.id, unitNumber: 1, status: "occupied", orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: floor.leaseExpiresAt },
       { floorId: floor.id, unitNumber: 2, status: "owner_priority" },
@@ -307,7 +343,7 @@ router.post("/shadow-tower/floors/:id/units/:unitNumber/acquire", requireAuth, a
     if (!paid.ok) return { status: 402, body: { error: "Insufficient funds", required: price } };
     if (!floor.ownerUserId) return { status: 409, body: { error: "No settlement recipient" } };
     await creditFiat(tx, { userId: floor.ownerUserId, amountFiat: price, description: `Shadow Tower unit sale ${id}:${unitNumber}`, kind: "property_sale", idempotencyKey: `shadow-tower-sale:${id}:${unitNumber}:${requestId}` });
-    const [updated] = await tx.update(shadowTowerOfficeUnitsTable).set({ status: "occupied", orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 30 * 86400_000) : null, saleFiat: null, leaseFiat: null, updatedAt: new Date() }).where(eq(shadowTowerOfficeUnitsTable.id, unit.id)).returning();
+    const [updated] = await tx.update(shadowTowerOfficeUnitsTable).set({ status: "occupied", orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 365 * 86400_000) : null, saleFiat: null, leaseFiat: null, updatedAt: new Date() }).where(eq(shadowTowerOfficeUnitsTable.id, unit.id)).returning();
     return { status: 200, body: { unit: updated, price, basePrice, marketQuote: priceQuote, duplicate: paid.duplicate === true } };
   }); res.status(result.status).json(result.body);
 });

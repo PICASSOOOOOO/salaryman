@@ -35,7 +35,7 @@ export function usePledgePopup(): PledgePopupContextValue {
 }
 
 export function PledgeStorePopupProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string>("");
   const [items, setItems] = useState<PledgePopupItem[]>([]);
@@ -46,6 +46,7 @@ export function PledgeStorePopupProvider({ children }: { children: ReactNode }) 
   const [notice, setNotice] = useState<string>("");
 
   const load = useCallback(async () => {
+    if (authLoading) return;
     setLoading(true);
     try {
       const reqs: Promise<Response>[] = [apiFetch("/api/pledge/popup")];
@@ -63,7 +64,7 @@ export function PledgeStorePopupProvider({ children }: { children: ReactNode }) 
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [authLoading, isAuthenticated]);
 
   const openPledgePopup = useCallback(
     (opts?: OpenOptions) => {
@@ -87,8 +88,13 @@ export function PledgeStorePopupProvider({ children }: { children: ReactNode }) 
   }, [open]);
 
   const buy = async (item: PledgePopupItem) => {
+    if (authLoading) {
+      setNotice("Restoring your session — try again in a moment.");
+      return;
+    }
     if (!isAuthenticated) {
-      window.location.href = apiUrl("/auth/login");
+      closePledgePopup();
+      login(window.location.pathname + window.location.search);
       return;
     }
     setBuying(item.id);

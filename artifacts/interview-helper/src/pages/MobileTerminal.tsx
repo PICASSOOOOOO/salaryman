@@ -130,14 +130,14 @@ function StatRow({ label, val, col, boomer }: { label: string; val: string | num
 
 type TabId = 'chat' | 'stats' | 'overview' | 'settings' | 'tower';
 
-export default function MobileTerminal() {
+export default function MobileTerminal({ physicalTerminal = false }: { physicalTerminal?: boolean }) {
   // Reflect the realm stored on the save even when this terminal is opened
   // without first loading WorldPlay (which is what sets the active city).
   hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const alpha = useAlpha();
-  const canUseMobileTerminal = alpha.isAdmin || alpha.isApprovedDev || alpha.isApprovedTester;
+  const canUseMobileTerminal = physicalTerminal || alpha.isAdmin || alpha.isApprovedDev || alpha.isApprovedTester;
   const { isTrial, trialDaysLeft } = usePlan();
   const [saves, setSaves] = useState<CloudSave[]>([]);
   const [activeSave, setActiveSave] = useState<CloudSave | null>(null);
@@ -192,7 +192,7 @@ export default function MobileTerminal() {
       const playerGender = getSalarymanGender();
       const playerTermUpper = salarymanTerm(playerGender, 'upper');
       const playerTermLower = salarymanTerm(playerGender);
-      const context = `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered salarymen in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
+      const context = `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered salarymen in Minx City. You are the player's guide and tactical adviser.
 
 WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory. Currency is FIAT (ƒ). Banking is handled by BANCO OMBRA.
 
@@ -205,7 +205,7 @@ ${playerTermUpper} STATUS:
 - HP: ${sd.hp ?? '?'}/${sd.maxHp ?? '?'}
 - Hunger: ${Math.floor(sd.hunger ?? 0)}% | Thirst: ${Math.floor(sd.thirst ?? 0)}% | Energy: ${Math.floor(sd.energy ?? 0)}%
 
-The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in 1–3 short lines. Be useful. Be lore-accurate. Stay in character.`;
+The ${playerTermLower} is accessing PABLO through the ${physicalTerminal ? 'main terminal' : 'staff mobile terminal'}. Reply in 1–3 short lines. Be useful. Be lore-accurate. Stay in character.`;
 
       const r = await apiFetch('/api/advisor/chat', {
         method: 'POST',
@@ -221,6 +221,9 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
     setPabloLoad(false);
   }, [pabloIn, pabloLoad, activeSave]);
 
+  if (authLoading) {
+    return <div style={{ minHeight: '100dvh', background: '#000800', display: 'grid', placeItems: 'center', color: '#38bdf8', letterSpacing: '.15em' }}>RESTORING SESSION...</div>;
+  }
   if (!isAuthenticated) {
     return <SignInPage context={boomerMode ? 'Sign in to access your mobile terminal.' : 'Salaryman credentials required. Terminal MX-75 remote access locked.'} />;
   }

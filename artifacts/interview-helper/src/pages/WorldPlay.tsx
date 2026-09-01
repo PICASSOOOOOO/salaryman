@@ -10934,6 +10934,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (__nowTs - lastLiveWrite >= 1000) {
         lastLiveWrite = __nowTs;
         try {
+          const nearestRadioDistance = AMBIENT_RADIO_SPOTS.reduce(
+            (nearest, spot) => Math.min(nearest, Math.hypot(g.px - spot.x, g.py - spot.y)),
+            Number.POSITIVE_INFINITY,
+          );
+          // Full volume within conversational distance, then a smooth falloff
+          // until the station is inaudible. OfficeRadio owns the actual
+          // programme (music + host); WorldPlay only supplies spatial gain.
+          const radioGain = nearestRadioDistance <= 55
+            ? 1
+            : Math.max(0, Math.min(1, 1 - (nearestRadioDistance - 55) / 345));
+          window.dispatchEvent(new CustomEvent("salaryman:radio-proximity", {
+            detail: { gain: radioGain, distance: nearestRadioDistance },
+          }));
           localStorage.setItem('sm_live', JSON.stringify({
             boCollectors: g.boCollectors.map(bc => ({ x: bc.x, y: bc.y })),
             wantedLevel: g.wantedLevel ?? 0,
@@ -22209,6 +22222,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       canvas.removeEventListener('wheel', onWheel);
       stopCrowdMurmur(); crowdMurmurActiveRef.current = false;
       try { localStorage.removeItem('sm_live'); } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent("salaryman:radio-proximity", { detail: { gain: 1 } }));
     };
   }, [char, speaking]);
 

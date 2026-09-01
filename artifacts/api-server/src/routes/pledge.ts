@@ -346,9 +346,9 @@ const PRIME_LISTING: PledgeItem = {
   icon: "👑",
 };
 
-// The full internal catalog is retained for webhook fulfillment. The public
-// storefront deliberately exposes only dollar-backed agent products and PRIME;
-// everything else belongs in the in-world economy.
+// The full internal catalog is retained for delayed webhook fulfillment, but
+// the live storefront has exactly two products for now: Call Home and PABLO
+// PRIME. Historical products must not leak back into the customer catalog.
 const FULL_CATALOG: PledgeItem[] = [
   ...PLEDGE_CATALOG,
   ...RETIRED_FULFILLMENT_CATALOG,
@@ -356,14 +356,9 @@ const FULL_CATALOG: PledgeItem[] = [
   ...BUNDLE_LISTINGS,
   PRIME_LISTING,
 ];
-const DOLLAR_STORE_CATEGORIES = new Set<PledgeCategory>(["bots", "membership"]);
-// Paid feature passes belong in the same Stripe-backed storefront as PRIME.
-// `popup` is deliberately explicit so unrelated in-world terminal cosmetics
-// remain FIAT-only and never leak into real-money checkout.
-const PUBLIC_CATALOG = FULL_CATALOG.filter(
-  (item) => DOLLAR_STORE_CATEGORIES.has(item.category) || item.popup,
-);
-const PUBLIC_CATEGORIES = ["bots", "terminals", "membership"] as const;
+const PUBLIC_PRODUCT_IDS = new Set(["term_phone_pass", "membership_pablo_prime"]);
+const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => PUBLIC_PRODUCT_IDS.has(item.id));
+const PUBLIC_CATEGORIES = ["terminals", "membership"] as const;
 
 // Client-safe projection. This is the ONLY shape that reaches the client:
 // the derived retail price ONLY — never costUsd, markup, or internal

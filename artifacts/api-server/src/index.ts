@@ -9,7 +9,6 @@ import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
 import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
-import { normalizeBotPrimeNames } from './lib/bot-naming';
 import { dedupeDuplicateBots } from './lib/dedupe-bots';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
@@ -90,8 +89,10 @@ function runDeferredBoot(): void {
   setTimeout(() => {
     seedPicassoOrg()
       .then(() => seedBotMarketplace())
+      // Marketplace activation is always an explicit user action. Boot may
+      // seed the catalog and reconcile old records, but it must never wake an
+      // entire roster into office desks.
       .then(() => activateAllBotsForPicassoOrg())
-      .then(() => normalizeBotPrimeNames())
       // One-time, idempotent collapse of duplicate marketplace bot instances so
       // the Command Center count matches the consolidated roster. Runs after
       // activation so the canonical (subscription-linked) instance is settled.

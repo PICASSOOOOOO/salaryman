@@ -220,26 +220,27 @@ const FEATURE_LABELS: Record<string, string> = {
 
 const ALL_FEATURES = ['live_listen', 'screen_scan', 'say_this', 'phone_system', 'claw_bot'];
 
-const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: string }[] = [
-  { key: 'maintenance_mode', label: 'MAINTENANCE MODE', desc: 'Disables all user access except Picasso admins', category: 'system' },
-  { key: 'registration_open', label: 'REGISTRATION OPEN', desc: 'Allow new user registration', category: 'system' },
-  { key: 'world_enabled', label: 'SALARYMAN WORLD', desc: 'Enable or disable the Salaryman MMO world', category: 'features' },
-  { key: 'marketplace_enabled', label: 'PIXEL AGENTS STORE', desc: 'Enable or disable the Pixel Agents store', category: 'features' },
-  { key: 'phone_system_enabled', label: 'PHONE SYSTEM', desc: 'Enable or disable the Twilio phone integration', category: 'features' },
-  { key: 'chat_enabled', label: 'CHAT SYSTEM', desc: 'Enable or disable in-app messaging', category: 'features' },
-  { key: 'hiring_enabled', label: 'HIRING BOARD', desc: 'Enable or disable the job board', category: 'features' },
-  { key: 'crm_enabled', label: 'CRM TOOLS', desc: 'Enable or disable CRM / contacts / deals', category: 'features' },
-  { key: 'creative_studio_enabled', label: 'CREATIVE STUDIO', desc: 'Enable or disable AI creative tools', category: 'features' },
-  { key: 'wasteland_enabled', label: 'WASTELAND ACCESS', desc: 'Allow players to enter the wasteland zone', category: 'world' },
-  { key: 'pvp_enabled', label: 'PVP COMBAT', desc: 'Enable or disable player vs player combat', category: 'world' },
-  { key: 'tax_system_enabled', label: 'TAX SYSTEM', desc: 'Enable or disable the in-game tax system', category: 'economy' },
-  { key: 'passive_income_enabled', label: 'PASSIVE INCOME', desc: 'Enable or disable business passive income', category: 'economy' },
+const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: string; defaultOn: boolean }[] = [
+  { key: 'maintenance_mode', label: 'MAINTENANCE MODE', desc: 'Disables all user access except Picasso admins', category: 'system', defaultOn: false },
+  { key: 'registration_open', label: 'REGISTRATION OPEN', desc: 'Allow new user registration', category: 'system', defaultOn: true },
+  { key: 'world_enabled', label: 'SALARYMAN WORLD', desc: 'Enable or disable the Salaryman MMO world', category: 'features', defaultOn: true },
+  { key: 'marketplace_enabled', label: 'PIXEL AGENTS STORE', desc: 'Enable or disable the Pixel Agents store', category: 'features', defaultOn: true },
+  { key: 'phone_system_enabled', label: 'PHONE SYSTEM', desc: 'Enable or disable the Twilio phone integration', category: 'features', defaultOn: true },
+  { key: 'chat_enabled', label: 'CHAT SYSTEM', desc: 'Enable or disable in-app messaging', category: 'features', defaultOn: true },
+  { key: 'hiring_enabled', label: 'HIRING BOARD', desc: 'Enable or disable the job board', category: 'features', defaultOn: true },
+  { key: 'crm_enabled', label: 'CRM TOOLS', desc: 'Enable or disable CRM / contacts / deals', category: 'features', defaultOn: true },
+  { key: 'creative_studio_enabled', label: 'CREATIVE STUDIO', desc: 'Enable or disable AI creative tools', category: 'features', defaultOn: true },
+  { key: 'wasteland_enabled', label: 'WASTELAND ACCESS', desc: 'Allow players to enter the wasteland zone', category: 'world', defaultOn: true },
+  { key: 'pvp_enabled', label: 'PVP COMBAT', desc: 'Enable or disable player vs player combat', category: 'world', defaultOn: false },
+  { key: 'tax_system_enabled', label: 'TAX SYSTEM', desc: 'Enable or disable the in-game tax system', category: 'economy', defaultOn: true },
+  { key: 'passive_income_enabled', label: 'PASSIVE INCOME', desc: 'Enable or disable business passive income', category: 'economy', defaultOn: true },
 ];
 
 type EmailGrant = { id: number; email: string; featureKey: string; source: string; expiresAt: string; createdAt: string };
 type EmailGrantGroup = { email: string; grants: EmailGrant[] };
 
 function EmailGrantsCard() {
+  const { user } = useAuth();
   const [groups, setGroups] = React.useState<EmailGrantGroup[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -292,12 +293,35 @@ function EmailGrantsCard() {
       await load();
     } finally { setBusy(null); }
   };
+  const grantMyAccount = async () => {
+    const email = user?.email?.trim().toLowerCase();
+    if (!email) return;
+    setBusy('__self');
+    try {
+      await Promise.all(ALL_FEATURES.map(featureKey =>
+        apiFetch('/api/admin/email-grants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, featureKey }),
+        })
+      ));
+      await load();
+    } finally { setBusy(null); }
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-1 gap-3">
         <h3 className="text-[10px] font-mono tracking-widest uppercase text-zinc-400">EMAIL PRE-GRANTS</h3>
         <span className="text-[10px] text-zinc-500">{groups.length} email{groups.length === 1 ? '' : 's'}</span>
+        <button
+          type="button"
+          onClick={() => void grantMyAccount()}
+          disabled={!user?.email || busy === '__self'}
+          className="shrink-0 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono tracking-widest text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40"
+        >
+          {busy === '__self' ? 'GRANTING…' : 'GRANT MY ACCOUNT ALL ACCESS'}
+        </button>
       </div>
       <p className="text-[11px] text-zinc-500 mb-4">
         Pre-grant paid features by email. Activates the moment the user signs up &amp; logs in. Toggle individual features off any time.
@@ -379,8 +403,8 @@ function StatCard({ label, value, color = 'sky', icon: Icon }: { label: string; 
 }
 
 export default function AdminPanel() {
-  const { isAuthenticated } = useAuth();
-  const { isOwner } = usePlan();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isOwner, loading: planLoading } = usePlan();
   const [boomerMode] = useBoomerMode();
   const [location, navigate] = useLocation();
 
@@ -1073,6 +1097,9 @@ export default function AdminPanel() {
     } catch {}
   };
 
+  if (authLoading || planLoading) {
+    return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-amber-400" /></div>;
+  }
   if (!isOwner) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -1098,7 +1125,7 @@ export default function AdminPanel() {
     { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
     { key: 'users', label: 'USERS', icon: Users },
     { key: 'orgs', label: 'BUSINESSES', icon: Building2 },
-    { key: 'toggles', label: 'FEATURE TOGGLES', icon: ToggleLeft },
+    { key: 'toggles', label: 'ACCESS & FLAGS', icon: ToggleLeft },
     { key: 'config', label: 'SYSTEM CONFIG', icon: Settings },
     { key: 'broadcast', label: 'BROADCAST', icon: Megaphone },
     { key: 'reports', label: 'REPORTS', icon: MessageSquareWarning },
@@ -1674,7 +1701,7 @@ export default function AdminPanel() {
                     <h3 className="text-[10px] font-mono tracking-widest uppercase text-zinc-400 mb-4">{cat.toUpperCase()}</h3>
                     <div className="space-y-3">
                       {items.map(toggle => {
-                        const val = configMap.get(toggle.key);
+                        const val = configMap.get(toggle.key) ?? String(toggle.defaultOn);
                         const isOn = val === 'true';
                         return (
                           <div key={toggle.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/10">
@@ -1683,7 +1710,7 @@ export default function AdminPanel() {
                               <p className="text-[10px] text-zinc-500">{toggle.desc}</p>
                             </div>
                             <button
-                              onClick={() => handleToggleConfig(toggle.key, val ?? 'false')}
+                              onClick={() => handleToggleConfig(toggle.key, val)}
                               className={`w-12 h-6 rounded-full relative transition-colors ${isOn ? 'bg-emerald-500/30' : 'bg-zinc-700/30'}`}
                             >
                               <div className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${

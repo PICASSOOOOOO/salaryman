@@ -31,20 +31,22 @@ const PhoneNumbersPage = lazy(() => import('./PhoneNumbersPage'));
 type AiSubMode = 'coach' | 'secretary';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: boolean }[] = [
+  { key: 'cmd', label: 'PAYPHONE', icon: <Phone size={12} />, emphasized: true },
+  { key: 'dial', label: 'AUTODIALER', icon: <Zap size={12} />, emphasized: true },
+  { key: 'auto', label: 'DIALING SESSIONS', icon: <Activity size={12} />, emphasized: true },
+  { key: 'cc', label: 'OUTBOUND CENTER', icon: <Headphones size={12} />, emphasized: true },
+  { key: 'contacts', label: 'CRM', icon: <Users size={12} /> },
+  { key: 'sms', label: 'SMS', icon: <MessageSquare size={12} /> },
+  { key: 'numbers', label: 'NUMBERS', icon: <Hash size={12} /> },
+  { key: 'log', label: 'CALL LOG', icon: <Clock size={12} /> },
+  { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} /> },
   { key: 'chat', label: 'CHAT', icon: <MessageSquare size={12} /> },
   { key: 'associates', label: 'ASSOCIATES', icon: <Users size={12} /> },
   { key: 'orgs', label: 'ORGS', icon: <Hash size={12} /> },
   { key: 'responders', label: 'RESPONDERS', icon: <Radio size={12} /> },
-  { key: 'cmd', label: 'CMD', icon: <Activity size={12} /> },
-  { key: 'contacts', label: 'CRM', icon: <Users size={12} /> },
-  { key: 'sms', label: 'SMS', icon: <MessageSquare size={12} /> },
-  { key: 'numbers', label: 'NUMBERS', icon: <Hash size={12} /> },
-  { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} /> },
-  { key: 'log', label: 'LOG', icon: <Clock size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
   { key: 'ai', label: 'AI', icon: <Bot size={12} /> },
-  { key: 'cc', label: 'CC', icon: <Headphones size={12} /> },
 ];
 
 function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode: (m: AiSubMode) => void }) {
@@ -96,7 +98,7 @@ const VALID_TABS = new Set<TabKey>(['chat','associates','orgs','responders','cmd
 const FREE_TABS = new Set<TabKey>(['chat', 'associates', 'orgs', 'responders']);
 
 // Keep one free landing surface and the telephony command center reachable.
-const ALWAYS_VISIBLE_TABS = new Set<TabKey>(['chat', 'cmd']);
+const ALWAYS_VISIBLE_TABS = new Set<TabKey>(['cmd', 'dial', 'auto', 'cc']);
 const HIDDEN_TABS_STORAGE_KEY = 'phone.hiddenTabs.v1';
 
 function loadHiddenTabs(): Set<TabKey> {
@@ -119,7 +121,7 @@ function saveHiddenTabs(hidden: Set<TabKey>) {
 
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
-  if (p === 'dial' || p === 'live' || p === 'auto') return 'cmd';
+  if (p === 'live') return 'cmd';
   return p && VALID_TABS.has(p as TabKey) ? (p as TabKey) : 'cmd';
 }
 
@@ -192,7 +194,7 @@ export default function CalllHomePage() {
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
   const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'unconfigured'>('checking');
   const BASE = import.meta.env.BASE_URL;
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
   const alpha = useAlpha();
@@ -226,6 +228,9 @@ export default function CalllHomePage() {
       .catch(() => setSystemStatus('unconfigured'));
   }, [apiUrl, hasPhoneAccess, planLoading]);
 
+  if (authLoading) {
+    return <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', color: slate(0.55) }}>RESTORING SESSION...</div>;
+  }
   if (!isAuthenticated) {
     return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
   }

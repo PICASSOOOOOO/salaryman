@@ -18,7 +18,7 @@ export default function PhoneCallCenterPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
 
-  const [tab, setTab] = useState<Tab>('inbound');
+  const [tab, setTab] = useState<Tab>('outbound');
   const [agents, setAgents] = useState<CallCenterAgent[]>([]);
   const [screenings, setScreenings] = useState<InboundScreening[]>([]);
   const [metrics, setMetrics] = useState({ activeAgents: 0, totalScreenings: 0, transferred: 0, ended: 0, avgScreenTime: 0 });
@@ -147,8 +147,8 @@ export default function PhoneCallCenterPage() {
 
   return (
     <PhonePageLayout
-      title="CALL CENTER"
-      subtitle="Dual-DID inbound screening & outbound campaigns with round-robin agent routing"
+      title="TELEMARKETING CENTER"
+      subtitle="Outbound lead campaigns, scripts, lists, and agent routing"
       icon={<Headphones size={24} style={{ color: accent(0.8) }} />}
       statusLine={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

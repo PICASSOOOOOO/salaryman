@@ -253,8 +253,23 @@ export default function PabloOffice() {
     : "SHADOW TOWER · OFFICE LOCATION PENDING";
   const initialOfficePose = useMemo(() => loadOfficePose(slot, officeLayout), [slot, officeLayout]);
   const officePoseRef = useRef<OfficePose>(initialOfficePose);
+  useEffect(() => {
+    officePoseRef.current = initialOfficePose;
+  }, [officeLayout.propertyKey, initialOfficePose]);
   const rememberOfficePose = useCallback(() => {
     saveOfficePose(slot, officeLayout, officePoseRef.current);
+  }, [slot, officeLayout]);
+  useEffect(() => {
+    const persist = () => rememberOfficePose();
+    window.addEventListener('pagehide', persist);
+    return () => {
+      persist();
+      window.removeEventListener('pagehide', persist);
+    };
+  }, [rememberOfficePose]);
+  const handleOfficePoseChange = useCallback((pose: OfficePose) => {
+    officePoseRef.current = pose;
+    saveOfficePose(slot, officeLayout, pose);
   }, [slot, officeLayout]);
   const navigateFromOffice = useCallback((path: string) => {
     rememberOfficePose();
@@ -580,15 +595,19 @@ export default function PabloOffice() {
   useEffect(() => {
     if (!isAuthenticated) { setTowerFloor(null); return; }
     let cancelled = false;
-    apiFetch("/api/shadow-tower/floors/current", { credentials: "include" })
-      .then(async (response) => {
-        if (response.status === 404) return null;
-        if (!response.ok) throw new Error("Unable to load Shadow Tower floor");
-        return response.json();
-      })
-      .then((payload) => { if (!cancelled) setTowerFloor(payload); })
-      .catch(() => { if (!cancelled) setTowerFloor(null); });
-    return () => { cancelled = true; };
+    const refreshFloor = () => {
+      apiFetch("/api/shadow-tower/floors/current", { credentials: "include" })
+        .then(async (response) => {
+          if (response.status === 404) return null;
+          if (!response.ok) throw new Error("Unable to load Shadow Tower floor");
+          return response.json();
+        })
+        .then((payload) => { if (!cancelled) setTowerFloor(payload); })
+        .catch(() => { if (!cancelled) setTowerFloor(null); });
+    };
+    refreshFloor();
+    const interval = window.setInterval(refreshFloor, 10_000);
+    return () => { cancelled = true; window.clearInterval(interval); };
   }, [isAuthenticated]);
 
   // Property-keyed capacity and footprint: the deed, renderer, collision map,
@@ -937,7 +956,7 @@ export default function PabloOffice() {
               deskRowCount={tierFloor.deskRows}
               capsuleCount={tierFloor.capsules}
               initialPose={initialOfficePose}
-              onPoseChange={(pose) => { officePoseRef.current = pose; }}
+              onPoseChange={handleOfficePoseChange}
               appearance={toWorkAttire(appearance)}
               playerName={playerName}
               onOccupants={handleOccupants}

@@ -22,6 +22,8 @@ import { isTutorialDone } from '@/lib/tutorial-progress';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
+import { CurrencyTicker } from './CurrencyTicker';
+import { TowerLocationBadge } from './TowerLocationBadge';
 import { useTranslation } from 'react-i18next';
 import {
   MORE_NAV_ITEMS,
@@ -170,9 +172,7 @@ export function NavBar() {
               <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
                 {config.name}
               </h1>
-              <p className="font-mono text-[11px] text-zinc-500 tracking-widest leading-none mt-0.5">
-                {config.sub.replace(/\s*·\s*ALPHA.*$/i, '')}
-              </p>
+              <div className="mt-0.5"><CurrencyTicker compact /></div>
             </div>
             <button
               onClick={e => { e.stopPropagation(); toggleMode(); }}
@@ -205,6 +205,7 @@ export function NavBar() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {isAuthenticated && <TowerLocationBadge />}
           {/* The live BTC → USD → ƒ → Gold ticker now lives inside the in-game
               world HUD (WorldPlay), where it also shows the player's spendable
               ƒ balance. It was removed from the top nav to declutter. */}

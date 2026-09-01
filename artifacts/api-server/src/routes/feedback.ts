@@ -33,18 +33,21 @@ async function authorizedViewerRole(
   return null;
 }
 
-// Returns the userIds of everyone authorized to receive an "error report
-// landed" notification (admins + approved alpha testers + approved alpha devs).
+// Returns only platform operators authorized to receive an "error report
+// landed" notification. Organization ownership is not platform moderation
+// access: founders and executives should receive notifications for their own
+// organization, not every user's platform error.
 async function getErrorNotifyUserIds(): Promise<string[]> {
-  const [orgs, admins, alphas] = await Promise.all([
-    db.select({ ownerUserId: organizationsTable.ownerUserId }).from(organizationsTable),
+  const [admins, alphas] = await Promise.all([
     db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable),
     db.select({ userId: alphaApplicationsTable.userId })
       .from(alphaApplicationsTable)
-      .where(eq(alphaApplicationsTable.status, "approved")),
+      .where(and(
+        eq(alphaApplicationsTable.status, "approved"),
+        eq(alphaApplicationsTable.role, "alpha_dev"),
+      )),
   ]);
   const ids = new Set<string>();
-  for (const o of orgs) ids.add(o.ownerUserId);
   for (const u of admins) if (isOwnerEmail(u.email)) ids.add(u.id);
   for (const a of alphas) if (a.userId) ids.add(a.userId);
   return [...ids];
@@ -61,10 +64,19 @@ function derivePriority(category: string): "low" | "medium" | "high" | "critical
 }
 
 async function getOwnerUserIds(): Promise<string[]> {
-  const rows = await db
-    .select({ ownerUserId: organizationsTable.ownerUserId })
-    .from(organizationsTable);
-  return [...new Set(rows.map(r => r.ownerUserId))];
+  const [admins, devs] = await Promise.all([
+    db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable),
+    db.select({ userId: alphaApplicationsTable.userId })
+      .from(alphaApplicationsTable)
+      .where(and(
+        eq(alphaApplicationsTable.status, "approved"),
+        eq(alphaApplicationsTable.role, "alpha_dev"),
+      )),
+  ]);
+  return [...new Set([
+    ...admins.filter(u => isOwnerEmail(u.email)).map(u => u.id),
+    ...devs.map(d => d.userId),
+  ])];
 }
 
 // Auto-captured error reports. Open to guests on purpose: errors fire on the

@@ -159,12 +159,13 @@ export default function Immigration() {
     }
   }, [isAuthenticated, isLoading, onboardingResolved, navigate]);
 
-  // Keep the subtle onboarding score alive across the whole intake. It's a
-  // singleton bed (started back on the /pablo intro), so this is a no-op if it's
-  // already running — it just guarantees the score is playing for anyone who
-  // lands on /immigration directly after sign-in. We never stop it here; the
-  // bed must carry seamlessly through intake → stamping → the office intro.
-  useEffect(() => ensureOnboardingScore(), []);
+  // Start onboarding audio only for a genuinely new user. Returning users can
+  // briefly mount this route while the server completion check resolves; they
+  // must leave silently instead of replaying any first-run presentation.
+  useEffect(() => {
+    if (!isAuthenticated || !onboardingResolved || isTutorialDone()) return;
+    ensureOnboardingScore();
+  }, [isAuthenticated, onboardingResolved]);
 
   const charName = useMemo<string>(() => {
     const fromTerminal = (getSalarymanName() ?? '').trim();
@@ -359,15 +360,6 @@ export default function Immigration() {
     return () => { cancelled = true; };
   }, [phase, answers]);
 
-  // After the stamping receipt's CONTINUE button, hand the user to the
-  // post-onboarding cinematic instead of dropping them straight onto a
-  // live terminal. The cinematic finishes by calling handleIntroComplete
-  // below, which is the actual navigate-to-app step.
-  const finishImmigration = () => {
-    if (phase === 'done' || phase === 'intro') return;
-    setPhase('intro');
-  };
-
   const handleIntroComplete = async () => {
     if (phase === 'done') return;
     setPhase('done');
@@ -393,6 +385,14 @@ export default function Immigration() {
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
       window.location.href = `${base}${destination.slice(1)}`;
     }, 400);
+  };
+
+  // Intake is the one onboarding. Once the registry stamp is complete, go
+  // directly to the requested destination instead of launching a second
+  // post-onboarding sequence.
+  const finishImmigration = () => {
+    if (phase === 'done') return;
+    void handleIntroComplete();
   };
 
   if (isLoading || !isAuthenticated || (isTutorialDone() && phase === 'intake')) {

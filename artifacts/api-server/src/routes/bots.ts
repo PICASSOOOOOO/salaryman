@@ -29,7 +29,6 @@ import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
 import { hasFeature, isOwnerEmail, isPicassoOrgMember } from "../lib/plan";
-import { primeName } from "../lib/bot-naming";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -134,7 +133,7 @@ async function prepareShadowTowerBotActivation(bot: { id: number; ownerId: strin
     // has no tower floor yet, the owner's personal floor remains the physical
     // activation authority instead of silently bypassing workstation capacity.
     const floors = orgFloors.length ? orgFloors : heldFloors.filter((floor) => floor.ownerUserId === bot.ownerId);
-    if (!floors.length) return { ok: true };
+    if (!floors.length) return { ok: false };
     for (const floor of floors) {
       await tx.select({ id: shadowTowerFloorsTable.id }).from(shadowTowerFloorsTable)
         .where(eq(shadowTowerFloorsTable.id, floor.id)).for("update");
@@ -301,6 +300,32 @@ router.get("/bots", requireBotAuth, async (req, res) => {
       .from(botsTable)
       .where(where)
       .orderBy(desc(botsTable.createdAt));
+    const botIds = bots.map((bot) => bot.id);
+    const workstationRows = botIds.length
+      ? await db.select({
+          botId: shadowTowerWorkstationAssignmentsTable.botId,
+          workstationKey: shadowTowerWorkstationAssignmentsTable.workstationKey,
+          floorId: shadowTowerFloorsTable.id,
+          city: shadowTowerFloorsTable.city,
+          floorNumber: shadowTowerFloorsTable.floorNumber,
+        })
+          .from(shadowTowerWorkstationAssignmentsTable)
+          .innerJoin(
+            shadowTowerFloorsTable,
+            eq(shadowTowerWorkstationAssignmentsTable.floorId, shadowTowerFloorsTable.id),
+          )
+          .where(inArray(shadowTowerWorkstationAssignmentsTable.botId, botIds))
+      : [];
+    const workstationByBot = new Map(
+      workstationRows
+        .filter((row): row is typeof row & { botId: number } => row.botId != null)
+        .map((row) => [row.botId, {
+          floorId: row.floorId,
+          city: row.city,
+          floorNumber: row.floorNumber,
+          workstationKey: row.workstationKey,
+        }]),
+    );
 
     const botsWithConnections = await Promise.all(
       bots.map(async (bot) => {
@@ -310,6 +335,7 @@ router.get("/bots", requireBotAuth, async (req, res) => {
           .where(eq(botPlatformConnectionsTable.botId, bot.id));
         return {
           ...bot,
+          workstation: workstationByBot.get(bot.id) ?? null,
           connections: connections.map(c => ({ ...c, credentials: undefined })),
         };
       })
@@ -338,7 +364,8 @@ router.post("/bots", requireBotFactory, async (req, res) => {
       .insert(botsTable)
       .values({
         ownerId: userId,
-        name: primeName(name.trim()),
+        name: name.trim(),
+        status: "paused",
         personality: personality || "You are a helpful assistant.",
         systemPrompt: systemPrompt || "",
         permissions: permissions || ["ai_chat"],
@@ -1065,6 +1092,56 @@ router.get("/bots/marketplace/list", async (_req, res) => {
   }
 });
 
+router.get("/bots/workstation-capacity", requireAuth, async (req, res) => {
+  try {
+    const ownerId = getUserId(req);
+    const activeOrgIds = await getUserActiveOrgIds(ownerId);
+    const scopeOrgId = activeOrgIds.length === 1 ? activeOrgIds[0] : null;
+    const now = new Date();
+    const heldFloors = (await db.select().from(shadowTowerFloorsTable).where(
+      scopeOrgId
+        ? or(eq(shadowTowerFloorsTable.orgId, scopeOrgId), eq(shadowTowerFloorsTable.ownerUserId, ownerId))
+        : eq(shadowTowerFloorsTable.ownerUserId, ownerId),
+    )).filter((floor) => !floor.leaseExpiresAt || floor.leaseExpiresAt > now);
+    const orgFloors = scopeOrgId ? heldFloors.filter((floor) => floor.orgId === scopeOrgId) : [];
+    const floors = orgFloors.length ? orgFloors : heldFloors.filter((floor) => floor.ownerUserId === ownerId);
+    const [activeBots, humans, assignments] = await Promise.all([
+      db.select({ id: botsTable.id }).from(botsTable).where(and(
+        scopeOrgId && orgFloors.length ? eq(botsTable.orgId, scopeOrgId) : eq(botsTable.ownerId, ownerId),
+        eq(botsTable.status, "active"),
+      )),
+      scopeOrgId && orgFloors.length
+        ? db.select({ userId: orgMembersTable.userId }).from(orgMembersTable).where(and(eq(orgMembersTable.orgId, scopeOrgId), eq(orgMembersTable.status, "active")))
+        : Promise.resolve([{ userId: ownerId }]),
+      Promise.all(floors.map((floor) =>
+        db.select().from(shadowTowerWorkstationAssignmentsTable).where(eq(shadowTowerWorkstationAssignmentsTable.floorId, floor.id)),
+      )).then((rows) => rows.flat()),
+    ]);
+    const totalDesks = floors.reduce((total, floor) => total + getShadowTowerPlan(
+      floor.city as ShadowTowerCity,
+      floor.floorNumber,
+      floor.archetype as ShadowTowerArchetype,
+      floor.upgrades as string[],
+    ).objects.filter((object) => object.kind === "workstation").length, 0);
+    const requiredHumanDesks = humans.length;
+    const activeBotDesks = activeBots.length;
+    const availableBotDesks = Math.max(0, totalDesks - requiredHumanDesks - activeBotDesks);
+    res.json({
+      hasProperty: floors.length > 0,
+      totalDesks,
+      requiredHumanDesks,
+      activeBotDesks,
+      availableBotDesks,
+      assignedDesks: assignments.length,
+      floorCount: floors.length,
+      rule: "Every active human occupant and active Pixel Agent requires one workstation.",
+    });
+  } catch (err) {
+    console.error("Error loading workstation capacity:", err);
+    res.status(500).json({ error: "Failed to load workstation capacity" });
+  }
+});
+
 router.post("/bots/:id/linkedin/connect-request", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -1176,7 +1253,15 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
 
     const prepared = bot.status !== "active" ? await prepareShadowTowerBotActivation(bot) : { ok: true };
     if (!prepared.ok) {
-      res.status(409).json({ error: "Shadow Tower workstation capacity reached or active occupants are not assigned" });
+      // A marketplace activation is the purchase boundary. If capacity rejects
+      // a brand-new instance, do not leave an unassigned "owned" bot behind.
+      if (!present) {
+        await db.delete(botsTable).where(eq(botsTable.id, bot.id));
+      }
+      res.status(409).json({
+        error: "Office capacity reached. Upgrade or acquire an office with a free physical workstation before adding this bot.",
+        code: "WORKSTATION_CAPACITY_REACHED",
+      });
       return;
     }
     if (bot.status !== "active") {

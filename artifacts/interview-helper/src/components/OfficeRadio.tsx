@@ -23,11 +23,13 @@ const TRACKS: string[] = Array.from({ length: 31 }, (_, i) => {
 
 const STATION_STATE_KEY = "salaryman.pablo-radio.position.v1";
 const DJ_LINES = [
-  "You're listening to Shadow Radio. Keep building.",
-  "Pablo here. The market never sleeps, but you should eventually.",
-  "Another track from the vault. Back to work, Salaryman.",
-  "Signal check. You're still on Shadow Radio.",
-  "The city is loud tonight. Stay sharp.",
+  "You're listening to Shadow Radio, broadcasting from Call Home.",
+  "Pablo on the air. Markets are moving, phones are ringing, and the Tower is still awake.",
+  "Another track from the Call Home vault. Stay sharp, Salaryman.",
+  "Shadow Radio traffic report: the Tower lobby is busy and the streets are unforgiving.",
+  "This is your host Pablo. Keep your radio close and your business closer.",
+  "Call Home news desk: another shift begins, another company tries to climb the Tower.",
+  "You're on Shadow Radio. Music, city reports, and commentary from the top floor.",
 ];
 
 type StationPosition = { index: number; time: number };
@@ -57,6 +59,7 @@ export function OfficeRadio() {
   const phoneBlockedRef = useRef(isPhoneRoute(location) || isPhoneBusy());
   const djHandleRef = useRef<TTSHandle | null>(null);
   const lastSavedSecondRef = useRef(-1);
+  const proximityGainRef = useRef(1);
 
   const persistPosition = () => {
     const audio = audioRef.current;
@@ -81,7 +84,8 @@ export function OfficeRadio() {
       phoneBlockedRef.current ||
       settings.muted ||
       channelGain("voice") <= 0 ||
-      Math.random() >= 0.3
+      proximityGainRef.current <= 0.03 ||
+      Math.random() >= 0.7
     ) {
       startNextTrack();
       return;
@@ -94,7 +98,13 @@ export function OfficeRadio() {
       djHandleRef.current = null;
       startNextTrack();
     };
-    djHandleRef.current = speakGameTTS(line, finish, finish, "PABLO", channelGain("voice"));
+    djHandleRef.current = speakGameTTS(
+      line,
+      finish,
+      finish,
+      "PABLO",
+      channelGain("voice") * proximityGainRef.current,
+    );
   };
 
   // Create the audio element once.
@@ -145,7 +155,7 @@ export function OfficeRadio() {
     const audio = audioRef.current;
     if (!audio) return;
     const s = getAudioSettings();
-    audio.volume = channelGain("soundtrack");
+    audio.volume = channelGain("soundtrack") * proximityGainRef.current;
     audio.muted = s.muted;
     shouldPlayRef.current = getMusicEnabled() && !phoneBlockedRef.current;
     if (shouldPlayRef.current) {
@@ -191,6 +201,22 @@ export function OfficeRadio() {
     phoneBlockedRef.current = busy || isPhoneRoute(location);
     reconcile();
   }), [location]);
+
+  // World stereos are positional sources. WorldPlay publishes the nearest
+  // stereo's attenuation as the player moves; the station keeps its programme
+  // position but becomes quieter with distance instead of following the player
+  // as global background music.
+  useEffect(() => {
+    const onProximity = (event: Event) => {
+      const detail = (event as CustomEvent<{ gain?: number }>).detail;
+      const next = Math.max(0, Math.min(1, Number(detail?.gain ?? 0)));
+      proximityGainRef.current = Number.isFinite(next) ? next : 0;
+      const audio = audioRef.current;
+      if (audio) audio.volume = channelGain("soundtrack") * proximityGainRef.current;
+    };
+    window.addEventListener("salaryman:radio-proximity", onProximity);
+    return () => window.removeEventListener("salaryman:radio-proximity", onProximity);
+  }, []);
 
   return null;
 }

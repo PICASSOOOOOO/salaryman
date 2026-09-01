@@ -46,6 +46,8 @@ const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
 const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
+const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
+const WorldMapPanel = lazy(() => import("@/pages/WorldMapPanel"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
@@ -213,7 +215,7 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
 function LoadingFallback() {
@@ -493,7 +495,7 @@ function AppShell() {
   // Once authenticated — but not yet cleared through immigration — the
   // intake desk and legal pages open up too (those are post-sign-in).
   const ANON_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/immigration", "/legal", "/alpha", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/immigration", "/legal", "/alpha", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -685,8 +687,8 @@ function AppShell() {
             <Route path="/subway" component={Subway} />
             <Route path="/travel" component={Subway} />
             <Route path="/profile/admin" component={AdminHub} />
-            <Route path="/profile/moderator" component={AdminHub} />
-            <Route path="/profile/world-map" component={AdminHub} />
+            <Route path="/profile/moderator" component={ModeratorPanel} />
+            <Route path="/profile/world-map" component={WorldMapPanel} />
             {/* Platform API + the legacy APIs tab now live inside the unified
                 /settings page (General group). Preserve old deep links. */}
             <Route path="/profile/platform">{() => <Redirect to={`/settings${window.location.search}`} />}</Route>
@@ -734,7 +736,8 @@ function AppShell() {
               const qs = window.location.search;
               return <Redirect to={`/profile/admin${qs}`} />;
             }}</Route>
-            <Route path="/mobile" component={MobileTerminal} />
+            <Route path="/mobile">{() => <MobileTerminal />}</Route>
+            <Route path="/terminal">{() => <MobileTerminal physicalTerminal />}</Route>
             <Route path="/theater" component={TheaterPage} />
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 

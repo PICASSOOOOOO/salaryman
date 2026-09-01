@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, normalizeOrgName } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, alphaApplicationsTable, normalizeOrgName } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
 import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
+import { isOwnerEmail } from "../lib/plan";
 
 const router = Router();
 const LIVE_CITY_IDS = new Set(["minx_city", "huda_city"]);
@@ -881,13 +882,52 @@ router.get("/world/my-office", async (req, res) => {
   }
 });
 
-router.get("/world/online", (req, res) => {
+router.get("/world/online", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
     return;
   }
+  const requesterId = String(req.user.id);
+  const admin = isOwnerEmail(req.user.email);
+  const [modRows, adminRows, memberships] = await Promise.all([
+    db.select({ userId: alphaApplicationsTable.userId })
+      .from(alphaApplicationsTable)
+      .where(and(
+        eq(alphaApplicationsTable.userId, requesterId),
+        eq(alphaApplicationsTable.role, "alpha_tester"),
+        eq(alphaApplicationsTable.status, "approved"),
+      )),
+    db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable),
+    db.select({ orgId: orgMembersTable.orgId, role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.userId, requesterId), eq(orgMembersTable.status, "active"))),
+  ]);
+  const moderator = modRows.length > 0;
+  const adminIds = new Set(adminRows.filter(u => isOwnerEmail(u.email)).map(u => String(u.id)));
+  const executiveOrgIds = new Set(
+    memberships
+      .filter(m => ["owner", "ceo", "executive", "director"].includes(String(m.role).toLowerCase()))
+      .map(m => m.orgId),
+  );
+
+  if (!admin && !moderator && executiveOrgIds.size === 0) {
+    res.status(403).json({ error: "Moderator, administrator, or organization executive access required" });
+    return;
+  }
+
   const all = getOnlinePlayers();
-  res.json({ players: all, count: all.length, ts: Date.now() });
+  // The live world snapshot is intentionally broad for platform staff, but
+  // moderators must never receive administrator locations or identity data.
+  const visible = admin
+    ? all
+    : all.filter((player) => !adminIds.has(String(player.userId)));
+  res.json({
+    players: visible,
+    count: visible.length,
+    ts: Date.now(),
+    scope: admin ? "platform" : moderator ? "moderator" : "organization",
+    canSeeAdmins: admin,
+  });
 });
 
 router.get("/world/server-status", (_req, res) => {

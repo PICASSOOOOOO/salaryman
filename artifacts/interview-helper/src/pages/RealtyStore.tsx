@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Building2, Check, FileUp, Loader2, X } from "lucide-react";
+import { ArrowLeft, Building2, Check, FileUp, Loader2, X, DoorOpen } from "lucide-react";
 import { useLocation } from "wouter";
 import {
-  SHADOW_TOWER_CITIES, SHADOW_TOWER_LISTINGS, getShadowTowerPlan,
+  SHADOW_TOWER_CITIES, SHADOW_TOWER_LISTINGS, getShadowTowerPlan, quoteShadowTowerFloor,
   type ShadowTowerArchetype, type ShadowTowerCity, type ShadowTowerListing,
 } from "@workspace/api-zod/shadow-tower";
 import { apiFetch } from "@/lib/api-client";
@@ -36,20 +36,31 @@ interface ReceptionListing {
 
 const fiat = (value: number) => `ƒ${value.toLocaleString("en-US")}`;
 const cityLabel = (city: ShadowTowerCity) => city === "minx_city" ? "MINX CITY" : "HUDA CITY";
+const cityCode = (city: ShadowTowerCity) => city === "minx_city" ? "MX" : "HU";
+const unitId = (city: ShadowTowerCity, floorNumber: number, unitNumber: number) =>
+  `${cityCode(city)}-${String(floorNumber).padStart(3, "0")}-U${String(unitNumber).padStart(2, "0")}`;
 const kit = ["Elevator", "Executive room + desk", "Workstations", "Terminal", "ATM", "Vending"];
 
 /** A deterministic, contract-derived preview; every rectangle is a plan object. */
 export function ShadowTowerPlanPreview({ archetype, city, floorNumber }: { archetype: ShadowTowerArchetype; city: ShadowTowerCity; floorNumber: number }) {
   const plan = useMemo(() => getShadowTowerPlan(city, floorNumber, archetype), [city, floorNumber, archetype]);
   const color = (kind: string) => kind === "workstation" ? "#38bdf8" : kind === "terminal" ? "#c084fc" : kind === "elevator" ? "#fbbf24" : kind === "atm" ? "#34d399" : kind === "vending_machine" ? "#fb7185" : "#64748b";
-  return <svg viewBox={`0 0 ${plan.cols} ${plan.rows}`} className="h-full w-full bg-slate-950" role="img" aria-label={`${archetype} floor plan`}>
-    <rect width={plan.cols} height={plan.rows} fill="#090b16" />
-    {plan.objects.map(object => <g key={object.id}>
-      <rect x={object.footprint.x} y={object.footprint.y} width={object.footprint.cols} height={object.footprint.rows} rx=".15" fill={color(object.kind)} opacity=".82" />
-      <rect x={object.footprint.x + .12} y={object.footprint.y + .12} width={Math.max(.1, object.footprint.cols - .24)} height={Math.max(.1, object.footprint.rows - .24)} fill="none" stroke="#e0f2fe" strokeWidth=".08" opacity=".7" />
-    </g>)}
-    <circle cx={plan.spawn.x + .5} cy={plan.spawn.y + .5} r=".28" fill="#f8fafc" />
-  </svg>;
+  return <div className="flex h-full w-full flex-col bg-slate-950" role="img" aria-label={`${archetype} floor plan with four offices and shared hallway`}>
+    <svg viewBox={`0 0 ${plan.cols} ${plan.rows}`} className="min-h-0 flex-1 w-full" aria-hidden="true">
+      <rect width={plan.cols} height={plan.rows} fill="#090b16" />
+      {plan.objects.map(object => <g key={object.id}>
+        <rect x={object.footprint.x} y={object.footprint.y} width={object.footprint.cols} height={object.footprint.rows} rx=".15" fill={color(object.kind)} opacity=".82" />
+        <rect x={object.footprint.x + .12} y={object.footprint.y + .12} width={Math.max(.1, object.footprint.cols - .24)} height={Math.max(.1, object.footprint.rows - .24)} fill="none" stroke="#e0f2fe" strokeWidth=".08" opacity=".7" />
+      </g>)}
+      <circle cx={plan.spawn.x + .5} cy={plan.spawn.y + .5} r=".28" fill="#f8fafc" />
+    </svg>
+    <div className="shrink-0 border-t border-amber-300/30 bg-amber-300/[.06] px-2 py-1.5">
+      <div className="mb-1 flex items-center gap-1 text-[8px] font-bold tracking-[.18em] text-amber-200"><DoorOpen className="h-3 w-3" /> SHARED HALLWAY · COMMON ACCESS</div>
+      <div className="grid grid-cols-4 gap-1">
+        {[1, 2, 3, 4].map((unit) => <div key={unit} className="border border-cyan-300/25 bg-cyan-300/[.05] px-1 py-1 text-center text-[7px] font-bold tracking-wider text-cyan-100">OFFICE {String(unit).padStart(2, "0")}</div>)}
+      </div>
+    </div>
+  </div>;
 }
 
 export default function RealtyStore() {
@@ -57,7 +68,7 @@ export default function RealtyStore() {
   const [city, setCity] = useState<ShadowTowerCity>(() => getActiveCityId() === "huda_city" ? "huda_city" : "minx_city");
   const [floorText, setFloorText] = useState(() => {
     const requested = Number.parseInt(new URLSearchParams(window.location.search).get("floor") || "", 10);
-    return requested >= 5 && requested <= 64 ? String(requested) : "5";
+    return requested >= 5 && requested <= 67 ? String(requested) : "5";
   });
   const [target, setTarget] = useState<Target | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +80,9 @@ export default function RealtyStore() {
   const [marketListings, setMarketListings] = useState<ReceptionListing[]>([]);
   const [marketBusy, setMarketBusy] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
-  const floorNumber = Math.max(5, Math.min(64, Number.parseInt(floorText, 10) || 5));
+  const parsedFloorNumber = Number.parseInt(floorText, 10);
+  const validFloorNumber = Number.isInteger(parsedFloorNumber) && parsedFloorNumber >= 5 && parsedFloorNumber <= 67;
+  const floorNumber = validFloorNumber ? parsedFloorNumber : 5;
   const referredByReception = new URLSearchParams(window.location.search).get("from") === "reception";
 
   async function loadOwnedBrokerage() {
@@ -143,7 +156,7 @@ export default function RealtyStore() {
   }
 
   async function acquire() {
-    if (!target || busy) return;
+    if (!target || busy || !validFloorNumber) return;
     setBusy(true); setResult(null);
     try {
       const response = await apiFetch("/api/shadow-tower/floors", {
@@ -172,7 +185,7 @@ export default function RealtyStore() {
         <div><h1 className="text-2xl text-pink-100 tracking-[.16em]">SHADOW TOWER FLOORS</h1><p className="text-sm text-zinc-400 mt-2">{referredByReception ? "Reception referral active. " : ""}Minx City and Huda City use the same filing practice while keeping names, inventory, and ownership data separate.</p></div>
         <div className="flex gap-2 flex-wrap">
           <label className="text-[10px] text-cyan-300 tracking-widest">CITY<select value={city} onChange={e => setCity(e.target.value as ShadowTowerCity)} className="block mt-1 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100">{SHADOW_TOWER_CITIES.map(c => <option key={c} value={c}>{cityLabel(c)}</option>)}</select></label>
-          <label className="text-[10px] text-cyan-300 tracking-widest">FLOOR #<input data-testid="shadow-floor-number" type="number" min="5" max="64" value={floorText} onChange={e => setFloorText(e.target.value)} className="block mt-1 w-24 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100" /></label>
+          <label className="text-[10px] text-cyan-300 tracking-widest">FLOOR #<input data-testid="shadow-floor-number" type="number" min="5" max="67" value={floorText} onChange={e => setFloorText(e.target.value)} className="block mt-1 w-24 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100" />{!validFloorNumber && <span className="mt-1 block text-[9px] text-red-300">ENTER 5–67</span>}</label>
         </div>
       </div>
       {ownedFloor && (
@@ -231,18 +244,17 @@ export default function RealtyStore() {
           <div className="mt-4 border border-dashed border-white/10 px-4 py-5 text-center text-xs text-zinc-600">NO OWNER-ADVERTISED UNITS IN {cityLabel(city)} YET</div>
         )}
       </section>
-      <div className="mb-7 rounded border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-zinc-400"><b className="text-zinc-100">Homes are not for sale yet.</b> Home interiors must be playable before Realty can charge for them.</div>
       <div className="grid md:grid-cols-2 gap-5">
         {(Object.values(SHADOW_TOWER_LISTINGS) as ShadowTowerListing[]).map(listing => <article key={listing.archetype} data-testid={`shadow-listing-${listing.archetype}`} className="border border-pink-400/30 bg-gradient-to-b from-pink-950/20 to-zinc-950 rounded-xl overflow-hidden">
           <div className="h-52 border-b border-cyan-400/20"><ShadowTowerPlanPreview archetype={listing.archetype} city={city} floorNumber={floorNumber} /></div>
           <div className="p-4"><div className="flex justify-between gap-3"><div><h2 className="text-pink-100 tracking-widest">{listing.title}</h2><p className="text-xs text-zinc-400 mt-1">{listing.subtitle}</p></div><Building2 className="text-cyan-300 w-5 h-5 shrink-0" /></div>
-            <div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="border border-cyan-400/20 p-2"><span className="text-zinc-500">CAPACITY</span><b className="block text-cyan-100">{listing.capacity} occupants</b></div><div className="border border-cyan-400/20 p-2"><span className="text-zinc-500">IDENTITY</span><b className="block text-cyan-100">{cityLabel(city)} · {floorNumber}</b></div></div>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="border border-cyan-400/20 p-2"><span className="text-zinc-500">WORKSTATIONS</span><b className="block text-cyan-100">{listing.capacity} total desks</b><span className="mt-1 block text-[9px] leading-4 text-zinc-500">Up to {Math.max(0, listing.capacity - 1)} bots when the founder is the only human occupant.</span></div><div className="border border-cyan-400/20 p-2"><span className="text-zinc-500">LOCATION / UNIT IDS</span><b className="block text-cyan-100">{cityLabel(city)} · FLOOR {floorNumber}</b><span className="mt-1 block text-[9px] leading-4 text-zinc-500">{unitId(city, floorNumber, 1)} → {unitId(city, floorNumber, 4)} · hallway-served offices.</span></div></div>
             <p className="mt-3 text-[11px] text-zinc-400"><span className="text-cyan-300">STANDARD KIT:</span> {kit.join(" · ")}</p>
-            <div className="flex gap-2 mt-4"><button onClick={() => { setResult(null); setTarget({ listing, tenure: "lease" }); }} className="flex-1 border border-cyan-400/50 text-cyan-100 py-2 text-xs tracking-widest hover:bg-cyan-500/10">LEASE {fiat(listing.leaseFiat)}/MO</button><button onClick={() => { setResult(null); setTarget({ listing, tenure: "own" }); }} className="flex-1 border border-pink-400/50 text-pink-100 py-2 text-xs tracking-widest hover:bg-pink-500/10">BUY {fiat(listing.purchaseFiat)}</button></div>
+            <div className="flex gap-2 mt-4"><button disabled={!validFloorNumber} onClick={() => { setResult(null); setTarget({ listing, tenure: "lease" }); }} className="flex-1 border border-cyan-400/50 text-cyan-100 py-2 text-xs tracking-widest hover:bg-cyan-500/10 disabled:opacity-35">LEASE {validFloorNumber ? fiat(quoteShadowTowerFloor(listing.archetype, floorNumber, "lease")) : "—"}/MO</button><button disabled={!validFloorNumber} onClick={() => { setResult(null); setTarget({ listing, tenure: "own" }); }} className="flex-1 border border-pink-400/50 text-pink-100 py-2 text-xs tracking-widest hover:bg-pink-500/10 disabled:opacity-35">BUY {validFloorNumber ? fiat(quoteShadowTowerFloor(listing.archetype, floorNumber, "own")) : "—"}</button></div>
           </div>
         </article>)}
       </div>
     </main>
-    {target && <div className="fixed inset-0 z-50 bg-black/85 p-4 flex items-center justify-center" onClick={() => !busy && setTarget(null)}><div className="max-w-md w-full border border-pink-400/50 bg-zinc-950 p-5 rounded-xl" onClick={e => e.stopPropagation()}><button onClick={() => setTarget(null)} className="float-right text-zinc-400"><X /></button><h2 className="text-pink-100 tracking-widest">{target.tenure === "own" ? "PURCHASE" : "LEASE"} {target.listing.title}</h2><p className="mt-3 text-zinc-400 text-sm">{cityLabel(city)}, numbered floor {floorNumber}. Server confirms the exact settlement price.</p><div className="my-4 text-2xl text-cyan-100">{fiat(target.tenure === "own" ? target.listing.purchaseFiat : target.listing.leaseFiat)}{target.tenure === "lease" && <span className="text-sm"> / month</span>}</div>{result && <p className={`text-sm mb-3 ${result.ok ? "text-emerald-300" : "text-red-300"}`}>{result.msg}</p>}<button disabled={busy || result?.ok} onClick={acquire} className="w-full py-2 bg-pink-500/20 border border-pink-400/60 text-pink-100 tracking-widest text-xs disabled:opacity-50">{busy ? <Loader2 className="inline w-4 h-4 animate-spin" /> : result?.ok ? <Check className="inline w-4 h-4" /> : "CONFIRM WITH REGISTRY"}</button></div></div>}
+    {target && <div className="fixed inset-0 z-50 bg-black/85 p-4 flex items-center justify-center" onClick={() => !busy && setTarget(null)}><div className="max-w-md w-full border border-pink-400/50 bg-zinc-950 p-5 rounded-xl" onClick={e => e.stopPropagation()}><button onClick={() => setTarget(null)} className="float-right text-zinc-400"><X /></button><h2 className="text-pink-100 tracking-widest">{target.tenure === "own" ? "PURCHASE" : "LEASE"} {target.listing.title}</h2><p className="mt-3 text-zinc-400 text-sm"><b className="text-cyan-200">{cityLabel(city)} · FLOOR {floorNumber}</b><br />Registry units: {unitId(city, floorNumber, 1)} through {unitId(city, floorNumber, 4)}<br />A shared hallway serves the four separate office entrances.</p><div className="my-4 text-2xl text-cyan-100">{fiat(target.tenure === "own" ? target.listing.purchaseFiat : target.listing.leaseFiat)}{target.tenure === "lease" && <span className="text-sm"> / month</span>}</div><div className="mb-4 border border-cyan-300/25 bg-cyan-300/5 p-3 text-xs text-zinc-300"><b className="text-cyan-200">{target.listing.capacity} PHYSICAL WORKSTATIONS</b><p className="mt-1 text-[10px] leading-4 text-zinc-500">Each human occupant and each active Pixel Agent consumes one desk. With one founder and no staff, this property supports up to {Math.max(0, target.listing.capacity - 1)} automation agents. Adding staff reduces bot capacity one-for-one.</p></div>{result && <p className={`text-sm mb-3 ${result.ok ? "text-emerald-300" : "text-red-300"}`}>{result.msg}</p>}<button disabled={busy || result?.ok} onClick={acquire} className="w-full py-2 bg-pink-500/20 border border-pink-400/60 text-pink-100 tracking-widest text-xs disabled:opacity-50">{busy ? <Loader2 className="inline w-4 h-4 animate-spin" /> : result?.ok ? <Check className="inline w-4 h-4" /> : "CONFIRM WITH REGISTRY"}</button></div></div>}
   </div>;
 }

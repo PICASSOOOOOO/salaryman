@@ -77,7 +77,7 @@ function pledgeImage(id: string): string | null {
 
 export default function PledgeStore() {
   const [, navigate] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
   const { features } = usePlan();
   const [items, setItems] = useState<PledgeItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -106,6 +106,7 @@ export default function PledgeStore() {
   }, []);
 
   const load = useCallback(async () => {
+    if (authLoading) return;
     try {
       const reqs: Promise<Response>[] = [apiFetch("/api/pledge/catalog")];
       if (isAuthenticated) reqs.push(apiFetch("/api/pledge/owned"));
@@ -122,7 +123,7 @@ export default function PledgeStore() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [authLoading, isAuthenticated]);
 
   useEffect(() => {
     load();
@@ -139,8 +140,12 @@ export default function PledgeStore() {
   }, [load]);
 
   const buy = async (item: PledgeItem) => {
+    if (authLoading) {
+      setNotice("Restoring your session — try again in a moment.");
+      return;
+    }
     if (!isAuthenticated) {
-      window.location.href = apiUrl("/auth/login");
+      login(`/pledge${window.location.search}`);
       return;
     }
     setBuying(item.id);

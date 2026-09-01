@@ -1,5 +1,6 @@
 import { apiFetch } from './api-client';
 import { acquireVoicePriority } from './audio-bus';
+import { channelGain } from './audio-settings';
 import { getPreferredSpeakerId, supportsSinkId } from '../hooks/use-audio-devices';
 
 function cleanText(text: string): string {
@@ -229,7 +230,10 @@ export function speakWithTTS(
   onEnd = () => { releasePriorityOnce(); originalOnEnd(); };
   const ttsEndpoint = opts?.endpoint ?? 'api/tts';
   const character = opts?.character;
-  const volume = Math.max(0, Math.min(1, opts?.volume ?? 1));
+  // Explicit volumes are already effective gains for callers such as Shadow
+  // Radio. Ordinary Pablo/advisor speech uses the shared VOICE channel, so
+  // COMMS and the settings page control the actual playback level.
+  const volume = Math.max(0, Math.min(1, opts?.volume ?? channelGain("voice")));
 
   const clean = cleanText(text);
   const sentences = splitSentences(clean);

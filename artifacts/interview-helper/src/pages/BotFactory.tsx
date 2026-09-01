@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Bot, Plus, Trash2, Power, PowerOff, MessageSquare, Brain,
+  Bot, Plus, Trash2, Power, PowerOff, MessageSquare, Brain, Building2,
   Send, Settings, Clock, Shield, ChevronRight, Store, Zap,
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
   Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
@@ -61,6 +61,12 @@ export interface BotData {
   rateLimitPerMinute: number;
   marketplaceItemId: number | null;
   connections: BotConnection[];
+  workstation?: {
+    floorId: number;
+    city: string;
+    floorNumber: number;
+    workstationKey: string;
+  } | null;
   collaborationEnabled?: boolean;
   parentBotId?: number | null;
   collaborationRole?: string | null;
@@ -87,6 +93,16 @@ interface MarketplaceItem {
   priceMonthly: number;
   capabilities: string[];
   featured: boolean;
+}
+
+interface WorkstationCapacity {
+  hasProperty: boolean;
+  totalDesks: number;
+  requiredHumanDesks: number;
+  activeBotDesks: number;
+  availableBotDesks: number;
+  floorCount: number;
+  rule: string;
 }
 
 interface BotTask {
@@ -3381,6 +3397,7 @@ export default function BotFactory() {
   const [connectBot, setConnectBot] = useState<BotData | null>(null);
   const [activating, setActivating] = useState<number | null>(null);
   const [activationError, setActivationError] = useState('');
+  const [workstationCapacity, setWorkstationCapacity] = useState<WorkstationCapacity | null>(null);
   const [search, setSearch] = useState('');
   const [finderQuery, setFinderQuery] = useState('');
   const [finderLoading, setFinderLoading] = useState(false);
@@ -3410,11 +3427,18 @@ export default function BotFactory() {
     } catch {}
   }, []);
 
+  const loadWorkstationCapacity = useCallback(async () => {
+    try {
+      const response = await apiFetch('/api/bots/workstation-capacity');
+      if (response.ok) setWorkstationCapacity(await response.json());
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     setLoading(true);
-    Promise.all([loadBots(), loadMarketplace()]).finally(() => setLoading(false));
-  }, [isAuthenticated, loadBots, loadMarketplace]);
+    Promise.all([loadBots(), loadMarketplace(), loadWorkstationCapacity()]).finally(() => setLoading(false));
+  }, [isAuthenticated, loadBots, loadMarketplace, loadWorkstationCapacity]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -3461,7 +3485,7 @@ export default function BotFactory() {
         body: JSON.stringify({ marketplaceItemId: item.id }),
       });
       if (res.ok) {
-        await Promise.all([loadBots(), loadMarketplace()]);
+        await Promise.all([loadBots(), loadMarketplace(), loadWorkstationCapacity()]);
       } else {
         const data = await res.json().catch(() => ({}));
         const message = typeof data.error === 'string' ? data.error : 'Unable to activate this Pixel Agent. Please try again.';
@@ -3558,6 +3582,25 @@ export default function BotFactory() {
                   {activationError}
                 </div>
               )}
+
+              <div className={`rounded-xl border p-4 ${workstationCapacity?.availableBotDesks ? 'border-emerald-500/25 bg-emerald-500/[0.04]' : 'border-amber-500/30 bg-amber-500/[0.05]'}`}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-foreground">
+                      <Building2 className="h-4 w-4 text-sky-400" /> AUTOMATION WORKSTATION CAPACITY
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground/70">
+                      Every active human and Pixel Agent needs one physical desk. Subscription access does not create office capacity.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded border border-border px-3 py-2"><b className="block text-sm text-foreground">{workstationCapacity?.totalDesks ?? 0}</b><span className="text-[8px] text-muted-foreground">TOTAL</span></div>
+                    <div className="rounded border border-border px-3 py-2"><b className="block text-sm text-foreground">{(workstationCapacity?.requiredHumanDesks ?? 0) + (workstationCapacity?.activeBotDesks ?? 0)}</b><span className="text-[8px] text-muted-foreground">IN USE</span></div>
+                    <div className="rounded border border-border px-3 py-2"><b className={`block text-sm ${workstationCapacity?.availableBotDesks ? 'text-emerald-400' : 'text-amber-400'}`}>{workstationCapacity?.availableBotDesks ?? 0}</b><span className="text-[8px] text-muted-foreground">BOT SLOTS</span></div>
+                  </div>
+                </div>
+                {!workstationCapacity?.hasProperty && <button onClick={() => navigate('/store/realty')} className="mt-3 flex items-center gap-2 rounded border border-amber-500/35 px-3 py-2 text-[10px] font-bold text-amber-300 hover:bg-amber-500/10"><Building2 className="h-3.5 w-3.5" /> FIND AN OFFICE BEFORE ACTIVATING A BOT</button>}
+              </div>
 
               <AgentTeam embedded />
 
@@ -3766,6 +3809,11 @@ export default function BotFactory() {
                                   {isCanceled && <span className="text-[8px] font-bold text-red-400">CANCELED</span>}
                                 </div>
                                 <p className="text-[10px] text-muted-foreground/50 truncate">{item.tagline}</p>
+                                {activatedBot?.workstation && (
+                                  <p className="mt-0.5 text-[9px] font-mono text-sky-400/70">
+                                    {activatedBot.workstation.city.replace(/_/g, ' ').toUpperCase()} · FLOOR {activatedBot.workstation.floorNumber} · {activatedBot.workstation.workstationKey.replace(/-/g, ' ').toUpperCase()}
+                                  </p>
+                                )}
                               </div>
                               <div className="shrink-0 flex items-center gap-2">
                                 {activatedBot && (
@@ -3785,10 +3833,11 @@ export default function BotFactory() {
                                     <Check className="w-3 h-3" /> ACTIVE
                                   </span>
                                 ) : (
-                                  <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
+                                  <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id || !workstationCapacity?.availableBotDesks}
+                                    title={!workstationCapacity?.availableBotDesks ? "No free physical workstation. Acquire office capacity first." : "Uses one available workstation"}
                                     className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50">
                                     {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3 h-3" />}
-                                    ACTIVATE
+                                    {workstationCapacity?.availableBotDesks ? 'ACTIVATE · 1 DESK' : 'DESK REQUIRED'}
                                   </button>
                                 )}
                               </div>

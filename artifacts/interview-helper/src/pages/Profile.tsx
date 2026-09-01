@@ -1782,44 +1782,30 @@ export function SettingsPage() {
   );
 }
 
-/** /profile/admin — admin hub gated to owners, org admins, and moderators. */
+/** /profile/admin — platform administration. Moderator tools have their own
+ * route and must never be presented as a tab inside the account profile. */
 export function AdminHub() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
-  const { org: userOrg } = useOrg();
   const { isOwner } = usePlan();
-  const { isApprovedDev, isApprovedTester } = useAlpha();
 
   if (!isAuthenticated) {
     return <SignInPage context="Sign in to access the admin hub." />;
   }
 
-  const canAdmin = isOwner || isApprovedDev || isApprovedTester;
-  if (!canAdmin) return <Redirect to="/profile" />;
+  if (!isOwner) return <Redirect to="/profile" />;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <main className="flex-1 relative z-10 max-w-2xl mx-auto w-full px-6 py-8 space-y-12">
         <Suspense fallback={PAGE_LOADER}>
-          <section>
-            <SectionHeader
-              icon={ShieldCheck}
-              title={boomerMode ? 'ADMIN PANEL' : 'ADMIN'}
-              subtitle="Org-wide administration"
-            />
-            <AdminPanel />
-          </section>
-
-          <section className="border-t border-white/[0.06] pt-10">
-            <SectionHeader
-              icon={Eye}
-              title="MODERATOR"
-              subtitle="Review queues and policy actions"
-            />
-            <ModeratorPanel />
-          </section>
-
+          <SectionHeader
+            icon={ShieldCheck}
+            title={boomerMode ? 'ADMIN PANEL' : 'ADMIN'}
+            subtitle="Full platform administration"
+          />
+          <AdminPanel />
         </Suspense>
       </main>
     </div>

@@ -3,8 +3,9 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { MessageSquare, Users, Building2, ArrowRight, Shield } from 'lucide-react';
+import { MessageSquare, Users, Building2, ArrowRight, Shield, Mic, VolumeX } from 'lucide-react';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
+import { useAudioSettings } from '@/hooks/use-audio-settings';
 import Colleagues from './Colleagues';
 import ColleaguesPanel from './ColleaguesPanel';
 import { apiFetch } from '@/lib/api-client';
@@ -35,8 +36,48 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   evt_medical: '⛑ MEDICAL',
 };
 
+function PabloVoiceControl() {
+  const { settings, set } = useAudioSettings();
+  const enabled = !settings.muted && settings.voice > 0;
+  return (
+    <section className="mx-4 sm:mx-6 mt-4 rounded-lg border border-pink-400/20 bg-pink-400/[.04] px-3 py-2.5" data-testid="comms-pablo-voice">
+      <div className="flex items-center gap-2">
+        {enabled ? <Mic className="h-3.5 w-3.5 text-pink-300" /> : <VolumeX className="h-3.5 w-3.5 text-zinc-500" />}
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-bold tracking-[.2em] text-pink-200">PABLO VOICE</div>
+          <div className="text-[8px] tracking-wider text-zinc-500">Hear Pablo and advisor replies in COMMS.</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => set({ voice: enabled ? 0 : 1 })}
+          disabled={settings.muted}
+          className={`rounded border px-2 py-1 text-[9px] font-bold tracking-widest disabled:opacity-40 ${enabled ? 'border-pink-300/40 bg-pink-300/10 text-pink-200' : 'border-zinc-700 text-zinc-500'}`}
+          data-testid="comms-pablo-voice-toggle"
+        >
+          {enabled ? "ON" : "OFF"}
+        </button>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          aria-label="Pablo voice volume"
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={settings.voice}
+          disabled={settings.muted}
+          onChange={(event) => set({ voice: Number(event.target.value) })}
+          className="min-w-0 flex-1 accent-pink-400 disabled:opacity-40"
+          data-testid="comms-pablo-voice-volume"
+        />
+        <span className="w-8 text-right text-[9px] tabular-nums text-pink-200/70">{Math.round(settings.voice * 100)}%</span>
+      </div>
+    </section>
+  );
+}
+
 export function CommsEmbedded({ section }: { section: CommsSection }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const boomerMode = getDefaultBoomerMode();
   const [, navigate] = useLocation();
   const [responders, setResponders] = useState<ResponderEntry[]>([]);
@@ -52,6 +93,9 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
       .finally(() => setRespondersLoading(false));
   }, [section, isAuthenticated]);
 
+  if (authLoading) {
+    return <div className="grid min-h-[240px] place-items-center font-mono text-xs tracking-[0.2em] text-cyan-300/60">RESTORING SESSION...</div>;
+  }
   if (!isAuthenticated) {
     return <SignInPage context={boomerMode ? 'Sign in to use Payphone.' : 'Salaryman credentials required.'} />;
   }
@@ -156,6 +200,7 @@ export default function Comms() {
               );
             })}
           </div>
+          <PabloVoiceControl />
         </div>
         <CommsEmbedded section={section} />
       </div>

@@ -24,14 +24,14 @@ export type AppNavItem = {
 };
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
-  { id: "pablo", path: "/pablo", label: "PABLO", icon: Terminal },
+  { id: "pablo", path: "/terminal", label: "PABLO", icon: Terminal },
   { id: "bots", path: "/bots", label: "AGENTS", icon: Bot },
   { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
   { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "console", path: "/pablo", label: "PABLO TERMINAL", icon: Code2 },
+  { id: "console", path: "/terminal", label: "PABLO TERMINAL", icon: Code2 },
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase },
   { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", icon: Megaphone },
@@ -43,7 +43,7 @@ export const MORE_NAV_ITEMS: AppNavItem[] = [
 export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean {
   switch (item.id) {
     case "pablo":
-      return pathname === "/pablo" || pathname.startsWith("/pablo/");
+      return pathname === "/terminal";
     case "office":
       return pathname === "/office" || pathname === "/my-office" ||
         pathname.startsWith("/office/") ||
@@ -53,7 +53,7 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
     case "org":
       return pathname === "/org" || pathname.startsWith("/org/");
     case "console":
-      return pathname === "/pablo" || pathname.startsWith("/pablo/") ||
+      return pathname === "/terminal" ||
         pathname === "/console" || pathname.startsWith("/console/");
     case "settings":
       return pathname.startsWith("/settings");
