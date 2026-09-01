@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 //
-// The primary sign-in entry point must preserve a requested destination, while
-// the provider buttons must carry the same destination through their OAuth
-// handlers. This protects deep-link sign-in flows such as /console.
+// The verified sign-in entry point must preserve a requested destination. This
+// protects deep-link sign-in flows such as /console without advertising
+// unverified provider callbacks.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe("SignInPrompt return path", () => {
-  it("forwards the requested destination to every sign-in provider", async () => {
+  it("forwards the requested destination to platform auth", async () => {
     await act(async () => {
       root.render(<SignInPrompt inline returnTo="/console" />);
       await Promise.resolve();
@@ -63,12 +63,10 @@ describe("SignInPrompt return path", () => {
 
     act(() => {
       button("SIGN IN").click();
-      button("CONTINUE WITH DISCORD").click();
-      button("CONTINUE WITH GITHUB").click();
     });
 
     expect(authMocks.login).toHaveBeenCalledWith("/console");
-    expect(authMocks.loginWithDiscord).toHaveBeenCalledWith("/console");
-    expect(authMocks.loginWithGithub).toHaveBeenCalledWith("/console");
+    expect(authMocks.loginWithDiscord).not.toHaveBeenCalled();
+    expect(authMocks.loginWithGithub).not.toHaveBeenCalled();
   });
 });
