@@ -175,7 +175,7 @@ export default function PhoneDialerPage() {
         .filter(c => c.ok && c.callSid)
         .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
       addActiveCallsBatch(newActiveCalls);
-      const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
+      const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length, queue: d.queue ?? nums };
       try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
       navigate('/phone/active');
     } catch (err: unknown) {

@@ -139,12 +139,12 @@ export default function PhoneRecordingsPage() {
   return (
     <PhonePageLayout
       title="RECORDINGS"
-      subtitle="Every call, every voicemail — recorded and retained for 10 years (HIPAA-aligned)"
+      subtitle="Every call and voicemail — downloadable and retained for up to 3 years"
       icon={<Mic size={24} style={{ color: slate(0.85) }} />}
       statusLine={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: slate(0.55) }}>
           <Shield size={11} style={{ color: slate(0.6) }} />
-          <span>{stats.total} ARCHIVED · 10-YEAR RETENTION</span>
+          <span>{stats.total} ARCHIVED · 3-YEAR MAX RETENTION</span>
         </span>
       }
     >
@@ -170,7 +170,7 @@ export default function PhoneRecordingsPage() {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '0.6rem', color: slate(0.85), letterSpacing: '0.1em' }}>HIPAA-ALIGNED RECORDING ARCHIVE</div>
           <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 3, letterSpacing: '0.06em' }}>
-            Every inbound call, outbound call, conference, and voicemail is recorded and stored for ten (10) years.
+            Every inbound call, outbound call, conference, and voicemail is recorded and retained for up to three years. We email you before call recordings expire so you can download them.
             Audio, transcripts, and AI summaries are encrypted and only accessible to you.
           </div>
         </div>

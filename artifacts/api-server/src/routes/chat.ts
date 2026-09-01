@@ -12,6 +12,7 @@ import {
   canonicalPair,
   worldBusinessesTable,
   salarymanSavesTable,
+  smsConversationsTable,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -451,11 +452,17 @@ router.get("/comms/summary", async (req, res) => {
       )
     );
   const pendingRequests = pendingRow?.count ?? 0;
+  const [smsRow] = await db
+    .select({ count: sql<number>`coalesce(sum(${smsConversationsTable.unreadCount}), 0)::int` })
+    .from(smsConversationsTable)
+    .where(eq(smsConversationsTable.userId, userId));
+  const unreadSms = smsRow?.count ?? 0;
 
   res.json({
     unreadMessages,
+    unreadSms,
     pendingRequests,
-    total: unreadMessages + pendingRequests,
+    total: unreadMessages + unreadSms + pendingRequests,
   });
 });
 

@@ -316,6 +316,34 @@
       "when": 1788494400000,
       "tag": "0044_phone_number_purchases",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788580800000,
+      "tag": "0045_sms_message_sid_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1788667200000,
+      "tag": "0046_dialing_attempt_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788753600000,
+      "tag": "0047_call_conference_monitoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1788840000000,
+      "tag": "0048_recording_expiry_notifications",
+      "breakpoints": true
     }
   ]
 }

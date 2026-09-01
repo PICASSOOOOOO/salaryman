@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, text, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, text, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const callHistoryTable = pgTable("call_history", {
   id: serial("id").primaryKey(),
@@ -18,11 +18,18 @@ export const callHistoryTable = pgTable("call_history", {
   notes: text("notes"),
   calendarEventId: integer("calendar_event_id"),
   contactId: integer("contact_id"),
+  dialingSessionId: integer("dialing_session_id"),
+  dialingQueueIndex: integer("dialing_queue_index"),
+  conferenceName: varchar("conference_name", { length: 180 }),
   consentGiven: boolean("consent_given").notNull().default(true),
   recordingRetainUntil: timestamp("recording_retain_until", { withTimezone: true }),
+  recordingExpiryNotifiedAt: timestamp("recording_expiry_notified_at", { withTimezone: true }),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
-});
+}, (table) => [
+  uniqueIndex("call_history_dialing_attempt_unique")
+    .on(table.dialingSessionId, table.dialingQueueIndex),
+]);
 
 export type CallHistory = typeof callHistoryTable.$inferSelect;
 export type InsertCallHistory = typeof callHistoryTable.$inferInsert;

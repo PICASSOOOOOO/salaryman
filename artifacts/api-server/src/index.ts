@@ -16,6 +16,7 @@ import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit, bakeCharacterPortraits } from './routes/art-assets';
 import { pollBackendHealth, ALERT_POLL_INTERVAL_MS } from './lib/art-providers/backend-alerts';
 import { pollConnectionHealth, CONN_HEALTH_POLL_INTERVAL_MS } from './lib/connection-health-monitor';
+import { runRecordingRetentionSweep } from './lib/recording-retention';
 import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
@@ -235,6 +236,19 @@ function runConnectionHealthPoll(): void {
 }
 setTimeout(runConnectionHealthPoll, 60_000); // 60s after boot — let seeders settle
 setInterval(runConnectionHealthPoll, CONN_HEALTH_POLL_INTERVAL_MS);
+
+const RECORDING_RETENTION_SWEEP_MS = 24 * 60 * 60 * 1000;
+const runRetentionSweep = () => {
+  void runRecordingRetentionSweep()
+    .then(({ notified, deleted }) => {
+      if (notified || deleted) console.log(`[recording-retention] notified=${notified} deleted=${deleted}`);
+    })
+    .catch((error: unknown) => {
+      console.error("[recording-retention] sweep failed:", error instanceof Error ? error.message : error);
+    });
+};
+setTimeout(runRetentionSweep, 60_000);
+setInterval(runRetentionSweep, RECORDING_RETENTION_SWEEP_MS);
 
 // Expire overdue fleet rentals every 2 minutes. Credits org checking accounts
 // automatically and clears the vehicle so it becomes available again.

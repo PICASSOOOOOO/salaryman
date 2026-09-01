@@ -20,7 +20,7 @@ vi.mock("@workspace/replit-auth-web", () => ({ useAuth: () => h.authState }));
 
 import { useCommsSummary, invalidateCommsSummary } from "./use-comms-summary";
 
-let summary: { unreadMessages: number; pendingRequests: number; total: number };
+let summary: { unreadMessages: number; unreadSms: number; pendingRequests: number; total: number };
 
 const fetchMock = vi.fn(async (url: string) => {
   if (String(url).endsWith("/api/comms/summary")) {
@@ -50,7 +50,7 @@ async function mount() {
 
 beforeEach(() => {
   captured = null;
-  summary = { unreadMessages: 0, pendingRequests: 0, total: 0 };
+  summary = { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0 };
   (globalThis as any).fetch = fetchMock;
   fetchMock.mockClear();
   // Drop the module-level cache so each test starts from a clean poll.
@@ -69,7 +69,7 @@ afterEach(() => {
 
 describe("useCommsSummary unread badge wiring", () => {
   it("surfaces unreadMessages and total from the summary endpoint", async () => {
-    summary = { unreadMessages: 3, pendingRequests: 1, total: 4 };
+    summary = { unreadMessages: 3, unreadSms: 0, pendingRequests: 1, total: 4 };
     await mount();
 
     expect(captured!.unreadMessages).toBe(3);
@@ -78,12 +78,12 @@ describe("useCommsSummary unread badge wiring", () => {
   });
 
   it("re-fetches and climbs the badge when invalidated", async () => {
-    summary = { unreadMessages: 0, pendingRequests: 0, total: 0 };
+    summary = { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0 };
     await mount();
     expect(captured!.unreadMessages).toBe(0);
 
     // A new message lands server-side; an invalidate triggers a re-poll.
-    summary = { unreadMessages: 2, pendingRequests: 0, total: 2 };
+    summary = { unreadMessages: 2, unreadSms: 0, pendingRequests: 0, total: 2 };
     await act(async () => {
       invalidateCommsSummary();
       await Promise.resolve();
@@ -96,7 +96,7 @@ describe("useCommsSummary unread badge wiring", () => {
 
   it("re-fetches and clears the badge when invalidated after a read", async () => {
     // The user has unread messages on first poll.
-    summary = { unreadMessages: 5, pendingRequests: 0, total: 5 };
+    summary = { unreadMessages: 5, unreadSms: 0, pendingRequests: 0, total: 5 };
     await mount();
     expect(captured!.unreadMessages).toBe(5);
     expect(captured!.total).toBe(5);
@@ -104,7 +104,7 @@ describe("useCommsSummary unread badge wiring", () => {
     // The user reads the conversation server-side, so the summary now reports
     // nothing unread. invalidateCommsSummary() forces an immediate re-poll
     // instead of waiting up to 30s for the next interval tick.
-    summary = { unreadMessages: 0, pendingRequests: 0, total: 0 };
+    summary = { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0 };
     await act(async () => {
       invalidateCommsSummary();
       await Promise.resolve();

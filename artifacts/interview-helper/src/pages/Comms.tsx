@@ -9,8 +9,9 @@ import Colleagues from './Colleagues';
 import ColleaguesPanel from './ColleaguesPanel';
 import { apiFetch } from '@/lib/api-client';
 import { ChatPanel } from '@/components/ChatPanel';
+import PhoneSmsPage from './phone/PhoneSmsPage';
 
-export type CommsSection = 'chat' | 'associates' | 'orgs' | 'responders';
+export type CommsSection = 'chat' | 'sms' | 'associates' | 'orgs' | 'responders';
 
 interface ResponderEntry {
   rank: number;
@@ -22,6 +23,7 @@ interface ResponderEntry {
 
 const TABS: { id: CommsSection; label: string; icon: typeof MessageSquare }[] = [
   { id: 'chat', label: 'CHAT', icon: MessageSquare },
+  { id: 'sms', label: 'SMS', icon: MessageSquare },
   { id: 'associates', label: 'ASSOCIATES', icon: Users },
   { id: 'orgs', label: 'ORGS', icon: Building2 },
   { id: 'responders', label: 'RESPONDERS', icon: Shield },
@@ -58,6 +60,9 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
     <div className="text-cyan-300 font-mono">
       {section === 'chat' && (
           <div className="px-2 sm:px-4"><ChatPanel embedded initiallyOpen /></div>
+        )}
+        {section === 'sms' && (
+          <div className="px-2 sm:px-4 py-3"><PhoneSmsPage /></div>
         )}
 
         {section === 'associates' && <Colleagues embedded />}
@@ -126,7 +131,7 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
 
 export default function Comms() {
   const [section, setSection] = useState<CommsSection>('chat');
-  const { unreadMessages, pendingRequests } = useCommsSummary();
+  const { unreadMessages, unreadSms, pendingRequests } = useCommsSummary();
   const tabs = TABS;
   return (
     <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
@@ -141,7 +146,7 @@ export default function Comms() {
           <div className="flex gap-1 mt-4 border-b border-cyan-500/10 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => {
               const Icon = tab.icon;
-              const badge = tab.id === 'chat' ? unreadMessages : tab.id === 'associates' ? pendingRequests : 0;
+              const badge = tab.id === 'chat' ? unreadMessages : tab.id === 'sms' ? unreadSms : tab.id === 'associates' ? pendingRequests : 0;
               return (
                 <button key={tab.id} onClick={() => setSection(tab.id)}
                   className={`flex items-center gap-1.5 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 text-xs font-mono tracking-widest uppercase border-b-2 -mb-px transition-colors ${section === tab.id ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-cyan-400/40 hover:text-cyan-300/70'}`}>

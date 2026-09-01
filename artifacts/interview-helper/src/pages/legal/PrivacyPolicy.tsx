@@ -51,7 +51,7 @@ export default function PrivacyPolicy() {
       </ul>
 
       <h2>4. Data Retention</h2>
-      <p>We operate a HIPAA-aligned business communications platform. To support compliance, audit, and dispute resolution, we retain the following records for up to <strong>ten (10) years</strong> from the date of creation, unless you submit a verified deletion request:</p>
+      <p>We operate a business communications platform. To support audit and dispute resolution, we retain call recordings and related communications for up to <strong>three (3) years</strong> from the date of creation, unless you submit a verified deletion request. We send an email warning before call recordings expire so you can download them:</p>
       <ul>
         <li>Call recordings (inbound, outbound, conference, voicemail) — audio files and metadata</li>
         <li>Call transcripts and AI-generated call summaries</li>

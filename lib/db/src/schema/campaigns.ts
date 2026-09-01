@@ -8,6 +8,7 @@ import {
   boolean,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -188,6 +189,7 @@ export const smsMessagesTable = pgTable(
     index("sms_messages_conversation_id_idx").on(table.conversationId),
     index("sms_messages_user_id_idx").on(table.userId),
     index("sms_messages_twilio_sid_idx").on(table.twilioMessageSid),
+    uniqueIndex("sms_messages_twilio_sid_unique").on(table.twilioMessageSid),
   ]
 );
 

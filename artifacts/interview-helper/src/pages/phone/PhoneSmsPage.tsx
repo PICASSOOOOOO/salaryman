@@ -3,6 +3,7 @@ import { MessageSquare, Send, Plus, X, Loader2 } from 'lucide-react';
 import { slate, warning, formatPhone } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
 
 interface SmsConversation {
   id: number;
@@ -57,7 +58,11 @@ export default function PhoneSmsPage() {
     setLoadingMsgs(true);
     try {
       const r = await apiFetch(`/api/sms/conversations/${convId}/messages`);
-      if (r.ok) { const d = await r.json(); setMessages(d.messages || []); }
+      if (r.ok) {
+        const d = await r.json();
+        setMessages(d.messages || []);
+        invalidateCommsSummary();
+      }
     } catch {}
     setLoadingMsgs(false);
   }, []);

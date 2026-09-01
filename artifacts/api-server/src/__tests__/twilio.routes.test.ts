@@ -245,6 +245,8 @@ describe("dialing sessions", () => {
       .post(`/api/twilio/dialing/${res.body.sessionId}/stop`)
       .send();
     expect(stop.status).toBe(200);
+    expect(stop.body.stoppedCalls).toBe(1);
+    expect(spies.callUpdate).toHaveBeenCalledWith({ status: "completed" });
     const [session] = await db
       .select()
       .from(dialingSessionsTable)
@@ -271,6 +273,36 @@ describe("dialing sessions", () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.phone).toBe("+15551113333");
+  });
+
+  it("next: concurrent requests atomically claim different queue positions", async () => {
+    const [session] = await db
+      .insert(dialingSessionsTable)
+      .values({
+        userId: TEST_USER.id,
+        mode: "predictive",
+        status: "running",
+        totalNumbers: 2,
+        dialedCount: 0,
+        queueJson: JSON.stringify([
+          { phone: "5551114001", name: "First" },
+          { phone: "5551114002", name: "Second" },
+        ]),
+        settingsJson: JSON.stringify({ concurrency: 2 }),
+      })
+      .returning();
+    const [first, second] = await Promise.all([
+      request(app).post(`/api/twilio/dialing/${session.id}/next`).send(),
+      request(app).post(`/api/twilio/dialing/${session.id}/next`).send(),
+    ]);
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(new Set([first.body.phone, second.body.phone])).toEqual(
+      new Set(["+15551114001", "+15551114002"]),
+    );
+    const [updated] = await db.select().from(dialingSessionsTable)
+      .where(eq(dialingSessionsTable.id, session.id));
+    expect(updated.dialedCount).toBe(2);
   });
 
   it("sessions: lists the user's sessions", async () => {
@@ -426,6 +458,29 @@ describe("webhook/sms shared-number reply routing", () => {
     const inbound = await db.select().from(smsMessagesTable)
       .where(and(eq(smsMessagesTable.twilioMessageSid, "SMinbound-default-1"), eq(smsMessagesTable.userId, TEST_USER.id)));
     expect(inbound).toHaveLength(1);
+  });
+
+  it("processes a repeated Twilio MessageSid only once", async () => {
+    const [conversation] = await db.insert(smsConversationsTable).values({
+      userId: TEST_USER.id, contactPhone, contactName: "Recipient",
+    }).returning();
+    await db.insert(smsMessagesTable).values({
+      conversationId: conversation.id, userId: TEST_USER.id, direction: "outbound",
+      body: "Hello", fromPhone: defaultDid, toPhone: contactPhone, status: "sent",
+    });
+    const payload = { From: contactPhone, To: defaultDid, Body: "One reply", MessageSid: "SMinbound-idempotent-1" };
+    const first = await request(app).post("/api/twilio/webhook/sms")
+      .set("x-twilio-signature", "sig").send(payload);
+    const repeated = await request(app).post("/api/twilio/webhook/sms")
+      .set("x-twilio-signature", "sig").send(payload);
+    expect(first.status).toBe(200);
+    expect(repeated.status).toBe(200);
+    const inbound = await db.select().from(smsMessagesTable)
+      .where(eq(smsMessagesTable.twilioMessageSid, payload.MessageSid));
+    expect(inbound).toHaveLength(1);
+    const [updated] = await db.select().from(smsConversationsTable)
+      .where(eq(smsConversationsTable.id, conversation.id));
+    expect(updated.unreadCount).toBe(1);
   });
 
   it("fails closed when two users recently messaged the same recipient from the shared number", async () => {

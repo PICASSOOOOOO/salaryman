@@ -7,6 +7,7 @@ import {
   chatMessagesTable,
   colleaguesTable,
   canonicalPair,
+  smsConversationsTable,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import {
@@ -149,6 +150,22 @@ describe("GET /comms/summary — unread counts", () => {
 
     const after = await getSummary(me);
     expect(after.body.unreadMessages).toBe(0);
+  });
+
+  it("includes unread two-way SMS in the Comms total", async () => {
+    const me = await createUser();
+    await createPabloChannel(me.id);
+    const [sms] = await db.insert(smsConversationsTable).values({
+      userId: me.id,
+      contactPhone: "+15550001111",
+      contactName: "SMS Contact",
+      unreadCount: 3,
+    }).returning();
+    const res = await getSummary(me);
+    expect(res.status).toBe(200);
+    expect(res.body.unreadSms).toBe(3);
+    expect(res.body.total).toBe(res.body.unreadMessages + res.body.unreadSms + res.body.pendingRequests);
+    await db.delete(smsConversationsTable).where(inArray(smsConversationsTable.id, [sms.id]));
   });
 });
 

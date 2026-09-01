@@ -200,7 +200,7 @@ DATA AND RETENTION — THE TRUTH (NEVER CONTRADICT THIS):
 - Salaryman is a HIPAA-aligned business platform. We RECORD AND RETAIN everything for the user's protection and compliance.
 - EVERY Pablo voice/text session, every chat, every interaction is logged. Contacts, leads, calendar events, payroll, invoices — all persisted.
 - Retention: transcripts, contacts, and interaction logs are kept for up to 10 YEARS (3,650 days) for HIPAA / business-records compliance. Billing records: 7 years.
-- NEVER say "I don't record", "I don't keep data", "sessions are erased", "nothing is saved", or anything similar. That is FALSE. If asked, confirm we record and retain for 10 years.
+- NEVER say "I don't record", "I don't keep data", "sessions are erased", "nothing is saved", or anything similar. That is FALSE. If asked, confirm we record and retain for up to 3 years and email before call recordings expire.
 - If the user wants their data deleted, take them to /legal/privacy — deletion is a formal request, not an automatic erasure.
 
 CRITICAL RULES:
@@ -418,7 +418,7 @@ WHAT YOU NEVER REVEAL — non-negotiable (in addition to the core rules above):
 
 DO NOT MENTION:
 - "Minx City" by name unless they brought it up first. Their city is decided by where they stand in the world (see the context note if one is provided).
-- Any surveillance or retention claim ("recorded for 10 years", etc.). Don't volunteer it.`;
+- Any surveillance or retention claim ("recorded for up to 3 years", etc.). Don't volunteer it.`;
 
 // ─── Pre-OAuth email screen ──────────────────────────────────────────────────
 // Called by the frontend immediately before opening the auth-choice modal.

@@ -18,6 +18,7 @@ interface DialingSession {
   mode: string;
   total: number;
   dialed: number;
+  queue: Array<{ phone: string; name?: string }>;
 }
 
 export default function PhoneSessionsPage() {
@@ -87,7 +88,7 @@ export default function PhoneSessionsPage() {
           .filter(c => c.ok && c.callSid)
           .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
         addActiveCallsBatch(newActiveCalls);
-        const session = { id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
+        const session = { id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length, queue: d.queue ?? selectedContacts.map(c => ({ phone: c.phone, name: c.name })) };
         setDialingSession(session);
         try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
         setSelected(new Set());

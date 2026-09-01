@@ -21,6 +21,7 @@ interface DialingSession {
   mode: string;
   total: number;
   dialed: number;
+  queue?: Array<{ phone: string; name?: string }>;
 }
 
 function loadSession(): DialingSession | null {
@@ -166,6 +167,26 @@ export default function PhoneActivePage() {
     setAdvancingNext(false);
   };
 
+  useEffect(() => {
+    if (!dialingSession || advancingNext || dialingSession.dialed >= dialingSession.total) return;
+    if (dialingSession.mode !== 'auto' && dialingSession.mode !== 'predictive') return;
+    const terminal = new Set(['completed', 'failed', 'busy', 'no-answer', 'canceled']);
+    const liveCount = activeCalls.filter(call => !terminal.has(call.status)).length;
+    const targetConcurrency = dialingSession.mode === 'predictive' ? 3 : 1;
+    if (liveCount >= targetConcurrency) return;
+    const timer = window.setTimeout(() => {
+      void advanceSession();
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [
+    dialingSession?.id,
+    dialingSession?.mode,
+    dialingSession?.dialed,
+    dialingSession?.total,
+    advancingNext,
+    activeCalls,
+  ]);
+
   const stopSession = async () => {
     if (!dialingSession) return;
     try {
@@ -300,6 +321,16 @@ export default function PhoneActivePage() {
                 <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 4 }}>
                   {dialingSession.total - dialingSession.dialed} contacts remaining
                 </div>
+                {(dialingSession.queue?.length ?? 0) > dialingSession.dialed && (
+                  <div style={{ marginTop: 10, display: 'grid', gap: 4 }}>
+                    <div style={{ fontSize: '0.4rem', color: slate(0.55), letterSpacing: '0.12em' }}>CALLING NEXT</div>
+                    {dialingSession.queue!.slice(dialingSession.dialed, dialingSession.dialed + 5).map((entry, index) => (
+                      <div key={`${entry.phone}-${index}`} style={{ fontSize: '0.55rem', color: slate(index === 0 ? 0.9 : 0.55) }}>
+                        {index + 1}. {entry.name || 'Unknown contact'} · {formatPhone(entry.phone)}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>

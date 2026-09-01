@@ -3,6 +3,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 
 interface CommsSummary {
   unreadMessages: number;
+  unreadSms: number;
   pendingRequests: number;
   total: number;
   loading: boolean;
@@ -21,13 +22,13 @@ export function invalidateCommsSummary() {
 export function useCommsSummary() {
   const { isAuthenticated } = useAuth();
   const [state, setState] = useState<CommsSummary>(
-    _cached ?? { unreadMessages: 0, pendingRequests: 0, total: 0, loading: true }
+    _cached ?? { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0, loading: true }
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetch = useCallback(async () => {
     if (!isAuthenticated) {
-      const s: CommsSummary = { unreadMessages: 0, pendingRequests: 0, total: 0, loading: false };
+      const s: CommsSummary = { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0, loading: false };
       _cached = s;
       setState(s);
       return;
@@ -38,6 +39,7 @@ export function useCommsSummary() {
       const data = await res.json();
       const s: CommsSummary = {
         unreadMessages: data.unreadMessages ?? 0,
+        unreadSms: data.unreadSms ?? 0,
         pendingRequests: data.pendingRequests ?? 0,
         total: data.total ?? 0,
         loading: false,

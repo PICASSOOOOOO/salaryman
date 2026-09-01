@@ -38,7 +38,7 @@ vi.mock("./ColleaguesPanel", () => ({ default: () => null }));
 import Comms from "./Comms";
 import { invalidateCommsSummary } from "@/hooks/use-comms-summary";
 
-let summary: { unreadMessages: number; pendingRequests: number; total: number };
+let summary: { unreadMessages: number; unreadSms: number; pendingRequests: number; total: number };
 
 const fetchMock = vi.fn(async (url: string) => {
   if (String(url).endsWith("/api/comms/summary")) {
@@ -69,8 +69,15 @@ function chatTabBadge(): string | null {
   return badge ? (badge.textContent ?? "") : null;
 }
 
+function smsTabBadge(): string | null {
+  const buttons = Array.from(container.querySelectorAll("button"));
+  const smsBtn = buttons.find(b => /^SMS/.test((b.textContent ?? "").trim()));
+  const badge = smsBtn?.querySelector("span.bg-red-500");
+  return badge ? (badge.textContent ?? "") : null;
+}
+
 beforeEach(() => {
-  summary = { unreadMessages: 0, pendingRequests: 0, total: 0 };
+  summary = { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0 };
   (globalThis as any).fetch = fetchMock;
   fetchMock.mockClear();
   // Drop the module-level summary cache so each test starts from a clean poll.
@@ -89,7 +96,7 @@ afterEach(() => {
 
 describe("Comms hub messages-tab badge", () => {
   it("renders the CHAT-tab unread badge from the summary endpoint", async () => {
-    summary = { unreadMessages: 7, pendingRequests: 0, total: 7 };
+    summary = { unreadMessages: 7, unreadSms: 0, pendingRequests: 0, total: 7 };
     await mount();
 
     expect(chatTabBadge()).toBe("7");
@@ -97,14 +104,14 @@ describe("Comms hub messages-tab badge", () => {
 
   it("clears the CHAT-tab badge after a read re-polls a cleared summary", async () => {
     // The user has unread messages on first poll, so the hub badge is showing.
-    summary = { unreadMessages: 4, pendingRequests: 0, total: 4 };
+    summary = { unreadMessages: 4, unreadSms: 0, pendingRequests: 0, total: 4 };
     await mount();
     expect(chatTabBadge()).toBe("4");
 
     // The user reads the conversation server-side, so the summary now reports
     // nothing unread. invalidateCommsSummary() forces an immediate re-poll
     // instead of waiting for the next interval tick.
-    summary = { unreadMessages: 0, pendingRequests: 0, total: 0 };
+    summary = { unreadMessages: 0, unreadSms: 0, pendingRequests: 0, total: 0 };
     await act(async () => {
       invalidateCommsSummary();
       await Promise.resolve();
@@ -113,5 +120,11 @@ describe("Comms hub messages-tab badge", () => {
 
     // The badge pill is gone entirely once unreadMessages drops to 0.
     expect(chatTabBadge()).toBe(null);
+  });
+
+  it("renders unread SMS on the SMS tab and in the overall Comms count", async () => {
+    summary = { unreadMessages: 0, unreadSms: 5, pendingRequests: 0, total: 5 };
+    await mount();
+    expect(smsTabBadge()).toBe("5");
   });
 });
