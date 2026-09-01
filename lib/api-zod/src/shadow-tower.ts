@@ -17,7 +17,7 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "rec_station", "sponsor", "bar"]),
+  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar"]),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
@@ -72,7 +72,9 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
       { id: "terminal", kind: "terminal", footprint: rect(2, 8, 1, 1), interactive: true },
       ...(enabledUpgrades.includes("operations_terminal") ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(2, 6, 1, 1), interactive: true }] : []),
       { id: "atm", kind: "atm", footprint: rect(2, 10, 1, 1), interactive: true },
+      { id: "radio", kind: "radio", footprint: rect(20, 6, 1, 1), interactive: true },
       { id: "vending", kind: "vending_machine", footprint: rect(20, 8, 1, 1), interactive: true },
+      { id: "payphone", kind: "payphone", footprint: rect(20, 10, 1, 1), interactive: true },
     ],
     upgrades: enabledUpgrades, collisionFootprints: [],
   };
@@ -131,7 +133,7 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
     for (const kind of requiredRec) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "rec_station").length !== 7) errors.push("requires exactly seven recreation stations");
   } else {
-    const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator"];
+    const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio", "payphone"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("requires one usable terminal");
     if (plan.objects.filter((o) => o.kind === "workstation").length < 1) errors.push("requires workstations");

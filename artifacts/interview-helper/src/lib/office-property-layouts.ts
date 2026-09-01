@@ -30,10 +30,15 @@ export interface OfficePropertyLayout {
 }
 
 const glyphFor = (kind: string): OfficeStation["glyph"] =>
-  kind === "elevator" ? "elevator" : kind === "atm" ? "atm" : kind === "vending_machine" ? "vending" : "comms";
+  kind === "elevator" ? "elevator" :
+    kind === "atm" ? "atm" :
+      kind === "vending_machine" ? "vending" :
+        kind === "radio" ? "music" :
+          kind === "payphone" ? "payphone" : "comms";
 const labelFor = (id: string, kind: string) =>
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
     kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
+      kind === "radio" ? "PABLO RADIO" : kind === "payphone" ? "PAYPHONE" :
       id.startsWith("rec-") ? id.slice(4).replace(/-/g, " ").toUpperCase() : id.toUpperCase().replace(/-/g, " ");
 
 export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey = `${plan.city}:${plan.floorNumber}`): OfficePropertyLayout {

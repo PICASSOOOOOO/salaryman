@@ -7,7 +7,7 @@ import { OfficeMinimap } from '@/components/OfficeMinimap';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
-import { getAmbianceEnabled, getMusicEnabled, subscribeAudioSettings } from '@/lib/audio-settings';
+import { getAmbianceEnabled, getMusicEnabled, setAudioSettings, subscribeAudioSettings } from '@/lib/audio-settings';
 import { floorPlacementForAssignments, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
@@ -715,12 +715,32 @@ export default function PabloOffice() {
       },
       atm: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('atm')); },
       vending: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('vending')); },
+      payphone: () => { playNav(); navigateFromOffice('/phone'); },
+      radio: () => {
+        const enabled = !getMusicEnabled();
+        setAudioSettings({ musicEnabled: enabled });
+        if (enabled) playSuccess();
+        else playClick();
+        toast({
+          title: enabled ? 'PABLO RADIO · ON AIR' : 'PABLO RADIO · OFF AIR',
+          description: enabled
+            ? 'Call Home is now playing on every tuned radio.'
+            : 'The broadcast is paused. Your station position is saved.',
+        });
+      },
       terminal: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('terminal')); },
       "operations-terminal": () => { playNav(); navigateFromOffice(getOfficeObjectDestination('terminal')); },
     };
     const base: OfficeStation[] = officeLayout.stations.map((station) => ({
       ...station,
-      onInteract: actions[station.id],
+      onInteract: actions[station.id] ?? (() => {
+        playClick();
+        toast({
+          title: `${station.label} · UNAVAILABLE`,
+          description: 'This station is not connected yet.',
+          variant: 'destructive',
+        });
+      }),
     }));
     // Using ANY object counts toward the discovery "interact" step — wrap every
     // station so the contextual cue advances no matter what the player tries.

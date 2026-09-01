@@ -19,4 +19,5 @@ export const OFFICE_STATION_LAYOUT = [
   { id: 'atm', label: 'ATM', col: 8, row: 1, glyph: 'atm', radius: 28 },
   { id: 'payphone', label: 'PAYPHONE', col: 1, row: 7, glyph: 'payphone', radius: 28 },
   { id: 'vending', label: 'VENDING', col: 1, row: 12, glyph: 'vending', radius: 28 },
+  { id: 'radio', label: 'PABLO RADIO', col: 19, row: 7, glyph: 'music', radius: 30 },
 ] as const;
