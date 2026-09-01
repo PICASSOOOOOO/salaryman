@@ -12,14 +12,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Loader2, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, ShieldCheck, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
 import { VEND_FOOD_ITEMS, parseFoodEffect, type VendFoodItem } from "@/lib/vending-food";
 import { PowerGoodsGrid } from "./UtilityStation";
 
-type TabId = "food" | "cosmetics" | "power";
+type TabId = "work";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -27,12 +27,10 @@ interface VendingMachineProps {
   initialTab?: TabId;
 }
 const TABS: { id: TabId; label: string; sub: string }[] = [
-  { id: "food",      label: "FOOD",      sub: "食品" },
-  { id: "cosmetics", label: "COSMETICS", sub: "装飾" },
-  { id: "power",     label: "POWER",     sub: "電力" },
+  { id: "work", label: "WORK GEAR", sub: "安全" },
 ];
 
-export default function VendingMachine({ onClose, initialTab = "cosmetics" }: VendingMachineProps) {
+export default function VendingMachine({ onClose, initialTab = "work" }: VendingMachineProps) {
   const [, navigate] = useLocation();
   const machineUrl = useArtAsset("vending_machine_iso");
   const [tab, setTab] = useState<TabId>(initialTab);
@@ -128,10 +126,86 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
 
         {/* Active tab pane */}
         <div className="min-w-0">
-          {tab === "food"      && <FoodTab />}
-          {tab === "cosmetics" && <CosmeticsTab />}
-          {tab === "power"     && <PowerGoodsGrid mode="charge" />}
+          {tab === "work" && <WorkGearTab />}
         </div>
+      </div>
+    </div>
+  );
+}
+
+interface WorkItem {
+  id: string; name: string; blurb: string; type: string; icon: string; priceFiat: number;
+  consumable?: boolean;
+  useEffect?: { stamina?: number; workIncomePct?: number; workIncomeUses?: number; skillGrant?: string };
+}
+
+function activeSlot(): number {
+  try { return parseInt(localStorage.getItem("sm_slot") ?? "0", 10) || 0; } catch { return 0; }
+}
+
+function WorkGearTab() {
+  const { isAuthenticated } = useAuth();
+  const [items, setItems] = useState<WorkItem[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const slot = activeSlot();
+
+  const load = useCallback(async () => {
+    const requests: Promise<Response>[] = [apiFetch("/api/items/vending-catalog")];
+    if (isAuthenticated) requests.push(apiFetch(`/api/items/inventory?slot=${slot}`));
+    const [catalogRes, inventoryRes] = await Promise.all(requests);
+    if (catalogRes.ok) setItems((await catalogRes.json()).items ?? []);
+    if (inventoryRes?.ok) {
+      const rows = (await inventoryRes.json()).rows ?? [];
+      setQuantities(Object.fromEntries(rows.map((row: { itemId: string; quantity: number }) => [row.itemId, row.quantity])));
+    }
+  }, [isAuthenticated, slot]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const buy = async (item: WorkItem) => {
+    if (!isAuthenticated) { setNotice("SIGN IN TO BUY"); return; }
+    setBusy(item.id);
+    const res = await apiFetch("/api/items/buy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: item.id, slot, source: "tower_vending" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setNotice(res.ok ? `${item.name.toUpperCase()} ADDED TO INVENTORY` : (data.error ?? "PURCHASE FAILED"));
+    if (res.ok) await load();
+    setBusy(null);
+  };
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-bold tracking-[.2em] text-cyan-100"><ShieldCheck className="h-4 w-4" /> TOWER WORK SUPPLIES</div>
+          <p className="mt-1 text-[11px] text-zinc-500">Six useful supplies. Every purchase changes stamina, work income, or protection.</p>
+        </div>
+        <button onClick={() => window.location.assign(`${import.meta.env.BASE_URL}armory/inventory`)} className="border border-cyan-400/40 px-3 py-2 text-[10px] font-bold tracking-[.15em] text-cyan-100">INVENTORY</button>
+      </div>
+      {notice && <div className="mb-3 border border-cyan-400/30 bg-cyan-400/5 p-2 text-[10px] tracking-widest text-cyan-100">{notice}</div>}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.map((item) => (
+          <article key={item.id} className="flex items-center gap-3 rounded border border-white/10 bg-white/[.03] p-3">
+            <span className="text-2xl">{item.icon}</span>
+            <div className="min-w-0 flex-1">
+              <strong className="text-sm text-zinc-100">{item.name}</strong>
+              <p className="text-[11px] text-zinc-500">{item.blurb}</p>
+            </div>
+            <div className="text-right">
+              {item.useEffect?.stamina && <div className="mb-1 text-[9px] font-bold text-amber-300">+{item.useEffect.stamina} STAMINA</div>}
+              {item.useEffect?.workIncomePct && <div className="mb-1 text-[9px] font-bold text-emerald-300">+{item.useEffect.workIncomePct}% × {item.useEffect.workIncomeUses} JOBS</div>}
+              {(quantities[item.id] ?? 0) > 0 && <div className="mb-1 text-[9px] text-zinc-500">HELD ×{quantities[item.id]}</div>}
+              <button disabled={busy === item.id} onClick={() => void buy(item)} className="rounded border border-pink-400/40 px-2 py-1.5 text-[10px] font-bold text-pink-100 disabled:border-white/10 disabled:text-zinc-600">
+                {busy === item.id ? "…" : `ƒ${item.priceFiat.toLocaleString()}`}
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   );

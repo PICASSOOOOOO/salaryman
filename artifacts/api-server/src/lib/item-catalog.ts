@@ -105,6 +105,13 @@ export interface CatalogItem {
    * (e.g. crafting materials).
    */
   installTargets?: InstallTargetType[];
+  /** Immediate or limited-use benefit applied by POST /items/consume. */
+  useEffect?: {
+    stamina?: number;
+    workIncomePct?: number;
+    workIncomeUses?: number;
+    skillGrant?: string;
+  };
 }
 
 // Helper: high-tech premium items derive a real-money price from FIAT but at a
@@ -144,6 +151,7 @@ function consumable(
 export const ITEM_CATALOG: CatalogItem[] = [
   // ─── CLOTHES (outfit slot — modest defense / prestige) ───────────────────
   fiatOnly({ id: "cloth_jumpsuit", type: "clothes", name: "Salaryman Jumpsuit", blurb: "Standard-issue grey work suit.", techTier: 1, rarity: "common", equipSlot: "outfit", stats: { defense: 3 }, priceFiat: 1500, icon: "🧥" }),
+  fiatOnly({ id: "cloth_hivis", type: "clothes", name: "Tower Hi-Vis", blurb: "Reflective workwear for active floors.", techTier: 1, rarity: "common", equipSlot: "outfit", stats: { defense: 4 }, priceFiat: 1800, icon: "🦺" }),
   fiatOnly({ id: "cloth_pinstripe", type: "clothes", name: "Pinstripe Suit", blurb: "Looks like middle management.", techTier: 1, rarity: "common", equipSlot: "outfit", stats: { defense: 5 }, priceFiat: 4200, icon: "🤵" }),
   fiatOnly({ id: "cloth_trench", type: "clothes", name: "Wasteland Trenchcoat", blurb: "Weatherproof, pockets everywhere.", techTier: 2, rarity: "expensive", equipSlot: "outfit", stats: { defense: 9, magic: 4 }, priceFiat: 14000, icon: "🧥" }),
   fiatOnly({ id: "cloth_exec", type: "clothes", name: "Executive Power Suit", blurb: "Tailored to intimidate.", techTier: 3, rarity: "rare", equipSlot: "outfit", stats: { defense: 14, magic: 10 }, priceFiat: 55000, icon: "🕴️" }),
@@ -186,6 +194,8 @@ export const ITEM_CATALOG: CatalogItem[] = [
   premium({ id: "tech_oracle", type: "tech", name: "PABLO Oracle Implant", blurb: "Sees the fight before it starts.", techTier: 5, rarity: "legendary", equipSlot: "tech", stats: { tech: 95, magic: 30, attack: 24 }, priceFiat: 1300000, icon: "👁️" }),
 
   // ─── EQUIPMENT (accessory slot — mixed utility) ──────────────────────────
+  fiatOnly({ id: "equip_hardhat", type: "equipment", name: "Impact Hard Hat", blurb: "Rated for construction and maintenance floors.", techTier: 1, rarity: "common", equipSlot: "accessory", stats: { defense: 5 }, priceFiat: 1200, icon: "⛑️" }),
+  fiatOnly({ id: "equip_workgloves", type: "equipment", name: "Work Gloves", blurb: "Grip and hand protection for building work.", techTier: 1, rarity: "common", equipSlot: "accessory", stats: { defense: 2 }, priceFiat: 700, icon: "🧤" }),
   fiatOnly({ id: "equip_gasmask", type: "equipment", name: "Corporate Gasmask", blurb: "Breathe through the fog.", techTier: 1, rarity: "common", equipSlot: "accessory", stats: { defense: 6 }, priceFiat: 5000, icon: "😷" }),
   fiatOnly({ id: "equip_grapple", type: "equipment", name: "Grapple Gauntlet", blurb: "Reach the high ledges.", techTier: 2, rarity: "expensive", equipSlot: "accessory", stats: { attack: 8, tech: 8 }, priceFiat: 17000, icon: "🪝" }),
   fiatOnly({ id: "equip_medkit", type: "equipment", name: "Auto-Medkit Rig", blurb: "Patches you mid-fight.", techTier: 3, rarity: "rare", equipSlot: "accessory", stats: { defense: 18, magic: 8 }, priceFiat: 60000, icon: "💉" }),
@@ -232,7 +242,24 @@ export const ITEM_CATALOG: CatalogItem[] = [
   consumable({ id: "mat_scrap", type: "material", name: "Scrap Metal", blurb: "Salvaged feedstock.", techTier: 1, rarity: "common", priceFiat: 300, icon: "🔩" }),
   consumable({ id: "mat_copper", type: "material", name: "Copper Wire Spool", blurb: "Conducts everything.", techTier: 1, rarity: "common", priceFiat: 700, icon: "🧵" }),
   consumable({ id: "mat_silicon", type: "material", name: "Silicon Wafer", blurb: "Brains in waiting.", techTier: 2, rarity: "expensive", priceFiat: 3200, icon: "💾" }),
+  consumable({ id: "vend_shift_tonic", type: "material", name: "Shift Tonic", blurb: "Restores 30 stamina for another working block.", techTier: 1, rarity: "common", priceFiat: 35000, icon: "🥤", useEffect: { stamina: 30 } }),
+  consumable({ id: "vend_foreman_meal", type: "material", name: "Foreman Meal", blurb: "Restores 70 stamina. Dense, hot, and built for overtime.", techTier: 1, rarity: "expensive", priceFiat: 80000, icon: "🍱", useEffect: { stamina: 70 } }),
+  consumable({ id: "vend_interview_drill", type: "material", name: "Interview Drill Set", blurb: "Practice scripts and role drills. +25% income on your next 3 jobs.", techTier: 2, rarity: "rare", priceFiat: 450000, icon: "🎙️", useEffect: { workIncomePct: 25, workIncomeUses: 3, skillGrant: "career.interview_prepared" } }),
+  consumable({ id: "vend_trade_cert", type: "material", name: "Certified Trade Course", blurb: "Practical work training. +50% income on your next 5 jobs.", techTier: 3, rarity: "very_rare", priceFiat: 900000, icon: "📐", useEffect: { workIncomePct: 50, workIncomeUses: 5, skillGrant: "work.trade_certified" } }),
 ];
+
+export const PUBLIC_VENDING_ITEM_IDS = [
+  "equip_hardhat",
+  "equip_gasmask",
+  "vend_shift_tonic",
+  "vend_foreman_meal",
+  "vend_interview_drill",
+  "vend_trade_cert",
+] as const;
+
+export function requiresPhysicalBlackMarket(item: CatalogItem): boolean {
+  return item.type === "weapons" || item.type === "armor" || item.type === "defense" || (item.stats.attack ?? 0) > 0;
+}
 
 const BY_ID = new Map(ITEM_CATALOG.map((i) => [i.id, i]));
 

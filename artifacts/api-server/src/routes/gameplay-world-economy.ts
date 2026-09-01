@@ -4,6 +4,7 @@ import {
   worldCargoTable,
   worldJobRunsTable,
   worldMarketQuotesTable,
+  salarymanSavesTable,
 } from "@workspace/db";
 import { and, desc, eq, gt, gte, isNull, sql } from "drizzle-orm";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
@@ -168,9 +169,23 @@ router.post("/gameplay/jobs/start", async (req: Request, res: Response) => {
       )).orderBy(desc(worldJobRunsTable.completedAt)).limit(1);
       if (cooldown) return { kind: "cooldown" as const, run: cooldown };
       const now = new Date();
+      const [save] = await tx.select().from(salarymanSavesTable).where(and(
+        eq(salarymanSavesTable.userId, userId),
+        eq(salarymanSavesTable.slotIndex, slot),
+      )).for("update").limit(1);
+      const saveData = { ...((save?.data ?? {}) as Record<string, any>) };
+      const boost = saveData.workIncomeBoost as { percent?: number; remainingJobs?: number } | undefined;
+      const boostPct = Math.max(0, Math.min(100, Number(boost?.percent ?? 0)));
+      const boostedPayFiat = Math.round(job.payFiat * (1 + boostPct / 100));
+      if (save && boostPct > 0 && Number(boost?.remainingJobs ?? 0) > 0) {
+        const remainingJobs = Number(boost!.remainingJobs) - 1;
+        if (remainingJobs > 0) saveData.workIncomeBoost = { ...boost, remainingJobs };
+        else delete saveData.workIncomeBoost;
+        await tx.update(salarymanSavesTable).set({ data: saveData }).where(eq(salarymanSavesTable.id, save.id));
+      }
       const [run] = await tx.insert(worldJobRunsTable).values({
         userId, slotIndex: slot, jobId, startIdempotencyKey: idempotencyKey,
-        buildingId: job.buildingId, label: job.label, payFiat: job.payFiat,
+        buildingId: job.buildingId, label: job.label, payFiat: boostedPayFiat,
         durationMs: job.durationMs, cooldownMs: job.cooldownMs,
         completesAt: new Date(now.getTime() + job.durationMs),
       }).returning();

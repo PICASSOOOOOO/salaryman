@@ -24,6 +24,8 @@ import {
   ITEM_TYPES,
   findCatalogItem,
   computeGearStats,
+  PUBLIC_VENDING_ITEM_IDS,
+  requiresPhysicalBlackMarket,
   isConsumable,
   canInstallInto,
   type EquipSlotMap,
@@ -128,6 +130,11 @@ router.get("/items/catalog", (_req, res) => {
   res.json({ types: ITEM_TYPES, items: ITEM_CATALOG });
 });
 
+router.get("/items/vending-catalog", (_req, res) => {
+  const allowed = new Set<string>(PUBLIC_VENDING_ITEM_IDS);
+  res.json({ items: ITEM_CATALOG.filter((item) => allowed.has(item.id)) });
+});
+
 // ─── Inventory for a character save slot ──────────────────────────────────────
 router.get("/items/inventory", async (req, res) => {
   const userId = requireAuth(req, res);
@@ -161,7 +168,23 @@ router.get("/items/loadout", async (req, res) => {
   const slot = parseSlot(req.query.slot);
   try {
     const { map, equippedIds } = await loadoutFor(userId, slot);
-    res.json({ slot, loadout: map, stats: computeGearStats(equippedIds) });
+    const [save] = await db.select().from(salarymanSavesTable)
+      .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slot)))
+      .limit(1);
+    const data = (save?.data ?? {}) as Record<string, unknown>;
+    const numberValue = (value: unknown, fallback: number) =>
+      typeof value === "number" && Number.isFinite(value) ? value : fallback;
+    res.json({
+      slot,
+      loadout: map,
+      stats: computeGearStats(equippedIds),
+      physical: {
+        health: numberValue(data.hp, 100),
+        maxHealth: numberValue(data.maxHp, 100),
+        stamina: numberValue(data.energy, 100),
+        strength: numberValue(data.strength, 10),
+      },
+    });
   } catch {
     res.status(500).json({ error: "Failed to load loadout" });
   }
@@ -175,6 +198,15 @@ router.post("/items/buy", async (req, res) => {
   const item = findCatalogItem(String(req.body?.itemId ?? ""));
   if (!item) {
     res.status(400).json({ error: "Unknown item" });
+    return;
+  }
+  const source = String(req.body?.source ?? "");
+  if (requiresPhysicalBlackMarket(item) && source !== "black_market") {
+    res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
+    return;
+  }
+  if (source === "tower_vending" && !PUBLIC_VENDING_ITEM_IDS.includes(item.id as typeof PUBLIC_VENDING_ITEM_IDS[number])) {
+    res.status(403).json({ error: "This item is not stocked in the Tower vending machine." });
     return;
   }
 
@@ -600,9 +632,7 @@ router.post("/items/storage/withdraw", async (req, res) => {
 });
 
 // ─── Consume a stackable item (use / craft primitive) ────────────────────────
-// Decrements a held consumable by `qty` without any gameplay effect — the
-// battery/gas/crafting loops that give consumption meaning are downstream tasks.
-// This is just the inventory-side primitive they'll call.
+// Applies declared gameplay effects and decrements stock in one transaction.
 router.post("/items/consume", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
@@ -612,10 +642,47 @@ router.post("/items/consume", async (req, res) => {
   if (!isConsumable(item)) { res.status(400).json({ error: "That item isn't a consumable." }); return; }
   const qtyRaw = Number(req.body?.qty ?? 1);
   const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
+  if (!item.useEffect) { res.status(400).json({ error: "This supply is installed or crafted, not consumed directly." }); return; }
   try {
-    const ok = await db.transaction((tx) => removeConsumable(tx, userId, slot, item.id, qty));
-    if (!ok) { res.status(409).json({ error: "You don't have enough of that." }); return; }
-    res.json({ ok: true, consumed: item.id, qty });
+    const result = await db.transaction(async (tx) => {
+      const [save] = await tx.select().from(salarymanSavesTable).where(and(
+        eq(salarymanSavesTable.userId, userId),
+        eq(salarymanSavesTable.slotIndex, slot),
+      )).for("update").limit(1);
+      if (!save) return { error: "character_missing" as const };
+      const ok = await removeConsumable(tx, userId, slot, item.id, qty);
+      if (!ok) return { error: "inventory" as const };
+      const data = { ...(save.data as Record<string, any>) };
+      const effect = item.useEffect!;
+      if (effect.stamina) {
+        const current = typeof data.energy === "number" ? data.energy : 100;
+        data.energy = Math.min(100, current + effect.stamina * qty);
+      }
+      if (effect.workIncomePct && effect.workIncomeUses) {
+        data.workIncomeBoost = {
+          percent: effect.workIncomePct,
+          remainingJobs: effect.workIncomeUses * qty,
+          sourceItemId: item.id,
+        };
+      }
+      if (effect.skillGrant) {
+        const skills = Array.isArray(data.skills) ? [...data.skills] : [];
+        if (!skills.includes(effect.skillGrant)) skills.push(effect.skillGrant);
+        data.skills = skills;
+      }
+      await tx.update(salarymanSavesTable).set({ data }).where(eq(salarymanSavesTable.id, save.id));
+      return {
+        ok: true as const,
+        energy: typeof data.energy === "number" ? data.energy : undefined,
+        workIncomeBoost: data.workIncomeBoost,
+        skillGranted: effect.skillGrant,
+      };
+    });
+    if ("error" in result) {
+      res.status(409).json({ error: result.error === "inventory" ? "You don't have enough of that." : "Create a character first." });
+      return;
+    }
+    res.json({ ...result, consumed: item.id, qty });
   } catch (e: any) {
     console.error("[Items] consume failed:", e?.message);
     res.status(500).json({ error: "Failed to consume item" });

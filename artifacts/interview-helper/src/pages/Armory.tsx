@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import {
-  Loader2, Check, Shield, Sword, Sparkles, Cpu, Wand2,
+  Loader2, Check, Shield, Sword, Sparkles, Cpu, Wand2, Heart, Dumbbell, Shirt,
   ShoppingBag, Archive, Coins, CreditCard, X, ChevronRight, Battery,
 } from "lucide-react";
 
@@ -32,6 +32,7 @@ interface CatalogItem {
   icon: string;
   consumable?: boolean;
   installTargets?: string[];
+  useEffect?: { stamina?: number; workIncomePct?: number; workIncomeUses?: number; skillGrant?: string };
 }
 
 interface InstallTarget {
@@ -62,6 +63,7 @@ interface GearStats {
   magic: number;
   tech: number;
 }
+interface PhysicalStats { health: number; maxHealth: number; stamina: number; strength: number }
 
 const TYPE_LABEL: Record<string, string> = {
   all: "All",
@@ -137,6 +139,8 @@ export default function Armory() {
   const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
   const [loadout, setLoadout] = useState<Record<string, string>>({});
   const [stats, setStats] = useState<GearStats>({ attack: 0, defense: 0, magic: 0, tech: 0 });
+  const [physical, setPhysical] = useState<PhysicalStats>({ health: 100, maxHealth: 100, stamina: 100, strength: 10 });
+  const [inventoryView, setInventoryView] = useState<"items" | "attributes">("items");
   const [activeType, setActiveType] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -181,6 +185,7 @@ export default function Armory() {
         const lo = await loadoutRes.json();
         setLoadout(lo.loadout ?? {});
         if (lo.stats) setStats(lo.stats);
+        if (lo.physical) setPhysical(lo.physical);
       }
       if (storageRes && storageRes.ok) {
         const st = await storageRes.json();
@@ -438,6 +443,27 @@ export default function Armory() {
     }
   };
 
+  const consume = async (item: CatalogItem) => {
+    setBusy(`consume:${item.id}`);
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/items/consume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, slot, qty: 1 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await load();
+        setNotice(data.workIncomeBoost
+          ? `${item.name} activated: +${data.workIncomeBoost.percent}% for ${data.workIncomeBoost.remainingJobs} jobs.`
+          : `${item.name} used${typeof data.energy === "number" ? ` — stamina is now ${data.energy}/100` : ""}.`);
+      } else setNotice(data.error ?? "Could not use item.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const types = useMemo(() => {
     const set = new Set<string>();
     for (const it of catalog) set.add(it.type);
@@ -556,6 +582,35 @@ export default function Armory() {
         ) : onInventory ? (
           /* ─── INVENTORY ─── */
           <div>
+            <div className="mb-5 grid grid-cols-2 gap-2">
+              <button onClick={() => setInventoryView("items")} className={`rounded border px-3 py-2 text-xs font-bold ${inventoryView === "items" ? "border-cyan-300 bg-cyan-300 text-black" : "border-white/15 text-zinc-300"}`}>ITEMS</button>
+              <button onClick={() => setInventoryView("attributes")} className={`rounded border px-3 py-2 text-xs font-bold ${inventoryView === "attributes" ? "border-cyan-300 bg-cyan-300 text-black" : "border-white/15 text-zinc-300"}`}>ATTRIBUTES</button>
+            </div>
+            {inventoryView === "attributes" ? (
+              <section className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    [Heart, "HEALTH", `${physical.health}/${physical.maxHealth}`],
+                    [Dumbbell, "STRENGTH", physical.strength],
+                    [Sparkles, "STAMINA", `${physical.stamina}/100`],
+                    [Shield, "PROTECTION", stats.defense],
+                  ].map(([Icon, label, value]) => {
+                    const StatIcon = Icon as typeof Heart;
+                    return <div key={String(label)} className="rounded border border-cyan-400/20 bg-cyan-400/5 p-4"><StatIcon className="mb-2 h-4 w-4 text-cyan-300" /><div className="text-[10px] tracking-widest text-zinc-500">{label as string}</div><strong className="text-xl text-cyan-100">{String(value)}</strong></div>;
+                  })}
+                </div>
+                <div className="rounded border border-white/10 bg-white/[.025] p-4">
+                  <h2 className="mb-3 flex items-center gap-2 text-xs font-bold tracking-widest text-zinc-200"><Shirt className="h-4 w-4 text-cyan-300" /> WORN</h2>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {["outfit", "armor", "accessory", "weapon"].map((slotName) => {
+                      const item = byId.get(loadout[slotName]);
+                      return <div key={slotName} className="flex items-center justify-between border border-white/10 p-3"><span className="text-[10px] uppercase tracking-widest text-zinc-500">{slotName}</span><strong className="text-xs text-zinc-200">{item ? `${item.icon} ${item.name}` : "EMPTY"}</strong></div>;
+                    })}
+                  </div>
+                </div>
+              </section>
+            ) : (
+            <>
             {/* Equipped loadout strip */}
             <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-slate-400">Equipped</h2>
             {Object.keys(loadout).length === 0 ? (
@@ -696,7 +751,15 @@ export default function Armory() {
                           ×{qty}
                         </span>
                       </div>
-                      {(item.installTargets ?? []).length > 0 ? (
+                      {item.useEffect ? (
+                        <button
+                          onClick={() => consume(item)}
+                          disabled={busy === `consume:${item.id}`}
+                          className="w-full rounded bg-amber-300 py-1.5 text-xs font-bold text-black disabled:opacity-50"
+                        >
+                          {busy === `consume:${item.id}` ? "USING…" : "USE"}
+                        </button>
+                      ) : (item.installTargets ?? []).length > 0 ? (
                         picking ? (
                           <div className="space-y-1.5">
                             {eligible.length === 0 ? (
@@ -808,6 +871,8 @@ export default function Armory() {
                   </div>
                 ))}
               </div>
+            )}
+            </>
             )}
           </div>
         ) : (
