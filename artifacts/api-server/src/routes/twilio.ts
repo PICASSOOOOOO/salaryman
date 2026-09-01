@@ -391,7 +391,6 @@ async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
 }
 
 async function ensureTwimlApp(): Promise<string> {
-  if (process.env.TWILIO_TWIML_APP_SID) return process.env.TWILIO_TWIML_APP_SID;
   if (_cachedTwimlAppSid) return _cachedTwimlAppSid;
 
   const domain = getAppHost();
@@ -399,24 +398,24 @@ async function ensureTwimlApp(): Promise<string> {
   console.log("[Twilio] Resolved domain for TwiML App:", domain || "(none)");
 
   const dbAppSid = await getSystemConfig("twilio_twiml_app_sid");
-  if (dbAppSid) {
-    _cachedTwimlAppSid = dbAppSid;
-    process.env.TWILIO_TWIML_APP_SID = dbAppSid;
-    if (voiceUrl) {
-      try {
-        const client = getTwilioClient();
-        const existingApp = await client.applications(dbAppSid).fetch();
-        if (existingApp.voiceUrl !== voiceUrl) {
-          await client.applications(dbAppSid).update({ voiceUrl, voiceMethod: "POST" });
-          console.log("[Twilio] Updated TwiML App voiceUrl to:", voiceUrl);
-        }
-      } catch (e: unknown) {
-        console.warn("[Twilio] Could not sync TwiML App voiceUrl:", e instanceof Error ? e.message : "Unknown");
-      }
-    }
-    return dbAppSid;
-  }
+  const configuredSid = process.env.TWILIO_TWIML_APP_SID;
+  const candidates = [...new Set([dbAppSid, configuredSid].filter((sid): sid is string => Boolean(sid)))];
   const client = getTwilioClient();
+  for (const candidateSid of candidates) {
+    try {
+      const existingApp = await client.applications(candidateSid).fetch();
+      if (voiceUrl && (existingApp.voiceUrl !== voiceUrl || (existingApp.voiceMethod || "POST").toUpperCase() !== "POST")) {
+        await client.applications(candidateSid).update({ voiceUrl, voiceMethod: "POST" });
+        console.log("[Twilio] Updated TwiML App voice callback.");
+      }
+      _cachedTwimlAppSid = candidateSid;
+      process.env.TWILIO_TWIML_APP_SID = candidateSid;
+      if (dbAppSid !== candidateSid) await setSystemConfig("twilio_twiml_app_sid", candidateSid);
+      return candidateSid;
+    } catch (error) {
+      console.warn("[Twilio] Ignoring invalid TwiML App SID:", error instanceof Error ? error.message : "Unknown");
+    }
+  }
   const app = await client.applications.create({
     friendlyName: "Salaryman Voice App",
     voiceMethod: "POST",

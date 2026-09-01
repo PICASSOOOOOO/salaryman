@@ -25,7 +25,7 @@ import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
-import { completeInternalText } from "../lib/internal-ai";
+import { completeInternalText, selectClaudeTools } from "../lib/internal-ai";
 import { isPabloNavPath } from "../lib/pablo-navigation";
 
 const router = Router();
@@ -1292,6 +1292,7 @@ async function runPabloCompletion(
   const tools: any[] = [PABLO_IMAGE_TOOL];
   if (userId) tools.push(PABLO_FINANCE_TOOL);
   let first;
+  let firstProvider: "gpt" | "claude" = "gpt";
   try {
     first = await openai.chat.completions.create({
       model: "gpt-5",
@@ -1302,10 +1303,30 @@ async function runPabloCompletion(
       tool_choice: "auto",
     });
   } catch (gptError) {
-    console.warn("[Pablo Chat] GPT failed before tool selection; using internal Claude fallback:", gptError instanceof Error ? gptError.message : gptError);
-    const fallback = await completeInternalText(messages, { maxTokens: 600, prefer: "claude" });
-    if (fallback.usage) usages.push(fallback.usage);
-    return { reply: fallback.content, usages, imageCount: 0 };
+    console.warn("[Pablo Chat] GPT failed before tool selection; using Claude tool selection:", gptError instanceof Error ? gptError.message : gptError);
+    firstProvider = "claude";
+    const claude = await selectClaudeTools(
+      messages,
+      tools.map((tool) => ({
+        name: tool.function.name,
+        description: tool.function.description,
+        inputSchema: tool.function.parameters,
+      })),
+      600,
+    );
+    if (claude.usage) usages.push(claude.usage);
+    first = {
+      choices: [{
+        message: {
+          content: claude.content,
+          tool_calls: claude.toolCalls.map((toolCall) => ({
+            id: toolCall.id,
+            type: "function",
+            function: { name: toolCall.name, arguments: toolCall.arguments },
+          })),
+        },
+      }],
+    };
   }
   if (first.usage) usages.push({ prompt_tokens: first.usage.prompt_tokens, completion_tokens: first.usage.completion_tokens });
 
@@ -1392,6 +1413,7 @@ async function runPabloCompletion(
 
   let reply: string;
   try {
+    if (firstProvider === "claude") throw new Error("continue tool-selected response with Claude");
     const second = await openai.chat.completions.create({
       model: "gpt-5",
       messages: followMessages,

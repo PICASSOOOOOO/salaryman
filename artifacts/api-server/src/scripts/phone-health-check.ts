@@ -15,6 +15,8 @@
  *   PHONE_HEALTH_ALWAYS_EMAIL - "1" to email on PASS too (default: email always)
  */
 import twilio from "twilio";
+import { db, systemConfigTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { getUncachableResendClient } from "../lib/resend";
 
 type CheckResult = {
@@ -101,23 +103,45 @@ async function checkEnv(results: CheckResult[]): Promise<boolean> {
 }
 
 async function checkTwimlApplication(client: twilio.Twilio, results: CheckResult[]) {
-  const appSid = process.env.TWILIO_TWIML_APP_SID;
-  if (!appSid) return;
   const expectedUrl = `${BASE_URL}/api/twilio/twiml/client-voice`;
-  try {
-    const app = await withTimeout(client.applications(appSid).fetch(), OP_TIMEOUT_MS, "TwiML application fetch");
-    const methodOk = (app.voiceMethod || "POST").toUpperCase() === "POST";
-    if (app.voiceUrl === expectedUrl && methodOk) {
+  const stored = await db.select({ value: systemConfigTable.value })
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, "twilio_twiml_app_sid"))
+    .limit(1);
+  const candidates = [...new Set([stored[0]?.value, process.env.TWILIO_TWIML_APP_SID].filter((sid): sid is string => Boolean(sid)))];
+  for (const appSid of candidates) {
+    try {
+      const app = await withTimeout(client.applications(appSid).fetch(), OP_TIMEOUT_MS, "TwiML application fetch");
+      if (app.voiceUrl !== expectedUrl || (app.voiceMethod || "POST").toUpperCase() !== "POST") {
+        await withTimeout(
+          client.applications(appSid).update({ voiceUrl: expectedUrl, voiceMethod: "POST" }),
+          OP_TIMEOUT_MS,
+          "TwiML application update",
+        );
+      }
+      if (stored[0]?.value !== appSid) {
+        await db.insert(systemConfigTable)
+          .values({ key: "twilio_twiml_app_sid", value: appSid, category: "twilio", description: "Auto-repaired by phone health" })
+          .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: appSid, updatedAt: new Date() } });
+      }
       results.push({ name: "Browser Voice TwiML application", status: "PASS", detail: `${appSid} -> POST ${expectedUrl}` });
-    } else {
-      results.push({
-        name: "Browser Voice TwiML application",
-        status: "FAIL",
-        detail: `${appSid} points to ${app.voiceMethod || "(no method)"} ${app.voiceUrl || "(no URL)"}; expected POST ${expectedUrl}`,
-      });
+      return;
+    } catch {
+      // Try the next persisted/configured candidate before provisioning.
     }
+  }
+  try {
+    const app = await withTimeout(
+      client.applications.create({ friendlyName: "Salaryman Voice App", voiceUrl: expectedUrl, voiceMethod: "POST" }),
+      OP_TIMEOUT_MS,
+      "TwiML application provision",
+    );
+    await db.insert(systemConfigTable)
+      .values({ key: "twilio_twiml_app_sid", value: app.sid, category: "twilio", description: "Auto-repaired by phone health" })
+      .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: app.sid, updatedAt: new Date() } });
+    results.push({ name: "Browser Voice TwiML application", status: "PASS", detail: `Provisioned ${app.sid} -> POST ${expectedUrl}` });
   } catch (e: any) {
-    results.push({ name: "Browser Voice TwiML application", status: "FAIL", detail: `Could not fetch ${appSid}: ${e?.message || e}` });
+    results.push({ name: "Browser Voice TwiML application", status: "FAIL", detail: `Could not provision TwiML application: ${e?.message || e}` });
   }
 }
 

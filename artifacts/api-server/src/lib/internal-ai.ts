@@ -1,5 +1,15 @@
 export type InternalAiProvider = "gpt" | "claude";
 export type InternalMessage = { role: "system" | "user" | "assistant"; content: string };
+export type InternalToolDefinition = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+};
+export type InternalToolCall = {
+  id: string;
+  name: string;
+  arguments: string;
+};
 
 export class InternalAiUnavailableError extends Error {
   constructor(
@@ -84,6 +94,47 @@ export async function completeInternalText(
   }
 
   throw new InternalAiUnavailableError(failures);
+}
+
+export async function selectClaudeTools(
+  messages: InternalMessage[],
+  tools: InternalToolDefinition[],
+  maxTokens = 600,
+): Promise<{
+  content: string;
+  toolCalls: InternalToolCall[];
+  usage?: { prompt_tokens: number; completion_tokens: number };
+}> {
+  const { anthropic } = await import("@workspace/integrations-anthropic-ai");
+  const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const turns = messages
+    .filter((message) => message.role !== "system")
+    .map((message) => ({ role: message.role as "user" | "assistant", content: message.content }));
+  const result = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: maxTokens,
+    system,
+    messages: turns,
+    tools: tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: tool.inputSchema,
+    })),
+    tool_choice: { type: "auto" },
+  });
+  return {
+    content: result.content
+      .filter((block): block is Extract<(typeof result.content)[number], { type: "text" }> => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim(),
+    toolCalls: result.content
+      .filter((block): block is Extract<(typeof result.content)[number], { type: "tool_use" }> => block.type === "tool_use")
+      .map((block) => ({ id: block.id, name: block.name, arguments: JSON.stringify(block.input ?? {}) })),
+    usage: result.usage
+      ? { prompt_tokens: result.usage.input_tokens, completion_tokens: result.usage.output_tokens }
+      : undefined,
+  };
 }
 
 export async function probeInternalProvider(provider: InternalAiProvider): Promise<void> {

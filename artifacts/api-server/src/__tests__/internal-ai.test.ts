@@ -80,4 +80,28 @@ describe("Replit-managed internal AI fallback", () => {
     )).rejects.toThrow("gpt:");
     expect(anthropicCreate).not.toHaveBeenCalled();
   });
+
+  it("lets Claude select image and finance tools when GPT is unavailable", async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [
+        { type: "text", text: "Checking both." },
+        { type: "tool_use", id: "tool-image", name: "generate_image", input: { prompt: "a skyline" } },
+        { type: "tool_use", id: "tool-finance", name: "get_business_financials", input: {} },
+      ],
+      usage: { input_tokens: 9, output_tokens: 4 },
+    });
+    const { selectClaudeTools } = await import("../lib/internal-ai");
+    const result = await selectClaudeTools(
+      [{ role: "user", content: "Show a skyline and check my books" }],
+      [
+        { name: "generate_image", description: "Generate an image", inputSchema: { type: "object" } },
+        { name: "get_business_financials", description: "Read the books", inputSchema: { type: "object" } },
+      ],
+    );
+    expect(result.toolCalls).toEqual([
+      { id: "tool-image", name: "generate_image", arguments: '{"prompt":"a skyline"}' },
+      { id: "tool-finance", name: "get_business_financials", arguments: "{}" },
+    ]);
+    expect(anthropicCreate.mock.calls[0][0].tools).toHaveLength(2);
+  });
 });
