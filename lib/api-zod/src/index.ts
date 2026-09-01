@@ -2,6 +2,7 @@ export * from "./generated/api";
 export * from "./storage";
 export * from "./credit-actions";
 export * from "./playable-properties";
+export * from "./shadow-tower";
 export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,

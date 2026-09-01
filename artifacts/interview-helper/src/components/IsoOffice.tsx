@@ -77,7 +77,7 @@ function capsuleSpots(shift: number, count?: number): { col: number }[] {
 
 export interface IsoOfficeProps {
   /** Authoritative property geometry. Disables legacy generated floor geometry. */
-  layout?: OfficePropertyLayout;
+  layout: OfficePropertyLayout;
   scale?: number;
   bullpen?: boolean;
   activeBots?: PixelOfficeBot[];
@@ -89,20 +89,10 @@ export interface IsoOfficeProps {
   onMove?: () => void;
   appearance?: Appearance;
   costumeColor?: string | null;
-  roomCols?: number;
-  roomRows?: number;
   viewportWidth?: number;
   viewportHeight?: number;
   stations?: OfficeStation[];
   frozen?: boolean;
-  /**
-   * Realty-store artwork (same useArtAsset URL the RealtyStore card renders) for
-   * the property the player rents/owns. When present it is painted as the room's
-   * establishing backdrop so the office, the rented apartment and the starter
-   * home base all read as the SAME isometric realty illustration. Null → the
-   * fully-procedural neon-noir fallback.
-   */
-  backdropSrc?: string | null;
   /** LIVE follows the player; SURVEILLANCE (false) fits the whole floor. */
   followCam?: boolean;
   rooms?: OfficeRoom[];
@@ -156,13 +146,10 @@ export function IsoOffice({
   onMove,
   appearance,
   costumeColor,
-  roomCols = 22,
-  roomRows = 11,
   viewportWidth,
   viewportHeight,
   stations = [],
   frozen = false,
-  backdropSrc = null,
   followCam = false,
   rooms = [],
   doorTopRow: doorTopRowProp,
@@ -183,12 +170,12 @@ export function IsoOffice({
     typeof window !== 'undefined' &&
     (('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0);
 
-  const effectiveBullpen = layout ? false : bullpen;
-  const leftCols = layout?.cols ?? roomCols;
+  const effectiveBullpen = false;
+  const leftCols = layout.cols;
   const dividerCols = effectiveBullpen ? 1 : 0;
-  const rightCols = effectiveBullpen ? roomCols : 0;
+  const rightCols = 0;
   const cols = leftCols + dividerCols + rightCols;
-  const rows = layout?.rows ?? roomRows;
+  const rows = layout.rows;
   const bullpenShift = leftCols + dividerCols;
 
   const doorTopRow = doorTopRowProp ?? (rows - 3);
@@ -222,19 +209,15 @@ export function IsoOffice({
   }, [layout, rooms]);
 
   const deskRowDesks = useMemo(
-    () => layout ? [] : deskRects(0, deskColCount, deskRowCount, leftCols),
-    [layout, deskColCount, deskRowCount, leftCols],
+    () => [{ c: layout.playerDesk.col, r: layout.playerDesk.row, w: layout.playerDesk.w, d: layout.playerDesk.d, ci: 0, ri: 0 }],
+    [layout],
   );
   const bullpenDesks = useMemo(
-    () => layout
-      ? layout.teamDesks.map((desk, i) => ({ c: desk.col, r: desk.row, w: desk.w, d: desk.d, ci: i, ri: 0 }))
-      : (effectiveBullpen ? deskRects(bullpenShift, deskColCount, deskRowCount, rightCols) : []),
+    () => layout.teamDesks.map((desk, i) => ({ c: desk.col, r: desk.row, w: desk.w, d: desk.d, ci: i, ri: 0 })),
     [layout, effectiveBullpen, bullpenShift, deskColCount, deskRowCount, rightCols],
   );
   const capSpots = useMemo(
-    () => layout
-      ? layout.capsuleSpots.map((spot) => ({ col: spot.col, row: spot.row, w: spot.w, d: spot.d }))
-      : (effectiveBullpen ? capsuleSpots(bullpenShift, capsuleCount).map((spot) => ({ ...spot, row: 1, w: 1.1, d: 0.85 })) : []),
+    () => layout.capsuleSpots.map((spot) => ({ col: spot.col, row: spot.row, w: spot.w, d: spot.d })),
     [layout, effectiveBullpen, bullpenShift, capsuleCount],
   );
 
@@ -250,8 +233,8 @@ export function IsoOffice({
   );
 
   // Desk computer (LEFT private office) + spawn point.
-  const COMPUTER_X = (layout ? layout.playerDesk.col + layout.playerDesk.w / 2 : 4.5) * TILE;
-  const COMPUTER_Y = (layout ? layout.playerDesk.row + layout.playerDesk.d : 5) * TILE;
+  const COMPUTER_X = (layout.playerDesk.col + layout.playerDesk.w / 2) * TILE;
+  const COMPUTER_Y = (layout.playerDesk.row + layout.playerDesk.d) * TILE;
 
   // Hard-object collision: each interaction object + the player's own desk is a
   // SOLID prop the player must walk around — no walking through furniture. The
@@ -289,8 +272,6 @@ export function IsoOffice({
   const facingRef = useRef<'left' | 'right'>(initialPose?.facing ?? 'right');
   const walkRef = useRef(0); // 0..1 walk phase for a tiny bob
   const runRef = useRef(false); // true while sprinting (Shift held / long tap)
-  // Loaded realty-store backdrop image (painted behind the iso stage).
-  const backdropImgRef = useRef<HTMLImageElement | null>(null);
   const heldRef = useRef<Set<string>>(new Set());
   const tapTargetRef = useRef<Vec2 | null>(null);
   const tapPathRef = useRef<Vec2[]>([]);
@@ -387,18 +368,6 @@ export function IsoOffice({
   useEffect(() => { if (viewportWidth) viewWRef.current = viewportWidth; }, [viewportWidth]);
   useEffect(() => { if (viewportHeight) viewHRef.current = viewportHeight; }, [viewportHeight]);
 
-  // Load the realty backdrop image off-DOM; the rAF loop reads the decoded
-  // HTMLImageElement from the ref. Clears immediately when the src goes away so
-  // the office falls back to the procedural grade with no stale art.
-  useEffect(() => {
-    if (!backdropSrc) { backdropImgRef.current = null; return; }
-    let cancelled = false;
-    const img = new Image();
-    img.onload = () => { if (!cancelled) backdropImgRef.current = img; };
-    img.onerror = () => { if (!cancelled) backdropImgRef.current = null; };
-    img.src = backdropSrc;
-    return () => { cancelled = true; };
-  }, [backdropSrc]);
 
   // ── Main render + movement loop ─────────────────────────────────────────
   useEffect(() => {
@@ -537,8 +506,8 @@ export function IsoOffice({
         let bestId: string | null = null;
         let bestDist = Infinity;
         for (const st of stationsRef.current) {
-          const sx = (st.col + (st.footprint?.w ?? 1.4) / 2) * TILE;
-          const sy = (st.row + (st.footprint?.d ?? 1)) * TILE;
+          const sx = (st.col + (st.footprint?.w ?? 1) / 2) * TILE;
+          const sy = (st.row + (st.footprint?.d ?? 1) / 2) * TILE;
           const d = Math.hypot(cx - sx, cy - sy);
           if (d <= (st.radius ?? 26) && d < bestDist) { bestDist = d; bestId = st.id; }
         }
@@ -620,10 +589,10 @@ export function IsoOffice({
         appearance: appearanceRef.current,
         costume: costumeRef.current ?? null,
         S, now,
-        showComputer: !!onEnterRef.current,
+        showComputer: false,
         nearComputer: nearComputerRef.current,
         computerX: COMPUTER_X, computerY: COMPUTER_Y,
-        backdrop: backdropImgRef.current,
+        backdrop: null,
         viewW, viewH,
         suppressLabels: suppressLabelsRef.current,
         playerName: playerNameRef.current,
@@ -941,9 +910,9 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Stations.
   for (const st of s.stations) {
-    const wTiles = st.art ? st.art.wTiles : 1.4;
-    const hTiles = st.art ? st.art.hTiles : 1.6;
-    const tx = st.col + wTiles / 2, ty = st.row + hTiles;
+    const wTiles = st.footprint?.w ?? 1;
+    const hTiles = st.footprint?.d ?? 1;
+    const tx = st.col + wTiles / 2, ty = st.row + hTiles / 2;
     push(tx, ty, () => drawStation(ctx, s, st, tx, ty));
   }
 
@@ -1123,13 +1092,14 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
   const pulse = (Math.sin(s.now / 900) + 1) / 2;
   const blink = Math.floor(s.now / 650) % 2 === 0;
 
-  // Wider footprint — elevator shaft spans ~2 tiles
-  groundShadow(ctx, s, tx - 1.0, ty - 0.35, 2.0, 0.7);
+  const w = st.footprint?.w ?? 1;
+  const d = st.footprint?.d ?? 1;
+  groundShadow(ctx, s, st.col, st.row, w, d);
 
   // Steel isometric shaft body
   isoBox(
     ctx, s,
-    tx - 1.0, ty - 0.35, 2.0, 0.7, 22,
+    st.col, st.row, w, d, 22,
     active ? '#1e2f48' : '#16222f',
     '#0e1720',
     '#111d2a',
@@ -1139,7 +1109,7 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
   );
 
   // Door split seam — dark vertical crack down the isometric front face
-  const seam = P(tx, ty + 0.33);
+  const seam = P(tx, ty + d / 2);
   ctx.save();
   ctx.strokeStyle = 'rgba(4,8,16,0.95)';
   ctx.lineWidth = Math.max(1, 1.4 * u);
@@ -1150,7 +1120,7 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
   ctx.restore();
 
   // Floor indicator — blinking yellow triangle above the doors
-  const top = P(tx, ty - 0.1);
+  const top = P(tx, ty);
   ctx.save();
   ctx.fillStyle = blink ? '#ffd23f' : 'rgba(255,210,63,0.1)';
   ctx.shadowColor = 'rgba(255,210,63,0.85)';
@@ -1165,7 +1135,7 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
   ctx.restore();
 
   // Call button — pulsing cyan circle on the right panel
-  const btn = P(tx + 0.82, ty + 0.18);
+  const btn = P(st.col + w * .85, st.row + d * .6);
   ctx.save();
   ctx.fillStyle = `rgba(56,240,255,${0.35 + pulse * 0.5})`;
   ctx.shadowColor = 'rgba(56,240,255,0.95)';
@@ -1216,14 +1186,14 @@ function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   const { P, heightPx } = s;
   const active = s.playable && s.activeStationId === st.id;
   const u = (s.T / TILE) * 0.5;
-  const w = cfg.w, d = 0.85;
-  const c = tx - w / 2, r = ty - 0.45;
+  const w = st.footprint?.w ?? 1, d = st.footprint?.d ?? 1;
+  const c = st.col, r = st.row;
   groundShadow(ctx, s, c, r, w, d, 0.36);
   // Cabinet body.
   isoBox(ctx, s, c, r, w, d, cfg.h, active ? cfg.topA : cfg.top, cfg.left, cfg.right, active ? cfg.rimA : cfg.rim);
   // Faceplate ("screen"/glass) floating just below the cabinet top, drawn in
   // screen space so it always faces the camera and reads clearly.
-  const top = P(tx, ty - 0.1);
+  const top = P(tx, ty);
   const fw = 8 * u, fh = 8 * u;
   const fy = top.y - heightPx(cfg.h) - fh * 0.15;
   ctx.save();
@@ -1275,6 +1245,8 @@ const PAYPHONE_CFG: MachineCfg = {
 };
 
 function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  const w = st.footprint?.w ?? 1;
+  const d = st.footprint?.d ?? 1;
   // Each object gets a distinct, recognisable render so it reads as part of the
   // room — never an identical kiosk with a floating marker.
   if (st.glyph === 'elevator') { drawElevator(ctx, s, st, tx, ty); return; }
@@ -1283,10 +1255,10 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   if (st.glyph === 'payphone') { drawMachine(ctx, s, st, tx, ty, PAYPHONE_CFG); return; }
 
   // Generic fallback kiosk for any other glyph.
-  groundShadow(ctx, s, tx - 0.6, ty - 0.6, 1.2, 1.0);
+  groundShadow(ctx, s, st.col, st.row, w, d);
   const active = s.playable && s.activeStationId === st.id;
   const accent = active ? '#aef3ff' : 'rgba(150,200,225,0.85)';
-  isoBox(ctx, s, tx - 0.6, ty - 0.6, 1.2, 1.0, 13, active ? '#1d3550' : '#16283c', '#0e1c2c', '#13283c', active ? 'rgba(90,220,255,0.9)' : 'rgba(40,90,120,0.6)');
+  isoBox(ctx, s, st.col, st.row, w, d, 13, active ? '#1d3550' : '#16283c', '#0e1c2c', '#13283c', active ? 'rgba(90,220,255,0.9)' : 'rgba(40,90,120,0.6)');
   const { P } = s;
   const top = P(tx, ty - 0.1);
   ctx.save();

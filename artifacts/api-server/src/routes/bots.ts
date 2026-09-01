@@ -11,12 +11,15 @@ import {
   botSubscriptionsTable,
   botDirectivesTable,
   orgMembersTable,
+  shadowTowerFloorsTable,
+  shadowTowerWorkstationAssignmentsTable,
   hasRoleAccess,
   type PlatformType,
   type PermissionKey,
   type OrgRole,
   type BotDirectiveScope,
 } from "@workspace/db";
+import { getShadowTowerPlan, type ShadowTowerCity, type ShadowTowerArchetype } from "@workspace/api-zod/shadow-tower";
 import { artAssetsTable } from "@workspace/db";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
 import { createImageTask, isNanoBananaConfigured } from "../lib/nano-banana";
@@ -98,6 +101,80 @@ async function getOrgRole(userId: string, orgId: number): Promise<OrgRole | null
       eq(orgMembersTable.status, "active"),
     ));
   return (row?.role as OrgRole | undefined) ?? null;
+}
+
+/**
+ * A held Shadow Tower floor is a hard physical activation limit, never a spawn
+ * hint. Reservation and validation happen in one transaction so a newly
+ * activated bot can claim a real workstation without a user having to race a
+ * separate assignment request.
+ */
+async function prepareShadowTowerBotActivation(bot: { id: number; ownerId: string; orgId: number | null }): Promise<{ ok: boolean; assignmentId?: number }> {
+  return db.transaction(async (tx) => {
+    const now = new Date();
+    const heldFloors = (await tx.select().from(shadowTowerFloorsTable).where(bot.orgId
+      ? or(eq(shadowTowerFloorsTable.orgId, bot.orgId), eq(shadowTowerFloorsTable.ownerUserId, bot.ownerId))
+      : eq(shadowTowerFloorsTable.ownerUserId, bot.ownerId)))
+      .filter((floor) => !floor.leaseExpiresAt || floor.leaseExpiresAt > now)
+      .sort((a, b) => a.id - b.id);
+    const orgFloors = bot.orgId ? heldFloors.filter((floor) => floor.orgId === bot.orgId) : [];
+    // Marketplace bots are stamped to the user's sole active org. If that org
+    // has no tower floor yet, the owner's personal floor remains the physical
+    // activation authority instead of silently bypassing workstation capacity.
+    const floors = orgFloors.length ? orgFloors : heldFloors.filter((floor) => floor.ownerUserId === bot.ownerId);
+    if (!floors.length) return { ok: true };
+    for (const floor of floors) {
+      await tx.select({ id: shadowTowerFloorsTable.id }).from(shadowTowerFloorsTable)
+        .where(eq(shadowTowerFloorsTable.id, floor.id)).for("update");
+    }
+    const scopeOrgId = orgFloors.length ? bot.orgId : null;
+    const activeBots = await tx.select({ id: botsTable.id }).from(botsTable).where(and(
+      scopeOrgId ? eq(botsTable.orgId, scopeOrgId) : eq(botsTable.ownerId, bot.ownerId),
+      eq(botsTable.status, "active"),
+    ));
+    const humans = scopeOrgId
+      ? await tx.select({ userId: orgMembersTable.userId }).from(orgMembersTable).where(and(eq(orgMembersTable.orgId, scopeOrgId), eq(orgMembersTable.status, "active")))
+      : [{ userId: bot.ownerId }];
+    const assignments = (await Promise.all(floors.map((floor) =>
+      tx.select().from(shadowTowerWorkstationAssignmentsTable).where(eq(shadowTowerWorkstationAssignmentsTable.floorId, floor.id)),
+    ))).flat();
+    const capacity = floors.reduce((total, floor) => total + getShadowTowerPlan(
+      floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as ShadowTowerArchetype,
+      floor.upgrades as string[],
+    ).objects.filter((object) => object.kind === "workstation").length, 0);
+    const activeBotIds = new Set([...activeBots.map((item) => item.id), bot.id]);
+    const assignedHumans = new Set(assignments.map((item) => item.assigneeUserId).filter(Boolean));
+    const assignedBots = new Set(assignments.map((item) => item.botId).filter((id): id is number => id != null));
+    if (
+      humans.length + activeBotIds.size > capacity
+      || !humans.every((human) => assignedHumans.has(human.userId))
+      || [...activeBotIds].some((id) => id !== bot.id && !assignedBots.has(id))
+    ) return { ok: false };
+    if (assignedBots.has(bot.id)) return { ok: true };
+    for (const floor of floors) {
+      const plan = getShadowTowerPlan(
+        floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as ShadowTowerArchetype,
+        floor.upgrades as string[],
+      );
+      const keys = plan.objects.filter((object) => object.kind === "workstation").map((object) => object.id);
+      const occupied = new Set(assignments.filter((item) => item.floorId === floor.id).map((item) => item.workstationKey));
+      const workstationKey = keys.find((key) => !occupied.has(key));
+      if (!workstationKey) continue;
+      const [inserted] = await tx.insert(shadowTowerWorkstationAssignmentsTable).values({
+        floorId: floor.id, workstationKey, assigneeType: "bot", assigneeUserId: null,
+        botId: bot.id, assignedByUserId: bot.ownerId,
+      }).returning({ id: shadowTowerWorkstationAssignmentsTable.id });
+      return { ok: true, assignmentId: inserted.id };
+    }
+    return { ok: false };
+  });
+}
+
+async function rollbackShadowTowerBotActivation(botId: number, assignmentId?: number) {
+  await db.transaction(async (tx) => {
+    if (assignmentId) await tx.delete(shadowTowerWorkstationAssignmentsTable).where(eq(shadowTowerWorkstationAssignmentsTable.id, assignmentId));
+    await tx.update(botsTable).set({ status: "paused" }).where(eq(botsTable.id, botId));
+  });
 }
 
 async function loadBotForUser(botId: number, userId: string) {
@@ -359,17 +436,27 @@ router.put("/bots/:id", requireBotWrite, async (req, res) => {
     if (status !== undefined) {
       updates.status = status;
       if (status === "active" && existing.status !== "active") {
-        await startBot(botId);
+        const prepared = await prepareShadowTowerBotActivation(existing);
+        if (!prepared.ok) {
+          res.status(409).json({ error: "Shadow Tower workstation capacity reached; assign or acquire compatible capacity before activation" });
+          return;
+        }
+        try {
+          await db.update(botsTable).set({ status: "active" }).where(eq(botsTable.id, botId));
+          await startBot(botId);
+        } catch (error) {
+          await rollbackShadowTowerBotActivation(botId, prepared.assignmentId);
+          throw error;
+        }
+        delete updates.status;
       } else if (status === "paused" && existing.status === "active") {
         await stopBot(botId);
       }
     }
 
-    const [updated] = await db
-      .update(botsTable)
-      .set(updates)
-      .where(eq(botsTable.id, botId))
-      .returning();
+    const [updated] = Object.keys(updates).length
+      ? await db.update(botsTable).set(updates).where(eq(botsTable.id, botId)).returning()
+      : await db.select().from(botsTable).where(eq(botsTable.id, botId)).limit(1);
 
     res.json({ bot: updated });
   } catch (err) {
@@ -993,6 +1080,21 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
             marketplaceItemId: item.id,
           })
           .returning())[0];
+
+    const prepared = bot.status !== "active" ? await prepareShadowTowerBotActivation(bot) : { ok: true };
+    if (!prepared.ok) {
+      res.status(409).json({ error: "Shadow Tower workstation capacity reached or active occupants are not assigned" });
+      return;
+    }
+    if (bot.status !== "active") {
+      try {
+        await db.update(botsTable).set({ status: "active" }).where(eq(botsTable.id, bot.id));
+        await startBot(bot.id);
+      } catch (error) {
+        await rollbackShadowTowerBotActivation(bot.id, prepared.assignmentId);
+        throw error;
+      }
+    }
 
     if (existing.length > 0) {
       await db

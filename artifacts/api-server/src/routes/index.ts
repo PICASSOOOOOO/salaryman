@@ -106,6 +106,7 @@ import gameplayFiatRouter from "./gameplay-fiat";
 import gameplayWorldEconomyRouter from "./gameplay-world-economy";
 import goldEconomyRouter from "./gold-economy";
 import marketplaceRouter from "./marketplace";
+import shadowTowerRouter from "./shadow-tower";
 
 const router: IRouter = Router();
 
@@ -216,6 +217,7 @@ router.use(cityVisasRouter);
 router.use(vendingRouter);
 router.use(gameplayFiatRouter);
 router.use(gameplayWorldEconomyRouter);
+router.use(shadowTowerRouter);
   router.use(marketplaceRouter);
 
 export default router;

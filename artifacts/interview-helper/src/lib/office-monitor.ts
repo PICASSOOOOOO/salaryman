@@ -235,6 +235,13 @@ export function floorPlacement(bots: MonitorBot[]): {
   return { deskBots, capsuleBots };
 }
 
+/** Authoritative floor assignments are the final placement gate: active but
+ * unassigned bots remain off the playable floor. */
+export function floorPlacementForAssignments(bots: MonitorBot[], assignedBotIds: readonly number[]): FloorBot[] {
+  const allowed = new Set(assignedBotIds);
+  return floorPlacement(bots).deskBots.filter((bot) => allowed.has(bot.id));
+}
+
 // ── small utils ──────────────────────────────────────────────────────────
 function uniq<T>(arr: T[]): T[] {
   return [...new Set(arr)];

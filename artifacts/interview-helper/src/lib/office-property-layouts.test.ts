@@ -1,101 +1,49 @@
 import { describe, expect, it } from "vitest";
+import { SHADOW_TOWER_LISTINGS, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
 import {
-  DEFAULT_OFFICE_PROPERTY_KEY,
-  OFFICE_OBJECT_DESTINATIONS,
-  PAYPHONE_HUB_DESTINATION,
-  OFFICE_PROPERTY_LAYOUTS,
-  findOfficeRoute,
-  getOfficeBlockedTiles,
-  getOfficeHudMode,
-  getOfficeObjectDestination,
-  getPayphoneHubDestination,
-  getOfficePropertyLayout,
-  loadOfficePose,
-  officePoseStorageKey,
-  saveOfficePose,
-  validateOfficePose,
+  findOfficeRoute, getOfficeBlockedTiles, getShadowTowerOfficeLayout,
+  officePropertyLayoutFromPlan, validateOfficePose,
 } from "./office-property-layouts";
 
-describe("office property layouts", () => {
-  const layouts = Object.values(OFFICE_PROPERTY_LAYOUTS);
-
-  it("defines all seven purchased-office interiors", () => {
-    expect(layouts).toHaveLength(7);
-    expect(getOfficePropertyLayout("missing").propertyKey).toBe(DEFAULT_OFFICE_PROPERTY_KEY);
-  });
-
-  it("grows floor scale and working capacity with each listing", () => {
-    for (let i = 1; i < layouts.length; i++) {
-      expect(layouts[i].cols * layouts[i].rows).toBeGreaterThan(layouts[i - 1].cols * layouts[i - 1].rows);
-      expect(layouts[i].deskCols * layouts[i].deskRows).toBeGreaterThan(layouts[i - 1].deskCols * layouts[i - 1].deskRows);
-    }
-  });
-
-  it("keeps every spawn and station inside its authored floor", () => {
-    for (const layout of layouts) {
-      expect(validateOfficePose(layout, layout.spawn), layout.propertyKey).toEqual(layout.spawn);
-      expect(layout.teamDesks).toHaveLength(layout.deskCols * layout.deskRows);
-      expect(layout.capsuleSpots).toHaveLength(layout.capsules);
+describe("Shadow Tower office projection", () => {
+  it("projects every shared plan object without adding legacy geometry", () => {
+    for (const archetype of Object.keys(SHADOW_TOWER_LISTINGS) as Array<keyof typeof SHADOW_TOWER_LISTINGS>) {
+      const plan = getShadowTowerPlan("minx_city", 17, archetype);
+      const layout = officePropertyLayoutFromPlan(plan);
+      expect(layout.cols).toBe(plan.cols);
+      expect(layout.rows).toBe(plan.rows);
+      expect(layout.teamDesks.map(d => d.id)).toEqual(plan.objects.filter(o => o.kind === "workstation").map(o => o.id));
+      expect(layout.stations.map(s => s.id)).toEqual(plan.objects.filter(o => o.interactive && o.kind !== "workstation" && o.kind !== "executive_desk").map(o => o.id));
+      const executive = plan.objects.find(object => object.kind === "executive_desk")!;
+      expect(layout.playerDesk).toMatchObject({ col: executive.footprint.x, row: executive.footprint.y, w: executive.footprint.cols, d: executive.footprint.rows });
       for (const station of layout.stations) {
-        expect(station.col, `${layout.propertyKey}:${station.id}:col`).toBeGreaterThanOrEqual(0);
-        expect(station.col, `${layout.propertyKey}:${station.id}:col`).toBeLessThan(layout.cols);
-        expect(station.row, `${layout.propertyKey}:${station.id}:row`).toBeGreaterThanOrEqual(0);
-        expect(station.row, `${layout.propertyKey}:${station.id}:row`).toBeLessThan(layout.rows);
+        const object = plan.objects.find(candidate => candidate.id === station.id)!;
+        expect(station.footprint).toEqual({ w: object.footprint.cols, d: object.footprint.rows });
       }
     }
   });
 
-  it("routes taps around authored furniture instead of stalling against it", () => {
-    const layout = layouts[0];
-    const blocked = getOfficeBlockedTiles(layout);
-    const route = findOfficeRoute(
-      layout,
-      { col: layout.spawn.x / 16, row: layout.spawn.y / 16 },
-      { col: layout.playerDesk.col, row: layout.playerDesk.row },
-    );
-    expect(route.length).toBeGreaterThan(0);
-    for (const tile of route) expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false);
-  });
-
-  it("keeps every office object destination direct and centralized", () => {
-    expect(getOfficeObjectDestination("terminal")).toBe("/console");
-    expect(getOfficeObjectDestination("atm")).toBe("/game/bank");
-    expect(getOfficeObjectDestination("payphone")).toBe(PAYPHONE_HUB_DESTINATION);
-    expect(getPayphoneHubDestination()).toBe(PAYPHONE_HUB_DESTINATION);
-    expect(PAYPHONE_HUB_DESTINATION).toBe("/phone?tab=chat");
-    expect(getOfficeObjectDestination("vending")).toBe("/vending?from=office");
-    expect(getOfficeObjectDestination("breaker")).toBe("/settings?section=display");
-    expect(getOfficeObjectDestination("copier")).toBe("/business/documents");
-    expect(Object.keys(OFFICE_OBJECT_DESTINATIONS)).toEqual([
-      "terminal", "atm", "payphone", "vending", "breaker", "copier",
-    ]);
-    for (const layout of layouts) {
-      expect(layout.stations.map((station) => station.id)).toEqual(
-        expect.arrayContaining(["elevator", "atm", "payphone", "vending", "breaker", "copier"]),
-      );
+  it("keeps listing capacity faithful to its generated workstation count", () => {
+    for (const [archetype, listing] of Object.entries(SHADOW_TOWER_LISTINGS) as Array<[keyof typeof SHADOW_TOWER_LISTINGS, typeof SHADOW_TOWER_LISTINGS.founder_team]>) {
+      expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "workstation")).toHaveLength(listing.capacity);
     }
   });
 
-  it("uses the compact safe-area HUD below the phone breakpoint", () => {
-    expect(getOfficeHudMode(320)).toBe("compact");
-    expect(getOfficeHudMode(639)).toBe("compact");
-    expect(getOfficeHudMode(640)).toBe("full");
+  it("keeps exact collisions and all interactive objects reachable", () => {
+    const plan = getShadowTowerPlan("minx_city", 2, "company", ["extra_workstations", "operations_terminal"]);
+    expect(validateShadowTowerPlan(plan)).toMatchObject({ ok: true });
+    const layout = officePropertyLayoutFromPlan(plan);
+    const blocked = getOfficeBlockedTiles(layout);
+    expect(blocked.size).toBeGreaterThan(0);
+    expect(validateOfficePose(layout, layout.spawn)).toEqual(layout.spawn);
+    const route = findOfficeRoute(layout, { col: plan.spawn.x, row: plan.spawn.y }, { col: 3, row: 6 });
+    expect(route.length).toBeGreaterThan(0);
+    route.forEach(tile => expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false));
   });
 
-  it("rejects stale or impossible poses and scopes saved keys by slot and property", () => {
-    const layout = layouts[0];
-    expect(validateOfficePose(layout, { x: -1, y: 20, facing: "right" })).toBeNull();
-    expect(validateOfficePose(layout, { x: Number.NaN, y: 20, facing: "right" })).toBeNull();
-    expect(officePoseStorageKey(1, layout.propertyKey)).not.toBe(officePoseStorageKey(2, layout.propertyKey));
-    expect(officePoseStorageKey(1, layout.propertyKey)).not.toBe(officePoseStorageKey(1, layouts[1].propertyKey));
-  });
-
-  it("restores a valid pose only for the same slot and property", () => {
-    const layout = layouts[0];
-    const pose = layout.spawn;
-    saveOfficePose(2, layout, pose);
-    expect(loadOfficePose(2, layout)).toEqual(pose);
-    expect(loadOfficePose(3, layout)).toEqual(layout.spawn);
-    expect(loadOfficePose(2, layouts[1])).toEqual(layouts[1].spawn);
+  it("exposes upgrade objects and extra workstations from the same plan", () => {
+    const layout = getShadowTowerOfficeLayout("huda_city", 9, "founder_team", ["extra_workstations", "operations_terminal"]);
+    expect(layout.teamDesks).toHaveLength(SHADOW_TOWER_LISTINGS.founder_team.capacity + 4);
+    expect(layout.stations.map(station => station.id)).toContain("operations-terminal");
   });
 });

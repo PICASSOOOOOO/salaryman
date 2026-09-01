@@ -4,15 +4,19 @@ import path from "node:path";
 import { getFactionPropertyCatalog } from "./property-catalog";
 import { isPlayablePropertyKey, PLAYABLE_PROPERTY_KEYS } from "@workspace/api-zod/playable-properties";
 import { OFFICE_PROPERTY_LAYOUTS } from "./office-property-layouts";
+import { SHADOW_TOWER_LISTINGS } from "@workspace/api-zod/shadow-tower";
 import { getOwnedHome, getOwnedOffice, syncOwnedPropertiesLocal } from "./owned-office";
 
 const vendingSource = readFileSync(path.resolve(import.meta.dirname, "../pages/VendingMachine.tsx"), "utf8");
 const realtySource = readFileSync(path.resolve(import.meta.dirname, "../pages/RealtyStore.tsx"), "utf8");
 
 describe("playable property inventory", () => {
-  it("maps every purchasable property to a concrete office layout", () => {
-    expect(PLAYABLE_PROPERTY_KEYS).toHaveLength(Object.keys(OFFICE_PROPERTY_LAYOUTS).length);
-    for (const key of PLAYABLE_PROPERTY_KEYS) expect(OFFICE_PROPERTY_LAYOUTS[key]).toBeDefined();
+  it("uses the two Shadow Tower archetypes instead of legacy properties", () => {
+    expect(Object.keys(OFFICE_PROPERTY_LAYOUTS)).toEqual(["founder_team", "company"]);
+    expect(Object.keys(SHADOW_TOWER_LISTINGS)).toEqual(["founder_team", "company"]);
+    expect(realtySource).toContain("SHADOW_TOWER_LISTINGS");
+    expect(realtySource).toContain('"/api/shadow-tower/floors"');
+    expect(realtySource).toContain("archetype: target.listing.archetype");
   });
 
   it("keeps unsupported homes out of the playable inventory", () => {

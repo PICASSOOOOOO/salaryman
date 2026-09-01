@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./playable-properties": "./src/playable-properties.ts"
+    "./playable-properties": "./src/playable-properties.ts",
+    "./shadow-tower": "./src/shadow-tower.ts"
   },
   "scripts": {
     "test": "vitest run"
