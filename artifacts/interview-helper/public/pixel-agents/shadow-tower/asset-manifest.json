@@ -1,6 +1,17 @@
 {
-  "version": 1,
+  "version": 2,
   "style": "shadow-tower-1980s-analog-surveillance-pixel",
+  "spaceFamilies": [
+    { "id": "lobby", "file": "spaces/tower_space_lobby.jpg", "floors": "arrival lobby" },
+    { "id": "recreation", "file": "spaces/tower_space_recreation.jpg", "floors": "public recreation" },
+    { "id": "mezzanine", "file": "spaces/tower_space_mezzanine.jpg", "floors": "2" },
+    { "id": "rest", "file": "spaces/tower_space_rest.jpg", "floors": "3" },
+    { "id": "security", "file": "spaces/tower_space_security.jpg", "floors": "4" },
+    { "id": "founder", "file": "spaces/tower_space_founder.jpg", "floors": "commercial founder-team floors" },
+    { "id": "company", "file": "spaces/tower_space_company.jpg", "floors": "commercial company floors" },
+    { "id": "picasso", "file": "spaces/tower_space_picasso.jpg", "floors": "66" },
+    { "id": "shadow_corp", "file": "spaces/tower_space_shadow_corp.jpg", "floors": "40, 52, 65, 67" }
+  ],
   "assets": [
     {
       "id": "public-terminal",

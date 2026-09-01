@@ -13,5 +13,8 @@ and repaired industrial finishes.
 - `secretary.png` is the visual base for a uniquely named secretary NPC on each floor.
 - Collision and placement dimensions are defined in `asset-manifest.json`.
 - Every visible asset must be connected to matching collision and interaction behavior before appearing on a playable floor.
+- `spaces/` contains the physical-space environment plates. `tower-space-art.ts`
+  resolves every playable floor to one of these art families while the shared
+  floor plan remains authoritative for collision and interactions.
 - Keep the game UI modern and readable; the retro language belongs to the physical
   office objects, not to scanline overlays, flicker, or phosphor effects on the UI.

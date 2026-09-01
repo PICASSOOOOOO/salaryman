@@ -9,6 +9,7 @@ import {
 } from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
 import { useLowGfx } from '@/lib/lowGfx';
+import { getTowerSpaceArtUrlForLayout } from '@/lib/tower-space-art';
 
 /**
  * IsoOffice — an ISOMETRIC ("almost 3D") render of THE OFFICE, matching the
@@ -142,6 +143,8 @@ export interface IsoOfficeProps {
   onPoseChange?: (pose: { x: number; y: number; facing: 'left' | 'right' }) => void;
   /** Use the shipped Shadow Tower wall, floor and terminal artwork. */
   towerArt?: boolean;
+  /** Override the physical-space illustration; null keeps the procedural room. */
+  backdropSrc?: string | null;
   /** Standing scene population that is not part of the player's bot roster. */
   ambientOccupants?: OfficeAmbientOccupant[];
 }
@@ -187,6 +190,7 @@ export function IsoOffice({
   hallwayStyle,
   hallwaySignage,
   towerArt = true,
+  backdropSrc,
   ambientOccupants = [],
 }: IsoOfficeProps) {
   const [lowGfx] = useLowGfx();
@@ -200,6 +204,11 @@ export function IsoOffice({
   const rightCols = 0;
   const cols = leftCols + dividerCols + rightCols;
   const rows = layout.rows;
+  const resolvedBackdropSrc = backdropSrc === undefined
+    ? getTowerSpaceArtUrlForLayout(layout)
+    : backdropSrc;
+  const backdropSrcRef = useRef(resolvedBackdropSrc);
+  useEffect(() => { backdropSrcRef.current = resolvedBackdropSrc; }, [resolvedBackdropSrc]);
   const bullpenShift = leftCols + dividerCols;
 
   const doorTopRow = doorTopRowProp ?? (rows - 3);
@@ -631,7 +640,9 @@ export function IsoOffice({
         showComputer: false,
         nearComputer: nearComputerRef.current,
         computerX: COMPUTER_X, computerY: COMPUTER_Y,
-        backdrop: null,
+        // Loading, missing, or failed art must retain the complete procedural
+        // room rather than selecting the translucent painted branch.
+        backdrop: getLoadedMachineArt(backdropSrcRef.current),
         viewW, viewH,
         suppressLabels: suppressLabelsRef.current,
         playerName: playerNameRef.current,
@@ -1296,6 +1307,12 @@ function getMachineArt(src: string): HTMLImageElement | null {
   image.src = src;
   machineArtCache.set(src, image);
   return image;
+}
+
+function getLoadedMachineArt(src: string | null | undefined): HTMLImageElement | null {
+  if (!src) return null;
+  const image = getMachineArt(src);
+  return image?.complete && image.naturalWidth > 0 ? image : null;
 }
 
 function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number, cfg: MachineCfg) {
