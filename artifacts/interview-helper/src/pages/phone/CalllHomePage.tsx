@@ -216,7 +216,7 @@ export default function CalllHomePage() {
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading) return;
-    apiFetch(apiUrl('twilio/phone-numbers'), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/system-status'), { credentials: 'include' })
       .then(r => {
         if (r.ok) setSystemStatus('online');
         else if (r.status === 403) setSystemStatus('no_subscription');
@@ -328,7 +328,7 @@ export default function CalllHomePage() {
             fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
             display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={12} />
-            Twilio not configured — contact admin to set up Twilio credentials.
+            Phone service is temporarily unavailable. The system will keep trying to reconnect.
           </div>
         )}
         {systemStatus === 'no_subscription' && (
@@ -344,10 +344,15 @@ export default function CalllHomePage() {
         )}
 
         <div style={{
-          display: 'flex', gap: 0, borderBottom: `1px solid ${slate(0.08)}`,
-          overflowX: 'auto', scrollbarWidth: 'none',
-          margin: '0 -16px', padding: '0 16px',
-          position: 'relative' }}>
+           display: 'grid',
+           gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+           gap: 6,
+           margin: '10px 0 16px',
+           padding: 8,
+           border: `1px solid ${slate(0.12)}`,
+           borderRadius: 8,
+           background: slate(0.035),
+           position: 'relative' }}>
           {visibleTabs.map(t => {
             const isActive = activeTab === t.key;
             const emphasized = t.emphasized;
@@ -358,20 +363,22 @@ export default function CalllHomePage() {
                 onClick={() => setActiveTab(t.key)}
                 data-testid={`tab-${t.key}`}
                 style={{
-                  padding: '9px 14px',
+                   minHeight: 42,
+                   padding: '9px 12px',
                   display: 'flex', alignItems: 'center', gap: 5,
                   background: isActive
-                    ? (emphasized ? slate(0.1) : slate(0.05))
-                    : (emphasized ? slate(0.025) : 'transparent'),
-                  borderBottom: `2px solid ${isActive ? slate(0.5) : (emphasized ? slate(0.18) : 'transparent')}`,
-                  borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                  color: isActive ? slate(0.95) : (emphasized ? slate(0.7) : slate(0.3)),
-                  fontSize: '0.45rem', letterSpacing: '0.12em',
+                     ? (emphasized ? 'rgba(56,189,248,.18)' : 'rgba(56,189,248,.12)')
+                     : (emphasized ? slate(0.055) : slate(0.025)),
+                   border: `1px solid ${isActive ? 'rgba(56,189,248,.42)' : slate(0.12)}`,
+                   borderRadius: 6,
+                   color: isActive ? '#dff8ff' : (emphasized ? slate(0.82) : slate(0.68)),
+                   fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em',
                   cursor: 'pointer',
                   ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                   transition: 'all 0.15s',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
+                   whiteSpace: 'nowrap',
+                   textAlign: 'left',
+                   flexShrink: 0,
                    }}
               >
                 {t.icon} {t.label}
@@ -384,20 +391,20 @@ export default function CalllHomePage() {
             );
           })}
 
-          {/* Tab visibility settings — gear at the right end of the tab bar.
-              Lets the user hide tabs they don't use. CMD is always visible. */}
+           {/* Keep visibility controls in the same readable menu, away from
+               the feature buttons. */}
           <div ref={tabSettingsRef} style={{ marginLeft: 'auto', position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <button
               onClick={() => setShowTabSettings(s => !s)}
               data-testid="button-tab-settings"
               title="Show / hide tabs"
               style={{
-                padding: '9px 12px',
+                 minHeight: 42, padding: '9px 12px',
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: showTabSettings ? slate(0.05) : 'transparent',
                 border: 'none',
-                color: showTabSettings ? slate(0.85) : slate(0.35),
-                fontSize: '0.45rem', letterSpacing: '0.12em',
+                 color: showTabSettings ? slate(0.95) : slate(0.7),
+                 fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em',
                 cursor: 'pointer',
                 ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
                 transition: 'color 0.15s, background 0.15s',

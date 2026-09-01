@@ -2043,15 +2043,17 @@ function PabloTerminalAuthed() {
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
         }}
       >
-        {/* Keep visitors inside intake. Once onboarded, the SALARYMAN mark is
-            the single exit back to the walkable office floor. */}
+        {/* Keep visitors inside intake. Once onboarded, return to the exact
+            physical Tower location that opened Pablo. A direct /pablo visit
+            falls through "/" so the organization-aware home funnel chooses
+            an office only for members and public classifieds for everyone else. */}
         {hasFinishedOnboarding ? (
           <Link
-            href="/office"
+            href={pendingDestinationRef.current ?? "/"}
             className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
             data-testid="link-logo-loop"
-            aria-label="Back to office floor"
-            title="Office floor"
+            aria-label="Back to previous location"
+            title="Return to Tower"
           >
             <PicassoLogo size={20} gap={2} glow />
             <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">

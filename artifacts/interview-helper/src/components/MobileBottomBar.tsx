@@ -19,6 +19,8 @@ import {
   isAppNavItemActive,
   canGoBackInApp,
   getAppBackPath,
+  consumeAppReturnPath,
+  rememberAppReturnPath,
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 
@@ -128,6 +130,14 @@ export function MobileModuleNav() {
 
   const pathname = location.split('?')[0];
   const isHome = pathname === "/";
+  const previousLocationRef = useRef(location);
+
+  useEffect(() => {
+    if (location === previousLocationRef.current) return;
+    const previous = previousLocationRef.current;
+    if (location.split('?')[0].startsWith('/phone')) rememberAppReturnPath(previous);
+    previousLocationRef.current = location;
+  }, [location]);
 
   // ADMIN hub is visible only to platform owners and approved staff (devs / testers).
   // Regular org members do NOT see this — AdminPanel is gated at the route level too.
@@ -135,7 +145,7 @@ export function MobileModuleNav() {
   const dropdownItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
   const goBack = () => {
     if (canGoBackInApp()) window.history.back();
-    else navigate(getAppBackPath(isAuthenticated), { replace: true });
+    else navigate(consumeAppReturnPath() ?? getAppBackPath(isAuthenticated), { replace: true });
   };
 
   const hasActiveDropdownItem = dropdownItems.some(item => isAppNavItemActive(item, pathname));
@@ -168,7 +178,7 @@ export function MobileModuleNav() {
             return (
               <button
                 key={tab.id}
-                onClick={() => navigate(tab.path)}
+                onClick={() => navigate(consumeAppReturnPath() ?? tab.path)}
                 className={`mobile-tap-target flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation relative ${
                   active ? 'text-emerald-400' : 'text-emerald-500 active:text-emerald-400'
                 }`}

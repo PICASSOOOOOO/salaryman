@@ -770,7 +770,8 @@ export function IsoOffice({
             ? 'ENTER TERMINAL'
             : promptBot
               ? `MANAGE ${promptBot.name.toUpperCase()}`
-              : promptStation?.label}{isTouch ? '' : ' · PRESS E'}
+              : promptStation?.label}
+          {isTouch ? ' · TAP TO USE' : ' · E · USE'}
         </button>
       )}
     </div>
@@ -1210,7 +1211,20 @@ interface MachineCfg {
   glow: string;                        // faceplate glow colour
   icon: string;                        // recognisable emoji icon
   label: string;                       // idle label colour
+  artSrc?: string;                     // real object art used in the playable room
 }
+
+const machineArtCache = new Map<string, HTMLImageElement>();
+function getMachineArt(src: string): HTMLImageElement | null {
+  if (typeof Image === 'undefined') return null;
+  const cached = machineArtCache.get(src);
+  if (cached) return cached;
+  const image = new Image();
+  image.src = src;
+  machineArtCache.set(src, image);
+  return image;
+}
+
 function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number, cfg: MachineCfg) {
   const { P, heightPx } = s;
   const active = s.playable && s.activeStationId === st.id;
@@ -1218,6 +1232,28 @@ function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   const w = st.footprint?.w ?? 1, d = st.footprint?.d ?? 1;
   const c = st.col, r = st.row;
   groundShadow(ctx, s, c, r, w, d, 0.36);
+  const objectArt = cfg.artSrc ? getMachineArt(cfg.artSrc) : null;
+  if (objectArt?.complete && objectArt.naturalWidth > 0) {
+    const anchor = P(tx, ty + d * .45);
+    const artW = 22 * u;
+    const artH = artW * (objectArt.naturalHeight / objectArt.naturalWidth);
+    ctx.save();
+    if (active) {
+      ctx.shadowColor = cfg.glow;
+      ctx.shadowBlur = 14;
+    }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(objectArt, anchor.x - artW / 2, anchor.y - artH, artW, artH);
+    ctx.restore();
+    if (!s.suppressLabels || active) {
+      ctx.fillStyle = active ? '#aef3ff' : cfg.label;
+      ctx.font = `${Math.max(8, 4.2 * u)}px "Fira Code", monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText((active ? '▸ ' : '') + st.label, anchor.x, anchor.y - artH - 4 * u);
+      ctx.textAlign = 'left';
+    }
+    return;
+  }
   // Cabinet body.
   isoBox(ctx, s, c, r, w, d, cfg.h, active ? cfg.topA : cfg.top, cfg.left, cfg.right, active ? cfg.rimA : cfg.rim);
   // Faceplate ("screen"/glass) floating just below the cabinet top, drawn in
@@ -1314,6 +1350,7 @@ const VENDING_CFG: MachineCfg = {
   rim: 'rgba(236,72,153,0.6)', rimA: 'rgba(255,120,200,0.95)',
   face: 'rgba(42,10,26,0.9)', faceA: 'rgba(255,150,210,0.92)', glow: 'rgba(236,72,153,0.9)',
   icon: '🥤', label: 'rgba(240,160,200,0.85)',
+  artSrc: `${import.meta.env.BASE_URL}pixel-agents/shadow-tower/vending.png`,
 };
 const PAYPHONE_CFG: MachineCfg = {
   w: 0.85, h: 22,

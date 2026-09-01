@@ -130,7 +130,7 @@ export default function PhoneCommandCenter() {
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
 
-  const { deviceState, deviceError, reconnect } = useTwilioDeviceContext();
+  const { deviceState, deviceError, ensureDeviceReady, reconnect } = useTwilioDeviceContext();
   const { activeCalls, setActiveCalls, toggleMute, toggleHold, hangupOne, hangupAll } = useActiveCallContext();
 
   const [manualNumber, setManualNumber] = useState('');
@@ -143,6 +143,12 @@ export default function PhoneCommandCenter() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
+  useEffect(() => {
+    void ensureDeviceReady().catch(() => {
+      // The provider owns the visible error state and exponential retry loop.
+    });
+  }, [ensureDeviceReady]);
+
   const liveCalls = useMemo(() => activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)), [activeCalls]);
 
   useEffect(() => {
@@ -152,12 +158,11 @@ export default function PhoneCommandCenter() {
       .catch(() => {});
   }, [userId, apiUrl]);
 
-  const handleFetchError = useCallback(async (r: Response): Promise<boolean> => {
-    if (r.ok) return false;
-    if (r.status === 403) { rawNavigate('/pricing'); return true; }
+  const readFetchError = useCallback(async (r: Response): Promise<string | null> => {
+    if (r.ok) return null;
+    if (r.status === 403) rawNavigate('/pledge?view=prime');
     const d = await r.json().catch(() => ({}));
-    setError(d.error || `Request failed (${r.status})`);
-    return true;
+    return d.error || `Request failed (${r.status})`;
   }, [rawNavigate]);
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
@@ -172,7 +177,8 @@ export default function PhoneCommandCenter() {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
-        if (await handleFetchError(r)) throw new Error('Call request failed');
+        const requestError = await readFetchError(r);
+        if (requestError) throw new Error(requestError);
         return r.json();
       }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       if (d.callSid) {

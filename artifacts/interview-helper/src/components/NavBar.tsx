@@ -28,8 +28,10 @@ import {
   PRIMARY_NAV_ITEMS,
   isAppNavItemActive,
   canGoBackInApp,
+  consumeAppReturnPath,
   getAppBackPath,
   getAppHomePath,
+  rememberAppReturnPath,
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 
@@ -53,6 +55,7 @@ export function NavBar() {
   const { label: featureLabel } = useFeatureLabel();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [moreOpen, setMoreOpen] = useState(false);
+  const [subnavOpen, setSubnavOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const [morePos, setMorePos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
@@ -85,10 +88,19 @@ export function NavBar() {
   const moreItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
   const goBack = () => {
     if (canGoBackInApp()) window.history.back();
-    else navigate(getAppBackPath(isAuthenticated), { replace: true });
+    else navigate(consumeAppReturnPath() ?? getAppBackPath(isAuthenticated), { replace: true });
   };
 
+  const previousLocationRef = useRef(location);
+  useEffect(() => {
+    if (location === previousLocationRef.current) return;
+    const previous = previousLocationRef.current;
+    if (location.split('?')[0].startsWith('/phone')) rememberAppReturnPath(previous);
+    previousLocationRef.current = location;
+  }, [location]);
+
   const hasActiveMore = moreItems.some(item => isAppNavItemActive(item, pathname));
+  const hasActiveSubnav = currentModule?.subs.some(sub => pathname === sub.path) ?? false;
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -277,7 +289,7 @@ export function NavBar() {
             return (
               <button
                 key={tab.id}
-                onClick={() => navigate(tab.path)}
+                onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
                 className={`app-control relative flex items-center gap-1.5 px-2.5 text-xs font-mono tracking-widest uppercase ${active ? activeCls : idleCls}`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -421,40 +433,64 @@ export function NavBar() {
         </nav>
       </div>
 
-      {/* Sub-nav row — shows subs for whichever module the user is currently inside (desktop only) */}
+      {/* Secondary navigation is a readable stacked menu rather than a
+          dim, horizontally-scrolling strip. Keep the main chrome quiet; the
+          feature menu opens only when the user asks for it. */}
       {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length) && (
-        <div className="flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.015] overflow-x-auto scrollbar-hide">
-          <span className="font-mono text-xs text-zinc-600 tracking-widest uppercase mr-2 shrink-0">
-            {boomerMode ? t(`nav.${currentModule.id}`, currentModule.label) : t(`codenames.${currentModule.id}`, currentModule.codename)}
-          </span>
-          {currentModule.subs.map(sub => {
-            const isSubActive = pathname === sub.path;
-            const Icon = sub.icon;
-            return (
-              <button
-                key={sub.id}
-                onClick={() => navigate(sub.path)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono tracking-widest uppercase transition-colors shrink-0 ${
-                  isSubActive
-                    ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                {getSubLabel(sub)}
-              </button>
-            );
-          })}
+        <div className="relative border-t border-white/[0.05] bg-[#0d0e12] px-4 py-1.5">
           <button
-            onClick={() => {
-              const base = import.meta.env.BASE_URL ?? '/';
-              window.open(`${base}${pathname.replace(/^\//, '')}`, '_blank', 'noopener');
-            }}
-            title="OPEN IN NEW TAB"
-            className="ml-auto p-1 rounded text-zinc-600 hover:text-sky-400 hover:bg-white/4 transition-colors shrink-0"
+            type="button"
+            onClick={() => setSubnavOpen(open => !open)}
+            aria-expanded={subnavOpen}
+            className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
+              subnavOpen || hasActiveSubnav
+                ? 'border-sky-400/35 bg-sky-400/10 text-sky-100'
+                : 'border-white/10 bg-white/[0.025] text-zinc-300 hover:border-white/20 hover:bg-white/[0.05]'
+            }`}
           >
-            <ExternalLink className="w-3 h-3" />
+            <currentModule.icon className="h-4 w-4 shrink-0 text-sky-300" />
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[.16em]">
+              {getSubLabel(currentModule.subs.find(sub => pathname === sub.path) ?? currentModule.subs[0])}
+            </span>
+            <span className="ml-auto font-mono text-[10px] uppercase tracking-[.12em] text-zinc-500">
+              {currentModule.label} · MENU
+            </span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${subnavOpen ? 'rotate-180 text-sky-200' : ''}`} />
           </button>
+          {subnavOpen && (
+            <div className="absolute left-4 right-4 top-full z-[200] mt-1 grid max-h-[min(60vh,420px)] gap-1 overflow-y-auto rounded-lg border border-white/15 bg-[#111318] p-2 shadow-2xl shadow-black/70 sm:grid-cols-2 lg:grid-cols-3">
+              {currentModule.subs.map(sub => {
+                const isSubActive = pathname === sub.path;
+                const Icon = sub.icon;
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => { navigate(sub.path); setSubnavOpen(false); }}
+                    className={`flex min-h-10 items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
+                      isSubActive
+                        ? 'border-sky-400/40 bg-sky-400/15 text-sky-100'
+                        : 'border-white/10 bg-white/[0.025] text-zinc-300 hover:border-sky-300/25 hover:bg-white/[0.07] hover:text-white'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${isSubActive ? 'text-sky-200' : 'text-zinc-500'}`} />
+                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[.12em]">{getSubLabel(sub)}</span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => {
+                  const base = import.meta.env.BASE_URL ?? '/';
+                  window.open(`${base}${pathname.replace(/^\//, '')}`, '_blank', 'noopener');
+                  setSubnavOpen(false);
+                }}
+                title="OPEN IN NEW TAB"
+                className="flex min-h-10 items-center gap-3 rounded-md border border-white/10 bg-white/[0.025] px-3 py-2 text-left font-mono text-[11px] font-semibold uppercase tracking-[.12em] text-zinc-400 hover:border-sky-300/25 hover:text-white"
+              >
+                <ExternalLink className="h-4 w-4 text-zinc-500" />
+                OPEN CURRENT
+              </button>
+            </div>
+          )}
         </div>
       )}
 

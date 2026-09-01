@@ -73,6 +73,7 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
 
 export const APP_HISTORY_DEPTH_KEY = "__salarymanDepth";
 export const APP_HISTORY_SESSION_KEY = "__salarymanSession";
+export const APP_RETURN_PATH_KEY = "__salarymanReturnPath";
 
 export function readAppHistoryDepth(state: unknown): number {
   if (!state || typeof state !== "object") return 0;
@@ -108,6 +109,30 @@ export function getAppHomePath(isAuthenticated: boolean): string {
 
 export function getAppBackPath(isAuthenticated: boolean): string {
   return isAuthenticated ? "/office" : "/pablo";
+}
+
+export function rememberAppReturnPath(path: string): void {
+  if (typeof window === "undefined") return;
+  if (!path || path === "/" || path.startsWith("/pablo") || path.startsWith("/phone")) return;
+  try { sessionStorage.setItem(APP_RETURN_PATH_KEY, path); } catch {}
+}
+
+export function consumeAppReturnPath(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const path = sessionStorage.getItem(APP_RETURN_PATH_KEY);
+    sessionStorage.removeItem(APP_RETURN_PATH_KEY);
+    return path && path.startsWith("/") && !path.startsWith("//") ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getPabloHref(currentLocation: string): string {
+  const path = currentLocation.trim();
+  if (!path || path === "/" || path === "/pablo" || path.startsWith("/pablo?")) return "/pablo";
+  if (!path.startsWith("/") || path.startsWith("//")) return "/pablo";
+  return `/pablo?returnTo=${encodeURIComponent(path)}`;
 }
 
 export function installAppHistoryTracking(): void {

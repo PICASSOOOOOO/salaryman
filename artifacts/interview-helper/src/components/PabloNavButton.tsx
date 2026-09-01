@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { useLocation } from "wouter";
+import { getPabloHref } from "@/lib/app-navigation";
 
 const PabloNebula3D = lazy(() =>
   import("@/components/PabloNebula3D").then((m) => ({ default: m.PabloNebula3D })),
@@ -31,11 +32,11 @@ function LightweightNebula({ size }: { size: number }) {
  * (handled inside PabloNebula3D), so this is safe in every browser.
  */
 export function PabloNavButton({ size = 26 }: { size?: number }) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [enhanced, setEnhanced] = useState(false);
   return (
     <button
-      onClick={() => navigate("/pablo")}
+      onClick={() => navigate(getPabloHref(location))}
       onPointerEnter={() => setEnhanced(true)}
       onFocus={() => setEnhanced(true)}
       onTouchStart={() => setEnhanced(true)}

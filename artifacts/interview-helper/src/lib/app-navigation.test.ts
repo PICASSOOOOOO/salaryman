@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  getPabloHref,
   APP_HISTORY_DEPTH_KEY,
   APP_HISTORY_SESSION_KEY,
   MORE_NAV_ITEMS,
@@ -13,6 +14,18 @@ import {
   shouldShowModuleSubnav,
   withAppHistoryDepth,
 } from "./app-navigation";
+
+describe("getPabloHref", () => {
+  it("preserves the exact Tower location as Pablo's return target", () => {
+    expect(getPabloHref("/tower?focus=elevator")).toBe("/pablo?returnTo=%2Ftower%3Ffocus%3Delevator");
+    expect(getPabloHref("/tower/mezzanine?focus=classifieds")).toBe("/pablo?returnTo=%2Ftower%2Fmezzanine%3Ffocus%3Dclassifieds");
+  });
+
+  it("does not create recursive or unsafe Pablo destinations", () => {
+    expect(getPabloHref("/pablo")).toBe("/pablo");
+    expect(getPabloHref("//other.example/path")).toBe("/pablo");
+  });
+});
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {

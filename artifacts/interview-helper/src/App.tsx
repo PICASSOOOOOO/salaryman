@@ -12,7 +12,7 @@ import AlphaWipeBanner from "@/components/AlphaWipeBanner";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
-import { installAppHistoryTracking } from "@/lib/app-navigation";
+import { getPabloHref, installAppHistoryTracking } from "@/lib/app-navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
@@ -237,9 +237,10 @@ function LoadingFallback() {
 }
 
 function FullscreenPabloAccess({ inGame }: { inGame: boolean }) {
+  const [location] = useLocation();
   return (
     <Link
-      href="/pablo"
+      href={getPabloHref(location)}
       className="app-action app-control mobile-tap-target fixed z-[260] h-8 w-8 rounded-lg bg-black/55 backdrop-blur-md"
       style={{
         top: inGame ? "calc(env(safe-area-inset-top, 0px) + 8px)" : "calc(env(safe-area-inset-top, 0px) + 12px)",
