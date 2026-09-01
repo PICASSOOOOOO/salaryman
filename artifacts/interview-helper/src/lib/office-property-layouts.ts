@@ -1,4 +1,5 @@
 import {
+  getRecreationPlan,
   getShadowTowerPlan,
   type ShadowTowerArchetype,
   type ShadowTowerCity,
@@ -32,7 +33,8 @@ const glyphFor = (kind: string): OfficeStation["glyph"] =>
   kind === "elevator" ? "elevator" : kind === "atm" ? "atm" : kind === "vending_machine" ? "vending" : "comms";
 const labelFor = (id: string, kind: string) =>
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
-    kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" : id.toUpperCase().replace(/-/g, " ");
+    kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
+      id.startsWith("rec-") ? id.slice(4).replace(/-/g, " ").toUpperCase() : id.toUpperCase().replace(/-/g, " ");
 
 export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey = `${plan.city}:${plan.floorNumber}`): OfficePropertyLayout {
   const objects = plan.objects;
@@ -48,9 +50,14 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
   }));
   const stations = objects.filter((object) => object.interactive && object.kind !== "workstation" && object.kind !== "executive_desk").map((object) => ({
     id: object.id, label: labelFor(object.id, object.kind), col: object.footprint.x, row: object.footprint.y,
-    radius: 30, footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
+    // Reach the walkable tile immediately outside large collision footprints.
+    // A fixed 30px radius leaves a 3x2 station's centre physically unreachable.
+    radius: Math.max(30, Math.hypot(object.footprint.cols * 8, object.footprint.rows * 8) + 22),
+    footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
   }));
-  const archetype = workstations.length > 10 ? "COMPANY FLOOR" : "FOUNDER + TEAM FLOOR";
+  const archetype = plan.floorType === "recreation"
+    ? "RECREATION · REC"
+    : workstations.length > 10 ? "COMPANY FLOOR" : "FOUNDER + TEAM FLOOR";
   return {
     propertyKey, label: archetype, representation: `${plan.city.replace("_", " ").toUpperCase()} · FLOOR ${plan.floorNumber}`,
     cols: plan.cols, rows: plan.rows, deskCols: workstations.length, deskRows: 1, capsules: 0,
@@ -64,6 +71,10 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
 
 export function getShadowTowerOfficeLayout(city: ShadowTowerCity, floorNumber: number, archetype: ShadowTowerArchetype, upgrades: readonly string[] = []): OfficePropertyLayout {
   return officePropertyLayoutFromPlan(getShadowTowerPlan(city, floorNumber, archetype, upgrades), `${city}:${floorNumber}`);
+}
+
+export function getRecreationOfficeLayout(city: ShadowTowerCity): OfficePropertyLayout {
+  return officePropertyLayoutFromPlan(getRecreationPlan(city), `${city}:recreation`);
 }
 
 /** Compatibility keys resolve to an archetype, never legacy geometry. */

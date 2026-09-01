@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getShadowTowerPlan, selectShadowTowerArchetype, validateShadowTowerPlan } from "./shadow-tower";
+import { SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getRecreationPlan, getShadowTowerPlan, selectShadowTowerArchetype, validateShadowTowerPlan } from "./shadow-tower";
 
 describe("Shadow Tower contract", () => {
   it("keeps catalog and numbered plans faithful", () => {
@@ -20,5 +20,11 @@ describe("Shadow Tower contract", () => {
     expect(selectShadowTowerArchetype(4, 2)).toBe("founder_team");
     expect(selectShadowTowerArchetype(5, 2)).toBe("company");
     expect(consolidateShadowTowerBots([{ id: 9, department: "ops", permissions: ["b", "a"] }, { id: 2, department: "ops", permissions: ["a", "b"] }])).toEqual([{ purpose: "ops", permissionSignature: "a,b", canonicalBotId: 2, botIds: [2, 9] }]);
+  });
+  it("provides a validated public REC plan with seven distinct stations", () => {
+    const plan = getRecreationPlan("huda_city");
+    expect(plan.floorType).toBe("recreation");
+    expect(plan.objects.filter((item) => item.kind === "rec_station").map((item) => item.id)).toHaveLength(7);
+    expect(validateShadowTowerPlan(plan).ok).toBe(true);
   });
 });

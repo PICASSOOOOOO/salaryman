@@ -47,6 +47,7 @@ const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
+const RecreationFloor = lazy(() => import("@/pages/RecreationFloor"));
 const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
@@ -671,6 +672,7 @@ function AppShell() {
             <Route path="/world/land">{() => <GameLock><StoryCityLock><LandRegistry /></StoryCityLock></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
+            <Route path="/recreation">{() => <GameLock><RecreationFloor /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
                 office surface (same artwork, passive feed). Any lingering deep
                 link drops you into the office with surveillance pre-selected. */}

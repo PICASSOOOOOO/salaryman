@@ -340,6 +340,9 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (priorData?.skills !== undefined && incoming.skills === undefined) {
       incoming.skills = priorData.skills;
     }
+    // REC stamina, sessions, inventory effects and idempotency markers are
+    // server-owned. Browser saves must never mint or roll them back.
+    if (priorData?.rec !== undefined) incoming.rec = priorData.rec;
     // Onboarding pre-unlock: first save for this slot (no prior data) gets a
     // free T1 skill based on the character class chosen during immigration.
     if (!priorData && !Array.isArray(incoming.skills)) {

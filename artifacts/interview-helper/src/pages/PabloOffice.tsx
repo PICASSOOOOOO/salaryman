@@ -821,6 +821,7 @@ export default function PabloOffice() {
           {!compactHud && hkBtn(() => { playClick(); setShowMissions(true); }, '◇ MISSIONS', showMissions)}
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, compactHud ? '?' : '? HELP · H', showHelp)}
           {!compactHud && <Link href="/game/map" data-testid="link-office-map" onClick={() => playNav()} style={{ color: '#c7f36b', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>MAP »</Link>}
+          {!compactHud && <Link href="/recreation" data-testid="link-office-rec" onClick={() => playNav()} style={{ color: '#fbbf24', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>REC »</Link>}
           {!compactHud && <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>}
         </div>
       </header>

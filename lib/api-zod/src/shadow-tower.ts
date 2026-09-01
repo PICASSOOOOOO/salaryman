@@ -7,6 +7,8 @@ export const SHADOW_TOWER_CITIES = ["minx_city", "huda_city"] as const;
 export type ShadowTowerCity = (typeof SHADOW_TOWER_CITIES)[number];
 export const SHADOW_TOWER_UPGRADES = ["secure_access", "extra_workstations", "operations_terminal"] as const;
 export type ShadowTowerUpgrade = (typeof SHADOW_TOWER_UPGRADES)[number];
+export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation"] as const;
+export type ShadowTowerFloorType = (typeof SHADOW_TOWER_FLOOR_TYPES)[number];
 
 const pointSchema = z.object({ x: z.number().int().nonnegative(), y: z.number().int().nonnegative() }).strict();
 const footprintSchema = z.object({
@@ -15,12 +17,13 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator"]),
+  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "rec_station", "sponsor", "bar"]),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
 
 export const shadowTowerPlanSchema = z.object({
+  floorType: z.enum(SHADOW_TOWER_FLOOR_TYPES).default("office"),
   city: z.enum(SHADOW_TOWER_CITIES),
   floorNumber: z.number().int().min(1).max(120),
   cols: z.number().int().positive(),
@@ -59,7 +62,7 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
   const enabledUpgrades = upgrades.filter(isSupportedShadowTowerUpgrade);
   const workstationCount = listing.capacity + (enabledUpgrades.includes("extra_workstations") ? 4 : 0);
   const plan: ShadowTowerPlan = {
-    city, floorNumber, cols: 22, rows: archetype === "company" ? 16 : 12, spawn: { x: 2, y: 2 },
+    floorType: "office", city, floorNumber, cols: 22, rows: archetype === "company" ? 16 : 12, spawn: { x: 2, y: 2 },
     objects: [
       { id: "elevator", kind: "elevator", footprint: rect(0, 0, 2, 2), interactive: true },
       // The room's south wall is collidable; its desk remains approachable from the open interior.
@@ -74,6 +77,33 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
     upgrades: enabledUpgrades, collisionFootprints: [],
   };
   plan.collisionFootprints = plan.objects.map((object) => object.footprint);
+  return plan;
+}
+
+const REC_STATIONS = [
+  ["arcade", 4, 4, 2, 2], ["pool", 9, 4, 3, 2], ["air-hockey", 15, 4, 3, 2],
+  ["foosball", 4, 9, 3, 2], ["shuffleboard", 10, 9, 3, 2],
+  ["bowling", 16, 9, 3, 2], ["darts", 22, 4, 2, 2],
+] as const;
+
+/** Public, system-owned RECREATION floor. It has no lease, org, or purchase path. */
+export function getRecreationPlan(city: ShadowTowerCity): ShadowTowerPlan {
+  const objects = [
+    { id: "rec-elevator", kind: "elevator" as const, footprint: rect(0, 0, 2, 2), interactive: true },
+    { id: "rec-executive-room", kind: "executive_room" as const, footprint: rect(25, 1, 3, 1), interactive: false },
+    { id: "rec-executive-desk", kind: "executive_desk" as const, footprint: rect(26, 2, 2, 1), interactive: false },
+    { id: "rec-host", kind: "workstation" as const, footprint: rect(2, 14, 2, 1), interactive: false },
+    ...REC_STATIONS.map(([id, x, y, cols, rows]) => ({
+      id: `rec-${id}`, kind: "rec_station" as const, footprint: rect(x, y, cols, rows), interactive: true,
+    })),
+    { id: "rec-sponsor-wall", kind: "sponsor" as const, footprint: rect(4, 1, 8, 1), interactive: false },
+    { id: "rec-bar", kind: "bar" as const, footprint: rect(14, 1, 5, 1), interactive: true },
+    { id: "rec-vending", kind: "vending_machine" as const, footprint: rect(20, 1, 2, 1), interactive: true },
+  ];
+  const plan: ShadowTowerPlan = {
+    floorType: "recreation", city, floorNumber: 1, cols: 30, rows: 18, spawn: { x: 2, y: 3 },
+    upgrades: [], objects, collisionFootprints: objects.map((object) => object.footprint),
+  };
   return plan;
 }
 
@@ -96,10 +126,16 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
     if (fp.x + fp.cols > plan.cols || fp.y + fp.rows > plan.rows) errors.push(`${object.id} footprint is outside floor`);
     if (!signatures.has(`${fp.x}:${fp.y}:${fp.cols}:${fp.rows}`)) errors.push(`${object.id} has no collision footprint`);
   }
-  const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator"];
-  for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
-  if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("requires one usable terminal");
-  if (plan.objects.filter((o) => o.kind === "workstation").length < 1) errors.push("requires workstations");
+  if (plan.floorType === "recreation") {
+    const requiredRec = ["elevator", "vending_machine", "bar"];
+    for (const kind of requiredRec) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
+    if (plan.objects.filter((o) => o.kind === "rec_station").length !== 7) errors.push("requires exactly seven recreation stations");
+  } else {
+    const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator"];
+    for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
+    if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("requires one usable terminal");
+    if (plan.objects.filter((o) => o.kind === "workstation").length < 1) errors.push("requires workstations");
+  }
   // Flood-fill all free tiles from spawn; an interaction must have a free cardinal neighbour.
   const start = `${plan.spawn.x},${plan.spawn.y}`;
   if (collisions.has(start)) errors.push("spawn is blocked");
