@@ -155,9 +155,9 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     <div className="min-h-screen grid place-items-center bg-[#060912] text-zinc-100 p-6">
       <section className="max-w-lg w-full border border-cyan-400/25 bg-[#0a0f1a] p-7 text-center space-y-4">
         <Building2 className="w-10 h-10 mx-auto text-cyan-300" />
-        <h1 className="font-black tracking-[.16em] text-cyan-200">IMMIGRATION RECORD REQUIRED</h1>
-        <p className="text-sm text-zinc-400">Shadow Tower access is free, but billing, stamina, rest, and labor must attach to a server-authoritative character.</p>
-        <Link href="/immigration" className="inline-block bg-cyan-300 text-black font-black px-5 py-3">COMPLETE ONBOARDING ONCE</Link>
+        <h1 className="font-black tracking-[.16em] text-cyan-200">RECEPTION CHECK-IN REQUIRED</h1>
+        <p className="text-sm text-zinc-400">Shadow Tower access is free, but your bed, terminal access, stamina, and work record must be issued at the lobby desk.</p>
+        <Link href="/tower" className="inline-block bg-cyan-300 text-black font-black px-5 py-3">REPORT TO RECEPTION</Link>
       </section>
     </div>
   );
@@ -202,6 +202,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
             <button onClick={() => setPanel(null)} aria-label="Close"><X className="w-5 h-5" /></button>
           </div>
           {panel === "terminal" && <div className="p-6 space-y-4">
+             <img src={`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/public-terminal.png`} alt="Shadow Tower public terminal" className="mx-auto h-36 w-full max-w-sm object-contain [image-rendering:pixelated]" />
              <p className="text-[10px] font-bold tracking-[.18em] text-zinc-500">PUBLIC CLASSIFIEDS · PHONE SYSTEMS · OPEN ACCESS</p>
             <div className="border border-emerald-400/25 bg-emerald-400/5 p-4">
               <strong className="text-emerald-300">FREE PUBLIC COMPUTER ACCESS</strong>

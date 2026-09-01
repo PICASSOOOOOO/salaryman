@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
 import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/office/office-types';
-import { isometricKeyboardMovementVector } from '@/lib/movement';
+import { approachMovementVelocity, isometricKeyboardMovementVector } from '@/lib/movement';
 import {
   findOfficeRoute,
   getOfficeBlockedTiles,
@@ -129,6 +129,8 @@ export interface IsoOfficeProps {
   onOccupants?: (occupants: OfficeOccupant[]) => void;
   initialPose?: { x: number; y: number; facing: 'left' | 'right' };
   onPoseChange?: (pose: { x: number; y: number; facing: 'left' | 'right' }) => void;
+  /** Use the shipped Shadow Tower wall, floor and terminal artwork. */
+  towerArt?: boolean;
 }
 
 interface Vec2 { x: number; y: number }
@@ -171,6 +173,7 @@ export function IsoOffice({
   lighting = 'normal',
   hallwayStyle,
   hallwaySignage,
+  towerArt = true,
 }: IsoOfficeProps) {
   const [lowGfx] = useLowGfx();
   const isTouch =
@@ -279,6 +282,7 @@ export function IsoOffice({
   const facingRef = useRef<'left' | 'right'>(initialPose?.facing ?? 'right');
   const walkRef = useRef(0); // 0..1 walk phase for a tiny bob
   const runRef = useRef(false); // true while sprinting (Shift held / long tap)
+  const velocityRef = useRef<Vec2>({ x: 0, y: 0 });
   const heldRef = useRef<Set<string>>(new Set());
   const tapTargetRef = useRef<Vec2 | null>(null);
   const tapPathRef = useRef<Vec2[]>([]);
@@ -325,6 +329,7 @@ export function IsoOffice({
       heldRef.current.clear();
       tapTargetRef.current = null;
       tapPathRef.current = [];
+      velocityRef.current = { x: 0, y: 0 };
     }
   }, [frozen]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
@@ -456,14 +461,20 @@ export function IsoOffice({
           const tt = tapTargetRef.current;
           if (tt && Math.hypot(tt.x - fxRef.current, tt.y - fyRef.current) > 64) running = true;
         }
-        runRef.current = running && moving;
+        const runMul = running ? 1.75 : 1;
+        const velocity = approachMovementVelocity(
+          velocityRef.current,
+          moving ? { x: vx * runMul, y: vy * runMul } : { x: 0, y: 0 },
+          dt / (1000 / 60),
+        );
+        velocityRef.current = velocity;
+        const smoothMoving = Math.hypot(velocity.x, velocity.y) > 0.015;
+        runRef.current = running && smoothMoving;
 
-        if (moving) {
-          const isTap = !!tapTargetRef.current;
-          const runMul = running ? 1.75 : 1;
-          const step = SPEED * runMul * (dt / 1000);
-          let nx = fxRef.current + vx * step;
-          let ny = fyRef.current + vy * step;
+        if (smoothMoving) {
+          const step = SPEED * (dt / 1000);
+          let nx = fxRef.current + velocity.x * step;
+          let ny = fyRef.current + velocity.y * step;
           nx = Math.max(TILE * 0.5, Math.min(worldW - TILE * 0.5, nx));
           ny = Math.max(WALL_ROWS * TILE + TILE * 0.3, Math.min(worldH - TILE * 0.4, ny));
 
@@ -491,7 +502,7 @@ export function IsoOffice({
           if (Math.abs(nx - fxRef.current) < 0.05 && Math.abs(ny - fyRef.current) < 0.05) {
             tapTargetRef.current = tapPathRef.current.shift() ?? null;
           }
-          if (Math.abs(vx) > 0.01) facingRef.current = vx > 0 ? 'right' : 'left';
+          if (Math.abs(velocity.x) > 0.01) facingRef.current = velocity.x > 0 ? 'right' : 'left';
           fxRef.current = nx;
           fyRef.current = ny;
            onPoseChangeRef.current?.({ x: nx, y: ny, facing: facingRef.current });
@@ -612,6 +623,7 @@ export function IsoOffice({
         lighting: lightingRef.current,
         hallwayStyle: hallwayStyleRef.current,
         hallwaySignage: hallwaySignageRef.current,
+        towerArt,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -817,6 +829,7 @@ interface SceneCtx {
   lighting: 'dim' | 'normal' | 'bright' | 'warm' | 'cool';
   hallwayStyle?: 'central' | 'gallery' | 'executive';
   hallwaySignage?: string;
+  towerArt: boolean;
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
@@ -879,6 +892,26 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     ctx.fillStyle = fg;
   }
   ctx.fill();
+  if (s.towerArt) {
+    const floorArt = getMachineArt(`${import.meta.env.BASE_URL}pixel-agents/assets/floors/floor_0.png`);
+    if (floorArt?.complete && floorArt.naturalWidth > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(fA.x, fA.y); ctx.lineTo(fB.x, fB.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fD.x, fD.y); ctx.closePath();
+      ctx.clip();
+      const pattern = ctx.createPattern(floorArt, 'repeat');
+      if (pattern) {
+        ctx.globalAlpha = painted ? 0.22 : 0.72;
+        ctx.fillStyle = pattern;
+        const minX = Math.min(fA.x, fB.x, fC.x, fD.x);
+        const minY = Math.min(fA.y, fB.y, fC.y, fD.y);
+        const maxX = Math.max(fA.x, fB.x, fC.x, fD.x);
+        const maxY = Math.max(fA.y, fB.y, fC.y, fD.y);
+        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+      }
+      ctx.restore();
+    }
+  }
   ctx.save();
   ctx.globalAlpha = s.lighting === 'bright' ? 0.22 : s.lighting === 'dim' ? 0.08 : 0.14;
   ctx.strokeStyle = accent;
@@ -1027,6 +1060,18 @@ function drawDesk(ctx: CanvasRenderingContext2D, s: SceneCtx, d: DeskRect, topCo
   ctx.shadowColor = 'rgba(90,220,255,0.9)'; ctx.shadowBlur = 10 * (s.T / TILE) * 0.5;
   quad(ctx, [Bb, Cb, Ct, Bt], 'rgba(120,230,255,0.35)');
   ctx.restore();
+  if (s.towerArt) {
+    const terminalArt = getMachineArt(`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/public-terminal.png`);
+    if (terminalArt?.complete && terminalArt.naturalWidth > 0) {
+      const anchor = P(d.c + d.w / 2, d.r + d.d * 0.4);
+      const artW = Math.max(16, 12 * (s.T / TILE));
+      const artH = artW * (terminalArt.naturalHeight / terminalArt.naturalWidth);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(terminalArt, anchor.x - artW / 2, anchor.y - artH - h0, artW, artH);
+      ctx.restore();
+    }
+  }
   // Chair in front of the desk.
   drawChair(ctx, s, d.c + d.w / 2 - 0.4, d.r + d.d + 0.15);
 }
@@ -1343,6 +1388,7 @@ const ATM_CFG: MachineCfg = {
   rim: 'rgba(100,116,139,.42)', rimA: 'rgba(148,163,184,.75)',
   face: '#0c1724', faceA: '#13283a', glow: 'rgba(125,211,252,.35)',
   icon: '', label: 'rgba(148,163,184,.72)',
+  artSrc: `${import.meta.env.BASE_URL}pixel-agents/shadow-tower/atm.png`,
 };
 const VENDING_CFG: MachineCfg = {
   w: 1.2, h: 20,
@@ -1370,7 +1416,7 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   // Each object gets a distinct, recognisable render so it reads as part of the
   // room — never an identical kiosk with a floating marker.
   if (st.glyph === 'elevator' || st.id.startsWith('office-wing-door-')) { drawElevator(ctx, s, st, tx, ty); return; }
-  if (st.glyph === 'atm') { drawAtm(ctx, s, st, tx, ty); return; }
+  if (st.glyph === 'atm') { drawMachine(ctx, s, st, tx, ty, ATM_CFG); return; }
   if (st.glyph === 'vending') { drawMachine(ctx, s, st, tx, ty, VENDING_CFG); return; }
   if (st.glyph === 'payphone') { drawMachine(ctx, s, st, tx, ty, PAYPHONE_CFG); return; }
   if (st.glyph === 'music') { drawShadowRadio(ctx, s, st, tx, ty); return; }
@@ -1771,6 +1817,26 @@ function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' |
   wallGrad.addColorStop(0, '#0c0a1f');
   wallGrad.addColorStop(1, '#070612');
   quad(ctx, [e0, e1, t1, t0], wallGrad);
+  if (s.towerArt) {
+    const wallArt = getMachineArt(`${import.meta.env.BASE_URL}pixel-agents/assets/walls/wall_0.png`);
+    if (wallArt?.complete && wallArt.naturalWidth > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(e0.x, e0.y); ctx.lineTo(e1.x, e1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t0.x, t0.y); ctx.closePath();
+      ctx.clip();
+      const pattern = ctx.createPattern(wallArt, 'repeat');
+      if (pattern) {
+        ctx.globalAlpha = 0.72;
+        ctx.fillStyle = pattern;
+        const minX = Math.min(e0.x, e1.x, t0.x, t1.x);
+        const minY = Math.min(e0.y, e1.y, t0.y, t1.y);
+        const maxX = Math.max(e0.x, e1.x, t0.x, t1.x);
+        const maxY = Math.max(e0.y, e1.y, t0.y, t1.y);
+        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+      }
+      ctx.restore();
+    }
+  }
 
   // City skyline behind glass — clip to the wall quad, scatter window lights.
   ctx.save();

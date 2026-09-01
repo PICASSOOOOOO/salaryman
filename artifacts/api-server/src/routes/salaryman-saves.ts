@@ -397,6 +397,11 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (priorData?.businesses !== undefined && incoming.businesses === undefined) {
       incoming.businesses = priorData.businesses;
     }
+    // First-arrival Tower state is issued by reception and must survive the
+    // world client's narrower gameplay-save payload.
+    if (priorData?.towerOnboarding !== undefined && incoming.towerOnboarding === undefined) {
+      incoming.towerOnboarding = priorData.towerOnboarding;
+    }
     // Skill unlocks (data.skills[]) are written server-side by /skills/unlock.
     // The client's doSave does not include this key, so carry it over to prevent
     // a routine save from clobbering server-granted unlocks.

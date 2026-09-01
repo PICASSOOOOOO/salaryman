@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowRight, Armchair, Bell, BriefcaseBusiness, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, Leaf, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { sfxFinalNotice, startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
@@ -16,6 +16,8 @@ import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getSalarymanName, markTutorialDone } from "@/lib/tutorial-progress";
 import { PabloOnboarding, type OnboardingAnswers } from "@/components/PabloOnboarding";
+import { defaultAppearance, drawPlayerSprite, type Appearance } from "@/lib/character-identity";
+import { persistTowerOnboardingState, type TowerOnboardingState } from "@/lib/tower-onboarding";
 
 const occupiedFloors = new Map([
   [67, { name: "SHADOW CORP", kind: "RESTRICTED", detail: "The roofline suite. No public access. The elevator stops listening.", tone: "shadow", icon: LockKeyhole }],
@@ -34,6 +36,31 @@ const RECEPTION_BRIEFING = [
   "Your hostel bed is free. The Computer Cafe on Floor 2 is also open to you, including one public terminal. That is where you can find work and use COMMS.",
   "If you need work, lodging, organization records, or help understanding the building, come back to this desk.",
 ];
+
+function LobbyPlayerArt() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    let appearance: Appearance = defaultAppearance("salaryman");
+    try {
+      const raw = window.localStorage.getItem("sm_save");
+      const saved = raw ? JSON.parse(raw) : {};
+      if (saved?.appearance && typeof saved.appearance === "object") {
+        appearance = { ...appearance, ...saved.appearance };
+      }
+    } catch {}
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height - 10);
+    ctx.scale(3.2, 3.2);
+    drawPlayerSprite(ctx, appearance, { pCls: "salaryman" });
+    ctx.restore();
+  }, []);
+  return <canvas ref={canvasRef} width={72} height={150} aria-label="Your character waiting in the lobby" className="h-32 w-20" />;
+}
 
 // Every commercial row links to the real registry flow. The directory does not
 // render fake claim buttons or imply that a non-existent office is enterable.
@@ -72,6 +99,7 @@ export default function TowerDirectory() {
   const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "hostel" | "briefing" | "alert" | "complete">("arrival");
   const [hostelFloor, setHostelFloor] = useState(3);
   const [briefingLine, setBriefingLine] = useState(0);
+  const [savingOnboarding, setSavingOnboarding] = useState(false);
   const onboardingLocked = stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
 
@@ -118,7 +146,7 @@ export default function TowerDirectory() {
     setOnboardingStep("questions");
   };
 
-  const finishQuestions = (answers: OnboardingAnswers) => {
+  const finishQuestions = async (answers: OnboardingAnswers) => {
     try {
       const raw = window.localStorage.getItem("sm_save");
       const prior = raw ? JSON.parse(raw) : {};
@@ -136,20 +164,40 @@ export default function TowerDirectory() {
         cityId: answers.homeCityId,
       }));
     } catch {}
-    setOnboardingStep("hostel");
+    setSavingOnboarding(true);
+    try {
+      await persistTowerOnboardingState({ status: "housing" });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message.toUpperCase() : "TOWER RECORD SYNC FAILED");
+    } finally {
+      setSavingOnboarding(false);
+      setOnboardingStep("hostel");
+    }
   };
 
-  const acceptHostelBed = () => {
+  const acceptHostelBed = async () => {
+    const bed = { floor: hostelFloor, room: `${hostelFloor}H-${String(Date.now()).slice(-3)}`, free: true as const };
+    const state: TowerOnboardingState = {
+      status: "briefing",
+      hostelBed: bed,
+      publicTerminalAccess: true,
+    };
+    setSavingOnboarding(true);
     try {
       const raw = window.localStorage.getItem("sm_save");
       const prior = raw ? JSON.parse(raw) : {};
       window.localStorage.setItem("sm_save", JSON.stringify({
         ...(prior && typeof prior === "object" ? prior : {}),
-        hostelBed: { floor: hostelFloor, room: `${hostelFloor}H-${String(Date.now()).slice(-3)}`, free: true },
+        hostelBed: bed,
         publicTerminalAccess: true,
       }));
-    } catch {}
-    setOnboardingStep("briefing");
+      await persistTowerOnboardingState(state);
+      setOnboardingStep("briefing");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message.toUpperCase() : "BED ASSIGNMENT FAILED");
+    } finally {
+      setSavingOnboarding(false);
+    }
   };
 
   const triggerLockdown = () => {
@@ -159,15 +207,26 @@ export default function TowerDirectory() {
     window.setTimeout(() => sfxFinalNotice(), 2200);
   };
 
-  const finishLockdown = () => {
+  const finishLockdown = async () => {
+    setSavingOnboarding(true);
     try {
-      window.localStorage.setItem("salaryman_tower_lockdown_v1", "1");
-    } catch {}
-    markTutorialDone();
-    completeReceptionTask();
-    setOnboardingStep("complete");
-    setNotice("TOWER LOCKDOWN ACTIVE · RECEPTION REMAINS AVAILABLE");
-    window.setTimeout(() => setNotice(""), 4000);
+      await persistTowerOnboardingState({
+        status: "complete",
+        hostelBed: { floor: hostelFloor, room: `${hostelFloor}H`, free: true },
+        publicTerminalAccess: true,
+        lockdownActive: true,
+        completedAt: new Date().toISOString(),
+      });
+      markTutorialDone();
+      completeReceptionTask();
+      setOnboardingStep("complete");
+      setNotice("TOWER LOCKDOWN ACTIVE · RECEPTION REMAINS AVAILABLE");
+      window.setTimeout(() => setNotice(""), 4000);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message.toUpperCase() : "LOCKDOWN RECORD SYNC FAILED");
+    } finally {
+      setSavingOnboarding(false);
+    }
   };
 
   const fileUnemployment = async () => {
@@ -322,15 +381,15 @@ export default function TowerDirectory() {
               </div>
 
                <div className="flex items-center justify-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.01))] text-center text-[9px] tracking-[.2em] text-zinc-500">
-                 <span className="flex items-center gap-2"><Armchair className="h-4 w-4 text-zinc-500" /> WAITING LOUNGE</span>
+                 <span className="flex flex-col items-center gap-1"><img src={`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/directory.png`} alt="" className="h-12 w-16 object-contain opacity-75" /> WAITING LOUNGE</span>
               </div>
 
                <div className="flex items-center justify-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.01))]">
-                  <Leaf className="h-7 w-7 text-emerald-300/45" style={{ animation: "lobbyPlant 4.8s ease-in-out infinite", transformOrigin: "bottom center" }} />
+                  <img src={`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/vending.png`} alt="Lobby vending machine" className="h-16 w-20 object-contain opacity-75" />
                </div>
 
               <div className="col-span-3 grid grid-cols-[1fr_1.8fr_1fr] gap-3 sm:gap-5">
-                 <div className="flex items-center justify-center border border-white/10 bg-[#080d13]/75 text-[9px] tracking-[.15em] text-zinc-500">SECURITY DESK</div>
+                 <div className="flex items-center justify-center gap-2 border border-white/10 bg-[#080d13]/75 text-[9px] tracking-[.15em] text-zinc-500"><img src={`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/desk-terminal.png`} alt="" className="h-11 w-11 object-contain opacity-75" /> SECURITY DESK</div>
                 {onboardingLocked ? (
                   <button
                     type="button"
@@ -506,7 +565,7 @@ export default function TowerDirectory() {
               <div className="absolute inset-x-8 bottom-4 h-px bg-cyan-300/20" />
               <figure className="relative z-10 text-center">
                 <div className="mx-auto flex h-28 items-end justify-center border-b border-cyan-300/30 bg-cyan-300/[.04] sm:h-36">
-                  <UserRound className="mb-4 h-10 w-10 text-cyan-200/80 sm:h-12 sm:w-12" />
+                  <LobbyPlayerArt />
                 </div>
                 <figcaption className="mt-3 text-[8px] font-bold tracking-[.2em] text-cyan-200/70">YOU · WAITING</figcaption>
               </figure>
@@ -559,8 +618,8 @@ export default function TowerDirectory() {
                 </button>
               ))}
             </div>
-            <button type="button" onClick={acceptHostelBed} className="mt-5 flex w-full items-center justify-center gap-2 border border-violet-200/55 bg-violet-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-violet-100 hover:bg-violet-300/15">
-              ACCEPT BED · FLOOR {hostelFloor} <ArrowRight className="h-4 w-4" />
+            <button type="button" onClick={() => void acceptHostelBed()} disabled={savingOnboarding} className="mt-5 flex w-full items-center justify-center gap-2 border border-violet-200/55 bg-violet-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-violet-100 hover:bg-violet-300/15 disabled:opacity-50">
+              {savingOnboarding ? "ASSIGNING BED..." : `ACCEPT BED · FLOOR ${hostelFloor}`} <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -597,8 +656,8 @@ export default function TowerDirectory() {
             <div className="mt-5 border border-red-300/30 bg-red-500/10 p-4 text-left text-sm leading-6 text-zinc-200">
               <span className="font-bold text-red-200">RECEPTIONIST:</span> That&apos;s it. Your bed and terminal access are active. If you have questions, come back and see me.
             </div>
-            <button type="button" onClick={finishLockdown} className="mt-6 w-full border border-red-100 bg-red-600 px-4 py-3 text-xs font-black tracking-[.2em] text-white hover:bg-red-500">
-              ACKNOWLEDGE LOCKDOWN
+            <button type="button" onClick={() => void finishLockdown()} disabled={savingOnboarding} className="mt-6 w-full border border-red-100 bg-red-600 px-4 py-3 text-xs font-black tracking-[.2em] text-white hover:bg-red-500 disabled:opacity-50">
+              {savingOnboarding ? "SEALING TOWER RECORD..." : "ACKNOWLEDGE LOCKDOWN"}
             </button>
           </div>
         </div>
