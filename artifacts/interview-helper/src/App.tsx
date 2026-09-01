@@ -454,7 +454,7 @@ function AppShell() {
   const isConsoleTerminal = pathname === "/console";
   const isConsoleSubRoute = consoleSubRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
   const isConsole = isConsoleTerminal || pathname.startsWith("/console/");
-  const isKeepAliveActive = isHome || (isConsole && !isConsoleSubRoute);
+  const isPrimarySurfaceActive = isHome || (isConsole && !isConsoleSubRoute);
 
   const isGameRoute = GAME_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
 
@@ -636,24 +636,28 @@ function AppShell() {
           </div>
         )}
       </Suspense>
-      {/* Keep-alive panels */}
-      <ErrorBoundary>
-        <Suspense fallback={isHome ? <LoadingFallback /> : null}>
-          <div style={{ display: isHome ? "block" : "none" }}>
+      {/* Primary surfaces are mounted only while active. Keeping both large
+          trees hidden behind every office/paid-feature route retained their
+          state, effects, and DOM for the entire session. Route state already
+          persists through the app stores, so unmounting here releases memory
+          without weakening the office or paid-feature paths. */}
+      {isHome && (
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
             <HomeOrCover />
-          </div>
-        </Suspense>
-      </ErrorBoundary>
-      <ErrorBoundary>
-        <Suspense fallback={isConsoleTerminal ? <LoadingFallback /> : null}>
-          <div style={{ display: isConsoleTerminal ? "block" : "none" }}>
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {isConsoleTerminal && (
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
             <MemoConsole />
-          </div>
-        </Suspense>
-      </ErrorBoundary>
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
       {/* Other routes — lazy-loaded */}
-      {!isKeepAliveActive && (
+      {!isPrimarySurfaceActive && (
         <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>
           <Switch>

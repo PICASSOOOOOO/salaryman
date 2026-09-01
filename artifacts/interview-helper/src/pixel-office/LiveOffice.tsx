@@ -30,6 +30,7 @@ import type { ColorValue } from './components/ui/types.js';
 import type { OfficeLayout, PlacedFurniture } from './office/types.js';
 import { getCatalogEntry } from './office/layout/furnitureCatalog.js';
 import { layoutToSeats } from './office/layout/layoutSerializer.js';
+import { useLowGfx } from '@/lib/lowGfx';
 
 export type OfficeTier = 'capsule' | 'studio' | 'coworking' | 'suite';
 
@@ -371,6 +372,7 @@ export function LiveOffice({
   playerLabel = 'YOU',
   tier,
 }: LiveOfficeProps) {
+  const [lowGfx] = useLowGfx();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const labelLayerRef = useRef<HTMLDivElement>(null);
@@ -619,8 +621,10 @@ export function LiveOffice({
     const os = stateRef.current;
     if (!canvas || !container || !os) return;
 
-    // Resize backing store to device pixels for crispness.
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    // Bound the canvas backing store. DPR 3–4 phones otherwise allocate 9–16x
+    // the CSS pixel area even though the pixel-art renderer gains no useful
+    // detail beyond 2x.
+    const dpr = lowGfx ? 1 : Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const resize = () => {
       const rect = container.getBoundingClientRect();
       const w = Math.max(1, Math.floor(rect.width));
@@ -814,7 +818,7 @@ export function LiveOffice({
           }
         }
       },
-    });
+    }, { maxFps: lowGfx ? 30 : undefined });
 
     return () => {
       stop();
@@ -825,7 +829,7 @@ export function LiveOffice({
       for (const node of landmarkNodesRef.current) node.remove();
       landmarkNodesRef.current = [];
     };
-  }, [status, consumeHeldDirection]);
+  }, [status, consumeHeldDirection, lowGfx]);
 
   return (
     <div

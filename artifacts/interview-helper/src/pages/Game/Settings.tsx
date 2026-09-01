@@ -434,7 +434,10 @@ export default function GameSettings({
                 <Row label="Cinematic letterbox" hint="Black bars during cutscenes.">
                   <Toggle on={s.cinematic} onChange={(v) => setS({ ...s, cinematic: v })} />
                 </Row>
-                <Row label="Low graphics mode" hint="Forces all heavy effects off for slow devices.">
+                <Row
+                  label="Low graphics mode"
+                  hint="Reduces shaders, animation, blur, world effects, and office canvas load. Art and simulation stay functional."
+                >
                   <Toggle on={lowGfx} onChange={(v) => setLowGfx(v)} />
                 </Row>
                 <Row label="Re-check performance" hint="Lets the game offer its auto slow-device prompt again if it dropped frames before.">

@@ -7,6 +7,7 @@ import {
   type OfficePropertyLayout,
 } from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
+import { useLowGfx } from '@/lib/lowGfx';
 
 /**
  * IsoOffice — an ISOMETRIC ("almost 3D") render of THE OFFICE, matching the
@@ -170,6 +171,7 @@ export function IsoOffice({
   hallwayStyle,
   hallwaySignage,
 }: IsoOfficeProps) {
+  const [lowGfx] = useLowGfx();
   const isTouch =
     typeof window !== 'undefined' &&
     (('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0);
@@ -386,6 +388,7 @@ export function IsoOffice({
 
     let raf = 0;
     let last = performance.now();
+    let lastRenderedAt = 0;
     let frameAccum = 0;
     let footfall = false;
     const SPEED = 46; // world px / sec
@@ -399,8 +402,13 @@ export function IsoOffice({
     const heightPx = (h: number, T: number) => h * (T / TILE) * 0.62; // logical height → screen px
 
     const tick = (now: number) => {
+      if (lowGfx && lastRenderedAt !== 0 && now - lastRenderedAt < 1000 / 30) {
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
       const dt = Math.min(50, Math.max(0, now - last));
       last = now;
+      lastRenderedAt = now;
 
       const S = scaleRef.current || 1;
       const T = TILE * S; // px per tile-axis
@@ -408,7 +416,7 @@ export function IsoOffice({
       const HH = T * 0.25;
       const viewW = viewWRef.current;
       const viewH = viewHRef.current;
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = lowGfx ? 1 : Math.min(2, window.devicePixelRatio || 1);
 
       // Resize backing store if needed.
       if (canvas.width !== Math.round(viewW * dpr) || canvas.height !== Math.round(viewH * dpr)) {
@@ -642,7 +650,7 @@ export function IsoOffice({
       window.removeEventListener('blur', clearKeys);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playable, effectiveBullpen, cols, rows, leftCols, bullpenShift, rightCols, doorTopRow, doorBotRow, worldW, worldH]);
+  }, [playable, effectiveBullpen, cols, rows, leftCols, bullpenShift, rightCols, doorTopRow, doorBotRow, worldW, worldH, lowGfx]);
 
   // ── Tap-to-move: invert the iso projection (screen → world foot) ──
   const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {

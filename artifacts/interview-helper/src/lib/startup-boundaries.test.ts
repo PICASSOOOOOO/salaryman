@@ -42,4 +42,25 @@ describe("frontend startup boundaries", () => {
     expect(vite).not.toContain('return "vendor-markdown"');
     expect(vite).not.toContain('return "vendor-charts"');
   });
+
+  it("releases inactive primary surfaces instead of hiding them", () => {
+    const app = source("App.tsx");
+    expect(app).toContain("{isHome && (");
+    expect(app).toContain("{isConsoleTerminal && (");
+    expect(app).not.toContain('display: isHome ? "block" : "none"');
+    expect(app).not.toContain('display: isConsoleTerminal ? "block" : "none"');
+  });
+
+  it("bounds and pauses the office canvas workload", () => {
+    const office = source("pixel-office/LiveOffice.tsx");
+    const isoOffice = source("components/IsoOffice.tsx");
+    const loop = source("pixel-office/office/engine/gameLoop.ts");
+    expect(office).toContain("lowGfx ? 1 : Math.max(1, Math.min(2, window.devicePixelRatio || 1))");
+    expect(office).toContain("maxFps: lowGfx ? 30 : undefined");
+    expect(isoOffice).toContain("lowGfx ? 1 : Math.min(2, window.devicePixelRatio || 1)");
+    expect(isoOffice).toContain("1000 / 30");
+    expect(loop).toContain("document.visibilityState === 'hidden'");
+    expect(loop).toContain("document.addEventListener('visibilitychange'");
+    expect(loop).toContain("document.removeEventListener('visibilitychange'");
+  });
 });
