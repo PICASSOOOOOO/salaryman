@@ -78,6 +78,8 @@ describe("frontend startup boundaries", () => {
     expect(tower).toContain('data-testid="reception-desk"');
     expect(tower).toContain('data-testid="lobby-map"');
     expect(tower).toContain('data-testid="speak-receptionist"');
+    expect(tower).toContain('ambientOccupants={LOBBY_OCCUPANTS}');
+    expect(tower).toContain('playerName="YOU · QUEUE 04"');
     expect(app).toContain("<ActiveTaskIndicator />");
   });
 });

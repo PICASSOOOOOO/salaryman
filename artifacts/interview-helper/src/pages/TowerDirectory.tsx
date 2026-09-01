@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowRight, Armchair, Bell, BriefcaseBusiness, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, Leaf, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { sfxFinalNotice, startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
@@ -11,13 +11,15 @@ import {
   type BuildingOnboardingStage,
 } from "@/lib/building-onboarding";
 import { apiFetch } from "@/lib/api-client";
-import { getActiveCityName } from "@/lib/city-defs";
+import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getSalarymanName, markTutorialDone } from "@/lib/tutorial-progress";
 import { PabloOnboarding, type OnboardingAnswers } from "@/components/PabloOnboarding";
 import { defaultAppearance, drawPlayerSprite, type Appearance } from "@/lib/character-identity";
 import { persistTowerOnboardingState, type TowerOnboardingState } from "@/lib/tower-onboarding";
+import { IsoOffice, type OfficeAmbientOccupant } from "@/components/IsoOffice";
+import { getRecreationOfficeLayout } from "@/lib/office-property-layouts";
 
 const occupiedFloors = new Map([
   [67, { name: "SHADOW CORP", kind: "RESTRICTED", detail: "The roofline suite. No public access. The elevator stops listening.", tone: "shadow", icon: LockKeyhole }],
@@ -108,6 +110,98 @@ function TowerQueueLobby() {
         <footer className="pt-5 text-[9px] font-bold tracking-[.24em] text-zinc-600">FLOOR ACCESS · HOSTEL BED · COMPUTER CAFE · RECEPTION REGISTRY</footer>
       </div>
     </main>
+  );
+}
+
+const LOBBY_OCCUPANTS: OfficeAmbientOccupant[] = [
+  { id: 9401, name: "VISITOR 01", col: 12.5, row: 7.5, color: "#f59e0b" },
+  { id: 9402, name: "VISITOR 02", col: 10.5, row: 9.5, color: "#a78bfa" },
+  { id: 9403, name: "VISITOR 03", col: 8.5, row: 11.5, color: "#38bdf8" },
+  { id: 9499, name: "RECEPTION", col: 25.5, row: 3.8, color: "#34d399" },
+];
+
+function TowerReceptionScene({
+  locked,
+  frozen,
+  onReception,
+  onLockedExit,
+}: {
+  locked: boolean;
+  frozen: boolean;
+  onReception: () => void;
+  onLockedExit: (label: string) => void;
+}) {
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === "undefined" ? 1100 : window.innerWidth,
+    height: typeof window === "undefined" ? 620 : Math.max(480, Math.min(760, window.innerHeight - 110)),
+  }));
+  useEffect(() => {
+    const resize = () => setViewport({
+      width: window.innerWidth,
+      height: Math.max(480, Math.min(760, window.innerHeight - 110)),
+    });
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
+  const city = getActiveCityId() === "huda_city" ? "huda_city" : "minx_city";
+  const layout = useMemo(() => {
+    const base = getRecreationOfficeLayout(city);
+    return {
+      ...base,
+      propertyKey: `${city}:lobby`,
+      label: "SHADOW TOWER · MAIN LOBBY",
+      representation: "ARRIVAL HALL · RECEPTION",
+      spawn: { x: 6.5 * 16, y: 13.5 * 16, facing: "right" as const },
+    };
+  }, [city]);
+  const stations = useMemo(() => [
+    {
+      id: "lobby-reception",
+      label: locked ? "REPORT TO RECEPTION" : "SPEAK TO RECEPTION",
+      col: 24,
+      row: 3,
+      radius: 54,
+      footprint: { w: 3, d: 1 },
+      glyph: "comms" as const,
+      onInteract: onReception,
+    },
+    {
+      id: "lobby-elevator",
+      label: locked ? "ELEVATOR · RECEPTION REQUIRED" : "ELEVATOR DIRECTORY",
+      col: 0,
+      row: 0,
+      radius: 42,
+      footprint: { w: 2, d: 2 },
+      glyph: "elevator" as const,
+      onInteract: () => locked ? onLockedExit("ELEVATOR") : onLockedExit("ELEVATOR DIRECTORY"),
+    },
+  ], [locked, onLockedExit, onReception]);
+  return (
+    <section className="relative overflow-hidden border-y border-cyan-300/25 bg-[#050711]" data-testid="lobby-map">
+      <span className="sr-only" data-testid="reception-desk">Physical reception desk</span>
+      <button type="button" className="sr-only" data-testid="speak-receptionist" onClick={onReception}>Speak to receptionist</button>
+      <IsoOffice
+        layout={layout}
+        viewportWidth={viewport.width}
+        viewportHeight={viewport.height}
+        playable
+        followCam={viewport.width < 760}
+        scale={viewport.width < 760 ? 4.2 : 3.25}
+        stations={stations}
+        rooms={layout.rooms}
+        initialPose={layout.spawn}
+        frozen={frozen}
+        suppressLabels={viewport.width < 680}
+        ambientOccupants={LOBBY_OCCUPANTS}
+        playerName="YOU · QUEUE 04"
+        hallwaySignage="RECEPTION · WAIT BEHIND THE LINE"
+        lighting="cool"
+      />
+      <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] border border-cyan-200/35 bg-[#050914]/90 px-3 py-2 backdrop-blur">
+        <p className="text-[9px] font-black tracking-[.24em] text-cyan-200">SHADOW TOWER · PHYSICAL LOBBY</p>
+        <p className="mt-1 text-[10px] text-zinc-400">{locked ? "YOU ARE LAST IN LINE · WAIT FOR RECEPTION" : "RECEPTION OPEN · WALK OR TAP TO MOVE"}</p>
+      </div>
+    </section>
   );
 }
 
@@ -317,7 +411,13 @@ export default function TowerDirectory() {
           </div>
         )}
 
-        <section className="relative mb-5 overflow-hidden border border-cyan-300/25 bg-[#07101a] shadow-[0_30px_90px_rgba(0,0,0,.45)]" data-testid="lobby-map">
+        <TowerReceptionScene
+          locked={onboardingLocked}
+          frozen={arrivalPhase !== "ready" || talking}
+          onReception={() => setTalking(true)}
+          onLockedExit={explainLock}
+        />
+        <section className="hidden" aria-hidden="true" data-testid="legacy-lobby-map">
           <img
             src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`}
             alt=""

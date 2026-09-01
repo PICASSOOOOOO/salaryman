@@ -52,6 +52,17 @@ export interface OfficeOccupant {
   kind: 'player' | 'active' | 'idle';
   name?: string;
 }
+
+/** Non-interactive people placed directly on a shared floor (visitors, staff,
+ * queue members). Unlike activeBots these occupants stand in the room and do
+ * not require a desk or capsule. */
+export interface OfficeAmbientOccupant {
+  id: number;
+  name: string;
+  col: number;
+  row: number;
+  color?: string;
+}
 // `colCount` / `rowCount` cap how many desk columns/rows are generated so the
 // furnished desk count scales with the owned property tier (capsule → suite).
 // Floor WIDTH stays fixed (22 per half) so the hand-placed station strip — whose
@@ -131,6 +142,8 @@ export interface IsoOfficeProps {
   onPoseChange?: (pose: { x: number; y: number; facing: 'left' | 'right' }) => void;
   /** Use the shipped Shadow Tower wall, floor and terminal artwork. */
   towerArt?: boolean;
+  /** Standing scene population that is not part of the player's bot roster. */
+  ambientOccupants?: OfficeAmbientOccupant[];
 }
 
 interface Vec2 { x: number; y: number }
@@ -174,6 +187,7 @@ export function IsoOffice({
   hallwayStyle,
   hallwaySignage,
   towerArt = true,
+  ambientOccupants = [],
 }: IsoOfficeProps) {
   const [lowGfx] = useLowGfx();
   const isTouch =
@@ -318,6 +332,7 @@ export function IsoOffice({
   const lightingRef = useRef(lighting);
   const hallwayStyleRef = useRef(hallwayStyle);
   const hallwaySignageRef = useRef(hallwaySignage);
+  const ambientOccupantsRef = useRef(ambientOccupants);
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -340,6 +355,7 @@ export function IsoOffice({
   useEffect(() => { lightingRef.current = lighting; }, [lighting]);
   useEffect(() => { hallwayStyleRef.current = hallwayStyle; }, [hallwayStyle]);
   useEffect(() => { hallwaySignageRef.current = hallwaySignage; }, [hallwaySignage]);
+  useEffect(() => { ambientOccupantsRef.current = ambientOccupants; }, [ambientOccupants]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onPoseChangeRef.current = onPoseChange; }, [onPoseChange]);
@@ -624,6 +640,7 @@ export function IsoOffice({
         hallwayStyle: hallwayStyleRef.current,
         hallwaySignage: hallwaySignageRef.current,
         towerArt,
+        ambientOccupants: ambientOccupantsRef.current,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -830,6 +847,7 @@ interface SceneCtx {
   hallwayStyle?: 'central' | 'gallery' | 'executive';
   hallwaySignage?: string;
   towerArt: boolean;
+  ambientOccupants: OfficeAmbientOccupant[];
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
@@ -970,6 +988,16 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     const tx = d.c + d.w / 2, ty = d.r + d.d + 0.25;
     push(tx, ty + 0.1, () => drawBot(ctx, s, tx, ty, bot));
   });
+
+  // Visitors and staff who belong to the room itself rather than a desk.
+  for (const occupant of s.ambientOccupants) {
+    push(occupant.col, occupant.row, () => drawBot(ctx, s, occupant.col, occupant.row, {
+      id: occupant.id,
+      name: occupant.name,
+      status: 'active',
+      teamColor: occupant.color,
+    }));
+  }
 
   // Stations.
   for (const st of s.stations) {

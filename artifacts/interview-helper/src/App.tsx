@@ -25,7 +25,7 @@ import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync
 import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
-import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
+import { MusicPlayerProvider, useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import {
@@ -375,7 +375,7 @@ function HomeOrCover() {
   if (typeof window !== "undefined") {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/tower" />;
   }
-  if (!isAuthenticated) return <Redirect to="/tower" />;
+  if (!isAuthenticated) return <PabloTerminal />;
   return <Redirect to={organizationLanding ?? "/tower/mezzanine?focus=classifieds"} />;
 }
 
@@ -394,6 +394,7 @@ function AppShell() {
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated, isLoading } = useAuth();
   const onboardingResolved = useOnboardingResolved();
+  const { stop: stopHummingbird } = useMusicPlayer();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -436,8 +437,7 @@ function AppShell() {
     const allowsWorldScore = pathname === "/world/play" || pathname.startsWith("/world/play/");
     const allowsOfficeAmbient =
       pathname === "/office" || pathname.startsWith("/office/") ||
-      pathname === "/immigration" || pathname.startsWith("/immigration/") ||
-      pathname === "/pablo" || pathname.startsWith("/pablo/");
+      pathname === "/immigration" || pathname.startsWith("/immigration/");
     if (!allowsWorldScore || !allowsOfficeAmbient) {
       void import("@/soundEngine").then(({ pauseMusic, stopCrowdMurmur, stopOfficeAmbient }) => {
         if (cancelled) return;
@@ -447,6 +447,13 @@ function AppShell() {
     }
     return () => { cancelled = true; };
   }, [pathname]);
+
+  // The public Pablo nebula is a deliberately silent front door. Stop any
+  // library track left playing from an authenticated route before rendering it;
+  // Pablo's spoken replies use the separate voice bus and remain available.
+  useEffect(() => {
+    if (pathname === "/" || pathname === "/pablo" || pathname.startsWith("/pablo/")) stopHummingbird();
+  }, [pathname, stopHummingbird]);
 
   const isRootRoute = pathname === "/";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
@@ -585,7 +592,7 @@ function AppShell() {
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && !showNavBar && <AlphaWipeBanner />}
+      {!isEmbed && !showNavBar && !isRootRoute && <AlphaWipeBanner />}
       {showNavBar && (
         <div className="app-chrome">
           {!isEmbed && <AlphaWipeBanner />}
@@ -604,16 +611,16 @@ function AppShell() {
       {/* Route-independent toaster for the persistent notification stream —
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
-        {isAuthenticated && !isEmbed && <NotificationToaster />}
+        {isAuthenticated && !isEmbed && !isRootRoute && <NotificationToaster />}
         {showFullscreenPabloAccess && <FullscreenPabloAccess inGame={isGameRoute} />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
           the app for new arrivals — leaking the music indicator there
           breaks the "you haven't been admitted yet" fiction. */}
-        {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
+        {!isFullscreenRoute && !isRootRoute && <GlobalMusicMiniIndicator />}
       {/* Shadow Radio — one headless station for every non-phone route. */}
-        {!isEmbed && <OfficeRadio />}
+        {!isEmbed && !isRootRoute && !pathname.startsWith("/pablo") && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the audio from anywhere (full mixer still on /game/settings).
           Hidden on /immigration because PabloOnboarding is full-screen there
