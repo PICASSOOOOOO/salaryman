@@ -1,6 +1,6 @@
-// Self-destructing service worker. If an old SW is still controlling a phone,
-// this version takes over, deletes every cache, unregisters itself, and reloads
-// any open clients. Result: stale PWAs heal themselves on next visit.
+// Lightweight installability worker. SALARYMAN is network-first and keeps
+// authenticated/API data out of service-worker caches so installed desktop and
+// mobile apps always load the current release.
 self.addEventListener('install', () => { self.skipWaiting(); });
 
 self.addEventListener('activate', (event) => {
@@ -8,11 +8,7 @@ self.addEventListener('activate', (event) => {
     try {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
-      await self.registration.unregister();
-      const clients = await self.clients.matchAll({ type: 'window' });
-      for (const client of clients) {
-        try { client.navigate(client.url); } catch {}
-      }
+      await self.clients.claim();
     } catch {}
   })());
 });

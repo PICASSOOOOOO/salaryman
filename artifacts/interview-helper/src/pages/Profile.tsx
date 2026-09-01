@@ -23,6 +23,7 @@ import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import GameSettings from '@/pages/Game/Settings';
 import { useAuth } from '@/hooks/use-auth';
+import { AppInstallCard } from '@/components/AppInstallCard';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -1105,7 +1106,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
 
             <ReferralPanel boomerMode={boomerMode} />
 
-            <MobileInstallSection />
+            <AppInstallCard />
 
           </div>
           ) : (

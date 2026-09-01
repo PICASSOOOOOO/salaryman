@@ -36,6 +36,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(() => loadActiveCalls());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollInFlightRef = useRef(false);
   const activeCallsRef = useRef<ActiveCall[]>(activeCalls);
   activeCallsRef.current = activeCalls;
 
@@ -44,6 +45,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
   const stopPolling = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    pollInFlightRef.current = false;
   }, []);
 
   const startPolling = useCallback(() => {
@@ -57,11 +59,13 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
     }, 1000);
 
     pollRef.current = setInterval(async () => {
+      if (pollInFlightRef.current) return;
       const current = activeCallsRef.current.filter(c => c.callSid && !ENDED_STATUSES.includes(c.status));
       if (current.length === 0) {
         stopPolling();
         return;
       }
+      pollInFlightRef.current = true;
       try {
         const callSids = current.map(c => c.callSid);
         const r = await apiFetch('/api/twilio/call-status-batch', {
@@ -79,6 +83,8 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         console.warn('[ActiveCallContext] poll error:', e instanceof Error ? e.message : e);
+      } finally {
+        pollInFlightRef.current = false;
       }
     }, 3000);
   }, [stopPolling]);

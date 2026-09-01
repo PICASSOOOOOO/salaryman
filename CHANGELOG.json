@@ -1631,5 +1631,32 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.19.7.2085",
+    "date": "2026-09-01",
+    "commitHash": "4c55f343cb9e1f79ba70facd1ac918244114241c",
+    "changes": [
+      "Update api server routes and simplify bot seeding logic",
+      "Update navigation and UI components for interview helper application",
+      "Integrate shadow tower artwork and update relevant page UI and test files",
+      "Migrate SALARYMAN authentication to Replit-managed Clerk"
+    ]
+  },
+  {
+    "version": "v.19.8.2085",
+    "date": "2026-09-01",
+    "commitHash": "4c55f343cb9e1f79ba70facd1ac918244114241c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.9.2085",
+    "date": "2026-09-01",
+    "commitHash": "4c55f343cb9e1f79ba70facd1ac918244114241c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

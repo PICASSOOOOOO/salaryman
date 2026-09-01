@@ -25,6 +25,13 @@ import { installDeferredGlobalUiSound, warmGlobalUiSound } from "./lib/deferred-
 })();
 
 initLowGfx();
+// Capture Chromium's one-shot install event at startup. The Profile screen is
+// lazy-loaded, so listening only inside that screen can miss the event.
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  (window as Window & { __salarymanInstallPrompt?: Event }).__salarymanInstallPrompt = event;
+  window.dispatchEvent(new Event("salaryman-install-ready"));
+});
 // AudioContext unlock must be armed synchronously: iOS requires the actual
 // first user gesture, not a callback after an async chunk has loaded.
 armAudioAutoUnlock();
@@ -39,6 +46,12 @@ const afterFirstPaint = (start: () => void) => {
 };
 
 afterFirstPaint(() => {
+  if ("serviceWorker" in navigator) {
+    const base = import.meta.env.BASE_URL;
+    void navigator.serviceWorker
+      .register(`${base}sw.js`, { scope: base })
+      .catch((error) => console.warn("[PWA] service worker registration failed:", error));
+  }
   void import("./lib/errorReporter").then(({ installGlobalErrorHandlers }) => {
     installGlobalErrorHandlers();
   });

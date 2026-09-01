@@ -41,11 +41,11 @@ function CallWaveformVisualizer({ active, color: c }: { active: boolean; color: 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 32, padding: '0 8px' }}>
       {Array.from({ length: bars }).map((_, i) => (
-        <div key={i} style={{
+        <div key={i} className="phone-wave-bar" style={{
           width: 3, borderRadius: 2, flex: 1,
           background: c(active ? 0.5 : 0.08),
-          height: active ? `${15 + Math.random() * 85}%` : '10%',
-          animation: active ? `waveform ${0.3 + Math.random() * 0.6}s ease-in-out infinite alternate` : 'none',
+          height: active ? `${20 + ((i * 41) % 75)}%` : '10%',
+          animation: active ? `waveform ${0.36 + ((i * 17) % 9) * 0.05}s ease-in-out infinite alternate` : 'none',
           animationDelay: `${i * 0.04}s`,
           transition: 'background 0.3s ease' }} />
       ))}

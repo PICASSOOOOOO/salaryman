@@ -246,8 +246,8 @@ export default function CalllHomePage() {
       color: slate(0.85),
       position: 'relative' }}>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400, margin: '0 auto', padding: '0 16px' }}>
-        <div style={{
+      <div className="calll-home-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1400, margin: '0 auto' }}>
+        <div className="calll-home-status" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 0', borderBottom: `1px solid ${slate(0.08)}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -303,7 +303,7 @@ export default function CalllHomePage() {
           </div>
         )}
 
-        <div style={{
+        <div className="calll-home-tabs" style={{
            display: 'grid',
            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
            gap: 6,
@@ -484,6 +484,42 @@ export default function CalllHomePage() {
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
+        .calll-home-shell { padding: 0 clamp(10px, 3.5vw, 16px); }
+        @media (max-width: 640px) {
+          .calll-home-status {
+            align-items: flex-start !important;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .calll-home-status > div {
+            min-width: 0;
+            flex-wrap: wrap;
+            gap: 8px !important;
+          }
+          .calll-home-tabs {
+            display: flex !important;
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            scroll-snap-type: x proximity;
+            scrollbar-width: none;
+            padding: 6px !important;
+          }
+          .calll-home-tabs::-webkit-scrollbar { display: none; }
+          .calll-home-tabs > button {
+            flex: 0 0 auto !important;
+            min-height: 44px !important;
+            scroll-snap-align: start;
+          }
+          .calll-home-tabs > div:last-child {
+            position: sticky !important;
+            right: 0;
+            margin-left: auto !important;
+            background: ${slate(0.96)};
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .calll-home-shell * { animation: none !important; transition-duration: 0.01ms !important; }
+        }
       `}</style>
     </div>
   );

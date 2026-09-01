@@ -98,7 +98,7 @@ const SESSION_EXPIRY_SKIP_PATHS =
 // post-sign-in intake desk. This mirrors the anonymous-allowed route set in
 // App.tsx — keep it in sync if more public routes are added. A 401 on any other
 // (genuinely protected) page still triggers the return-to-sign-in bounce.
-const SESSION_EXPIRY_PUBLIC_ROUTES = ["/pablo", "/immigration"];
+const SESSION_EXPIRY_PUBLIC_ROUTES = ["/tower", "/phone", "/pablo", "/immigration"];
 function isSessionExpiryPublicRoute(currentPath: string): boolean {
   return (
     currentPath === "/" ||

@@ -19,6 +19,7 @@ export function PhonePageLayout({
 }) {
 
   const insideHub = useInsideCalllHome();
+  const BASE = import.meta.env.BASE_URL;
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
   useEffect(() => {
     if (insideHub) return;
@@ -68,13 +69,13 @@ export function PhonePageLayout({
       position: 'relative',
       paddingBottom: 'calc(100px + var(--app-safe-bottom))' }}>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+      <div className="phone-page-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto' }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '6px 0', borderBottom: `1px solid ${slate(0.06)}`,
           fontSize: '0.45rem', color: slate(0.55), letterSpacing: '0.2em' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <img src="/brand/callhome/calll-home-brush.png" alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />
+            <img src={`${BASE}brand/callhome/calll-home-brush.png`} alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />
             <span style={{ color: slate(0.55) }}>│</span>
             <span>ALPHA {__BUILD_VERSION__}</span>
             <span style={{ color: slate(0.55) }}>│</span>
@@ -132,6 +133,27 @@ export function PhonePageLayout({
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
+        .phone-page-shell { padding: 0 clamp(12px, 4vw, 24px); }
+        @media (max-width: 640px) {
+          .phone-page-shell > div:first-child {
+            overflow: hidden;
+          }
+          .phone-page-shell > div:first-child > div:first-child {
+            min-width: 0;
+            gap: 8px !important;
+          }
+          .phone-page-shell h1 {
+            font-size: 1rem !important;
+            letter-spacing: 0.14em !important;
+            overflow-wrap: anywhere;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .phone-page-shell *, .phone-card, .phone-wave-bar {
+            animation: none !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -140,7 +162,7 @@ export function PhonePageLayout({
 export function PhoneCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties;  }) {
 
   return (
-    <div style={{
+    <div className="phone-card" style={{
       background: slate(0.02),
       border: `1px solid ${slate(0.12)}`,
       borderRadius: 10,
@@ -214,6 +236,10 @@ export function PhoneBtn({
         letterSpacing: '0.1em',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 44,
+        minWidth: 44,
+        touchAction: 'manipulation',
         gap: 6,
         borderRadius: 6,
         transition: 'all 0.15s ease',
@@ -266,11 +292,11 @@ export function MiniWaveform({ active, color: c, bars = 5 }: { active?: boolean;
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 16 }}>
       {Array.from({ length: bars }).map((_, i) => (
-        <div key={i} style={{
+        <div key={i} className="phone-wave-bar" style={{
           width: 3, borderRadius: 1,
           background: col(active ? 0.6 : 0.15),
-          height: active ? `${20 + Math.random() * 80}%` : '20%',
-          animation: active ? `waveform ${0.4 + Math.random() * 0.5}s ease-in-out infinite alternate` : 'none',
+          height: active ? `${30 + ((i * 37) % 65)}%` : '20%',
+          animation: active ? `waveform ${0.45 + ((i * 13) % 7) * 0.06}s ease-in-out infinite alternate` : 'none',
           animationDelay: `${i * 0.08}s`,
           transition: 'all 0.3s ease' }} />
       ))}

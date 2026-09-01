@@ -574,6 +574,11 @@ function AppShell() {
   // Hold protected paths behind a loading screen until auth resolves (see
   // holdForAuth above) so a logged-out deep link can never flash the page.
   if (holdForAuth) return <LoadingFallback />;
+  // Do not mount a protected route for even one frame while the effect above
+  // updates browser history. Mounting it can start authenticated API requests;
+  // their expected 401 would otherwise win the race and send the visitor to
+  // the legacy Pablo sign-in surface instead of Tower reception.
+  if (newUserBlocked) return <Redirect to="/tower" />;
 
   return (
     <>

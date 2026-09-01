@@ -137,7 +137,7 @@ const floors = Array.from({ length: 67 }, (_, index) => {
 });
 
 export default function TowerDirectory() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [stage, setStage] = useState<BuildingOnboardingStage>(() => getBuildingOnboardingStage());
   const [now, setNow] = useState(() => new Date());
   const [talking, setTalking] = useState(false);
