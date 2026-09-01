@@ -25,6 +25,8 @@ import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
+import { completeInternalText } from "../lib/internal-ai";
+import { isPabloNavPath } from "../lib/pablo-navigation";
 
 const router = Router();
 const objectStorage = new ObjectStorageService();
@@ -141,6 +143,57 @@ async function userHasActiveStory(userId: string): Promise<boolean> {
     // strip a player's perks; defection is a deliberate, committed state.
     console.error("[Pablo] story-state read failed:", err instanceof Error ? err.message : err);
     return false;
+  }
+}
+
+function boundedString(value: unknown, max = 100): string | null {
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
+}
+
+function boundedStringArray(value: unknown, maxItems = 30): string[] | null {
+  if (!Array.isArray(value)) return null;
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .slice(0, maxItems)
+    .map((item) => item.slice(0, 100));
+}
+
+export function formatServerStoryContext(
+  slot: number,
+  data: Record<string, unknown>,
+  includeIdentity = false,
+): string {
+  const story = (data.story ?? {}) as Record<string, unknown>;
+  const identity = (data.appearance ?? {}) as Record<string, unknown>;
+  const safeState = {
+    slot,
+    scene: boundedString(story.scene ?? story.currentScene),
+    quarter: typeof story.quarter === "number" && Number.isFinite(story.quarter) ? story.quarter : null,
+    mission: boundedString(story.mission ?? story.activeMission),
+    assignmentsCompleted: boundedStringArray(story.assignmentsCompleted),
+    ...(includeIdentity ? {
+      playerName: boundedString(identity.name ?? data.playerName, 64),
+      background: boundedString(identity.background, 80),
+    } : {}),
+  };
+  return `\n\nCURRENT STORY STATE — server-authoritative. Continue from this state; never reset or contradict completed beats:\n${JSON.stringify(safeState)}`;
+}
+
+async function buildServerStoryContext(userId: string, includeIdentity: boolean): Promise<string> {
+  try {
+    const rows = await db
+      .select({ slot: salarymanSavesTable.slotIndex, data: salarymanSavesTable.data })
+      .from(salarymanSavesTable)
+      .where(eq(salarymanSavesTable.userId, userId));
+    const active = rows.find((row) => {
+      const story = (row.data as Record<string, unknown> | null)?.story as { active?: unknown } | undefined;
+      return story?.active === true;
+    });
+    if (!active) return "";
+    return formatServerStoryContext(active.slot, active.data ?? {}, includeIdentity);
+  } catch (err) {
+    console.error("[Pablo] story-context read failed:", err instanceof Error ? err.message : err);
+    return "";
   }
 }
 
@@ -1238,13 +1291,22 @@ async function runPabloCompletion(
   // The finance tool only makes sense for a signed-in user (it reads their books).
   const tools: any[] = [PABLO_IMAGE_TOOL];
   if (userId) tools.push(PABLO_FINANCE_TOOL);
-  const first = await openai.chat.completions.create({
-    model: "gpt-5",
-    messages,
-    max_completion_tokens: 600,
-    tools: tools as any,
-    tool_choice: "auto",
-  });
+  let first;
+  try {
+    first = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages,
+      max_completion_tokens: 600,
+      reasoning_effort: "minimal",
+      tools: tools as any,
+      tool_choice: "auto",
+    });
+  } catch (gptError) {
+    console.warn("[Pablo Chat] GPT failed before tool selection; using internal Claude fallback:", gptError instanceof Error ? gptError.message : gptError);
+    const fallback = await completeInternalText(messages, { maxTokens: 600, prefer: "claude" });
+    if (fallback.usage) usages.push(fallback.usage);
+    return { reply: fallback.content, usages, imageCount: 0 };
+  }
   if (first.usage) usages.push({ prompt_tokens: first.usage.prompt_tokens, completion_tokens: first.usage.completion_tokens });
 
   const choice = first.choices[0]?.message;
@@ -1328,14 +1390,31 @@ async function runPabloCompletion(
     }
   }
 
-  const second = await openai.chat.completions.create({
-    model: "gpt-5",
-    messages: followMessages,
-    max_completion_tokens: 400,
-  });
-  if (second.usage) usages.push({ prompt_tokens: second.usage.prompt_tokens, completion_tokens: second.usage.completion_tokens });
-
-  let reply = second.choices[0]?.message?.content ?? (imageMarkdown.length ? "Here you go." : "I'm here. How can I help?");
+  let reply: string;
+  try {
+    const second = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: followMessages,
+      max_completion_tokens: 400,
+      reasoning_effort: "minimal",
+    });
+    if (second.usage) usages.push({ prompt_tokens: second.usage.prompt_tokens, completion_tokens: second.usage.completion_tokens });
+    reply = second.choices[0]?.message?.content ?? (imageMarkdown.length ? "Here you go." : "I'm here. How can I help?");
+  } catch (gptError) {
+    console.warn("[Pablo Chat] GPT failed after tools; using internal Claude fallback:", gptError instanceof Error ? gptError.message : gptError);
+    const fallbackMessages = messages.slice();
+    const toolSummary = followMessages
+      .filter((message) => message.role === "tool")
+      .map((message, index) => `Tool ${index + 1}: ${String(message.content ?? "")}`)
+      .join("\n");
+    fallbackMessages.push(
+      { role: "assistant", content: "I checked the requested internal tools." },
+      { role: "user", content: `Use these trusted internal tool results to answer my request:\n${toolSummary}` },
+    );
+    const fallback = await completeInternalText(fallbackMessages, { maxTokens: 400, prefer: "claude" });
+    if (fallback.usage) usages.push(fallback.usage);
+    reply = fallback.content;
+  }
   if (imageMarkdown.length) reply = `${reply.trim()}\n\n${imageMarkdown.join("\n\n")}`;
   return { reply, usages, imageCount: imageMarkdown.length };
 }
@@ -1463,13 +1542,14 @@ router.post("/chat/pablo/message", async (req, res) => {
     // player's own server-side story state (gameplay, not personal data, so it
     // applies regardless of privacy mode) and flip him ally → adversary.
     const storyDefected = await userHasActiveStory(userId);
+    const storyContext = storyDefected ? await buildServerStoryContext(userId, !privacyMode) : "";
     // Once the story is live, the assistant IS Mila, not Pablo — her persona,
     // her voice, her name. Pre-story players still get Pablo, untouched.
     const botSenderName = storyDefected ? "MILA" : "PABLO";
 
     const liveContext = await buildLiveContext(trimmedContent);
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}\n\n${liveContext}` },
+      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}${storyContext}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}\n\n${liveContext}` },
     ];
 
     if (privacyMode) {
@@ -1533,7 +1613,7 @@ router.post("/chat/pablo/message", async (req, res) => {
         targetType: "assistant",
         targetId: ASSISTANT_TARGET_ID,
         kind: "chat",
-        label: `pablo gpt-5`,
+        label: "pablo internal-ai",
         costBasisCents: cents,
         metadata: { in: inTok, out: outTok },
         allowSeed: true,
@@ -1681,7 +1761,7 @@ router.get("/chat/pablo/persona", async (req, res) => {
 // Server-side in-app path sanitizer for navigation actions. Mirrors the web
 // client's safe-path helper: same-origin in-app paths only, no /api machinery,
 // no off-limits /phone system, no protocol-relative open-redirect bait.
-function sanitizeNavPath(path: unknown): string | null {
+export function sanitizeNavPath(path: unknown): string | null {
   if (typeof path !== "string") return null;
   if (path.length === 0 || path.length > 2048) return null;
   if (!path.startsWith("/")) return null;
@@ -1707,9 +1787,10 @@ router.post("/chat/pablo/command", async (req, res) => {
   const pageCatalog = Array.isArray(pages)
     ? pages
         .map(p => ({ path: sanitizeNavPath(p?.path), label: typeof p?.label === "string" ? p.label.slice(0, 80) : "" }))
-        .filter((p): p is { path: string; label: string } => Boolean(p.path && p.label))
+        .filter((p): p is { path: string; label: string } => Boolean(p.path && p.label && isPabloNavPath(p.path)))
         .slice(0, 120)
     : [];
+  const catalogPaths = new Set(pageCatalog.map((page) => page.path));
   if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
     res.status(400).json({ error: "transcript required" });
     return;
@@ -1830,6 +1911,7 @@ ${known.join("\n")}`;
   // perks. Server-authoritative (their own save state), so it applies even in
   // privacy mode — story progression is gameplay, not personal chat data.
   const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
+  const storyContext = storyDefected ? await buildServerStoryContext(req.user!.id, !privacyMode) : "";
   // Story players are answered by Mila (her own persona, voice, name); everyone
   // else still gets Pablo exactly as before.
   const activePersona: "mila" | "pablo" = storyDefected ? "mila" : "pablo";
@@ -1856,7 +1938,7 @@ NAVIGATION RULES (a navigation search bar — routing is your primary job here):
     ? ` | { "kind": "suggest", "items": [{ "label": string, "path": string }] }`
     : "";
 
-  const COMMAND_SYSTEM = `${basePersona}${personalContext}
+  const COMMAND_SYSTEM = `${basePersona}${storyContext}${personalContext}
 
 You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of shape:
 { "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string }${suggestShape} }
@@ -1932,13 +2014,8 @@ ${await buildLiveContext(transcript)}`;
   };
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5",
-      messages,
-      max_completion_tokens: 400,
-      response_format: { type: "json_object" },
-    });
-    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const completion = await completeInternalText(messages, { maxTokens: 400, json: true });
+    const raw = completion.content;
     let parsed: { say?: unknown; action?: unknown } = {};
     try { parsed = JSON.parse(raw); } catch { parsed = { say: raw }; }
     const say = typeof parsed.say === "string" && parsed.say.trim() ? parsed.say.trim() : "I'm here.";
@@ -1971,7 +2048,7 @@ ${await buildLiveContext(transcript)}`;
         // Final safety net: only allow safe in-app paths (no off-origin,
         // /api, /phone, protocol-relative). Drop the action otherwise.
         const safe = sanitizeNavPath(a.path);
-        if (!safe) action = null;
+        if (!safe || !isPabloNavPath(safe) || (pageCatalog.length > 0 && !catalogPaths.has(safe))) action = null;
         else action = { kind: "navigate", path: safe };
       } else if (a.kind === "suggest") {
         // Sanitize every suggested path; keep label + path pairs that survive.
@@ -1980,7 +2057,9 @@ ${await buildLiveContext(transcript)}`;
             const obj = (it ?? {}) as { label?: unknown; path?: unknown };
             const path = sanitizeNavPath(obj.path);
             const label = typeof obj.label === "string" ? obj.label.slice(0, 80) : "";
-            return path && label ? { label, path } : null;
+            return path && label && isPabloNavPath(path) && (!pageCatalog.length || catalogPaths.has(path))
+              ? { label, path }
+              : null;
           })
           .filter((x): x is { label: string; path: string } => x !== null)
           .slice(0, 6);

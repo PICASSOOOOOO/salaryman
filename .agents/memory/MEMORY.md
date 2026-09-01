@@ -150,3 +150,4 @@
 - [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.
 - [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
+- [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.

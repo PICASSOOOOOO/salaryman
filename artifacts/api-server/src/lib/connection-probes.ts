@@ -98,82 +98,22 @@ async function fetchConnectorSettings(
 export async function probeOpenAI(): Promise<ProbeResult> {
   const start = Date.now();
   try {
-    const settings = await withTimeout(
-      fetchConnectorSettings("openai"),
-      CONNECTOR_TIMEOUT_MS,
-      "OpenAI connector"
-    );
-    const connMs = Date.now() - start;
-    if (!settings) {
-      return makeResult("OpenAI (GPT)", "FAIL", "Connector not configured or connectors host unreachable", connMs);
-    }
-    const key = settings.settings?.api_key || settings.settings?.OPENAI_API_KEY;
-    if (!key) {
-      return makeResult("OpenAI (GPT)", "FAIL", "Connector present but api_key missing from settings", connMs);
-    }
-    // Live liveness check: list models endpoint is free and tests auth end-to-end.
-    const { res: apiRes, latencyMs: apiMs } = await timedFetch(
-      "https://api.openai.com/v1/models",
-      { headers: { Authorization: `Bearer ${key}`, Accept: "application/json" } },
-      DEFAULT_TIMEOUT_MS
-    );
-    const totalMs = connMs + apiMs;
-    if (apiRes.ok) {
-      return makeResult("OpenAI (GPT)", "PASS", `API reachable, key valid (HTTP ${apiRes.status})`, totalMs);
-    }
-    if (apiRes.status === 401) {
-      return makeResult("OpenAI (GPT)", "FAIL", "API key invalid or expired (HTTP 401)", totalMs);
-    }
-    if (apiRes.status === 429) {
-      return makeResult("OpenAI (GPT)", "WARN", "Rate-limited by OpenAI (HTTP 429) — key appears valid", totalMs);
-    }
-    return makeResult("OpenAI (GPT)", "FAIL", `Unexpected response: HTTP ${apiRes.status}`, totalMs);
+    const { probeInternalProvider } = await import("./internal-ai");
+    await withTimeout(probeInternalProvider("gpt"), DEFAULT_TIMEOUT_MS, "Replit-managed OpenAI integration");
+    return makeResult("OpenAI (GPT)", "PASS", "Replit-managed internal integration responded", Date.now() - start);
   } catch (e: any) {
-    return makeResult("OpenAI (GPT)", "FAIL", e?.message || "Unknown error", Date.now() - start);
+    return makeResult("OpenAI (GPT)", "FAIL", `Internal integration failed: ${e?.message || "Unknown error"}`, Date.now() - start);
   }
 }
 
 export async function probeAnthropic(): Promise<ProbeResult> {
   const start = Date.now();
   try {
-    const settings = await withTimeout(
-      fetchConnectorSettings("anthropic"),
-      CONNECTOR_TIMEOUT_MS,
-      "Anthropic connector"
-    );
-    const connMs = Date.now() - start;
-    if (!settings) {
-      return makeResult("Anthropic (Claude)", "FAIL", "Connector not configured or connectors host unreachable", connMs);
-    }
-    const key = settings.settings?.api_key || settings.settings?.ANTHROPIC_API_KEY;
-    if (!key) {
-      return makeResult("Anthropic (Claude)", "FAIL", "Connector present but api_key missing from settings", connMs);
-    }
-    // Live liveness check: list models is free and tests auth end-to-end.
-    const { res: apiRes, latencyMs: apiMs } = await timedFetch(
-      "https://api.anthropic.com/v1/models",
-      {
-        headers: {
-          "x-api-key": key,
-          "anthropic-version": "2023-06-01",
-          Accept: "application/json",
-        },
-      },
-      DEFAULT_TIMEOUT_MS
-    );
-    const totalMs = connMs + apiMs;
-    if (apiRes.ok) {
-      return makeResult("Anthropic (Claude)", "PASS", `API reachable, key valid (HTTP ${apiRes.status})`, totalMs);
-    }
-    if (apiRes.status === 401) {
-      return makeResult("Anthropic (Claude)", "FAIL", "API key invalid or expired (HTTP 401)", totalMs);
-    }
-    if (apiRes.status === 429) {
-      return makeResult("Anthropic (Claude)", "WARN", "Rate-limited by Anthropic (HTTP 429) — key appears valid", totalMs);
-    }
-    return makeResult("Anthropic (Claude)", "FAIL", `Unexpected response: HTTP ${apiRes.status}`, totalMs);
+    const { probeInternalProvider } = await import("./internal-ai");
+    await withTimeout(probeInternalProvider("claude"), DEFAULT_TIMEOUT_MS, "Replit-managed Anthropic integration");
+    return makeResult("Anthropic (Claude)", "PASS", "Replit-managed internal integration responded", Date.now() - start);
   } catch (e: any) {
-    return makeResult("Anthropic (Claude)", "FAIL", e?.message || "Unknown error", Date.now() - start);
+    return makeResult("Anthropic (Claude)", "FAIL", `Internal integration failed: ${e?.message || "Unknown error"}`, Date.now() - start);
   }
 }
 

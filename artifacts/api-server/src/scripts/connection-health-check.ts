@@ -9,7 +9,7 @@
  *     lib/connection-health-monitor.ts, which re-probes every few minutes and
  *     emails on confirmed transitions while the server is up.
  *
- * Probes every external platform connection (OpenAI, Anthropic, OpenClaw,
+ * Probes every platform connection (internal Replit-managed OpenAI/Anthropic, OpenClaw,
  * Twilio, Resend, ElevenLabs, Stripe, Nano Banana, Replicate, Object Storage,
  * MusicBrainz) PLUS the internal API: a liveness probe (/api/healthz → 200) and
  * a structure probe (an auth-enforced route → 401, proving routers are mounted
@@ -39,7 +39,8 @@
  * 3. Choose a schedule (recommended: every 1 hour, or at minimum once per day).
  * 4. Ensure the following environment variables are set in the deployment's
  *    Secrets panel (they are shared from the main app environment):
- *      OWNER_EMAILS, REPLIT_CONNECTORS_HOSTNAME, REPL_IDENTITY or WEB_REPL_RENEWAL,
+ *      OWNER_EMAILS, AI_INTEGRATIONS_OPENAI_*, AI_INTEGRATIONS_ANTHROPIC_*,
+ *      REPLIT_CONNECTORS_HOSTNAME, REPL_IDENTITY or WEB_REPL_RENEWAL,
  *      TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER,
  *      ELEVENLABS_API_KEY, STRIPE_SECRET_KEY, NANO_BANANA_API_KEY,
  *      REPLICATE_API_TOKEN, PUBLIC_OBJECT_SEARCH_PATHS (or PRIVATE_OBJECT_DIR).
