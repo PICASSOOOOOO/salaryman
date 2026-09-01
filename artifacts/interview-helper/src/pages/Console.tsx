@@ -15,6 +15,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
+import { TowerLifeHub } from '@/components/TowerLifeHub';
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -27,6 +28,7 @@ export default function Console() {
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
   const [typeMode, setTypeMode] = useState(false);
+  const [showTowerLife, setShowTowerLife] = useState(false);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const { t } = useTranslation();
 
@@ -230,6 +232,15 @@ export default function Console() {
           <Radio className="w-3 h-3" />
           PABLO
         </Link>
+        <button
+          type="button"
+          onClick={() => setShowTowerLife(true)}
+          className="inline-flex items-center gap-1.5 shrink-0 rounded px-2 py-1"
+          style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(196,181,253,0.95)', border: '1px solid rgba(196,181,253,0.32)', background: 'rgba(196,181,253,0.06)' }}
+          data-testid="console-open-tower-life"
+        >
+          TOWER SHEETS
+        </button>
         <span className="hidden md:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>
@@ -615,6 +626,16 @@ export default function Console() {
           </div>
         </section>
       </main>
+      {showTowerLife && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-3 backdrop-blur-sm">
+          <div className="max-h-[90dvh] w-full max-w-5xl overflow-y-auto">
+            <div className="mb-2 flex justify-end">
+              <button type="button" onClick={() => setShowTowerLife(false)} className="border border-white/20 bg-black/80 px-3 py-2 text-xs text-zinc-300 hover:border-violet-300/60">CLOSE</button>
+            </div>
+            <TowerLifeHub cityLabel="SHADOW TOWER" floorLabel="REMOTE TERMINAL · ALL TENANTS" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

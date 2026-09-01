@@ -53,6 +53,7 @@ const GlobalErrorReporter = lazy(() => import("@/components/GlobalErrorReporter"
 const GlobalMusicMiniIndicator = lazy(() => import("@/components/GlobalMusicMiniIndicator").then((m) => ({ default: m.GlobalMusicMiniIndicator })));
 const OfficeRadio = lazy(() => import("@/components/OfficeRadio").then((m) => ({ default: m.OfficeRadio })));
 const AudioControl = lazy(() => import("@/components/AudioControl").then((m) => ({ default: m.AudioControl })));
+const ActiveTaskIndicator = lazy(() => import("@/components/ActiveTaskIndicator").then((m) => ({ default: m.ActiveTaskIndicator })));
 const TowerDirectory = lazy(() => import("@/pages/TowerDirectory"));
 const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
 const DeferredChatPanel = lazy(() => import("@/components/DeferredChatPanel").then((m) => ({ default: m.DeferredChatPanel })));
@@ -533,6 +534,7 @@ function AppShell() {
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
         {isAuthenticated && !isEmbed && <NotificationToaster />}
+        {isAuthenticated && !isEmbed && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && <ActiveTaskIndicator />}
         {showFullscreenPabloAccess && <FullscreenPabloAccess inGame={isGameRoute} />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The

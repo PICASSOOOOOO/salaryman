@@ -8,6 +8,7 @@ import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 import GameSettings from './Game/Settings';
+import { TowerLifeHub } from '@/components/TowerLifeHub';
 
 interface CargoItem {
   id: string;
@@ -126,7 +127,7 @@ function StatRow({ label, val, col, boomer }: { label: string; val: string | num
   );
 }
 
-type TabId = 'chat' | 'stats' | 'overview' | 'settings';
+type TabId = 'chat' | 'stats' | 'overview' | 'settings' | 'tower';
 
 export default function MobileTerminal() {
   // Reflect the realm stored on the save even when this terminal is opened
@@ -328,6 +329,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
             { id: 'stats' as TabId, label: `📊 STATS`, boomerLabel: `📊 MY STATS`, locked: false },
             { id: 'overview' as TabId, label: `🏙 OVERVIEW`, boomerLabel: `🏙 OVERVIEW`, locked: false },
             { id: 'settings' as TabId, label: `⚙ SETUP`, boomerLabel: `⚙ SETTINGS`, locked: false },
+            { id: 'tower' as TabId, label: `▣ TOWER`, boomerLabel: `▣ TOWER`, locked: false },
           ]).map(t => (
             <button
               key={t.id}
@@ -516,6 +518,12 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
           {tab === 'settings' && (
             <div style={{ padding: '1rem' }}>
               <GameSettings embedded />
+            </div>
+          )}
+
+          {tab === 'tower' && (
+            <div style={{ padding: '1rem' }}>
+              <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="MOBILE TERMINAL · ALL TENANTS" />
             </div>
           )}
         </div>

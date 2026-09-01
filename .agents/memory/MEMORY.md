@@ -131,3 +131,4 @@
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.
 - [Paid custom phone numbers](paid-custom-phone-numbers.md) — custom Twilio numbers are $10 one-time; only settled Stripe webhooks may provision, while active-number routing falls back to the platform toll-free line.
 - [Low graphics mode](low-gfx-mode.md) — one opt-in Settings switch reduces GPU/canvas work while full mode preserves high-resolution art, animation, and office simulation.
+- [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.

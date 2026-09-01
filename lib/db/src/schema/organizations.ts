@@ -40,7 +40,10 @@ export const organizationsTable = pgTable("organizations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
   uniqueIndex("organizations_name_unique_idx").on(sql`lower(${t.name})`),
-  uniqueIndex("organizations_name_canonical_unique_idx").on(sql`lower(regexp_replace(btrim(${t.name}), '\\s+', ' ', 'g'))`),
+  // Avoid a backslash regex here: Replit's publish schema-diff renderer
+  // truncates quoted \s expressions when it serializes an index definition.
+  // PostgreSQL's POSIX class is equivalent and produces portable publish SQL.
+  uniqueIndex("organizations_name_canonical_unique_idx").on(sql`lower(regexp_replace(btrim(${t.name}), '[[:space:]]+', ' ', 'g'))`),
   uniqueIndex("organizations_business_id_unique_idx").on(t.businessId),
 ]);
 

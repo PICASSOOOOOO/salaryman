@@ -216,6 +216,45 @@ router.post("/world/home-city", async (req, res) => {
   }
 });
 
+// Reception-owned employment filing. Organization membership remains the
+// authoritative "employed" signal; this filing records that a player without
+// an active organization has formally reported unemployment to Shadow Tower.
+router.post("/world/employment/unemployment", async (req, res) => {
+  try {
+    const userId = req.user?.id ? String(req.user.id) : null;
+    if (!userId) { res.status(401).json({ error: "Not signed in" }); return; }
+
+    const [activeMembership] = await db
+      .select({ orgId: orgMembersTable.orgId })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+      .limit(1);
+    if (activeMembership) {
+      res.status(409).json({ error: "Active organization membership already establishes employment" });
+      return;
+    }
+
+    const [row] = await db
+      .select({ id: worldBusinessesTable.id, meta: worldBusinessesTable.meta })
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.userId, userId))
+      .orderBy(sql`${worldBusinessesTable.createdAt} DESC`)
+      .limit(1);
+    if (!row) { res.status(404).json({ error: "Complete registration before filing" }); return; }
+
+    const previous = row.meta && typeof row.meta === "object" ? row.meta as Record<string, unknown> : {};
+    const filedAt = new Date().toISOString();
+    await db
+      .update(worldBusinessesTable)
+      .set({ meta: { ...previous, employmentStatus: "unemployed", unemploymentFiledAt: filedAt } })
+      .where(eq(worldBusinessesTable.id, row.id));
+    res.json({ status: "unemployed", filedAt });
+  } catch (err: any) {
+    console.error("[World] unemployment filing error:", err?.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.post("/world/register", async (req, res) => {
   try {
     const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation, homeCityId, locationConsent } = req.body;

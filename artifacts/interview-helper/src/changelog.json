@@ -1615,5 +1615,21 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.19.5.2075",
+    "date": "2026-09-01",
+    "commitHash": "0d98081cdc05e28bb37419c96445af5d2309e2b9",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.6.2075",
+    "date": "2026-09-01",
+    "commitHash": "0d98081cdc05e28bb37419c96445af5d2309e2b9",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

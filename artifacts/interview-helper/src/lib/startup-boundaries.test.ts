@@ -76,5 +76,8 @@ describe("frontend startup boundaries", () => {
     expect(app).toContain('<Route path="/subway">{() => <Redirect to="/tower" />}</Route>');
     expect(immigration).toContain("destination = Array.isArray(data.orgs) && data.orgs.length > 0 ? '/office' : '/tower'");
     expect(tower).toContain('data-testid="reception-desk"');
+    expect(tower).toContain('data-testid="lobby-map"');
+    expect(tower).toContain('data-testid="speak-receptionist"');
+    expect(app).toContain("<ActiveTaskIndicator />");
   });
 });

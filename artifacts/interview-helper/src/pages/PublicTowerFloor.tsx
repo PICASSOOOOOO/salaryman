@@ -8,6 +8,8 @@ import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
+import { completeWorkArrivalTask, getBuildingOnboardingStage } from "@/lib/building-onboarding";
+import { TowerLifeHub } from "@/components/TowerLifeHub";
 
 type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {
@@ -66,6 +68,14 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
   }, [floor]);
 
   useEffect(() => { if (isAuthenticated) void load(); }, [isAuthenticated, load]);
+  useEffect(() => {
+    const stage = getBuildingOnboardingStage();
+    if (stage === "reception") {
+      navigate("/tower", { replace: true });
+      return;
+    }
+    if (floor === 2 && stage === "work") completeWorkArrivalTask();
+  }, [floor, navigate]);
   useEffect(() => {
     startTowerAmbient(floor === 4 ? "shadow" : "lobby");
     return () => stopTowerAmbient();
@@ -204,6 +214,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
             </div>
             {passExpiresAt && <p className="text-xs text-cyan-300">ACTIVE UNTIL {new Date(passExpiresAt).toLocaleTimeString()}</p>}
             <button disabled={busy} onClick={() => void buyTerminalHour()} className="w-full bg-cyan-300 text-black font-black py-3 disabled:bg-zinc-700">{busy ? "SETTLING…" : "BUY ONE COMPUTER HOUR · ƒ25"}</button>
+            <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="PUBLIC TERMINAL · WALL SHEETS" />
           </div>}
           {panel === "work" && <div className="p-4">
             <p className="mb-4 text-xs text-zinc-400">Public work access is free. Debtor labor pays Banco Ombra first; the remainder of eligible paid work reaches checking only after debt settlement.</p>

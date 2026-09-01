@@ -14,13 +14,11 @@ import { formatSpeechName } from '@/lib/speech-name';
 /**
  * PostOnboardingIntro — the cinematic that plays AFTER Pablo's intake +
  * registry stamping but BEFORE the player drops into the live app. This is the
- * player's FIRST arrival at their office, staged as a single short, scripted
+ * player's FIRST arrival at Shadow Tower, staged as a single short, scripted
  * cutscene with pristine sound design:
  *
- *   ELEVATOR — the lift chimes, the doors slide open, and PABLO — an elderly
- *              Japanese man shrouded in shadow and mystery — is waiting in the
- *              doorway. He gives the player a brief first-day greeting in his
- *              own voice. Brief but impactful.
+ *   ARRIVAL — the entry doors open and PABLO gives the player one clear
+ *             instruction: report to reception. Work training begins there.
  *
  * When the greeting finishes (or the player taps SKIP / Esc), onComplete fires
  * and the parent hands the player straight into their office. The real story
@@ -52,8 +50,8 @@ export function PostOnboardingIntro({ playerName, onComplete }: Props) {
 
   // Pablo's spoken elevator greeting. Brief but impactful.
   const LINES: string[] = [
-    `Ah. ${first}. You came.`,
-    `This whole floor is yours now — desks here, the terminal at the back. Learn it fast. The city is not kind to the slow.`,
+    `Ah. ${first}. You made it to Shadow Tower.`,
+    `Report to the receptionist in the lobby. They will get you ready for work.`,
   ];
 
   const finish = useCallback(() => {
@@ -274,7 +272,7 @@ function ElevatorScene({ doorsOpen }: { doorsOpen: boolean }) {
       {/* Floor indicator. */}
       <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 8,
         ...FONT_ST, fontSize: 11, letterSpacing: '.4em', color: 'rgba(186,230,253,.6)' }}>
-        ▲ FLOOR 01 · YOUR OFFICE
+        SHADOW TOWER · LOBBY
       </div>
     </div>
   );

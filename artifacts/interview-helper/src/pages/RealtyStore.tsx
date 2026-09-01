@@ -1,14 +1,38 @@
-import { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Building2, Check, Loader2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Building2, Check, FileUp, Loader2, X } from "lucide-react";
 import { useLocation } from "wouter";
 import {
   SHADOW_TOWER_CITIES, SHADOW_TOWER_LISTINGS, getShadowTowerPlan,
   type ShadowTowerArchetype, type ShadowTowerCity, type ShadowTowerListing,
 } from "@workspace/api-zod/shadow-tower";
 import { apiFetch } from "@/lib/api-client";
+import { getActiveCityId } from "@/lib/city-defs";
 
 type Tenure = "lease" | "own";
 interface Target { listing: ShadowTowerListing; tenure: Tenure; }
+interface OwnedFloor {
+  id: number;
+  city: ShadowTowerCity;
+  floorNumber: number;
+  tenure: Tenure;
+  officeCount: number;
+  ownerUserId?: string | null;
+}
+interface MarketUnit {
+  unitNumber: number;
+  status: string;
+  tenure?: Tenure | null;
+}
+interface ReceptionListing {
+  floorId: number;
+  floorNumber: number;
+  city: ShadowTowerCity;
+  archetype: string;
+  unitNumber: number;
+  listingType: "sale" | "rent_or_sublet";
+  tenure: Tenure;
+  priceFiat: number;
+}
 
 const fiat = (value: number) => `ƒ${value.toLocaleString("en-US")}`;
 const cityLabel = (city: ShadowTowerCity) => city === "minx_city" ? "MINX CITY" : "HUDA CITY";
@@ -30,7 +54,7 @@ export function ShadowTowerPlanPreview({ archetype, city, floorNumber }: { arche
 
 export default function RealtyStore() {
   const [, navigate] = useLocation();
-  const [city, setCity] = useState<ShadowTowerCity>("minx_city");
+  const [city, setCity] = useState<ShadowTowerCity>(() => getActiveCityId() === "huda_city" ? "huda_city" : "minx_city");
   const [floorText, setFloorText] = useState(() => {
     const requested = Number.parseInt(new URLSearchParams(window.location.search).get("floor") || "", 10);
     return requested >= 5 && requested <= 64 ? String(requested) : "5";
@@ -38,8 +62,85 @@ export default function RealtyStore() {
   const [target, setTarget] = useState<Target | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [ownedFloor, setOwnedFloor] = useState<OwnedFloor | null>(null);
+  const [ownedUnits, setOwnedUnits] = useState<MarketUnit[]>([]);
+  const [brokerBusy, setBrokerBusy] = useState<number | null>(null);
+  const [brokerMessage, setBrokerMessage] = useState("");
+  const [marketListings, setMarketListings] = useState<ReceptionListing[]>([]);
+  const [marketBusy, setMarketBusy] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
   const floorNumber = Math.max(5, Math.min(64, Number.parseInt(floorText, 10) || 5));
+  const referredByReception = new URLSearchParams(window.location.search).get("from") === "reception";
+
+  async function loadOwnedBrokerage() {
+    const current = await apiFetch("/api/shadow-tower/floors/current", { credentials: "include" });
+    if (!current.ok) return;
+    const body = await current.json();
+    if (!body.canManage || body.floor?.tenure !== "own" || !body.floor?.ownerUserId) return;
+    const floor = body.floor as OwnedFloor;
+    setOwnedFloor(floor);
+    const unitsResponse = await apiFetch(`/api/shadow-tower/floors/${floor.city}/${floor.floorNumber}/units`, { credentials: "include" });
+    if (unitsResponse.ok) setOwnedUnits((await unitsResponse.json()).units ?? []);
+  }
+
+  useEffect(() => { void loadOwnedBrokerage(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch(`/api/shadow-tower/marketplace?city=${city}`, { credentials: "include" })
+      .then(async (response) => response.ok ? response.json() : { listings: [] })
+      .then((body) => { if (!cancelled) setMarketListings(body.listings ?? []); })
+      .catch(() => { if (!cancelled) setMarketListings([]); });
+    return () => { cancelled = true; };
+  }, [city]);
+
+  async function acquireMarketListing(listing: ReceptionListing) {
+    const key = `${listing.floorId}:${listing.unitNumber}`;
+    if (marketBusy) return;
+    const action = listing.tenure === "own" ? "buy" : "rent or sublet";
+    if (!window.confirm(`Confirm ${action} for ${cityLabel(listing.city)} floor ${listing.floorNumber}, unit ${listing.unitNumber} at ${fiat(listing.priceFiat)}?`)) return;
+    setMarketBusy(key);
+    setResult(null);
+    try {
+      const response = await apiFetch(`/api/shadow-tower/floors/${listing.floorId}/units/${listing.unitNumber}/acquire`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: crypto.randomUUID() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Acquisition failed");
+      setResult({ ok: true, msg: `${listing.tenure === "own" ? "Purchase" : "Rental"} filed. ${cityLabel(listing.city)} registry updated.` });
+      window.setTimeout(() => navigate("/office"), 800);
+    } catch (error) {
+      setResult({ ok: false, msg: error instanceof Error ? error.message : "Acquisition failed" });
+    } finally {
+      setMarketBusy(null);
+    }
+  }
+
+  async function listOwnedUnit(unitNumber: number, listType: "sale" | "lease") {
+    if (!ownedFloor || brokerBusy != null) return;
+    const confirmed = window.confirm(`List ${cityLabel(ownedFloor.city)} floor ${ownedFloor.floorNumber}, unit ${unitNumber} for ${listType}? This publishes it to the live city registry.`);
+    if (!confirmed) return;
+    setBrokerBusy(unitNumber);
+    setBrokerMessage("");
+    try {
+      const response = await apiFetch(`/api/shadow-tower/floors/${ownedFloor.id}/units/${unitNumber}/list`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listType }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Listing failed");
+      setBrokerMessage(`UNIT ${unitNumber} PUBLISHED FOR ${listType.toUpperCase()} · ${cityLabel(ownedFloor.city)} REGISTRY UPDATED`);
+      await loadOwnedBrokerage();
+    } catch (error) {
+      setBrokerMessage(error instanceof Error ? error.message.toUpperCase() : "LISTING FAILED");
+    } finally {
+      setBrokerBusy(null);
+    }
+  }
 
   async function acquire() {
     if (!target || busy) return;
@@ -68,12 +169,68 @@ export default function RealtyStore() {
     </header>
     <main className="max-w-6xl mx-auto px-4 sm:px-8 py-7">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-        <div><h1 className="text-2xl text-pink-100 tracking-[.16em]">SHADOW TOWER FLOORS</h1><p className="text-sm text-zinc-400 mt-2">Two playable architectures. Price, ownership, and availability are confirmed by the tower registry.</p></div>
+        <div><h1 className="text-2xl text-pink-100 tracking-[.16em]">SHADOW TOWER FLOORS</h1><p className="text-sm text-zinc-400 mt-2">{referredByReception ? "Reception referral active. " : ""}Minx City and Huda City use the same filing practice while keeping names, inventory, and ownership data separate.</p></div>
         <div className="flex gap-2 flex-wrap">
           <label className="text-[10px] text-cyan-300 tracking-widest">CITY<select value={city} onChange={e => setCity(e.target.value as ShadowTowerCity)} className="block mt-1 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100">{SHADOW_TOWER_CITIES.map(c => <option key={c} value={c}>{cityLabel(c)}</option>)}</select></label>
           <label className="text-[10px] text-cyan-300 tracking-widest">FLOOR #<input data-testid="shadow-floor-number" type="number" min="5" max="64" value={floorText} onChange={e => setFloorText(e.target.value)} className="block mt-1 w-24 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100" /></label>
         </div>
       </div>
+      {ownedFloor && (
+        <section className="mb-7 border border-amber-300/30 bg-amber-300/5 p-4" data-testid="owner-brokerage">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-[10px] font-bold tracking-[.22em] text-amber-300">OWNER BROKERAGE · DIRECT FILING</p>
+              <h2 className="mt-1 text-lg tracking-[.12em] text-amber-100">{cityLabel(ownedFloor.city)} · FLOOR {ownedFloor.floorNumber}</h2>
+              <p className="mt-1 text-xs text-zinc-400">Owned property bypasses reception. Publish eligible units directly to this city&apos;s live registry.</p>
+            </div>
+            <FileUp className="h-6 w-6 text-amber-300" />
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {ownedUnits.filter((unit) => unit.unitNumber >= 2).map((unit) => (
+              <div key={unit.unitNumber} className="border border-white/10 bg-black/20 p-3">
+                <div className="flex items-center justify-between text-xs"><strong>UNIT {unit.unitNumber}</strong><span className="text-[9px] tracking-widest text-zinc-500">{unit.status.replaceAll("_", " ").toUpperCase()}</span></div>
+                {unit.status === "owner_priority" ? (
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" disabled={brokerBusy != null} onClick={() => void listOwnedUnit(unit.unitNumber, "lease")} className="flex-1 border border-cyan-300/35 py-2 text-[9px] font-bold tracking-wider text-cyan-200 disabled:opacity-40">LIST RENT / SUBLET</button>
+                    <button type="button" disabled={brokerBusy != null} onClick={() => void listOwnedUnit(unit.unitNumber, "sale")} className="flex-1 border border-pink-300/35 py-2 text-[9px] font-bold tracking-wider text-pink-200 disabled:opacity-40">LIST SALE</button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-[10px] leading-4 text-zinc-600">No owner filing available for this unit&apos;s current state.</p>
+                )}
+              </div>
+            ))}
+          </div>
+          {brokerMessage && <p className="mt-3 border border-white/10 px-3 py-2 text-[10px] text-zinc-300" role="status">{brokerMessage}</p>}
+        </section>
+      )}
+      <section className="mb-7 border border-cyan-300/25 bg-cyan-300/[.035] p-4" data-testid="reception-marketplace">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-[10px] font-bold tracking-[.22em] text-cyan-300">RECEPTION MARKETPLACE · {cityLabel(city)}</p>
+            <h2 className="mt-1 text-lg tracking-[.12em] text-cyan-100">BUY · RENT · SUBLET</h2>
+            <p className="mt-1 text-xs text-zinc-400">Seller filings appear here for buyers and renters. Switching cities loads that city&apos;s separate live inventory.</p>
+          </div>
+          <span className="text-[10px] tracking-widest text-zinc-500">{marketListings.length} ACTIVE LISTING{marketListings.length === 1 ? "" : "S"}</span>
+        </div>
+        {marketListings.length ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {marketListings.map((listing) => {
+              const key = `${listing.floorId}:${listing.unitNumber}`;
+              return (
+                <article key={key} className="border border-white/10 bg-black/25 p-3">
+                  <div className="flex items-center justify-between"><strong className="text-sm text-zinc-100">FLOOR {listing.floorNumber} · UNIT {listing.unitNumber}</strong><span className={`text-[9px] font-bold tracking-widest ${listing.tenure === "own" ? "text-pink-300" : "text-cyan-300"}`}>{listing.listingType === "sale" ? "FOR SALE" : "RENT / SUBLET"}</span></div>
+                  <p className="mt-2 text-xl text-white">{fiat(listing.priceFiat)}{listing.tenure === "lease" && <span className="text-xs text-zinc-500"> / month</span>}</p>
+                  <button type="button" disabled={marketBusy != null} onClick={() => void acquireMarketListing(listing)} className="mt-3 w-full border border-cyan-300/35 py-2 text-[10px] font-bold tracking-widest text-cyan-100 disabled:opacity-40">
+                    {marketBusy === key ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : listing.tenure === "own" ? "BUY THROUGH RECEPTION" : "RENT THROUGH RECEPTION"}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4 border border-dashed border-white/10 px-4 py-5 text-center text-xs text-zinc-600">NO OWNER-ADVERTISED UNITS IN {cityLabel(city)} YET</div>
+        )}
+      </section>
       <div className="mb-7 rounded border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-zinc-400"><b className="text-zinc-100">Homes are not for sale yet.</b> Home interiors must be playable before Realty can charge for them.</div>
       <div className="grid md:grid-cols-2 gap-5">
         {(Object.values(SHADOW_TOWER_LISTINGS) as ShadowTowerListing[]).map(listing => <article key={listing.archetype} data-testid={`shadow-listing-${listing.archetype}`} className="border border-pink-400/30 bg-gradient-to-b from-pink-950/20 to-zinc-950 rounded-xl overflow-hidden">

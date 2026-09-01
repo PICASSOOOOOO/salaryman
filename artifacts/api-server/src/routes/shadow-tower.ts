@@ -1,7 +1,7 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import {
   botsTable, db, hasRoleAccess, orgMembersTable, shadowTowerFloorsTable, shadowTowerOfficeUnitsTable,
   shadowTowerSelectedFloorsTable, shadowTowerWorkstationAssignmentsTable, type OrgRole,
@@ -64,6 +64,50 @@ function safeFloor(floor: typeof shadowTowerFloorsTable.$inferSelect) {
 }
 
 router.get("/shadow-tower/catalog", (_req, res) => res.json({ listings: Object.values(SHADOW_TOWER_LISTINGS) }));
+router.get("/shadow-tower/marketplace", async (req, res) => {
+  const city = String(req.query.city ?? "") as ShadowTowerCity;
+  if (!cities.has(city)) { res.status(400).json({ error: "Valid city required" }); return; }
+  const rows = await db
+    .select({
+      floorId: shadowTowerFloorsTable.id,
+      floorNumber: shadowTowerFloorsTable.floorNumber,
+      city: shadowTowerFloorsTable.city,
+      archetype: shadowTowerFloorsTable.archetype,
+      officeCount: shadowTowerFloorsTable.officeCount,
+      unitNumber: shadowTowerOfficeUnitsTable.unitNumber,
+      status: shadowTowerOfficeUnitsTable.status,
+    })
+    .from(shadowTowerOfficeUnitsTable)
+    .innerJoin(shadowTowerFloorsTable, eq(shadowTowerOfficeUnitsTable.floorId, shadowTowerFloorsTable.id))
+    .where(and(
+      eq(shadowTowerFloorsTable.city, city),
+      or(eq(shadowTowerOfficeUnitsTable.status, "for_sale"), eq(shadowTowerOfficeUnitsTable.status, "for_lease")),
+    ));
+  const market = await getMarketIndex();
+  const listings = rows.map((row) => {
+    const tenure = row.status === "for_sale" ? "own" : "lease";
+    const baseFiat = quoteShadowTowerOfficeUnit(
+      row.archetype as keyof typeof SHADOW_TOWER_LISTINGS,
+      row.floorNumber,
+      row.unitNumber,
+      row.officeCount,
+      tenure,
+    );
+    const quote = { ...quoteMarketAdjustedFiat(baseFiat, market.multiplier), asOf: market.asOf, status: market.status };
+    return {
+      floorId: row.floorId,
+      floorNumber: row.floorNumber,
+      city: row.city,
+      archetype: row.archetype,
+      unitNumber: row.unitNumber,
+      listingType: tenure === "own" ? "sale" : "rent_or_sublet",
+      tenure,
+      priceFiat: quote.totalFiat,
+      marketQuote: quote,
+    };
+  });
+  res.json({ city, listings });
+});
 router.get("/shadow-tower/business-templates", (_req, res) => res.json({
   templates: Object.values(BUSINESS_FLOOR_TEMPLATES),
   customizationOptions: [
