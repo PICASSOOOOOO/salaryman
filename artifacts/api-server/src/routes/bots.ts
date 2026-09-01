@@ -13,6 +13,8 @@ import {
   orgMembersTable,
   shadowTowerFloorsTable,
   shadowTowerWorkstationAssignmentsTable,
+  BOT_STATUSES,
+  PERMISSION_KEYS,
   hasRoleAccess,
   type PlatformType,
   type PermissionKey,
@@ -187,6 +189,38 @@ async function rollbackShadowTowerBotActivation(botId: number, assignmentId?: nu
   });
 }
 
+async function releaseShadowTowerBotWorkstations(botId: number) {
+  await db.delete(shadowTowerWorkstationAssignmentsTable)
+    .where(eq(shadowTowerWorkstationAssignmentsTable.botId, botId));
+}
+
+function validBotSettings(input: {
+  name?: unknown; permissions?: unknown; maxTokensPerResponse?: unknown; rateLimitPerMinute?: unknown;
+}): string | null {
+  if (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim() || input.name.trim().length > 120)) {
+    return "Bot name must be a non-empty string up to 120 characters";
+  }
+  if (input.permissions !== undefined && (!Array.isArray(input.permissions) ||
+    !input.permissions.every((value) => typeof value === "string" && (PERMISSION_KEYS as readonly string[]).includes(value)))) {
+    return "Permissions contain an unsupported value";
+  }
+  for (const [value, label, max] of [
+    [input.maxTokensPerResponse, "maxTokensPerResponse", 32_768],
+    [input.rateLimitPerMinute, "rateLimitPerMinute", 600],
+  ] as const) {
+    if (value !== undefined && (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > max)) {
+      return `${label} must be an integer between 1 and ${max}`;
+    }
+  }
+  return null;
+}
+
+function validScheduledTask(cronExpression: unknown, taskDescription: unknown): string | null {
+  if (typeof cronExpression !== "string" || !cronExpression.trim() || cronExpression.length > 100) return "A valid cron expression is required";
+  if (typeof taskDescription !== "string" || !taskDescription.trim() || taskDescription.length > 4_000) return "A task description is required";
+  return null;
+}
+
 async function loadBotForUser(botId: number, userId: string) {
   const orgIds = await getUserActiveOrgIds(userId);
   const orgClause = orgIds.length > 0
@@ -292,6 +326,8 @@ router.post("/bots", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { name, personality, systemPrompt, permissions, maxTokensPerResponse, rateLimitPerMinute } = req.body;
+    const settingsError = validBotSettings({ name, permissions, maxTokensPerResponse, rateLimitPerMinute });
+    if (settingsError) { res.status(400).json({ error: settingsError }); return; }
 
     if (!name || !name.trim()) {
       res.status(400).json({ error: "Bot name is required" });
@@ -435,6 +471,11 @@ router.put("/bots/:id", requireBotWrite, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
     const { name, personality, systemPrompt, permissions, maxTokensPerResponse, rateLimitPerMinute, status } = req.body;
+    const settingsError = validBotSettings({ name, permissions, maxTokensPerResponse, rateLimitPerMinute });
+    if (settingsError) { res.status(400).json({ error: settingsError }); return; }
+    if (status !== undefined && (typeof status !== "string" || !(BOT_STATUSES as readonly string[]).includes(status))) {
+      res.status(400).json({ error: "Invalid bot status" }); return;
+    }
 
     const existing = await loadBotForUser(botId, userId);
 
@@ -468,6 +509,11 @@ router.put("/bots/:id", requireBotWrite, async (req, res) => {
         delete updates.status;
       } else if (status === "paused" && existing.status === "active") {
         await stopBot(botId);
+        await releaseShadowTowerBotWorkstations(botId);
+        delete updates.status;
+      } else if (status === "error" && existing.status === "active") {
+        await stopBot(botId);
+        await releaseShadowTowerBotWorkstations(botId);
       }
     }
 
@@ -495,6 +541,7 @@ router.delete("/bots/:id", requireBotWrite, async (req, res) => {
     }
 
     await stopBot(botId);
+    await releaseShadowTowerBotWorkstations(botId);
     await db.delete(botsTable).where(eq(botsTable.id, botId));
     res.json({ success: true });
   } catch (err) {
@@ -630,6 +677,10 @@ router.post("/bots/:id/connect", requireBotWrite, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
     const { platform, credentials } = req.body;
+    if (typeof platform !== "string" || typeof credentials !== "string" || !credentials.trim()) {
+      res.status(400).json({ error: "Platform and non-empty credentials are required" });
+      return;
+    }
 
     const bot = await loadBotForUser(botId, userId);
 
@@ -712,6 +763,7 @@ router.post("/bots/:id/disconnect", requireBotWrite, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
     const { platform } = req.body;
+    if (typeof platform !== "string") { res.status(400).json({ error: "Platform is required" }); return; }
 
     const bot = await loadBotForUser(botId, userId);
 
@@ -773,7 +825,7 @@ router.post("/bots/:id/test-chat", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const { message } = req.body;
 
-    if (!message || !message.trim()) {
+    if (typeof message !== "string" || !message.trim() || message.length > 10_000) {
       res.status(400).json({ error: "Message is required" });
       return;
     }
@@ -782,6 +834,10 @@ router.post("/bots/:id/test-chat", requireBotWrite, async (req, res) => {
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+    if (bot.status !== "active") {
+      res.status(409).json({ error: "Start this bot before sending a test message" });
       return;
     }
 
@@ -875,6 +931,10 @@ router.post("/bots/:id/tasks", requireBotWrite, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
     const { cronExpression, taskDescription, enabled } = req.body;
+    const taskError = validScheduledTask(cronExpression, taskDescription);
+    if (taskError || (enabled !== undefined && typeof enabled !== "boolean")) {
+      res.status(400).json({ error: taskError ?? "enabled must be a boolean" }); return;
+    }
 
     const bot = await loadBotForUser(botId, userId);
 
@@ -942,6 +1002,13 @@ router.put("/bots/:id/tasks/:taskId", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const taskId = parseInt(parseParam(req.params.taskId), 10);
     const { cronExpression, taskDescription, enabled } = req.body;
+    const taskError = validScheduledTask(
+      cronExpression === undefined ? "unchanged" : cronExpression,
+      taskDescription === undefined ? "unchanged" : taskDescription,
+    );
+    if (taskError || (enabled !== undefined && typeof enabled !== "boolean")) {
+      res.status(400).json({ error: taskError ?? "enabled must be a boolean" }); return;
+    }
 
     const bot = await loadBotForUser(botId, userId);
 
@@ -1030,6 +1097,10 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { marketplaceItemId } = req.body;
+    if (!Number.isInteger(marketplaceItemId) || marketplaceItemId < 1) {
+      res.status(400).json({ error: "A valid marketplace item id is required" });
+      return;
+    }
 
     const [item] = await db
       .select()

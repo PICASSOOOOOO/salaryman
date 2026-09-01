@@ -1,5 +1,5 @@
-import { db, botMarketplaceTable, botSubscriptionsTable, botsTable, type PermissionKey } from "@workspace/db";
-import { eq, notInArray, and } from "drizzle-orm";
+import { db, botMarketplaceTable, type PermissionKey } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { primeName } from "./bot-naming";
 
 const MARKETPLACE_BOTS: Array<{
@@ -739,15 +739,6 @@ First message: ask what they want researched, then propose a research plan befor
 ];
 
 export async function seedBotMarketplace() {
-  const activeSlugs = MARKETPLACE_BOTS.map(b => b.slug);
-
-  if (activeSlugs.length > 0) {
-    await db
-      .update(botMarketplaceTable)
-      .set({ active: false })
-      .where(notInArray(botMarketplaceTable.slug, activeSlugs));
-  }
-
   for (const item of MARKETPLACE_BOTS) {
     const existing = await db
       .select()
@@ -761,92 +752,5 @@ export async function seedBotMarketplace() {
       await db.update(botMarketplaceTable).set({ ...named, active: true }).where(eq(botMarketplaceTable.slug, item.slug));
     }
   }
-  // Migrate orphaned subscriptions: any subscription pointing to a now-inactive
-  // marketplace item is consolidated into the claw-bot (team bot) subscription.
-  // Per user: if they don't already have a claw-bot sub, remap one orphaned sub;
-  // remaining orphaned subs for that user are deleted (idempotent on re-run).
-  const [clawBotFallback] = await db
-    .select({ id: botMarketplaceTable.id })
-    .from(botMarketplaceTable)
-    .where(and(eq(botMarketplaceTable.slug, "claw-bot"), eq(botMarketplaceTable.active, true)));
-
-  if (clawBotFallback) {
-    const orphanedSubs = await db
-      .select({ userId: botSubscriptionsTable.userId, marketplaceItemId: botSubscriptionsTable.marketplaceItemId })
-      .from(botSubscriptionsTable)
-      .innerJoin(botMarketplaceTable, eq(botSubscriptionsTable.marketplaceItemId, botMarketplaceTable.id))
-      .where(eq(botMarketplaceTable.active, false));
-
-    if (orphanedSubs.length > 0) {
-      // Group by userId so we handle each user exactly once
-      const byUser = new Map<string, number[]>();
-      for (const sub of orphanedSubs) {
-        if (!byUser.has(sub.userId)) byUser.set(sub.userId, []);
-        byUser.get(sub.userId)!.push(sub.marketplaceItemId);
-      }
-
-      let remapped = 0;
-      let removed = 0;
-      for (const [userId, itemIds] of byUser) {
-        // Check if user already has a claw-bot sub (avoids PK conflict)
-        const [existing] = await db
-          .select({ userId: botSubscriptionsTable.userId })
-          .from(botSubscriptionsTable)
-          .where(and(
-            eq(botSubscriptionsTable.userId, userId),
-            eq(botSubscriptionsTable.marketplaceItemId, clawBotFallback.id),
-          ));
-
-        let toDelete = itemIds;
-        if (!existing) {
-          // Remap the first orphaned sub to claw-bot; delete the rest
-          await db
-            .update(botSubscriptionsTable)
-            .set({ marketplaceItemId: clawBotFallback.id })
-            .where(and(
-              eq(botSubscriptionsTable.userId, userId),
-              eq(botSubscriptionsTable.marketplaceItemId, itemIds[0]),
-            ));
-          remapped++;
-          toDelete = itemIds.slice(1);
-        }
-
-        for (const itemId of toDelete) {
-          await db
-            .delete(botSubscriptionsTable)
-            .where(and(
-              eq(botSubscriptionsTable.userId, userId),
-              eq(botSubscriptionsTable.marketplaceItemId, itemId),
-            ));
-          removed++;
-        }
-      }
-
-      if (remapped > 0 || removed > 0) {
-        console.log(`[Bot Marketplace] Consolidated ${orphanedSubs.length} orphaned subscription(s): ${remapped} remapped → claw-bot, ${removed} removed`);
-      }
-    }
-
-    // Re-link bot instances whose marketplaceItemId points to a now-inactive
-    // marketplace entry. Bot data (name, config, history) is preserved; only
-    // the FK reference is updated so the bot remains associated with an active
-    // curated entry (claw-bot) rather than a dead marketplace item.
-    const orphanedBots = await db
-      .select({ id: botsTable.id })
-      .from(botsTable)
-      .innerJoin(botMarketplaceTable, eq(botsTable.marketplaceItemId, botMarketplaceTable.id))
-      .where(eq(botMarketplaceTable.active, false));
-
-    if (orphanedBots.length > 0) {
-      for (const bot of orphanedBots) {
-        await db
-          .update(botsTable)
-          .set({ marketplaceItemId: clawBotFallback.id })
-          .where(eq(botsTable.id, bot.id));
-      }
-      console.log(`[Bot Marketplace] Re-linked ${orphanedBots.length} bot instance(s) → claw-bot marketplace entry`);
-    }
-  }
-
   console.log(`[Bot Marketplace] Seeded ${MARKETPLACE_BOTS.length} marketplace bots (curated roster)`);
 }

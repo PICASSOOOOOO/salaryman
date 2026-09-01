@@ -791,35 +791,9 @@ export default function PabloTerminal() {
 
 function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
-  const { logout, isAuthenticated, loginWithDiscord, loginWithGithub, user, isLoading } = useAuth();
-  // Which third-party providers are actually configured for this host. Defaults
-  // to shown so a slow/failed probe never strands the user without a button.
-  const [authProviders, setAuthProviders] = useState<{ discord: boolean; github: boolean }>({
-    discord: true,
-    github: true,
-  });
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/providers", { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ discord?: boolean; github?: boolean }>;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setAuthProviders({ discord: !!data.discord, github: !!data.github });
-      })
-      .catch(() => {
-        /* keep optimistic defaults so sign-in is never fully hidden */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  // When onboarding reaches the sign-in moment we no longer silently bounce the
-  // user to Replit auth. Instead we surface a choice ("authentication method")
-  // so they can opt into connecting their Discord. `authChoice` holds the
-  // destination + email hint captured at that moment; the overlay reads it.
+  const { logout, isAuthenticated, user, isLoading } = useAuth();
+  // The front door uses one verified platform-auth flow. Provider-specific
+  // buttons stay out of onboarding until their production callbacks are proven.
   const [authChoice, setAuthChoice] = useState<{ dest: string; hint: string | null } | null>(null);
   const nebulaSize = useNebulaSize();
   // GFX quality toggle — exposed in the top-right of the terminal so
@@ -2371,7 +2345,7 @@ function PabloTerminalAuthed() {
                 fontFamily: "'Inter', sans-serif", fontSize: "0.62rem",
                 color: "rgba(56,189,248,0.45)", letterSpacing: "0.08em", lineHeight: 1.7, marginBottom: "22px",
               }}>
-                Choose how you sign in. Connect Discord and we'll route you to your nearest SALARYMAN city server.
+                 Continue with secure SALARYMAN sign-in. One verified method keeps the front door fast and uncluttered.
               </div>
 
               <button
@@ -2391,56 +2365,8 @@ function PabloTerminalAuthed() {
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.15)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.7)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.5)"; }}
               >
-                CONTINUE WITH REPLIT
+                 CONTINUE WITH REPLIT
               </button>
-
-              {authProviders.discord && (
-              <button
-                onClick={() => {
-                  const c = authChoice;
-                  if (!c) return;
-                  loginWithDiscord(c.dest);
-                }}
-                style={{
-                  fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#fff",
-                  border: "1px solid #5865F2", padding: "10px 32px", marginTop: "10px",
-                  background: "#5865F2", cursor: "pointer", letterSpacing: "0.12em",
-                  width: "100%", transition: "all 0.2s",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#4752c4"; e.currentTarget.style.borderColor = "#4752c4"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#5865F2"; e.currentTarget.style.borderColor = "#5865F2"; }}
-              >
-                <svg width={16} height={16} viewBox="0 0 127.14 96.36" fill="currentColor" aria-hidden="true">
-                  <path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z" />
-                </svg>
-                CONNECT WITH DISCORD
-              </button>
-              )}
-
-              {authProviders.github && (
-              <button
-                onClick={() => {
-                  const c = authChoice;
-                  if (!c) return;
-                  loginWithGithub(c.dest);
-                }}
-                style={{
-                  fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "#e6edf3",
-                  border: "1px solid rgba(230,237,243,0.4)", padding: "10px 32px", marginTop: "10px",
-                  background: "rgba(230,237,243,0.08)", cursor: "pointer", letterSpacing: "0.12em",
-                  width: "100%", transition: "all 0.2s",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(230,237,243,0.18)"; e.currentTarget.style.borderColor = "rgba(230,237,243,0.7)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(230,237,243,0.08)"; e.currentTarget.style.borderColor = "rgba(230,237,243,0.4)"; }}
-              >
-                <svg width={16} height={16} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-                </svg>
-                CONTINUE WITH GITHUB
-              </button>
-              )}
 
               <button
                 onClick={() => setAuthChoice(null)}

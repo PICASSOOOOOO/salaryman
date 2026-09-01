@@ -42,6 +42,8 @@ describe("API structure: auth-enforced routes return 401 (not 404/500)", () => {
     { method: "get", path: "/api/autopilot" },
     { method: "post", path: "/api/twilio/call" },
     { method: "get", path: "/api/admin/connections/status" },
+    { method: "get", path: "/api/bots" },
+    { method: "post", path: "/api/bots/marketplace/activate" },
   ];
 
   it.each(authRoutes)("$method $path → 401", async ({ method, path }) => {
@@ -64,6 +66,8 @@ describe("API structure: critical routers are mounted (never 404)", () => {
     { method: "get", path: "/api/admin/connections/status" }, // admin
     { method: "get", path: "/api/chat/channels" }, // chat
     { method: "post", path: "/api/gameplay/fiat/action" }, // gameplay fiat
+    { method: "get", path: "/api/bots" }, // canonical Pixel Agent surface
+    { method: "post", path: "/api/bots/marketplace/activate" }, // activation lifecycle
   ];
 
   it.each(mounted)("$method $path is mounted", async ({ method, path }) => {

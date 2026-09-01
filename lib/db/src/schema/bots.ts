@@ -190,7 +190,11 @@ export const botsTable = pgTable("bots", {
   department: varchar("department", { length: 40 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  // PostgreSQL permits multiple NULL values, so custom bots remain unlimited
+  // while a user can own only one instance of each marketplace template.
+  uniqueIndex("bots_owner_marketplace_item_idx").on(t.ownerId, t.marketplaceItemId),
+]);
 
 export const insertBotSchema = createInsertSchema(botsTable).omit({
   id: true,

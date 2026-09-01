@@ -1,11 +1,12 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, and, desc, gt, ne, isNotNull } from "drizzle-orm";
-import { db, realEstateListingsTable, salarymanSavesTable, type RealEstateListing } from "@workspace/db";
+import { eq, and, desc, gt, ne, isNotNull, or, sql, lte } from "drizzle-orm";
+import { db, realEstateListingsTable, cityBuildingsTable, salarymanSavesTable, propertyContractsTable, propertyContractEventsTable, playerLedgerTable, creditScoreHistoryTable, bankTransactionsTable, type RealEstateListing } from "@workspace/db";
 import { isPlayablePropertyKey } from "@workspace/api-zod/playable-properties";
+import { BROKER_COMMISSION_RATE, PROPERTY_MARKET_UPSELLS, PROPERTY_CONTRACT_CREDIT_HIT_POINTS, PROPERTY_CONTRACT_GRACE_PERIOD_DAYS, PROPERTY_CONTRACT_MAX_CATCH_UP_PERIODS, PROPERTY_CONTRACT_MIN_CREDIT_SCORE, PROPERTY_CONTRACT_SECURITY_DEPOSIT_MONTHS, advancePropertyContractDueDate, propertyContractGraceEndsAt, publicAssetAddress, quotePropertyMarket } from "@workspace/api-zod/property-market";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
 import { chargePabloTax, PABLO_TAX_MARKUP, FIAT_PER_USD } from "../lib/pablo-tax";
-import { spendFiat } from "../lib/fiat-wallet";
+import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 
 // Legacy Pablo Tax is now NARROWED to a one-time transfer tax on large physical
 // purchases — buying (not renting) property. AI usage no longer pays Pablo Tax;
@@ -13,6 +14,84 @@ import { spendFiat } from "../lib/fiat-wallet";
 const PROPERTY_PURCHASE_TAX_RATE = 0.05; // 5% of the purchase price, charged once.
 
 const router = Router();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Calendar-month advance, rather than an imprecise 30-day duration. */
+export function addContractMonth(date: Date): Date {
+  return advancePropertyContractDueDate(date);
+}
+export function contractGraceEndsAt(dueAt: Date): Date {
+  return propertyContractGraceEndsAt(dueAt);
+}
+
+async function contractEvent(tx: any, contractId: number, type: string, amountFiat = 0, metadata: Record<string, unknown> = {}) {
+  await tx.insert(propertyContractEventsTable).values({ contractId, type, amountFiat, metadata });
+}
+
+/**
+ * Assesses one locked agreement. It only records a missed period once because
+ * it advances the due cursor in the same transaction that records ledger debt.
+ */
+export async function assessPropertyContractOverdue(tx: any, contractId: number, now = new Date()) {
+  let assessed = 0;
+  for (; assessed < PROPERTY_CONTRACT_MAX_CATCH_UP_PERIODS; assessed++) {
+    const [contract] = await tx.select().from(propertyContractsTable)
+      .where(eq(propertyContractsTable.id, contractId)).for("update").limit(1);
+    if (!contract || ["completed", "terminated"].includes(contract.status) || contract.nextDueAt > now) break;
+    const graceEnds = contract.graceEndsAt ?? contractGraceEndsAt(contract.nextDueAt);
+    if (now < graceEnds) {
+      if (contract.status === "active" || !contract.graceEndsAt) {
+        await tx.update(propertyContractsTable).set({ status: contract.status === "active" ? "delinquent" : contract.status, graceEndsAt: graceEnds, updatedAt: now }).where(eq(propertyContractsTable.id, contract.id));
+        await contractEvent(tx, contract.id, "delinquent", 0, { dueAt: contract.nextDueAt.toISOString(), graceEndsAt: graceEnds.toISOString() });
+      }
+      break;
+    }
+    await tx.insert(playerLedgerTable).values({ userId: contract.tenantUserId }).onConflictDoNothing();
+    const [ledger] = await tx.select().from(playerLedgerTable).where(eq(playerLedgerTable.userId, contract.tenantUserId)).for("update").limit(1);
+    const score = Math.max(PROPERTY_CONTRACT_MIN_CREDIT_SCORE, (ledger?.creditScore ?? 680) - PROPERTY_CONTRACT_CREDIT_HIT_POINTS);
+    await tx.update(playerLedgerTable).set({
+      debt: (ledger?.debt ?? 0) + contract.monthlyRentFiat,
+      totalDebtAccrued: (ledger?.totalDebtAccrued ?? 0) + contract.monthlyRentFiat,
+      creditScore: score, lastScoreUpdate: now, updatedAt: now,
+    }).where(eq(playerLedgerTable.userId, contract.tenantUserId));
+    await tx.insert(creditScoreHistoryTable).values({ userId: contract.tenantUserId, score, recordedAt: now });
+    await tx.update(propertyContractsTable).set({
+      status: "defaulted", outstandingDebtFiat: contract.outstandingDebtFiat + contract.monthlyRentFiat,
+      ledgerDebtAppliedFiat: contract.ledgerDebtAppliedFiat + contract.monthlyRentFiat,
+      missedPayments: contract.missedPayments + 1, businessCreditPenalty: contract.businessCreditPenalty + PROPERTY_CONTRACT_CREDIT_HIT_POINTS,
+      accessRestrictedAt: contract.accessRestrictedAt ?? now, nextDueAt: addContractMonth(contract.nextDueAt), graceEndsAt: null, updatedAt: now,
+    }).where(eq(propertyContractsTable.id, contract.id));
+    await contractEvent(tx, contract.id, "defaulted", contract.monthlyRentFiat, { dueAt: contract.nextDueAt.toISOString(), creditScore: score });
+  }
+  return assessed;
+}
+
+/** Property-scoped access predicate for future door/access controllers. */
+export async function isTenantRestrictedForProperty(tenantUserId: string, canonicalPropertyAddress: string): Promise<boolean> {
+  const [row] = await db.select({ id: propertyContractsTable.id }).from(propertyContractsTable).where(and(
+    eq(propertyContractsTable.tenantUserId, tenantUserId),
+    eq(propertyContractsTable.canonicalPropertyAddress, canonicalPropertyAddress),
+    isNotNull(propertyContractsTable.accessRestrictedAt),
+    ne(propertyContractsTable.status, "completed"),
+    ne(propertyContractsTable.status, "terminated"),
+  )).limit(1);
+  return !!row;
+}
+
+/** Bounded, SKIP LOCKED sweep safe to run on every API instance. */
+export async function sweepOverduePropertyContracts(now = new Date()) {
+  await db.transaction(async (tx) => {
+    const due = await tx.select({ id: propertyContractsTable.id }).from(propertyContractsTable).where(and(
+      lte(propertyContractsTable.nextDueAt, now),
+      sql`${propertyContractsTable.status} IN ('active', 'delinquent', 'defaulted')`,
+    )).orderBy(propertyContractsTable.nextDueAt).limit(50).for("update", { skipLocked: true });
+    for (const row of due) await assessPropertyContractOverdue(tx, row.id, now);
+  });
+}
+const overdueSweepTimer = setInterval(() => {
+  void sweepOverduePropertyContracts().catch((error) => console.warn("[real-estate] overdue sweep failed", error));
+}, 60_000);
+overdueSweepTimer.unref();
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated?.() || !req.user) {
@@ -24,6 +103,17 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 const VALID_TYPES = new Set(["office", "loft", "tower", "studio", "warehouse", "retail", "kiosk", "penthouse", "hq"]);
 const VALID_LISTING_TYPES = new Set(["sale", "rent"]);
+
+function publicListing(listing: RealEstateListing, economyMultiplier: number) {
+  const askingFiat = listing.listingType === "rent" ? listing.monthlyRentFiat : listing.priceFiat;
+  const quoted = quotePropertyMarket({ baseFiat: askingFiat, economyMultiplier, selectedUpsellIds: [] });
+  if (!quoted.ok) throw new Error("Unable to quote public listing");
+  const { sellerId: _sellerId, buyerId: _buyerId, artTaskId: _artTaskId, ...publicFields } = listing;
+  const canonicalAddress = publicAssetAddress(listing.buildingId != null
+    ? { kind: "property", serverId: listing.serverId, assetKind: "building", assetId: listing.buildingId }
+    : { kind: "listing", serverId: listing.serverId, listingId: listing.id });
+  return { ...publicFields, canonicalAddress, publicSlug: canonicalAddress, marketQuote: quoted.quote };
+}
 
 // ── Live BTC market index ────────────────────────────────────────────────────
 // Real-estate prices follow Bitcoin: when BTC rallies, dwellings get pricier.
@@ -370,6 +460,12 @@ router.get("/real-estate/market-index", async (_req: Request, res: Response) => 
   }
 });
 
+// Public broker policy and optional paid marketing services. These services are
+// deliberately separate from property ownership and require explicit selection.
+router.get("/real-estate/broker-config", (_req: Request, res: Response) => {
+  res.json({ commissionRate: BROKER_COMMISSION_RATE, upsells: PROPERTY_MARKET_UPSELLS });
+});
+
 // GET /api/real-estate/listings — public; lists active listings
 router.get("/real-estate/listings", async (req: Request, res: Response) => {
   try {
@@ -394,7 +490,8 @@ router.get("/real-estate/listings", async (req: Request, res: Response) => {
         out.push(r);
       }
     }
-    res.json({ listings: out });
+    const market = await getMarketIndex();
+    res.json({ listings: out.map((listing) => publicListing(listing, market.multiplier)), market: { multiplier: market.multiplier, asOf: market.asOf, status: market.status } });
   } catch (e: any) {
     console.error("[real-estate] list error", e);
     res.status(500).json({ error: e?.message || "Failed to load listings" });
@@ -409,7 +506,8 @@ router.get("/real-estate/listings/:id", async (req: Request, res: Response) => {
     const [row] = await db.select().from(realEstateListingsTable).where(eq(realEstateListingsTable.id, id));
     if (!row) { res.status(404).json({ error: "not found" }); return; }
     const refreshed = await refreshArtIfPending(row);
-    res.json({ listing: refreshed });
+    const market = await getMarketIndex();
+    res.json({ listing: publicListing(refreshed, market.multiplier), market: { multiplier: market.multiplier, asOf: market.asOf, status: market.status } });
   } catch (e: any) {
     console.error("[real-estate] get error", e);
     res.status(500).json({ error: e?.message || "Failed to load listing" });
@@ -440,10 +538,25 @@ router.post("/real-estate/listings", requireAuth, async (req: Request, res: Resp
     const rent = Math.max(0, Math.min(parseInt(String(monthlyRentFiat || 0), 10) || 0, 10_000_000));
     if (lt === "sale" && price <= 0) { res.status(400).json({ error: "price required for sale" }); return; }
     if (lt === "rent" && rent <= 0) { res.status(400).json({ error: "monthly rent required for rent listing" }); return; }
+    const resolvedBuildingId = buildingId != null ? parseInt(String(buildingId), 10) || null : null;
+    if (resolvedBuildingId != null) {
+      const [building] = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, resolvedBuildingId)).limit(1);
+      if (!building || building.ownerId !== sellerId || building.demolished) { res.status(403).json({ error: "building ownership could not be verified" }); return; }
+    } else {
+      // A plot without a building may only be relisted by its latest recorded buyer.
+      const [ownership] = await db.select({ id: realEstateListingsTable.id }).from(realEstateListingsTable).where(and(
+        eq(realEstateListingsTable.serverId, String(serverId || "minx_prime").slice(0, 32)),
+        eq(realEstateListingsTable.x, parseInt(String(x || 0), 10) || 0), eq(realEstateListingsTable.y, parseInt(String(y || 0), 10) || 0),
+        eq(realEstateListingsTable.w, Math.max(20, Math.min(parseInt(String(w || 80), 10) || 80, 800))),
+        eq(realEstateListingsTable.h, Math.max(20, Math.min(parseInt(String(h || 60), 10) || 60, 800))),
+        eq(realEstateListingsTable.status, "sold"), eq(realEstateListingsTable.buyerId, sellerId),
+      )).orderBy(desc(realEstateListingsTable.soldAt)).limit(1);
+      if (!ownership) { res.status(403).json({ error: "promised plots require verified current ownership" }); return; }
+    }
 
     const insert = {
       serverId: String(serverId || "minx_prime").slice(0, 32),
-      buildingId: buildingId != null ? parseInt(String(buildingId), 10) || null : null,
+       buildingId: resolvedBuildingId,
       sellerId,
       sellerName,
       title: title.trim(),
@@ -479,7 +592,7 @@ router.post("/real-estate/listings", requireAuth, async (req: Request, res: Resp
   }
 });
 
-// POST /api/real-estate/listings/:id/buy — execute a sale (auth required)
+// POST /api/real-estate/listings/:id/buy — execute a sale or sign a rental.
 router.post("/real-estate/listings/:id/buy", requireAuth, async (req: Request, res: Response) => {
   try {
     const id = parseInt(String(req.params.id || ""), 10);
@@ -487,32 +600,186 @@ router.post("/real-estate/listings/:id/buy", requireAuth, async (req: Request, r
     const u = req.user as any;
     const buyerId = String(u.id);
     const buyerName = String(u.firstName || u.email?.split("@")[0] || "Anonymous").slice(0, 64);
+    const requestId = typeof req.body?.requestId === "string" ? req.body.requestId : "";
+    if (!UUID_RE.test(requestId)) { res.status(400).json({ error: "A valid requestId is required." }); return; }
 
     const [listing] = await db.select().from(realEstateListingsTable).where(eq(realEstateListingsTable.id, id));
     if (!listing) { res.status(404).json({ error: "listing not found" }); return; }
-    if (listing.status !== "active") { res.status(409).json({ error: `listing is ${listing.status}` }); return; }
-    if (listing.sellerId === buyerId) { res.status(400).json({ error: "cannot buy your own listing" }); return; }
-    if (listing.listingType !== "sale") { res.status(400).json({ error: "listing is not for sale" }); return; }
-
-    // NOTE: the actual FIAT debit happens client-side via the existing
-    // /world/transactions ledger; this route only marks the listing as sold.
-    // We do require the client to have already debited; future iteration can
-    // tie this together transactionally with the salaryman_saves balance.
-    const [updated] = await db.update(realEstateListingsTable)
-      .set({
-        status: "sold",
-        buyerId,
-        buyerName,
-        soldAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(realEstateListingsTable.id, id), eq(realEstateListingsTable.status, "active")))
-      .returning();
-    if (!updated) { res.status(409).json({ error: "race: listing already sold" }); return; }
-    res.json({ listing: updated });
+    const market = await getMarketIndex();
+    const quoted = quotePropertyMarket({ baseFiat: listing.listingType === "rent" ? listing.monthlyRentFiat : listing.priceFiat, economyMultiplier: market.multiplier, selectedUpsellIds: [] });
+    if (!quoted.ok) throw new Error("Unable to quote listing settlement");
+    const quote = quoted.quote;
+    const result = await db.transaction(async (tx) => {
+      // Request IDs are global contract idempotency keys. Check first so a
+      // retry remains successful even though the listing is already leased.
+      const [priorContract] = await tx.select().from(propertyContractsTable)
+        .where(eq(propertyContractsTable.requestId, requestId)).limit(1);
+      if (priorContract) return { status: 200 as const, body: { contract: priorContract, marketQuote: quote, duplicate: true } };
+      const [locked] = await tx.select().from(realEstateListingsTable).where(eq(realEstateListingsTable.id, id)).for("update").limit(1);
+      // A concurrent signer can have created the contract while we waited on
+      // the listing lock; re-check the request key before reporting leased.
+      const [lockedPriorContract] = await tx.select().from(propertyContractsTable)
+        .where(eq(propertyContractsTable.requestId, requestId)).limit(1);
+      if (lockedPriorContract) return { status: 200 as const, body: { contract: lockedPriorContract, marketQuote: quote, duplicate: true } };
+      if (!locked) return { status: 409 as const, body: { error: "listing is no longer active" } };
+      if (locked.status !== "active") {
+        // Sales predate a dedicated contract row, so their stable wallet marker
+        // is the authoritative idempotency record.
+        if (locked.listingType === "sale" && locked.status === "sold" && locked.buyerId === buyerId) {
+          const marker = `[request:real-estate-buy:${requestId}]`;
+          const [priorSale] = await tx.select({ id: bankTransactionsTable.id }).from(bankTransactionsTable).where(and(
+            eq(bankTransactionsTable.userId, buyerId),
+            eq(bankTransactionsTable.description, `Broker purchase ${locked.title}`.slice(0, 150) + ` ${marker}`),
+          )).limit(1);
+          if (priorSale) return { status: 200 as const, body: { listing: locked, marketQuote: quote, market: { multiplier: market.multiplier, asOf: market.asOf, status: market.status }, duplicate: true } };
+        }
+        return { status: 409 as const, body: { error: "listing is no longer active" } };
+      }
+      if (locked.sellerId === buyerId) return { status: 400 as const, body: { error: "cannot buy your own listing" } };
+      if (locked.listingType === "rent") {
+        const now = new Date();
+        const canonicalAddress = publicAssetAddress(locked.buildingId != null
+          ? { kind: "property", serverId: locked.serverId, assetKind: "building", assetId: locked.buildingId }
+          : { kind: "listing", serverId: locked.serverId, listingId: locked.id });
+        const deposit = quote.marketFiat * PROPERTY_CONTRACT_SECURITY_DEPOSIT_MONTHS;
+        const total = quote.totalFiat + deposit;
+        const paid = await spendFiat(tx, { userId: buyerId, amountFiat: total, description: `Rental signing ${locked.title}`, kind: "property_rent", idempotencyKey: `property-contract-sign:${requestId}` });
+        if (!paid.ok) return { status: 402 as const, body: { error: "Insufficient funds", required: total, balance: paid.spendable } };
+        await creditFiat(tx, { userId: locked.sellerId, amountFiat: quote.marketFiat, description: `First month rent ${locked.title}`, kind: "property_rent", idempotencyKey: `property-contract-landlord:${requestId}` });
+        const [contract] = await tx.insert(propertyContractsTable).values({
+          listingId: locked.id, canonicalPropertyAddress: canonicalAddress, publicSlug: canonicalAddress,
+          landlordUserId: locked.sellerId, tenantUserId: buyerId, status: "active",
+          monthlyRentFiat: quote.marketFiat, brokerCommissionFiat: quote.commissionFiat, securityDepositFiat: deposit,
+          signedMarketMultiplier: market.multiplier, signedMarketAsOf: new Date(market.asOf),
+          nextDueAt: addContractMonth(now), requestId, signedAt: now, updatedAt: now,
+        }).returning();
+        await contractEvent(tx, contract.id, "signed", 0, { listingId: locked.id, canonicalAddress, marketMultiplier: market.multiplier });
+        await contractEvent(tx, contract.id, "first_month_payment", quote.marketFiat, { brokerCommissionFiat: quote.commissionFiat });
+        await contractEvent(tx, contract.id, "security_deposit_received", deposit);
+        await tx.update(realEstateListingsTable).set({ status: "leased", buyerId, buyerName, soldAt: now, updatedAt: now }).where(eq(realEstateListingsTable.id, locked.id));
+        return { status: 201 as const, body: { contract, marketQuote: { ...quote, securityDepositFiat: deposit, totalFiat: total }, market: { multiplier: market.multiplier, asOf: market.asOf, status: market.status }, duplicate: false } };
+      }
+      if (locked.listingType !== "sale") return { status: 400 as const, body: { error: "listing is not for sale" } };
+      const paid = await spendFiat(tx, { userId: buyerId, amountFiat: quote.totalFiat, description: `Broker purchase ${locked.title}`, kind: "property", idempotencyKey: `real-estate-buy:${requestId}` });
+      if (!paid.ok) return { status: 402 as const, body: { error: "Insufficient funds", required: quote.totalFiat, balance: paid.spendable } };
+      // The seller receives the live asking-price amount; the commission remains
+      // with the broker. No unselected marketing service is billed here.
+      await creditFiat(tx, { userId: locked.sellerId, amountFiat: quote.marketFiat, description: `Property sale ${locked.title}`, kind: "property_sale", idempotencyKey: `real-estate-sale:${requestId}` });
+      const [updated] = await tx.update(realEstateListingsTable).set({ status: "sold", buyerId, buyerName, soldAt: new Date(), updatedAt: new Date() })
+        .where(eq(realEstateListingsTable.id, id)).returning();
+      return { status: 200 as const, body: { listing: updated, marketQuote: quote, market: { multiplier: market.multiplier, asOf: market.asOf, status: market.status }, duplicate: paid.duplicate === true } };
+    });
+    res.status(result.status).json(result.body);
   } catch (e: any) {
     console.error("[real-estate] buy error", e);
     res.status(500).json({ error: e?.message || "Failed to buy listing" });
+  }
+});
+
+// GET /api/real-estate/contracts/me — both sides see the same auditable record.
+router.get("/real-estate/contracts/me", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = String((req.user as any).id);
+    const contracts = await db.transaction(async (tx) => {
+      const rows = await tx.select().from(propertyContractsTable).where(or(
+        eq(propertyContractsTable.tenantUserId, userId), eq(propertyContractsTable.landlordUserId, userId),
+      )).orderBy(desc(propertyContractsTable.updatedAt));
+      for (const row of rows) await assessPropertyContractOverdue(tx, row.id);
+      return tx.select().from(propertyContractsTable).where(or(
+        eq(propertyContractsTable.tenantUserId, userId), eq(propertyContractsTable.landlordUserId, userId),
+      )).orderBy(desc(propertyContractsTable.updatedAt));
+    });
+    res.json({ contracts: contracts.map((contract) => ({ ...contract, accessRestricted: contract.tenantUserId === userId && !!contract.accessRestrictedAt })) });
+  } catch (e: any) {
+    console.error("[real-estate] contracts error", e);
+    res.status(500).json({ error: e?.message || "Failed to load contracts" });
+  }
+});
+
+router.post("/real-estate/contracts/:id/pay", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const userId = String((req.user as any).id);
+    const requestId = typeof req.body?.requestId === "string" ? req.body.requestId : "";
+    if (!Number.isFinite(id) || !UUID_RE.test(requestId)) { res.status(400).json({ error: "valid contract id and requestId required" }); return; }
+    const result = await db.transaction(async (tx) => {
+      let [contract] = await tx.select().from(propertyContractsTable).where(eq(propertyContractsTable.id, id)).for("update").limit(1);
+      if (!contract) return { status: 404 as const, body: { error: "contract not found" } };
+      if (contract.tenantUserId !== userId) return { status: 403 as const, body: { error: "tenant only" } };
+      await assessPropertyContractOverdue(tx, id);
+      [contract] = await tx.select().from(propertyContractsTable).where(eq(propertyContractsTable.id, id)).for("update").limit(1);
+      if (!contract) return { status: 404 as const, body: { error: "contract not found" } };
+      if (["completed", "terminated"].includes(contract.status)) return { status: 409 as const, body: { error: "contract is closed" } };
+      const [prior] = await tx.select({ id: propertyContractEventsTable.id }).from(propertyContractEventsTable).where(and(
+        eq(propertyContractEventsTable.contractId, id), eq(propertyContractEventsTable.type, "payment"),
+        sql`${propertyContractEventsTable.metadata}->>'requestId' = ${requestId}`,
+      )).limit(1);
+      if (prior) return { status: 200 as const, body: { contract, duplicate: true } };
+      const curingDebt = contract.outstandingDebtFiat > 0;
+      const due = curingDebt ? contract.outstandingDebtFiat : contract.monthlyRentFiat;
+      const landlordRent = curingDebt ? due : contract.monthlyRentFiat;
+      const paid = await spendFiat(tx, { userId, amountFiat: due, description: `Contract payment #${id}`, kind: "property_rent", idempotencyKey: `property-contract-payment:${requestId}` });
+      if (!paid.ok) return { status: 402 as const, body: { error: "Insufficient funds", required: due, balance: paid.spendable } };
+      await creditFiat(tx, { userId: contract.landlordUserId, amountFiat: landlordRent, description: `Contract rent #${id}`, kind: "property_rent", idempotencyKey: `property-contract-landlord-payment:${requestId}` });
+      const cured = curingDebt || contract.status === "delinquent";
+      // Contract arrears were added to the collection ledger at default. A
+      // successful cure must retire that matching collection debt as well.
+      if (curingDebt) {
+        await tx.insert(playerLedgerTable).values({ userId }).onConflictDoNothing();
+        const [ledger] = await tx.select().from(playerLedgerTable).where(eq(playerLedgerTable.userId, userId)).for("update").limit(1);
+        const ledgerRetired = Math.min(due, contract.ledgerDebtAppliedFiat);
+        await tx.update(playerLedgerTable).set({ debt: Math.max(0, (ledger?.debt ?? 0) - ledgerRetired), updatedAt: new Date() }).where(eq(playerLedgerTable.userId, userId));
+      }
+      const [updated] = await tx.update(propertyContractsTable).set({
+        outstandingDebtFiat: cured ? 0 : contract.outstandingDebtFiat,
+        ledgerDebtAppliedFiat: curingDebt ? Math.max(0, contract.ledgerDebtAppliedFiat - due) : contract.ledgerDebtAppliedFiat,
+        status: cured ? "active" : contract.status, graceEndsAt: cured ? null : contract.graceEndsAt,
+        accessRestrictedAt: cured ? null : contract.accessRestrictedAt,
+        // Default assessment has already advanced this cursor for arrears.
+        nextDueAt: curingDebt ? contract.nextDueAt : addContractMonth(contract.nextDueAt), updatedAt: new Date(),
+      }).where(eq(propertyContractsTable.id, id)).returning();
+      await contractEvent(tx, id, "payment", due, { requestId, landlordRentFiat: landlordRent, brokerCommissionFiat: curingDebt ? 0 : contract.brokerCommissionFiat, cured });
+      return { status: 200 as const, body: { contract: { ...updated, accessRestricted: false }, duplicate: false } };
+    });
+    res.status(result.status).json(result.body);
+  } catch (e: any) {
+    console.error("[real-estate] contract payment error", e);
+    res.status(500).json({ error: e?.message || "Failed to pay contract" });
+  }
+});
+
+router.post("/real-estate/contracts/:id/terminate", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const userId = String((req.user as any).id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "valid contract id required" }); return; }
+    const result = await db.transaction(async (tx) => {
+      let [contract] = await tx.select().from(propertyContractsTable).where(eq(propertyContractsTable.id, id)).for("update").limit(1);
+      if (!contract) return { status: 404 as const, body: { error: "contract not found" } };
+      if (contract.landlordUserId !== userId && contract.tenantUserId !== userId) return { status: 403 as const, body: { error: "contract party required" } };
+      await assessPropertyContractOverdue(tx, id);
+      [contract] = await tx.select().from(propertyContractsTable).where(eq(propertyContractsTable.id, id)).for("update").limit(1);
+      if (!contract) return { status: 404 as const, body: { error: "contract not found" } };
+      if (["completed", "terminated"].includes(contract.status)) return { status: 409 as const, body: { error: "contract is already closed" } };
+      const depositApplied = Math.min(contract.securityDepositFiat, contract.outstandingDebtFiat);
+      const depositRefund = contract.securityDepositFiat - depositApplied;
+      const remainingDebt = contract.outstandingDebtFiat - depositApplied;
+      if (depositApplied > 0) {
+        await tx.insert(playerLedgerTable).values({ userId: contract.tenantUserId }).onConflictDoNothing();
+        const [ledger] = await tx.select().from(playerLedgerTable).where(eq(playerLedgerTable.userId, contract.tenantUserId)).for("update").limit(1);
+        await tx.update(playerLedgerTable).set({ debt: Math.max(0, (ledger?.debt ?? 0) - Math.min(depositApplied, contract.ledgerDebtAppliedFiat)), updatedAt: new Date() }).where(eq(playerLedgerTable.userId, contract.tenantUserId));
+      }
+      if (depositRefund > 0) await creditFiat(tx, { userId: contract.tenantUserId, amountFiat: depositRefund, description: `Deposit refund contract #${id}`, kind: "property_deposit_refund", idempotencyKey: `property-contract-termination:${id}` });
+      const [updated] = await tx.update(propertyContractsTable).set({
+        status: "terminated", outstandingDebtFiat: remainingDebt, ledgerDebtAppliedFiat: Math.max(0, contract.ledgerDebtAppliedFiat - depositApplied), endedAt: new Date(), updatedAt: new Date(),
+      }).where(eq(propertyContractsTable.id, id)).returning();
+      await contractEvent(tx, id, "terminated", 0, { terminatedBy: userId, depositAppliedFiat: depositApplied, depositRefundFiat: depositRefund, remainingDebtFiat: remainingDebt });
+      return { status: 200 as const, body: { contract: { ...updated, accessRestricted: contract.tenantUserId === userId && !!updated.accessRestrictedAt }, settlement: { depositAppliedFiat: depositApplied, depositRefundFiat: depositRefund, remainingDebtFiat: remainingDebt } } };
+    });
+    res.status(result.status).json(result.body);
+  } catch (e: any) {
+    console.error("[real-estate] contract terminate error", e);
+    res.status(500).json({ error: e?.message || "Failed to terminate contract" });
   }
 });
 

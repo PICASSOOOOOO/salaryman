@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./playable-properties": "./src/playable-properties.ts",
-    "./shadow-tower": "./src/shadow-tower.ts"
+    "./shadow-tower": "./src/shadow-tower.ts",
+    "./property-market": "./src/property-market.ts"
   },
   "scripts": {
     "test": "vitest run"

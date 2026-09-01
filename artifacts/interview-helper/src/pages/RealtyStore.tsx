@@ -31,12 +31,15 @@ export function ShadowTowerPlanPreview({ archetype, city, floorNumber }: { arche
 export default function RealtyStore() {
   const [, navigate] = useLocation();
   const [city, setCity] = useState<ShadowTowerCity>("minx_city");
-  const [floorText, setFloorText] = useState("1");
+  const [floorText, setFloorText] = useState(() => {
+    const requested = Number.parseInt(new URLSearchParams(window.location.search).get("floor") || "", 10);
+    return requested >= 5 && requested <= 64 ? String(requested) : "5";
+  });
   const [target, setTarget] = useState<Target | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const requestId = useRef<string | null>(null);
-  const floorNumber = Math.max(1, Math.min(120, Number.parseInt(floorText, 10) || 1));
+  const floorNumber = Math.max(5, Math.min(64, Number.parseInt(floorText, 10) || 5));
 
   async function acquire() {
     if (!target || busy) return;
@@ -68,7 +71,7 @@ export default function RealtyStore() {
         <div><h1 className="text-2xl text-pink-100 tracking-[.16em]">SHADOW TOWER FLOORS</h1><p className="text-sm text-zinc-400 mt-2">Two playable architectures. Price, ownership, and availability are confirmed by the tower registry.</p></div>
         <div className="flex gap-2 flex-wrap">
           <label className="text-[10px] text-cyan-300 tracking-widest">CITY<select value={city} onChange={e => setCity(e.target.value as ShadowTowerCity)} className="block mt-1 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100">{SHADOW_TOWER_CITIES.map(c => <option key={c} value={c}>{cityLabel(c)}</option>)}</select></label>
-          <label className="text-[10px] text-cyan-300 tracking-widest">FLOOR #<input data-testid="shadow-floor-number" type="number" min="1" max="120" value={floorText} onChange={e => setFloorText(e.target.value)} className="block mt-1 w-24 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100" /></label>
+          <label className="text-[10px] text-cyan-300 tracking-widest">FLOOR #<input data-testid="shadow-floor-number" type="number" min="5" max="64" value={floorText} onChange={e => setFloorText(e.target.value)} className="block mt-1 w-24 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100" /></label>
         </div>
       </div>
       <div className="mb-7 rounded border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-zinc-400"><b className="text-zinc-100">Homes are not for sale yet.</b> Home interiors must be playable before Realty can charge for them.</div>

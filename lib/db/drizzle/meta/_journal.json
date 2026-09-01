@@ -372,6 +372,34 @@
       "when": 1789185600000,
       "tag": "0052_rest_bed_marketplace",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789272000000,
+      "tag": "0053_shadow_tower_office_units",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789358400000,
+      "tag": "0054_property_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789444800000,
+      "tag": "0055_property_contract_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789531200000,
+      "tag": "0056_bots_marketplace_instance_unique",
+      "breakpoints": true
     }
   ]
 }

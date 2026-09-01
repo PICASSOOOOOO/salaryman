@@ -1,17 +1,19 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
-  botsTable, db, hasRoleAccess, orgMembersTable, shadowTowerFloorsTable,
+  botsTable, db, hasRoleAccess, orgMembersTable, shadowTowerFloorsTable, shadowTowerOfficeUnitsTable,
   shadowTowerSelectedFloorsTable, shadowTowerWorkstationAssignmentsTable, type OrgRole,
 } from "@workspace/db";
 import {
   BUSINESS_FLOOR_KINDS, BUSINESS_FLOOR_TEMPLATES, SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getShadowTowerPlan,
-  isSupportedShadowTowerUpgrade, quoteBusinessFitout, selectShadowTowerArchetype, type BusinessFloorKind, type BusinessFloorLaborMode, type ShadowTowerCity,
+  getShadowTowerOfficeUnitGeometry, isCommercialShadowTowerFloor, isSupportedShadowTowerUpgrade, quoteBusinessFitout, quoteShadowTowerFloor, quoteShadowTowerOfficeUnit, quoteShadowTowerOfficeUnitDetail, selectShadowTowerArchetype, shadowTowerHallwaySchema, SHADOW_TOWER_FLOOR_ENVELOPE, type BusinessFloorKind, type BusinessFloorLaborMode, type ShadowTowerCity,
 } from "@workspace/api-zod/shadow-tower";
-import { spendFiat } from "../lib/fiat-wallet";
+import { quoteMarketAdjustedFiat } from "@workspace/api-zod/property-market";
+import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 import { canDoInOrg } from "../lib/org-permissions";
+import { getMarketIndex } from "./real-estate";
 
 const router = Router();
 const cities = new Set<ShadowTowerCity>(["minx_city", "huda_city"]);
@@ -71,6 +73,33 @@ router.get("/shadow-tower/business-templates", (_req, res) => res.json({
   ],
 }));
 
+/** Public market snapshot: no floor verifier or occupant identity is returned. */
+router.get("/shadow-tower/floors/:city/:floorNumber/units", async (req, res) => {
+  const city = String(req.params.city) as ShadowTowerCity;
+  const floorNumber = Number(req.params.floorNumber);
+  if (!cities.has(city) || !Number.isInteger(floorNumber)) { res.status(400).json({ error: "Invalid numbered floor identity" }); return; }
+  const [floor] = await db.select().from(shadowTowerFloorsTable)
+    .where(and(eq(shadowTowerFloorsTable.city, city), eq(shadowTowerFloorsTable.floorNumber, floorNumber))).limit(1);
+  if (!floor) { res.status(404).json({ error: "Floor not found" }); return; }
+  const units = await db.select().from(shadowTowerOfficeUnitsTable).where(eq(shadowTowerOfficeUnitsTable.floorId, floor.id));
+  const geometry = getShadowTowerOfficeUnitGeometry(floor.officeCount);
+  const hallway = shadowTowerHallwaySchema.safeParse((floor.settings as Record<string, unknown>)?.hallway);
+  const market = await getMarketIndex();
+  const marketQuote = (baseFiat: number) => ({ ...quoteMarketAdjustedFiat(baseFiat, market.multiplier), asOf: market.asOf, status: market.status });
+  res.json({
+    floor: { id: floor.id, city: floor.city, floorNumber: floor.floorNumber, archetype: floor.archetype, officeCount: floor.officeCount, dimensions: SHADOW_TOWER_FLOOR_ENVELOPE },
+    hallway: hallway.success ? hallway.data : null,
+    units: units.sort((a, b) => a.unitNumber - b.unitNumber).map((unit) => ({
+      unitNumber: unit.unitNumber, status: unit.status, tenure: unit.tenure, leaseExpiresAt: unit.leaseExpiresAt,
+      geometry: geometry.find((shape) => shape.unitNumber === unit.unitNumber),
+      quote: { sale: unit.unitNumber <= floor.officeCount ? quoteShadowTowerOfficeUnitDetail(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unit.unitNumber, floor.officeCount, "own") : null, lease: unit.unitNumber <= floor.officeCount ? quoteShadowTowerOfficeUnitDetail(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unit.unitNumber, floor.officeCount, "lease") : null,
+        saleFiat: unit.unitNumber <= floor.officeCount ? quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unit.unitNumber, floor.officeCount, "own") : null, leaseFiat: unit.unitNumber <= floor.officeCount ? quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unit.unitNumber, floor.officeCount, "lease") : null,
+        marketSale: unit.unitNumber <= floor.officeCount ? marketQuote(quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unit.unitNumber, floor.officeCount, "own")) : null,
+        marketLease: unit.unitNumber <= floor.officeCount ? marketQuote(quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unit.unitNumber, floor.officeCount, "lease")) : null },
+    })),
+  });
+});
+
 // Hydration endpoint: persisted selection wins; deterministic fallback never leaks a verifier.
 router.get("/shadow-tower/floors/current", requireAuth, async (req, res) => {
   const actor = userId(req); const now = new Date();
@@ -94,7 +123,8 @@ router.get("/shadow-tower/floors/current", requireAuth, async (req, res) => {
     db.select().from(shadowTowerWorkstationAssignmentsTable).where(eq(shadowTowerWorkstationAssignmentsTable.floorId, floor.id)),
     floor.orgId ? db.select().from(botsTable).where(and(eq(botsTable.orgId, floor.orgId), eq(botsTable.status, "active"))) : db.select().from(botsTable).where(and(eq(botsTable.ownerId, floor.ownerUserId!), eq(botsTable.status, "active"))),
   ]);
-  res.json({ floor: safeFloor(floor), plan: getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[]), assignments, botGroups: consolidateShadowTowerBots(bots) });
+  const canManage = floor.ownerUserId === actor || !!(floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed);
+  res.json({ floor: safeFloor(floor), canManage, plan: getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[]), assignments, botGroups: consolidateShadowTowerBots(bots) });
 });
 
 router.get("/shadow-tower/floors/:city/:floorNumber", requireAuth, async (req, res) => {
@@ -122,7 +152,7 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
   const archetype = req.body?.archetype;
   const requestId = String(req.body?.requestId ?? "");
   const requestedOrgId = Number(req.body?.orgId);
-  if (!cities.has(city) || !Number.isInteger(floorNumber) || floorNumber < 1 || floorNumber > 120 || !/^[0-9a-f-]{36}$/i.test(requestId) || (archetype !== "founder_team" && archetype !== "company")) { res.status(400).json({ error: "Valid city, floorNumber, archetype and requestId required" }); return; }
+  if (!cities.has(city) || !isCommercialShadowTowerFloor(floorNumber) || !/^[0-9a-f-]{36}$/i.test(requestId) || (archetype !== "founder_team" && archetype !== "company")) { res.status(400).json({ error: "Commercial city, floorNumber, archetype and requestId required" }); return; }
   const orgId = Number.isInteger(requestedOrgId) && requestedOrgId > 0 ? requestedOrgId : null;
   if (orgId && !(await canDoInOrg(actor, orgId, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
   const [members, activeBots] = await Promise.all([
@@ -134,18 +164,30 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
     res.status(409).json({ error: archetype === "founder_team" ? "Occupants exceed Founder + Team capacity; choose a Company Floor." : "Occupants exceed Company Floor capacity; acquire an additional floor." });
     return;
   }
-  const price = tenure === "own" ? SHADOW_TOWER_LISTINGS[archetype].purchaseFiat : SHADOW_TOWER_LISTINGS[archetype].leaseFiat;
+  const market = await getMarketIndex();
+  const basePrice = quoteShadowTowerFloor(archetype, floorNumber, tenure);
+  const priceQuote = { ...quoteMarketAdjustedFiat(basePrice, market.multiplier), asOf: market.asOf, status: market.status };
+  const price = priceQuote.totalFiat;
   const result = await db.transaction(async (tx) => {
+    // FOR UPDATE cannot protect an absent floor row. This transaction lock
+    // serializes the first claim for one canonical city/floor identity.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`shadow-tower-floor:${city}:${floorNumber}`}))`);
     const [existing] = await tx.select().from(shadowTowerFloorsTable).where(and(eq(shadowTowerFloorsTable.city, city), eq(shadowTowerFloorsTable.floorNumber, floorNumber))).for("update").limit(1);
     if (existing) {
       if (existing.ownerUserId === actor || (orgId != null && existing.orgId === orgId)) {
-        return { status: 200, body: { floor: safeFloor(existing), price, duplicate: true } };
+        return { status: 200, body: { floor: safeFloor(existing), price, basePrice, marketQuote: priceQuote, duplicate: true } };
       }
       return { status: 409, body: { error: "Floor already held" } };
     }
     const paid = await spendFiat(tx, { userId: actor, amountFiat: price, description: `Shadow Tower ${city} FL ${floorNumber}`, kind: "property", idempotencyKey: `shadow-tower:${requestId}` });
     if (!paid.ok) return { status: 402, body: { error: "Insufficient funds", required: price, balance: paid.spendable } };
     const [floor] = await tx.insert(shadowTowerFloorsTable).values({ city, floorNumber, orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 30 * 86400_000) : null, archetype }).returning();
+    await tx.insert(shadowTowerOfficeUnitsTable).values([
+      { floorId: floor.id, unitNumber: 1, status: "occupied", orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: floor.leaseExpiresAt },
+      { floorId: floor.id, unitNumber: 2, status: "owner_priority" },
+      { floorId: floor.id, unitNumber: 3, status: "under_construction" },
+      { floorId: floor.id, unitNumber: 4, status: "under_construction" },
+    ]);
     const workstationKeys = getShadowTowerPlan(city, floorNumber, archetype).objects.filter((object) => object.kind === "workstation").map((object) => object.id);
     await tx.insert(shadowTowerWorkstationAssignmentsTable).values([
       ...members.map((member, index) => ({ floorId: floor.id, workstationKey: workstationKeys[index], assigneeType: "human", assigneeUserId: member.userId, botId: null, assignedByUserId: actor })),
@@ -153,9 +195,77 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
     ]);
     await tx.insert(shadowTowerSelectedFloorsTable).values({ userId: actor, floorId: floor.id })
       .onConflictDoUpdate({ target: shadowTowerSelectedFloorsTable.userId, set: { floorId: floor.id, updatedAt: new Date() } });
-    return { status: 201, body: { floor: safeFloor(floor), price, duplicate: paid.duplicate === true } };
+    return { status: 201, body: { floor: safeFloor(floor), price, basePrice, marketQuote: priceQuote, duplicate: paid.duplicate === true } };
   });
   res.status(result.status).json(result.body);
+});
+
+router.post("/shadow-tower/floors/:id/units/:unitNumber/expand", requireAuth, async (req, res) => {
+  const id = Number(req.params.id); const unitNumber = Number(req.params.unitNumber); const actor = userId(req); const requestId = String(req.body?.requestId ?? "");
+  if (!Number.isInteger(id) || !Number.isInteger(unitNumber) || !/^[0-9a-f-]{36}$/i.test(requestId)) { res.status(400).json({ error: "Valid unit and requestId required" }); return; }
+  const market = await getMarketIndex();
+  const result = await db.transaction(async (tx) => {
+    const [floor] = await tx.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update").limit(1);
+    if (!floor) return { status: 404, body: { error: "Floor not found" } };
+    if (!(floor.ownerUserId === actor || (floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed))) return { status: 403, body: { error: "Floor owner or organization settings permission required" } };
+    const [unit] = await tx.select().from(shadowTowerOfficeUnitsTable).where(and(eq(shadowTowerOfficeUnitsTable.floorId, id), eq(shadowTowerOfficeUnitsTable.unitNumber, unitNumber))).for("update").limit(1);
+    if (unitNumber <= floor.officeCount && unit?.status === "owner_priority") return { status: 200, body: { unit, duplicate: true } };
+    if (unitNumber !== floor.officeCount + 1 || unitNumber > 4 || unit?.status !== "under_construction") return { status: 409, body: { error: "Units must be expanded sequentially" } };
+    const basePrice = quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unitNumber, unitNumber, "own");
+    const priceQuote = { ...quoteMarketAdjustedFiat(basePrice, market.multiplier), asOf: market.asOf, status: market.status };
+    const price = priceQuote.totalFiat;
+    const paid = await spendFiat(tx, { userId: actor, amountFiat: price, description: `Shadow Tower unit expansion ${id}:${unitNumber}`, kind: "property", idempotencyKey: `shadow-tower-expand:${id}:${unitNumber}:${requestId}` });
+    if (!paid.ok) return { status: 402, body: { error: "Insufficient funds", required: price } };
+    const [updated] = await tx.update(shadowTowerOfficeUnitsTable).set({ status: "owner_priority", updatedAt: new Date() }).where(eq(shadowTowerOfficeUnitsTable.id, unit.id)).returning();
+    await tx.update(shadowTowerFloorsTable).set({ officeCount: unitNumber, updatedAt: new Date() }).where(eq(shadowTowerFloorsTable.id, id));
+    return { status: 200, body: { unit: updated, price, basePrice, marketQuote: priceQuote, duplicate: paid.duplicate === true } };
+  }); res.status(result.status).json(result.body);
+});
+
+router.post("/shadow-tower/floors/:id/units/:unitNumber/list", requireAuth, async (req, res) => {
+  const id = Number(req.params.id); const unitNumber = Number(req.params.unitNumber); const listType = req.body?.listType; const actor = userId(req);
+  if (!Number.isInteger(id) || !Number.isInteger(unitNumber) || !["sale", "lease"].includes(listType)) { res.status(400).json({ error: "Valid unit and listType required" }); return; }
+  const market = await getMarketIndex();
+  const result = await db.transaction(async (tx) => {
+    const [floor] = await tx.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update").limit(1);
+    if (!floor) return { status: 404, body: { error: "Floor not found" } };
+    if (!(floor.ownerUserId === actor || (floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed))) return { status: 403, body: { error: "Floor owner or organization settings permission required" } };
+    const [unit] = await tx.select().from(shadowTowerOfficeUnitsTable).where(and(eq(shadowTowerOfficeUnitsTable.floorId, id), eq(shadowTowerOfficeUnitsTable.unitNumber, unitNumber))).for("update").limit(1);
+    if (!unit || unitNumber < 2 || unitNumber > 4 || unit.status !== "owner_priority") return { status: 409, body: { error: "Only owner-priority units 2-4 may be listed" } };
+    const basePrice = quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unitNumber, floor.officeCount, listType === "sale" ? "own" : "lease");
+    const marketQuote = { ...quoteMarketAdjustedFiat(basePrice, market.multiplier), asOf: market.asOf, status: market.status };
+    // Store the durable base rate only; every buyer receives a fresh live quote.
+    const [updated] = await tx.update(shadowTowerOfficeUnitsTable).set({ status: listType === "sale" ? "for_sale" : "for_lease", saleFiat: listType === "sale" ? basePrice : null, leaseFiat: listType === "lease" ? basePrice : null, updatedAt: new Date() }).where(eq(shadowTowerOfficeUnitsTable.id, unit.id)).returning();
+    return { status: 200, body: { unit: updated, price: marketQuote.totalFiat, basePrice, marketQuote } };
+  }); res.status(result.status).json(result.body);
+});
+
+router.post("/shadow-tower/floors/:id/units/:unitNumber/acquire", requireAuth, async (req, res) => {
+  const id = Number(req.params.id); const unitNumber = Number(req.params.unitNumber); const actor = userId(req); const requestId = String(req.body?.requestId ?? ""); const requestedOrgId = Number(req.body?.orgId);
+  const orgId = Number.isInteger(requestedOrgId) && requestedOrgId > 0 ? requestedOrgId : null;
+  if (!Number.isInteger(id) || !Number.isInteger(unitNumber) || !/^[0-9a-f-]{36}$/i.test(requestId)) { res.status(400).json({ error: "Valid unit and requestId required" }); return; }
+  if (orgId && !(await canDoInOrg(actor, orgId, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
+  const market = await getMarketIndex();
+  const result = await db.transaction(async (tx) => {
+    const [floor] = await tx.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update").limit(1);
+    const [unit] = await tx.select().from(shadowTowerOfficeUnitsTable).where(and(eq(shadowTowerOfficeUnitsTable.floorId, id), eq(shadowTowerOfficeUnitsTable.unitNumber, unitNumber))).for("update").limit(1);
+    if (!floor || !unit) return { status: 404, body: { error: "Unit not found" } };
+    if (!["for_sale", "for_lease"].includes(unit.status)) {
+      if (unit.status === "occupied" && (unit.ownerUserId === actor || (orgId != null && unit.orgId === orgId))) return { status: 200, body: { unit, duplicate: true } };
+      return { status: 409, body: { error: "Unit is not actively listed" } };
+    }
+    if (floor.orgId) return { status: 409, body: { error: "Organization-owned floor unit settlement is not supported safely" } };
+    const tenure = unit.status === "for_sale" ? "own" : "lease";
+    const basePrice = quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unitNumber, floor.officeCount, tenure);
+    const priceQuote = { ...quoteMarketAdjustedFiat(basePrice, market.multiplier), asOf: market.asOf, status: market.status };
+    const price = priceQuote.totalFiat;
+    const paid = await spendFiat(tx, { userId: actor, amountFiat: price, description: `Shadow Tower unit acquire ${id}:${unitNumber}`, kind: "property", idempotencyKey: `shadow-tower-acquire:${id}:${unitNumber}:${requestId}` });
+    if (!paid.ok) return { status: 402, body: { error: "Insufficient funds", required: price } };
+    if (!floor.ownerUserId) return { status: 409, body: { error: "No settlement recipient" } };
+    await creditFiat(tx, { userId: floor.ownerUserId, amountFiat: price, description: `Shadow Tower unit sale ${id}:${unitNumber}`, kind: "property_sale", idempotencyKey: `shadow-tower-sale:${id}:${unitNumber}:${requestId}` });
+    const [updated] = await tx.update(shadowTowerOfficeUnitsTable).set({ status: "occupied", orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 30 * 86400_000) : null, saleFiat: null, leaseFiat: null, updatedAt: new Date() }).where(eq(shadowTowerOfficeUnitsTable.id, unit.id)).returning();
+    return { status: 200, body: { unit: updated, price, basePrice, marketQuote: priceQuote, duplicate: paid.duplicate === true } };
+  }); res.status(result.status).json(result.body);
 });
 
 router.put("/shadow-tower/floors/current", requireAuth, async (req, res) => {
@@ -245,6 +355,19 @@ router.put("/shadow-tower/floors/:id/access", requireAuth, async (req, res) => {
   if (req.body?.settings && typeof req.body.settings === "object" && !Array.isArray(req.body.settings)) updates.settings = req.body.settings;
   const [updated] = await db.update(shadowTowerFloorsTable).set({ ...updates, updatedAt: new Date() }).where(eq(shadowTowerFloorsTable.id, id)).returning();
   res.json({ floor: safeFloor(updated) });
+});
+
+// Hallway presentation is constrained to the shared contract; it cannot alter floor geometry.
+router.put("/shadow-tower/floors/:id/hallway", requireAuth, async (req, res) => {
+  const id = Number(req.params.id); const actor = userId(req);
+  const hallway = shadowTowerHallwaySchema.safeParse(req.body);
+  if (!Number.isInteger(id) || !hallway.success) { res.status(400).json({ error: "Valid hallway style, lighting, and optional 28-character signage required" }); return; }
+  const [floor] = await db.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).limit(1);
+  if (!floor) { res.status(404).json({ error: "Floor not found" }); return; }
+  if (!(floor.ownerUserId === actor || (floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed))) { res.status(403).json({ error: "Floor owner or organization settings permission required" }); return; }
+  const settings = floor.settings && typeof floor.settings === "object" && !Array.isArray(floor.settings) ? floor.settings as Record<string, unknown> : {};
+  const [updated] = await db.update(shadowTowerFloorsTable).set({ settings: { ...settings, hallway: hallway.data }, updatedAt: new Date() }).where(eq(shadowTowerFloorsTable.id, id)).returning();
+  res.json({ floor: safeFloor(updated), hallway: hallway.data });
 });
 
 router.post("/shadow-tower/floors/:id/workstations", requireAuth, async (req, res) => {

@@ -103,7 +103,9 @@ export interface IsoOfficeProps {
   crtTint?: boolean;
   /** Deed customization applied to floor trim, ambient light and furniture accents. */
   accentColor?: string | null;
-  lighting?: 'dim' | 'normal' | 'bright';
+  lighting?: 'dim' | 'normal' | 'bright' | 'warm' | 'cool';
+  hallwayStyle?: 'central' | 'gallery' | 'executive';
+  hallwaySignage?: string;
   mode?: 'wander' | 'still' | 'at-desk';
   /** Walk-up activation for a bullpen/capsule bot — opens its command center.
    *  Mirrors the YOUR DESK computer interaction; computer keeps precedence. */
@@ -165,6 +167,8 @@ export function IsoOffice({
   onPoseChange,
   accentColor = null,
   lighting = 'normal',
+  hallwayStyle,
+  hallwaySignage,
 }: IsoOfficeProps) {
   const isTouch =
     typeof window !== 'undefined' &&
@@ -305,6 +309,8 @@ export function IsoOffice({
   const playerNameRef = useRef(playerName);
   const accentColorRef = useRef(accentColor);
   const lightingRef = useRef(lighting);
+  const hallwayStyleRef = useRef(hallwayStyle);
+  const hallwaySignageRef = useRef(hallwaySignage);
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -324,6 +330,8 @@ export function IsoOffice({
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
   useEffect(() => { accentColorRef.current = accentColor; }, [accentColor]);
   useEffect(() => { lightingRef.current = lighting; }, [lighting]);
+  useEffect(() => { hallwayStyleRef.current = hallwayStyle; }, [hallwayStyle]);
+  useEffect(() => { hallwaySignageRef.current = hallwaySignage; }, [hallwaySignage]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onPoseChangeRef.current = onPoseChange; }, [onPoseChange]);
@@ -598,6 +606,8 @@ export function IsoOffice({
         playerName: playerNameRef.current,
         accentColor: accentColorRef.current,
         lighting: lightingRef.current,
+        hallwayStyle: hallwayStyleRef.current,
+        hallwaySignage: hallwaySignageRef.current,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -799,7 +809,9 @@ interface SceneCtx {
   suppressLabels?: boolean;
   playerName?: string;
   accentColor?: string | null;
-  lighting: 'dim' | 'normal' | 'bright';
+  lighting: 'dim' | 'normal' | 'bright' | 'warm' | 'cool';
+  hallwayStyle?: 'central' | 'gallery' | 'executive';
+  hallwaySignage?: string;
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
@@ -846,9 +858,19 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     ctx.fillStyle = fg;
   } else {
     const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
-    fg.addColorStop(0, '#241140');
-    fg.addColorStop(0.55, '#1a0f33');
-    fg.addColorStop(1, '#120b26');
+    if (s.lighting === 'warm') {
+      fg.addColorStop(0, '#331920');
+      fg.addColorStop(0.55, '#26141a');
+      fg.addColorStop(1, '#1a0e14');
+    } else if (s.lighting === 'cool') {
+      fg.addColorStop(0, '#111933');
+      fg.addColorStop(0.55, '#0f1426');
+      fg.addColorStop(1, '#0b0e1a');
+    } else {
+      fg.addColorStop(0, '#241140');
+      fg.addColorStop(0.55, '#1a0f33');
+      fg.addColorStop(1, '#120b26');
+    }
     ctx.fillStyle = fg;
   }
   ctx.fill();
@@ -864,6 +886,8 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   ctx.strokeStyle = painted ? 'rgba(150,110,230,0.09)' : 'rgba(150,110,230,0.13)';
   for (let c = 0; c <= cols; c++) { const a = P(c, 0), b = P(c, rows); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
   for (let r = 0; r <= rows; r++) { const a = P(0, r), b = P(cols, r); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+
+  drawHallwayTreatment(ctx, s);
 
   // Neon floor rim along the two FRONT edges.
   ctx.lineWidth = 2;
@@ -1455,6 +1479,85 @@ const OFFICE_COMMERCIALS = [
   { brand: 'MYRIAD', line: 'A BETTER CITY IS LOADING', color: '#f0abfc' },
   { brand: 'SHADOW RADIO', line: '107.3 · ALWAYS AFTER DARK', color: '#fbbf24' },
 ] as const;
+
+function drawHallwayTreatment(ctx: CanvasRenderingContext2D, s: SceneCtx) {
+  const { P, cols, rows, hallwayStyle, hallwaySignage } = s;
+  if (!hallwayStyle) return;
+
+  const style = hallwayStyle || 'central';
+
+  ctx.save();
+  ctx.lineJoin = 'round';
+
+  if (style === 'central') {
+    // Glowing central runner path
+    const rA = P(2, 0), rB = P(4, 0), rC = P(4, rows), rD = P(2, rows);
+    ctx.beginPath(); ctx.moveTo(rA.x, rA.y); ctx.lineTo(rB.x, rB.y); ctx.lineTo(rC.x, rC.y); ctx.lineTo(rD.x, rD.y); ctx.closePath();
+    ctx.fillStyle = s.lighting === 'dim' ? 'rgba(56, 189, 248, 0.05)' : 'rgba(56, 189, 248, 0.1)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Cross-path to the middle of the room
+    const cA = P(4, rows / 2 - 1), cB = P(cols, rows / 2 - 1), cC = P(cols, rows / 2 + 1), cD = P(4, rows / 2 + 1);
+    ctx.beginPath(); ctx.moveTo(cA.x, cA.y); ctx.lineTo(cB.x, cB.y); ctx.lineTo(cC.x, cC.y); ctx.lineTo(cD.x, cD.y); ctx.closePath();
+    ctx.fillStyle = s.lighting === 'dim' ? 'rgba(56, 189, 248, 0.05)' : 'rgba(56, 189, 248, 0.1)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.stroke();
+
+  } else if (style === 'gallery') {
+    // Alternating tiles bordering the room
+    for (let x = 0; x < cols; x += 2) {
+      for (let y = 0; y < rows; y += 2) {
+        if (x < 2 || x > cols - 3 || y < 2 || y > rows - 3) {
+          const tA = P(x, y), tB = P(x+1, y), tC = P(x+1, y+1), tD = P(x, y+1);
+          ctx.beginPath(); ctx.moveTo(tA.x, tA.y); ctx.lineTo(tB.x, tB.y); ctx.lineTo(tC.x, tC.y); ctx.lineTo(tD.x, tD.y); ctx.closePath();
+          ctx.fillStyle = 'rgba(244, 114, 182, 0.08)';
+          ctx.fill();
+        }
+      }
+    }
+  } else if (style === 'executive') {
+    // Plush dark inset rug with a gold accent
+    const eA = P(1, 1), eB = P(cols - 1, 1), eC = P(cols - 1, rows - 1), eD = P(1, rows - 1);
+    ctx.beginPath(); ctx.moveTo(eA.x, eA.y); ctx.lineTo(eB.x, eB.y); ctx.lineTo(eC.x, eC.y); ctx.lineTo(eD.x, eD.y); ctx.closePath();
+    ctx.fillStyle = 'rgba(10, 6, 20, 0.8)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Draw in-world signage on the floor near the entrance (elevator area)
+  if (hallwaySignage) {
+    // We draw the text on the floor, perspectively distorted.
+    ctx.save();
+    const signCenter = P(2.5, 3.5); // Near the elevator
+
+    // Transform ctx to match the 2:1 iso floor plane for text
+    // The angle of the x-axis is approx 26.565 degrees (atan(0.5)).
+    ctx.translate(signCenter.x, signCenter.y);
+    ctx.scale(1, 0.5);
+    ctx.rotate(45 * Math.PI / 180); // 45 degrees in logical space, then scaled down by 0.5 in Y creates the 2:1 isometric projection.
+
+    ctx.font = 'bold 36px "Space Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // A crisp, clean neon text effect without scanlines
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.shadowColor = s.lighting === 'dim' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(56, 189, 248, 0.9)';
+    ctx.shadowBlur = 12;
+
+    ctx.fillText(hallwaySignage.toUpperCase(), 0, 0);
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
 
 function drawOfficeMediaDecor(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, T } = s;

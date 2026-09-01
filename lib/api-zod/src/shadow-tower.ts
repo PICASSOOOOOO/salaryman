@@ -48,6 +48,76 @@ export const SHADOW_TOWER_LISTINGS: Record<ShadowTowerArchetype, ShadowTowerList
   company: { archetype: "company", title: "Company Floor", subtitle: "A full operational floor for an active company.", capacity: 20, purchaseFiat: 720_000, leaseFiat: 36_000, previewKey: "shadow-tower-company" },
 };
 
+/** The real-estate shell is deliberately independent of the playable tile map. */
+export const SHADOW_TOWER_FLOOR_ENVELOPE = { widthPixels: 100_000, heightPixels: 100_000, squareMeters: 10_000 } as const;
+export const SHADOW_TOWER_MIN_OFFICE_UNITS = 2;
+export const SHADOW_TOWER_MAX_OFFICE_UNITS = 4;
+export const SHADOW_TOWER_RESERVED_FLOORS = [1, 2, 3, 4, 40, 52, 65, 66, 67] as const;
+
+export const SHADOW_TOWER_FIAT_PER_SQUARE_METER: Record<ShadowTowerArchetype, Record<"own" | "lease", number>> = {
+  founder_team: { own: 24, lease: 1.2 },
+  company: { own: 72, lease: 3.6 },
+};
+export const SHADOW_TOWER_FIAT_PER_SQUARE_PIXEL: Record<ShadowTowerArchetype, Record<"own" | "lease", number>> = Object.fromEntries(
+  SHADOW_TOWER_ARCHETYPES.map((archetype) => [archetype, {
+    own: SHADOW_TOWER_FIAT_PER_SQUARE_METER[archetype].own / (SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels * SHADOW_TOWER_FLOOR_ENVELOPE.heightPixels / SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters),
+    lease: SHADOW_TOWER_FIAT_PER_SQUARE_METER[archetype].lease / (SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels * SHADOW_TOWER_FLOOR_ENVELOPE.heightPixels / SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters),
+  }]),
+) as Record<ShadowTowerArchetype, Record<"own" | "lease", number>>;
+
+export const shadowTowerHallwaySchema = z.object({
+  style: z.enum(["central", "gallery", "executive"]),
+  lighting: z.enum(["normal", "warm", "cool"]),
+  signage: z.string().max(28).optional(),
+}).strict();
+export type ShadowTowerHallway = z.infer<typeof shadowTowerHallwaySchema>;
+
+export function isCommercialShadowTowerFloor(floorNumber: number) {
+  return Number.isInteger(floorNumber) && floorNumber >= 5 && floorNumber <= 64
+    && !(SHADOW_TOWER_RESERVED_FLOORS as readonly number[]).includes(floorNumber);
+}
+
+export type ShadowTowerAreaQuote = { totalFiat: number; squareMeters: number; squarePixels: number; fiatPerSquareMeter: number; fiatPerSquarePixel: number; verticalMultiplier: number };
+export function getShadowTowerVerticalMultiplier(floorNumber: number) { return 1 + (floorNumber - 1) * 0.01; }
+export function quoteShadowTowerArea(archetype: ShadowTowerArchetype, floorNumber: number, tenure: "own" | "lease", squareMeters: number): ShadowTowerAreaQuote {
+  const fiatPerSquareMeter = SHADOW_TOWER_FIAT_PER_SQUARE_METER[archetype][tenure];
+  const fiatPerSquarePixel = SHADOW_TOWER_FIAT_PER_SQUARE_PIXEL[archetype][tenure];
+  const verticalMultiplier = getShadowTowerVerticalMultiplier(floorNumber);
+  const squarePixels = squareMeters * SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels * SHADOW_TOWER_FLOOR_ENVELOPE.heightPixels / SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters;
+  return { totalFiat: Math.round(squareMeters * fiatPerSquareMeter * verticalMultiplier), squareMeters, squarePixels, fiatPerSquareMeter, fiatPerSquarePixel, verticalMultiplier };
+}
+/** Whole-floor total derived from canonical physical area, not a listing lump sum. */
+export function quoteShadowTowerFloor(archetype: ShadowTowerArchetype, floorNumber: number, tenure: "own" | "lease") {
+  return quoteShadowTowerArea(archetype, floorNumber, tenure, SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters).totalFiat;
+}
+
+export type ShadowTowerOfficeGeometry = {
+  unitNumber: number; xPixels: number; yPixels: number; widthPixels: number; heightPixels: number; squareMeters: number;
+};
+/** Equal vertical strips cover the entire canonical envelope without gaps or overflow. */
+export function getShadowTowerOfficeUnitGeometry(officeCount: number): ShadowTowerOfficeGeometry[] {
+  if (!Number.isInteger(officeCount) || officeCount < SHADOW_TOWER_MIN_OFFICE_UNITS || officeCount > SHADOW_TOWER_MAX_OFFICE_UNITS) {
+    throw new Error("officeCount must be between 2 and 4");
+  }
+  const width = SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels / officeCount;
+  return Array.from({ length: officeCount }, (_, index) => ({
+    unitNumber: index + 1, xPixels: index * width, yPixels: 0, widthPixels: width,
+    heightPixels: SHADOW_TOWER_FLOOR_ENVELOPE.heightPixels,
+    squareMeters: SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters / officeCount,
+  }));
+}
+
+/** Unit listings are always server-derived from the corresponding whole-floor quote. */
+export function quoteShadowTowerOfficeUnitDetail(archetype: ShadowTowerArchetype, floorNumber: number, unitNumber: number, officeCount: number, tenure: "own" | "lease") {
+  if (!Number.isInteger(unitNumber) || unitNumber < 1 || unitNumber > SHADOW_TOWER_MAX_OFFICE_UNITS) throw new Error("unitNumber must be between 1 and 4");
+  const geometry = getShadowTowerOfficeUnitGeometry(officeCount).find((unit) => unit.unitNumber === unitNumber);
+  if (!geometry) throw new Error("unitNumber is not part of this subdivision");
+  return quoteShadowTowerArea(archetype, floorNumber, tenure, geometry.squareMeters);
+}
+export function quoteShadowTowerOfficeUnit(archetype: ShadowTowerArchetype, floorNumber: number, unitNumber: number, officeCount: number, tenure: "own" | "lease") {
+  return quoteShadowTowerOfficeUnitDetail(archetype, floorNumber, unitNumber, officeCount, tenure).totalFiat;
+}
+
 function rect(x: number, y: number, cols: number, rows: number) { return { x, y, cols, rows }; }
 function workstationObjects(count: number) {
   return Array.from({ length: count }, (_, index) => ({

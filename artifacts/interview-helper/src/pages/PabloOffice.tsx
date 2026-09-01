@@ -39,6 +39,7 @@ import {
   type OfficePose,
 } from '@/lib/office-property-layouts';
 import type { ShadowTowerPlan } from '@workspace/api-zod/shadow-tower';
+import { Settings2, Loader2, Bot, Activity, Check, X } from 'lucide-react';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
 // only loads when a cabinet is actually used).
@@ -233,13 +234,15 @@ export default function PabloOffice() {
   // Full-screen office chrome: help/tutorial overlays.
   const [showHelp, setShowHelp] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [isSavingHallway, setIsSavingHallway] = useState(false);
   // Discovery onboarding — the story is no longer started by a BEGIN STORY
   // button or a front-loaded WELCOME modal. Instead the office surfaces ONE
   // contextual cue at a time that teaches a mechanic by doing (move → use an
   // object → take the elevator), and stepping into the elevator naturally
   // begins the run. Progress persists per slot.
   const slot = currentSlot();
-  const [towerFloor, setTowerFloor] = useState<{ floor: { city: string; floorNumber: number; tenure: string; leaseExpiresAt?: string | null; archetype: string }; plan: ShadowTowerPlan; assignments: Array<{ workstationKey: string; assigneeType: "human" | "bot"; assigneeUserId?: string | null; botId?: number | null }>; botGroups: Array<{ purpose: string; permissionSignature: string; canonicalBotId: number; botIds: number[] }> } | null>(null);
+  const [towerFloor, setTowerFloor] = useState<{ canManage?: boolean; floor: { id: string; city: string; floorNumber: number; tenure: string; leaseExpiresAt?: string | null; archetype: string; settings?: { hallway?: { style: "central" | "gallery" | "executive"; lighting: "dim" | "normal" | "bright" | "warm" | "cool"; signage?: string } } }; plan: ShadowTowerPlan; assignments: Array<{ workstationKey: string; assigneeType: "human" | "bot"; assigneeUserId?: string | null; botId?: number | null }>; botGroups: Array<{ purpose: string; permissionSignature: string; canonicalBotId: number; botIds: number[] }> } | null>(null);
   const officeLayout = useMemo(() => towerFloor ? officePropertyLayoutFromPlan(towerFloor.plan) : getShadowTowerOfficeLayout("minx_city", 1, "founder_team"), [towerFloor]);
   const initialOfficePose = useMemo(() => loadOfficePose(slot, officeLayout), [slot, officeLayout]);
   const officePoseRef = useRef<OfficePose>(initialOfficePose);
@@ -349,6 +352,29 @@ export default function PabloOffice() {
     }
     playNav();
     navigateFromOffice('/world/play');
+  };
+
+  const handleSaveHallway = async (style: "central" | "gallery" | "executive", lighting: "dim" | "normal" | "bright" | "warm" | "cool", signage: string) => {
+    if (!towerFloor) return;
+    setIsSavingHallway(true);
+    try {
+      const res = await apiFetch(`/api/shadow-tower/floors/${towerFloor.floor.id}/hallway`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ style, lighting, signage: signage.trim() || undefined }),
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error("Failed to save hallway");
+      const updated = await res.json();
+      setTowerFloor(prev => prev ? { ...prev, floor: updated.floor } : prev);
+      playSuccess();
+      toast({ description: "Hallway settings applied" });
+      setShowCustomizer(false);
+    } catch {
+      toast({ description: "Could not apply hallway settings", variant: "destructive" });
+    } finally {
+      setIsSavingHallway(false);
+    }
   };
 
   // Player city stats — local save first, then newest cloud save.
@@ -621,14 +647,18 @@ export default function PabloOffice() {
     return map;
   }, [agents, tasks]);
 
+  const placedBots = useMemo(() => {
+    const assignments = towerFloor?.assignments ?? [];
+    const assignedBotIds = new Set(assignments.filter((a) => a.assigneeType === "bot" && typeof a.botId === "number").map((a) => a.botId as number));
+    return floorPlacementForAssignments(bots, [...assignedBotIds]);
+  }, [towerFloor, bots]);
+
   const activeFloorOccupants = useMemo(() => {
     // Activated bots take the first bullpen seats so a large staff roster can
     // never hide bots the user explicitly switched on. Human staff then fill
     // the remaining desks; de-dupe by name when an employee also has a bot row.
     const assignments = towerFloor?.assignments ?? [];
-    const assignedBotIds = new Set(assignments.filter((a) => a.assigneeType === "bot" && typeof a.botId === "number").map((a) => a.botId as number));
     const assignedHumans = assignments.filter((a) => a.assigneeType === "human").length;
-    const placedBots = floorPlacementForAssignments(bots, [...assignedBotIds]);
     const seen = new Set(placedBots.map((bot) => bot.name.trim().toLowerCase()));
     const staffBots = agents.flatMap((agent) => {
       const key = agent.label.trim().toLowerCase();
@@ -643,7 +673,17 @@ export default function PabloOffice() {
       }];
     });
     return [...placedBots, ...staffBots.slice(0, assignedHumans)];
-  }, [bots, agents, towerFloor]);
+  }, [placedBots, agents, towerFloor]);
+
+  const activeAutomationCount = useMemo(() => {
+    const inProgressAssignees = new Set(
+      tasks
+        .filter((t) => t.status === 'in_progress' || t.status === 'doing')
+        .map((t) => (t.assignee ?? '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+    return placedBots.filter((bot) => inProgressAssignees.has(bot.name.trim().toLowerCase())).length;
+  }, [placedBots, tasks]);
 
   const activeCount = useMemo(
     () => Object.values(activity).filter((a) => a.active).length,
@@ -886,6 +926,9 @@ export default function PabloOffice() {
               activeBots={activeFloorOccupants}
               idleBots={[]}
               premium
+              lighting={towerFloor?.floor?.settings?.hallway?.lighting || officeCustomization?.lighting || 'normal'}
+              hallwayStyle={towerFloor?.floor?.settings?.hallway?.style}
+              hallwaySignage={towerFloor?.floor?.settings?.hallway?.signage}
               doorTopRow={11}
               doorBotRow={floorRows}
               rooms={officeLayout.rooms}
@@ -902,7 +945,6 @@ export default function PabloOffice() {
               stations={stations}
               frozen={!!arcadeGameId}
               accentColor={officeCustomization?.themeColor}
-              lighting={officeCustomization?.lighting}
               suppressLabels={isTouch}
             />
 
@@ -980,6 +1022,29 @@ export default function PabloOffice() {
             {!surveillance && !compactHud && (
               <div style={{ position: 'absolute', top: towerFloor ? 38 : 10, left: 12, zIndex: 6, pointerEvents: 'none' }}>
                 <OfficeMinimap occupantsRef={occupantsRef} layout={officeLayout} />
+
+                {/* ── AUTOMATION INDICATOR ── */}
+                <div style={{ pointerEvents: 'auto', marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: 'rgba(4,10,6,0.85)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 4 }}>
+                  <Activity size={12} className={activeAutomationCount > 0 ? "text-emerald-400 animate-pulse" : "text-zinc-500"} />
+                  <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.15em', color: activeAutomationCount > 0 ? '#34d399' : '#71717a' }}>
+                    {activeAutomationCount > 0 ? `${activeAutomationCount} BOTS LIVE` : placedBots.length > 0 ? 'ASSIGNED/IDLE' : 'AUTOMATION IDLE'}
+                  </span>
+                </div>
+
+                {/* ── CUSTOMIZATION BUTTON ── */}
+                {towerFloor?.canManage && (
+                  <div style={{ marginTop: 6, pointerEvents: 'auto' }}>
+                    <button
+                      onClick={() => setShowCustomizer(true)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 4, cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(56,189,248,0.1)'}
+                    >
+                      <Settings2 size={12} className="text-cyan-400" />
+                      <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', color: '#38bdf8' }}>CONFIGURE HALLWAY</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1217,6 +1282,104 @@ export default function PabloOffice() {
           <span>ECONOMY · ONE FIAT/GOLD SYSTEM</span>
           <span style={{ color: 'rgba(56,189,248,.5)' }}>OPEN ECONOMY →</span>
         </button>
+      )}
+
+      {/* ── HALLWAY CUSTOMIZATION OVERLAY ── */}
+      {showCustomizer && towerFloor && (
+        <div
+          onClick={() => setShowCustomizer(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 650, background: 'rgba(2,4,10,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 420,
+              background: '#0a0d14', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 8,
+              padding: '1.5rem', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5), 0 0 20px rgba(56,189,248,0.1) inset'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '1rem' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '0.1em', color: '#f8fafc', fontWeight: 600 }}>FLOOR HALLWAY</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Configure public-facing lobby aesthetics.</p>
+              </div>
+              <button onClick={() => setShowCustomizer(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              handleSaveHallway(
+                fd.get('style') as any,
+                fd.get('lighting') as any,
+                fd.get('signage') as string
+              );
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>STYLE</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {['central', 'gallery', 'executive'].map(s => (
+                      <label key={s} style={{ display: 'block', cursor: 'pointer' }}>
+                        <input type="radio" name="style" value={s} defaultChecked={s === (towerFloor.floor.settings?.hallway?.style || 'central')} style={{ display: 'none' }} />
+                        <div style={{
+                          padding: '0.75rem 0.5rem', textAlign: 'center', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
+                          background: 'rgba(255,255,255,0.02)', color: '#cbd5e1', fontSize: '0.75rem', letterSpacing: '0.05em', transition: 'all 0.2s'
+                        }} className="[input:checked+&]:border-cyan-400 [input:checked+&]:bg-cyan-950/30 [input:checked+&]:text-cyan-300">
+                          {s.toUpperCase()}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>LIGHTING</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {['cool', 'normal', 'warm'].map(l => (
+                      <label key={l} style={{ display: 'block', cursor: 'pointer' }}>
+                        <input type="radio" name="lighting" value={l} defaultChecked={l === (towerFloor.floor.settings?.hallway?.lighting || 'normal')} style={{ display: 'none' }} />
+                        <div style={{
+                          padding: '0.75rem 0.5rem', textAlign: 'center', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
+                          background: 'rgba(255,255,255,0.02)', color: '#cbd5e1', fontSize: '0.75rem', letterSpacing: '0.05em', transition: 'all 0.2s'
+                        }} className="[input:checked+&]:border-cyan-400 [input:checked+&]:bg-cyan-950/30 [input:checked+&]:text-cyan-300">
+                          {l.toUpperCase()}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>NEON SIGNAGE (MAX 28 CHARS)</label>
+                  <input
+                    type="text"
+                    name="signage"
+                    maxLength={28}
+                    defaultValue={towerFloor.floor.settings?.hallway?.signage || ''}
+                    placeholder="e.g. WELCOME TO HQ"
+                    style={{
+                      width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 6, color: '#f8fafc', fontSize: '0.9rem', outline: 'none', fontFamily: 'monospace'
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(56,189,248,0.5)'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  />
+                </div>
+
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button type="button" onClick={() => setShowCustomizer(false)} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#cbd5e1', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em', cursor: 'pointer' }}>CANCEL</button>
+                  <button type="submit" disabled={isSavingHallway} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.75rem 1.5rem', background: '#38bdf8', border: 'none', borderRadius: 6, color: '#020617', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', cursor: isSavingHallway ? 'not-allowed' : 'pointer', opacity: isSavingHallway ? 0.7 : 1 }}>
+                    {isSavingHallway ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    APPLY
+                  </button>
+                </div>
+
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* HELP overlay (key: H / ?) — quick-key cheat sheet. */}

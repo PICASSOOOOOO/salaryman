@@ -3380,6 +3380,7 @@ export default function BotFactory() {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [connectBot, setConnectBot] = useState<BotData | null>(null);
   const [activating, setActivating] = useState<number | null>(null);
+  const [activationError, setActivationError] = useState('');
   const [search, setSearch] = useState('');
   const [finderQuery, setFinderQuery] = useState('');
   const [finderLoading, setFinderLoading] = useState(false);
@@ -3452,6 +3453,7 @@ export default function BotFactory() {
 
   const activateMarketplaceBot = async (item: MarketplaceItem) => {
     setActivating(item.id);
+    setActivationError('');
     try {
       const res = await apiFetch('/api/bots/marketplace/activate', {
         method: 'POST',
@@ -3462,12 +3464,13 @@ export default function BotFactory() {
         await Promise.all([loadBots(), loadMarketplace()]);
       } else {
         const data = await res.json().catch(() => ({}));
-        if (data.requiresUpgrade) {
-          window.location.hash = '#upgrade';
-        }
+        const message = typeof data.error === 'string' ? data.error : 'Unable to activate this Pixel Agent. Please try again.';
+        setActivationError(message);
+        if (res.status === 403 && data.upgrade) navigate(data.upgrade);
       }
     } catch (err) {
       console.error('Failed to activate bot:', err);
+      setActivationError('Network error while activating this Pixel Agent. Please try again.');
     } finally {
       setActivating(null);
     }
@@ -3534,27 +3537,27 @@ export default function BotFactory() {
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         {hasAccess ? 'ACTIVE' : 'RESTRICTED'}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} BOTS</span>
+                       <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} CURATED BOTS</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground/60">
-                      {boomerMode ? '9 bots. 4 divisions. 8 channels. Internal access.' : '9 BOTS // 4 DIVISIONS // 8 CHANNELS // INTERNAL ACCESS'}
+                       {boomerMode ? 'Curated agents for configured channels. A paid USD entitlement is required.' : 'CURATED AGENTS // CONFIGURED CHANNELS ONLY // PAID USD ENTITLEMENT REQUIRED'}
                     </p>
                   </div>
-                  <div className="shrink-0 flex items-center gap-2">
-                    {hasAccess ? (
-                      <a href={`${import.meta.env.BASE_URL}jean-claw`}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 transition-colors no-underline">
-                        <ExternalLink className="w-3 h-3" /> DETAILS
-                      </a>
-                    ) : (
+                   <div className="shrink-0 flex items-center gap-2">
+                     {!hasAccess && (
                       <button onClick={() => navigate('/pricing')}
                         className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/20">
                         <Zap className="w-3.5 h-3.5" /> ACTIVATE
                       </button>
-                    )}
+                     )}
                   </div>
                 </div>
               </motion.div>
+              {activationError && (
+                <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {activationError}
+                </div>
+              )}
 
               <AgentTeam embedded />
 

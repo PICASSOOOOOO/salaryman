@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { Building2, ChevronUp, KeyRound, LockKeyhole, Shield, Sparkles } from "lucide-react";
+import { Building2, KeyRound, LockKeyhole, Shield, Sparkles } from "lucide-react";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
+import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 
 const occupiedFloors = new Map([
   [67, { name: "SHADOW CORP", kind: "RESTRICTED", detail: "The roofline suite. No public access. The elevator stops listening.", tone: "shadow", icon: LockKeyhole }],
@@ -15,24 +16,28 @@ const occupiedFloors = new Map([
   [1, { name: "RECREATION", kind: "PUBLIC", detail: "Games, food, conversation, and a place to begin.", href: "/recreation", tone: "rec", icon: Sparkles }],
 ]);
 
-// A tall building gives new organizations somewhere to grow into. Until a
-// real organization claims a floor, the directory deliberately calls out the
-// commercial state instead of pretending the space is already populated.
+// Every commercial row links to the real registry flow. The directory does not
+// render fake claim buttons or imply that a non-existent office is enterable.
 const floors = Array.from({ length: 67 }, (_, index) => {
   const floor = 67 - index;
   const existing = occupiedFloors.get(floor);
-  if (existing) return { floor, ...existing };
-  const construction = floor % 3 === 0;
-  const price = floor * 2500;
+  if (existing) {
+    return { floor, quote: null, href: "href" in existing ? existing.href : undefined, ...existing };
+  }
+
+  const quote = floor >= 5 && floor <= 64
+    ? quoteShadowTowerArea("founder_team", floor, "lease", SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters)
+    : null;
+
   return {
     floor,
-    name: construction ? "UNDER CONSTRUCTION" : "AVAILABLE FLOOR",
-    kind: construction ? "BUILDING WORKS" : "FOR SALE / LEASE",
-    detail: construction
-      ? `New company space being fitted out · vertical premium ƒ${price.toLocaleString()}/mo`
-      : `Claim a floor for your crew · vertical premium ƒ${price.toLocaleString()}/mo`,
+    name: quote ? "COMMERCIAL FLOOR" : "UNAVAILABLE",
+    kind: quote ? "LIVE REGISTRY" : "RESTRICTED",
+    detail: quote ? "Open the registry to price, lease, or purchase this floor" : "This floor is not available through the commercial registry",
+    href: quote ? `/store/realty?floor=${floor}` : undefined,
+    quote,
     tone: "future" as const,
-    icon: construction ? KeyRound : Building2,
+    icon: quote ? Building2 : KeyRound,
   };
 });
 
@@ -53,7 +58,7 @@ export default function TowerDirectory() {
           <Link href="/pablo" className="hidden sm:block text-xs text-zinc-500 hover:text-cyan-300">BACK TO PABLO</Link>
         </header>
         <div className="grid gap-2">
-          {floors.map(({ floor, name, kind, detail, href, tone, icon: Icon }) => {
+          {floors.map(({ floor, name, kind, detail, href, tone, icon: Icon, quote }) => {
             const content = <div className={`group relative flex items-center gap-4 overflow-hidden border p-4 transition duration-500 hover:-translate-y-0.5 hover:pl-6 ${
               tone === "shadow" ? "border-violet-500/50 bg-[radial-gradient(circle_at_80%,#301044,#0b0714)] hover:border-violet-300" :
               tone === "pablo" ? "border-amber-300/40 bg-[radial-gradient(circle_at_80%,#46331a,#101018)] hover:border-amber-200" :
@@ -63,8 +68,39 @@ export default function TowerDirectory() {
             }`}>
               <div className="w-12 text-center font-mono text-xl text-zinc-500 group-hover:text-cyan-300 transition-colors">{String(floor).padStart(2, "0")}</div>
               <Icon className={`h-5 w-5 shrink-0 ${tone === "shadow" || tone === "secret" ? "text-violet-300 animate-pulse" : tone === "pablo" ? "text-amber-300" : "text-cyan-300"}`} />
-              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="tracking-[.15em]">{name}</strong><span className="text-[9px] tracking-[.2em] text-zinc-500">{kind}</span></div><p className="mt-1 text-xs text-zinc-500">{detail}</p></div>
-              {href ? <span className="text-xs text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">ENTER →</span> : <span className="text-[9px] tracking-widest text-zinc-600">{tone === "shadow" || tone === "secret" ? "SEALED" : "COMING"}</span>}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <strong className="tracking-[.15em]">{name}</strong>
+                  <span className="text-[9px] tracking-[.2em] text-zinc-500">{kind}</span>
+                </div>
+              {quote ? (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div className="text-xs text-cyan-400/80 font-mono flex flex-wrap gap-x-4 gap-y-1">
+                      <span>ƒ{quote.totalFiat.toLocaleString()}/mo</span>
+                      <span className="text-zinc-500">·</span>
+                      <span className="text-zinc-400">{quote.squareMeters.toLocaleString()}m²</span>
+                      <span className="text-zinc-500">·</span>
+                      <span className="text-zinc-400">ƒ{quote.fiatPerSquareMeter.toFixed(1)}/m²</span>
+                      <span className="text-zinc-500">·</span>
+                      <span className="text-zinc-400">2-4 OFFICE CAPABILITY</span>
+                    </div>
+
+                    {/* Compact schematic hallway + office-bay motif */}
+                    <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <div className="h-2 w-8 bg-zinc-700/50 border border-zinc-600 rounded-sm"></div>
+                      <div className="h-1 w-16 bg-cyan-900/40 rounded-full flex justify-around items-center px-1">
+                        <div className="h-0.5 w-0.5 bg-cyan-500/50 rounded-full"></div>
+                        <div className="h-0.5 w-0.5 bg-cyan-500/50 rounded-full"></div>
+                      </div>
+                      <div className="h-2 w-8 bg-zinc-700/50 border border-zinc-600 rounded-sm"></div>
+                      <div className="h-2 w-8 bg-zinc-700/50 border border-zinc-600 rounded-sm"></div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-zinc-500">{detail}</p>
+                )}
+              </div>
+              {href ? <span className="text-xs text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity">OPEN REGISTRY →</span> : <span className="text-[9px] tracking-widest text-zinc-600">{tone === "shadow" || tone === "secret" ? "SEALED" : "UNAVAILABLE"}</span>}
               <div className="absolute inset-y-0 left-0 w-0.5 bg-cyan-300/0 group-hover:bg-cyan-300/70 transition-colors" />
             </div>;
             return href ? <Link key={floor} href={href}>{content}</Link> : <div key={floor}>{content}</div>;

@@ -1,14 +1,8 @@
 // @vitest-environment jsdom
 //
-// Guards SignInPrompt's provider-aware rendering. Task #657 added
-// GET /api/auth/providers and made SignInPrompt hide the GitHub/Discord buttons
-// when those providers aren't configured for the host — otherwise a user clicks
-// "Continue with GitHub" and just bounces back with ?auth_error=github_unavailable.
-// These tests drive the real component (with useAuth + fetch stubbed) and assert:
-//   - only the available provider buttons render based on the probe response,
-//   - the SIGN IN (Replit) button is ALWAYS present,
-//   - a failed/never-resolving probe falls back to showing ALL buttons
-//     (optimistic default) so sign-in is never fully hidden.
+// Guards the consolidated mobile-friendly sign-in surface. Discord and GitHub
+// remain backend capabilities, but are not advertised until their production
+// callbacks are verified. Platform auth must always remain available.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -96,20 +90,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("SignInPrompt renders only available providers", () => {
-  it("shows all three when the probe reports all enabled", async () => {
+describe("SignInPrompt keeps one verified sign-in method", () => {
+  it("hides optional providers even when the probe reports them enabled", async () => {
     stubProvidersFetch(async () => ({ replit: true, discord: true, github: true }));
     await mount();
     expect(hasReplitSignIn()).toBe(true);
-    expect(hasDiscordButton()).toBe(true);
-    expect(hasGithubButton()).toBe(true);
+    expect(hasDiscordButton()).toBe(false);
+    expect(hasGithubButton()).toBe(false);
   });
 
   it("hides GitHub when github=false", async () => {
     stubProvidersFetch(async () => ({ replit: true, discord: true, github: false }));
     await mount();
     expect(hasReplitSignIn()).toBe(true);
-    expect(hasDiscordButton()).toBe(true);
+    expect(hasDiscordButton()).toBe(false);
     expect(hasGithubButton()).toBe(false);
   });
 
@@ -118,7 +112,7 @@ describe("SignInPrompt renders only available providers", () => {
     await mount();
     expect(hasReplitSignIn()).toBe(true);
     expect(hasDiscordButton()).toBe(false);
-    expect(hasGithubButton()).toBe(true);
+    expect(hasGithubButton()).toBe(false);
   });
 
   it("hides both GitHub and Discord when only replit is enabled", async () => {
@@ -131,24 +125,22 @@ describe("SignInPrompt renders only available providers", () => {
   });
 });
 
-describe("SignInPrompt falls back optimistically when the probe fails", () => {
-  it("shows ALL buttons when the providers fetch rejects", async () => {
+describe("SignInPrompt stays compact when provider discovery fails", () => {
+  it("keeps only platform auth when the providers fetch rejects", async () => {
     (globalThis as any).fetch = vi.fn(() => Promise.reject(new Error("network down")));
     await mount();
-    // A failed probe must never strand the user with zero/partial sign-in
-    // options — default to showing everything.
     expect(hasReplitSignIn()).toBe(true);
-    expect(hasDiscordButton()).toBe(true);
-    expect(hasGithubButton()).toBe(true);
+    expect(hasDiscordButton()).toBe(false);
+    expect(hasGithubButton()).toBe(false);
   });
 
-  it("shows ALL buttons when the probe returns a non-ok response", async () => {
+  it("keeps only platform auth when the probe returns a non-ok response", async () => {
     (globalThis as any).fetch = vi.fn(() =>
       Promise.resolve({ ok: false, status: 500, json: async () => ({}) }),
     );
     await mount();
     expect(hasReplitSignIn()).toBe(true);
-    expect(hasDiscordButton()).toBe(true);
-    expect(hasGithubButton()).toBe(true);
+    expect(hasDiscordButton()).toBe(false);
+    expect(hasGithubButton()).toBe(false);
   });
 });
