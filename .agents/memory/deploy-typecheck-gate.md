@@ -30,3 +30,16 @@ will kill it with no output, which looks like a failure but isn't. To verify a
 bundle build, run it fully detached (`setsid bash -c '...'`) and poll a done
 marker across turns; api-server build (`tsx ./build.ts` → `dist/index.cjs`) is
 fast (~5s) and is the actual deploy run target.
+
+Artifact publishing runs the root `.replit` deployment build as a pre-build
+hook and then runs each artifact's own production build. Keep the root hook to
+one version bump plus typecheck, and keep each artifact build package-scoped.
+
+**Why:** Pointing the web artifact back at the root workspace build rebuilt the
+entire workspace a second time. The first frontend bundle completed, then the
+duplicate 4,956-module Vite pass terminated abruptly on the 2 GiB publish
+builder at peak memory.
+
+**How to apply:** Never use the root recursive build as an artifact's
+`services.production.build`. The web artifact should invoke only its filtered
+package build; the API artifact should do the same.

@@ -287,576 +287,672 @@ id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
 type = "image"
 title = "Frontman Logo — v2 (subtle)"
+logical_id = "cec2640f-36cf-457c-b0dd-dbaa6927c62f"
 
 [[outputs]]
 id = "L5PURQlW_6c6X-2feRBeM"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-a.png"
 type = "image"
 title = "Option A — Original F (the one)"
+logical_id = "da1f8c15-b8bb-43df-8eed-048025bbcc8f"
 
 [[outputs]]
 id = "NM1BpjX_DWklkENa7tEKr"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-b.png"
 type = "image"
 title = "Option B — Abstract Diamond"
+logical_id = "26dbd036-15a7-4d65-99ec-95b56153fe9c"
 
 [[outputs]]
 id = "L0_VMIdGMx1E20THBlzcW"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-c.png"
 type = "image"
 title = "Option C — Stacked Lines"
+logical_id = "207c82c4-23af-4fee-b204-c066227fa122"
 
 [[outputs]]
 id = "1N7D_-jDoul1gkzD7dFJF"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-d.png"
 type = "image"
 title = "Option D — Neon Lines"
+logical_id = "f282c67d-7c16-4a0d-940b-c34f3665912b"
 
 [[outputs]]
 id = "syk8YUM81L0TbZn7uMsoY"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-e.png"
 type = "image"
 title = "Option E — Neon Bolt"
+logical_id = "ed8bb9f4-9446-4646-861b-7b59ab004c13"
 
 [[outputs]]
 id = "MXoIn4u271w0xT97oX0U0"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-f.png"
 type = "image"
 title = "Option F — Neon F (first neon version)"
+logical_id = "00c32c4e-cef3-4f26-88b7-2d7f4fcab7d6"
 
 [[outputs]]
 id = "-3auELkPyNF31yPPk4bVO"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-g.png"
 type = "image"
 title = "Option G — Muted Neon F"
+logical_id = "f5a572e1-8e9c-485a-acf7-dd74179d7b5b"
 
 [[outputs]]
 id = "1fm0jby1yde4IPL6K8xxm"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-h.png"
 type = "image"
 title = "Option H — Medium Neon F"
+logical_id = "3d31d1b1-e7ef-4ce9-94b1-7e30ba6cb1a1"
 
 [[outputs]]
 id = "MP1yFqpf--T_h9UsDDivv"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-i.png"
 type = "image"
 title = "Option I — Pure Neon F"
+logical_id = "fc45a4c6-d31d-4d83-bdf9-1923e83db79a"
 
 [[outputs]]
 id = "Pny8yFoIMmeoJ_-ge_dCn"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-j.png"
 type = "image"
 title = "Option J — 80s Neon F"
+logical_id = "98f6a884-46b9-490f-9042-e0f4073396fd"
 
 [[outputs]]
 id = "y3mLWX4pj1gIf30yaYAKi"
 uri = "file://attached_assets/generated_images/frontman-pro-product.png"
 type = "image"
 title = "Frontman Pro — Stripe Product Image"
+logical_id = "66c4c93b-2a93-4a45-ace1-bff4641a187f"
 
 [[outputs]]
 id = "Zf4XAA_Rf9f-jEYK9v4b6"
 uri = "file://attached_assets/generated_images/frontman-pro-v1.png"
 type = "image"
 title = "V1 — Silver Monogram"
+logical_id = "a6f3002f-9b8f-4cff-ba4e-373038b37751"
 
 [[outputs]]
 id = "51eTOZLoSKOP3zEa7GVGl"
 uri = "file://attached_assets/generated_images/frontman-pro-v2.png"
 type = "image"
 title = "V2 — Purple-Blue Gradient + Crown"
+logical_id = "953fc8a2-241e-4516-a9ad-a2414e055fcb"
 
 [[outputs]]
 id = "g2CD6WGeVdp8hOlP2Ixfa"
 uri = "file://attached_assets/generated_images/frontman-pro-v3.png"
 type = "image"
 title = "V3 — Glassmorphism"
+logical_id = "ac42c5ec-2974-47ff-a993-22affdce8058"
 
 [[outputs]]
 id = "B2l6BJhXx6GG_TUqZdXaK"
 uri = "file://attached_assets/generated_images/frontman-pro-v4.png"
 type = "image"
 title = "V4 — Retro Bold Purple"
+logical_id = "7e964553-331d-4d12-866d-51e42c9ee4d4"
 
 [[outputs]]
 id = "o0zes4tII-baaWDdVKafg"
 uri = "file://attached_assets/generated_images/frontman-pro-v5.png"
 type = "image"
 title = "V5 — Dark Navy Constellation"
+logical_id = "ba1428ec-2897-4d4c-80ac-55926f5e4481"
 
 [[outputs]]
 id = "GyONhR6cG5-4ubzeIsTKF"
 uri = "file://attached_assets/generated_images/frontman-pro-v6.png"
 type = "image"
 title = "V6 — Clean White Editorial"
+logical_id = "d79ea78c-3646-4c4f-975c-5a9bb8b5bb48"
 
 [[outputs]]
 id = "VWnc4hLkgZw8s9FsLYQhy"
 uri = "file://attached_assets/generated_images/frontman-pro-v7.png"
 type = "image"
 title = "V7 — Neon Cyberpunk"
+logical_id = "5f05ad59-e2cb-4f61-8a61-ede97604d001"
 
 [[outputs]]
 id = "RQVuWD2Jxx_iBVZhl2ISl"
 uri = "file://attached_assets/generated_images/frontman-pro-v8.png"
 type = "image"
 title = "V8 — Black Marble + Gold"
+logical_id = "d5e40375-b468-45b6-9d40-fa51b5ba0075"
 
 [[outputs]]
 id = "XslGLPngjeCFvQu5klUxh"
 uri = "file://attached_assets/generated_images/frontman-pro-v9.png"
 type = "image"
 title = "V9 — Geometric Hexagon"
+logical_id = "c52b5287-44c5-499b-b4bb-262a4c26284e"
 
 [[outputs]]
 id = "GZ1ULXmM6E3VBz63JjSeT"
 uri = "file://attached_assets/generated_images/frontman-pro-v10.png"
 type = "image"
 title = "V10 — Warm Sunset Gradient"
+logical_id = "eba22f9a-b69c-4078-950f-026883f7c65d"
 
 [[outputs]]
 id = "fMVu5ZmpOkUZQdtoSQgxy"
 uri = "file://attached_assets/generated_images/frontman-pro-v11.png"
 type = "image"
 title = "V11 — Forest Green Glow"
+logical_id = "5b83c30f-2082-4117-9d40-15030559562a"
 
 [[outputs]]
 id = "DnVWSgGrCgwAx8pb3CIIF"
 uri = "file://attached_assets/generated_images/frontman-pro-v12.png"
 type = "image"
 title = "V12 — Black & Purple Split"
+logical_id = "f9505c80-aa3d-4e1d-8a45-fc0ae15a9685"
 
 [[outputs]]
 id = "GeG5Nk5SxDoarcFYrISRH"
 uri = "file://attached_assets/generated_images/frontman-pro-v13.png"
 type = "image"
 title = "V13 — Brushed Metal Chrome"
+logical_id = "59603cc3-142b-4b5c-916e-2205514f6086"
 
 [[outputs]]
 id = "qSa2F-wosnYskoSXrxYgT"
 uri = "file://attached_assets/generated_images/frontman-pro-v14.png"
 type = "image"
 title = "V14 — Zen Minimal (Japanese)"
+logical_id = "183bc053-9bb7-429a-ac8c-051b0c979fbb"
 
 [[outputs]]
 id = "JYrCbvAVFkJtmS5QmKd1K"
 uri = "file://attached_assets/generated_images/frontman-pro-v15.png"
 type = "image"
 title = "V15 — Deep Space Badge"
+logical_id = "78f0177f-006c-424e-8f7d-69aac86bce0d"
 
 [[outputs]]
 id = "LEcN0B2dqtsXZbtlRb9p3"
 uri = "file://attached_assets/generated_images/frontman-pro-v16.png"
 type = "image"
 title = "V16 — Art Deco Gold"
+logical_id = "80c2ec65-9022-48e8-b035-fd009cc2915b"
 
 [[outputs]]
 id = "GJll0eN5od1IV19beH4K1"
 uri = "file://attached_assets/generated_images/frontman-pro-v17.png"
 type = "image"
 title = "V17 — Vaporwave Chrome"
+logical_id = "1a4cee1a-2500-4f5e-b329-f5e13712b4ef"
 
 [[outputs]]
 id = "aR9I2aRHn1JgJy3GQQnf-"
 uri = "file://attached_assets/generated_images/frontman-pro-v18.png"
 type = "image"
 title = "V18 — Flat Bauhaus Indigo"
+logical_id = "bfeb4376-49c6-4ca0-986b-af3b363600aa"
 
 [[outputs]]
 id = "nS3TTiPFRXcSGUqLwvWyG"
 uri = "file://attached_assets/generated_images/frontman-pro-v19.png"
 type = "image"
 title = "V19 — Carbon Fiber Blue"
+logical_id = "7ff53606-ca53-4e74-ba1a-f16f9394374e"
 
 [[outputs]]
 id = "ro_dMImKRkpd46DBWPIQQ"
 uri = "file://attached_assets/generated_images/frontman-pro-v20.png"
 type = "image"
 title = "V20 — Ink Wash Calligraphy"
+logical_id = "64c4ffc7-86fd-4d75-b7d9-352d0398890d"
 
 [[outputs]]
 id = "YnKbboQx2bzvhGWXgeLHu"
 uri = "file://attached_assets/generated_images/frontman-sil-v1.png"
 type = "image"
 title = "V1 — Heavy Bold Serif"
+logical_id = "2ded99fa-49d0-45ff-82c1-eb468a8b1877"
 
 [[outputs]]
 id = "blzO5pQqnUI5fehmtCWry"
 uri = "file://attached_assets/generated_images/frontman-sil-v2.png"
 type = "image"
 title = "V2 — Thin Light Sans-Serif"
+logical_id = "1e62f9cf-94fa-45f7-b772-6bcfe66a979b"
 
 [[outputs]]
 id = "liHciXE7CqSg0ufDim-Fn"
 uri = "file://attached_assets/generated_images/frontman-sil-v3.png"
 type = "image"
 title = "V3 — Tall Condensed Gothic"
+logical_id = "fa3fb1a9-cae9-46df-803d-f48e5e98844c"
 
 [[outputs]]
 id = "dmZKUTCw5lauxmzNQ9N3D"
 uri = "file://attached_assets/generated_images/frontman-sil-v4.png"
 type = "image"
 title = "V4 — Cursive Script"
+logical_id = "84a23e17-54e4-4ed2-a232-c93f94997aa4"
 
 [[outputs]]
 id = "l5QJFHX2uzjsNwE9bYHTt"
 uri = "file://attached_assets/generated_images/frontman-sil-v5.png"
 type = "image"
 title = "V5 — Retro Slab Serif"
+logical_id = "993c2796-a5b5-428b-b505-aeeeb23947ec"
 
 [[outputs]]
 id = "h90EjR-fSXxlv_zjx_xzu"
 uri = "file://attached_assets/generated_images/frontman-sil-v6.png"
 type = "image"
 title = "V6 — Futuristic Geometric"
+logical_id = "79e4ebf1-5259-47b4-a8e8-f55f07a185fd"
 
 [[outputs]]
 id = "iDfu06nD0bDHTjFFfuvPk"
 uri = "file://attached_assets/generated_images/frontman-sil-v7.png"
 type = "image"
 title = "V7 — Blackletter Gothic"
+logical_id = "4e105e94-33df-49d4-a620-ea134ca882ea"
 
 [[outputs]]
 id = "CuR2DRKFGHsvORRlHoWV6"
 uri = "file://attached_assets/generated_images/frontman-sil-v8.png"
 type = "image"
 title = "V8 — Wide Tracked Uppercase"
+logical_id = "37a2db58-ae13-4eae-be00-25fedab2fd9f"
 
 [[outputs]]
 id = "x1TXNnadN8lxaQdwm9wFI"
 uri = "file://attached_assets/generated_images/frontman-sil-v9.png"
 type = "image"
 title = "V9 — Handwritten Marker"
+logical_id = "1b428a66-b9f8-4955-8f7d-8fbf89aeee38"
 
 [[outputs]]
 id = "AH7eTvr6iMtUgJ_ScSOOY"
 uri = "file://attached_assets/generated_images/frontman-sil-v10.png"
 type = "image"
 title = "V10 — Rounded Bubbly"
+logical_id = "f6b541d8-746f-461d-ab39-30a2839a2396"
 
 [[outputs]]
 id = "c_CtQl4JDA5ZIprmLfYdu"
 uri = "file://artifacts/interview-helper/public/picasso-favicon.png"
 type = "image"
 title = "Picasso Favicon (192x192)"
+logical_id = "b0f707b4-cbb7-4b82-a0f8-20c18bb26d24"
 
 [[outputs]]
 id = "ZLMi178H4aVzgjyKK723f"
 uri = "file://artifacts/interview-helper/public/picasso-logo.png"
 type = "image"
 title = "Picasso Logo / App Icon (512x512)"
+logical_id = "7855beb7-b778-4cba-bde5-be29ad497fb6"
 
 [[outputs]]
 id = "G1-CbcNj-_VFv2_zLJJwh"
 uri = "file://artifacts/interview-helper/public/picasso-social.png"
 type = "image"
 title = "Picasso Social / OG Image"
+logical_id = "d73ca14a-b83b-4487-8a78-6dec8eb63d25"
 
 [[outputs]]
 id = "095rUOmAxskmQ1Zud1mmf"
 uri = "file://SALARYMAN_BRAIN.md"
 type = "text"
 title = "SALARYMAN Brain — Complete Project Knowledge Base"
+logical_id = "3edad16f-1e01-4156-9a0c-f510e0f81b35"
 
 [[outputs]]
 id = "6ZE7i5Ga8wQRJ6-7FENQi"
 uri = "file://attached_assets/hummingbird-preview.svg"
 type = "image"
 title = "Real hummingbird silhouette — Lorc / GameIcons (CC BY 3.0)"
+logical_id = "66ccf917-fc87-491a-abc3-85b7273ec485"
 
 [[outputs]]
 id = "XyLfRzdqihzLjvrTfPCY_"
 uri = "file://.local/worldart/world_bank_iso.jpg"
 type = "image"
 title = "MINX MUTUAL — gold-vault bank (ziggurat)"
+logical_id = "b2961ffe-36ff-45d0-b155-dab249ec0306"
 
 [[outputs]]
 id = "qgwQzND6XJu2WNe7CUpSF"
 uri = "file://.local/worldart/world_tower_iso.jpg"
 type = "image"
 title = "Pablo's Shadow Tower (nebula-orb crown)"
+logical_id = "5c3f272a-58cd-4b82-bdb8-0bb8c2583efe"
 
 [[outputs]]
 id = "7iKujvoXIlinfk_mApDc4"
 uri = "file://.local/worldart/world_factory_iso.jpg"
 type = "image"
 title = "Bot Factory (FRESH BOTS / conveyor)"
+logical_id = "c2f893d0-f776-42e9-ade9-b150128f84e2"
 
 [[outputs]]
 id = "74fJfgTckLcUopD71nSt1"
 uri = "file://.local/worldart/world_realty_iso.jpg"
 type = "image"
 title = "Reconstruction Office (rebuild authority)"
+logical_id = "7b433d5d-8ccd-4a4d-9449-0c8d6f95bd99"
 
 [[outputs]]
 id = "D6hwoJg5sRMXBGGvlxP77"
 uri = "file://.local/worldart/world_campsite_iso.jpg"
 type = "image"
 title = "Survivors' Campsite"
+logical_id = "6e13cab0-ed44-48bd-a3e2-d587d325dced"
 
 [[outputs]]
 id = "La072zfobi3QD-OEchtcm"
 uri = "file://.local/worldart/world_subway_station_iso.jpg"
 type = "image"
 title = "Subway Station entrance"
+logical_id = "fd56ac0c-410f-4c8e-bb80-06c1803356dc"
 
 [[outputs]]
 id = "VWzvvdFx--ZQzWK6RU-Eq"
 uri = "file://.local/worldart/world_subway_car.jpg"
 type = "image"
 title = "Subway Car (travel animation)"
+logical_id = "b5a9facc-fb6b-4b9b-bdba-142d4cfc028e"
 
 [[outputs]]
 id = "2g8JXrfR655UGBB4T7lPy"
 uri = "file://attached_assets/Screenshot_2026-05-31_at_12.16.55_PM_1780204623506.png"
 type = "image"
 title = "BEFORE — the colorful 3D nebula you liked (\"I hope it doesn't change\")"
+logical_id = "b9a14479-604f-4a2f-9949-45eeda11fb4b"
 
 [[outputs]]
 id = "LWPo4VcLYtJ1P0cYd7xRp"
 uri = "file://attached_assets/screenshots/salaryman_replit_app_pablo.png"
 type = "image"
 title = "NOW — the flat purple 2D fallback that's showing instead"
+logical_id = "7ce8a0c4-64df-447c-838e-4044d98c0fb2"
 
 [[outputs]]
 id = "U5ukKOE_ZQtdvd21NQEmB"
 uri = "file://attached_assets/generated_images/salaryman_keyart_cover.png"
 type = "image"
 title = "SALARYMAN — Cover Key Art"
+logical_id = "afa9a83c-d5ae-4991-9efb-9b38c425a0c8"
 
 [[outputs]]
 id = "O6FL8aGkCbzYOEvJ37w8J"
 uri = "file://attached_assets/generated_images/pablo_nebula_orb.png"
 type = "image"
 title = "PABLO — AI Overlord Nebula"
+logical_id = "2cd4da6d-1bc9-4dea-a6ad-28fb8de82d7c"
 
 [[outputs]]
 id = "vjT7FuaBu8KFG6UfttHuQ"
 uri = "file://attached_assets/generated_images/neon_city_street.png"
 type = "image"
 title = "Neon Corporate City Street"
+logical_id = "6e3fe6a5-1c91-466c-b24b-36427a151cf9"
 
 [[outputs]]
 id = "g1hjaA-f6SH0Pq2nDKz9K"
 uri = "file://attached_assets/generated_images/pixel_agents_squad.png"
 type = "image"
 title = "The Pixel Agents"
+logical_id = "17815b86-1660-440a-8ac7-261b3bb23ca1"
 
 [[outputs]]
 id = "ZtY8MH4CW46oxCTCUtu2G"
 uri = "file://attached_assets/generated_images/money_as_health.png"
 type = "image"
 title = "Money Is Your Health"
+logical_id = "f8b9e8eb-f61b-4641-9ed7-743a5f2137fa"
 
 [[outputs]]
 id = "sBJgyMW_2gqCOey1ZMiPy"
 uri = "file://attached_assets/generated_images/terrence_studio.png"
 type = "image"
 title = "Terrence's Music Studio"
+logical_id = "f9b52eb6-2b05-4a69-9c2d-0b3ef5cd1fcc"
 
 [[outputs]]
 id = "beq_c9dWfs5C-O0jzbMfK"
 uri = "file://attached_assets/generated_images/gameplay_city_walk.png"
 type = "image"
 title = "Gameplay — City Walk + HUD"
+logical_id = "7a3bf1c9-b11f-4109-b934-730372413302"
 
 [[outputs]]
 id = "ctqffs_VPUiuUcwl1_Yjb"
 uri = "file://attached_assets/generated_images/gameplay_office_interior.png"
 type = "image"
 title = "Gameplay — Office Interior"
+logical_id = "ba8ebd8c-3dec-40ba-adbc-b721892db491"
 
 [[outputs]]
 id = "S9twyS-PxRvl9KNPIeioI"
 uri = "file://attached_assets/generated_images/gameplay_combat.png"
 type = "image"
 title = "Gameplay — Street Combat (Coin Health)"
+logical_id = "24d157df-b436-4de9-8ace-ae74de7ff0c3"
 
 [[outputs]]
 id = "8dZfWxbnYlgz8u7y4pBmC"
 uri = "file://attached_assets/generated_images/gameplay_subway.png"
 type = "image"
 title = "Gameplay — Subway Station"
+logical_id = "8d141e82-77eb-45e1-bd6f-62387426a6a1"
 
 [[outputs]]
 id = "mBFnrX5jyCjAWsCWNUC5h"
 uri = "file://attached_assets/generated_images/gameplay_pablo_terminal.png"
 type = "image"
 title = "Gameplay — Pablo Terminal"
+logical_id = "5065e05c-ea54-4e71-93b0-4d2425c58d10"
 
 [[outputs]]
 id = "cL_QoIC4LLpIYkUqUa9Il"
 uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
 type = "image"
 title = "Gameplay — Music Lab"
+logical_id = "6cac36cc-2536-45f2-91e7-c0da11c6f9dd"
 
 [[outputs]]
 id = "Z_OD6GHMS4sH-X6ZsgSDa"
 uri = "file://attached_assets/generated_images/v2_city_hero.png"
 type = "image"
 title = "City Hero — Splash"
+logical_id = "5693fad8-db07-412b-af63-677d1d56389b"
 
 [[outputs]]
 id = "CBew19T9iPAwb0JCQuOBz"
 uri = "file://attached_assets/generated_images/v2_city_walk.png"
 type = "image"
 title = "City Walk — Gameplay"
+logical_id = "afeca245-9190-4d85-9372-c9dbebe673e1"
 
 [[outputs]]
 id = "TU3NtilKIAYuWEJOIOsiZ"
 uri = "file://attached_assets/generated_images/v2_combat.png"
 type = "image"
 title = "Street Combat — Coin Health"
+logical_id = "809255d5-1660-4a16-af2a-aab97c3a9de0"
 
 [[outputs]]
 id = "Y4QXyS4tZTIY8fUhg2lf3"
 uri = "file://attached_assets/generated_images/v2_subway.png"
 type = "image"
 title = "Subway Station"
+logical_id = "f7b6c3c8-45ef-4ec3-8291-b0d44c226059"
 
 [[outputs]]
 id = "Edzjy2glg87mnFofzcvBL"
 uri = "file://attached_assets/generated_images/v2_pablo_terminal.png"
 type = "image"
 title = "Pablo Terminal"
+logical_id = "536b4bab-455b-41ca-8b4a-0134e5ac87a2"
 
 [[outputs]]
 id = "rE2J9bZlY274ozJHFeNCz"
 uri = "file://attached_assets/generated_images/v2_music_lab.png"
 type = "image"
 title = "Music Lab"
+logical_id = "bd360f9e-9876-4a2f-8f2b-02bfcf523710"
 
 [[outputs]]
 id = "lTlqbu0QSIOAhbez-i5-H"
 uri = "file://attached_assets/generated_videos/salaryman_gameplay_clip.mp4"
 type = "video"
 title = "SALARYMAN — Gameplay Clip (8s, 1080p)"
+logical_id = "1d500e75-9d60-4e53-972e-0cd15b361a3e"
 
 [[outputs]]
 id = "qEiXsb7LL6IkOJwqNGoK_"
 uri = "file://attached_assets/generated_videos/salaryman_trailer.mp4"
 type = "video"
 title = "SALARYMAN — Gameplay Cut (38s, 1080p, w/ CALL HOME soundtrack)"
+logical_id = "f8cf9060-f0c4-4ff7-a3bb-684fd92182a8"
 
 [[outputs]]
 id = "SWWSfmPCQ9SXX35E0SpBc"
 uri = "file://attached_assets/generated_images/salaryman_banner_a.png"
 type = "image"
 title = "SALARYMAN Title Banner A (800×250)"
+logical_id = "28a3303d-7ee4-4bf6-bca2-6fed241c19da"
 
 [[outputs]]
 id = "V1B2PiscKVaoqMGsaPjiz"
 uri = "file://attached_assets/generated_images/salaryman_banner_b.png"
 type = "image"
 title = "SALARYMAN Title Banner B (800×250)"
+logical_id = "e2b4ae5c-2b46-4e72-92b7-a20bd83b817b"
 
 [[outputs]]
 id = "88m2115RtObh2zd4KOzA-"
 uri = "file://attached_assets/generated_images/bg_banner_hero_720.png"
 type = "image"
 title = "Background Banner — Hero (1280×720)"
+logical_id = "c31f8c1e-b8fd-436a-9cd8-88ea9ba70c73"
 
 [[outputs]]
 id = "72VHKALWIs5ijyMquqBH4"
 uri = "file://attached_assets/generated_images/city_map_720.png"
 type = "image"
 title = "City Map (1280×720)"
+logical_id = "e96ed3da-c218-496a-bcd6-4043b4d6de07"
 
 [[outputs]]
 id = "ZZjOnCbfZhJ9yhSSBBNTT"
 uri = "file://attached_assets/generated_images/bots_group_720.png"
 type = "image"
 title = "The Bots — Group Picture (1280×720)"
+logical_id = "51fce0a1-8f80-47c4-8f18-b8a3384d9b3e"
 
 [[outputs]]
 id = "uM5-Trhf5lUzQkdJvv4KK"
 uri = "file://attached_assets/generated_images/fight_scene_720.png"
 type = "image"
 title = "Sick Fight Scene (1280×720)"
+logical_id = "2646aa88-dc50-4ae1-bc7e-e98f8123b7ed"
 
 [[outputs]]
 id = "sHtq6ujU8Y6IMNY0Xug21"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v2.mp4"
 type = "video"
 title = "SALARYMAN — Gameplay Cut v2 (34.5s, dramatic confrontation, CALL HOME soundtrack)"
+logical_id = "ae6091f8-5b5c-4e4b-a745-9121900ce444"
 
 [[outputs]]
 id = "lD41FwjChSF9IZEjFirB_"
 uri = "file://attached_assets/generated_images/picasso_300_mark.png"
 type = "image"
 title = "PICASSO Logo Mark (300×300)"
+logical_id = "689f91d4-1220-4034-9fcc-d3d810e81061"
 
 [[outputs]]
 id = "IdOrRXfhc1DbKzNi1tGHn"
 uri = "file://attached_assets/generated_images/picasso_300_wordmark.png"
 type = "image"
 title = "PICASSO Wordmark (300×300)"
+logical_id = "b4a2edd4-eb1c-4eac-9a62-0b53a10ca849"
 
 [[outputs]]
 id = "LWXsYo3lQ8fJYIqVjWFp9"
 uri = "file://attached_assets/generated_images/picasso_logo_real_300.png"
 type = "image"
 title = "PICASSO Logo (real, 300×300, on black)"
+logical_id = "ffd6c0ff-e61c-43c8-bbc4-9f719d100673"
 
 [[outputs]]
 id = "eYEhWZdflRAeYSykYfly9"
 uri = "file://attached_assets/generated_images/picasso_banner_rundown.png"
 type = "image"
 title = "PICASSO Banner — Run-Down Cyberpunk (1280×720)"
+logical_id = "b0b7fd4f-d859-4ffd-b0cb-30c20d23d944"
 
 [[outputs]]
 id = "sswBcNWPnxfPVMrmwV1H2"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v3.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v3 (run-down look, PICASSO end card, 37.9s)"
+logical_id = "a975909f-c077-46ef-8515-cf2bd0a9ce6c"
 
 [[outputs]]
 id = "-mOsWH4CU8ErzOQm9ZQ3L"
 uri = "file://attached_assets/generated_images/picasso_blocks_black_3000.png"
 type = "image"
 title = "PICASSO Boxes·Circle·Triangle Mark (3000×3000, on black)"
+logical_id = "6e889e2b-3e41-4020-af6c-c96a80dcc1d2"
 
 [[outputs]]
 id = "236DROG6ieSwYsb2WS1-q"
 uri = "file://attached_assets/generated_images/picasso_boxes_black_300.png"
 type = "image"
 title = "PICASSO Boxes Logo (300×300, on black)"
+logical_id = "2cc5fef1-5269-4418-81c0-3b254fed0cd8"
 
 [[outputs]]
 id = "FXwbYW5iHWxEEVKkHTr7i"
 uri = "file://attached_assets/generated_images/picasso_logo_real_blocks_300.png"
 type = "image"
 title = "PICASSO Logo (boxes·circle·triangle, 300×300, on black)"
+logical_id = "3589de04-2821-4bc6-94df-0c4ed4ffa9f7"
 
 [[outputs]]
 id = "yj9T1FyHjfb8sU1IOTrpw"
 uri = "file://attached_assets/generated_images/picasso_banner_800x250.png"
 type = "image"
 title = "PICASSO Banner — Run-Down (800×250)"
+logical_id = "017e5358-3d05-46c9-985e-40ebb564c3fc"
 
 [[outputs]]
 id = "ZMhUfJ6CGicgo83s8_OP4"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v4.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v4 (short, consistent cinematic cut, 21s)"
+logical_id = "1c0654c4-a54e-41aa-844c-8585cd330282"
 
 [[outputs]]
 id = "T3kfILCzr30Xkcu7lUGPf"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v5.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v5 (pixel-art, attacked outpost, 17.8s)"
+logical_id = "f1e5b42e-0b04-4895-a4a8-4a5747e3a567"
 
 [[outputs]]
 id = "q2Rk_nCMCuTRNao2T8KEn"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v6.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v6 (REAL gameplay footage, 24.8s)"
+logical_id = "4c762c4b-857f-44f5-a125-ba0acb21ba0b"
 
 [[outputs]]
 id = "Pr1fwScjFx9Pjzizyl5mi"
 uri = "file://TESTER_60MIN_PLAYTEST.md"
 type = "text"
 title = "SALARYMAN — 60-Minute Tester Play-Test Script"
+logical_id = "8fd0d1be-78ea-4cfb-8f5a-062bffbd1d45"
 
 [[outputs]]
 id = "fo8wkNWnW5Bk7pyzrycN7"
@@ -864,6 +960,7 @@ uri = "file://attached_assets/shadow-tower-office-kit-preview.png"
 type = "image"
 title = "Shadow Tower Analog Kit Preview"
 description = "Updated 1980s analog-surveillance office objects: amber CRT public terminal, elevator directory, secretary, executive desk, ATM, and vending machine."
+logical_id = "500c41db-2aa9-498b-8ca0-2703ea943416"
 
 [[outputs]]
 id = "5veZ2QM-eYosQRvq15KYL"
@@ -871,3 +968,4 @@ uri = "file://attached_assets/shadow-tower-office-kit.zip"
 type = "unspecified"
 title = "Shadow Tower Analog Office Kit"
 description = "Final optimized transparent PNG kit with placement, collision, and retro-industrial usage metadata."
+logical_id = "f2b98ba1-239d-44e0-a282-211c65549d41"
