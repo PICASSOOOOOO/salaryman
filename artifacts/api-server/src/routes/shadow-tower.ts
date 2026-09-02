@@ -196,7 +196,7 @@ router.get("/shadow-tower/floors/current", requireAuth, async (req, res) => {
     floor.orgId ? db.select().from(botsTable).where(and(eq(botsTable.orgId, floor.orgId), eq(botsTable.status, "active"))) : db.select().from(botsTable).where(and(eq(botsTable.ownerId, floor.ownerUserId!), eq(botsTable.status, "active"))),
   ]);
   const canManage = floor.ownerUserId === actor || !!(floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed);
-  res.json({ floor: safeFloor(floor), canManage, plan: getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[]), assignments, botGroups: consolidateShadowTowerBots(bots) });
+  res.json({ floor: safeFloor(floor), canManage, plan: getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[], floor.officeCount), assignments, botGroups: consolidateShadowTowerBots(bots) });
 });
 
 router.get("/shadow-tower/floors/:city/:floorNumber", requireAuth, async (req, res) => {
@@ -213,7 +213,7 @@ router.get("/shadow-tower/floors/:city/:floorNumber", requireAuth, async (req, r
       ? db.select().from(botsTable).where(and(eq(botsTable.orgId, floor.orgId), eq(botsTable.status, "active")))
       : db.select().from(botsTable).where(and(eq(botsTable.ownerId, floor.ownerUserId!), eq(botsTable.status, "active"))),
   ]);
-  res.json({ floor: safeFloor(floor), plan: getShadowTowerPlan(city, floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[]), assignments, botGroups: consolidateShadowTowerBots(bots) });
+  res.json({ floor: safeFloor(floor), plan: getShadowTowerPlan(city, floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[], floor.officeCount), assignments, botGroups: consolidateShadowTowerBots(bots) });
 });
 
 router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
@@ -264,13 +264,10 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
     const [floor] = await tx.insert(shadowTowerFloorsTable).values({ city, floorNumber, orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: tenure === "lease" ? new Date(Date.now() + 365 * 86400_000) : null, archetype }).returning();
     await tx.insert(shadowTowerOfficeUnitsTable).values([
       { floorId: floor.id, unitNumber: 1, status: "occupied", orgId, ownerUserId: orgId ? null : actor, tenure, leaseExpiresAt: floor.leaseExpiresAt },
-      { floorId: floor.id, unitNumber: 2, status: "owner_priority" },
-      { floorId: floor.id, unitNumber: 3, status: "under_construction" },
-      { floorId: floor.id, unitNumber: 4, status: "under_construction" },
     ]);
     // A new floor is an empty shell. Desks are a paid fit-out, so never
     // auto-assign people or bots to workstation slots that do not exist yet.
-    const workstationKeys = getShadowTowerPlan(city, floorNumber, archetype).objects
+    const workstationKeys = getShadowTowerPlan(city, floorNumber, archetype, [], floor.officeCount).objects
       .filter((object) => object.kind === "workstation").map((object) => object.id);
     const initialAssignments = [
       ...members.map((member, index) => ({ floorId: floor.id, workstationKey: workstationKeys[index], assigneeType: "human" as const, assigneeUserId: member.userId, botId: null, assignedByUserId: actor })),
@@ -292,9 +289,12 @@ router.post("/shadow-tower/floors/:id/units/:unitNumber/expand", requireAuth, as
     const [floor] = await tx.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update").limit(1);
     if (!floor) return { status: 404, body: { error: "Floor not found" } };
     if (!(floor.ownerUserId === actor || (floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed))) return { status: 403, body: { error: "Floor owner or organization settings permission required" } };
-    const [unit] = await tx.select().from(shadowTowerOfficeUnitsTable).where(and(eq(shadowTowerOfficeUnitsTable.floorId, id), eq(shadowTowerOfficeUnitsTable.unitNumber, unitNumber))).for("update").limit(1);
+    let [unit] = await tx.select().from(shadowTowerOfficeUnitsTable).where(and(eq(shadowTowerOfficeUnitsTable.floorId, id), eq(shadowTowerOfficeUnitsTable.unitNumber, unitNumber))).for("update").limit(1);
     if (unitNumber <= floor.officeCount && unit?.status === "owner_priority") return { status: 200, body: { unit, duplicate: true } };
-    if (unitNumber !== floor.officeCount + 1 || unitNumber > 4 || unit?.status !== "under_construction") return { status: 409, body: { error: "Units must be expanded sequentially" } };
+    if (unitNumber !== floor.officeCount + 1 || unitNumber > 4 || (unit && unit.status !== "under_construction")) return { status: 409, body: { error: "Units must be expanded sequentially" } };
+    if (!unit) {
+      [unit] = await tx.insert(shadowTowerOfficeUnitsTable).values({ floorId: id, unitNumber, status: "under_construction" }).returning();
+    }
     const basePrice = quoteShadowTowerOfficeUnit(floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.floorNumber, unitNumber, unitNumber, "own");
     const priceQuote = { ...quoteMarketAdjustedFiat(basePrice, market.multiplier), asOf: market.asOf, status: market.status };
     const price = priceQuote.totalFiat;
@@ -366,7 +366,7 @@ router.put("/shadow-tower/floors/current", requireAuth, async (req, res) => {
 router.post("/shadow-tower/floors/:id/upgrades", requireAuth, async (req, res) => {
   const id = Number(req.params.id); const upgrade = req.body?.upgrade; const requestId = String(req.body?.requestId ?? "");
   if (!Number.isInteger(id) || !isSupportedShadowTowerUpgrade(upgrade) || !/^[0-9a-f-]{36}$/i.test(requestId)) { res.status(400).json({ error: "Valid upgrade and requestId required" }); return; }
-  const prices = { secure_access: 25_000, extra_workstations: 60_000, operations_terminal: 40_000 };
+  const prices = { secure_access: 25_000, extra_desk: 15_000, extra_terminal: 40_000, extra_workstations: 15_000, operations_terminal: 40_000 };
   const actor = userId(req);
   const result = await db.transaction(async (tx) => {
     const [locked] = await tx.select().from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update").limit(1);
@@ -470,7 +470,7 @@ router.post("/shadow-tower/floors/:id/workstations", requireAuth, async (req, re
     const [bot] = await db.select().from(botsTable).where(eq(botsTable.id, botId!)).limit(1);
     if (!bot || !["active", "paused"].includes(bot.status) || (floor.orgId ? bot.orgId !== floor.orgId : bot.ownerId !== floor.ownerUserId)) { res.status(409).json({ error: "Bot assignee is not an eligible active or paused occupant" }); return; }
   }
-  const workstations = getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[]).objects.filter((o) => o.kind === "workstation").map((o) => o.id);
+  const workstations = getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[], floor.officeCount).objects.filter((o) => o.kind === "workstation").map((o) => o.id);
   const [assignment] = await db.transaction(async (tx) => {
     await tx.select({ id: shadowTowerFloorsTable.id }).from(shadowTowerFloorsTable).where(eq(shadowTowerFloorsTable.id, id)).for("update");
     const occupied = await tx.select().from(shadowTowerWorkstationAssignmentsTable).where(eq(shadowTowerWorkstationAssignmentsTable.floorId, id));

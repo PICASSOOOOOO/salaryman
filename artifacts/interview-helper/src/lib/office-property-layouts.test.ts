@@ -14,7 +14,7 @@ describe("Shadow Tower office projection", () => {
       expect(layout.rows).toBe(plan.rows);
       expect(layout.teamDesks.map(d => d.id)).toEqual(plan.objects.filter(o => o.kind === "workstation").map(o => o.id));
       expect(layout.stations.map(s => s.id)).toEqual(plan.objects.filter(o => o.interactive && o.kind !== "workstation" && o.kind !== "executive_desk").map(o => o.id));
-      expect(layout.playerDesk).toBeUndefined();
+      expect(layout.playerDesk?.id).toBe("executive-desk");
       for (const station of layout.stations) {
         const object = plan.objects.find(candidate => candidate.id === station.id)!;
         expect(station.footprint).toEqual({ w: object.footprint.cols, d: object.footprint.rows });
@@ -22,9 +22,10 @@ describe("Shadow Tower office projection", () => {
     }
   });
 
-  it("keeps listing capacity faithful to its generated workstation count", () => {
+  it("starts each listing with one executive suite", () => {
     for (const [archetype, listing] of Object.entries(SHADOW_TOWER_LISTINGS) as Array<[keyof typeof SHADOW_TOWER_LISTINGS, typeof SHADOW_TOWER_LISTINGS.founder_team]>) {
-      expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "office_unit")).toHaveLength(4);
+      expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "office_unit")).toHaveLength(1);
+      expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "executive_desk")).toHaveLength(1);
     }
   });
 

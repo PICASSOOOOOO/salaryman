@@ -61,7 +61,7 @@ describe("Shadow Tower routes", () => {
     expect(mine.status).toBe(200); expect(mine.body.floor).toMatchObject({ city: "minx_city", floorNumber: 57 }); expect(JSON.stringify(mine.body)).not.toContain("passwordHash");
     const units = await request(app).get("/api/shadow-tower/floors/minx_city/57/units");
     expect(units.status).toBe(200);
-    expect(units.body.units.map((unit: { status: string }) => unit.status)).toEqual(["occupied", "owner_priority", "under_construction", "under_construction"]);
+    expect(units.body.units.map((unit: { status: string }) => unit.status)).toEqual(["occupied"]);
   });
 
   it("provisions the explicitly selected Company card for a small roster", async () => {
@@ -75,7 +75,9 @@ describe("Shadow Tower routes", () => {
     expect(response.body.basePrice).toBe(quoteShadowTowerFloor("company", 58, "own"));
     const snapshot = await request(app).get("/api/shadow-tower/floors/huda_city/58");
     expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "workstation")).toHaveLength(0);
-    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "office_unit")).toHaveLength(4);
+    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "office_unit")).toHaveLength(1);
+    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "executive_desk")).toHaveLength(1);
+    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "terminal")).toHaveLength(1);
   });
 
   it("keeps subdivision geometry inside the canonical envelope and rejects reserved floors", async () => {

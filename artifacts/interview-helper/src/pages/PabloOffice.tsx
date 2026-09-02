@@ -798,14 +798,14 @@ export default function PabloOffice() {
     };
     const base: OfficeStation[] = officeLayout.stations.map((station) => ({
       ...station,
-      onInteract: actions[station.id] ?? (() => {
+       onInteract: actions[station.id] ?? (station.id.includes("terminal") ? actions.terminal : () => {
         playClick();
         toast({
           title: `${station.label} · UNAVAILABLE`,
           description: 'This station is not connected yet.',
           variant: 'destructive',
         });
-      }),
+       }),
     }));
     // Using ANY object counts toward the discovery "interact" step — wrap every
     // station so the contextual cue advances no matter what the player tries.

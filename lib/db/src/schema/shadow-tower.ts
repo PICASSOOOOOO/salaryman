@@ -6,7 +6,7 @@ export const shadowTowerFloorsTable = pgTable("shadow_tower_floors", {
   id: serial("id").primaryKey(),
   city: varchar("city", { length: 20 }).notNull(),
   floorNumber: integer("floor_number").notNull(),
-  officeCount: integer("office_count").notNull().default(2),
+    officeCount: integer("office_count").notNull().default(1),
   orgId: integer("org_id").references(() => organizationsTable.id, { onDelete: "cascade" }),
   ownerUserId: varchar("owner_user_id"),
   tenure: varchar("tenure", { length: 12 }).notNull(), // own | lease
@@ -25,7 +25,7 @@ export const shadowTowerFloorsTable = pgTable("shadow_tower_floors", {
   index("shadow_tower_floors_org_idx").on(t.orgId),
   index("shadow_tower_floors_personal_owner_idx").on(t.ownerUserId),
   index("shadow_tower_floors_lease_expiry_idx").on(t.leaseExpiresAt),
-  check("shadow_tower_floors_office_count_check", sql`${t.officeCount} between 2 and 4`),
+  check("shadow_tower_floors_office_count_check", sql`${t.officeCount} between 1 and 4`),
 ]);
 
 export const shadowTowerOfficeUnitsTable = pgTable("shadow_tower_office_units", {

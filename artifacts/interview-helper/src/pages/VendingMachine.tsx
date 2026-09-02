@@ -19,7 +19,7 @@ import { useArtAsset } from "@/lib/art";
 import { VEND_FOOD_ITEMS, parseFoodEffect, type VendFoodItem } from "@/lib/vending-food";
 import { PowerGoodsGrid } from "./UtilityStation";
 
-type TabId = "work";
+type TabId = "work" | "fitout";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -28,6 +28,7 @@ interface VendingMachineProps {
 }
 const TABS: { id: TabId; label: string; sub: string }[] = [
   { id: "work", label: "WORK GEAR", sub: "安全" },
+  { id: "fitout", label: "FLOOR FIT-OUT", sub: "BUILD" },
 ];
 
 export default function VendingMachine({ onClose, initialTab = "work" }: VendingMachineProps) {
@@ -127,10 +128,130 @@ export default function VendingMachine({ onClose, initialTab = "work" }: Vending
         {/* Active tab pane */}
         <div className="min-w-0">
           {tab === "work" && <WorkGearTab />}
+          {tab === "fitout" && <TowerFitoutTab />}
         </div>
       </div>
     </div>
   );
+}
+
+type TowerFitoutUpgrade = "secure_access" | "extra_desk" | "extra_terminal";
+type TowerFloorState = {
+  id: number;
+  city: string;
+  floorNumber: number;
+  archetype: string;
+  officeCount: number;
+  upgrades: string[];
+};
+type TowerUnitState = { unitNumber: number; status: string };
+
+function TowerFitoutTab() {
+  const { isAuthenticated } = useAuth();
+  const [floor, setFloor] = useState<TowerFloorState | null>(null);
+  const [units, setUnits] = useState<TowerUnitState[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+
+  const load = useCallback(async () => {
+    if (!isAuthenticated) {
+      setFloor(null);
+      setNotice("SIGN IN TO MANAGE FLOOR FIT-OUTS");
+      return;
+    }
+    const current = await apiFetch("/api/shadow-tower/floors/current", { credentials: "include" });
+    if (!current.ok) {
+      setFloor(null);
+      setUnits([]);
+      setNotice("ACQUIRE A SHADOW TOWER FLOOR FIRST");
+      return;
+    }
+    const body = await current.json();
+    if (!body.canManage || !body.floor) {
+      setFloor(null);
+      setUnits([]);
+      setNotice("FLOOR OWNER OR ORG SETTINGS ACCESS REQUIRED");
+      return;
+    }
+    setFloor(body.floor);
+    const unitResponse = await apiFetch(`/api/shadow-tower/floors/${body.floor.city}/${body.floor.floorNumber}/units`, { credentials: "include" });
+    if (unitResponse.ok) setUnits((await unitResponse.json()).units ?? []);
+    setNotice("");
+  }, [isAuthenticated]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const purchaseUpgrade = async (upgrade: TowerFitoutUpgrade) => {
+    if (!floor || busy) return;
+    setBusy(upgrade);
+    const response = await apiFetch(`/api/shadow-tower/floors/${floor.id}/upgrades`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ upgrade, requestId: crypto.randomUUID() }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setNotice(response.ok ? `${upgrade.replaceAll("_", " ").toUpperCase()} INSTALLED IN THE FLOOR PLAN` : (body.error ?? "FIT-OUT PURCHASE FAILED"));
+    if (response.ok) await load();
+    setBusy(null);
+  };
+
+  const expandSuite = async (unitNumber: number) => {
+    if (!floor || busy) return;
+    setBusy(`suite-${unitNumber}`);
+    const response = await apiFetch(`/api/shadow-tower/floors/${floor.id}/units/${unitNumber}/expand`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId: crypto.randomUUID() }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setNotice(response.ok ? `SUITE ${unitNumber} PURCHASED · FLOOR PLAN EXPANDED` : (body.error ?? "SUITE PURCHASE FAILED"));
+    if (response.ok) await load();
+    setBusy(null);
+  };
+
+  if (!floor) {
+    return <div className="border border-amber-300/25 bg-amber-300/5 p-4 text-sm text-amber-100">
+      <strong className="tracking-[.2em]">FLOOR FIT-OUT</strong>
+      <p className="mt-2 text-xs text-zinc-400">{notice || "ACQUIRE A FLOOR TO OPEN THE FIT-OUT CATALOG."}</p>
+      <button type="button" onClick={() => window.location.assign(`${import.meta.env.BASE_URL}store/realty`)} className="mt-3 border border-cyan-300/40 px-3 py-2 text-[10px] font-bold tracking-widest text-cyan-100">OPEN REALTY</button>
+    </div>;
+  }
+
+  const nextSuite = floor.officeCount < 4
+    ? units.find((unit) => unit.unitNumber === floor.officeCount + 1) ?? { unitNumber: floor.officeCount + 1, status: "under_construction" }
+    : undefined;
+  const deskCount = floor.upgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length;
+  const terminalCount = floor.upgrades.filter((upgrade) => /^extra_terminal(?:_[2-4])?$/.test(upgrade)).length;
+  const nextDesk = deskCount < 4 ? `extra_desk${deskCount ? `_${deskCount + 1}` : ""}` as TowerFitoutUpgrade : null;
+  const nextTerminal = terminalCount < 4 ? `extra_terminal${terminalCount ? `_${terminalCount + 1}` : ""}` as TowerFitoutUpgrade : null;
+  const upgradeCards = [
+    !floor.upgrades.includes("secure_access") ? { key: "secure_access" as const, title: "SECURE ACCESS", detail: "Upgrade the floor entry lock." } : null,
+    nextDesk ? { key: nextDesk, title: `ADDITIONAL DESK ${deskCount + 1}`, detail: "Adds one server-planned workstation." } : null,
+    nextTerminal ? { key: nextTerminal, title: `ADDITIONAL TERMINAL ${terminalCount + 1}`, detail: "Adds one connected terminal." } : null,
+  ].filter(Boolean) as Array<{ key: TowerFitoutUpgrade; title: string; detail: string }>;
+
+  return <div>
+    <div className="mb-3 border border-cyan-400/25 bg-cyan-400/5 p-3">
+      <div className="text-xs font-bold tracking-[.18em] text-cyan-100">FLOOR {floor.floorNumber} · {floor.city.replace("_", " ").toUpperCase()}</div>
+      <p className="mt-1 text-[10px] text-zinc-500">Suite 1 starts as the founder&apos;s furnished executive office. Every suite, desk, and terminal below is a separate server-priced purchase.</p>
+    </div>
+    {notice && <div className="mb-3 border border-cyan-400/30 bg-cyan-400/5 p-2 text-[10px] tracking-widest text-cyan-100">{notice}</div>}
+    <div className="grid gap-2 sm:grid-cols-2">
+      {upgradeCards.map((item) => <article key={item.key} className="border border-white/10 bg-white/[.03] p-3">
+        <strong className="text-sm text-pink-100">{item.title}</strong>
+        <p className="mt-1 text-[11px] text-zinc-500">{item.detail} Price and settlement are checked by the server.</p>
+        <button type="button" disabled={busy != null} onClick={() => void purchaseUpgrade(item.key)} className="mt-3 w-full border border-pink-400/40 py-2 text-[10px] font-bold tracking-widest text-pink-100 disabled:opacity-40">{busy === item.key ? "SETTLING…" : "BUY FROM VENDKING"}</button>
+      </article>)}
+      {nextSuite && <article className="border border-amber-300/25 bg-amber-300/5 p-3">
+        <strong className="text-sm text-amber-100">EXECUTIVE SUITE {nextSuite.unitNumber}</strong>
+        <p className="mt-1 text-[11px] text-zinc-500">Unlocks the next physical office address. It appears in the shared hallway plan after settlement.</p>
+        <button type="button" disabled={busy != null} onClick={() => void expandSuite(nextSuite.unitNumber)} className="mt-3 w-full border border-amber-300/40 py-2 text-[10px] font-bold tracking-widest text-amber-100 disabled:opacity-40">{busy === `suite-${nextSuite.unitNumber}` ? "SETTLING…" : "BUY SUITE FROM VENDKING"}</button>
+      </article>}
+    </div>
+    {!upgradeCards.length && !nextSuite && <p className="border border-dashed border-white/10 p-4 text-center text-[10px] tracking-widest text-zinc-500">ALL AVAILABLE FIT-OUT INVENTORY INSTALLED</p>}
+  </div>;
 }
 
 interface WorkItem {

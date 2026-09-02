@@ -5,7 +5,13 @@ export const SHADOW_TOWER_ARCHETYPES = ["founder_team", "company"] as const;
 export type ShadowTowerArchetype = (typeof SHADOW_TOWER_ARCHETYPES)[number];
 export const SHADOW_TOWER_CITIES = ["minx_city", "huda_city"] as const;
 export type ShadowTowerCity = (typeof SHADOW_TOWER_CITIES)[number];
-export const SHADOW_TOWER_UPGRADES = ["secure_access", "extra_workstations", "operations_terminal"] as const;
+export const SHADOW_TOWER_UPGRADES = [
+  "secure_access",
+  "extra_desk", "extra_desk_2", "extra_desk_3", "extra_desk_4",
+  "extra_terminal", "extra_terminal_2", "extra_terminal_3", "extra_terminal_4",
+  // Legacy aliases retained so already-settled floors keep their fit-outs.
+  "extra_workstations", "operations_terminal",
+] as const;
 export type ShadowTowerUpgrade = (typeof SHADOW_TOWER_UPGRADES)[number];
 export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation", "mezzanine", "rest", "security"] as const;
 export type ShadowTowerFloorType = (typeof SHADOW_TOWER_FLOOR_TYPES)[number];
@@ -51,7 +57,7 @@ export const SHADOW_TOWER_LISTINGS: Record<ShadowTowerArchetype, ShadowTowerList
 
 /** The real-estate shell is deliberately independent of the playable tile map. */
 export const SHADOW_TOWER_FLOOR_ENVELOPE = { widthPixels: 100_000, heightPixels: 100_000, squareMeters: 10_000 } as const;
-export const SHADOW_TOWER_MIN_OFFICE_UNITS = 2;
+export const SHADOW_TOWER_MIN_OFFICE_UNITS = 1;
 export const SHADOW_TOWER_MAX_OFFICE_UNITS = 4;
 export const SHADOW_TOWER_RESERVED_FLOORS = [1, 2, 3, 4, 40, 52, 65, 66, 67] as const;
 
@@ -98,7 +104,7 @@ export type ShadowTowerOfficeGeometry = {
 /** Equal vertical strips cover the entire canonical envelope without gaps or overflow. */
 export function getShadowTowerOfficeUnitGeometry(officeCount: number): ShadowTowerOfficeGeometry[] {
   if (!Number.isInteger(officeCount) || officeCount < SHADOW_TOWER_MIN_OFFICE_UNITS || officeCount > SHADOW_TOWER_MAX_OFFICE_UNITS) {
-    throw new Error("officeCount must be between 2 and 4");
+    throw new Error("officeCount must be between 1 and 4");
   }
   const width = SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels / officeCount;
   return Array.from({ length: officeCount }, (_, index) => ({
@@ -127,24 +133,50 @@ function workstationObjects(count: number) {
   }));
 }
 
+function terminalObjects(upgrades: readonly string[]) {
+  const extraTerminalUpgrades = upgrades.filter((upgrade) => /^extra_terminal(?:_[2-4])?$/.test(upgrade));
+  const legacyTerminal = upgrades.includes("operations_terminal");
+  return [
+    ...extraTerminalUpgrades.map((_, index) => ({
+      id: `terminal-${index + 2}`,
+      kind: "terminal" as const,
+      footprint: rect(2 + index * 2, 10, 1, 1),
+      interactive: true,
+    })),
+    ...(legacyTerminal ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(10, 10, 1, 1), interactive: true }] : []),
+  ];
+}
+
+function officeUnitObjects(count: number, floorNumber: number) {
+  const suiteWidth = Math.floor(24 / count);
+  return Array.from({ length: count }, (_, index) => ({
+    id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
+    kind: "office_unit" as const,
+    footprint: rect(5 + index * suiteWidth, 1, suiteWidth - 1, 8),
+    interactive: true,
+  }));
+}
+
 /** Authoritative, serialized floor geometry; clients must not add visual-only objects. */
-export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, archetype: ShadowTowerArchetype, upgrades: readonly string[] = []): ShadowTowerPlan {
+export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, archetype: ShadowTowerArchetype, upgrades: readonly string[] = [], officeCount = 1): ShadowTowerPlan {
   const enabledUpgrades = upgrades.filter(isSupportedShadowTowerUpgrade);
+  const suiteCount = Math.min(SHADOW_TOWER_MAX_OFFICE_UNITS, Math.max(SHADOW_TOWER_MIN_OFFICE_UNITS, Math.trunc(officeCount)));
+  const suites = officeUnitObjects(suiteCount, floorNumber);
+  const executiveSuite = suites[0];
   const plan: ShadowTowerPlan = {
     floorType: "office", city, floorNumber, archetype, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 8 },
     objects: [
       { id: "elevator", kind: "elevator", footprint: rect(0, 1, 2, 2), interactive: true },
       { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 0, 4, 5), interactive: false },
-      ...Array.from({ length: 4 }, (_, index) => ({
-        id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
-        kind: "office_unit" as const,
-        footprint: rect(5 + index * 6, 1, 5, 4),
-        interactive: true,
-      })),
-      // Furniture is a paid fit-out. These are deliberately absent from the
-      // base shell and appear only after the corresponding paid upgrades.
-      ...(enabledUpgrades.includes("extra_workstations") ? workstationObjects(4) : []),
-      ...(enabledUpgrades.includes("operations_terminal") ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(2, 10, 1, 1), interactive: true }] : []),
+      ...suites,
+      // Suite 1 is the furnished executive office assigned to the founder.
+      { id: "executive-desk", kind: "executive_desk" as const, footprint: rect(executiveSuite.footprint.x + 2, 6, 2, 1), interactive: false },
+      { id: "executive-terminal", kind: "terminal" as const, footprint: rect(executiveSuite.footprint.x + 5, 6, 1, 1), interactive: true },
+      // Additional desks and terminals are separate vending-machine fit-outs.
+      ...(enabledUpgrades.includes("extra_workstations")
+        ? workstationObjects(4)
+        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length)),
+      ...terminalObjects(enabledUpgrades),
       { id: "atm", kind: "atm", footprint: rect(2, 13, 1, 1), interactive: true },
       { id: "vending", kind: "vending_machine", footprint: rect(27, 11, 1, 1), interactive: true },
       { id: "stairs", kind: "stairs", footprint: rect(27, 13, 2, 2), interactive: true },
@@ -303,7 +335,10 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
   } else {
     const required = ["elevator_hall", "atm", "vending_machine", "elevator", "stairs"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
-    if (plan.objects.filter((o) => o.kind === "office_unit").length !== 4) errors.push("office floor requires four physical office addresses");
+     const officeUnits = plan.objects.filter((o) => o.kind === "office_unit").length;
+     if (officeUnits < 1 || officeUnits > 4) errors.push("office floor requires one to four physical office addresses");
+     if (plan.objects.filter((o) => o.kind === "executive_desk").length !== 1) errors.push("office floor requires one executive desk");
+     if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("office floor requires one executive terminal");
   }
   // Flood-fill all free tiles from spawn; an interaction must have a free cardinal neighbour.
   const start = `${plan.spawn.x},${plan.spawn.y}`;
