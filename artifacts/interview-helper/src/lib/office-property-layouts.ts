@@ -29,7 +29,7 @@ export interface OfficePropertyLayout {
   deskRows: number;
   capsules: number;
   spawn: OfficePose;
-  playerDesk: OfficeDesk;
+  playerDesk?: OfficeDesk;
   teamDesks: OfficeDesk[];
   capsuleSpots: OfficeCapsule[];
   stations: Omit<OfficeStation, "onInteract">[];
@@ -38,7 +38,7 @@ export interface OfficePropertyLayout {
 }
 
 const glyphFor = (kind: string): OfficeStation["glyph"] =>
-  kind === "elevator" ? "elevator" :
+  kind === "elevator" || kind === "stairs" ? "elevator" :
     kind === "atm" ? "atm" :
       kind === "vending_machine" ? "vending" :
         kind === "radio" ? "music" :
@@ -50,7 +50,7 @@ const labelFor = (id: string, kind: string) =>
   id.startsWith("office-wing-door-") ? "OFFICE WING" :
   id.startsWith("office-address-") ? "OFFICE ADDRESS" :
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
-    kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
+    kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" : kind === "stairs" ? "STAIRS" :
       kind === "radio" ? "SHADOW RADIO" : kind === "payphone" ? "PAYPHONE" :
       kind === "bed" ? "REST BED" : kind === "nurse_station" ? "NURSE" :
         kind === "doctor_station" ? "DOCTOR" : kind === "guard_station" ? "SECURITY" :
@@ -63,22 +63,21 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
   const objects = plan.objects;
   const executive = objects.find((object) => object.kind === "executive_desk");
   const workstations = objects.filter((object) => object.kind === "workstation");
-  if (!executive || !workstations.length) throw new Error("Shadow Tower plan requires executive desk and workstations");
-  const desk = (object: typeof executive, kind: OfficeDesk["kind"]): OfficeDesk => ({
+  const desk = (object: { id: string; footprint: { x: number; y: number; cols: number; rows: number } }, kind: OfficeDesk["kind"]): OfficeDesk => ({
     id: object.id, kind, col: object.footprint.x, row: object.footprint.y, w: object.footprint.cols, d: object.footprint.rows,
   });
-  const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "executive_room" || object.kind === "office_unit").map((object) => ({
+  const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "elevator_hall" || object.kind === "executive_room" || object.kind === "office_unit").map((object) => ({
     id: object.id,
     label: object.kind === "office_unit"
       ? `${plan.city === "huda_city" ? "HUDA" : "MINX"} · FLOOR ${plan.floorNumber} · OFFICE ${object.id.slice(-2)}`
-      : plan.floorType === "office" ? defaultShadowTowerOfficeName(plan.city, plan.floorNumber) : "EXECUTIVE ROOM",
+      : object.kind === "elevator_hall" ? "ELEVATOR HALL" : plan.floorType === "office" ? defaultShadowTowerOfficeName(plan.city, plan.floorNumber) : "EXECUTIVE ROOM",
     sub: object.kind === "office_unit" ? "FOR SALE · LEASE" : undefined,
     x: object.footprint.x, y: object.footprint.y,
     w: object.footprint.cols, h: object.footprint.rows, doorSide: "bottom", doorSpan: object.footprint.cols,
     accent: object.kind === "office_unit" ? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][Number(object.id.slice(-2)) - 1] : undefined,
   }));
   const elevator = objects.find((object) => object.kind === "elevator");
-  if (elevator) {
+  if (elevator && !rooms.some((room) => room.id === `${elevator.id}-hall`)) {
     // The lift belongs to the shared circulation core, not to an office. Keep
     // its footprint against the outside wall and give it its own small hall
     // with a single entrance into the floor.
@@ -96,7 +95,12 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
     });
   }
   const stations = objects.filter((object) => object.interactive && object.kind !== "workstation" && object.kind !== "executive_desk").map((object) => ({
-    id: object.id, label: labelFor(object.id, object.kind), col: object.footprint.x, row: object.footprint.y,
+    id: object.id,
+    label: object.kind === "stairs"
+      ? `STAIRS ${plan.floorNumber <= 1 ? "UP · F2" : `DOWN · F${plan.floorNumber - 1}`}`
+      : labelFor(object.id, object.kind),
+    col: object.footprint.x,
+    row: object.footprint.y,
     // Reach the walkable tile immediately outside large collision footprints.
     // A fixed 30px radius leaves a 3x2 station's centre physically unreachable.
     radius: Math.max(30, Math.hypot(object.footprint.cols * 8, object.footprint.rows * 8) + 22),
@@ -111,7 +115,7 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
     propertyKey, label: archetype, representation: `${plan.city.replace("_", " ").toUpperCase()} · FLOOR ${plan.floorNumber}`,
     cols: plan.cols, rows: plan.rows, deskCols: workstations.length, deskRows: 1, capsules: 0,
     spawn: { x: plan.spawn.x * 16 + 8, y: plan.spawn.y * 16 + 8, facing: "right" },
-    playerDesk: desk(executive, "player"),
+    playerDesk: executive ? desk(executive, "player") : undefined,
     teamDesks: workstations.map((object) => desk(object, "team")),
     capsuleSpots: [],
     stations, rooms, plan,

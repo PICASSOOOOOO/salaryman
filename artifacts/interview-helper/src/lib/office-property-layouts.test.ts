@@ -14,8 +14,7 @@ describe("Shadow Tower office projection", () => {
       expect(layout.rows).toBe(plan.rows);
       expect(layout.teamDesks.map(d => d.id)).toEqual(plan.objects.filter(o => o.kind === "workstation").map(o => o.id));
       expect(layout.stations.map(s => s.id)).toEqual(plan.objects.filter(o => o.interactive && o.kind !== "workstation" && o.kind !== "executive_desk").map(o => o.id));
-      const executive = plan.objects.find(object => object.kind === "executive_desk")!;
-      expect(layout.playerDesk).toMatchObject({ col: executive.footprint.x, row: executive.footprint.y, w: executive.footprint.cols, d: executive.footprint.rows });
+      expect(layout.playerDesk).toBeUndefined();
       for (const station of layout.stations) {
         const object = plan.objects.find(candidate => candidate.id === station.id)!;
         expect(station.footprint).toEqual({ w: object.footprint.cols, d: object.footprint.rows });
@@ -25,7 +24,7 @@ describe("Shadow Tower office projection", () => {
 
   it("keeps listing capacity faithful to its generated workstation count", () => {
     for (const [archetype, listing] of Object.entries(SHADOW_TOWER_LISTINGS) as Array<[keyof typeof SHADOW_TOWER_LISTINGS, typeof SHADOW_TOWER_LISTINGS.founder_team]>) {
-      expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "workstation")).toHaveLength(listing.capacity);
+      expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "office_unit")).toHaveLength(4);
     }
   });
 
@@ -45,10 +44,10 @@ describe("Shadow Tower office projection", () => {
     const plan = getShadowTowerPlan("minx_city", 2, "company");
     const layout = officePropertyLayoutFromPlan(plan);
     const blocked = getOfficeBlockedTiles(layout);
-    const radio = plan.objects.find((object) => object.kind === "radio")!;
+    const vending = plan.objects.find((object) => object.kind === "vending_machine")!;
     const blockedCenter = {
-      col: radio.footprint.x + Math.floor(radio.footprint.cols / 2),
-      row: radio.footprint.y + Math.floor(radio.footprint.rows / 2),
+      col: vending.footprint.x + Math.floor(vending.footprint.cols / 2),
+      row: vending.footprint.y + Math.floor(vending.footprint.rows / 2),
     };
     expect(blocked.has(`${blockedCenter.col},${blockedCenter.row}`)).toBe(true);
     const route = findOfficeRoute(layout, { col: plan.spawn.x, row: plan.spawn.y }, blockedCenter);
@@ -60,7 +59,7 @@ describe("Shadow Tower office projection", () => {
 
   it("exposes upgrade objects and extra workstations from the same plan", () => {
     const layout = getShadowTowerOfficeLayout("huda_city", 9, "founder_team", ["extra_workstations", "operations_terminal"]);
-    expect(layout.teamDesks).toHaveLength(SHADOW_TOWER_LISTINGS.founder_team.capacity + 4);
+    expect(layout.teamDesks).toHaveLength(4);
     expect(layout.stations.map(station => station.id)).toContain("operations-terminal");
   });
 });

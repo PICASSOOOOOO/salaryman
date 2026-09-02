@@ -74,7 +74,8 @@ describe("Shadow Tower routes", () => {
     expect(response.body.floor.archetype).toBe("company");
     expect(response.body.basePrice).toBe(quoteShadowTowerFloor("company", 58, "own"));
     const snapshot = await request(app).get("/api/shadow-tower/floors/huda_city/58");
-    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "workstation")).toHaveLength(SHADOW_TOWER_LISTINGS.company.capacity);
+    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "workstation")).toHaveLength(0);
+    expect(snapshot.body.plan.objects.filter((object: { kind: string }) => object.kind === "office_unit")).toHaveLength(4);
   });
 
   it("keeps subdivision geometry inside the canonical envelope and rejects reserved floors", async () => {
@@ -95,12 +96,15 @@ describe("Shadow Tower routes", () => {
     const id = await user(); actAs(id);
     expect((await request(app).post("/api/shadow-tower/floors").send({
       city: "minx_city", floorNumber: 40, archetype: "founder_team", tenure: "own", requestId: randomUUID(),
-    })).status).toBe(400);
-    for (const floorNumber of [65, 66, 67, 68]) {
+    })).status).toBe(403);
+    for (const floorNumber of [65, 66, 67]) {
       expect((await request(app).post("/api/shadow-tower/floors").send({
         city: "minx_city", floorNumber, archetype: "founder_team", tenure: "own", requestId: randomUUID(),
-      })).status).toBe(400);
+      })).status).toBe(403);
     }
+    expect((await request(app).post("/api/shadow-tower/floors").send({
+      city: "minx_city", floorNumber: 68, archetype: "founder_team", tenure: "own", requestId: randomUUID(),
+    })).status).toBe(403);
   });
 
   it("denies ordinary org members access management and purchase", async () => {
@@ -142,7 +146,7 @@ describe("Shadow Tower routes", () => {
     expect(current.body.floor.id).toBe(personalFloor.id);
   });
 
-  it("reserves a free workstation while activating a paused bot", async () => {
+  it("refuses to activate a bot until a paid workstation exists", async () => {
     const id = await user(); const orgId = await org(id); actAs(id);
     await db.insert(userFeaturesTable).values({
       userId: id,
@@ -154,10 +158,6 @@ describe("Shadow Tower routes", () => {
       city: "minx_city", floorNumber: 64, ownerUserId: id, tenure: "own", archetype: "founder_team",
     }).returning();
     floors.push(floor.id);
-    await db.insert(shadowTowerWorkstationAssignmentsTable).values({
-      floorId: floor.id, workstationKey: "workstation-1", assigneeType: "human",
-      assigneeUserId: id, assignedByUserId: id,
-    });
     const [marketplaceItem] = await db.select().from(botMarketplaceTable)
       .where(eq(botMarketplaceTable.priceMonthly, 0)).limit(1);
     expect(marketplaceItem).toBeTruthy();
@@ -168,10 +168,9 @@ describe("Shadow Tower routes", () => {
     bots.push(bot.id);
 
     const activated = await request(app).put(`/api/bots/${bot.id}`).send({ status: "active" });
-    expect(activated.status).toBe(200);
-    expect(activated.body.bot.status).toBe("active");
+    expect(activated.status).toBe(409);
     const [assignment] = await db.select().from(shadowTowerWorkstationAssignmentsTable)
       .where(and(eq(shadowTowerWorkstationAssignmentsTable.floorId, floor.id), eq(shadowTowerWorkstationAssignmentsTable.botId, bot.id)));
-    expect(assignment?.workstationKey).toBe("workstation-2");
+    expect(assignment).toBeUndefined();
   });
 });

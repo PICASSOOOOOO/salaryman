@@ -33,8 +33,8 @@ export function getTowerSpaceArtKind(layout: OfficePropertyLayout): TowerSpaceAr
   if (layout.plan.floorType !== "office") return layout.plan.floorType;
   if (layout.plan.floorNumber === 66) return "picasso";
   if ([40, 52, 65, 67].includes(layout.plan.floorNumber)) return "shadow_corp";
-  const workstationCount = layout.plan.objects.filter((object) => object.kind === "workstation").length;
-  return workstationCount > 10 ? "company" : "founder";
+  if (layout.plan.archetype === "company") return "company";
+  return "founder";
 }
 
 export function getTowerSpaceArtUrlForLayout(layout: OfficePropertyLayout): string {

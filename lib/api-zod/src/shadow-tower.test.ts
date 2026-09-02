@@ -6,15 +6,19 @@ describe("Shadow Tower contract", () => {
     expect(Object.keys(SHADOW_TOWER_LISTINGS)).toEqual(["founder_team", "company"]);
     const plan = getShadowTowerPlan("minx_city", 12, "founder_team");
     expect(plan.floorNumber).toBe(12);
-    expect(plan.objects.filter((item) => item.kind === "workstation")).toHaveLength(SHADOW_TOWER_LISTINGS.founder_team.capacity);
+    expect(plan.objects.filter((item) => item.kind === "office_unit")).toHaveLength(4);
+    expect(plan.objects.filter((item) => item.kind === "workstation")).toHaveLength(0);
+    expect(plan.objects.filter((item) => item.kind === "terminal")).toHaveLength(0);
+    expect(plan.objects.filter((item) => item.kind === "atm")).toHaveLength(1);
+    expect(plan.objects.filter((item) => item.kind === "vending_machine")).toHaveLength(1);
     expect(validateShadowTowerPlan(plan).ok).toBe(true);
   });
   it("makes settled workstation upgrades visible", () => {
     const base = getShadowTowerPlan("huda_city", 2, "company");
     const upgraded = getShadowTowerPlan("huda_city", 2, "company", ["extra_workstations", "operations_terminal", "secure_access"]);
     expect(upgraded.upgrades).toContain("secure_access");
-    expect(upgraded.objects.filter((item) => item.kind === "workstation").length).toBe(base.objects.filter((item) => item.kind === "workstation").length + 4);
-    expect(upgraded.objects.filter((item) => item.kind === "terminal")).toHaveLength(2);
+    expect(upgraded.objects.filter((item) => item.kind === "workstation").length).toBe(4);
+    expect(upgraded.objects.filter((item) => item.kind === "terminal")).toHaveLength(1);
   });
   it("selects only valid plans and consolidates canonically", () => {
     expect(selectShadowTowerArchetype(4, 2)).toBe("founder_team");

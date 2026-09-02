@@ -10,6 +10,7 @@ import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { completeWorkArrivalTask, getBuildingOnboardingStage } from "@/lib/building-onboarding";
 import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
+import { getAmbianceEnabled, getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 
 type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {
@@ -23,7 +24,6 @@ type BedListing = {
   hourlyRateFiat: number; staminaPerHour: number; rechargeConsumables: boolean;
   occupiedUntil?: string | null;
 };
-
 export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -81,8 +81,25 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     if (floor === 2 && stage === "work") completeWorkArrivalTask();
   }, [floor, navigate]);
   useEffect(() => {
-    startTowerAmbient(floor === 4 ? "shadow" : "lobby");
-    return () => stopTowerAmbient();
+    const canPlayAmbient = () => {
+      const settings = getAudioSettings();
+      return document.visibilityState === "visible" && getAmbianceEnabled() && !settings.muted && settings.master > 0 && settings.music > 0;
+    };
+    const syncAudio = () => {
+      if (!canPlayAmbient()) {
+        stopTowerAmbient();
+      } else {
+        startTowerAmbient(floor === 4 ? "shadow" : "lobby");
+      }
+    };
+    syncAudio();
+    document.addEventListener("visibilitychange", syncAudio);
+    const unsubscribe = subscribeAudioSettings(syncAudio);
+    return () => {
+      document.removeEventListener("visibilitychange", syncAudio);
+      unsubscribe();
+      stopTowerAmbient();
+    };
   }, [floor]);
 
   const post = async (path: string) => {
@@ -127,6 +144,10 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     ...layout.stations.map((station) => ({
       ...station,
       onInteract: () => {
+        if (station.id.includes("stairs")) {
+          navigate(floor === 2 ? "/recreation" : floor === 3 ? "/tower/mezzanine" : "/tower/rest");
+          return;
+        }
         if (station.id.includes("elevator") || station.id.startsWith("office-wing-door-")) navigate(`/tower/elevator?from=${encodeURIComponent(floorPath)}&floor=${floor}`);
         else if (station.id === "world-work-board") setPanel("work");
         else if (station.id.startsWith("rest-bed")) setPanel("beds");

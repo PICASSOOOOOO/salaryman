@@ -268,11 +268,15 @@ router.post("/shadow-tower/floors", requireAuth, async (req, res) => {
       { floorId: floor.id, unitNumber: 3, status: "under_construction" },
       { floorId: floor.id, unitNumber: 4, status: "under_construction" },
     ]);
-    const workstationKeys = getShadowTowerPlan(city, floorNumber, archetype).objects.filter((object) => object.kind === "workstation").map((object) => object.id);
-    await tx.insert(shadowTowerWorkstationAssignmentsTable).values([
-      ...members.map((member, index) => ({ floorId: floor.id, workstationKey: workstationKeys[index], assigneeType: "human", assigneeUserId: member.userId, botId: null, assignedByUserId: actor })),
-      ...activeBots.map((bot, index) => ({ floorId: floor.id, workstationKey: workstationKeys[members.length + index], assigneeType: "bot", assigneeUserId: null, botId: bot.id, assignedByUserId: actor })),
-    ]);
+    // A new floor is an empty shell. Desks are a paid fit-out, so never
+    // auto-assign people or bots to workstation slots that do not exist yet.
+    const workstationKeys = getShadowTowerPlan(city, floorNumber, archetype).objects
+      .filter((object) => object.kind === "workstation").map((object) => object.id);
+    const initialAssignments = [
+      ...members.map((member, index) => ({ floorId: floor.id, workstationKey: workstationKeys[index], assigneeType: "human" as const, assigneeUserId: member.userId, botId: null, assignedByUserId: actor })),
+      ...activeBots.map((bot, index) => ({ floorId: floor.id, workstationKey: workstationKeys[members.length + index], assigneeType: "bot" as const, assigneeUserId: null, botId: bot.id, assignedByUserId: actor })),
+    ].filter((assignment) => Boolean(assignment.workstationKey));
+    if (initialAssignments.length) await tx.insert(shadowTowerWorkstationAssignmentsTable).values(initialAssignments);
     await tx.insert(shadowTowerSelectedFloorsTable).values({ userId: actor, floorId: floor.id })
       .onConflictDoUpdate({ target: shadowTowerSelectedFloorsTable.userId, set: { floorId: floor.id, updatedAt: new Date() } });
     return { status: 201, body: { floor: safeFloor(floor), price, basePrice, marketQuote: priceQuote, duplicate: paid.duplicate === true } };

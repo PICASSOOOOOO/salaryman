@@ -68,6 +68,20 @@ interface PabloMsg {
   text: string;
 }
 
+interface WalletSnapshot {
+  faction: { totalSalary: number };
+  property: { netWorth: number };
+  bank: {
+    accounts: { id: string; kind: string; label: string; balance: number; currency: string }[];
+    earnedFiat: number;
+  };
+  debt: number;
+  creditScore: number;
+  pabloTax: { owedCents: number };
+  pendingInvoices: { id: number; source: string; amountCents: number; createdAt: string }[];
+  rates: { fiatPerUsd: number };
+}
+
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "var(--font-sans)" };
 }
@@ -128,7 +142,90 @@ function StatRow({ label, val, col, boomer }: { label: string; val: string | num
   );
 }
 
-type TabId = 'chat' | 'stats' | 'overview' | 'settings' | 'tower';
+function LiveFinances({ snapshot, error, boomer, onNavigate }: {
+  snapshot: WalletSnapshot | null;
+  error: string | null;
+  boomer: boolean;
+  onNavigate: (path: string) => void;
+}) {
+  const f = (value: number) => `ƒ${Math.round(value).toLocaleString()}`;
+  if (!snapshot) {
+    return (
+      <div style={{ padding: '1rem' }}>
+        <div style={{ borderRadius: 12, border: '1px solid #1e3a4a', background: '#0d141c', padding: '1rem', color: error ? '#fb7185' : '#94a3b8', fontSize: '.75rem', lineHeight: 1.6 }}>
+          {error ?? 'Loading your live financial snapshot…'}
+        </div>
+      </div>
+    );
+  }
+
+  const { bank, property, faction, debt, creditScore, pabloTax, pendingInvoices, rates } = snapshot;
+  const fiatAccounts = bank.accounts.filter(account => account.currency === 'FIAT');
+  const sumAccounts = (pattern: RegExp) => fiatAccounts
+    .filter(account => pattern.test(`${account.kind} ${account.label}`))
+    .reduce((sum, account) => sum + account.balance, 0);
+  const checking = sumAccounts(/checking|current/i);
+  const savings = sumAccounts(/saving/i);
+  const toFiat = (cents: number) => Math.round((cents / 100) * rates.fiatPerUsd);
+  const netWorth = property.netWorth;
+  const income = faction.totalSalary * rates.fiatPerUsd;
+  const invoiceTotal = pendingInvoices.reduce((sum, invoice) => sum + invoice.amountCents, 0);
+  const cards: { label: string; value: string; tone?: string; detail?: string }[] = [
+    { label: 'SPENDABLE FIAT', value: f(bank.earnedFiat), tone: '#38bdf8', detail: 'Available now' },
+    { label: 'CHECKING', value: checking ? f(checking) : '—', detail: checking ? 'Linked checking' : 'No checking account' },
+    { label: 'SAVINGS', value: savings ? f(savings) : '—', tone: '#a78bfa', detail: savings ? 'Linked savings' : 'No savings account' },
+    { label: 'NET WORTH', value: f(netWorth), tone: '#c4b5fd', detail: 'Assets and property' },
+    { label: 'DEBT', value: debt > 0 ? f(debt) : '—', tone: debt > 0 ? '#fb7185' : '#94a3b8', detail: debt > 0 ? 'Outstanding balance' : 'No debt reported' },
+    { label: 'SALARY / INCOME', value: f(income), tone: '#34d399', detail: 'Current total salary' },
+    { label: 'TAX DUE', value: pabloTax.owedCents > 0 ? f(toFiat(pabloTax.owedCents)) : '—', tone: pabloTax.owedCents > 0 ? '#fbbf24' : '#94a3b8', detail: 'PABLO tax owed now' },
+    { label: 'CREDIT SCORE', value: String(creditScore), tone: creditScore < 600 ? '#fb7185' : '#38bdf8', detail: creditScore < 600 ? 'Needs attention' : 'In good standing' },
+  ];
+  return (
+    <div style={{ padding: '1rem', background: '#090d12', minHeight: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '.75rem', marginBottom: '1rem' }}>
+        <div>
+          <div style={{ color: '#e2e8f0', fontSize: '1rem', fontWeight: 700, letterSpacing: '.04em', ...stFont(boomer) }}>LIVE FINANCES</div>
+          <div style={{ color: '#64748b', fontSize: '.62rem', marginTop: '.25rem' }}>AUTHORITATIVE ACCOUNT SNAPSHOT · REFRESHES EVERY 30S</div>
+        </div>
+        <span style={{ flexShrink: 0, color: '#34d399', fontSize: '.62rem', fontWeight: 700 }}>● LIVE</span>
+      </div>
+      {error && <div style={{ marginBottom: '.75rem', color: '#fbbf24', fontSize: '.65rem' }}>Last refresh failed: {error}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '.6rem' }}>
+        {cards.map(card => (
+          <div key={card.label} style={{ borderRadius: 10, border: '1px solid #1e293b', background: '#111827', padding: '.75rem' }}>
+            <div style={{ color: '#94a3b8', fontSize: '.53rem', fontWeight: 700, letterSpacing: '.08em' }}>{card.label}</div>
+            <div style={{ color: card.tone ?? '#e2e8f0', fontSize: '1.05rem', fontWeight: 700, marginTop: '.35rem', overflowWrap: 'anywhere' }}>{card.value}</div>
+            <div style={{ color: '#64748b', fontSize: '.55rem', marginTop: '.25rem' }}>{card.detail}</div>
+          </div>
+        ))}
+      </div>
+      {pendingInvoices.length > 0 && (
+        <div style={{ marginTop: '.85rem', borderRadius: 10, border: '1px solid rgba(251,113,133,.35)', background: 'rgba(127,29,29,.18)', padding: '.8rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.5rem', color: '#fda4af', fontSize: '.65rem', fontWeight: 700 }}>
+            <span>PENDING USD BILLS / INVOICES ({pendingInvoices.length})</span>
+            <span>{f(toFiat(invoiceTotal))}</span>
+          </div>
+          {pendingInvoices.slice(0, 3).map(invoice => (
+            <div key={invoice.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '.5rem', marginTop: '.5rem', color: '#cbd5e1', fontSize: '.65rem' }}>
+              <span>{invoice.source.toUpperCase()}</span><span>{f(toFiat(invoice.amountCents))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.55rem', marginTop: '1rem' }}>
+        <button onClick={() => onNavigate('/game/bank')} style={financeButtonStyle}>OPEN BANCO OMBRA</button>
+        <button onClick={() => onNavigate('/wallet')} style={{ ...financeButtonStyle, color: '#c4b5fd', borderColor: 'rgba(196,181,253,.45)' }}>VIEW NET WORTH</button>
+      </div>
+    </div>
+  );
+}
+
+const financeButtonStyle: React.CSSProperties = {
+  borderRadius: 8, border: '1px solid rgba(56,189,248,.45)', background: '#111827', color: '#67e8f9',
+  padding: '.6rem .7rem', cursor: 'pointer', fontSize: '.62rem', fontWeight: 700, letterSpacing: '.05em',
+};
+
+type TabId = 'chat' | 'stats' | 'finances' | 'overview' | 'settings' | 'tower';
 
 export default function MobileTerminal({ physicalTerminal = false }: { physicalTerminal?: boolean }) {
   // Reflect the realm stored on the save even when this terminal is opened
@@ -156,6 +253,32 @@ export default function MobileTerminal({ physicalTerminal = false }: { physicalT
   const [pabloIn, setPabloIn] = useState('');
   const [pabloLoad, setPabloLoad] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [walletSnapshot, setWalletSnapshot] = useState<WalletSnapshot | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let mounted = true;
+    const loadWallet = async () => {
+      try {
+        const response = await apiFetch('/api/wallet/snapshot', { credentials: 'include' });
+        if (!response.ok) throw new Error(response.status === 401 ? 'Sign in required.' : `Finance service unavailable (${response.status}).`);
+        const snapshot: WalletSnapshot = await response.json();
+        if (mounted) {
+          setWalletSnapshot(snapshot);
+          setWalletError(null);
+        }
+      } catch (error) {
+        if (mounted) setWalletError(error instanceof Error ? error.message : 'Finance service unavailable.');
+      }
+    };
+    void loadWallet();
+    const interval = window.setInterval(loadWallet, 30_000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated || alpha.loading || !canUseMobileTerminal) return;
@@ -351,10 +474,11 @@ The ${playerTermLower} is accessing PABLO through the ${physicalTerminal ? 'main
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0 }}>
           {([
             { id: 'chat' as TabId, label: '🤖 PABLO', boomerLabel: '🤖 AI CHAT', locked: false },
             { id: 'stats' as TabId, label: `📊 STATS`, boomerLabel: `📊 MY STATS`, locked: false },
+            { id: 'finances' as TabId, label: '● LIVE FINANCES', boomerLabel: '● FINANCES', locked: false },
             { id: 'overview' as TabId, label: `🏙 OVERVIEW`, boomerLabel: `🏙 OVERVIEW`, locked: false },
             { id: 'settings' as TabId, label: `⚙ SETUP`, boomerLabel: `⚙ SETTINGS`, locked: false },
             { id: 'tower' as TabId, label: `▣ TOWER`, boomerLabel: `▣ TOWER`, locked: false },
@@ -363,7 +487,7 @@ The ${playerTermLower} is accessing PABLO through the ${physicalTerminal ? 'main
               key={t.id}
               onClick={() => setTab(t.id)}
               style={{
-                flex: 1, padding: '.5rem .3rem', border: 'none', borderBottom: tab === t.id ? '2px solid #38bdf8' : '2px solid transparent',
+                flex: '1 0 auto', padding: '.5rem .45rem', border: 'none', borderBottom: tab === t.id ? '2px solid #38bdf8' : '2px solid transparent',
                 background: tab === t.id ? 'rgba(56,189,248,.06)' : 'transparent',
                 color: tab === t.id ? '#38bdf8' : 'rgba(56,189,248,.3)', cursor: 'pointer',
                 ...vtFont(boomerMode), fontSize: '.9rem', letterSpacing: '.1em',
@@ -391,8 +515,8 @@ The ${playerTermLower} is accessing PABLO through the ${physicalTerminal ? 'main
 
               <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL STATUS</div>
-                <StatRow boomer={boomerMode} label="FIAT (ƒ)" val={`ƒ${computeDecayedSalary(govBaseSalary, signupTime).toLocaleString()}`} col="#ffcc00" />
-                <StatRow boomer={boomerMode} label="SAVINGS" val={`ƒ${(sd.savings ?? 0).toLocaleString()}`} col="#ffcc00" />
+                <StatRow boomer={boomerMode} label="FIAT (ƒ)" val={`ƒ${Math.round(walletSnapshot?.bank.earnedFiat ?? computeDecayedSalary(govBaseSalary, signupTime)).toLocaleString()}`} col="#ffcc00" />
+                <StatRow boomer={boomerMode} label="SAVINGS" val={`ƒ${Math.round(walletSnapshot ? walletSnapshot.bank.accounts.filter(account => account.currency === 'FIAT' && /savings/i.test(account.kind)).reduce((sum, account) => sum + account.balance, 0) : (sd.savings ?? 0)).toLocaleString()}`} col="#ffcc00" />
                 {(sd.goldBalance ?? 0) > 0 && <StatRow boomer={boomerMode} label="GOLD" val={`${sd.goldBalance} oz`} col="#ffaa00" />}
               </div>
 
@@ -419,6 +543,15 @@ The ${playerTermLower} is accessing PABLO through the ${physicalTerminal ? 'main
                 {sd.deviceDurability !== undefined && <StatRow boomer={boomerMode} label="DURABILITY" val={`${sd.deviceDurability}%`} />}
               </div>
             </div>
+          )}
+
+          {tab === 'finances' && (
+            <LiveFinances
+              snapshot={walletSnapshot}
+              error={walletError}
+              boomer={boomerMode}
+              onNavigate={navigate}
+            />
           )}
 
           {tab === 'chat' && (

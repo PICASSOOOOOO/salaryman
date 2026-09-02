@@ -405,7 +405,11 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
   }, [terminalEmail, user]);
 
   const isMobile = useIsMobile();
-  const [step, setStep] = useState<Step>('destination');
+  const activeSteps = useMemo<Step[]>(
+    () => venue === 'lobby' ? ['business'] : [...DATA_STEPS],
+    [venue],
+  );
+  const [step, setStep] = useState<Step>(() => venue === 'lobby' ? 'business' : 'destination');
   const [faction, setFaction] = useState<OnboardingAnswers['faction']>('suit');
   // Expandable "what is this?" explainer above the ALLEGIANCE choice.
   const [showFactionInfo, setShowFactionInfo] = useState(false);
@@ -680,19 +684,19 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
   // show the address step's "you're settling in <city>" context.
   const chosenCity = getCityById(homeCityId);
 
-  const stepIdx = Math.max(0, DATA_STEPS.indexOf(step));
-  const totalSteps = DATA_STEPS.length;
+  const stepIdx = Math.max(0, activeSteps.indexOf(step));
+  const totalSteps = activeSteps.length;
 
   const advance = useCallback(() => {
-    const idx = DATA_STEPS.indexOf(step);
-    if (idx >= 0 && idx < DATA_STEPS.length - 1) { playStep(); setStep(DATA_STEPS[idx + 1]); }
-  }, [step]);
+    const idx = activeSteps.indexOf(step);
+    if (idx >= 0 && idx < activeSteps.length - 1) { playStep(); setStep(activeSteps[idx + 1]); }
+  }, [activeSteps, step]);
 
   const goBack = useCallback(() => {
     if (step === 'submitting' || step === 'done') return;
-    const idx = DATA_STEPS.indexOf(step);
-    if (idx > 0) { playStep(); setStep(DATA_STEPS[idx - 1]); }
-  }, [step]);
+    const idx = activeSteps.indexOf(step);
+    if (idx > 0) { playStep(); setStep(activeSteps[idx - 1]); }
+  }, [activeSteps, step]);
 
   // Single source of truth for the answer object so submit() and the final
   // STEP OUTSIDE button can never drift apart.
@@ -870,14 +874,19 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       background: venue === 'lobby' ? 'rgba(0,0,0,.58)' : 'rgba(0,0,0,.92)',
       backdropFilter: venue === 'lobby' ? 'blur(2px)' : undefined,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 440, padding: isMobile ? 0 : '2.8rem 1rem 2.2rem',
+      zIndex: 440,
+      boxSizing: 'border-box',
+      padding: isMobile
+        ? 'max(.65rem, env(safe-area-inset-top)) .5rem max(.65rem, env(safe-area-inset-bottom))'
+        : '2.8rem 1rem 2.2rem',
     }}>
       <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
-        width: isMobile ? '100vw' : 480,
-        maxWidth: isMobile ? '100vw' : 'min(94vw, 480px)',
-        height: isMobile ? '100dvh' : undefined,
-        maxHeight: isMobile ? '100dvh' : 'calc(100vh - 5rem)',
+        width: isMobile ? '100%' : 480,
+        maxWidth: isMobile ? '100%' : 'min(94vw, 480px)',
+        height: isMobile ? '100%' : undefined,
+        minHeight: 0,
+        maxHeight: isMobile ? '100%' : 'calc(100vh - 5rem)',
         display: 'flex', flexDirection: 'column',
         background: venue === 'lobby' ? 'rgba(7,17,27,.98)' : 'rgba(0,5,0,.99)',
         border: isMobile ? 'none' : '1px solid rgba(56,189,248,.5)',
@@ -918,7 +927,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
           <div style={{ height: '100%', width: `${((stepIdx + 1) / totalSteps) * 100}%`, background: 'rgba(56,189,248,.5)', transition: 'width .35s ease' }} />
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto', padding: '.85rem .95rem' }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', overscrollBehavior: 'contain', padding: '.85rem .95rem 1.15rem' }}>
           {step === 'destination' && (
             <div>
               <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em' }}>Choose your city.</div>

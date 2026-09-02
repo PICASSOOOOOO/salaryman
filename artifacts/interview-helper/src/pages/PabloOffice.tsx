@@ -782,6 +782,10 @@ export default function PabloOffice() {
         playNav();
         navigateFromOffice(`/tower/elevator?from=${encodeURIComponent('/office')}&floor=${towerFloor?.floor.floorNumber ?? 66}`);
       },
+      stairs: () => {
+        playClick();
+        setElevatorLocked(true);
+      },
       atm: () => { playNav(); navigateFromOffice(`${getOfficeObjectDestination('atm')}?returnTo=${encodeURIComponent('/office')}&returnFloor=${towerFloor?.floor.floorNumber ?? 66}`); },
       vending: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('vending')); },
       payphone: () => { playNav(); navigateFromOffice('/phone'); },

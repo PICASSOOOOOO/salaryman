@@ -96,8 +96,10 @@ export function OfficeMinimap({
       ctx.strokeStyle = 'rgba(56,230,255,0.28)';
       ctx.lineWidth = 0.8;
       layout.rooms.forEach((room) => mapRect(room.x, room.y, room.w, room.h));
-      ctx.strokeStyle = 'rgba(255,210,74,0.34)';
-      mapRect(layout.playerDesk.col, layout.playerDesk.row, layout.playerDesk.w, layout.playerDesk.d);
+      if (layout.playerDesk) {
+        ctx.strokeStyle = 'rgba(255,210,74,0.34)';
+        mapRect(layout.playerDesk.col, layout.playerDesk.row, layout.playerDesk.w, layout.playerDesk.d);
+      }
       ctx.strokeStyle = 'rgba(109,255,143,0.2)';
       layout.teamDesks.forEach((desk) => mapRect(desk.col, desk.row, desk.w, desk.d));
       ctx.fillStyle = 'rgba(236,72,153,0.52)';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { AlertTriangle, ArrowRight, Armchair, Bell, BriefcaseBusiness, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, Leaf, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { sfxFinalNotice, startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
@@ -32,13 +32,16 @@ const occupiedFloors = new Map([
   [1, { name: "RECREATION", kind: "PUBLIC", detail: "Games, food, conversation, and a place to begin.", href: "/recreation", tone: "rec", icon: Sparkles }],
 ]);
 
-const RECEPTION_BRIEFING = [
-  "Shadow Tower was built as a vertical city: work below, private power above. Sixty-seven floors, and every floor has rules.",
-  "Your hostel bed is free. The Computer Cafe on Floor 2 is also open to you, including one public terminal. That is where you can find work and use COMMS.",
-  "If you need work, lodging, organization records, or help understanding the building, come back to this desk.",
-];
+const RECEPTION_DESTINATIONS = [
+  { label: "LOOKING FOR WORK", detail: "Public work board and open jobs", href: "/tower/mezzanine?focus=classifieds", icon: BriefcaseBusiness },
+  { label: "BUY REAL ESTATE", detail: "Purchase a Tower office address", href: "/store/realty?mode=buy", icon: Building2 },
+  { label: "RENT AN OFFICE", detail: "Lease a commercial shell", href: "/store/realty?mode=lease", icon: KeyRound },
+  { label: "NEED MEDICAL CARE", detail: "Infirmary and physical rest beds", href: "/tower/rest", icon: Leaf },
+  { label: "SHOPPING", detail: "Vending, tools, desks, and terminals", href: "/vending", icon: Sparkles },
+  { label: "FOOD / RECREATION", detail: "Restaurants, games, and conversation", href: "/recreation", icon: Armchair },
+] as const;
 
-function TowerQueueLobby() {
+function TowerEntry() {
   return (
     <main className="grid min-h-[100dvh] place-items-center bg-[#050711] px-4 py-8 text-zinc-100 sm:px-8" data-testid="tower-entry">
       <section className="w-full max-w-xl border border-cyan-200/25 bg-[#09121b] p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] sm:p-8">
@@ -119,7 +122,7 @@ function TowerReceptionScene({
       />
       <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] border border-cyan-200/35 bg-[#050914]/90 px-3 py-2 backdrop-blur">
         <p className="text-[9px] font-black tracking-[.24em] text-cyan-200">SHADOW TOWER · PHYSICAL LOBBY</p>
-         <p className="mt-1 text-[10px] text-zinc-400">{locked ? "WALK TO THE ELEVATOR CORE TO CHECK IN" : "WALK OR TAP TO MOVE · ELEVATOR CONNECTS THE TOWER"}</p>
+         <p className="mt-1 text-[10px] text-zinc-400">{locked ? "WALK TO THE ELEVATOR CORE TO CHECK IN" : "WALK OR TAP TO MOVE · ELEVATOR AND STAIRS CONNECT THE TOWER"}</p>
       </div>
     </section>
   );
@@ -152,6 +155,7 @@ const floors = Array.from({ length: 67 }, (_, index) => {
 
 export default function TowerDirectory() {
   const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const [stage, setStage] = useState<BuildingOnboardingStage>(() => getBuildingOnboardingStage());
   const [now, setNow] = useState(() => new Date());
   const [talking, setTalking] = useState(false);
@@ -159,9 +163,8 @@ export default function TowerDirectory() {
   const [filing, setFiling] = useState(false);
   const [filingResult, setFilingResult] = useState("");
   const [arrivalPhase, setArrivalPhase] = useState<"fade" | "waiting" | "ready">("fade");
-  const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "hostel" | "briefing" | "alert" | "complete">("arrival");
-  const [hostelFloor, setHostelFloor] = useState(3);
-  const [briefingLine, setBriefingLine] = useState(0);
+  const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "briefing" | "alert" | "complete">("arrival");
+  const [workDestination, setWorkDestination] = useState("/tower/mezzanine?focus=classifieds");
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const onboardingLocked = stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
@@ -183,12 +186,12 @@ export default function TowerDirectory() {
       return;
     }
     setArrivalPhase("fade");
-    const waitingTimer = window.setTimeout(() => setArrivalPhase("waiting"), 900);
+    const waitingTimer = window.setTimeout(() => setArrivalPhase("waiting"), 250);
     const receptionTimer = window.setTimeout(() => {
       setArrivalPhase("ready");
       setOnboardingStep("reception");
       setTalking(true);
-    }, 3600);
+    }, 1200);
     return () => {
       window.clearTimeout(waitingTimer);
       window.clearTimeout(receptionTimer);
@@ -234,32 +237,7 @@ export default function TowerDirectory() {
       setNotice(error instanceof Error ? error.message.toUpperCase() : "TOWER RECORD SYNC FAILED");
     } finally {
       setSavingOnboarding(false);
-      setOnboardingStep("hostel");
-    }
-  };
-
-  const acceptHostelBed = async () => {
-    const bed = { floor: hostelFloor, room: `${hostelFloor}H-${String(Date.now()).slice(-3)}`, free: true as const };
-    const state: TowerOnboardingState = {
-      status: "briefing",
-      hostelBed: bed,
-      publicTerminalAccess: true,
-    };
-    setSavingOnboarding(true);
-    try {
-      const raw = window.localStorage.getItem("sm_save");
-      const prior = raw ? JSON.parse(raw) : {};
-      window.localStorage.setItem("sm_save", JSON.stringify({
-        ...(prior && typeof prior === "object" ? prior : {}),
-        hostelBed: bed,
-        publicTerminalAccess: true,
-      }));
-      await persistTowerOnboardingState(state);
-      setOnboardingStep("briefing");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message.toUpperCase() : "BED ASSIGNMENT FAILED");
-    } finally {
-      setSavingOnboarding(false);
+       setOnboardingStep("briefing");
     }
   };
 
@@ -275,8 +253,6 @@ export default function TowerDirectory() {
     try {
       await persistTowerOnboardingState({
         status: "complete",
-        hostelBed: { floor: hostelFloor, room: `${hostelFloor}H`, free: true },
-        publicTerminalAccess: true,
         lockdownActive: true,
         completedAt: new Date().toISOString(),
       });
@@ -284,7 +260,7 @@ export default function TowerDirectory() {
       completeReceptionTask();
       setOnboardingStep("complete");
       setNotice("TOWER LOCKDOWN ACTIVE · RECEPTION REMAINS AVAILABLE");
-      window.setTimeout(() => setNotice(""), 4000);
+      navigate(workDestination);
     } catch (error) {
       setNotice(error instanceof Error ? error.message.toUpperCase() : "LOCKDOWN RECORD SYNC FAILED");
     } finally {
@@ -310,7 +286,7 @@ export default function TowerDirectory() {
     }
   };
 
-  if (!isAuthenticated) return <TowerQueueLobby />;
+  if (!isAuthenticated) return <TowerEntry />;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#050711] px-3 py-5 text-zinc-100 sm:px-8">
@@ -630,8 +606,8 @@ export default function TowerDirectory() {
           <div className={`relative my-auto w-full max-w-2xl transition-all duration-700 ${arrivalPhase === "fade" ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
             <div className="mb-7 text-center">
               <p className="text-[9px] font-bold tracking-[.42em] text-cyan-300/70">SHADOW TOWER · LOBBY</p>
-              <h2 className="mt-3 text-2xl font-black tracking-[.18em] text-white sm:text-4xl">PLEASE WAIT</h2>
-              <p className="mt-3 text-xs tracking-[.14em] text-zinc-500">RECEPTION WILL SEE YOU SHORTLY</p>
+              <h2 className="mt-3 text-2xl font-black tracking-[.18em] text-white sm:text-4xl">ARRIVAL COMPLETE</h2>
+              <p className="mt-3 text-xs tracking-[.14em] text-zinc-500">RECEPTION IS READY</p>
             </div>
 
             <div className="border border-cyan-200/20 bg-[linear-gradient(160deg,rgba(22,42,57,.9),rgba(5,9,16,.96))] p-5 shadow-[0_25px_90px_rgba(0,0,0,.6)] sm:p-8">
@@ -658,45 +634,19 @@ export default function TowerDirectory() {
         />
       )}
 
-      {onboardingLocked && onboardingStep === "hostel" && (
-        <div className="fixed inset-0 z-[960] grid place-items-center bg-black/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Hostel bed assignment">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto border border-violet-300/45 bg-[#0b0b19] p-5 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:max-h-[calc(100dvh-3rem)]">
-            <div className="flex items-end gap-4 border-b border-violet-300/20 pb-4">
-              <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Receptionist" className="h-24 w-20 object-contain object-bottom" />
-              <div>
-                <p className="text-[9px] font-bold tracking-[.24em] text-violet-300">RECEPTION · HOUSING</p>
-                <h2 className="mt-1 text-xl font-black tracking-[.1em] text-white">YOUR BED IS FREE</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">Pick the hostel floor you want. You also have free access to a public terminal in the Computer Cafe on Floor 2.</p>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[3, 5, 8, 12].map((floor) => (
-                <button key={floor} type="button" onClick={() => setHostelFloor(floor)} className={`border px-3 py-4 text-center transition ${hostelFloor === floor ? "border-violet-200 bg-violet-300/15 text-white" : "border-white/10 bg-white/[.03] text-zinc-500 hover:border-violet-300/40"}`}>
-                  <span className="block text-2xl font-black">{floor}</span>
-                  <span className="mt-1 block text-[8px] font-bold tracking-[.2em]">HOSTEL FLOOR</span>
+      {onboardingLocked && onboardingStep === "briefing" && (
+        <div className="fixed inset-0 z-[970] grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Choose a Tower destination">
+          <div className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto border border-cyan-200/40 bg-[#07111b] p-4 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
+            <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">CLAW PRIME · RECEPTION</p>
+            <h2 className="mt-2 text-xl font-black tracking-[.12em] text-white sm:text-2xl">WHAT DO YOU NEED?</h2>
+            <p className="mt-2 text-xs leading-5 text-zinc-400">Pick one. The lift and stairs will route you there immediately after lockdown.</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {RECEPTION_DESTINATIONS.map(({ label, detail, href, icon: Icon }) => (
+                <button key={label} type="button" onClick={() => { setWorkDestination(href); triggerLockdown(); }} className="flex min-h-20 items-center gap-3 border border-white/10 bg-white/[.025] p-3 text-left transition hover:border-cyan-200/55 hover:bg-cyan-300/10">
+                  <Icon className="h-5 w-5 shrink-0 text-cyan-200" />
+                  <span><strong className="block text-[11px] tracking-[.12em] text-zinc-100">{label}</strong><span className="mt-1 block text-[10px] leading-4 text-zinc-500">{detail}</span></span>
                 </button>
               ))}
-            </div>
-            <button type="button" onClick={() => void acceptHostelBed()} disabled={savingOnboarding} className="mt-5 flex w-full items-center justify-center gap-2 border border-violet-200/55 bg-violet-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-violet-100 hover:bg-violet-300/15 disabled:opacity-50">
-              {savingOnboarding ? "ASSIGNING BED..." : `ACCEPT BED · FLOOR ${hostelFloor}`} <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {onboardingLocked && onboardingStep === "briefing" && (
-        <div className="fixed inset-0 z-[970] grid place-items-center bg-black/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Tower history briefing">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto border border-cyan-200/40 bg-[#07111b] shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:max-h-[calc(100dvh-3rem)]">
-            <div className="relative h-44 border-b border-cyan-300/20">
-              <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="Shadow Tower lobby" className="h-full w-full object-cover opacity-65" />
-              <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Receptionist" className="absolute bottom-0 left-5 h-40 w-32 object-contain object-bottom" />
-            </div>
-            <div className="p-5">
-              <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">RECEPTIONIST</p>
-              <p className="mt-3 min-h-20 text-sm leading-7 text-zinc-200">{RECEPTION_BRIEFING[briefingLine]}</p>
-              <button type="button" onClick={() => briefingLine < RECEPTION_BRIEFING.length - 1 ? setBriefingLine((line) => line + 1) : triggerLockdown()} className="mt-4 flex w-full items-center justify-center gap-2 border border-cyan-200/50 bg-cyan-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-cyan-100">
-                {briefingLine < RECEPTION_BRIEFING.length - 1 ? "CONTINUE" : "UNDERSTOOD"} <ArrowRight className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </div>
@@ -713,10 +663,10 @@ export default function TowerDirectory() {
               EXTERIOR DOORS SEALED. You will remain inside Shadow Tower until further notice.
             </p>
             <div className="mt-5 border border-red-300/30 bg-red-500/10 p-4 text-left text-sm leading-6 text-zinc-200">
-              <span className="font-bold text-red-200">RECEPTIONIST:</span> That&apos;s it. Your bed and terminal access are active. If you have questions, come back and see me.
+               <span className="font-bold text-red-200">RECEPTIONIST:</span> Your business path is recorded. The exterior is sealed. Go straight to the work floor; buy a desk or terminal only when you are ready to pay for one.
             </div>
             <button type="button" onClick={() => void finishLockdown()} disabled={savingOnboarding} className="mt-6 w-full border border-red-100 bg-red-600 px-4 py-3 text-xs font-black tracking-[.2em] text-white hover:bg-red-500 disabled:opacity-50">
-              {savingOnboarding ? "SEALING TOWER RECORD..." : "ACKNOWLEDGE LOCKDOWN"}
+              {savingOnboarding ? "SEALING TOWER RECORD..." : "GO NOW"}
             </button>
           </div>
         </div>
@@ -746,7 +696,7 @@ export default function TowerDirectory() {
                   <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Learn the rest while you work.</p>
                 </div>
                 <button type="button" onClick={finishReception} className="mt-6 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15" data-testid="finish-reception-onboarding">
-                  ANSWER A FEW QUESTIONS <ArrowRight className="h-4 w-4" />
+                  CHECK IN NOW <ArrowRight className="h-4 w-4" />
                 </button>
               </>
             ) : (

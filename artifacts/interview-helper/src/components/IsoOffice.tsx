@@ -242,7 +242,7 @@ export function IsoOffice({
   }, [layout, rooms]);
 
   const deskRowDesks = useMemo(
-    () => [{ c: layout.playerDesk.col, r: layout.playerDesk.row, w: layout.playerDesk.w, d: layout.playerDesk.d, ci: 0, ri: 0 }],
+    () => layout.playerDesk ? [{ c: layout.playerDesk.col, r: layout.playerDesk.row, w: layout.playerDesk.w, d: layout.playerDesk.d, ci: 0, ri: 0 }] : [],
     [layout],
   );
   const bullpenDesks = useMemo(
@@ -266,8 +266,13 @@ export function IsoOffice({
   );
 
   // Desk computer (LEFT private office) + spawn point.
-  const COMPUTER_X = (layout.playerDesk.col + layout.playerDesk.w / 2) * TILE;
-  const COMPUTER_Y = (layout.playerDesk.row + layout.playerDesk.d) * TILE;
+  const COMPUTER_X = layout.playerDesk
+    ? (layout.playerDesk.col + layout.playerDesk.w / 2) * TILE
+    : layout.spawn.x;
+  const COMPUTER_Y = layout.playerDesk
+    ? (layout.playerDesk.row + layout.playerDesk.d) * TILE
+    : layout.spawn.y;
+  const hasComputer = Boolean(layout.playerDesk);
 
   // Hard-object collision: each interaction object + the player's own desk is a
   // SOLID prop the player must walk around — no walking through furniture. The
@@ -290,7 +295,7 @@ export function IsoOffice({
       else addRect(tx - 0.6, ty - 0.6, tx + 0.6, ty + 0.4);
     }
     // The player's own desk terminal is solid too (2.0 × 0.9 footprint).
-    if (onEnterTerminal) {
+    if (onEnterTerminal && hasComputer) {
       addRect(COMPUTER_X / TILE - 1.0, COMPUTER_Y / TILE - 0.4, COMPUTER_X / TILE + 1.0, COMPUTER_Y / TILE + 0.5);
     }
     return set;
@@ -667,7 +672,7 @@ export function IsoOffice({
         onMoveRef.current?.();
       }
       if (key === 'e' || key === 'enter') {
-        if (nearComputerRef.current) { onEnterRef.current?.(); return; }
+        if (hasComputer && nearComputerRef.current) { onEnterRef.current?.(); return; }
         if (activeBotObjRef.current) { onBotInteractRef.current?.(activeBotObjRef.current); return; }
         const sid = activeStationRef.current;
         if (sid) { stationsRef.current.find((s) => s.id === sid)?.onInteract(); return; }
@@ -709,7 +714,7 @@ export function IsoOffice({
     // Raised isometric furniture does not invert to its own floor footprint.
     // Treat the visible home terminal as a direct, generous touch target while
     // preserving the normal walk-up prompt and keyboard interaction.
-    if (onEnterTerminal && Math.hypot(localX - deskPoint.x, localY - (deskPoint.y - T * 0.55)) <= Math.max(34, T * 0.9)) {
+    if (hasComputer && onEnterTerminal && Math.hypot(localX - deskPoint.x, localY - (deskPoint.y - T * 0.55)) <= Math.max(34, T * 0.9)) {
       onEnterTerminal();
       return;
     }
@@ -734,7 +739,7 @@ export function IsoOffice({
     if (!movedOnceRef.current) { movedOnceRef.current = true; onMoveRef.current?.(); }
   };
 
-  const showComputerPrompt = !!onEnterTerminal && nearComputer;
+  const showComputerPrompt = hasComputer && !!onEnterTerminal && nearComputer;
   // Precedence: computer (YOUR DESK) > walk-up bot > generic station.
   const promptBot = !nearComputer && activeBot ? activeBot : undefined;
   const promptStation = !nearComputer && !promptBot && activeStationId

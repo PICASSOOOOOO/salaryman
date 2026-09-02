@@ -38,12 +38,13 @@ export function applyTowerOnboardingState(state: TowerOnboardingState): void {
   try {
     const raw = window.localStorage.getItem("sm_save");
     const prior = raw ? JSON.parse(raw) : {};
-    window.localStorage.setItem("sm_save", JSON.stringify({
+    const nextSave = {
       ...(prior && typeof prior === "object" ? prior : {}),
       towerOnboarding: state,
-      hostelBed: state.hostelBed,
-      publicTerminalAccess: state.publicTerminalAccess === true,
-    }));
+    } as Record<string, unknown>;
+    delete nextSave.hostelBed;
+    delete nextSave.publicTerminalAccess;
+    window.localStorage.setItem("sm_save", JSON.stringify(nextSave));
     if (state.lockdownActive) window.localStorage.setItem(LOCKDOWN_KEY, "1");
   } catch {}
 }

@@ -17,7 +17,7 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["executive_room", "office_unit", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
+  kind: z.enum(["elevator_hall", "stairs", "executive_room", "office_unit", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
@@ -26,6 +26,7 @@ export const shadowTowerPlanSchema = z.object({
   floorType: z.enum(SHADOW_TOWER_FLOOR_TYPES).default("office"),
   city: z.enum(SHADOW_TOWER_CITIES),
   floorNumber: z.number().int().min(1).max(120),
+  archetype: z.enum(SHADOW_TOWER_ARCHETYPES).optional(),
   cols: z.number().int().positive(),
   rows: z.number().int().positive(),
   spawn: pointSchema,
@@ -128,32 +129,33 @@ function workstationObjects(count: number) {
 
 /** Authoritative, serialized floor geometry; clients must not add visual-only objects. */
 export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, archetype: ShadowTowerArchetype, upgrades: readonly string[] = []): ShadowTowerPlan {
-  const listing = SHADOW_TOWER_LISTINGS[archetype];
   const enabledUpgrades = upgrades.filter(isSupportedShadowTowerUpgrade);
-  const workstationCount = listing.capacity + (enabledUpgrades.includes("extra_workstations") ? 4 : 0);
   const plan: ShadowTowerPlan = {
-    floorType: "office", city, floorNumber, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 8 },
+    floorType: "office", city, floorNumber, archetype, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 8 },
     objects: [
       { id: "elevator", kind: "elevator", footprint: rect(0, 1, 2, 2), interactive: true },
-      { id: "elevator-hall", kind: "executive_room", footprint: rect(0, 0, 4, 5), interactive: false },
+      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 0, 4, 5), interactive: false },
       ...Array.from({ length: 4 }, (_, index) => ({
         id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
         kind: "office_unit" as const,
         footprint: rect(5 + index * 6, 1, 5, 4),
         interactive: true,
       })),
-      { id: "floor-services", kind: "executive_room", footprint: rect(5, 6, 23, 1), interactive: false },
-      { id: "executive-desk", kind: "executive_desk", footprint: rect(25, 7, 2, 1), interactive: true },
-      ...workstationObjects(workstationCount),
-      { id: "terminal", kind: "terminal", footprint: rect(2, 10, 1, 1), interactive: true },
-      ...(enabledUpgrades.includes("operations_terminal") ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(2, 12, 1, 1), interactive: true }] : []),
+      // Furniture is a paid fit-out. These are deliberately absent from the
+      // base shell and appear only after the corresponding paid upgrades.
+      ...(enabledUpgrades.includes("extra_workstations") ? workstationObjects(4) : []),
+      ...(enabledUpgrades.includes("operations_terminal") ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(2, 10, 1, 1), interactive: true }] : []),
       { id: "atm", kind: "atm", footprint: rect(2, 13, 1, 1), interactive: true },
-      { id: "radio", kind: "radio", footprint: rect(27, 9, 1, 1), interactive: true },
       { id: "vending", kind: "vending_machine", footprint: rect(27, 11, 1, 1), interactive: true },
+      { id: "stairs", kind: "stairs", footprint: rect(27, 13, 2, 2), interactive: true },
     ],
     upgrades: enabledUpgrades, collisionFootprints: [],
   };
-  plan.collisionFootprints = plan.objects.map((object) => object.footprint);
+  // The hall and office bays are structural rooms. Their walls and door gaps
+  // are projected by the renderer; the room interiors are not solid furniture.
+  plan.collisionFootprints = plan.objects
+    .filter((object) => object.kind !== "elevator_hall" && object.kind !== "office_unit")
+    .map((object) => object.footprint);
   return plan;
 }
 
@@ -177,6 +179,7 @@ export function getRecreationPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "rec-bar", kind: "bar" as const, footprint: rect(14, 1, 5, 1), interactive: true },
     { id: "rec-vending", kind: "vending_machine" as const, footprint: rect(20, 1, 2, 1), interactive: true },
     { id: "rec-payphone", kind: "payphone" as const, footprint: rect(23, 1, 1, 1), interactive: true },
+    { id: "rec-stairs", kind: "stairs" as const, footprint: rect(27, 14, 2, 2), interactive: true },
   ];
   const plan: ShadowTowerPlan = {
     floorType: "recreation", city, floorNumber: 1, cols: 30, rows: 18, spawn: { x: 2, y: 3 },
@@ -203,6 +206,7 @@ export function getMezzaninePlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "cafe-payphone", kind: "payphone", footprint: rect(12, 1, 1, 1), interactive: true },
     { id: "office-wing-door-west", kind: "secret_door", footprint: rect(0, 7, 1, 2), interactive: true },
     { id: "office-wing-door-east", kind: "secret_door", footprint: rect(25, 7, 1, 2), interactive: true },
+    { id: "mezzanine-stairs", kind: "stairs", footprint: rect(23, 13, 2, 2), interactive: true },
   ];
   return {
     floorType: "mezzanine", city, floorNumber: 2, cols: 26, rows: 16,
@@ -225,6 +229,7 @@ export function getRestFloorPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "nurse-station", kind: "nurse_station", footprint: rect(3, 1, 4, 1), interactive: true },
     { id: "doctor-station", kind: "doctor_station", footprint: rect(9, 1, 4, 1), interactive: true },
     { id: "rest-payphone", kind: "payphone", footprint: rect(14, 1, 1, 1), interactive: true },
+    { id: "rest-stairs", kind: "stairs", footprint: rect(23, 13, 2, 2), interactive: true },
     ...beds,
   ];
   return {
@@ -249,6 +254,7 @@ export function getSecurityPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "secret-service-door", kind: "secret_door", footprint: rect(2, 13, 2, 1), interactive: true },
     { id: "security-payphone", kind: "payphone", footprint: rect(15, 1, 1, 1), interactive: true },
     { id: "security-workstation", kind: "workstation", footprint: rect(15, 12, 3, 1), interactive: false },
+    { id: "security-stairs", kind: "stairs", footprint: rect(23, 13, 2, 2), interactive: true },
   ];
   return {
     floorType: "security", city, floorNumber: 4, cols: 26, rows: 16,
@@ -274,29 +280,30 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
   for (const object of plan.objects) {
     const fp = object.footprint;
     if (fp.x + fp.cols > plan.cols || fp.y + fp.rows > plan.rows) errors.push(`${object.id} footprint is outside floor`);
-    if (!signatures.has(`${fp.x}:${fp.y}:${fp.cols}:${fp.rows}`)) errors.push(`${object.id} has no collision footprint`);
+    if (!["elevator_hall", "office_unit"].includes(object.kind) && !signatures.has(`${fp.x}:${fp.y}:${fp.cols}:${fp.rows}`)) {
+      errors.push(`${object.id} has no collision footprint`);
+    }
   }
   if (plan.floorType === "recreation") {
-    const requiredRec = ["elevator", "vending_machine", "bar"];
+    const requiredRec = ["elevator", "stairs", "vending_machine", "bar"];
     for (const kind of requiredRec) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "rec_station").length !== 7) errors.push("requires exactly seven recreation stations");
   } else if (plan.floorType === "mezzanine") {
     if (plan.objects.filter((o) => o.kind === "workstation").length < 4) errors.push("mezzanine requires public computers");
     if (plan.objects.filter((o) => o.kind === "work_board").length !== 1) errors.push("mezzanine requires one work board");
     if (plan.objects.filter((o) => o.kind === "elevator").length !== 1) errors.push("mezzanine requires one elevator");
+    if (plan.objects.filter((o) => o.kind === "stairs").length !== 1) errors.push("mezzanine requires one staircase");
   } else if (plan.floorType === "rest") {
     if (plan.objects.filter((o) => o.kind === "bed").length < 4) errors.push("rest floor requires beds");
-    for (const kind of ["nurse_station", "doctor_station", "elevator"]) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`rest floor requires one ${kind}`);
+    for (const kind of ["nurse_station", "doctor_station", "elevator", "stairs"]) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`rest floor requires one ${kind}`);
   } else if (plan.floorType === "security") {
-    for (const kind of ["guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door", "elevator"]) {
+    for (const kind of ["guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door", "elevator", "stairs"]) {
       if (plan.objects.filter((o) => o.kind === kind).length < 1) errors.push(`security floor requires ${kind}`);
     }
   } else {
-    const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio"];
+    const required = ["elevator_hall", "atm", "vending_machine", "elevator", "stairs"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "office_unit").length !== 4) errors.push("office floor requires four physical office addresses");
-    if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("requires one usable terminal");
-    if (plan.objects.filter((o) => o.kind === "workstation").length < 1) errors.push("requires workstations");
   }
   // Flood-fill all free tiles from spawn; an interaction must have a free cardinal neighbour.
   const start = `${plan.spawn.x},${plan.spawn.y}`;
