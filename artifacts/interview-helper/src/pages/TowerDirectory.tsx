@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowRight, Armchair, Bell, BriefcaseBusiness, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, Leaf, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { sfxFinalNotice, startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
@@ -16,10 +16,9 @@ import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getSalarymanName, markTutorialDone } from "@/lib/tutorial-progress";
 import { PabloOnboarding, type OnboardingAnswers } from "@/components/PabloOnboarding";
-import { defaultAppearance, drawPlayerSprite, type Appearance } from "@/lib/character-identity";
 import { persistTowerOnboardingState, type TowerOnboardingState } from "@/lib/tower-onboarding";
-import { IsoOffice, type OfficeAmbientOccupant } from "@/components/IsoOffice";
-import { getRecreationOfficeLayout } from "@/lib/office-property-layouts";
+import { IsoOffice } from "@/components/IsoOffice";
+import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
 
 const occupiedFloors = new Map([
   [67, { name: "SHADOW CORP", kind: "RESTRICTED", detail: "The roofline suite. No public access. The elevator stops listening.", tone: "shadow", icon: LockKeyhole }],
@@ -39,86 +38,18 @@ const RECEPTION_BRIEFING = [
   "If you need work, lodging, organization records, or help understanding the building, come back to this desk.",
 ];
 
-function LobbyPlayerArt() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    let appearance: Appearance = defaultAppearance("salaryman");
-    try {
-      const raw = window.localStorage.getItem("sm_save");
-      const saved = raw ? JSON.parse(raw) : {};
-      if (saved?.appearance && typeof saved.appearance === "object") {
-        appearance = { ...appearance, ...saved.appearance };
-      }
-    } catch {}
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height - 10);
-    ctx.scale(3.2, 3.2);
-    drawPlayerSprite(ctx, appearance, { pCls: "salaryman" });
-    ctx.restore();
-  }, []);
-  return <canvas ref={canvasRef} width={72} height={150} aria-label="Your character waiting in the lobby" className="h-32 w-20" />;
-}
-
 function TowerQueueLobby() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#070b12] text-zinc-100" data-testid="tower-queue-lobby">
-      <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-45" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,14,.42),rgba(3,7,14,.9)_78%)]" />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-7 sm:px-10">
-        <header className="flex items-start justify-between border-b border-cyan-200/20 pb-5">
-          <div>
-            <p className="text-[10px] font-black tracking-[.35em] text-cyan-200">SHADOW TOWER · LOBBY</p>
-            <h1 className="mt-3 text-2xl font-black tracking-[.16em] text-white sm:text-5xl">CHECK-IN QUEUE</h1>
-            <p className="mt-2 max-w-xl text-xs leading-6 tracking-[.1em] text-zinc-400">The lobby is busy. Wait behind the next visitor and the reception desk will call you forward.</p>
-          </div>
-          <div className="border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-right text-[9px] font-bold tracking-[.18em] text-emerald-200">
-            DESK ACTIVE
-            <span className="mt-1 block text-zinc-500">QUEUE 04</span>
-          </div>
-        </header>
-        <section className="relative mt-8 flex-1 overflow-hidden border border-white/15 bg-[#09121b]/75 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] sm:p-10">
-          <div className="absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(150deg,transparent_48%,rgba(125,211,252,.1)_49%,transparent_51%),linear-gradient(30deg,transparent_48%,rgba(236,72,153,.08)_49%,transparent_51%)] [background-size:110px_110px]" />
-          <div className="relative grid min-h-[480px] grid-cols-2 items-end gap-3 sm:grid-cols-4 sm:gap-8">
-            <figure className="relative flex flex-col items-center justify-end border-b border-amber-200/25 pb-3">
-              <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Visitor waiting ahead" className="h-40 w-full object-contain object-bottom opacity-75 sm:h-56" />
-              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-amber-200/70">AHEAD · 03</figcaption>
-            </figure>
-            <figure className="relative flex flex-col items-center justify-end border-b border-violet-200/25 pb-3">
-              <img src={`${import.meta.env.BASE_URL}tower-art/character-receptionist.png`} alt="Visitor waiting in the lobby" className="h-44 w-full object-contain object-bottom opacity-65 sm:h-60" />
-              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-violet-200/70">AHEAD · 02</figcaption>
-            </figure>
-            <figure className="relative flex flex-col items-center justify-end border border-cyan-200/45 bg-cyan-300/[.06] pb-3 shadow-[0_0_30px_rgba(34,211,238,.12)]">
-              <span className="absolute left-2 top-2 text-[8px] font-black tracking-[.2em] text-cyan-200">YOU</span>
-              <LobbyPlayerArt />
-              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-cyan-200">WAITING · 01</figcaption>
-            </figure>
-            <figure className="relative flex flex-col items-center justify-end border-b border-emerald-200/25 pb-3">
-              <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Another visitor waiting in the lobby" className="h-36 w-full scale-x-[-1] object-contain object-bottom opacity-45 sm:h-52" />
-              <figcaption className="mt-2 text-[9px] font-bold tracking-[.2em] text-emerald-200/60">BEHIND · 00</figcaption>
-            </figure>
-          </div>
-          <div className="relative mt-6 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-5 sm:flex-row">
-            <p className="text-center text-[10px] font-bold tracking-[.22em] text-zinc-500 sm:text-left">PLEASE WAIT · RECEPTION IS PROCESSING THE LINE</p>
-            <Link href="/sign-in?returnTo=%2Ftower" className="border border-cyan-200/55 bg-cyan-300/10 px-5 py-3 text-center text-xs font-black tracking-[.16em] text-cyan-100 transition hover:bg-cyan-300/20">CHECK IN AT RECEPTION</Link>
-          </div>
-        </section>
-        <footer className="pt-5 text-[9px] font-bold tracking-[.24em] text-zinc-600">FLOOR ACCESS · HOSTEL BED · COMPUTER CAFE · RECEPTION REGISTRY</footer>
-      </div>
+    <main className="grid min-h-[100dvh] place-items-center bg-[#050711] px-4 py-8 text-zinc-100 sm:px-8" data-testid="tower-entry">
+      <section className="w-full max-w-xl border border-cyan-200/25 bg-[#09121b] p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] sm:p-8">
+        <p className="text-[10px] font-black tracking-[.35em] text-cyan-200">SHADOW TOWER · MAIN ENTRY</p>
+        <h1 className="mt-3 text-2xl font-black tracking-[.14em] text-white sm:text-4xl">ENTER THE TOWER</h1>
+        <p className="mt-4 text-sm leading-7 text-zinc-400">Sign in to enter the physical lobby. From there, the elevator connects the public floors and the office addresses above Floor 2.</p>
+        <Link href="/sign-in?returnTo=%2Ftower" className="mt-6 flex min-h-12 items-center justify-center border border-cyan-200/55 bg-cyan-300/10 px-5 py-3 text-center text-xs font-black tracking-[.16em] text-cyan-100 transition hover:bg-cyan-300/20">CHECK IN AT THE LOBBY</Link>
+      </section>
     </main>
   );
 }
-
-const LOBBY_OCCUPANTS: OfficeAmbientOccupant[] = [
-  { id: 9401, name: "VISITOR 01", col: 12.5, row: 7.5, color: "#f59e0b" },
-  { id: 9402, name: "VISITOR 02", col: 10.5, row: 9.5, color: "#a78bfa" },
-  { id: 9403, name: "VISITOR 03", col: 8.5, row: 11.5, color: "#38bdf8" },
-  { id: 9499, name: "RECEPTION", col: 25.5, row: 3.8, color: "#34d399" },
-];
 
 function TowerReceptionScene({
   locked,
@@ -145,26 +76,16 @@ function TowerReceptionScene({
   }, []);
   const city = getActiveCityId() === "huda_city" ? "huda_city" : "minx_city";
   const layout = useMemo(() => {
-    const base = getRecreationOfficeLayout(city);
+    const base = getPublicFloorOfficeLayout(city, 2);
     return {
       ...base,
       propertyKey: `${city}:lobby`,
       label: "SHADOW TOWER · MAIN LOBBY",
-      representation: "ARRIVAL HALL · RECEPTION",
-      spawn: { x: 6.5 * 16, y: 13.5 * 16, facing: "right" as const },
+      representation: "ARRIVAL HALL · ELEVATOR CORE",
+      spawn: { x: 3.5 * 16, y: 9.5 * 16, facing: "right" as const },
     };
   }, [city]);
   const stations = useMemo(() => [
-    {
-      id: "lobby-reception",
-      label: locked ? "REPORT TO RECEPTION" : "SPEAK TO RECEPTION",
-      col: 24,
-      row: 3,
-      radius: 54,
-      footprint: { w: 3, d: 1 },
-      glyph: "comms" as const,
-      onInteract: onReception,
-    },
     {
       id: "lobby-elevator",
       label: locked ? "ELEVATOR · RECEPTION REQUIRED" : "ELEVATOR DIRECTORY",
@@ -173,7 +94,7 @@ function TowerReceptionScene({
       radius: 42,
       footprint: { w: 2, d: 2 },
       glyph: "elevator" as const,
-      onInteract: () => locked ? onLockedExit("ELEVATOR") : onLockedExit("ELEVATOR DIRECTORY"),
+        onInteract: () => locked ? onLockedExit("ELEVATOR") : onReception(),
     },
   ], [locked, onLockedExit, onReception]);
   return (
@@ -186,20 +107,19 @@ function TowerReceptionScene({
         viewportHeight={viewport.height}
         playable
         followCam={viewport.width < 760}
-        scale={viewport.width < 760 ? 4.2 : 3.25}
+         scale={viewport.width < 760 ? 3.6 : 3.25}
         stations={stations}
         rooms={layout.rooms}
         initialPose={layout.spawn}
         frozen={frozen}
         suppressLabels={viewport.width < 680}
-        ambientOccupants={LOBBY_OCCUPANTS}
-        playerName="YOU · QUEUE 04"
-        hallwaySignage="RECEPTION · WAIT BEHIND THE LINE"
+         playerName="YOU"
+         hallwaySignage="MAIN LOBBY · ELEVATOR CORE"
         lighting="cool"
       />
       <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] border border-cyan-200/35 bg-[#050914]/90 px-3 py-2 backdrop-blur">
         <p className="text-[9px] font-black tracking-[.24em] text-cyan-200">SHADOW TOWER · PHYSICAL LOBBY</p>
-        <p className="mt-1 text-[10px] text-zinc-400">{locked ? "YOU ARE LAST IN LINE · WAIT FOR RECEPTION" : "RECEPTION OPEN · WALK OR TAP TO MOVE"}</p>
+         <p className="mt-1 text-[10px] text-zinc-400">{locked ? "WALK TO THE ELEVATOR CORE TO CHECK IN" : "WALK OR TAP TO MOVE · ELEVATOR CONNECTS THE TOWER"}</p>
       </div>
     </section>
   );
@@ -701,56 +621,30 @@ export default function TowerDirectory() {
 
       {onboardingLocked && arrivalPhase !== "ready" && (
         <div
-          className="fixed inset-0 z-[850] flex items-center justify-center overflow-hidden bg-[#03050a] px-5 transition-opacity duration-700"
+          className="fixed inset-0 z-[850] flex items-start justify-center overflow-y-auto bg-[#03050a] px-4 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] transition-opacity duration-700 sm:items-center sm:px-6"
           data-testid="lobby-arrival-intro"
           aria-live="polite"
         >
           <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-25" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,5,10,.55),rgba(3,5,10,.9))]" />
-          <div className={`relative w-full max-w-4xl transition-all duration-700 ${arrivalPhase === "fade" ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
+          <div className={`relative my-auto w-full max-w-2xl transition-all duration-700 ${arrivalPhase === "fade" ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
             <div className="mb-7 text-center">
               <p className="text-[9px] font-bold tracking-[.42em] text-cyan-300/70">SHADOW TOWER · LOBBY</p>
               <h2 className="mt-3 text-2xl font-black tracking-[.18em] text-white sm:text-4xl">PLEASE WAIT</h2>
               <p className="mt-3 text-xs tracking-[.14em] text-zinc-500">RECEPTION WILL SEE YOU SHORTLY</p>
             </div>
 
-            <div className="relative grid grid-cols-5 items-end gap-2 border border-cyan-200/20 bg-[linear-gradient(160deg,rgba(22,42,57,.9),rgba(5,9,16,.96))] px-3 pb-5 pt-8 shadow-[0_25px_90px_rgba(0,0,0,.6)] sm:gap-5 sm:px-8">
-              <div className="absolute inset-x-8 bottom-4 h-px bg-cyan-300/20" />
-              <figure className="relative z-10 text-center opacity-45">
-                <div className="mx-auto flex h-24 items-end justify-center border-b border-emerald-300/30 bg-emerald-300/[.03] sm:h-32">
-                  <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Visitor moving through the busy lobby" className="h-28 w-full scale-x-[-1] object-contain object-bottom sm:h-36" />
+            <div className="border border-cyan-200/20 bg-[linear-gradient(160deg,rgba(22,42,57,.9),rgba(5,9,16,.96))] p-5 shadow-[0_25px_90px_rgba(0,0,0,.6)] sm:p-8">
+              <div className="grid gap-3 border border-cyan-300/20 bg-cyan-300/[.03] p-4 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-6">
+                <DoorOpen className="mx-auto h-14 w-14 text-cyan-200 sm:h-16 sm:w-16" />
+                <div>
+                  <p className="text-[9px] font-black tracking-[.22em] text-cyan-200">ELEVATOR CORE · FLOOR L</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">You are inside the Tower. The lift behind this lobby is the connection to the mezzanine and every office address above it.</p>
                 </div>
-                <figcaption className="mt-3 text-[7px] font-bold tracking-[.14em] text-emerald-200/70">LOBBY TRAFFIC</figcaption>
-              </figure>
-              <figure className="relative z-10 text-center">
-                <div className="mx-auto flex h-28 items-end justify-center border-b border-cyan-300/30 bg-cyan-300/[.04] sm:h-36">
-                  <LobbyPlayerArt />
-                </div>
-                <figcaption className="mt-3 text-[8px] font-bold tracking-[.2em] text-cyan-200/70">YOU · WAITING</figcaption>
-              </figure>
-              <figure className="relative z-10 text-center">
-                <div className="mx-auto flex h-28 items-end justify-center border-b border-amber-300/30 bg-amber-300/[.04] sm:h-36">
-                  <img src={`${import.meta.env.BASE_URL}tower-art/character-receptionist.png`} alt="Another visitor waiting ahead of you" className="h-32 w-full object-contain object-bottom sm:h-40" />
-                </div>
-                <figcaption className="mt-3 text-[8px] font-bold tracking-[.2em] text-amber-200/80">VISITOR · AHEAD</figcaption>
-              </figure>
-              <figure className="relative z-10 text-center">
-                <div className="mx-auto flex h-24 items-end justify-center border-b border-pink-300/30 bg-pink-300/[.03] sm:h-32">
-                  <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Visitor being processed at reception" className="h-28 w-full object-contain object-bottom opacity-70 sm:h-36" />
-                </div>
-                <figcaption className="mt-3 text-[7px] font-bold tracking-[.14em] text-pink-200/70">AT THE DESK</figcaption>
-              </figure>
-              <figure className="relative z-10 text-center">
-                <div className="mx-auto flex h-28 items-end justify-center border-b border-violet-300/30 bg-violet-300/[.04] sm:h-36">
-                  <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Claw Prime at the reception desk" className="h-32 w-full object-contain object-bottom sm:h-40" />
-                </div>
-                <figcaption className="mt-3 text-[8px] font-bold tracking-[.2em] text-violet-200/80">RECEPTION DESK</figcaption>
-              </figure>
+              </div>
             </div>
 
-            <p className="mt-6 text-center text-[10px] font-bold tracking-[.22em] text-zinc-600">
-              THE VISITOR IN FRONT OF YOU IS FINISHING CHECK-IN
-            </p>
+            <p className="mt-6 text-center text-[10px] font-bold tracking-[.22em] text-zinc-600">THE ROOM IS READY · WALK TO THE ELEVATOR CORE</p>
           </div>
         </div>
       )}
@@ -766,7 +660,7 @@ export default function TowerDirectory() {
 
       {onboardingLocked && onboardingStep === "hostel" && (
         <div className="fixed inset-0 z-[960] grid place-items-center bg-black/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Hostel bed assignment">
-          <div className="w-full max-w-lg border border-violet-300/45 bg-[#0b0b19] p-5 shadow-[0_30px_100px_rgba(0,0,0,.75)]">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto border border-violet-300/45 bg-[#0b0b19] p-5 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:max-h-[calc(100dvh-3rem)]">
             <div className="flex items-end gap-4 border-b border-violet-300/20 pb-4">
               <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Receptionist" className="h-24 w-20 object-contain object-bottom" />
               <div>
@@ -792,7 +686,7 @@ export default function TowerDirectory() {
 
       {onboardingLocked && onboardingStep === "briefing" && (
         <div className="fixed inset-0 z-[970] grid place-items-center bg-black/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Tower history briefing">
-          <div className="w-full max-w-lg overflow-hidden border border-cyan-200/40 bg-[#07111b] shadow-[0_30px_100px_rgba(0,0,0,.75)]">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto border border-cyan-200/40 bg-[#07111b] shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:max-h-[calc(100dvh-3rem)]">
             <div className="relative h-44 border-b border-cyan-300/20">
               <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="Shadow Tower lobby" className="h-full w-full object-cover opacity-65" />
               <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Receptionist" className="absolute bottom-0 left-5 h-40 w-32 object-contain object-bottom" />
@@ -811,7 +705,7 @@ export default function TowerDirectory() {
       {onboardingLocked && onboardingStep === "alert" && (
         <div className="fixed inset-0 z-[990] grid place-items-center overflow-hidden bg-red-950/95 p-4" role="alertdialog" aria-modal="true" aria-label="Tower lockdown alert">
           <div className="pointer-events-none absolute inset-0 animate-pulse bg-[repeating-linear-gradient(135deg,rgba(255,255,255,.08)_0_12px,transparent_12px_24px)]" />
-          <div className="relative w-full max-w-xl border-2 border-red-200 bg-black/75 p-6 text-center shadow-[0_0_100px_rgba(239,68,68,.8)]">
+           <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto border-2 border-red-200 bg-black/75 p-5 text-center shadow-[0_0_100px_rgba(239,68,68,.8)] sm:p-6">
             <AlertTriangle className="mx-auto h-16 w-16 animate-pulse text-red-300" />
             <p className="mt-4 text-[11px] font-black tracking-[.4em] text-red-300">RED ALERT</p>
             <h2 className="mt-3 text-3xl font-black tracking-[.15em] text-white sm:text-5xl">LOCKDOWN</h2>
@@ -830,7 +724,7 @@ export default function TowerDirectory() {
 
       {talking && (
         <div className="fixed inset-0 z-[950] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Receptionist onboarding">
-          <div className="w-full max-w-md border border-cyan-200/45 bg-[#07111b] p-5 shadow-[0_30px_100px_rgba(0,0,0,.7)]">
+           <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-cyan-200/45 bg-[#07111b] p-5 shadow-[0_30px_100px_rgba(0,0,0,.7)] sm:max-h-[calc(100dvh-3rem)]">
             <div className="flex items-center gap-3 border-b border-cyan-300/20 pb-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10"><UserRound className="h-6 w-6 text-cyan-100" /></span>
               <div>

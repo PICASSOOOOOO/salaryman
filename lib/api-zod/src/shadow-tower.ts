@@ -17,7 +17,7 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["executive_room", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
+  kind: z.enum(["executive_room", "office_unit", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
@@ -132,18 +132,24 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
   const enabledUpgrades = upgrades.filter(isSupportedShadowTowerUpgrade);
   const workstationCount = listing.capacity + (enabledUpgrades.includes("extra_workstations") ? 4 : 0);
   const plan: ShadowTowerPlan = {
-    floorType: "office", city, floorNumber, cols: 22, rows: archetype === "company" ? 16 : 12, spawn: { x: 2, y: 2 },
+    floorType: "office", city, floorNumber, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 8 },
     objects: [
-      { id: "elevator", kind: "elevator", footprint: rect(0, 0, 2, 2), interactive: true },
-      // The room's south wall is collidable; its desk remains approachable from the open interior.
-      { id: "executive-room", kind: "executive_room", footprint: rect(16, 1, 5, 1), interactive: false },
-      { id: "executive-desk", kind: "executive_desk", footprint: rect(18, 2, 2, 1), interactive: true },
+      { id: "elevator", kind: "elevator", footprint: rect(0, 1, 2, 2), interactive: true },
+      { id: "elevator-hall", kind: "executive_room", footprint: rect(0, 0, 4, 5), interactive: false },
+      ...Array.from({ length: 4 }, (_, index) => ({
+        id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
+        kind: "office_unit" as const,
+        footprint: rect(5 + index * 6, 1, 5, 4),
+        interactive: true,
+      })),
+      { id: "floor-services", kind: "executive_room", footprint: rect(5, 6, 23, 1), interactive: false },
+      { id: "executive-desk", kind: "executive_desk", footprint: rect(25, 7, 2, 1), interactive: true },
       ...workstationObjects(workstationCount),
-      { id: "terminal", kind: "terminal", footprint: rect(2, 8, 1, 1), interactive: true },
-      ...(enabledUpgrades.includes("operations_terminal") ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(2, 6, 1, 1), interactive: true }] : []),
-      { id: "atm", kind: "atm", footprint: rect(2, 10, 1, 1), interactive: true },
-      { id: "radio", kind: "radio", footprint: rect(20, 6, 1, 1), interactive: true },
-      { id: "vending", kind: "vending_machine", footprint: rect(20, 8, 1, 1), interactive: true },
+      { id: "terminal", kind: "terminal", footprint: rect(2, 10, 1, 1), interactive: true },
+      ...(enabledUpgrades.includes("operations_terminal") ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(2, 12, 1, 1), interactive: true }] : []),
+      { id: "atm", kind: "atm", footprint: rect(2, 13, 1, 1), interactive: true },
+      { id: "radio", kind: "radio", footprint: rect(27, 9, 1, 1), interactive: true },
+      { id: "vending", kind: "vending_machine", footprint: rect(27, 11, 1, 1), interactive: true },
     ],
     upgrades: enabledUpgrades, collisionFootprints: [],
   };
@@ -288,6 +294,7 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
   } else {
     const required = ["executive_room", "executive_desk", "atm", "vending_machine", "elevator", "radio"];
     for (const kind of required) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
+    if (plan.objects.filter((o) => o.kind === "office_unit").length !== 4) errors.push("office floor requires four physical office addresses");
     if (plan.objects.filter((o) => o.kind === "terminal").length < 1) errors.push("requires one usable terminal");
     if (plan.objects.filter((o) => o.kind === "workstation").length < 1) errors.push("requires workstations");
   }

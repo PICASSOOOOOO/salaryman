@@ -48,6 +48,7 @@ const glyphFor = (kind: string): OfficeStation["glyph"] =>
                 kind === "work_board" ? "comms" : "comms";
 const labelFor = (id: string, kind: string) =>
   id.startsWith("office-wing-door-") ? "OFFICE WING" :
+  id.startsWith("office-address-") ? "OFFICE ADDRESS" :
   id === "operations-terminal" ? "OPERATIONS TERMINAL" : kind === "terminal" ? "TERMINAL" : kind === "atm" ? "ATM" :
     kind === "vending_machine" ? "VENDING" : kind === "elevator" ? "ELEVATOR" :
       kind === "radio" ? "SHADOW RADIO" : kind === "payphone" ? "PAYPHONE" :
@@ -66,11 +67,15 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
   const desk = (object: typeof executive, kind: OfficeDesk["kind"]): OfficeDesk => ({
     id: object.id, kind, col: object.footprint.x, row: object.footprint.y, w: object.footprint.cols, d: object.footprint.rows,
   });
-  const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "executive_room").map((object) => ({
+  const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "executive_room" || object.kind === "office_unit").map((object) => ({
     id: object.id,
-    label: plan.floorType === "office" ? defaultShadowTowerOfficeName(plan.city, plan.floorNumber) : "EXECUTIVE ROOM",
+    label: object.kind === "office_unit"
+      ? `${plan.city === "huda_city" ? "HUDA" : "MINX"} · FLOOR ${plan.floorNumber} · OFFICE ${object.id.slice(-2)}`
+      : plan.floorType === "office" ? defaultShadowTowerOfficeName(plan.city, plan.floorNumber) : "EXECUTIVE ROOM",
+    sub: object.kind === "office_unit" ? "FOR SALE · LEASE" : undefined,
     x: object.footprint.x, y: object.footprint.y,
     w: object.footprint.cols, h: object.footprint.rows, doorSide: "bottom", doorSpan: object.footprint.cols,
+    accent: object.kind === "office_unit" ? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][Number(object.id.slice(-2)) - 1] : undefined,
   }));
   const elevator = objects.find((object) => object.kind === "elevator");
   if (elevator) {
