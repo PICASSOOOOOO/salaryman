@@ -98,7 +98,17 @@ const SESSION_EXPIRY_SKIP_PATHS =
 // post-sign-in intake desk. This mirrors the anonymous-allowed route set in
 // App.tsx — keep it in sync if more public routes are added. A 401 on any other
 // (genuinely protected) page still triggers the return-to-sign-in bounce.
-const SESSION_EXPIRY_PUBLIC_ROUTES = ["/tower", "/phone", "/pablo", "/immigration"];
+const SESSION_EXPIRY_PUBLIC_ROUTES = [
+  "/tower",
+  "/phone",
+  "/pablo",
+  "/immigration",
+  // Auth routes are deliberately anonymous. Background metadata requests may
+  // still return 401 while Clerk is loading; redirecting those responses to
+  // Pablo unmounts the Clerk form before a visitor can sign in or sign up.
+  "/sign-in",
+  "/sign-up",
+];
 function isSessionExpiryPublicRoute(currentPath: string): boolean {
   return (
     currentPath === "/" ||

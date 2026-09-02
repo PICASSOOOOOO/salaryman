@@ -10,7 +10,7 @@
 // Contract:
 //   1. A 401 on a genuinely protected page (e.g. /office, /business) →
 //      redirect to /pablo?returnTo=<encoded path+search>.
-//   2. A 401 on a public route ("/", "/pablo", "/immigration" and their
+//   2. A 401 on a public route ("/", "/pablo", "/immigration", auth pages and their
 //      subpaths) → NO redirect.
 //   3. A 401 on the auth-polling skip paths (/auth/user, /auth/providers) →
 //      NO redirect (regardless of current page).
@@ -83,8 +83,16 @@ describe("apiFetch session-expiry redirect", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
-  it("does NOT redirect on a 401 while already on /pablo or /immigration", async () => {
-    for (const path of ["/pablo", "/immigration", "/immigration/legal"]) {
+  it("does NOT redirect on a 401 while already on a public or auth route", async () => {
+    for (const path of [
+      "/pablo",
+      "/immigration",
+      "/immigration/legal",
+      "/sign-in",
+      "/sign-in/factor-one",
+      "/sign-up",
+      "/sign-up/sso-callback",
+    ]) {
       setLocation(path);
       global.fetch = vi.fn(() => Promise.resolve(status401()));
       const apiFetch = await freshApiFetch();
