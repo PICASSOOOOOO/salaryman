@@ -155,5 +155,5 @@
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
 - [Shadow Tower named art](shadow-tower-named-art.md) — finished Tower spaces use a named asset manifest; procedural shapes are interaction scaffolding, not final art.
 - [VendKing utility rule](vendking-utility-rule.md) — vending stock must provide authoritative stamina, work-income, skill, protection, or low-cost automation value; never sell decorative dead items.
-- [Tower floor presence authority](tower-floor-presence-authority.md) — never project an owner/org bot roster onto public floors; visible workers and notices require location-scoped server authority.
 - [Tower floor defaults](tower-floor-defaults.md) — commercial floors start with one furnished executive suite; suites, desks, and terminals expand through paid canonical-plan fit-outs.
+- [Startup art bake](startup-art-bake.md) — boot may register art rows but must not launch paid image-generation jobs.

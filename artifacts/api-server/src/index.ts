@@ -12,7 +12,7 @@ import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
 import { dedupeDuplicateBots } from './lib/dedupe-bots';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
-import { seedSalarymanArtKit, bakeCharacterPortraits } from './routes/art-assets';
+import { seedSalarymanArtKit } from './routes/art-assets';
 import { pollBackendHealth, ALERT_POLL_INTERVAL_MS } from './lib/art-providers/backend-alerts';
 import { pollConnectionHealth, CONN_HEALTH_POLL_INTERVAL_MS } from './lib/connection-health-monitor';
 import { runRecordingRetentionSweep } from './lib/recording-retention';
@@ -64,14 +64,11 @@ function runDeferredBoot(): void {
     seedInsuranceCarriers().catch(err => {
       console.error("[Insurance Seed] Error seeding carriers:", err);
     });
-    seedSalarymanArtKit().catch(err => {
+    // Register the art catalog without starting paid image jobs during boot.
+    // Generation remains available through the explicit admin bake route; boot
+    // should stay quiet and responsive even when provider credit is exhausted.
+    seedSalarymanArtKit(0).catch(err => {
       console.error("[Art Kit Seed] Error:", err);
-    });
-    // Char templates get their own dedicated kickoff pass so they're never
-    // crowded out by the general kit's maxKickoff=8 budget. Runs right after
-    // the general seeder so rows created above are immediately ready to bake.
-    bakeCharacterPortraits().catch(err => {
-      console.error("[Portrait Bake] Error:", err);
     });
     seedSubwayStations().catch(err => {
       console.error("[Subway Seed] Error:", err);
