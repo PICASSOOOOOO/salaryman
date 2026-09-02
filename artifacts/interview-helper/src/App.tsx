@@ -321,62 +321,17 @@ function StoryCityLock({ children }: { children: React.ReactNode }) {
 }
 
 function HomeOrCover() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const onboardingResolved = useOnboardingResolved();
+  const { isLoading } = useAuth();
   const [location] = useLocation();
-  const [organizationLanding, setOrganizationLanding] = useState<"/office" | "/tower/mezzanine?focus=classifieds" | null>(null);
-  useEffect(() => {
-    if (!isAuthenticated || !onboardingResolved) {
-      setOrganizationLanding(null);
-      return;
-    }
-    let cancelled = false;
-    apiFetch('/api/orgs/mine', { credentials: "include" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("organization lookup failed");
-        const data = await response.json() as { orgs?: unknown[] };
-        if (!cancelled) setOrganizationLanding(Array.isArray(data.orgs) && data.orgs.length > 0 ? "/office" : "/tower/mezzanine?focus=classifieds");
-      })
-      .catch(() => { if (!cancelled) setOrganizationLanding("/tower/mezzanine?focus=classifieds"); });
-    return () => { cancelled = true; };
-  }, [isAuthenticated, onboardingResolved]);
   // This component is kept-alive (always mounted, just hidden via display:none
-  // on non-home routes). wouter's <Redirect> fires once when it mounts, so on a
-  // hard load / refresh / bookmark of ANY authed route it would bounce the user
-  // to /office. Guard on the actual path: only run the office-first funnel when
-  // the user is genuinely on "/", so deep routes (e.g. /my-office) stay put.
+  // on non-home routes). Guard on the actual path so the homepage terminal does
+  // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
   if (isLoading) return <LoadingFallback />;
-  // Funnel — players begin inside Shadow Tower:
-  //   1. Anonymous visitor → the busy Tower lobby queue, where reception owns
-  //      the sign-in handoff.
-  //   2. Authenticated but uncleared (tutorialDone=false) → the same queue and reception.
-  //      The receptionist gives one short building briefing and creates the
-  //      minimum player registry row. Immigration/visa processing is deferred
-  //      until the player explicitly exits the building.
-  //   3. Cleared → their OFFICE (office-sim first). The old Home dashboard is
-  //      no longer the landing surface; signed-in players live in /office and
-  //      reach everything else (the TERMINAL, the city) from there.
-  // The previous build sent post-OAuth users to /world/play, which is
-  // GameLock'd for non-owners. Bouncing off the lock dropped them back
-  // here, and since tutorialDone was still false, this redirect kicked
-  // them to /pablo, which re-asked their name → loop. The /immigration
-  // gate fixes that: it lives outside GameLock and is the only path that
-  // can flip tutorialDone for an authed user.
-  // Logged-out and authenticated first-time visitors share the Tower lobby
-  // entrance. Already-onboarded players still skip straight to their /office.
-  // Hold the gate until the server onboarding check resolves. A returning,
-  // already-onboarded user signing in on a fresh device has no local
-  // salaryman_tutorial_done flag yet — without this wait we'd flash them through
-  // to /immigration before hydrateOnboardingStatus() flips the flag and skips
-  // them straight to /office. The check resolves instantly when the local flag
-  // is already set, so cleared users on their usual device never see a hold.
-  if (isAuthenticated && (!onboardingResolved || organizationLanding == null)) return <LoadingFallback />;
-  if (typeof window !== "undefined") {
-    if (isAuthenticated && !isTutorialDone()) return <Redirect to="/tower" />;
-  }
-  if (!isAuthenticated) return <PabloTerminal />;
-  return <Redirect to={organizationLanding ?? "/tower/mezzanine?focus=classifieds"} />;
+  // Pablo is the homepage for both guests and signed-in players. Entering the
+  // Tower is an explicit choice in the terminal, never an automatic redirect
+  // caused by an auth cookie or a missing local onboarding flag.
+  return <PabloTerminal />;
 }
 
 const FLOATING_BAR_ROUTES = [
@@ -490,8 +445,9 @@ function AppShell() {
     !pathname.startsWith("/immigration");
 
   // GLOBAL GATE. Before a visitor passes security (signs in), the visible
-  // surface is the Shadow Tower lobby queue, not a separate Pablo entrance,
-  // plus the /auth + /api machinery that performs the sign-in.
+  // surface is Pablo's homepage, plus the /auth + /api machinery that performs
+  // the sign-in. Pablo remains the homepage after sign-in too; Tower entry is
+  // an explicit handoff from that surface.
   // Typing or deep-linking ANY other URL (/game, /console, /business,
   // /world, /profile, /legal, /alpha, …) silently bounces them back to the
   // queue, so nothing behind the firewall is reachable by guessing a path.

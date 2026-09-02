@@ -858,18 +858,6 @@ function PabloTerminalAuthed() {
     } catch {}
   }, []);
 
-  // IMMIGRATION HAND-OFF GUARD. If the user is already authed but hasn't
-  // cleared the immigration desk yet (tutorialDone=false), they must NOT
-  // sit on the terminal — Pablo already collected name + email here, and
-  // re-asking would be the loop. Push them straight to /immigration so
-  // the dedicated intake gate finishes the filing.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (isAuthenticated && !isTutorialDone()) {
-      navigate("/immigration", { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
-
   useEffect(() => {
     if (!isTutorialDone()) return;
     // Schedule the first lore drip 5 min after mount; each subsequent
@@ -1008,6 +996,9 @@ function PabloTerminalAuthed() {
   // Camera/file/URL-vision UI is available only after authentication and the
   // immigration desk has completed.
   const hasFinishedOnboarding = isAuthenticated && isTutorialDone();
+  const enterFromHomepage = useCallback(() => {
+    navigate(hasFinishedOnboarding ? "/office" : "/tower");
+  }, [hasFinishedOnboarding, navigate]);
 
   // Keep the existing global audio unlock path alive for reply speech and
   // explicit voice input. There is no automatic greeting to start here.
@@ -1333,8 +1324,8 @@ function PabloTerminalAuthed() {
     // identity volunteer → public LLM) is ONLY for the logged-out Pablo nebula
     // intro — first-time AND returning visitors who haven't signed in yet.
     // An ALREADY-SIGNED-IN user has nothing to sign up for, so we never pivot
-    // them into intake; we fall straight through to the authed terminal flow
-    // (api/chat/pablo/command below) so Pablo just answers them in the terminal.
+    // them into intake; they stay in the public terminal until they explicitly
+    // choose to enter the Tower.
     if (interviewPhaseRef.current === 'chatting' && !isAuthenticated) {
       // Crosstalk in the chat phase: try to ENGAGE the interested party
       // instead of just shutting down. Pablo's job here is to identify
@@ -1700,6 +1691,18 @@ function PabloTerminalAuthed() {
       return;
     }
 
+    // Authenticated new users remain on Pablo's homepage until they explicitly
+    // choose to enter. Keep the handoff deterministic instead of asking the
+    // command model to infer whether "I'm ready" means Tower access.
+    if (isAuthenticated && !hasFinishedOnboarding && (isReadyToEnter(text) || isShowPapers(text))) {
+      const line = "All right. Tower reception is ready.";
+      setReply(line);
+      setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
+      await speak(line);
+      enterFromHomepage();
+      return;
+    }
+
     // (Brush-off mid-intro is gone. The intro question itself is the
     // hook — any user input while the intro card is visible drops
     // them into the intake at the asking-name branch above, which
@@ -1829,7 +1832,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated]);
+  }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated, hasFinishedOnboarding, enterFromHomepage]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
@@ -2043,10 +2046,8 @@ function PabloTerminalAuthed() {
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
         }}
       >
-        {/* Keep visitors inside intake. Once onboarded, return to the exact
-            physical Tower location that opened Pablo. A direct /pablo visit
-            falls through "/" so the organization-aware home funnel chooses
-            an office only for members and public classifieds for everyone else. */}
+        {/* Pablo is the homepage. Entering the Tower or returning to the office
+            is always an explicit choice from this surface. */}
         {hasFinishedOnboarding ? (
           <Link
             href={pendingDestinationRef.current ?? "/"}
@@ -2090,6 +2091,18 @@ function PabloTerminalAuthed() {
             >
               <LogIn className="w-3 h-3" />
                START WORK
+            </button>
+          )}
+          {!isLoading && isAuthenticated && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); enterFromHomepage(); }}
+              data-testid="pablo-enter-tower"
+              className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+              title={hasFinishedOnboarding ? "Return to your office" : "Enter Shadow Tower"}
+            >
+              <LogIn className="w-3 h-3" />
+              {hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}
             </button>
           )}
           {/* TEXT/VOICE toggle is now visible during the intro too. The
