@@ -2074,12 +2074,12 @@ function PabloTerminalAuthed() {
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-          {/* Always-visible start-work affordance for returning users. The
-              front door is a fullscreen route with no NavBar, so without
-               this button a logged-out visitor has no obvious way to enter
-              — they'd have to know to TYPE "log in" to Pablo. Opens the
-              same APPLY FOR A VISA modal (Replit + Discord) the chat funnel
-              uses, so the actual OAuth path is identical and well-tested. */}
+           {/* Always-visible start-work affordance for returning users. The
+               front door is a fullscreen route with no NavBar, so without
+                this button a logged-out visitor has no obvious way to enter
+                — they'd have to know to TYPE "log in" to Pablo. Opens the
+                same sign-in dialog the chat funnel uses, so the actual OAuth
+                path is identical and well-tested. */}
           {!isLoading && !isAuthenticated && (
             <button
               type="button"
@@ -2337,7 +2337,7 @@ function PabloTerminalAuthed() {
                 fontFamily: "'Inter', sans-serif", fontSize: "1.5rem", color: "#38bdf8",
                 letterSpacing: "0.2em", marginBottom: "6px", textShadow: "0 0 15px rgba(56,189,248,0.3)",
               }}>
-                APPLY FOR A VISA
+                 You're Late
               </div>
               <div style={{
                 width: "60px", height: "1px", margin: "0 auto 16px",
@@ -2367,7 +2367,7 @@ function PabloTerminalAuthed() {
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.15)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.7)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.5)"; }}
               >
-                 CONTINUE WITH REPLIT
+                 CONTINUE WITH SALARYMAN
               </button>
 
               <button
