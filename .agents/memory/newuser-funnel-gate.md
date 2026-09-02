@@ -6,7 +6,7 @@ description: Why logged-out / not-cleared users land on the /pablo nebula termin
 `AppShell` in `artifacts/interview-helper/src/App.tsx` has a GLOBAL GATE: any user whose tutorial is not done (`isTutorialDone()` false) is redirected for **every protected path** except an allow-list that DIFFERS BY AUTH STATE:
 - signed-out (anon) allow-list is DELIBERATELY NARROW: only `/`, `/pablo`, `/auth`, `/api`. The owner's rule: "no URL other than the front door (Pablo nebula) reachable by typing/deep-linking before sign-in" — Pablo is the firewall/bot filter. `/legal` + `/alpha` are NOT anon-reachable (they bounce to `/pablo`); only `/auth` + `/api` stay open because they ARE the sign-in machinery, not pages.
 - authed-but-not-cleared allow-list adds `/immigration`, `/legal`, `/alpha`, and `/tower` (post-sign-in surfaces).
-- both signed-out and signed-in visitors see Pablo at `/`; authenticated uncleared users enter `/tower` only through Pablo's explicit button or readiness handoff.
+- both signed-out and signed-in visitors see Pablo at `/`; the single primary header action sends visitors straight to sign-in/Tower/Office based on state, while readiness text hands off to Tower without a spoken delay.
 
 Two cold-load guards matter: (1) bounce only when `!isLoading` (isAuthenticated starts false, so acting mid-hydration mis-kicks a real authed user off /immigration|/legal); (2) `holdForAuth` early-returns `<CRTFallback/>` for any non-anon path while `isLoading` so a logged-out deep link can't FLASH the protected page before the bounce fires. Cleared users (tutorialDone) are never held/gated.
 

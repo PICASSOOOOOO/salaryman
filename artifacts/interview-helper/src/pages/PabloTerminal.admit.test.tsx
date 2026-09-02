@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
 // End-to-end wiring test for the LOGGED-OUT Pablo front-door admittance flow
-// (Task #701's terminal handoff). The pure intent detectors in
+// The pure intent detectors in
 // signup-intent.ts already have unit tests; this guards the COMPONENT wiring
 // that turns those signals into the auth-choice modal:
 //
@@ -11,7 +11,8 @@
 //     loop this flow exists to kill).
 //   • A brand-new visitor (no cache) who says "let me in" is walked through
 //     name -> email -> auth choice modal.
-//   • The header SIGN IN button opens the same auth choice modal.
+//   • The header START WORK button goes straight to sign-in with Tower as the
+//     return destination.
 //
 // PabloNebula3D (WebGL), the art kit, TTS, and audio are all stubbed
 // so the terminal mounts in jsdom. speakWithTTS fires its done callback
@@ -44,8 +45,8 @@ vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) } as unknown as Response)),
 }));
 
-// TTS double: fire the done callback synchronously so the goLogin redirect
-// (which opens the auth-choice modal) runs without needing fake timers.
+// TTS double: fire the done callback synchronously so the admittance flow runs
+// without needing fake timers.
 vi.mock("@/lib/tts", () => ({
   speakWithTTS: (text: string, onDone?: () => void) => {
     spokenTts.push(text);
@@ -116,6 +117,7 @@ async function typeAndSend(text: string) {
 beforeEach(() => {
   loginWithDiscord.mockClear();
   spokenTts.length = 0;
+  window.history.replaceState({}, "", "/");
   try {
     window.localStorage.clear();
   } catch {}
@@ -132,6 +134,7 @@ afterEach(() => {
   try {
     window.localStorage.clear();
   } catch {}
+  window.history.replaceState({}, "", "/");
 });
 
 describe("Pablo front-door admittance flow", () => {
@@ -204,17 +207,19 @@ describe("Pablo front-door admittance flow", () => {
     expect(window.localStorage.getItem("salaryman_email")).toBe("alex@example.com");
   });
 
-  it("opens the auth choice modal from the header SIGN IN button", async () => {
+  it("sends the header START WORK button straight to sign-in", async () => {
     await mount();
     expect(qs("pablo-auth-choice")).toBeNull();
 
     const signIn = qs("pablo-sign-in") as HTMLButtonElement;
-    expect(signIn, "header sign-in button should render for logged-out users").not.toBeNull();
+    expect(signIn, "header start-work button should render for logged-out users").not.toBeNull();
     await act(async () => {
       signIn.click();
     });
     await flush();
 
-    expect(qs("pablo-auth-choice"), "auth choice modal should open from header").not.toBeNull();
+    expect(qs("pablo-auth-choice"), "header entry should not add an intermediate modal").toBeNull();
+    expect(window.location.pathname).toBe("/sign-in");
+    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe("/tower");
   });
 });

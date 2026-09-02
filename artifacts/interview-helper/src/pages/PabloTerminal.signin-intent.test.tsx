@@ -278,9 +278,9 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
       // Click the modal's SIGN IN button — it builds the /sign-in URL and is
       // the only place the cached-email hint surfaces.
       const signInBtn = Array.from(modal!.querySelectorAll("button")).find(
-        (b) => b.textContent?.trim() === "CONTINUE WITH REPLIT",
+        (b) => b.textContent?.trim() === "CONTINUE WITH SALARYMAN",
       ) as HTMLButtonElement | undefined;
-      expect(signInBtn, "modal CONTINUE WITH REPLIT button should render").not.toBeUndefined();
+      expect(signInBtn, "modal CONTINUE WITH SALARYMAN button should render").not.toBeUndefined();
 
       await act(async () => {
         signInBtn!.click();

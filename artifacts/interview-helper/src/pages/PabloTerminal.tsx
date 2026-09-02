@@ -999,6 +999,13 @@ function PabloTerminalAuthed() {
   const enterFromHomepage = useCallback(() => {
     navigate(hasFinishedOnboarding ? "/office" : "/tower");
   }, [hasFinishedOnboarding, navigate]);
+  const startWorkFromHomepage = useCallback(() => {
+    if (isAuthenticated) {
+      enterFromHomepage();
+      return;
+    }
+    navigate(`/sign-in?returnTo=${encodeURIComponent("/tower")}`);
+  }, [enterFromHomepage, isAuthenticated, navigate]);
 
   // Keep the existing global audio unlock path alive for reply speech and
   // explicit voice input. There is no automatic greeting to start here.
@@ -1695,10 +1702,6 @@ function PabloTerminalAuthed() {
     // choose to enter. Keep the handoff deterministic instead of asking the
     // command model to infer whether "I'm ready" means Tower access.
     if (isAuthenticated && !hasFinishedOnboarding && (isReadyToEnter(text) || isShowPapers(text))) {
-      const line = "All right. Tower reception is ready.";
-      setReply(line);
-      setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
-      await speak(line);
       enterFromHomepage();
       return;
     }
@@ -2075,16 +2078,13 @@ function PabloTerminalAuthed() {
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-           {/* Always-visible start-work affordance for returning users. The
-               front door is a fullscreen route with no NavBar, so without
-                this button a logged-out visitor has no obvious way to enter
-                — they'd have to know to TYPE "log in" to Pablo. Opens the
-                same sign-in dialog the chat funnel uses, so the actual OAuth
-                path is identical and well-tested. */}
+           {/* One primary entry action. Keep the front door quick: sign-in
+               goes straight to Tower, new accounts enter Tower, and cleared
+               accounts return to Office. */}
           {!isLoading && !isAuthenticated && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/tower/mezzanine?focus=classifieds", hint: null }); }}
+               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-sign-in"
                className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work"
@@ -2096,7 +2096,7 @@ function PabloTerminalAuthed() {
           {!isLoading && isAuthenticated && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); enterFromHomepage(); }}
+              onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-enter-tower"
               className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
               title={hasFinishedOnboarding ? "Return to your office" : "Enter Shadow Tower"}
