@@ -19,6 +19,7 @@ import { PabloOnboarding, type OnboardingAnswers } from "@/components/PabloOnboa
 import { persistTowerOnboardingState, type TowerOnboardingState } from "@/lib/tower-onboarding";
 import { IsoOffice } from "@/components/IsoOffice";
 import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
+import { getTowerAmbientOccupants } from "@/lib/tower-life";
 
 const occupiedFloors = new Map([
   [67, { name: "SHADOW CORP", kind: "RESTRICTED", detail: "The roofline suite. No public access. The elevator stops listening.", tone: "shadow", icon: LockKeyhole }],
@@ -109,6 +110,7 @@ function TowerReceptionScene({
         suppressLabels={viewport.width < 680}
          playerName="YOU"
          hallwaySignage="MAIN LOBBY · ELEVATOR CORE"
+         ambientOccupants={getTowerAmbientOccupants("lobby")}
         lighting="cool"
       />
       <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] border border-cyan-200/35 bg-[#050914]/90 px-3 py-2 backdrop-blur">

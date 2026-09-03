@@ -62,6 +62,9 @@ export interface OfficeAmbientOccupant {
   col: number;
   row: number;
   color?: string;
+  /** Optional looped route for staff who work the floor instead of standing still. */
+  path?: readonly { col: number; row: number }[];
+  speed?: number;
 }
 // `colCount` / `rowCount` cap how many desk columns/rows are generated so the
 // furnished desk count scales with the owned property tier (capsule → suite).
@@ -854,6 +857,20 @@ interface SceneCtx {
   ambientOccupants: OfficeAmbientOccupant[];
 }
 
+function getAmbientPosition(occupant: OfficeAmbientOccupant, now: number): { col: number; row: number } {
+  const path = occupant.path;
+  if (!path || path.length < 2) return { col: occupant.col, row: occupant.row };
+  const phase = ((now / 1000) * (occupant.speed ?? 0.15) + occupant.id * 0.37) % path.length;
+  const index = Math.floor(phase);
+  const progress = phase - index;
+  const from = path[index] ?? path[0];
+  const to = path[(index + 1) % path.length] ?? path[0];
+  return {
+    col: from.col + (to.col - from.col) * progress,
+    row: from.row + (to.row - from.row) * progress,
+  };
+}
+
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, heightPx, cols, rows, T } = s;
   const accent = /^#[0-9a-f]{6}$/i.test(s.accentColor ?? '') ? s.accentColor! : '#ec4899';
@@ -958,7 +975,8 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Visitors and staff who belong to the room itself rather than a desk.
   for (const occupant of s.ambientOccupants) {
-    push(occupant.col, occupant.row, () => drawBot(ctx, s, occupant.col, occupant.row, {
+    const position = getAmbientPosition(occupant, s.now);
+    push(position.col, position.row, () => drawBot(ctx, s, position.col, position.row, {
       id: occupant.id,
       name: occupant.name,
       status: 'active',

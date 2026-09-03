@@ -11,6 +11,7 @@ import { completeWorkArrivalTask, getBuildingOnboardingStage } from "@/lib/build
 import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getAmbianceEnabled, getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
+import { getTowerAmbientOccupants } from "@/lib/tower-life";
 
 type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {
@@ -206,6 +207,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
           deskColCount={layout.deskCols} deskRowCount={layout.deskRows} capsuleCount={0}
           suppressLabels={window.innerWidth < 680} frozen={!!panel}
           playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
+           ambientOccupants={getTowerAmbientOccupants(floor)}
         />
       </main>
 

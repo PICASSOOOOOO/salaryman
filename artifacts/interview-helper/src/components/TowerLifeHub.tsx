@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Megaphone, Radio, Wrench } from "lucide-react";
-import { TOWER_BUSINESSES, TOWER_GOSSIP, getTowerGossip } from "@/lib/tower-life";
+import { TOWER_BUSINESSES, TOWER_GOSSIP, TOWER_RESIDENTS, getTowerGossip } from "@/lib/tower-life";
 
 export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floorLabel = "ALL FLOORS" }: {
   compact?: boolean;
   cityLabel?: string;
   floorLabel?: string;
 }) {
-  const [tab, setTab] = useState<"classifieds" | "sheets">("classifieds");
+  const [tab, setTab] = useState<"classifieds" | "residents" | "sheets">("classifieds");
   const [gossipIndex, setGossipIndex] = useState(0);
   const [broadcast, setBroadcast] = useState("");
 
@@ -43,6 +43,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
       <div className="mt-4 flex flex-wrap gap-2 border-b border-white/10 pb-3">
         {([
           ["classifieds", "CLASSIFIEDS"],
+          ["residents", "PEOPLE"],
           ["sheets", "WALL SHEETS"],
         ] as const).map(([value, label]) => (
           <button key={value} type="button" onClick={() => setTab(value)} className={`border px-3 py-2 text-[10px] font-bold tracking-[.16em] transition ${tab === value ? "border-violet-300/70 bg-violet-300/10 text-violet-100" : "border-white/10 text-zinc-500 hover:border-violet-300/35 hover:text-zinc-200"}`}>{label}</button>
@@ -50,7 +51,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
       </div>
 
       {tab === "classifieds" && (
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-4 grid max-h-[min(62vh,760px)] gap-3 overflow-y-auto pr-1 md:grid-cols-3">
           {TOWER_BUSINESSES.map((business) => (
             <button key={business.code} type="button" onClick={() => announce(`${business.name}: ${business.appointment}`)} className="text-left border border-white/10 bg-white/[.025] p-3 transition hover:-translate-y-0.5 hover:border-white/30">
               <div className="flex items-center gap-2" style={{ color: business.color }}>
@@ -66,8 +67,32 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
         </div>
       )}
 
+      {tab === "residents" && (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {TOWER_RESIDENTS.map((resident) => {
+            const business = TOWER_BUSINESSES.find((candidate) => candidate.code === resident.businessCode);
+            return (
+              <article key={resident.id} className="border border-white/10 bg-white/[.025] p-4">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center border text-xl" style={{ color: resident.color, borderColor: `${resident.color}66`, background: `${resident.color}14` }}>{resident.logo}</span>
+                  <div className="min-w-0">
+                    <strong className="block text-xs tracking-[.14em]" style={{ color: resident.color }}>{resident.name}</strong>
+                    <span className="text-[9px] tracking-[.12em] text-zinc-500">{resident.role}</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-zinc-300">{resident.caresFor}.</p>
+                <div className="mt-3 border-t border-white/10 pt-2 text-[9px] leading-5 tracking-[.1em] text-zinc-500">
+                  <div>ROUTE · {resident.route}</div>
+                  <div>SERVICE · {business?.name ?? resident.businessCode}</div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
       {tab === "sheets" && (
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid max-h-[min(62vh,760px)] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
           {TOWER_BUSINESSES.map((business) => (
             <article key={business.code} className="border border-white/10 bg-white/[.025] p-4">
                 <div className="flex items-center justify-between gap-2"><strong style={{ color: business.color }} className="text-xs tracking-[.15em]">{business.logo} {business.name}</strong><span className="text-[9px] text-zinc-600">{business.floor}</span></div>
@@ -80,7 +105,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-3 text-[10px] text-zinc-500">
         <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-cyan-300" /> APPOINTMENTS ARE FICTIONALIZED BUILDING COMMERCE</span>
-        <span className="inline-flex items-center gap-1.5"><Wrench className="h-3.5 w-3.5 text-amber-300" /> NPCS MOVE, WORK, AND TALK ON THEIR OWN</span>
+        <span className="inline-flex items-center gap-1.5"><Wrench className="h-3.5 w-3.5 text-amber-300" /> RESIDENTS WORK ROUTES · PLAYERS USE THEIR SERVICES</span>
       </div>
     </section>
   );
