@@ -1686,5 +1686,45 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.20.3.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.4.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.5.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.6.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.7.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

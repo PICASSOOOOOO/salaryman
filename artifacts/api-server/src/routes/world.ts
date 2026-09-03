@@ -77,6 +77,10 @@ async function derivePlayerName(req: Express.Request): Promise<string> {
 
 router.get("/world/check-company", async (req, res) => {
   try {
+    if (!req.user?.id) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
     const rawName = req.query.name;
     if (!rawName || typeof rawName !== "string" || !rawName.trim()) {
       res.status(400).json({ error: "name query param required" });
@@ -258,6 +262,10 @@ router.post("/world/employment/unemployment", async (req, res) => {
 
 router.post("/world/register", async (req, res) => {
   try {
+    if (!req.user?.id) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
     const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation, homeCityId, locationConsent } = req.body;
     if (!playerName || !businessType) {
       res.status(400).json({ error: "playerName and businessType required" });
@@ -266,6 +274,16 @@ router.post("/world/register", async (req, res) => {
     const validTypes = ["minx", "real", "unemployed"];
     const incomingType = businessType === "fictitious" ? "minx" : businessType;
     const finalBizType = validTypes.includes(incomingType) ? incomingType : "minx";
+
+    if (finalBizType === "unemployed") {
+      res.status(400).json({ error: "Unemployment onboarding does not create a registry entry" });
+      return;
+    }
+
+    if (finalBizType !== "unemployed" && (!companyName || !String(companyName).trim())) {
+      res.status(400).json({ error: "companyName required for business registration" });
+      return;
+    }
 
     if (finalBizType === "minx" && companyName) {
       const normalized = String(companyName).trim().toUpperCase();

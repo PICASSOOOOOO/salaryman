@@ -77,6 +77,24 @@ export interface OnboardingAnswers {
   coarseLocation: string | null;
 }
 
+export function normalizeOnboardingCompanyName(value: string): string {
+  return value.trim().toUpperCase().slice(0, 80);
+}
+
+export function hasOnboardingCompanyName(
+  bizPath: OnboardingAnswers["bizPath"] | "",
+  companyName: string,
+): boolean {
+  return bizPath === "unemployed"
+    || (bizPath === "business" && companyName.trim().length >= 2);
+}
+
+export function shouldFileOnboardingRegistry(
+  bizPath: OnboardingAnswers["bizPath"] | "",
+): boolean {
+  return bizPath === "business";
+}
+
 const FACTIONS: { id: OnboardingAnswers['faction']; label: string; desc: string }[] = [
   { id: 'suit',      label: 'SUITS',      desc: 'PABLO CORP card-carriers. Discounts at Corp shops, first dibs on contracts, and a personal handheld from day one. The city runs on you.' },
   { id: 'nomad',     label: 'NOMADS',     desc: 'Wastelanders beyond the wall. Off the books, higher payouts on grey-market gigs — but Corp doesn\'t catch you when you fall, and you start with no handheld.' },
@@ -373,7 +391,7 @@ function TemplateCard({
 
 export function PabloOnboarding({ charName, charClass, venue = 'registry', onComplete }: PabloOnboardingProps) {
   const [boomerMode] = useBoomerMode();
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { settings, toggleMuted } = useAudioSettings();
   const VT = vtFont(boomerMode);
   const ST = stFont(boomerMode);
@@ -718,7 +736,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       bizPath: isBusiness ? 'business' : 'unemployed',
       businessType: isBusiness ? 'minx' : 'unemployed',
       companyName: isBusiness
-        ? (companyName.trim().toUpperCase().slice(0, 80) || `${finalName} WORKS`)
+        ? normalizeOnboardingCompanyName(companyName)
         : '',
       industry: isBusiness ? (finalIndustry || 'GENERAL SERVICES') : '',
       contactEmail: finalEmail,
@@ -745,9 +763,23 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
 
   const submit = useCallback(async () => {
     setSubmitErr('');
-    setStep('submitting');
     const a = buildAnswers();
-    const isBusiness = a.bizPath === 'business';
+    if (isLoading || !isAuthenticated) {
+      setSubmitErr('Sign in before filing a registry entry.');
+      setStep('business');
+      return;
+    }
+    if (!hasOnboardingCompanyName(a.bizPath, a.companyName)) {
+      setSubmitErr('Enter a company name before filing a business registry entry.');
+      setStep('business');
+      return;
+    }
+    setStep('submitting');
+    const isBusiness = shouldFileOnboardingRegistry(a.bizPath);
+    if (!isBusiness) {
+      onComplete(a);
+      return;
+    }
     const sizeLabel = !isBusiness
       ? null
       : a.employeeCount === 0 ? 'SOLO OPERATOR'
@@ -798,14 +830,14 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
     }
     playMilestone();
     onComplete(a);
-  }, [buildAnswers, onComplete]);
+  }, [buildAnswers, isAuthenticated, isLoading, onComplete]);
 
   const canAdvance = (): boolean => {
     if (step === 'destination') return !!homeCityId && !!getCityById(homeCityId)?.isLive;
     if (step === 'identity') {
       return playerName.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
     }
-    if (step === 'business') return bizPath === 'business' || bizPath === 'unemployed';
+    if (step === 'business') return isAuthenticated && !isLoading && hasOnboardingCompanyName(bizPath, companyName);
     if (step === 'estate') return !!officeTier && !!homeCityId;
     return true;
   };
