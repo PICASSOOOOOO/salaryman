@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { AlertTriangle, ArrowRight, Bell, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
-import { sfxFinalNotice, startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
+import { ArrowRight, Bell, Building2, CalendarDays, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
+import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 import {
   completeReceptionTask,
@@ -112,8 +112,11 @@ function TowerReceptionScene({
         lighting="cool"
       />
       <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] border border-cyan-200/35 bg-[#050914]/90 px-3 py-2 backdrop-blur">
-        <p className="text-[9px] font-black tracking-[.24em] text-cyan-200">SHADOW TOWER · PHYSICAL LOBBY</p>
-         <p className="mt-1 text-[10px] text-zinc-400">{locked ? "WALK TO THE ELEVATOR CORE TO CHECK IN" : "WALK OR TAP TO MOVE · ELEVATOR AND STAIRS CONNECT THE TOWER"}</p>
+            <p className="text-[9px] font-black tracking-[.24em] text-cyan-200">LOBBY · ELEVATOR CORE</p>
+          <p className="mt-1 text-[10px] text-zinc-400">{locked ? "Walk to reception." : "Walk to the elevator or stairs."}</p>
+      </div>
+      <div className="pointer-events-none absolute bottom-3 right-3 z-20 border border-violet-300/25 bg-[#050914]/85 px-2 py-1 text-[8px] tracking-[.2em] text-violet-200/55">
+        PABLO CORP · OPERATIONS
       </div>
     </section>
   );
@@ -152,8 +155,7 @@ export default function TowerDirectory() {
   const [notice, setNotice] = useState("");
   const [filing, setFiling] = useState(false);
   const [filingResult, setFilingResult] = useState("");
-  const [arrivalPhase, setArrivalPhase] = useState<"fade" | "waiting" | "ready">("fade");
-  const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "briefing" | "alert" | "complete">("arrival");
+  const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "complete">("arrival");
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const onboardingLocked = stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
@@ -171,20 +173,10 @@ export default function TowerDirectory() {
   }, [stage]);
   useEffect(() => {
     if (!onboardingLocked) {
-      setArrivalPhase("ready");
       return;
     }
-    setArrivalPhase("fade");
-    const waitingTimer = window.setTimeout(() => setArrivalPhase("waiting"), 250);
-    const receptionTimer = window.setTimeout(() => {
-      setArrivalPhase("ready");
-      setOnboardingStep("reception");
-      setTalking(true);
-    }, 1200);
-    return () => {
-      window.clearTimeout(waitingTimer);
-      window.clearTimeout(receptionTimer);
-    };
+    setOnboardingStep("reception");
+    setTalking(true);
   }, [onboardingLocked]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -221,37 +213,17 @@ export default function TowerDirectory() {
     } catch {}
     setSavingOnboarding(true);
     try {
-      await persistTowerOnboardingState({ status: "housing" });
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message.toUpperCase() : "TOWER RECORD SYNC FAILED");
-    } finally {
-      setSavingOnboarding(false);
-       setOnboardingStep("briefing");
-    }
-  };
-
-  const triggerLockdown = () => {
-    setOnboardingStep("alert");
-    sfxFinalNotice();
-    window.setTimeout(() => sfxFinalNotice(), 1100);
-    window.setTimeout(() => sfxFinalNotice(), 2200);
-  };
-
-  const finishLockdown = async () => {
-    setSavingOnboarding(true);
-    try {
       await persistTowerOnboardingState({
         status: "complete",
-        lockdownActive: true,
         completedAt: new Date().toISOString(),
       });
       markTutorialDone();
       completeReceptionTask();
       setOnboardingStep("complete");
       setTalking(false);
-      setNotice("TOWER ACCESS OPEN · WALK TO THE ELEVATOR OR STAIRS");
+      setNotice("TOWER OPEN · USE THE ELEVATOR OR STAIRS");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message.toUpperCase() : "LOCKDOWN RECORD SYNC FAILED");
+      setNotice(error instanceof Error ? error.message.toUpperCase() : "TOWER RECORD SYNC FAILED");
     } finally {
       setSavingOnboarding(false);
     }
@@ -284,10 +256,9 @@ export default function TowerDirectory() {
         <header className="mb-4 flex items-end justify-between gap-4 border-b border-cyan-300/20 pb-4">
           <div>
             <p className="animate-pulse text-[10px] tracking-[.35em] text-cyan-300">SHADOW TOWER · {getActiveCityName().toUpperCase()} · LOBBY FLOOR</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">START HERE.</h1>
-            <p className="mt-2 text-[10px] font-bold tracking-[.2em] text-zinc-500">RECEPTION · WORK · FLOOR ACCESS</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">LOBBY.</h1>
+            <p className="mt-2 text-[10px] font-bold tracking-[.2em] text-zinc-500">RECEPTION · FLOOR L</p>
           </div>
-           <span className="hidden text-xs tracking-[.16em] text-zinc-600 sm:block">PHYSICAL ACCESS ONLY</span>
         </header>
 
         {notice && (
@@ -296,9 +267,9 @@ export default function TowerDirectory() {
           </div>
         )}
 
-        <TowerReceptionScene
+         <TowerReceptionScene
           locked={onboardingLocked}
-          frozen={arrivalPhase !== "ready" || talking}
+           frozen={talking}
           onReception={() => setTalking(true)}
           onLockedExit={explainLock}
         />
@@ -459,28 +430,15 @@ export default function TowerDirectory() {
           className="mb-5 border border-cyan-300/35 bg-[radial-gradient(circle_at_85%,#12364a,#08111b)] p-5 shadow-[0_0_40px_rgba(34,211,238,.08)]"
           data-testid="reception-desk"
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-cyan-300/40 bg-cyan-300/10">
                 <ClipboardList className="h-5 w-5 text-cyan-200" />
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-[.3em] text-cyan-200">BUILDING OPERATIONS</p>
-                <h2 className="mt-1 text-xl font-black tracking-[.12em] text-white">{onboardingLocked ? "CHECK IN REQUIRED" : "FRONT DESK SERVICES"}</h2>
-                 <p className="mt-2 text-[10px] font-bold tracking-[.16em] text-zinc-500">
-                   {onboardingLocked ? "CHECK IN TO UNLOCK THE BUILDING" : "SELECT A SERVICE TO CONTINUE"}
-                 </p>
+                <p className="text-[10px] font-bold tracking-[.3em] text-cyan-200">RECEPTION</p>
+                <h2 className="mt-1 text-xl font-black tracking-[.12em] text-white">{onboardingLocked ? "CHECK IN" : "FRONT DESK"}</h2>
               </div>
-            </div>
-            <div className="flex items-end gap-2">
-              <figure className="w-20 text-center">
-                <img src={`${import.meta.env.BASE_URL}tower-art/character-receptionist.png`} alt="Shadow Tower receptionist" className="h-24 w-full object-contain object-bottom" />
-                <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-cyan-200/70">RECEPTION</figcaption>
-              </figure>
-              <figure className="w-20 text-center">
-                <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Reception assistant" className="h-24 w-full object-contain object-bottom" />
-                <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-amber-200/70">ASSISTANT</figcaption>
-              </figure>
             </div>
             <div className="flex shrink-0 items-center gap-2 border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-[10px] tracking-[.18em] text-emerald-200">
               <DoorOpen className="h-3.5 w-3.5" /> DESK ACTIVE
@@ -493,9 +451,9 @@ export default function TowerDirectory() {
             ) : (
               <div className="mt-4 border border-cyan-300/20 bg-cyan-300/[.04] p-4 text-xs leading-6 text-zinc-300">
                 <p className="font-black tracking-[.14em] text-cyan-100">FRONT DESK ACTIVE</p>
-                <p className="mt-2">The desk can file unemployment. For everything else, leave this conversation and use the physical elevator, stairs, doors, desks, and terminals in the Tower.</p>
+                <p className="mt-2">Use the building.</p>
                 <button type="button" onClick={() => void fileUnemployment()} disabled={filing} className="mt-3 flex w-full items-center justify-between border border-amber-300/30 bg-amber-300/5 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-amber-100 disabled:opacity-50">
-                  {filing ? "FILING..." : "FILE UNEMPLOYMENT AT DESK"} <ArrowRight className="h-4 w-4" />
+                  {filing ? "SAVING..." : "FILE UNEMPLOYMENT"} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
           )}
@@ -570,36 +528,6 @@ export default function TowerDirectory() {
         <footer className="mt-5 flex items-center gap-2 text-[10px] tracking-[.2em] text-zinc-600"><KeyRound className="h-3 w-3" /> HIGHER FLOORS COST MORE · ACCESS IS DECIDED AT THE DOOR · PIN OR ROLE REQUIRED FOR PRIVATE SPACE</footer>
       </div>
 
-      {onboardingLocked && arrivalPhase !== "ready" && (
-        <div
-          className="fixed inset-0 z-[850] flex items-start justify-center overflow-y-auto bg-[#03050a] px-4 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] transition-opacity duration-700 sm:items-center sm:px-6"
-          data-testid="lobby-arrival-intro"
-          aria-live="polite"
-        >
-          <img src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-25" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,5,10,.55),rgba(3,5,10,.9))]" />
-          <div className={`relative my-auto w-full max-w-2xl transition-all duration-700 ${arrivalPhase === "fade" ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
-            <div className="mb-7 text-center">
-              <p className="text-[9px] font-bold tracking-[.42em] text-cyan-300/70">SHADOW TOWER · LOBBY</p>
-              <h2 className="mt-3 text-2xl font-black tracking-[.18em] text-white sm:text-4xl">ARRIVAL COMPLETE</h2>
-              <p className="mt-3 text-xs tracking-[.14em] text-zinc-500">RECEPTION IS READY</p>
-            </div>
-
-            <div className="border border-cyan-200/20 bg-[linear-gradient(160deg,rgba(22,42,57,.9),rgba(5,9,16,.96))] p-5 shadow-[0_25px_90px_rgba(0,0,0,.6)] sm:p-8">
-              <div className="grid gap-3 border border-cyan-300/20 bg-cyan-300/[.03] p-4 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-6">
-                <DoorOpen className="mx-auto h-14 w-14 text-cyan-200 sm:h-16 sm:w-16" />
-                <div>
-                  <p className="text-[9px] font-black tracking-[.22em] text-cyan-200">ELEVATOR CORE · FLOOR L</p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-300">You are inside the Tower. The lift behind this lobby is the connection to the mezzanine and every office address above it.</p>
-                </div>
-              </div>
-            </div>
-
-            <p className="mt-6 text-center text-[10px] font-bold tracking-[.22em] text-zinc-600">THE ROOM IS READY · WALK TO THE ELEVATOR CORE</p>
-          </div>
-        </div>
-      )}
-
       {onboardingLocked && onboardingStep === "questions" && (
         <PabloOnboarding
           charName={(getSalarymanName() || user?.firstName || "SALARYMAN").trim()}
@@ -607,44 +535,6 @@ export default function TowerDirectory() {
           venue="lobby"
           onComplete={finishQuestions}
         />
-      )}
-
-      {onboardingLocked && onboardingStep === "briefing" && (
-        <div className="fixed inset-0 z-[970] grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Open Tower access">
-          <div className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto border border-cyan-200/40 bg-[#07111b] p-4 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
-            <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">RECEPTION</p>
-            <h2 className="mt-2 text-xl font-black tracking-[.12em] text-white sm:text-2xl">TOWER ACCESS OPEN</h2>
-            <p className="mt-2 text-xs leading-5 text-zinc-400">Your check-in is complete. The building is the interface now: walk to the elevator, stairs, doors, desks, terminals, and vending machines to use what you need.</p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <div className="border border-cyan-300/20 bg-cyan-300/[.04] p-3 text-[10px] leading-5 text-cyan-100"><DoorOpen className="mb-2 h-5 w-5" />ELEVATOR<br /><span className="text-zinc-500">Choose a floor at the physical directory.</span></div>
-              <div className="border border-amber-300/20 bg-amber-300/[.04] p-3 text-[10px] leading-5 text-amber-100"><Footprints className="mb-2 h-5 w-5" />STAIRS<br /><span className="text-zinc-500">Move through public floors on foot.</span></div>
-              <div className="border border-violet-300/20 bg-violet-300/[.04] p-3 text-[10px] leading-5 text-violet-100"><Building2 className="mb-2 h-5 w-5" />OBJECTS<br /><span className="text-zinc-500">Interact with stations at the destination.</span></div>
-            </div>
-            <button type="button" onClick={triggerLockdown} className="mt-5 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15">
-              OPEN THE LIFT <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {onboardingLocked && onboardingStep === "alert" && (
-        <div className="fixed inset-0 z-[990] grid place-items-center overflow-hidden bg-red-950/95 p-4" role="alertdialog" aria-modal="true" aria-label="Tower lockdown alert">
-          <div className="pointer-events-none absolute inset-0 animate-pulse bg-[repeating-linear-gradient(135deg,rgba(255,255,255,.08)_0_12px,transparent_12px_24px)]" />
-           <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto border-2 border-red-200 bg-black/75 p-5 text-center shadow-[0_0_100px_rgba(239,68,68,.8)] sm:p-6">
-            <AlertTriangle className="mx-auto h-16 w-16 animate-pulse text-red-300" />
-            <p className="mt-4 text-[11px] font-black tracking-[.4em] text-red-300">RED ALERT</p>
-            <h2 className="mt-3 text-3xl font-black tracking-[.15em] text-white sm:text-5xl">LOCKDOWN</h2>
-            <p className="mt-5 text-sm font-bold leading-7 text-red-100">
-              EXTERIOR DOORS SEALED. You will remain inside Shadow Tower until further notice.
-            </p>
-            <div className="mt-5 border border-red-300/30 bg-red-500/10 p-4 text-left text-sm leading-6 text-zinc-200">
-               <span className="font-bold text-red-200">RECEPTIONIST:</span> Your business path is recorded. The exterior is sealed. Go straight to the work floor; buy a desk or terminal only when you are ready to pay for one.
-            </div>
-            <button type="button" onClick={() => void finishLockdown()} disabled={savingOnboarding} className="mt-6 w-full border border-red-100 bg-red-600 px-4 py-3 text-xs font-black tracking-[.2em] text-white hover:bg-red-500 disabled:opacity-50">
-              {savingOnboarding ? "SEALING TOWER RECORD..." : "GO NOW"}
-            </button>
-          </div>
-        </div>
       )}
 
       {talking && (
@@ -659,30 +549,19 @@ export default function TowerDirectory() {
             </div>
             {onboardingLocked ? (
               <>
-                <p className="mt-5 text-sm leading-6 text-zinc-300">
-                  I run the lobby. I just need your name, your work status, and where you want to begin. This is a short check-in before the tower opens.
-                </p>
-                <div className="mt-3 border border-violet-300/20 bg-violet-300/5 px-3 py-2 text-[10px] leading-5 text-violet-100">
-                  SHORT CHECK-IN · BUILDING ACCESS
-                </div>
-                <div className="mt-4 space-y-2 text-xs text-zinc-400">
-                  <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Follow the active task marker.</p>
-                  <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Use the WORK ACCESS door.</p>
-                  <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Learn the rest while you work.</p>
-                </div>
+                 <p className="mt-5 text-sm leading-6 text-zinc-300">
+                   Name, work, then enter.
+                 </p>
                 <button type="button" onClick={finishReception} className="mt-6 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15" data-testid="finish-reception-onboarding">
-                  CHECK IN NOW <ArrowRight className="h-4 w-4" />
+                  CONTINUE <ArrowRight className="h-4 w-4" />
                 </button>
               </>
             ) : (
               <>
-                <p className="mt-5 text-sm leading-6 text-zinc-300">The desk is active. For work, lodging, organizations, hiring, and property, leave this conversation and use the physical elevator, stairs, doors, desks, and terminals in the Tower.</p>
+                <p className="mt-5 text-sm leading-6 text-zinc-300">Use the building.</p>
                 <div className="mt-4 grid gap-2">
                   <button type="button" onClick={() => void fileUnemployment()} disabled={filing} className="flex items-center justify-between border border-amber-300/30 bg-amber-300/5 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-amber-100 disabled:opacity-50">
-                    {filing ? "FILING..." : "FILE UNEMPLOYMENT AT DESK"} <ArrowRight className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => setNotice("LOCKDOWN ACTIVE · EXTERIOR DOORS SEALED")} className="flex items-center justify-between border border-red-400/35 bg-red-500/10 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-red-200">
-                    EXTERIOR DOORS · LOCKED <LockKeyhole className="h-4 w-4" />
+                    {filing ? "SAVING..." : "FILE UNEMPLOYMENT"} <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
                 {filingResult && <p className="mt-3 border border-white/10 bg-black/20 px-3 py-2 text-[10px] leading-5 text-zinc-300" role="status">{filingResult}</p>}

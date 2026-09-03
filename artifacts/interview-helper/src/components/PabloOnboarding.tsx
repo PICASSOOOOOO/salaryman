@@ -162,6 +162,14 @@ export function getInitialOnboardingBizPath(
   return venue === 'lobby' ? 'business' : (savedPath ?? '');
 }
 
+export const LOBBY_ONBOARDING_COPY = {
+  heading: 'Choose a start.',
+  helper: 'One choice. Change it later.',
+  business: 'BUILD A BUSINESS',
+  unemployed: 'FIND WORK',
+  companyLabel: 'COMPANY NAME',
+} as const;
+
 const INDUSTRIES = [
   'SOFTWARE / SAAS',
   'AGENCY / CONSULTING',
@@ -907,9 +915,11 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       }}>
         <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
-            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>SHADOW TOWER</div>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>
+              {venue === 'lobby' ? 'TOWER CHECK-IN' : 'SHADOW TOWER'}
+            </div>
             <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
-              ONBOARDING · STEP {stepIdx + 1}/{totalSteps}
+              {venue === 'lobby' ? 'RECEPTION · 1 STEP' : `ONBOARDING · STEP ${stepIdx + 1}/${totalSteps}`}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
@@ -932,7 +942,6 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                 ? <VolumeX style={{ width: 13, height: 13 }} />
                 : <Volume2 style={{ width: 13, height: 13 }} />}
             </button>
-            <div style={{ width: 32, height: 32, border: '1px solid rgba(56,189,248,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', ...VT, fontSize: '1.2rem', color: '#38bdf8' }}>P</div>
           </div>
         </div>
 
@@ -1171,7 +1180,54 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
             </div>
           )}
 
-          {step === 'business' && (
+          {step === 'business' && venue === 'lobby' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em' }}>{LOBBY_ONBOARDING_COPY.heading}</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                {LOBBY_ONBOARDING_COPY.helper}
+              </div>
+              <div style={{ display: 'grid', gap: '.45rem', marginTop: '.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setBizPath('business'); playStep(); }}
+                  data-testid="onboarding-choice-business"
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    background: bizPath === 'business' ? 'rgba(251,191,36,.15)' : 'rgba(56,189,248,.03)',
+                    border: bizPath === 'business' ? '1.5px solid #fbbf24' : '1px solid rgba(56,189,248,.25)',
+                    padding: '.7rem', cursor: 'pointer', color: '#fbbf24',
+                  }}
+                >
+                  <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em' }}>{bizPath === 'business' ? '▸ ' : ''}{LOBBY_ONBOARDING_COPY.business}</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setBizPath('unemployed'); playStep(); }}
+                  data-testid="onboarding-choice-unemployed"
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    background: bizPath === 'unemployed' ? 'rgba(56,189,248,.12)' : 'transparent',
+                    border: bizPath === 'unemployed' ? '1.5px solid #38bdf8' : '1px solid rgba(56,189,248,.2)',
+                    padding: '.7rem', cursor: 'pointer', color: '#38bdf8',
+                  }}
+                >
+                  <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em' }}>{bizPath === 'unemployed' ? '▸ ' : ''}{LOBBY_ONBOARDING_COPY.unemployed}</div>
+                </button>
+              </div>
+              {bizPath === 'business' && (
+                <div style={{ marginTop: '.8rem' }}>
+                  {Field({ label: LOBBY_ONBOARDING_COPY.companyLabel, value: companyName, onChange: setCompanyName, placeholder: 'Your company' })}
+                </div>
+              )}
+              {submitErr && (
+                <div style={{ marginTop: '.65rem', padding: '.5rem', border: '1px solid rgba(255,80,80,.4)', color: '#ff8a8a', ...ST, fontSize: '.5rem' }}>
+                  {submitErr}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 'business' && venue !== 'lobby' && (
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How will you start?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.7, marginTop: '.25rem' }}>
@@ -1661,7 +1717,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
               color: canAdvance() ? '#38bdf8' : 'rgba(56,189,248,.2)',
               cursor: canAdvance() ? 'pointer' : 'not-allowed',
             }}>
-              SAVE YOUR ANSWERS AND FINISH
+              {venue === 'lobby' ? 'SAVE & CONTINUE' : 'SAVE YOUR ANSWERS AND FINISH'}
             </button>
           ) : (
             <button onClick={advance} disabled={!canAdvance()} data-testid="onboarding-next" style={{
