@@ -9,7 +9,7 @@ import {
 import { getMezzaninePlan, getRecreationPlan, getRestFloorPlan, getSecurityPlan, type ShadowTowerCity } from "@workspace/api-zod/shadow-tower";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 import {
-  REC_GAMES, REC_ITEMS, REC_SPONSORS, findRecItem, isRecGameId,
+  CLASSIC_ARCADE_GAME_IDS, REC_GAMES, REC_ITEMS, REC_SPONSORS, findRecItem, isClassicArcadeGameId, isRecGameId,
   normalizeRecState, settleRecGame, type RecState,
 } from "../lib/recreation";
 
@@ -306,6 +306,32 @@ router.post("/recreation/games/finish", async (req, res) => {
   if (result.type === "missing") res.status(409).json({ error: "Create a character before visiting REC" });
   else if (result.type === "session") res.status(409).json({ error: "No matching active game session" });
   else if (result.type === "stamina") res.status(409).json({ error: "insufficient_stamina", required: result.required, rec: result.rec });
+  else res.json(result);
+});
+
+router.post("/recreation/arcade/charge", async (req, res) => {
+  const userId = requireAuth(req, res); const slotIndex = slotOf(req.body?.slotIndex);
+  const gameId = req.body?.gameId;
+  if (!userId || slotIndex == null || !isClassicArcadeGameId(gameId) || !validRequestId(req.body?.requestId)) {
+    if (userId) res.status(400).json({ error: `Valid slot, classic game (${CLASSIC_ARCADE_GAME_IDS.join(", ")}), and requestId required` });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const save = await lockedSave(tx, userId, slotIndex); if (!save) return { type: "missing" as const };
+    const rec = normalizeRecState(save.data.rec);
+    const paid = await spendFiat(tx, {
+      userId, amountFiat: 1, description: `REC classic arcade: ${gameId}`,
+      kind: "rec_arcade", idempotencyKey: `rec-arcade:${req.body.requestId}`,
+    });
+    if (!paid.ok) return { type: "funds" as const, paid };
+    if (!rec.processed.includes(req.body.requestId)) {
+      rec.processed = [...rec.processed, req.body.requestId].slice(-80);
+      await saveRec(tx, save, rec);
+    }
+    return { type: "ok" as const, charged: !paid.duplicate, gameId, wallet: paid };
+  });
+  if (result.type === "missing") res.status(409).json({ error: "Create a character before visiting REC" });
+  else if (result.type === "funds") res.status(402).json({ error: "insufficient_fiat", required: 1, spendable: result.paid.spendable });
   else res.json(result);
 });
 

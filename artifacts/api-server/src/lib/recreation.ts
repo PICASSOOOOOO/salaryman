@@ -1,6 +1,13 @@
 export const REC_GAME_IDS = ["arcade", "pool", "air-hockey", "foosball", "shuffleboard", "bowling", "darts"] as const;
 export type RecGameId = (typeof REC_GAME_IDS)[number];
 
+export const CLASSIC_ARCADE_GAME_IDS = ["cyber_serpent", "void_invaders", "barrel_runner", "neon_breaker"] as const;
+export type ClassicArcadeGameId = (typeof CLASSIC_ARCADE_GAME_IDS)[number];
+
+export function isClassicArcadeGameId(value: unknown): value is ClassicArcadeGameId {
+  return typeof value === "string" && (CLASSIC_ARCADE_GAME_IDS as readonly string[]).includes(value);
+}
+
 export const REC_GAMES: Record<RecGameId, { name: string; staminaCost: number; verb: string }> = {
   arcade: { name: "Neon Arcade", staminaCost: 8, verb: "RUN CIRCUIT" },
   pool: { name: "Pool", staminaCost: 5, verb: "TAKE SHOT" },

@@ -6,6 +6,7 @@ import { IsoOffice } from "@/components/IsoOffice";
 import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { getRecreationOfficeLayout } from "@/lib/office-property-layouts";
+import ArcadeGame, { GAME_LIST } from "./ArcadeGames";
 
 type GameId = "arcade" | "pool" | "air-hockey" | "foosball" | "shuffleboard" | "bowling" | "darts";
 type RecState = {
@@ -34,6 +35,7 @@ export default function RecreationFloor() {
   const [slotIndex, setSlotIndex] = useState<number | null>(null);
   const [payload, setPayload] = useState<RecPayload | null>(null);
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
+  const [classicGameId, setClassicGameId] = useState<string | null>(null);
   const [panel, setPanel] = useState<"game" | "bar" | null>(null);
   const [result, setResult] = useState<{ outcome: string; score: number; rewardFiat: number; sponsor: Sponsor } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -95,6 +97,20 @@ export default function RecreationFloor() {
       setResult(data.settled);
       setMessage(`${data.settled.outcome} · ${data.settled.score} PTS`);
     } catch (error) { setMessage(error instanceof Error ? error.message.toUpperCase() : "ROUND FAILED"); }
+  };
+  const chargeClassicArcade = async (gameId: string) => {
+    try {
+      const data = await post("/api/recreation/arcade/charge", { gameId });
+      setPayload((prior) => prior ? {
+        ...prior,
+        wallet: data.wallet ? { balance: data.wallet.newBalance, spendable: data.wallet.spendable } : prior.wallet,
+      } : prior);
+      setMessage(`${gameId.replace(/_/g, " ").toUpperCase()} · ƒ1 INSERTED`);
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message.toUpperCase() : "ARCADE CHARGE FAILED");
+      return false;
+    }
   };
   const purchase = async (item: Item) => {
     try {
@@ -168,7 +184,7 @@ export default function RecreationFloor() {
         <section className="w-full sm:max-w-2xl max-h-[88dvh] overflow-y-auto border border-cyan-400/30 bg-[#0b101c] shadow-2xl sm:rounded-xl">
           <div className="sticky top-0 bg-[#0b101c]/95 border-b border-white/10 px-4 py-3 flex items-center justify-between">
             <h2 className="font-black tracking-[.18em] text-cyan-200">{panel === "bar" ? "REC BAR + VENDING" : selectedGame ? payload?.games[selectedGame].name.toUpperCase() : "GAME"}</h2>
-            <button onClick={() => setPanel(null)} className="p-2"><X className="w-4 h-4" /></button>
+            <button onClick={() => { setPanel(null); setClassicGameId(null); }} className="p-2" aria-label="Close REC panel"><X className="w-4 h-4" /></button>
           </div>
           {panel === "game" && selectedGame && <div className="p-5 text-center space-y-5">
             <div className="text-xs text-zinc-400">SERVER SESSION · COST {payload?.games[selectedGame].staminaCost} STAMINA</div>
@@ -183,6 +199,30 @@ export default function RecreationFloor() {
                 {busy ? "SETTLING…" : payload?.games[selectedGame].verb}
               </button>}
             <p className="text-[10px] text-zinc-500">Outcomes are deterministic and settled once. No cash-out. Sponsor rewards are in-game FIAT only.</p>
+            <div data-testid="classic-arcade-section" className="border-t border-fuchsia-400/20 pt-5 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black tracking-[.18em] text-fuchsia-200">CLASSIC ARCADE</p>
+                  <p className="mt-1 text-[10px] text-zinc-500">FOUR CABINETS · ƒ1 PER RUN · HIGH SCORES STAY LOCAL</p>
+                </div>
+                <Gamepad2 className="w-5 h-5 shrink-0 text-fuchsia-300" />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {GAME_LIST.map((classicGame) => (
+                  <button
+                    key={classicGame.id}
+                    type="button"
+                    data-testid={`classic-${classicGame.id}`}
+                    onClick={() => setClassicGameId(classicGame.id)}
+                    className="rounded border border-white/10 bg-black/20 p-3 text-left transition hover:border-fuchsia-300/70 hover:bg-fuchsia-400/10"
+                  >
+                    <span className="block text-xs font-black" style={{ color: classicGame.color }}>{classicGame.label}</span>
+                    <span className="mt-1 block text-[10px] leading-4 text-zinc-500">{classicGame.desc}</span>
+                    <span className="mt-2 block text-[9px] font-bold tracking-widest text-fuchsia-200">INSERT ƒ1</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>}
           {panel === "bar" && <div className="p-4 grid sm:grid-cols-2 gap-3">
             {payload?.items.map((item) => {
@@ -202,6 +242,12 @@ export default function RecreationFloor() {
           </div>}
         </section>
       </div>}
+      {classicGameId && panel === "game" && <ArcadeGame
+        gameId={classicGameId}
+        onExit={() => setClassicGameId(null)}
+        onDeductFiat={() => chargeClassicArcade(classicGameId)}
+        salary={payload?.wallet.spendable ?? 0}
+      />}
       <footer className="h-8 shrink-0 border-t border-white/10 px-3 flex items-center justify-between text-[9px] text-zinc-500">
         <span>WASD / ARROWS · E / ENTER · TAP-TO-MOVE</span><span className="flex items-center gap-1"><Zap className="w-3 h-3" /> STAMINA REGENERATES SERVER-SIDE</span>
       </footer>

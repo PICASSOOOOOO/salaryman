@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  REC_GAME_IDS, REC_GAMES, REC_ITEMS, normalizeRecState, settleRecGame,
+  CLASSIC_ARCADE_GAME_IDS, REC_GAME_IDS, REC_GAMES, REC_ITEMS, isClassicArcadeGameId, normalizeRecState, settleRecGame,
 } from "../lib/recreation";
 
 describe("REC authoritative rules", () => {
+  it("keeps the classic arcade cabinet catalog explicit and validated", () => {
+    expect(CLASSIC_ARCADE_GAME_IDS).toEqual(["cyber_serpent", "void_invaders", "barrel_runner", "neon_breaker"]);
+    for (const id of CLASSIC_ARCADE_GAME_IDS) expect(isClassicArcadeGameId(id)).toBe(true);
+    expect(isClassicArcadeGameId("pacman")).toBe(false);
+  });
+
   it("defines all seven playable stations with positive stamina costs", () => {
     expect(REC_GAME_IDS).toEqual(["arcade", "pool", "air-hockey", "foosball", "shuffleboard", "bowling", "darts"]);
     for (const id of REC_GAME_IDS) expect(REC_GAMES[id].staminaCost).toBeGreaterThan(0);

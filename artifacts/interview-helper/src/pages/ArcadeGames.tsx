@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 interface ArcadeGameProps {
   gameId: string;
   onExit: () => void;
-  onDeductFiat: () => boolean;
+  onDeductFiat: () => boolean | Promise<boolean>;
   salary: number;
 }
 
@@ -25,17 +25,27 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
   const keysRef = useRef(new Set<string>());
   const gameDataRef = useRef<any>({});
   const rafRef = useRef(0);
+  const startingRef = useRef(false);
   const [, forceUpdate] = useState(0);
+  const [isStarting, setIsStarting] = useState(false);
 
   const game = GAME_LIST.find(g => g.id === gameId) ?? GAME_LIST[0];
 
-  const startGame = useCallback(() => {
-    if (!onDeductFiat()) return;
-    stateRef.current = 'playing';
-    scoreRef.current = 0;
-    frameRef.current = 0;
-    gameDataRef.current = initGame(gameId);
-    forceUpdate(n => n + 1);
+  const startGame = useCallback(async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setIsStarting(true);
+    try {
+      if (!(await onDeductFiat())) return;
+      stateRef.current = 'playing';
+      scoreRef.current = 0;
+      frameRef.current = 0;
+      gameDataRef.current = initGame(gameId);
+      forceUpdate(n => n + 1);
+    } finally {
+      startingRef.current = false;
+      setIsStarting(false);
+    }
   }, [gameId, onDeductFiat]);
 
   useEffect(() => {
@@ -45,11 +55,11 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
       keysRef.current.add(k);
       if (stateRef.current === 'title' && (k === 'enter' || k === ' ')) {
         e.preventDefault();
-        startGame();
+        void startGame();
       }
       if (stateRef.current === 'gameover' && (k === 'enter' || k === ' ')) {
         e.preventDefault();
-        startGame();
+        void startGame();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase());
@@ -141,12 +151,20 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
   }, [gameId, game, salary]);
 
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.92)' }}>
-      <div style={{ border: `2px solid ${game.color}44`, borderRadius: 8, overflow: 'hidden', boxShadow: `0 0 40px ${game.color}22` }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.92)', padding: 16 }}>
+      <div style={{ border: `2px solid ${game.color}44`, borderRadius: 8, overflow: 'hidden', boxShadow: `0 0 40px ${game.color}22`, maxWidth: '100%' }}>
         <canvas
           ref={canvasRef}
-          style={{ width: 640, height: 480, imageRendering: 'pixelated', display: 'block' }}
+          style={{ width: 'min(640px, 90vw)', height: 'auto', aspectRatio: '4 / 3', imageRendering: 'pixelated', display: 'block' }}
         />
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '10px 12px', background: '#0a0a0a' }}>
+          <button type="button" onClick={() => void startGame()} disabled={isStarting} style={{ border: `1px solid ${game.color}`, color: game.color, background: 'transparent', padding: '8px 12px', font: 'bold 11px "Fira Code", monospace', cursor: isStarting ? 'wait' : 'pointer' }}>
+            {isStarting ? 'CHARGING…' : stateRef.current === 'gameover' ? 'PLAY AGAIN · ƒ1' : 'START · ƒ1'}
+          </button>
+          <button type="button" onClick={onExit} style={{ border: '1px solid rgba(255,255,255,.25)', color: 'rgba(255,255,255,.7)', background: 'transparent', padding: '8px 12px', font: '11px "Fira Code", monospace', cursor: 'pointer' }}>
+            EXIT
+          </button>
+        </div>
       </div>
     </div>
   );
