@@ -4303,9 +4303,36 @@ function createStarterMissions(): Quest[] {
   return missions;
 }
 
-interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; interiorBid?: string; }
+interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; sleeping?: boolean; interiorBid?: string; }
 interface WorldEventClient { id: string; eventType: string; locationX: number; locationY: number; rewardFiat: number; ttlMs: number; spawnedAt: number; banner?: string; }
 interface ChannelBar { eventId: string; eventType: string; startedAt: number; duration: number; progress: number; }
+
+function drawSleepingPeer(ctx: CanvasRenderingContext2D, x: number, y: number, pulse: number, scale = 1) {
+  ctx.save();
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = 'rgba(6,12,24,.72)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 5 * scale, 15 * scale, 5 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#d9e7f2';
+  ctx.beginPath();
+  ctx.roundRect(x - 13 * scale, y - 2 * scale, 7 * scale, 5 * scale, 2 * scale);
+  ctx.fill();
+  ctx.fillStyle = pulse > 0.5 ? '#38bdf8' : '#7dd3fc';
+  ctx.beginPath();
+  ctx.roundRect(x - 7 * scale, y - 4 * scale, 15 * scale, 7 * scale, 3 * scale);
+  ctx.fill();
+  ctx.fillStyle = '#d4906a';
+  ctx.beginPath();
+  ctx.arc(x - 9 * scale, y - 1 * scale, 3 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#bae6fd';
+  ctx.font = `bold ${Math.max(6, 9 * scale)}px "Fira Code"`;
+  ctx.textAlign = 'center';
+  ctx.fillText('Z', x + 12 * scale, y - 8 * scale);
+  ctx.fillText('Z', x + 18 * scale, y - 16 * scale);
+  ctx.restore();
+}
 
 // Proximity dialog bubble drawn above a player's head. Used for both Deckard test
 // bots and real players' world speech — rendered at ANY distance (only off-screen
@@ -8040,7 +8067,7 @@ export default function WorldPlay() {
         g.py = m.y;
         g.moveTarget = null;
         g.interiorMoveTarget = null;
-      } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; if (m.paused !== undefined) p.paused = m.paused; p.interiorBid = m.interiorBid; } }
+      } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; if (m.paused !== undefined) p.paused = m.paused; if (m.sleeping !== undefined) p.sleeping = m.sleeping; else if (m.paused !== undefined) p.sleeping = m.paused; p.interiorBid = m.interiorBid; } }
       else if (m.type === 'player_speaking') {
         if (m.speaking) g.speakingSet.add(m.id); else g.speakingSet.delete(m.id);
         setSpeakIds(new Set(g.speakingSet));
@@ -8361,14 +8388,14 @@ export default function WorldPlay() {
       const move: MovementSnapshot = {
         x: g.interior ? g.interior.px : g.px,
         y: g.interior ? g.interior.py : g.py,
-        paused: gamePausedRef.current,
+        paused: gamePausedRef.current || !documentVisibleRef.current,
         interiorBid: g.interior?.bid,
       };
       const stats: StatsSnapshot = { hp: g.hp, weaponId: activeWeaponRef.current };
       const finalSignature = stableSnapshot({ move, stats, money: g.salary });
       if (force && finalSignature === lastFinalSignature) return;
       if (force || changedMessageDue(movementChanged(move, lastMove), documentVisibleRef.current, now, lastMoveSentAt, 80)) {
-        wsSend({ type: 'move', x: move.x, y: move.y, paused: move.paused, interiorBid: move.interiorBid });
+        wsSend({ type: 'move', x: move.x, y: move.y, paused: move.paused, sleeping: move.paused, interiorBid: move.interiorBid });
         lastMove = move;
         lastMoveSentAt = now;
       }
@@ -14410,9 +14437,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const opx = peer.x, opy = peer.y;
           if (opx < -10 || opx > iDef.width + 10 || opy < -10 || opy > iDef.height + 10) continue;
           const opCls2 = (peer.class ?? '').toLowerCase();
+          const opSleeping2 = peer.sleeping ?? peer.paused ?? false;
           ctx.fillStyle = 'rgba(0,0,0,0.12)';
           ctx.beginPath(); ctx.ellipse(opx, opy + 6, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
-          if (opCls2 === 'corporate') {
+          if (opSleeping2) {
+            drawSleepingPeer(ctx, opx, opy, g.blink ? 1 : 0, 0.8);
+          } else if (opCls2 === 'corporate') {
             ctx.fillStyle = '#111111'; ctx.fillRect(opx - 4, opy + 7, 3, 5); ctx.fillRect(opx + 1, opy + 7, 3, 5);
             ctx.fillStyle = '#1e1e2e'; ctx.fillRect(opx - 5, opy - 1, 10, 8);
             ctx.fillStyle = '#e8e8e8'; ctx.fillRect(opx - 1, opy, 2, 2);
@@ -14447,6 +14477,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.shadowBlur = 3;
           ctx.fillStyle = 'rgba(0,200,255,.7)'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(peer.name, opx, opy - 18);
+          if (opSleeping2) {
+            ctx.fillStyle = 'rgba(125,211,252,.85)';
+            ctx.font = 'bold 5px "Fira Code"';
+            ctx.fillText('SLEEPING', opx, opy + 16);
+          }
           ctx.shadowBlur = 0;
         }
 
@@ -19927,12 +19962,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const px2 = op.x + ox, py2 = op.y + oy;
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
+        const opSleeping = op.sleeping ?? op.paused ?? false;
         const opCls = (op.class ?? '').toLowerCase();
         const opGlow = opCls === 'corporate' ? '#38bdf8' : opCls === 'outlaw' ? '#7dd3fc' : opCls === 'replicant' ? '#aaaacc' : '#44aaff';
         if (spk) { ctx.shadowColor = 'rgba(0,255,180,.6)'; ctx.shadowBlur = 10; }
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-        if (opCls === 'corporate') {
+        if (opSleeping) {
+          drawSleepingPeer(ctx, px2, py2, g.blink ? 1 : 0, 1);
+        } else if (opCls === 'corporate') {
           ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
           ctx.fillStyle = '#333333'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
           ctx.fillStyle = '#cc0000'; ctx.fillRect(px2 - 1, py2 - 5, 2, 4);
@@ -19967,13 +20005,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('\u266A', px2 + 10, py2 - 18);
         }
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-        if (op.paused) {
-          const shieldPulse = 0.3 + Math.sin(g.frame * 0.08) * 0.15;
-          ctx.strokeStyle = `rgba(100,200,255,${shieldPulse})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.ellipse(px2, py2 - 4, 12, 16, 0, 0, Math.PI * 2); ctx.stroke();
-          ctx.fillStyle = `rgba(100,200,255,${shieldPulse * 0.15})`;
-          ctx.beginPath(); ctx.ellipse(px2, py2 - 4, 12, 16, 0, 0, Math.PI * 2); ctx.fill();
+        if (opSleeping) {
+          const sleepPulse = 0.35 + Math.sin(g.frame * 0.08) * 0.18;
+          ctx.strokeStyle = `rgba(125,211,252,${sleepPulse})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(px2, py2 + 4, 18, 8, 0, 0, Math.PI * 2); ctx.stroke();
         }
         ctx.font = 'bold 13px "Fira Code"'; ctx.textAlign = 'center';
         const opNm = op.name;

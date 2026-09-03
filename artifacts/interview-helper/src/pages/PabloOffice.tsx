@@ -952,7 +952,7 @@ export default function PabloOffice() {
               premium
               lighting={towerFloor?.floor?.settings?.hallway?.lighting || officeCustomization?.lighting || 'normal'}
               hallwayStyle={towerFloor?.floor?.settings?.hallway?.style}
-              hallwaySignage={towerFloor?.floor?.settings?.hallway?.signage}
+              hallwaySignage={officeName}
               doorTopRow={11}
               doorBotRow={floorRows}
               rooms={officeLayout.rooms}

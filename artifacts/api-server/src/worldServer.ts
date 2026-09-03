@@ -90,6 +90,8 @@ export interface Player {
   lastPveHeal: number;
   ownedWeapons: Set<string>;
   paused: boolean;
+  /** Presence-only state for clients. Kept separate from paused for protocol compatibility. */
+  sleeping: boolean;
   interiorBid?: string;
   killLibContribCount: number;
   killLibContribWindow: number;
@@ -178,12 +180,17 @@ const makeId = () => `p${++idCounter}_${Date.now().toString(36)}`;
 const PVP_COOLDOWN_MS = 500;
 const PVP_RANGE = 80;
 export const WORLD_BOUNDS = { minX: 0, maxX: 14400, minY: 0, maxY: 12600 } as const;
-// Canonical central-intersection spawn already used by DOWNTOWN_SPAWN_POOLS
-// below and by the world map's INTERSECTION_X / INTERSECTION_Y constants.
-export const AUTHENTICATED_CITY_SPAWN = { x: 6800, y: 6300 } as const;
+// New authenticated arrivals appear at the Shadow Tower front-door apron; the
+// rendered TowerDirectory handles the actual reception/lobby sequence before
+// they enter the persistent world. Returning players bypass this fallback and
+// use their validated city position below.
+export const AUTHENTICATED_CITY_SPAWN = { x: 6400, y: 5910 } as const;
 const MAX_AUTHENTICATED_MOVE_UNITS_PER_SECOND = 250;
 const MOVE_LATENCY_ALLOWANCE_UNITS = 30;
 const POSITION_PERSIST_INTERVAL_MS = 1_500;
+export const PLAYER_IDLE_SLEEP_MS = 60_000;
+export const shouldMarkPlayerSleeping = (lastActivityAt: number, now = Date.now()): boolean =>
+  Number.isFinite(lastActivityAt) && now - lastActivityAt >= PLAYER_IDLE_SLEEP_MS;
 
 export function validateAuthenticatedMovement(
   from: { x: number; y: number },
@@ -287,6 +294,7 @@ const broadcastPlayerList = (cityId: string) => {
     .map(p => ({
       id: p.id, name: p.name, class: p.class, company: p.company,
       x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
+      sleeping: p.sleeping,
       interiorBid: p.interiorBid,
     }));
   const data = JSON.stringify({ type: 'player_list', players: list });
@@ -588,7 +596,7 @@ const spawnDeckard = (cityId: string) => {
     profileImageUrl: null, x, y, speaking: false, isBot: true,
     hp: 450, maxHp: 450, money: 0, lastPvpAttack: 0, level: 1, inventory: [],
     weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0,
-    lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false,
+    lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, sleeping: false,
     killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0,
     lastMoveAt: Date.now(),
   };
@@ -660,7 +668,7 @@ const deckardTick = () => {
       const step = Math.min(DECKARD_STEP, dist);
       bot.x += (dx / dist) * step;
       bot.y += (dy / dist) * step;
-      broadcastCity(bot.cityId, { type: 'player_move', id: bot.id, x: bot.x, y: bot.y, paused: false });
+    broadcastCity(bot.cityId, { type: 'player_move', id: bot.id, x: bot.x, y: bot.y, paused: false, sleeping: false });
     }
 
     if (now >= st.nextSpeakAt) {
@@ -710,7 +718,7 @@ const broadcastPlayerMove = (player: Player) => {
   player.lastMoveBroadcastAt = Date.now();
   broadcastCity(player.cityId, {
     type: 'player_move', id: player.id, x: player.x, y: player.y,
-    paused: player.paused, interiorBid: player.interiorBid,
+     paused: player.paused, sleeping: player.sleeping, interiorBid: player.interiorBid,
   }, player.id);
 };
 const schedulePlayerMove = (player: Player, immediate = false) => {
@@ -735,10 +743,11 @@ export const handleMessage = (player: Player, raw: string) => {
       {
       const oldInterior = player.interiorBid;
       const oldPaused = player.paused;
+      const oldSleeping = player.sleeping;
+      const now = Date.now();
       if (player.userId) {
         const nextX = msg.x;
         const nextY = msg.y;
-        const now = Date.now();
         const nextInterior = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
         const enteringInterior = Boolean(nextInterior && nextInterior !== player.interiorBid);
         const from = nextInterior && player.interiorBid
@@ -770,13 +779,19 @@ export const handleMessage = (player: Player, raw: string) => {
         if (!Number.isFinite(msg.x) || !Number.isFinite(msg.y)
           || msg.x < WORLD_BOUNDS.minX || msg.x > WORLD_BOUNDS.maxX
           || msg.y < WORLD_BOUNDS.minY || msg.y > WORLD_BOUNDS.maxY) break;
+        player.lastMoveAt = now;
         player.x = msg.x;
         player.y = msg.y;
         player.interiorBid = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
       }
       if (typeof msg.paused === 'boolean') player.paused = msg.paused;
+      if (typeof msg.sleeping === 'boolean') player.sleeping = msg.sleeping;
+      else if (typeof msg.paused === 'boolean') player.sleeping = msg.paused;
       // Presence-state transitions must not wait behind the movement coalescer.
-      schedulePlayerMove(player, oldInterior !== player.interiorBid || oldPaused !== player.paused);
+      schedulePlayerMove(player,
+        oldInterior !== player.interiorBid
+        || oldPaused !== player.paused
+        || oldSleeping !== player.sleeping);
       break;
       }
 
@@ -1417,6 +1432,20 @@ export const handleMessage = (player: Player, raw: string) => {
   }
 };
 
+const markIdlePlayersSleeping = () => {
+  const now = Date.now();
+  for (const cityIds of cityHumanIds.values()) {
+    for (const id of cityIds) {
+      const player = players.get(id);
+      if (!player || player.isBot || player.sleeping || player.paused) continue;
+      if (shouldMarkPlayerSleeping(player.lastMoveAt, now)) {
+        player.sleeping = true;
+        schedulePlayerMove(player, true);
+      }
+    }
+  }
+};
+
 // Resolve an authenticated user's profile photo from their session cookie on a
 // raw upgrade request (req.cookies isn't populated for WS handshakes, so parse
 // the cookie header ourselves). Returns null when unauthenticated.
@@ -1674,7 +1703,7 @@ export const attachWorldServer = (httpServer: Server) => {
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
+    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, sleeping: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     addPlayer(player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 
@@ -1751,6 +1780,9 @@ export const attachWorldServer = (httpServer: Server) => {
         if (p.ws?.readyState === WebSocket.OPEN) p.ws.ping();
       }
     }, 25000);
+    // A stationary connected player is still present, but after the idle
+    // window other clients should see them sleeping rather than active.
+    setInterval(markIdlePlayersSleeping, 10_000);
 
     // Deckard and random world events are exterior-only workloads.
     setInterval(deckardTick, DECKARD_TICK_MS);

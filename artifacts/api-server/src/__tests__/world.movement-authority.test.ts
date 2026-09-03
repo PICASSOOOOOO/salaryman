@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   AUTHENTICATED_CITY_SPAWN,
+  PLAYER_IDLE_SLEEP_MS,
+  shouldMarkPlayerSleeping,
   authoritativePositionForPlayer,
   handleMessage,
   validateAuthenticatedMovement,
@@ -82,6 +84,25 @@ describe("authenticated world movement authority", () => {
     }));
   });
 
+  it("keeps sleeping presence explicit while preserving the paused state", () => {
+    const player = {
+      id: "sleeping-player",
+      cityId: "minx_city",
+      x: 6400,
+      y: 6300,
+      lastMoveAt: Date.now(),
+      paused: false,
+      sleeping: false,
+    };
+    handleMessage(player as any, JSON.stringify({ type: "move", x: 6400, y: 6300, paused: true, sleeping: true }));
+    expect(player).toMatchObject({ paused: true, sleeping: true });
+    handleMessage(player as any, JSON.stringify({ type: "move", x: 6400, y: 6300, paused: false, sleeping: false }));
+    expect(player).toMatchObject({ paused: false, sleeping: false });
+    expect(PLAYER_IDLE_SLEEP_MS).toBeGreaterThan(0);
+    expect(shouldMarkPlayerSleeping(40_000, 40_000 + PLAYER_IDLE_SLEEP_MS)).toBe(true);
+    expect(shouldMarkPlayerSleeping(40_000, 40_000 + PLAYER_IDLE_SLEEP_MS - 1)).toBe(false);
+  });
+
   it("loads or creates persisted authenticated positions before admission", () => {
     expect(source).toMatch(/worldPlayerPositionsTable[\s\S]{0,1200}AUTHENTICATED_CITY_SPAWN[\s\S]{0,800}const player: Player/);
   });
@@ -91,5 +112,9 @@ describe("authenticated world movement authority", () => {
     expect(AUTHENTICATED_CITY_SPAWN.x).toBeLessThanOrEqual(WORLD_BOUNDS.maxX);
     expect(AUTHENTICATED_CITY_SPAWN.y).toBeGreaterThanOrEqual(WORLD_BOUNDS.minY);
     expect(AUTHENTICATED_CITY_SPAWN.y).toBeLessThanOrEqual(WORLD_BOUNDS.maxY);
+  });
+
+  it("uses the Tower arrival apron as the new-user fallback", () => {
+    expect(AUTHENTICATED_CITY_SPAWN).toEqual({ x: 6400, y: 5910 });
   });
 });

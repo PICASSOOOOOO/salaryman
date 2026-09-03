@@ -9,7 +9,6 @@ import {
 } from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
 import { useLowGfx } from '@/lib/lowGfx';
-import { getTowerSpaceArtUrlForLayout } from '@/lib/tower-space-art';
 
 /**
  * IsoOffice — an ISOMETRIC ("almost 3D") render of THE OFFICE, matching the
@@ -143,7 +142,7 @@ export interface IsoOfficeProps {
   onPoseChange?: (pose: { x: number; y: number; facing: 'left' | 'right' }) => void;
   /** Use the shipped Shadow Tower wall, floor and terminal artwork. */
   towerArt?: boolean;
-  /** Override the physical-space illustration; null keeps the procedural room. */
+  /** @deprecated Retained for caller compatibility; offices are geometry-first. */
   backdropSrc?: string | null;
   /** Standing scene population that is not part of the player's bot roster. */
   ambientOccupants?: OfficeAmbientOccupant[];
@@ -190,7 +189,6 @@ export function IsoOffice({
   hallwayStyle,
   hallwaySignage,
   towerArt = true,
-  backdropSrc,
   ambientOccupants = [],
 }: IsoOfficeProps) {
   const [lowGfx] = useLowGfx();
@@ -204,11 +202,6 @@ export function IsoOffice({
   const rightCols = 0;
   const cols = leftCols + dividerCols + rightCols;
   const rows = layout.rows;
-  const resolvedBackdropSrc = backdropSrc === undefined
-    ? getTowerSpaceArtUrlForLayout(layout)
-    : backdropSrc;
-  const backdropSrcRef = useRef(resolvedBackdropSrc);
-  useEffect(() => { backdropSrcRef.current = resolvedBackdropSrc; }, [resolvedBackdropSrc]);
   const bullpenShift = leftCols + dividerCols;
 
   const doorTopRow = doorTopRowProp ?? (rows - 3);
@@ -645,10 +638,6 @@ export function IsoOffice({
         showComputer: false,
         nearComputer: nearComputerRef.current,
         computerX: COMPUTER_X, computerY: COMPUTER_Y,
-        // Loading, missing, or failed art must retain the complete procedural
-        // room rather than selecting the translucent painted branch.
-        backdrop: getLoadedMachineArt(backdropSrcRef.current),
-        viewW, viewH,
         suppressLabels: suppressLabelsRef.current,
         playerName: playerNameRef.current,
         accentColor: accentColorRef.current,
@@ -855,7 +844,6 @@ interface SceneCtx {
   appearance?: Appearance; costume: string | null;
   S: number; now: number;
   showComputer: boolean; nearComputer: boolean; computerX: number; computerY: number;
-  backdrop: HTMLImageElement | null; viewW: number; viewH: number;
   suppressLabels?: boolean;
   playerName?: string;
   accentColor?: string | null;
@@ -869,62 +857,27 @@ interface SceneCtx {
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, heightPx, cols, rows, T } = s;
   const accent = /^#[0-9a-f]{6}$/i.test(s.accentColor ?? '') ? s.accentColor! : '#ec4899';
-  const light = s.lighting === 'dim' ? 0.62 : s.lighting === 'bright' ? 1.24 : 1;
-
-  // ---- Realty backdrop ----
-  // When the player's property art is loaded, paint it COVER-fit as the room's
-  // establishing illustration so the office reads as the SAME isometric realty
-  // image as the store card. The procedural floor/walls then become a subtle
-  // holographic stage layered over it. `painted` gates the fallback so an
-  // un-generated/absent asset keeps the original fully-procedural neon-noir look.
-  const painted = !!s.backdrop;
-  if (s.backdrop) {
-    const img = s.backdrop;
-    const iw = img.naturalWidth || img.width;
-    const ih = img.naturalHeight || img.height;
-    if (iw > 0 && ih > 0) {
-      const cover = Math.max(s.viewW / iw, s.viewH / ih);
-      const dw = iw * cover, dh = ih * cover;
-      ctx.drawImage(img, (s.viewW - dw) / 2, (s.viewH - dh) / 2, dw, dh);
-      // Darken so the foreground sprites/furniture read against the art.
-      const ov = ctx.createLinearGradient(0, 0, 0, s.viewH);
-      ov.addColorStop(0, `rgba(10,6,24,${Math.min(0.78, 0.55 / light)})`);
-      ov.addColorStop(0.6, `rgba(10,6,24,${Math.min(0.65, 0.32 / light)})`);
-      ov.addColorStop(1, `rgba(8,4,18,${Math.min(0.82, 0.62 / light)})`);
-      ctx.fillStyle = ov;
-      ctx.fillRect(0, 0, s.viewW, s.viewH);
-    }
-  }
 
   // ---- Floor ----
   // Solid base quad.
   const fA = P(0, 0), fB = P(cols, 0), fC = P(cols, rows), fD = P(0, rows);
   ctx.beginPath();
   ctx.moveTo(fA.x, fA.y); ctx.lineTo(fB.x, fB.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fD.x, fD.y); ctx.closePath();
-  if (painted) {
-    // Translucent stage tint over the painted floor.
-    const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
-    fg.addColorStop(0, 'rgba(36,17,64,0.42)');
-    fg.addColorStop(0.55, 'rgba(26,15,51,0.36)');
-    fg.addColorStop(1, 'rgba(18,11,38,0.5)');
-    ctx.fillStyle = fg;
+  const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
+  if (s.lighting === 'warm') {
+    fg.addColorStop(0, '#331920');
+    fg.addColorStop(0.55, '#26141a');
+    fg.addColorStop(1, '#1a0e14');
+  } else if (s.lighting === 'cool') {
+    fg.addColorStop(0, '#111933');
+    fg.addColorStop(0.55, '#0f1426');
+    fg.addColorStop(1, '#0b0e1a');
   } else {
-    const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
-    if (s.lighting === 'warm') {
-      fg.addColorStop(0, '#331920');
-      fg.addColorStop(0.55, '#26141a');
-      fg.addColorStop(1, '#1a0e14');
-    } else if (s.lighting === 'cool') {
-      fg.addColorStop(0, '#111933');
-      fg.addColorStop(0.55, '#0f1426');
-      fg.addColorStop(1, '#0b0e1a');
-    } else {
-      fg.addColorStop(0, '#241140');
-      fg.addColorStop(0.55, '#1a0f33');
-      fg.addColorStop(1, '#120b26');
-    }
-    ctx.fillStyle = fg;
+    fg.addColorStop(0, '#241140');
+    fg.addColorStop(0.55, '#1a0f33');
+    fg.addColorStop(1, '#120b26');
   }
+  ctx.fillStyle = fg;
   ctx.fill();
   if (s.towerArt) {
     const floorArt = getMachineArt(`${import.meta.env.BASE_URL}pixel-agents/assets/floors/floor_0.png`);
@@ -935,7 +888,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
       ctx.clip();
       const pattern = ctx.createPattern(floorArt, 'repeat');
       if (pattern) {
-        ctx.globalAlpha = painted ? 0.22 : 0.72;
+         ctx.globalAlpha = 0.72;
         ctx.fillStyle = pattern;
         const minX = Math.min(fA.x, fB.x, fC.x, fD.x);
         const minY = Math.min(fA.y, fB.y, fC.y, fD.y);
@@ -955,7 +908,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Grid lines.
   ctx.lineWidth = 1;
-  ctx.strokeStyle = painted ? 'rgba(150,110,230,0.09)' : 'rgba(150,110,230,0.13)';
+  ctx.strokeStyle = 'rgba(150,110,230,0.13)';
   for (let c = 0; c <= cols; c++) { const a = P(c, 0), b = P(c, rows); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
   for (let r = 0; r <= rows; r++) { const a = P(0, r), b = P(cols, r); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 
@@ -967,12 +920,10 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   ctx.beginPath(); ctx.moveTo(fD.x, fD.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fB.x, fB.y); ctx.stroke();
 
   // ---- Back walls (glass + city skyline) ----
-  // Skipped when the realty art is painted — the illustration already supplies
-  // the room's walls/windows, so the procedural skyline would fight it.
-  if (!painted) {
-    drawCityWall(ctx, s, 'right'); // along (0,0)->(cols,0)
-    drawCityWall(ctx, s, 'left');  // along (0,0)->(0,rows)
-  }
+  // The walls are projected from the same floor corners as movement/collision;
+  // there is no screen-sized illustration to drift away from the playable map.
+  drawCityWall(ctx, s, 'right'); // along (0,0)->(cols,0)
+  drawCityWall(ctx, s, 'left');  // along (0,0)->(0,rows)
   drawOfficeMediaDecor(ctx, s);
 
   // ---- Divider wall ----
@@ -1128,43 +1079,81 @@ function drawChair(ctx: CanvasRenderingContext2D, s: SceneCtx, c: number, r: num
 function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: number, bot: PixelOfficeBot) {
   const { P } = s;
   const p = P(tx, ty);
-  const u = (s.T / TILE); // px per logical px
+  const u = Math.max(0.7, (s.T / TILE) * 0.5);
   const bob = Math.sin(s.now / 600 + bot.id) * 1.2;
   const col = bot.teamColor ?? botColor(bot.id);
-  // shadow
+  const active = s.playable && s.activeBotId === bot.id;
+  const bodyW = 9 * u;
+  const bodyH = 10 * u;
+
+  // A compact paper-doll silhouette gives every bot a readable head, uniform,
+  // legs and team-coloured jacket while keeping the existing desk footprint.
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.beginPath(); ctx.ellipse(p.x, p.y, 7 * u * 0.5, 3.2 * u * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, 7 * u, 3.2 * u, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // walk-up highlight ring when this seated bot is the active interaction target
-  if (s.playable && s.activeBotId === bot.id) {
+
+  // Walk-up highlight ring when this bot is the active interaction target.
+  if (active) {
     ctx.save();
     ctx.strokeStyle = 'rgba(120,240,255,0.95)'; ctx.lineWidth = 2;
     ctx.shadowColor = 'rgba(120,240,255,0.9)'; ctx.shadowBlur = 12;
-    ctx.beginPath(); ctx.ellipse(p.x, p.y, 8 * u * 0.5, 3.6 * u * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, 8 * u, 3.6 * u, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   }
+
   const baseY = p.y + bob;
-  // body
+  const legY = baseY - 2 * u;
+  const hipY = baseY - bodyH - 4 * u;
+  const headR = 3.4 * u;
+  const headY = hipY - 4.7 * u;
+  ctx.save();
+  ctx.translate(p.x, 0);
+  ctx.lineCap = 'round';
+
+  // Shoes and legs.
+  ctx.strokeStyle = '#07111b';
+  ctx.lineWidth = Math.max(1.5, 2.2 * u);
+  ctx.beginPath(); ctx.moveTo(-2.1 * u, legY); ctx.lineTo(-2.1 * u, hipY + 3.8 * u); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2.1 * u, legY); ctx.lineTo(2.1 * u, hipY + 3.8 * u); ctx.stroke();
+  ctx.strokeStyle = 'rgba(180,220,230,.7)';
+  ctx.lineWidth = Math.max(1, 0.8 * u);
+  ctx.beginPath(); ctx.moveTo(-3.2 * u, legY + .2 * u); ctx.lineTo(-1.2 * u, legY + .2 * u); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(1.2 * u, legY + .2 * u); ctx.lineTo(3.2 * u, legY + .2 * u); ctx.stroke();
+
+  // Jacket/torso with a contrasting shoulder seam.
   ctx.fillStyle = col;
-  rrect(ctx, p.x - 4 * u * 0.5, baseY - 16 * u * 0.5, 8 * u * 0.5, 13 * u * 0.5, 2 * u * 0.5);
-  // head
-  const headY = baseY - 18 * u * 0.5;
-  const headR = 3.4 * u * 0.5;
+  rrect(ctx, -bodyW / 2, hipY, bodyW, bodyH, 2 * u);
+  ctx.fillStyle = 'rgba(4,12,22,.44)';
+  ctx.fillRect(-bodyW * .38, hipY + bodyH * .48, bodyW * .76, Math.max(1, .8 * u));
+  ctx.fillStyle = active ? '#b9f5ff' : 'rgba(180,230,240,.7)';
+  ctx.fillRect(-.55 * u, hipY + 2.2 * u, 1.1 * u, 2.1 * u);
+
+  // Arms rest toward the desk, with a small angular elbow.
+  ctx.strokeStyle = shade(col, -20);
+  ctx.lineWidth = Math.max(1.5, 1.8 * u);
+  ctx.beginPath(); ctx.moveTo(-bodyW * .44, hipY + 3 * u); ctx.lineTo(-bodyW * .66, hipY + 7 * u); ctx.lineTo(-bodyW * .44, hipY + 8.2 * u); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bodyW * .44, hipY + 3 * u); ctx.lineTo(bodyW * .66, hipY + 7 * u); ctx.lineTo(bodyW * .44, hipY + 8.2 * u); ctx.stroke();
+
+  // Neck, face and hair cap.
+  ctx.fillStyle = '#d89d7e';
+  ctx.fillRect(-1.2 * u, hipY - 1.2 * u, 2.4 * u, 2 * u);
   ctx.fillStyle = '#f1c9a5';
-  ctx.beginPath(); ctx.arc(p.x, headY, headR, 0, Math.PI * 2); ctx.fill();
-  // face — two tiny eyes so bots read as little characters, not blobs
-  const eyeDx = headR * 0.42;
-  const eyeDy = headR * 0.12;
-  const eyeR = Math.max(0.7, headR * 0.2);
+  ctx.beginPath(); ctx.arc(0, headY, headR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = shade(col, -35);
+  ctx.beginPath(); ctx.arc(0, headY - headR * .5, headR * .9, Math.PI, Math.PI * 2); ctx.fill();
+  const eyeDx = headR * .42;
+  const eyeR = Math.max(.7, headR * .18);
   ctx.fillStyle = '#1c1024';
-  ctx.beginPath(); ctx.arc(p.x - eyeDx, headY - eyeDy, eyeR, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(p.x + eyeDx, headY - eyeDy, eyeR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-eyeDx, headY - headR * .02, eyeR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(eyeDx, headY - headR * .02, eyeR, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
   // name plate
-  ctx.fillStyle = bot.teamColor ?? 'rgba(180,255,220,0.85)';
-  ctx.font = `${Math.max(7, 4 * u * 0.5)}px "Fira Code", monospace`;
+  ctx.fillStyle = active ? '#b9f5ff' : bot.teamColor ?? 'rgba(180,255,220,0.85)';
+  ctx.font = `700 ${Math.max(7, 4 * u)}px "Fira Code", monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText(bot.name.slice(0, 8).toUpperCase(), p.x, baseY + 6 * u * 0.5);
+  ctx.fillText(bot.name.slice(0, 8).toUpperCase(), p.x, baseY + 7 * u);
   ctx.textAlign = 'left';
 }
 
@@ -1194,8 +1183,34 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: 
     drawPlayerSprite(ctx, s.appearance, { costumeColor: s.costume });
     ctx.restore();
   } else {
+    // Deterministic fallback for a save without appearance data. Keep it
+    // deliberately close to the paper-doll proportions above instead of
+    // dropping to a featureless rectangle.
+    const baseY = p.y + bob;
+    const bodyW = 8 * u;
+    const bodyH = 10 * u;
+    const headR = 3.2 * u;
+    const headY = baseY - bodyH - 5.2 * u;
+    ctx.save();
+    ctx.translate(p.x, 0);
+    ctx.strokeStyle = '#101827';
+    ctx.lineWidth = Math.max(1.5, 2 * u);
+    ctx.beginPath(); ctx.moveTo(-1.8 * u, baseY); ctx.lineTo(-1.8 * u, baseY - 4 * u); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1.8 * u, baseY); ctx.lineTo(1.8 * u, baseY - 4 * u); ctx.stroke();
     ctx.fillStyle = '#ffd24a';
-    rrect(ctx, p.x - 4 * u * 0.5, p.y - 18 * u * 0.5, 8 * u * 0.5, 15 * u * 0.5, 2);
+    rrect(ctx, -bodyW / 2, baseY - bodyH - 3 * u, bodyW, bodyH, 2 * u);
+    ctx.fillStyle = 'rgba(8,16,28,.5)';
+    ctx.fillRect(-bodyW * .36, baseY - bodyH + 2 * u, bodyW * .72, Math.max(1, .8 * u));
+    ctx.fillStyle = '#d89d7e';
+    ctx.fillRect(-1.1 * u, headY + headR - .2 * u, 2.2 * u, 2 * u);
+    ctx.fillStyle = '#f1c9a5';
+    ctx.beginPath(); ctx.arc(0, headY, headR, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7c5b3e';
+    ctx.beginPath(); ctx.arc(0, headY - headR * .52, headR * .92, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1c1024';
+    ctx.fillRect(-headR * .52, headY - .2 * u, Math.max(1, .8 * u), Math.max(1, .7 * u));
+    ctx.fillRect(headR * .18, headY - .2 * u, Math.max(1, .8 * u), Math.max(1, .7 * u));
+    ctx.restore();
   }
   // golden ground glow
   ctx.save();
@@ -1289,8 +1304,8 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
 
 // Distinct freestanding machine (ATM / vending / payphone) so each interaction
 // object reads as a real, recognisable appliance built into the room — a
-// coloured cabinet planted on the floor with a glowing faceplate + icon — rather
-// than an identical generic kiosk with a floating dot.
+// coloured cabinet planted on the floor with a geometric faceplate — rather than
+// an identical generic kiosk with a floating dot.
 interface MachineCfg {
   w: number; h: number;                // footprint width (tiles) + cabinet height
   top: string; topA: string;           // cabinet top face (idle / active)
@@ -1298,7 +1313,6 @@ interface MachineCfg {
   rim: string; rimA: string;           // cabinet edge stroke (idle / active)
   face: string; faceA: string;         // glowing faceplate (idle / active)
   glow: string;                        // faceplate glow colour
-  icon: string;                        // recognisable emoji icon
   label: string;                       // idle label colour
   artSrc?: string;                     // real object art used in the playable room
 }
@@ -1312,12 +1326,6 @@ function getMachineArt(src: string): HTMLImageElement | null {
   image.src = src;
   machineArtCache.set(src, image);
   return image;
-}
-
-function getLoadedMachineArt(src: string | null | undefined): HTMLImageElement | null {
-  if (!src) return null;
-  const image = getMachineArt(src);
-  return image?.complete && image.naturalWidth > 0 ? image : null;
 }
 
 function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number, cfg: MachineCfg) {
@@ -1364,14 +1372,15 @@ function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.restore();
-  // Recognisable icon on the faceplate.
+  // Geometric status bars keep the fallback machine legible without relying on
+  // pictograms that can render differently across platforms.
   ctx.save();
-  ctx.font = `${Math.max(9, 5.4 * u)}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(cfg.icon, top.x, fy + fh / 2 + 0.5 * u);
+  ctx.fillStyle = active ? 'rgba(226,232,240,.9)' : 'rgba(148,163,184,.62)';
+  ctx.fillRect(top.x - fw * .3, fy + fh * .25, fw * .6, Math.max(1, u * .35));
+  ctx.fillStyle = active ? 'rgba(125,211,252,.72)' : 'rgba(100,116,139,.5)';
+  ctx.fillRect(top.x - fw * .3, fy + fh * .52, fw * .34, Math.max(1, u * .3));
+  ctx.fillRect(top.x - fw * .3, fy + fh * .7, fw * .5, Math.max(1, u * .3));
   ctx.restore();
-  ctx.textBaseline = 'alphabetic';
   // Label — suppressed on mobile/touch unless this station is active.
   if (!s.suppressLabels || active) {
     ctx.fillStyle = active ? '#aef3ff' : cfg.label;
@@ -1437,7 +1446,7 @@ const ATM_CFG: MachineCfg = {
   top: '#151e2a', topA: '#202d3d', left: '#0b111a', right: '#101925',
   rim: 'rgba(100,116,139,.42)', rimA: 'rgba(148,163,184,.75)',
   face: '#0c1724', faceA: '#13283a', glow: 'rgba(125,211,252,.35)',
-  icon: '', label: 'rgba(148,163,184,.72)',
+  label: 'rgba(148,163,184,.72)',
   artSrc: `${import.meta.env.BASE_URL}pixel-agents/shadow-tower/atm.png`,
 };
 const VENDING_CFG: MachineCfg = {
@@ -1445,7 +1454,7 @@ const VENDING_CFG: MachineCfg = {
   top: '#4a0e2a', topA: '#5e1338', left: '#200512', right: '#360820',
   rim: 'rgba(236,72,153,0.6)', rimA: 'rgba(255,120,200,0.95)',
   face: 'rgba(42,10,26,0.9)', faceA: 'rgba(255,150,210,0.92)', glow: 'rgba(236,72,153,0.9)',
-  icon: '🥤', label: 'rgba(240,160,200,0.85)',
+  label: 'rgba(240,160,200,0.85)',
   artSrc: `${import.meta.env.BASE_URL}pixel-agents/shadow-tower/vending.png`,
 };
 const PAYPHONE_CFG: MachineCfg = {
@@ -1453,7 +1462,7 @@ const PAYPHONE_CFG: MachineCfg = {
   top: '#0e2a50', topA: '#133a66', left: '#05122a', right: '#082040',
   rim: 'rgba(56,150,240,0.6)', rimA: 'rgba(120,200,255,0.95)',
   face: 'rgba(10,28,58,0.9)', faceA: 'rgba(150,210,255,0.92)', glow: 'rgba(56,150,255,0.9)',
-  icon: '☎️', label: 'rgba(150,200,255,0.85)',
+  label: 'rgba(150,200,255,0.85)',
 };
 
 function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
@@ -1561,13 +1570,18 @@ function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: numb
   ctx.shadowColor = `rgba(${GOLD},0.9)`; ctx.shadowBlur = 8 + t * 8;
   isoBox(ctx, s, tx - 0.45, ty - 0.25, 0.9, 0.45, 16, '#1a1305', `rgba(${GOLD},0.45)`, `rgba(${GOLD},${0.7 + t * 0.3})`, `rgba(${GOLD},0.9)`);
   ctx.restore();
-  // Floating terminal glyph.
+  // Floating geometric terminal mark.
   ctx.save();
   ctx.shadowColor = `rgba(${GOLD},0.9)`; ctx.shadowBlur = 8 + t * 6;
-  ctx.fillStyle = `rgba(255,225,150,${0.75 + t * 0.25})`;
-  ctx.font = `${Math.max(12, 8 * u)}px serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('🖥️', p.x, p.y - s.heightPx(20));
+  ctx.strokeStyle = `rgba(255,225,150,${0.75 + t * 0.25})`;
+  ctx.lineWidth = Math.max(1, u * .65);
+  ctx.strokeRect(p.x - 5 * u, p.y - s.heightPx(24), 10 * u, 6 * u);
+  ctx.beginPath();
+  ctx.moveTo(p.x - 2 * u, p.y - s.heightPx(16.5));
+  ctx.lineTo(p.x + 2 * u, p.y - s.heightPx(16.5));
+  ctx.moveTo(p.x, p.y - s.heightPx(18));
+  ctx.lineTo(p.x, p.y - s.heightPx(16.5));
+  ctx.stroke();
   ctx.restore();
   // "YOUR DESK" nameplate so it's unmistakably the player's own station.
   ctx.save();
@@ -1618,12 +1632,12 @@ function drawCapsule(
   // dim sleeping figure
   ctx.fillStyle = `${typeof accent === 'string' ? 'rgba(120,160,210,0.5)' : accent}`;
   ctx.beginPath(); ctx.arc(p.x, p.y - s.heightPx(14), 3 * u, 0, Math.PI * 2); ctx.fill();
-  // name + zzz — suppressed on mobile/touch
+  // Name + status — suppressed on mobile/touch.
   if (!s.suppressLabels) {
     ctx.fillStyle = bot.teamColor ?? 'rgba(140,200,255,0.8)';
     ctx.font = `${Math.max(7, 3.4 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(`${bot.name.slice(0, 6).toUpperCase()} 💤`, p.x, p.y + 8 * u);
+    ctx.fillText(`${bot.name.slice(0, 6).toUpperCase()} · REST`, p.x, p.y + 8 * u);
     ctx.textAlign = 'left';
   }
 }
@@ -1695,9 +1709,9 @@ const OFFICE_COMMERCIALS = [
 
 function drawHallwayTreatment(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, cols, rows, hallwayStyle, hallwaySignage } = s;
-  if (!hallwayStyle) return;
+  if (!hallwayStyle && !hallwaySignage) return;
 
-  const style = hallwayStyle || 'central';
+  const style = hallwayStyle ?? 'central';
 
   ctx.save();
   ctx.lineJoin = 'round';
@@ -1743,29 +1757,31 @@ function drawHallwayTreatment(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     ctx.stroke();
   }
 
-  // Draw in-world signage on the floor near the entrance (elevator area)
+  // Draw the office name as a wall-mounted plaque. Its anchor is a floor-plane
+  // coordinate, so it stays attached to the authoritative room when the camera
+  // follows the player or the floor dimensions change.
   if (hallwaySignage) {
-    // We draw the text on the floor, perspectively distorted.
     ctx.save();
-    const signCenter = P(2.5, 3.5); // Near the elevator
-
-    // Transform ctx to match the 2:1 iso floor plane for text
-    // The angle of the x-axis is approx 26.565 degrees (atan(0.5)).
-    ctx.translate(signCenter.x, signCenter.y);
-    ctx.scale(1, 0.5);
-    ctx.rotate(45 * Math.PI / 180); // 45 degrees in logical space, then scaled down by 0.5 in Y creates the 2:1 isometric projection.
-
-    ctx.font = 'bold 36px "Space Mono", monospace';
+    const signCol = Math.max(2, Math.min(cols - 2, cols * .5));
+    const signBase = P(signCol, 0);
+    const u = Math.max(.7, s.T / 32);
+    const text = hallwaySignage.trim().toUpperCase().slice(0, 30);
+    const signW = Math.min(Math.max(132 * u, text.length * 7.2 * u), Math.max(180 * u, cols * s.T * .58));
+    const signH = 24 * u;
+    const signY = signBase.y - s.heightPx(TILE * 2.55);
+    ctx.fillStyle = 'rgba(5,12,24,.9)';
+    ctx.fillRect(signBase.x - signW / 2, signY, signW, signH);
+    ctx.strokeStyle = s.lighting === 'dim' ? 'rgba(56,189,248,.42)' : 'rgba(56,189,248,.78)';
+    ctx.lineWidth = Math.max(1, u * .7);
+    ctx.strokeRect(signBase.x - signW / 2, signY, signW, signH);
+    ctx.fillStyle = 'rgba(236,72,153,.82)';
+    ctx.fillRect(signBase.x - signW / 2, signY, Math.max(3, 3 * u), signH);
+    ctx.font = `700 ${Math.max(8, 6.5 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    // A crisp, clean neon text effect without scanlines
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.shadowColor = s.lighting === 'dim' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(56, 189, 248, 0.9)';
-    ctx.shadowBlur = 12;
-
-    ctx.fillText(hallwaySignage.toUpperCase(), 0, 0);
-
+    ctx.fillStyle = 'rgba(226,232,240,.92)';
+    ctx.fillText(text, signBase.x, signY + signH / 2 + .5 * u);
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
@@ -1773,14 +1789,14 @@ function drawHallwayTreatment(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 }
 
 function drawOfficeMediaDecor(ctx: CanvasRenderingContext2D, s: SceneCtx) {
-  const { P, T } = s;
+  const { P, T, cols } = s;
   const u = Math.max(0.55, T / 32);
   const commercial = OFFICE_COMMERCIALS[Math.floor(s.now / 4200) % OFFICE_COMMERCIALS.length];
 
   // Old wall-mounted CRT: an actual looping in-world commercial screen, not a
   // floating HUD. Scan bar and copy change over time while retaining the same
   // low-resolution office rendering language.
-  const tv = P(12.5, 0);
+  const tv = P(Math.max(1.8, Math.min(cols - 1.8, cols * .5)), 0);
   const tw = 58 * u, th = 37 * u;
   const tx = tv.x - tw / 2, ty = tv.y - s.heightPx(54);
   ctx.save();
@@ -1808,49 +1824,6 @@ function drawOfficeMediaDecor(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   for (let y = ty + 2 * u; y < ty + th; y += 4 * u) ctx.fillRect(tx, y, tw, .5 * u);
   ctx.restore();
 
-  // Worn magazines and handbills scattered around the floor. Their imperfect
-  // angles, faded ink and fictional companies make the workplace feel used.
-  const magazines = [
-    { c: 7.1, r: 9.5, rot: -.22, title: 'MINX', sub: 'CITY ISSUE', color: '#38bdf8' },
-    { c: 10.2, r: 7.7, rot: .16, title: 'OMBRE', sub: 'MARKETS', color: '#7CFC9B' },
-    { c: 14.2, r: 10.2, rot: -.08, title: 'NIGHT', sub: 'SHIFT', color: '#f472b6' },
-  ];
-  for (const mag of magazines) {
-    const p = P(mag.c, mag.r);
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(mag.rot);
-    ctx.globalAlpha = .62;
-    ctx.fillStyle = '#d6d3d1';
-    ctx.fillRect(-8 * u, -5 * u, 16 * u, 10 * u);
-    ctx.fillStyle = mag.color;
-    ctx.fillRect(-8 * u, -5 * u, 16 * u, 2 * u);
-    ctx.fillStyle = '#18181b';
-    ctx.textAlign = 'center';
-    ctx.font = `700 ${Math.max(4, 3.2 * u)}px "Fira Code", monospace`;
-    ctx.fillText(mag.title, 0, 0);
-    ctx.font = `${Math.max(3, 2.2 * u)}px "Fira Code", monospace`;
-    ctx.fillText(mag.sub, 0, 3.5 * u);
-    ctx.restore();
-  }
-
-  // Faded floor stickers: environmental storytelling rather than UI labels.
-  const stickers = [
-    { c: 4.2, r: 5.1, text: 'PABLO CORP', color: 'rgba(251,191,36,.28)' },
-    { c: 12.2, r: 4.3, text: 'NO SLEEP', color: 'rgba(244,114,182,.25)' },
-    { c: 17.0, r: 7.0, text: 'HIRE HUMANS', color: 'rgba(103,232,249,.22)' },
-  ];
-  for (const sticker of stickers) {
-    const p = P(sticker.c, sticker.r);
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(-.12);
-    ctx.fillStyle = sticker.color;
-    ctx.font = `700 ${Math.max(5, 3.5 * u)}px "Fira Code", monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(sticker.text, 0, 0);
-    ctx.restore();
-  }
 }
 
 function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' | 'right') {

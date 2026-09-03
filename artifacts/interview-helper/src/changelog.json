@@ -1658,5 +1658,25 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.20.0.2109",
+    "date": "2026-09-03",
+    "commitHash": "d7d233ca5d3cc78080e1a287ba2bbe40cc83c49f",
+    "changes": [
+      "Implement conversation translation logic and integrate into phone active page",
+      "Implement live translator component and associated backend routes",
+      "Initialize project repository with documentation and setup scripts",
+      "Add Gemma translator asset archive",
+      "Update PabloTerminal component logic and tests"
+    ]
+  },
+  {
+    "version": "v.20.1.2109",
+    "date": "2026-09-03",
+    "commitHash": "d7d233ca5d3cc78080e1a287ba2bbe40cc83c49f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
