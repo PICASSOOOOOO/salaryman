@@ -8,6 +8,17 @@ export function isClassicArcadeGameId(value: unknown): value is ClassicArcadeGam
   return typeof value === "string" && (CLASSIC_ARCADE_GAME_IDS as readonly string[]).includes(value);
 }
 
+export const CLASSIC_ARCADE_PRICES: Record<ClassicArcadeGameId, number> = {
+  cyber_serpent: 10,
+  void_invaders: 25,
+  barrel_runner: 50,
+  neon_breaker: 100,
+};
+
+export function getClassicArcadePrice(gameId: ClassicArcadeGameId): number {
+  return CLASSIC_ARCADE_PRICES[gameId];
+}
+
 export const REC_GAMES: Record<RecGameId, { name: string; staminaCost: number; verb: string }> = {
   arcade: { name: "Neon Arcade", staminaCost: 8, verb: "RUN CIRCUIT" },
   pool: { name: "Pool", staminaCost: 5, verb: "TAKE SHOT" },

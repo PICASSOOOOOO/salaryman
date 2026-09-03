@@ -2,21 +2,22 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface ArcadeGameProps {
   gameId: string;
+  priceFiat: number;
   onExit: () => void;
   onDeductFiat: () => boolean | Promise<boolean>;
   salary: number;
 }
 
 const GAME_LIST = [
-  { id: 'cyber_serpent', label: 'CYBER SERPENT', color: '#38bdf8', desc: 'Guide the serpent. Eat data nodes. Don\'t hit walls.' },
-  { id: 'void_invaders', label: 'VOID INVADERS', color: '#ff4444', desc: 'Shoot the descending alien fleet before they reach you.' },
-  { id: 'barrel_runner', label: 'BARREL RUNNER', color: '#ffaa00', desc: 'Climb the platforms. Dodge barrels. Reach the top.' },
-  { id: 'neon_breaker', label: 'NEON BREAKER', color: '#ff44ff', desc: 'Bounce the ball. Break all the bricks.' },
+  { id: 'cyber_serpent', label: 'CYBER SERPENT', color: '#38bdf8', priceFiat: 10, desc: 'Guide the serpent. Eat data nodes. Don\'t hit walls.' },
+  { id: 'void_invaders', label: 'VOID INVADERS', color: '#ff4444', priceFiat: 25, desc: 'Shoot the descending alien fleet before they reach you.' },
+  { id: 'barrel_runner', label: 'BARREL RUNNER', color: '#ffaa00', priceFiat: 50, desc: 'Climb the platforms. Dodge barrels. Reach the top.' },
+  { id: 'neon_breaker', label: 'NEON BREAKER', color: '#ff44ff', priceFiat: 100, desc: 'Bounce the ball. Break all the bricks.' },
 ];
 
 export { GAME_LIST };
 
-export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: ArcadeGameProps) {
+export default function ArcadeGame({ gameId, priceFiat, onExit, onDeductFiat, salary }: ArcadeGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<'title' | 'playing' | 'gameover'>('title');
   const scoreRef = useRef(0);
@@ -92,7 +93,7 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
         ctx.fillStyle = 'rgba(255,255,255,.5)';
         ctx.fillText(game.desc, W / 2, 90);
         ctx.fillStyle = 'rgba(255,255,255,.3)';
-        ctx.fillText(`COST: 1 FIAT  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 120);
+         ctx.fillText(`COST: ƒ${priceFiat}  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 120);
         const blink = Math.sin(frameRef.current * 0.08) > 0;
         if (blink) {
           ctx.fillStyle = game.color;
@@ -133,7 +134,7 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
         }
         ctx.fillStyle = 'rgba(255,255,255,.3)';
         ctx.font = '10px "Fira Code", monospace';
-        ctx.fillText(`INSERT 1 FIAT TO CONTINUE  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 155);
+         ctx.fillText(`INSERT ƒ${priceFiat} TO CONTINUE  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 155);
         const blink = Math.sin(frameRef.current * 0.08) > 0;
         if (blink) {
           ctx.fillStyle = game.color;
@@ -159,7 +160,7 @@ export default function ArcadeGame({ gameId, onExit, onDeductFiat, salary }: Arc
         />
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '10px 12px', background: '#0a0a0a' }}>
           <button type="button" onClick={() => void startGame()} disabled={isStarting} style={{ border: `1px solid ${game.color}`, color: game.color, background: 'transparent', padding: '8px 12px', font: 'bold 11px "Fira Code", monospace', cursor: isStarting ? 'wait' : 'pointer' }}>
-            {isStarting ? 'CHARGING…' : stateRef.current === 'gameover' ? 'PLAY AGAIN · ƒ1' : 'START · ƒ1'}
+            {isStarting ? 'CHARGING…' : stateRef.current === 'gameover' ? `PLAY AGAIN · ƒ${priceFiat}` : `START · ƒ${priceFiat}`}
           </button>
           <button type="button" onClick={onExit} style={{ border: '1px solid rgba(255,255,255,.25)', color: 'rgba(255,255,255,.7)', background: 'transparent', padding: '8px 12px', font: '11px "Fira Code", monospace', cursor: 'pointer' }}>
             EXIT

@@ -77,7 +77,7 @@ function stubApi() {
       });
     }
     if (path === "/api/recreation/arcade/charge") {
-      return jsonResponse({ charged: true, wallet: { newBalance: 199_999, spendable: 199_999 } });
+      return jsonResponse({ charged: true, priceFiat: 10, wallet: { newBalance: 199_990, spendable: 199_990 } });
     }
     return jsonResponse({}, false);
   });
@@ -125,7 +125,7 @@ describe("REC classic arcade entry and exit", () => {
       (container.querySelector('[data-testid="classic-cyber_serpent"]') as HTMLButtonElement).click();
     });
     expect(container.querySelector("canvas")).not.toBeNull();
-    expect(container.textContent).toContain("START · ƒ1");
+     expect(container.textContent).toContain("START · ƒ10");
 
     const exit = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "EXIT");
     expect(exit).toBeDefined();

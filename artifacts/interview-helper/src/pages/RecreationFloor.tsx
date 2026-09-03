@@ -105,7 +105,8 @@ export default function RecreationFloor() {
         ...prior,
         wallet: data.wallet ? { balance: data.wallet.newBalance, spendable: data.wallet.spendable } : prior.wallet,
       } : prior);
-      setMessage(`${gameId.replace(/_/g, " ").toUpperCase()} · ƒ1 INSERTED`);
+      const priceFiat = Number(data.priceFiat ?? GAME_LIST.find((game) => game.id === gameId)?.priceFiat ?? 0);
+      setMessage(`${gameId.replace(/_/g, " ").toUpperCase()} · ƒ${priceFiat} INSERTED`);
       return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message.toUpperCase() : "ARCADE CHARGE FAILED");
@@ -203,7 +204,7 @@ export default function RecreationFloor() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-black tracking-[.18em] text-fuchsia-200">CLASSIC ARCADE</p>
-                  <p className="mt-1 text-[10px] text-zinc-500">FOUR CABINETS · ƒ1 PER RUN · HIGH SCORES STAY LOCAL</p>
+                  <p className="mt-1 text-[10px] text-zinc-500">FOUR CABINETS · ƒ10–ƒ100 PER RUN · HIGH SCORES STAY LOCAL</p>
                 </div>
                 <Gamepad2 className="w-5 h-5 shrink-0 text-fuchsia-300" />
               </div>
@@ -218,7 +219,7 @@ export default function RecreationFloor() {
                   >
                     <span className="block text-xs font-black" style={{ color: classicGame.color }}>{classicGame.label}</span>
                     <span className="mt-1 block text-[10px] leading-4 text-zinc-500">{classicGame.desc}</span>
-                    <span className="mt-2 block text-[9px] font-bold tracking-widest text-fuchsia-200">INSERT ƒ1</span>
+                    <span className="mt-2 block text-[9px] font-bold tracking-widest text-fuchsia-200">INSERT ƒ{classicGame.priceFiat}</span>
                   </button>
                 ))}
               </div>
@@ -244,6 +245,7 @@ export default function RecreationFloor() {
       </div>}
       {classicGameId && panel === "game" && <ArcadeGame
         gameId={classicGameId}
+        priceFiat={GAME_LIST.find((game) => game.id === classicGameId)?.priceFiat ?? 10}
         onExit={() => setClassicGameId(null)}
         onDeductFiat={() => chargeClassicArcade(classicGameId)}
         salary={payload?.wallet.spendable ?? 0}
