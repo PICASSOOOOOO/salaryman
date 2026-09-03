@@ -1015,4 +1015,59 @@ router.post("/education/translate", async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /api/education/translate/free — no-meter conversation translation ──
+// This is deliberately separate from the LLM-backed lesson translator above.
+// Gemma Translator's reference runtime is a locally operated LiteRT service;
+// SALARYMAN's hosted free path uses the public MyMemory service instead of
+// pretending that the Gemma model is running in this API process.
+const FREE_TRANSLATION_LANGS = new Set([
+  "en", "vi", "es", "ja", "zh", "ko", "fr", "pt", "de", "ar", "hi", "id", "th", "ru", "it",
+]);
+
+router.post("/education/translate/free", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const body = req.body as { text?: unknown; source?: unknown; target?: unknown };
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  const source = typeof body.source === "string" ? body.source : "";
+  const target = typeof body.target === "string" ? body.target : "";
+  if (!text || text.length > 1600) {
+    res.status(400).json({ error: "Text must be between 1 and 1600 characters" });
+    return;
+  }
+  if (!FREE_TRANSLATION_LANGS.has(source) || !FREE_TRANSLATION_LANGS.has(target)) {
+    res.status(400).json({ error: "Unsupported language pair" });
+    return;
+  }
+  if (source === target) {
+    res.json({ translated: text, source, target, provider: "identity" });
+    return;
+  }
+  try {
+    const url = new URL("https://api.mymemory.translated.net/get");
+    url.searchParams.set("q", text);
+    url.searchParams.set("langpair", `${source}|${target}`);
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) {
+      res.status(502).json({ error: "Free translation provider unavailable" });
+      return;
+    }
+    const payload = await response.json() as {
+      responseData?: { translatedText?: unknown };
+      responseStatus?: number;
+    };
+    const translated = typeof payload.responseData?.translatedText === "string"
+      ? payload.responseData.translatedText.trim()
+      : "";
+    if (!translated || payload.responseStatus === 403) {
+      res.status(502).json({ error: "Free translation provider unavailable" });
+      return;
+    }
+    res.json({ translated, source, target, provider: "mymemory" });
+  } catch (err) {
+    console.warn("[Education] free translate error:", err instanceof Error ? err.message : err);
+    res.status(502).json({ error: "Free translation provider unavailable" });
+  }
+});
+
 export default router;

@@ -57,6 +57,8 @@ import {
   PERF_PROMPT_RESET_EVENT,
 } from '@/lib/perf-watchdog';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
+import { LiveTranslator } from '@/components/LiveTranslator';
+import { getTranslationPreferences, translateFreeText } from '@/lib/translate';
 import { WaitingLobbyPanel } from '@/components/WaitingLobbyPanel';
 import { WorldBuildDesigner } from '@/components/WorldBuildDesigner';
 import {
@@ -4345,7 +4347,7 @@ function drawSpeechBubble(ctx: CanvasRenderingContext2D, cx: number, topY: numbe
   ctx.restore();
 }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
-interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
+interface ChatMsg { id: number; from: string; text: string; dm?: boolean; translated?: string; translationPending?: boolean; }
 interface CrmContact {
   id: string;
   name: string;
@@ -4811,7 +4813,7 @@ export default function WorldPlay() {
     myId: '',
     peers: new Map<string, Peer>(),
     // Active proximity dialog bubbles, keyed by player id (self id included).
-    bubbles: new Map<string, { text: string; expiry: number }>(),
+    bubbles: new Map<string, { text: string; translated?: string; expiry: number }>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
     zone: inCityBounds(char.sx, char.sy) ? getActiveCityDef().name : 'WASTELAND',
@@ -6057,13 +6059,51 @@ export default function WorldPlay() {
   // Camp panel — opens when [E] pressed near campsite, or via [B] then [E].
   // Lets the player REST, EAT food from inventory, COOK raw meat, or BREAK CAMP.
   const [showCamp, setShowCamp] = useState(false);
+  const [translationConversationEnabled, setTranslationConversationEnabled] = useState(() => {
+    try { return localStorage.getItem('sm_translation_conversation') === '1'; } catch { return false; }
+  });
+  const [translationPreferences, setTranslationPreferences] = useState(getTranslationPreferences);
+  const translationConversationRef = useRef(translationConversationEnabled);
+  const translationPreferencesRef = useRef(translationPreferences);
+  const translatedBubbleSeqRef = useRef(0);
+  // Kept only for the unreachable compatibility block below while older
+  // saved bundles hot-reload; all visible translation UI uses LiveTranslator.
   const [translatorText, setTranslatorText] = useState('');
-  const [translatorFrom, setTranslatorFrom] = useState(() => localStorage.getItem('sm_xlat_from') ?? 'vi');
-  const [translatorTo, setTranslatorTo] = useState(() => localStorage.getItem('sm_xlat_to') ?? 'en');
+  const [translatorFrom, setTranslatorFrom] = useState(() => getTranslationPreferences().source);
+  const [translatorTo, setTranslatorTo] = useState(() => getTranslationPreferences().target);
   const [translatorResult, setTranslatorResult] = useState('');
   const [translatorListening, setTranslatorListening] = useState(false);
   const translatorRecRef = useRef<{ stop: () => void } | null>(null);
-  const [showTranslatorOverlay, setShowTranslatorOverlay] = useState(false);
+  const [showTranslatorOverlay] = useState(false);
+  useEffect(() => {
+    translationConversationRef.current = translationConversationEnabled;
+    try { localStorage.setItem('sm_translation_conversation', translationConversationEnabled ? '1' : '0'); } catch {}
+  }, [translationConversationEnabled]);
+  useEffect(() => {
+    translationPreferencesRef.current = translationPreferences;
+  }, [translationPreferences]);
+  const setConversationTranslation = useCallback((enabled: boolean) => {
+    translationConversationRef.current = enabled;
+    setTranslationConversationEnabled(enabled);
+  }, []);
+  const handleTranslationPreferences = useCallback((next: { source: string; target: string }) => {
+    translationPreferencesRef.current = next;
+    setTranslationPreferences(next);
+  }, []);
+  const queueConversationTranslation = useCallback((text: string, apply: (translated: string) => void) => {
+    if (!translationConversationRef.current) return;
+    const { source, target } = translationPreferencesRef.current;
+    if (source === target) {
+      apply(text);
+      return;
+    }
+    const requestId = ++translatedBubbleSeqRef.current;
+    void translateFreeText(text, source, target)
+      .then(translated => {
+        if (requestId > 0) apply(translated);
+      })
+      .catch(() => apply(''));
+  }, []);
   const [showSoundLab, setShowSoundLab] = useState(false);
   const [showSecretLabPrompt, setShowSecretLabPrompt] = useState<'buy' | 'password' | 'setpw' | null>(null);
   const [secretLabPwInput, setSecretLabPwInput] = useState('');
@@ -8006,7 +8046,12 @@ export default function WorldPlay() {
         setSpeakIds(new Set(g.speakingSet));
       } else if (m.type === 'proximity_chat') {
         // Dialog bubble above the speaker's head (Deckard bots + real world speech).
-        g.bubbles.set(m.id, { text: String(m.text ?? '').slice(0, 160), expiry: Date.now() + 5200 });
+        const bubbleText = String(m.text ?? '').slice(0, 160);
+        g.bubbles.set(m.id, { text: bubbleText, expiry: Date.now() + 5200 });
+        queueConversationTranslation(bubbleText, translated => {
+          const bubble = g.bubbles.get(m.id);
+          if (bubble && bubble.text === bubbleText && translated) bubble.translated = translated.slice(0, 160);
+        });
         // Also surface in the world chat log so nothing scrolls past unseen.
         // Humans also arrive via `chat` room:world, so de-dupe on recent from+text;
         // bots/NPCs (proximity-only) fall through and get logged exactly once.
@@ -8018,7 +8063,20 @@ export default function WorldPlay() {
           if (!rl.some(e => e.k === key && nowL - e.ts < 4000)) {
             rl.push({ k: key, ts: nowL });
             if (rl.length > 24) rl.splice(0, rl.length - 24);
-            setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: pName, text: pText }]);
+            const messageId = seq++;
+            setChatMsgs(prev => [...prev.slice(-99), {
+              id: messageId, from: pName, text: pText,
+              translationPending: translationConversationRef.current,
+            }]);
+            queueConversationTranslation(pText, translated => {
+              if (!translated) {
+                setChatMsgs(prev => prev.map(msg => msg.id === messageId ? { ...msg, translationPending: false } : msg));
+                return;
+              }
+              setChatMsgs(prev => prev.map(msg => msg.id === messageId
+                ? { ...msg, translated, translationPending: false }
+                : msg));
+            });
             if (!chatOpenRef.current) setUnread(n => n + 1);
           }
         }
@@ -8040,7 +8098,24 @@ export default function WorldPlay() {
           setNarr(`> CALL DROPPED — ${m.name} disconnected from the city.`);
         }
       } else if (m.type === 'chat') {
-        setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: m.from, text: m.text, dm: m.room === 'dm' }]);
+        const messageId = seq++;
+        const chatText = String(m.text ?? '').slice(0, 160);
+        const isWorldMessage = m.room === 'world';
+        setChatMsgs(prev => [...prev.slice(-99), {
+          id: messageId, from: m.from, text: chatText, dm: !isWorldMessage,
+          translationPending: isWorldMessage && translationConversationRef.current,
+        }]);
+        if (isWorldMessage) {
+          queueConversationTranslation(chatText, translated => {
+            if (!translated) {
+              setChatMsgs(prev => prev.map(msg => msg.id === messageId ? { ...msg, translationPending: false } : msg));
+              return;
+            }
+            setChatMsgs(prev => prev.map(msg => msg.id === messageId
+              ? { ...msg, translated, translationPending: false }
+              : msg));
+          });
+        }
         if (m.room === 'world' && m.from && m.text) {
           const rl = recentLogRef.current;
           rl.push({ k: `${m.from}\u0001${m.text}`, ts: Date.now() });
@@ -19925,14 +20000,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const distA = bDist <= 320 ? 1 : Math.max(0.22, 1 - (bDist - 320) / 1100);
           const life = opBub.expiry - Date.now();
           const timeA = life < 700 ? Math.max(0, life / 700) : 1;
-          drawSpeechBubble(ctx, px2, py2 - 30, opBub.text, distA * timeA);
+          drawSpeechBubble(ctx, px2, py2 - 30,
+            translationConversationRef.current && opBub.translated ? opBub.translated : opBub.text,
+            distA * timeA);
         }
       }
 
       // Local player's own proximity bubble (world speech echoes back as proximity_chat).
       {
         const myBub = g.myId ? g.bubbles.get(g.myId) : undefined;
-        if (myBub && myBub.expiry > Date.now()) drawSpeechBubble(ctx, g.px + ox, g.py + oy - 30, myBub.text);
+        if (myBub && myBub.expiry > Date.now()) {
+          drawSpeechBubble(
+            ctx,
+            g.px + ox,
+            g.py + oy - 30,
+            translationConversationRef.current && myBub.translated ? myBub.translated : myBub.text,
+          );
+        }
       }
 
       // Periodic GC so expired bubbles don't accumulate over a long session
@@ -23165,21 +23249,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           >
             ☰ TERMINAL {unread > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
           </button>
-          <button
-            onClick={() => setShowTranslatorOverlay(v => !v)}
-            style={{
-              padding: '.5rem .8rem',
-              background: showTranslatorOverlay ? 'rgba(236,72,153,.15)' : 'rgba(0,5,0,.92)',
-              border: `1px solid ${showTranslatorOverlay ? 'rgba(236,72,153,.5)' : 'rgba(236,72,153,.25)'}`,
-              color: showTranslatorOverlay ? '#ec4899' : 'rgba(236,72,153,.55)',
-              cursor: 'pointer',
-              fontFamily: "var(--font-sans)",
-              fontSize: '1.1rem',
-              letterSpacing: '.1em',
-            }}
-          >
-            🌐 TRANSLATE
-          </button>
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => { setShowSoundPanel(v => !v); setShowTopMenu(false); }}
@@ -24364,6 +24433,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                 {/* TRANSLATOR TAB — free live translation tool */}
                 {pabloTab === 'translate' && (
+                  <LiveTranslator
+                    compact
+                    title="UNIVERSAL TRANSLATOR — FREE"
+                    conversationEnabled={translationConversationEnabled}
+                    onConversationEnabledChange={setConversationTranslation}
+                    onPreferencesChange={handleTranslationPreferences}
+                  />
+                )}
+                {false && pabloTab === 'translate' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>UNIVERSAL TRANSLATOR — FREE</div>
                     <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
