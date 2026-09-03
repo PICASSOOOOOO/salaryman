@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { AlertTriangle, ArrowRight, Armchair, Bell, BriefcaseBusiness, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, Leaf, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
+import { Link } from "wouter";
+import { AlertTriangle, ArrowRight, Bell, Building2, CalendarDays, Check, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { sfxFinalNotice, startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 import {
@@ -31,15 +31,6 @@ const occupiedFloors = new Map([
   [2, { name: "COMPUTER CAFE", kind: "PUBLIC", detail: "Work board, terminals, and elevator music.", href: "/tower/mezzanine?focus=classifieds", tone: "cafe", icon: Building2 }],
   [1, { name: "RECREATION", kind: "PUBLIC", detail: "Games, food, conversation, and a place to begin.", href: "/recreation", tone: "rec", icon: Sparkles }],
 ]);
-
-const RECEPTION_DESTINATIONS = [
-  { label: "LOOKING FOR WORK", detail: "Public work board and open jobs", href: "/tower/mezzanine?focus=classifieds", icon: BriefcaseBusiness },
-  { label: "BUY REAL ESTATE", detail: "Purchase a Tower office address", href: "/store/realty?mode=buy", icon: Building2 },
-  { label: "RENT AN OFFICE", detail: "Lease a commercial shell", href: "/store/realty?mode=lease", icon: KeyRound },
-  { label: "NEED MEDICAL CARE", detail: "Infirmary and physical rest beds", href: "/tower/rest", icon: Leaf },
-  { label: "SHOPPING", detail: "Vending, tools, desks, and terminals", href: "/vending", icon: Sparkles },
-  { label: "FOOD / RECREATION", detail: "Restaurants, games, and conversation", href: "/recreation", icon: Armchair },
-] as const;
 
 function TowerEntry() {
   return (
@@ -155,7 +146,6 @@ const floors = Array.from({ length: 67 }, (_, index) => {
 
 export default function TowerDirectory() {
   const { user, isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
   const [stage, setStage] = useState<BuildingOnboardingStage>(() => getBuildingOnboardingStage());
   const [now, setNow] = useState(() => new Date());
   const [talking, setTalking] = useState(false);
@@ -164,7 +154,6 @@ export default function TowerDirectory() {
   const [filingResult, setFilingResult] = useState("");
   const [arrivalPhase, setArrivalPhase] = useState<"fade" | "waiting" | "ready">("fade");
   const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "briefing" | "alert" | "complete">("arrival");
-  const [workDestination, setWorkDestination] = useState("/tower/mezzanine?focus=classifieds");
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const onboardingLocked = stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
@@ -259,8 +248,8 @@ export default function TowerDirectory() {
       markTutorialDone();
       completeReceptionTask();
       setOnboardingStep("complete");
-      setNotice("TOWER LOCKDOWN ACTIVE · RECEPTION REMAINS AVAILABLE");
-      navigate(workDestination);
+      setTalking(false);
+      setNotice("TOWER ACCESS OPEN · WALK TO THE ELEVATOR OR STAIRS");
     } catch (error) {
       setNotice(error instanceof Error ? error.message.toUpperCase() : "LOCKDOWN RECORD SYNC FAILED");
     } finally {
@@ -298,7 +287,7 @@ export default function TowerDirectory() {
             <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">START HERE.</h1>
             <p className="mt-2 text-[10px] font-bold tracking-[.2em] text-zinc-500">RECEPTION · WORK · FLOOR ACCESS</p>
           </div>
-           <Link href="/office" className="hidden sm:block text-xs text-zinc-500 hover:text-cyan-300">BACK TO OFFICE</Link>
+           <span className="hidden text-xs tracking-[.16em] text-zinc-600 sm:block">PHYSICAL ACCESS ONLY</span>
         </header>
 
         {notice && (
@@ -505,24 +494,14 @@ export default function TowerDirectory() {
             <button type="button" onClick={() => setTalking(true)} className="mt-4 flex w-full items-center justify-center gap-2 border border-cyan-200/50 bg-cyan-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-cyan-100 transition hover:bg-cyan-300/15">
               <UserRound className="h-4 w-4" /> SPEAK WITH RECEPTIONIST
             </button>
-          ) : (
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <Link href="/tower/mezzanine?focus=classifieds" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
-                <BriefcaseBusiness className="h-4 w-4" /> REQUEST WORK
-              </Link>
-              <Link href="/tower/rest" className="flex items-center gap-2 border border-cyan-300/25 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300/10">
-                <Building2 className="h-4 w-4" /> REQUEST LODGING
-              </Link>
-              <Link href="/office" className="flex items-center gap-2 border border-amber-300/25 bg-amber-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-amber-100 transition hover:border-amber-200 hover:bg-amber-300/10">
-                <KeyRound className="h-4 w-4" /> OFFICE APPOINTMENT
-              </Link>
-              <Link href="/business" className="flex items-center gap-2 border border-violet-300/25 bg-violet-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-violet-100 transition hover:border-violet-200 hover:bg-violet-300/10">
-                <ClipboardList className="h-4 w-4" /> BUSINESS DESK
-              </Link>
-              <Link href="/store/realty?from=reception" className="flex items-center gap-2 border border-pink-300/25 bg-pink-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-pink-100 transition hover:border-pink-200 hover:bg-pink-300/10">
-                <Building2 className="h-4 w-4" /> RENT / BUY A FLOOR
-              </Link>
-            </div>
+            ) : (
+              <div className="mt-4 border border-cyan-300/20 bg-cyan-300/[.04] p-4 text-xs leading-6 text-zinc-300">
+                <p className="font-black tracking-[.14em] text-cyan-100">FRONT DESK ACTIVE</p>
+                <p className="mt-2">The desk can file unemployment. For everything else, leave this conversation and use the physical elevator, stairs, doors, desks, and terminals in the Tower.</p>
+                <button type="button" onClick={() => void fileUnemployment()} disabled={filing} className="mt-3 flex w-full items-center justify-between border border-amber-300/30 bg-amber-300/5 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-amber-100 disabled:opacity-50">
+                  {filing ? "FILING..." : "FILE UNEMPLOYMENT AT DESK"} <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
           )}
           {!onboardingLocked && (
              <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-bold tracking-[.14em] text-zinc-600">
@@ -635,19 +614,19 @@ export default function TowerDirectory() {
       )}
 
       {onboardingLocked && onboardingStep === "briefing" && (
-        <div className="fixed inset-0 z-[970] grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Choose a Tower destination">
+        <div className="fixed inset-0 z-[970] grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Open Tower access">
           <div className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto border border-cyan-200/40 bg-[#07111b] p-4 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
             <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">CLAW PRIME · RECEPTION</p>
-            <h2 className="mt-2 text-xl font-black tracking-[.12em] text-white sm:text-2xl">WHAT DO YOU NEED?</h2>
-            <p className="mt-2 text-xs leading-5 text-zinc-400">Pick one. The lift and stairs will route you there immediately after lockdown.</p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {RECEPTION_DESTINATIONS.map(({ label, detail, href, icon: Icon }) => (
-                <button key={label} type="button" onClick={() => { setWorkDestination(href); triggerLockdown(); }} className="flex min-h-20 items-center gap-3 border border-white/10 bg-white/[.025] p-3 text-left transition hover:border-cyan-200/55 hover:bg-cyan-300/10">
-                  <Icon className="h-5 w-5 shrink-0 text-cyan-200" />
-                  <span><strong className="block text-[11px] tracking-[.12em] text-zinc-100">{label}</strong><span className="mt-1 block text-[10px] leading-4 text-zinc-500">{detail}</span></span>
-                </button>
-              ))}
+            <h2 className="mt-2 text-xl font-black tracking-[.12em] text-white sm:text-2xl">TOWER ACCESS OPEN</h2>
+            <p className="mt-2 text-xs leading-5 text-zinc-400">Your check-in is complete. The building is the interface now: walk to the elevator, stairs, doors, desks, terminals, and vending machines to use what you need.</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="border border-cyan-300/20 bg-cyan-300/[.04] p-3 text-[10px] leading-5 text-cyan-100"><DoorOpen className="mb-2 h-5 w-5" />ELEVATOR<br /><span className="text-zinc-500">Choose a floor at the physical directory.</span></div>
+              <div className="border border-amber-300/20 bg-amber-300/[.04] p-3 text-[10px] leading-5 text-amber-100"><Footprints className="mb-2 h-5 w-5" />STAIRS<br /><span className="text-zinc-500">Move through public floors on foot.</span></div>
+              <div className="border border-violet-300/20 bg-violet-300/[.04] p-3 text-[10px] leading-5 text-violet-100"><Building2 className="mb-2 h-5 w-5" />OBJECTS<br /><span className="text-zinc-500">Interact with stations at the destination.</span></div>
             </div>
+            <button type="button" onClick={triggerLockdown} className="mt-5 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15">
+              OPEN THE LIFT <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}
@@ -701,20 +680,11 @@ export default function TowerDirectory() {
               </>
             ) : (
               <>
-                <p className="mt-5 text-sm leading-6 text-zinc-300">Your access is active. All organization and employment business is routed through this desk.</p>
+                <p className="mt-5 text-sm leading-6 text-zinc-300">The desk is active. For work, lodging, organizations, hiring, and property, leave this conversation and use the physical elevator, stairs, doors, desks, and terminals in the Tower.</p>
                 <div className="mt-4 grid gap-2">
-                  <Link href="/business" className="flex items-center justify-between border border-cyan-300/30 bg-cyan-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-cyan-100">
-                    SET UP OR MANAGE AN ORG <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link href="/profile" className="flex items-center justify-between border border-emerald-300/30 bg-emerald-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-emerald-100">
-                    EMPLOYMENT STATUS <ArrowRight className="h-4 w-4" />
-                  </Link>
                   <button type="button" onClick={() => void fileUnemployment()} disabled={filing} className="flex items-center justify-between border border-amber-300/30 bg-amber-300/5 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-amber-100 disabled:opacity-50">
-                    {filing ? "FILING..." : "FILE UNEMPLOYMENT"} <ArrowRight className="h-4 w-4" />
+                    {filing ? "FILING..." : "FILE UNEMPLOYMENT AT DESK"} <ArrowRight className="h-4 w-4" />
                   </button>
-                  <Link href="/business/hiring" className="flex items-center justify-between border border-violet-300/30 bg-violet-300/5 px-3 py-3 text-xs font-bold tracking-[.12em] text-violet-100">
-                    HIRING &amp; STAFF RECORDS <ArrowRight className="h-4 w-4" />
-                  </Link>
                   <button type="button" onClick={() => setNotice("LOCKDOWN ACTIVE · EXTERIOR DOORS SEALED")} className="flex items-center justify-between border border-red-400/35 bg-red-500/10 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-red-200">
                     EXTERIOR DOORS · LOCKED <LockKeyhole className="h-4 w-4" />
                   </button>

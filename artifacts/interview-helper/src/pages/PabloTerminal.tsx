@@ -997,8 +997,8 @@ function PabloTerminalAuthed() {
   // immigration desk has completed.
   const hasFinishedOnboarding = isAuthenticated && isTutorialDone();
   const enterFromHomepage = useCallback(() => {
-    navigate(hasFinishedOnboarding ? "/office" : "/tower");
-  }, [hasFinishedOnboarding, navigate]);
+    navigate("/tower");
+  }, [navigate]);
   const startWorkFromHomepage = useCallback(() => {
     if (isAuthenticated) {
       enterFromHomepage();
@@ -2049,8 +2049,8 @@ function PabloTerminalAuthed() {
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
         }}
       >
-        {/* Pablo is the homepage. Entering the Tower or returning to the office
-            is always an explicit choice from this surface. */}
+        {/* Pablo is the homepage. Starting work always enters the physical
+            Tower; feature access begins with objects and floor interactions. */}
         {hasFinishedOnboarding ? (
           <Link
             href={pendingDestinationRef.current ?? "/"}
@@ -2078,9 +2078,8 @@ function PabloTerminalAuthed() {
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-           {/* One primary entry action. Keep the front door quick: sign-in
-               goes straight to Tower, new accounts enter Tower, and cleared
-               accounts return to Office. */}
+           {/* One primary entry action. Keep the front door physical: sign-in
+               and returning users both enter through the Tower lobby. */}
           {!isLoading && !isAuthenticated && (
             <button
               type="button"
@@ -2099,10 +2098,10 @@ function PabloTerminalAuthed() {
               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-enter-tower"
               className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-              title={hasFinishedOnboarding ? "Return to your office" : "Enter Shadow Tower"}
+              title="Start work in Shadow Tower"
             >
               <LogIn className="w-3 h-3" />
-              {hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}
+              START WORK
             </button>
           )}
           {/* TEXT/VOICE toggle is now visible during the intro too. The
@@ -2123,7 +2122,7 @@ function PabloTerminalAuthed() {
             {mode === "text" ? "VOICE" : "TEXT"}
           </button>
           {/* No exit X — the SALARYMAN logo is the only authenticated exit,
-              and it returns to the walkable office floor. */}
+              and the primary work handoff goes through the physical Tower. */}
         </div>
       </header>
 

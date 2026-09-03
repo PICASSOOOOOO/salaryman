@@ -12,14 +12,12 @@ const swipe = readFileSync(
   "utf8",
 );
 
-describe("Pablo terminal reverse navigation", () => {
-  it("returns onboarded users to the walkable office floor", () => {
-    const logo = terminal.slice(
-      terminal.indexOf('data-testid="link-logo-loop"') - 400,
-      terminal.indexOf('data-testid="link-logo-loop"') + 200,
-    );
-    expect(logo).toContain('href="/office"');
-    expect(logo).toContain('aria-label="Back to office floor"');
+describe("Pablo terminal physical-world navigation", () => {
+  it("sends every authenticated START WORK handoff through the Tower", () => {
+    expect(terminal).toContain('navigate("/tower")');
+    expect(terminal).toContain("START WORK");
+    expect(terminal).not.toContain('navigate(hasFinishedOnboarding ? "/office" : "/tower")');
+    expect(terminal).not.toContain('{hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}');
     expect(terminal).not.toContain('window.history.back()');
   });
 
