@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { REQUIRED_ONBOARDING_STEPS } from "./PabloOnboarding";
+import {
+  getInitialOnboardingBizPath,
+  REQUIRED_ONBOARDING_STEPS,
+} from "./PabloOnboarding";
 
 describe("first-run onboarding flow", () => {
   it("blocks only on city, identity, and work path", () => {
@@ -14,5 +17,15 @@ describe("first-run onboarding flow", () => {
     expect(REQUIRED_ONBOARDING_STEPS).not.toContain("greet");
     expect(REQUIRED_ONBOARDING_STEPS).not.toContain("estate");
     expect(REQUIRED_ONBOARDING_STEPS).not.toContain("done");
+  });
+
+  it("opens the business form for a new Tower arrival", () => {
+    expect(getInitialOnboardingBizPath("lobby", null)).toBe("business");
+    expect(getInitialOnboardingBizPath("lobby", "unemployed")).toBe("business");
+  });
+
+  it("keeps the saved path in the full onboarding flow", () => {
+    expect(getInitialOnboardingBizPath("registry", "unemployed")).toBe("unemployed");
+    expect(getInitialOnboardingBizPath("registry", null)).toBe("");
   });
 });

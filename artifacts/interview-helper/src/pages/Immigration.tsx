@@ -237,7 +237,7 @@ export default function Immigration() {
 
     (async () => {
       const isBiz = answers.bizPath === 'business';
-      if (!await push({ text: '> CONNECTION ESTABLISHED — PABLO CORP REGISTRY' })) return;
+      if (!await push({ text: '> CONNECTION ESTABLISHED.' })) return;
       if (!await push({
         text: isBiz
           ? `> SUBJECT: ${answers.playerName} — FILING UNDER ${answers.companyName.toUpperCase()} (${answers.businessType.toUpperCase()})`
@@ -261,7 +261,7 @@ export default function Immigration() {
       } else {
         if (!await push({ text: `> DECLARED MONTHLY INCOME: ƒ0 — FLAGGED FOR REVIEW`, color: 'rgba(250,204,21,.85)' })) return;
       }
-      if (!await push({ text: '> REGISTRY ACCEPTED.', color: 'rgba(74,222,128,.85)' })) return;
+      if (!await push({ text: '> ANSWERS ACCEPTED.', color: 'rgba(74,222,128,.85)' })) return;
       if (!await push({ text: '> ATMOSPHERE: TOXIC GAS SEAL ACTIVE — NO WALK-IN ENTRY. CLEARANCE BY PAPERWORK ONLY.', color: 'rgba(250,204,21,.85)' })) return;
       if (!await push({ text: '> ASSESSING MANDATORY ENTRY FEES...', color: 'rgba(250,204,21,.85)' }, 900)) return;
 
@@ -460,10 +460,10 @@ function StampingPanel({
         }}>
           <div>
             <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>
-              PABLO CORP — STAMPING
+              SAVING YOUR ANSWERS
             </div>
             <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
-              FEE LEDGER · TAX COLLECTOR DISPATCHER · DEED OF ENTRY
+              FINAL CHECK · ENTRY DETAILS
             </div>
           </div>
           <div style={{
@@ -546,7 +546,7 @@ function StampingPanel({
 function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
-  const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'REGISTRY OPEN';
+  const stageLabel = phase === 'stamping' ? 'SAVING' : 'READY';
   const isMobile = useIsMobile();
   // Painted cinematic base — the border-control terminal in the game's
   // painted style (Nano Banana). Sits behind the canonical Pablo orb so the
@@ -593,12 +593,12 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           ...VT, fontSize: isMobile ? '.78rem' : '1.05rem', color: '#7dd3fc', letterSpacing: isMobile ? '.18em' : '.32em',
           textShadow: '0 0 10px rgba(56,189,248,.45)',
         }}>
-          {isMobile ? 'PABLO · BORDER' : '━━ PABLO CORP · BORDER CONTROL ━━'}
+          {isMobile ? 'TOWER · ENTRY' : '━━ TOWER · ENTRY CHECK ━━'}
         </div>
         <div style={{
           ...ST, fontSize: isMobile ? '.42rem' : '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.18em',
         }}>
-          {isMobile ? 'OFC: PABLO' : 'LANE 03 · OFFICER: PABLO'}
+          {isMobile ? 'ENTRY' : 'ENTRY CHECK'}
         </div>
       </div>
 
@@ -611,13 +611,13 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
         letterSpacing: '.1em', lineHeight: 1.9,
         zIndex: 6,
       }}>
-        <div style={{ color: 'rgba(56,189,248,.85)', marginBottom: '.4rem', letterSpacing: '.22em' }}>
-          &gt; ENTRY PROCEDURE
+          <div style={{ color: 'rgba(56,189,248,.85)', marginBottom: '.4rem', letterSpacing: '.22em' }}>
+          &gt; ONBOARDING STEPS
         </div>
         <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>01 · STATE YOUR NAME</div>
         <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>02 · DECLARE CONTACT EMAIL</div>
         <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>03 · DECLARE INTENT</div>
-        <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>04 · FILE COMPANY (IF ANY)</div>
+        <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>04 · ADD BUSINESS (OPTIONAL)</div>
         <div style={{ opacity: phase === 'stamping' || phase === 'done' ? 1 : .4, color: 'rgba(125,211,252,.85)' }}>
           05 · ASSESS ENTRY FEES
         </div>
@@ -625,9 +625,8 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           06 · STAMP &amp; ENTER
         </div>
         <div style={{ marginTop: '.7rem', color: 'rgba(56,189,248,.4)' }}>
-          CITY SEALED UNDER GAS.<br/>
-          NO ENTRY WITHOUT FILING.<br/>
-          MISREPRESENTATION = DEPORTATION.
+          CHECK YOUR DETAILS.<br/>
+          THEN ENTER THE TOWER.
         </div>
       </div>
       )}
@@ -649,15 +648,15 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           marginBottom: '.5rem',
         }}>
           <div style={{ ...VT, fontSize: '.95rem', color: '#7dd3fc', letterSpacing: '.18em' }}>
-            PABLO CORP
+            TOWER ENTRY
           </div>
           <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.14em' }}>
-            REGISTRY · OFFICIAL
+            FINAL CHECK
           </div>
         </div>
         <div style={{ color: 'rgba(56,189,248,.4)' }}>
-          ALL ARRIVALS PROCESSED.<br/>
-          NO EXCEPTIONS.
+          DETAILS CONFIRMED.<br/>
+          READY TO CONTINUE.
         </div>
       </div>
       )}
@@ -672,7 +671,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
         ...ST, fontSize: isMobile ? '.42rem' : '.5rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.14em',
         zIndex: 10,
       }}>
-        <div>{isMobile ? 'FILING MANDATORY' : 'FILING IS MANDATORY · CITY ACCESS DENIED UNTIL CLEARED'}</div>
+        <div>{isMobile ? 'CHECK REQUIRED' : 'CHECK YOUR DETAILS · THEN CONTINUE'}</div>
         <div>
           ● {stageLabel}
         </div>

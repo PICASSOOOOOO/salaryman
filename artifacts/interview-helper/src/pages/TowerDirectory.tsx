@@ -267,7 +267,7 @@ export default function TowerDirectory() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Filing rejected");
-      setFilingResult("UNEMPLOYMENT STATUS FILED · FINANCE TRACKER CONFIRMED");
+      setFilingResult("UNEMPLOYMENT STATUS SAVED");
     } catch (error) {
       setFilingResult(error instanceof Error ? error.message.toUpperCase() : "FILING FAILED");
     } finally {
@@ -407,10 +407,10 @@ export default function TowerDirectory() {
                   data-testid="speak-receptionist"
                 >
                    <span className="relative mb-3 flex h-24 w-24 items-end justify-center overflow-hidden rounded-full border border-cyan-200/40 bg-[radial-gradient(circle,#16445a,#07121d)]">
-                     <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Claw Prime" className="h-28 w-28 object-contain object-bottom" />
+                      <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Reception assistant" className="h-28 w-28 object-contain object-bottom" />
                     <span className="absolute -right-1 top-0 h-3 w-3 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_10px_#6ee7b7]" />
                   </span>
-                  <span className="text-[9px] font-bold tracking-[.28em] text-cyan-300">CLAW PRIME · RECEPTION LEAD</span>
+                  <span className="text-[9px] font-bold tracking-[.28em] text-cyan-300">RECEPTION</span>
                   <span className="mt-1 text-sm font-black tracking-[.12em] text-white">{onboardingLocked ? "TALK" : "FRONT DESK"}</span>
                   <span className="mt-2 text-[10px] text-zinc-500 group-hover:text-zinc-300">PRESS OR TAP TO SPEAK</span>
                 </button>
@@ -465,15 +465,11 @@ export default function TowerDirectory() {
                 <ClipboardList className="h-5 w-5 text-cyan-200" />
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-[.3em] text-cyan-200">CLAW PRIME · BUILDING OPERATIONS</p>
+                <p className="text-[10px] font-bold tracking-[.3em] text-cyan-200">BUILDING OPERATIONS</p>
                 <h2 className="mt-1 text-xl font-black tracking-[.12em] text-white">{onboardingLocked ? "CHECK IN REQUIRED" : "FRONT DESK SERVICES"}</h2>
                  <p className="mt-2 text-[10px] font-bold tracking-[.16em] text-zinc-500">
                    {onboardingLocked ? "CHECK IN TO UNLOCK THE BUILDING" : "SELECT A SERVICE TO CONTINUE"}
                  </p>
-                <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-bold tracking-[.13em]">
-                  <span className="border border-violet-300/20 bg-violet-300/5 px-2 py-1 text-violet-200">MILA · SHADOW LIAISON</span>
-                  <span className="border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-emerald-200">FINANCE TRACKER · FILINGS</span>
-                </div>
               </div>
             </div>
             <div className="flex items-end gap-2">
@@ -482,8 +478,8 @@ export default function TowerDirectory() {
                 <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-cyan-200/70">RECEPTION</figcaption>
               </figure>
               <figure className="w-20 text-center">
-                <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Claw Prime" className="h-24 w-full object-contain object-bottom" />
-                <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-amber-200/70">CLAW PRIME</figcaption>
+                <img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Reception assistant" className="h-24 w-full object-contain object-bottom" />
+                <figcaption className="mt-1 text-[7px] font-bold tracking-[.16em] text-amber-200/70">ASSISTANT</figcaption>
               </figure>
             </div>
             <div className="flex shrink-0 items-center gap-2 border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-[10px] tracking-[.18em] text-emerald-200">
@@ -505,7 +501,7 @@ export default function TowerDirectory() {
           )}
           {!onboardingLocked && (
              <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-bold tracking-[.14em] text-zinc-600">
-               <span className="border border-white/10 px-2 py-1">RENTAL REGISTRY</span>
+               <span className="border border-white/10 px-2 py-1">RENTALS</span>
                <span className="border border-white/10 px-2 py-1">EMPLOYMENT DESK</span>
                <span className="border border-white/10 px-2 py-1">CITY ACCESS</span>
              </div>
@@ -616,7 +612,7 @@ export default function TowerDirectory() {
       {onboardingLocked && onboardingStep === "briefing" && (
         <div className="fixed inset-0 z-[970] grid place-items-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Open Tower access">
           <div className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto border border-cyan-200/40 bg-[#07111b] p-4 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
-            <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">CLAW PRIME · RECEPTION</p>
+            <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">RECEPTION</p>
             <h2 className="mt-2 text-xl font-black tracking-[.12em] text-white sm:text-2xl">TOWER ACCESS OPEN</h2>
             <p className="mt-2 text-xs leading-5 text-zinc-400">Your check-in is complete. The building is the interface now: walk to the elevator, stairs, doors, desks, terminals, and vending machines to use what you need.</p>
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -658,7 +654,7 @@ export default function TowerDirectory() {
               <span className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10"><UserRound className="h-6 w-6 text-cyan-100" /></span>
               <div>
                 <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">SHADOW TOWER RECEPTION</p>
-                <h2 className="text-lg font-black tracking-[.08em] text-white">CLAW PRIME · FRONT DESK</h2>
+                <h2 className="text-lg font-black tracking-[.08em] text-white">FRONT DESK</h2>
               </div>
             </div>
             {onboardingLocked ? (
@@ -667,7 +663,7 @@ export default function TowerDirectory() {
                   I run the lobby. I just need your name, your work status, and where you want to begin. This is a short check-in before the tower opens.
                 </p>
                 <div className="mt-3 border border-violet-300/20 bg-violet-300/5 px-3 py-2 text-[10px] leading-5 text-violet-100">
-                  MILA · UPPER-FLOOR LIAISON &nbsp;·&nbsp; FINANCE TRACKER · UNEMPLOYMENT &amp; PAYROLL FILINGS
+                  SHORT CHECK-IN · BUILDING ACCESS
                 </div>
                 <div className="mt-4 space-y-2 text-xs text-zinc-400">
                   <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-300" /> Follow the active task marker.</p>

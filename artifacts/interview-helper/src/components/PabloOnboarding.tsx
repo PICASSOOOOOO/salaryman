@@ -96,9 +96,9 @@ export function shouldFileOnboardingRegistry(
 }
 
 const FACTIONS: { id: OnboardingAnswers['faction']; label: string; desc: string }[] = [
-  { id: 'suit',      label: 'SUITS',      desc: 'PABLO CORP card-carriers. Discounts at Corp shops, first dibs on contracts, and a personal handheld from day one. The city runs on you.' },
-  { id: 'nomad',     label: 'NOMADS',     desc: 'Wastelanders beyond the wall. Off the books, higher payouts on grey-market gigs — but Corp doesn\'t catch you when you fall, and you start with no handheld.' },
-  { id: 'replicant', label: 'REPLICANTS', desc: 'Synthetic. Optimized, deniable, always one bad scan from retirement. You don\'t eat — you charge. Pass as human, or don\'t.' },
+  { id: 'suit',      label: 'SUITS',      desc: 'Company jobs and city benefits.' },
+  { id: 'nomad',     label: 'NOMADS',     desc: 'Independent work and flexible routes.' },
+  { id: 'replicant', label: 'REPLICANTS', desc: 'Specialized work with higher risk.' },
 ];
 
 const JOB_CLASSES = [
@@ -153,6 +153,13 @@ interface PabloOnboardingProps {
   charClass: string;
   venue?: 'registry' | 'lobby';
   onComplete: (answers: OnboardingAnswers) => void;
+}
+
+export function getInitialOnboardingBizPath(
+  venue: PabloOnboardingProps['venue'],
+  savedPath: 'business' | 'unemployed' | null | undefined,
+): 'business' | 'unemployed' | '' {
+  return venue === 'lobby' ? 'business' : (savedPath ?? '');
 }
 
 const INDUSTRIES = [
@@ -219,7 +226,7 @@ function PaintedIntakeOffice() {
     }}>
       <img
         src={url}
-        alt="Pablo Corp office"
+        alt="Tower office"
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
       />
       {/* Bottom-up vignette so the cyan terminal text below reads cleanly. */}
@@ -436,9 +443,11 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
   const [contactEmail, setContactEmail] = useState(defaultEmail);
   // Pre-seed bizPath from the answer Pablo collected during the intro.
   const [bizPath, setBizPath] = useState<'business' | 'unemployed' | ''>(
-    () => (typeof window !== 'undefined' ? getSalarymanBizPath() ?? '' : '')
+    () => getInitialOnboardingBizPath(
+      venue,
+      typeof window !== 'undefined' ? getSalarymanBizPath() : null,
+    )
   );
-  const [businessType, setBusinessType] = useState<'minx' | 'real'>('minx');
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('SOFTWARE / SAAS');
   const [customIndustry, setCustomIndustry] = useState('');
@@ -734,7 +743,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
     const safeDeclaredSalary = parseNonNeg(declaredSalary);
     return {
       bizPath: isBusiness ? 'business' : 'unemployed',
-      businessType: isBusiness ? 'minx' : 'unemployed',
+       businessType: isBusiness ? 'minx' : 'unemployed',
       companyName: isBusiness
         ? normalizeOnboardingCompanyName(companyName)
         : '',
@@ -759,18 +768,18 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       locationConsent,
       coarseLocation: locationConsent ? coarseLocation : null,
     };
-  }, [bizPath, playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, businessType, companyName, officeTier, declaredSalary, employeeCount, employeeSalary, faction, gender, jobClass, appearance, homeCityId, locationConsent, coarseLocation]);
+  }, [bizPath, playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, companyName, officeTier, declaredSalary, employeeCount, employeeSalary, faction, gender, jobClass, appearance, homeCityId, locationConsent, coarseLocation]);
 
   const submit = useCallback(async () => {
     setSubmitErr('');
     const a = buildAnswers();
     if (isLoading || !isAuthenticated) {
-      setSubmitErr('Sign in before filing a registry entry.');
+      setSubmitErr('Sign in before saving your answers.');
       setStep('business');
       return;
     }
     if (!hasOnboardingCompanyName(a.bizPath, a.companyName)) {
-      setSubmitErr('Enter a company name before filing a business registry entry.');
+      setSubmitErr('Enter a company name to continue.');
       setStep('business');
       return;
     }
@@ -818,13 +827,13 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       // 409 = company name taken; surface it but stay on the business page.
       if (res.status === 409) {
         playError();
-        setSubmitErr('That company name is already on the registry. Pick another.');
+        setSubmitErr('That company name is taken. Pick another.');
         setStep('business');
         return;
       }
     } catch (e: any) {
       playError();
-      setSubmitErr(e?.message || 'Pablo Corp registry is unreachable. Try again.');
+      setSubmitErr(e?.message || 'Could not save your answers. Try again.');
       setStep('business');
       return;
     }
@@ -837,38 +846,10 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
     if (step === 'identity') {
       return playerName.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
     }
-    if (step === 'business') return isAuthenticated && !isLoading && hasOnboardingCompanyName(bizPath, companyName);
+    if (step === 'business') return hasOnboardingCompanyName(bizPath, companyName);
     if (step === 'estate') return !!officeTier && !!homeCityId;
     return true;
   };
-
-  // Pablo Q&A panel: lets the user ask Pablo a general question without
-  // breaking out of the modal.
-  const [pabloAsk, setPabloAsk] = useState('');
-  const [pabloReply, setPabloReply] = useState('');
-  const [pabloBusy, setPabloBusy] = useState(false);
-  const askPablo = useCallback(async () => {
-    const q = pabloAsk.trim();
-    if (!q || pabloBusy) return;
-    setPabloBusy(true);
-    setPabloReply('');
-    try {
-      const res = await apiFetch('/api/chat/pablo/command', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ transcript: q, history: [] }),
-      });
-      if (!res.ok) throw new Error(`Pablo ${res.status}`);
-      const data = (await res.json()) as { say?: string };
-      setPabloReply(data?.say || 'Pablo is busy. Try later.');
-      setPabloAsk('');
-    } catch (e: any) {
-      setPabloReply(`Pablo couldn't answer: ${e?.message || 'unknown error'}`);
-    } finally {
-      setPabloBusy(false);
-    }
-  }, [pabloAsk, pabloBusy]);
 
   const Field = ({ label, value, onChange, placeholder, type = 'text', readOnly = false }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; readOnly?: boolean }) => (
     <div style={{ marginTop: '.55rem' }}>
@@ -926,9 +907,9 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       }}>
         <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
-            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>{venue === 'lobby' ? 'SHADOW TOWER' : 'PABLO CORP'}</div>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>SHADOW TOWER</div>
             <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
-              {venue === 'lobby' ? 'RECEPTION CHECK-IN' : 'CITIZEN REGISTRY'} · STEP {stepIdx + 1}/{totalSteps}
+              ONBOARDING · STEP {stepIdx + 1}/{totalSteps}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
@@ -1049,16 +1030,15 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
               </div>
               <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.4rem' }}>
                 &gt; SIGNAL ACQUIRED.<br/>
-                &gt; PABLO CORP REGISTRY ONLINE.<br/>
+                &gt; ONBOARDING READY.<br/>
                 &gt; SUBJECT CLASS: <span style={{ color: '#38bdf8' }}>{charClass.toUpperCase()}</span>
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  Welcome to {chosenCity?.cityName ?? 'the city'}. Sit down — let's make it official.
+                  Welcome to {chosenCity?.cityName ?? 'the city'}. Let’s get started.
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.55rem', lineHeight: 1.85 }}>
-                  Three quick screens: who you are, your hustle, and your address. Then you walk
-                  the city. Change anything later from your profile.
+                  Answer a few questions, then continue.
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem', marginTop: '.7rem' }}>
                   {['① IDENTITY + LOOK', '② BUSINESS', '③ ADDRESS', '④ STEP OUTSIDE'].map(t => (
@@ -1071,9 +1051,9 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
 
           {step === 'identity' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Your arrival card.</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Your details.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Only the details needed to open your account. Change your look and profile later.
+                Add the details needed to continue.
               </div>
               {Field({ label: 'NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
               {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
@@ -1097,7 +1077,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
 
               {galleryOptions.length === 0 ? (
                 <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.08em', padding: '1.2rem .4rem', textAlign: 'center' }} data-testid="onboarding-template-loading">
-                  SCANNING THE CITIZEN REGISTRY…
+                  LOADING CHARACTER TEMPLATES…
                 </div>
               ) : (
                 <div
@@ -1233,9 +1213,9 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
 
           {false && step === 'business' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your lane, {playerName.split(' ')[0]}.</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Choose how to begin.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Business gets you an office, payroll, a team.
+                Choose a work path for now.
               </div>
 
               <button
@@ -1257,19 +1237,19 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                   ...VT, fontSize: '.5rem', letterSpacing: '.18em',
                   padding: '.18rem .55rem',
                 }}>
-                  ▸ RECOMMENDED
+                  ▸ START HERE
                 </div>
                 <div style={{ ...VT, fontSize: '1.25rem', color: '#fbbf24', letterSpacing: '.08em', lineHeight: 1.1 }}>
                   {bizPath === 'business' ? '▸ ' : ''}OPEN A BUSINESS
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(251,191,36,.85)', marginTop: '.35rem', letterSpacing: '.08em' }}>
-                  OFFICE · PAYROLL · TEAM · PHONE LINES
+                  COMPANY · WORK · OFFICE
                 </div>
               </button>
 
               <div style={{ marginTop: '.65rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
                 <div style={{ flex: 1, height: 1, background: 'rgba(56,189,248,.12)' }} />
-                <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.18em' }}>OR — THE HARD WAY</div>
+                <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.18em' }}>OR CHOOSE WORK</div>
                 <div style={{ flex: 1, height: 1, background: 'rgba(56,189,248,.12)' }} />
               </div>
               <button
@@ -1284,33 +1264,17 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                 }}
               >
                 <div style={{ ...VT, fontSize: '.72rem', color: bizPath === 'unemployed' ? '#38bdf8' : 'rgba(56,189,248,.42)', letterSpacing: '.08em' }}>
-                  {bizPath === 'unemployed' ? '▸ ' : ''}STAY UNEMPLOYED
+                  {bizPath === 'unemployed' ? '▸ ' : ''}FIND WORK
                 </div>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.2rem', lineHeight: 1.55 }}>
-                  No office, no payroll, no team. Register later — but lose the sign-up bonuses.
+                  Start without a company.
                 </div>
               </button>
 
               {/* Business detail block — only when the business lane is picked. */}
               {bizPath === 'business' && (
                 <div>
-                  <SectionLabel>THE BUSINESS</SectionLabel>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
-                    {[
-                      { id: 'minx' as const, label: 'FICTITIOUS', desc: 'In-game cover. Free.' },
-                      { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Tied to your IRL company. Org created.' },
-                    ].map(opt => (
-                      <button key={opt.id} onClick={() => setBusinessType(opt.id)} style={{
-                        background: businessType === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                        border: businessType === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                        padding: '.5rem .6rem', cursor: 'pointer', textAlign: 'left',
-                      }}>
-                        <div style={{ ...VT, fontSize: '.92rem', color: businessType === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>{opt.label}</div>
-                        <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.15rem', lineHeight: 1.5 }}>{opt.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-
+                  <SectionLabel>BUSINESS DETAILS</SectionLabel>
                   {Field({ label: 'COMPANY NAME', value: companyName, onChange: setCompanyName, placeholder: 'e.g. MINX HOLDINGS LLC' })}
 
                   <div style={{ marginTop: '.55rem' }}>
@@ -1330,7 +1294,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                   {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, FINTECH…' })}
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
-                    <SectionLabel>ALLEGIANCE</SectionLabel>
+                    <SectionLabel>CHOOSE A GROUP</SectionLabel>
                     <button
                       type="button"
                       onClick={() => setShowFactionInfo(v => !v)}
@@ -1341,11 +1305,11 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                         color: 'rgba(56,189,248,.7)', padding: '.15rem .4rem', borderRadius: 2, whiteSpace: 'nowrap',
                       }}
                     >
-                      {showFactionInfo ? '× CLOSE' : '? WHAT IS THIS'}
+                        {showFactionInfo ? '× CLOSE' : '? DETAILS'}
                     </button>
                   </div>
                   <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.03em', lineHeight: 1.55, marginTop: '.2rem' }}>
-                    Your allegiance is the side of the city you answer to. It shapes how Pablo Corp treats you, where you're welcome, and how you earn — you can't switch it casually later, so pick the life you want.
+                    This choice shapes your work and access.
                   </div>
                   {showFactionInfo && (
                     <div
@@ -1356,9 +1320,9 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                         background: 'rgba(56,189,248,.04)', borderRadius: 2,
                       }}
                     >
-                      <div><span style={{ color: '#38bdf8' }}>SUITS</span> — inside the system. Corp perks, contracts, and a handheld, in exchange for playing by Pablo Corp's rules.</div>
-                      <div style={{ marginTop: '.3rem' }}><span style={{ color: '#38bdf8' }}>NOMADS</span> — outside the wall. Bigger grey-market payouts and total freedom, but no Corp safety net and no handheld to start.</div>
-                      <div style={{ marginTop: '.3rem' }}><span style={{ color: '#38bdf8' }}>REPLICANTS</span> — synthetic. You pass as human and run lean, but a bad scan can mean retirement. High risk, high deniability.</div>
+                      <div><span style={{ color: '#38bdf8' }}>SUITS</span> — company work and city benefits.</div>
+                      <div style={{ marginTop: '.3rem' }}><span style={{ color: '#38bdf8' }}>NOMADS</span> — independent work and flexible routes.</div>
+                      <div style={{ marginTop: '.3rem' }}><span style={{ color: '#38bdf8' }}>REPLICANTS</span> — specialized work with higher risk.</div>
                     </div>
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.3rem' }}>
@@ -1376,9 +1340,9 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                     ))}
                   </div>
 
-                  <SectionLabel>WHAT YOU DO FOR MONEY</SectionLabel>
+                  <SectionLabel>YOUR WORK</SectionLabel>
                   <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginTop: '.15rem', marginBottom: '.35rem' }}>
-                    CITY ARCHETYPES
+                    WORK STYLE
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
                     {JOB_CLASSES.map(jc => (
@@ -1393,7 +1357,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                     ))}
                   </div>
                   <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginTop: '.7rem', marginBottom: '.35rem' }}>
-                    REAL-WORLD INDUSTRIES — unlocks labor market posting
+                    INDUSTRY
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.3rem' }}>
                     {Object.entries(REAL_WORLD_INDUSTRIES).map(([key, meta]) => (
@@ -1463,11 +1427,6 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                   unemployed; take-home for owners). */}
               <SectionLabel>{bizPath === 'unemployed' ? 'GIG INCOME' : 'YOUR TAKE-HOME'}</SectionLabel>
               {bizPath === 'unemployed' && <EconomyKey style={{ marginTop: '.3rem' }} />}
-              {bizPath === 'business' && businessType === 'real' && (
-                <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.3rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
-                  WORK VISA PENDING — Until your income is verified, PABLO CORP treats you as legally unemployed: no passive FIAT is issued. Earn through settled work, services, sales, or sponsored activity. Once an org owner attests your figure on the registry — or you connect a payroll provider (Gusto/ADP) — your verified take-home can begin accruing.
-                </div>
-              )}
               <div style={{ marginTop: '.3rem' }}>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>DECLARED MONTHLY INCOME (ƒ)</div>
                 <input
@@ -1595,7 +1554,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                           DUE ON ARRIVAL: ƒ{tier.price.toLocaleString()}
                         </div>
                         <div style={{ ...ST, fontSize: '.41rem', color: 'rgba(125,211,252,.45)', marginTop: '.08rem', lineHeight: 1.5 }}>
-                          Charged to your Pablo Corp account on arrival
+                          Charged to your account on arrival
                         </div>
                       </div>
                       {inDebt && (
@@ -1610,7 +1569,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                     </div>
                     {inDebt && (
                       <div style={{ ...ST, fontSize: '.41rem', color: 'rgba(239,68,68,.6)', marginTop: '.28rem', lineHeight: 1.5 }}>
-                        You'll arrive in the negative. Pablo Corp carries the balance — for a fee.
+                        You'll arrive in the negative. The balance carries a fee.
                       </div>
                     )}
                   </div>
@@ -1630,7 +1589,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
                   style={{ marginTop: '.15rem', accentColor: '#38bdf8' }}
                 />
                 <span style={{ ...ST, fontSize: '.48rem', lineHeight: 1.7, color: 'rgba(125,211,252,.6)', letterSpacing: '.06em' }}>
-                  Let PABLO CORP remember my <b style={{ color: '#7dd3fc' }}>approximate (country-level)</b> location to improve
+                  Let us remember my <b style={{ color: '#7dd3fc' }}>approximate (country-level)</b> location to improve
                   error reports &amp; research. Optional. Nothing finer than country is ever stored.
                 </span>
               </label>
@@ -1639,74 +1598,30 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
 
           {step === 'submitting' && (
             <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2 }}>
-              &gt; FILING WITH PABLO CORP REGISTRY...<br/>
-              &gt; CROSS-CHECKING ACCOUNT PROFILE...<br/>
-              &gt; ALLOCATING WORKSTATION...
+              &gt; SAVING YOUR ANSWERS...<br/>
+              &gt; CHECKING YOUR ACCOUNT...<br/>
+              &gt; PREPARING YOUR START...
             </div>
           )}
 
           {step === 'done' && (
             <div>
               <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2 }}>
-                &gt; REGISTRY UPDATED.<br/>
+                &gt; ANSWERS SAVED.<br/>
                 &gt; {salarymanTerm(gender, 'upper')}: <span style={{ color: '#38bdf8' }}>{playerName}</span><br/>
-                &gt; STATUS: <span style={{ color: '#38bdf8' }}>{bizPath === 'business' ? `${businessType.toUpperCase()} — ${companyName.toUpperCase()}` : 'UNEMPLOYED'}</span>
+                &gt; STATUS: <span style={{ color: '#38bdf8' }}>{bizPath === 'business' ? `BUSINESS — ${companyName.toUpperCase()}` : 'WORK'}</span>
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  You're on the books. Step outside.
+                  You're ready. Continue outside.
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.5rem', lineHeight: 1.85 }}>
-                  Hit [P] anytime to call me back. Don't go above Floor 39 unless you want to learn what I am when I'm not being polite.
+                  Your profile can be updated later.
                 </div>
               </div>
             </div>
           )}
         </div>
-
-        {/* Inline Pablo Q&A — lets the user ask a general question without
-            ditching the modal. Hidden on the submitting/done steps. */}
-        {step !== 'submitting' && step !== 'done' && (
-          <div style={{ padding: '.45rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', flexShrink: 0, background: 'rgba(56,189,248,.025)' }}>
-            <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.14em', marginBottom: '.3rem' }}>ASK PABLO ANYTHING</div>
-            <div style={{ display: 'flex', gap: '.35rem' }}>
-              <input
-                type="text"
-                value={pabloAsk}
-                onChange={(e) => setPabloAsk(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); askPablo(); } }}
-                placeholder={pabloBusy ? 'Pablo is thinking…' : 'e.g. what\'s a faction? do I need a real company?'}
-                data-testid="onboarding-pablo-ask-input"
-                disabled={pabloBusy}
-                style={{
-                  flex: 1, boxSizing: 'border-box', padding: '.35rem .55rem',
-                  background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.25)',
-                  color: '#38bdf8', ...ST, fontSize: '.6rem', letterSpacing: '.04em',
-                  outline: 'none', caretColor: '#38bdf8',
-                }}
-              />
-              <button
-                type="button"
-                onClick={askPablo}
-                disabled={pabloBusy || !pabloAsk.trim()}
-                data-testid="onboarding-pablo-ask-submit"
-                style={{
-                  ...VT, fontSize: '.85rem', letterSpacing: '.08em',
-                  padding: '.25rem .65rem',
-                  background: pabloBusy || !pabloAsk.trim() ? 'rgba(56,189,248,.04)' : 'rgba(56,189,248,.12)',
-                  border: '1px solid rgba(56,189,248,.4)',
-                  color: pabloBusy || !pabloAsk.trim() ? 'rgba(56,189,248,.3)' : '#38bdf8',
-                  cursor: pabloBusy || !pabloAsk.trim() ? 'not-allowed' : 'pointer',
-                }}
-              >ASK ▸</button>
-            </div>
-            {pabloReply && (
-              <div data-testid="onboarding-pablo-reply" style={{ marginTop: '.4rem', padding: '.4rem .55rem', border: '1px solid rgba(56,189,248,.2)', background: 'rgba(0,5,8,.6)', ...ST, fontSize: '.55rem', color: 'rgba(125,211,252,.85)', letterSpacing: '.04em', lineHeight: 1.6, maxHeight: 120, overflow: 'auto' }}>
-                {pabloReply}
-              </div>
-            )}
-          </div>
-        )}
 
         <div style={{ padding: '.5rem .85rem', paddingBottom: 'calc(.5rem + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid rgba(56,189,248,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           {stepIdx > 0 && step !== 'submitting' && step !== 'done' ? (
@@ -1721,7 +1636,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
             </button>
           ) : (
             <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
-              PABLO CORP REGISTRY
+              ONBOARDING
             </div>
           )}
           {step === 'submitting' ? (
@@ -1735,7 +1650,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
               color: '#38bdf8', cursor: 'pointer',
               animation: 'pulse-save 1.5s ease-in-out infinite',
             }}>
-              ▸ STEP OUTSIDE ◂
+              CONTINUE TO THE TOWER
             </button>
           ) : step === 'business' || step === 'estate' ? (
             <button onClick={submit} disabled={!canAdvance()} data-testid="onboarding-submit" style={{
@@ -1746,7 +1661,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
               color: canAdvance() ? '#38bdf8' : 'rgba(56,189,248,.2)',
               cursor: canAdvance() ? 'pointer' : 'not-allowed',
             }}>
-              ▸ FILE WITH PABLO ◂
+              SAVE YOUR ANSWERS AND FINISH
             </button>
           ) : (
             <button onClick={advance} disabled={!canAdvance()} data-testid="onboarding-next" style={{
