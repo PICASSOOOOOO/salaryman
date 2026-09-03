@@ -1678,5 +1678,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.20.2.2111",
+    "date": "2026-09-03",
+    "commitHash": "58645078f756b63acc0bdb1df5fa97d023e57828",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
