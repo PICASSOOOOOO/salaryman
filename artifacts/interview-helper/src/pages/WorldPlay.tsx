@@ -23405,42 +23405,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         )}
         </div>
-        {showTranslatorOverlay && (
-          <div style={{ width: 260, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(236,72,153,.35)', padding: '.5rem' }}>
-            <div style={{ fontFamily: "var(--font-sans)", fontSize: '.9rem', color: '#ec4899', letterSpacing: '.12em', marginBottom: '.4rem' }}>{PABLO_PRODUCTS.TRANSLATOR.short}</div>
-            <div style={{ display: 'flex', gap: 4, marginBottom: '.3rem' }}>
-              <select value={translatorFrom} onChange={e => { setTranslatorFrom(e.target.value); localStorage.setItem('sm_xlat_from', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "var(--font-sans)", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
-                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
-                  <option key={code} value={code}>{name}</option>
-                ))}
-              </select>
-              <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); localStorage.setItem('sm_xlat_from', translatorTo); localStorage.setItem('sm_xlat_to', translatorFrom); }} style={{ padding: '.2rem .4rem', background: 'rgba(236,72,153,.07)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.75rem' }}>⇄</button>
-              <select value={translatorTo} onChange={e => { setTranslatorTo(e.target.value); localStorage.setItem('sm_xlat_to', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "var(--font-sans)", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
-                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
-                  <option key={code} value={code}>{name}</option>
-                ))}
-              </select>
-            </div>
-            <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type text to translate..."
-              style={{ width: '100%', minHeight: 40, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "var(--font-sans)", fontSize: '.5rem', padding: '.3rem', outline: 'none', resize: 'vertical', caretColor: '#ec4899', marginBottom: '.3rem' }} />
-            <button onClick={async () => {
-              if (!translatorText.trim()) return;
-              setTranslatorResult('Translating...');
-              try {
-                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(translatorText)}&langpair=${translatorFrom}|${translatorTo}`);
-                const data = await res.json();
-                setTranslatorResult(data.responseData?.translatedText ?? 'Translation unavailable.');
-              } catch { setTranslatorResult('Translation service unavailable.'); }
-            }} style={{ width: '100%', padding: '.25rem', background: 'rgba(236,72,153,.1)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '.8rem', letterSpacing: '.08em', marginBottom: '.3rem' }}>
-              TRANSLATE ▶
-            </button>
-            {translatorResult && (
-              <div style={{ background: 'rgba(236,72,153,.05)', border: '1px solid rgba(236,72,153,.15)', padding: '.3rem', fontFamily: "var(--font-sans)", fontSize: '.5rem', color: 'rgba(236,72,153,.8)', lineHeight: 1.5, wordBreak: 'break-word' }}>
-                {translatorResult}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* BOTTOM-CENTER — controls hint (compact) */}
@@ -23846,6 +23810,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ padding: '.35rem .55rem', borderBottom: `1px solid ${dmTarget ? 'rgba(100,200,255,.2)' : 'rgba(56,189,248,.15)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: "var(--font-sans)", fontSize: '.85rem', color: dmTarget ? '#66ccff' : '#38bdf8', letterSpacing: '.1em' }}>{dmTarget ? `PRIVATE MSG → ${dmTarget.name}` : 'WORLD CHAT'}</span>
             <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
+              {!dmTarget && (
+                <button
+                  onClick={() => setConversationTranslation(!translationConversationRef.current)}
+                  title="Translate incoming world and proximity speech"
+                  style={{ fontSize: '.44rem', color: translationConversationEnabled ? '#86efac' : 'rgba(56,189,248,.6)', border: `1px solid ${translationConversationEnabled ? 'rgba(34,197,94,.45)' : 'rgba(56,189,248,.25)'}`, background: translationConversationEnabled ? 'rgba(34,197,94,.1)' : 'transparent', cursor: 'pointer', padding: '2px 6px', letterSpacing: '.05em' }}
+                >
+                  {translationConversationEnabled ? 'LANG ON' : 'LANG OFF'}
+                </button>
+              )}
               <button onClick={() => setShowDmPicker(!showDmPicker)} style={{ fontSize: '.44rem', color: 'rgba(100,200,255,.6)', border: '1px solid rgba(100,200,255,.25)', background: showDmPicker ? 'rgba(100,200,255,.1)' : 'transparent', cursor: 'pointer', padding: '2px 6px', letterSpacing: '.05em' }}>PRIVATE MSG</button>
               {dmTarget && <button onClick={() => setDmTarget(null)} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>× DM</button>}
               <button onClick={() => { setChatOpen(false); chatOpenRef.current = false; setShowDmPicker(false); }} style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
@@ -23872,6 +23845,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               : chatMsgs.slice(-40).map(m => (
                 <div key={m.id} style={{ fontSize: '.63rem', lineHeight: 1.5, color: m.from === 'SERVER' ? 'rgba(56,189,248,.28)' : m.dm ? 'rgba(100,200,255,.75)' : 'rgba(56,189,248,.65)', paddingLeft: m.dm ? '.3rem' : 0, borderLeft: m.dm ? '2px solid rgba(100,200,255,.25)' : 'none' }}>
                   <span style={{ color: m.dm ? 'rgba(100,200,255,.5)' : 'rgba(56,189,248,.38)', fontFamily: "var(--font-sans)", fontSize: '.72rem' }}>{m.dm ? '[PM] ' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
+                  {!m.dm && m.translationPending && <span style={{ color: 'rgba(134,239,172,.45)', fontSize: '.5rem' }}> · translating…</span>}
+                  {!m.dm && m.translated && <div style={{ marginLeft: '2.9rem', color: '#86efac', fontSize: '.58rem', lineHeight: 1.4 }}>↳ {m.translated}</div>}
                 </div>
               ))
             }

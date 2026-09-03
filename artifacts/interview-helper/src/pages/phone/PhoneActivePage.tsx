@@ -14,6 +14,7 @@ import {
   type ActiveCall } from '@/lib/phone-utils';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import { getTranslationLanguage, getTranslationPreferences, translateFreeText } from '@/lib/translate';
 
 const SESSION_KEY = 'phone_dialing_session';
 
@@ -94,11 +95,35 @@ export default function PhoneActivePage() {
   const [advancingNext, setAdvancingNext] = useState(false);
   const [expandedCall, setExpandedCall] = useState<string | null>(null);
   const connectedConferenceRef = useRef<string | null>(null);
+  const [phoneTranslationEnabled, setPhoneTranslationEnabled] = useState(() => {
+    try { return localStorage.getItem('sm_translation_conversation') === '1'; } catch { return false; }
+  });
+  const [translatedTranscripts, setTranslatedTranscripts] = useState<Record<string, string>>({});
+  const translatedTranscriptRequests = useRef(new Map<string, string>());
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
+
+  // Translation observes the existing live transcript only. It never touches
+  // the Twilio media stream or call-control lifecycle.
+  useEffect(() => {
+    if (!phoneTranslationEnabled) return;
+    const { source, target } = getTranslationPreferences();
+    for (const call of activeCalls) {
+      const text = call.liveTranscript?.trim();
+      if (!text || source === target) continue;
+      const requestKey = `${call.callSid}:${source}:${target}:${text}`;
+      if (translatedTranscriptRequests.current.get(call.callSid) === requestKey) continue;
+      translatedTranscriptRequests.current.set(call.callSid, requestKey);
+      void translateFreeText(text, source, target)
+        .then(translated => setTranslatedTranscripts(prev => ({ ...prev, [call.callSid]: translated })))
+        .catch(() => {
+          translatedTranscriptRequests.current.delete(call.callSid);
+        });
+    }
+  }, [activeCalls, phoneTranslationEnabled]);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -502,7 +527,17 @@ export default function PhoneActivePage() {
                               <span style={{ fontSize: '0.4rem', color: slate(0.55), letterSpacing: '0.15em' }}>LIVE TRANSCRIPT</span>
                               {isLive && <div style={{ width: 5, height: 5, borderRadius: '50%', background: slate(0.6), animation: 'pulse 1.5s infinite' }} />}
                             </div>
-                            <span style={{ fontSize: '0.35rem', color: slate(0.55) }}>AUTO-CAPTURE</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <button
+                                type="button"
+                                onClick={() => setPhoneTranslationEnabled(enabled => !enabled)}
+                                title="Translate the live transcript without changing the call audio"
+                                style={{ padding: '2px 5px', background: phoneTranslationEnabled ? 'rgba(34,197,94,.12)' : 'transparent', border: `1px solid ${phoneTranslationEnabled ? 'rgba(34,197,94,.45)' : slate(0.18)}`, color: phoneTranslationEnabled ? '#86efac' : slate(0.45), cursor: 'pointer', fontSize: '0.33rem', letterSpacing: '0.08em' }}
+                              >
+                                {phoneTranslationEnabled ? 'LANG ON' : 'LANG OFF'}
+                              </button>
+                              <span style={{ fontSize: '0.35rem', color: slate(0.55) }}>AUTO-CAPTURE</span>
+                            </div>
                           </div>
                           <div style={{
                             padding: '10px 12px', minHeight: 60, maxHeight: 150, overflowY: 'auto',
@@ -516,6 +551,14 @@ export default function PhoneActivePage() {
                                   ? <><PhoneIncoming size={10} style={{ marginRight: 4 }} /> Connecting...</>
                                   : 'No transcript available'
                             }
+                            {phoneTranslationEnabled && c.liveTranscript && translatedTranscripts[c.callSid] && (
+                              <div style={{ marginTop: 8, paddingTop: 7, borderTop: `1px solid ${slate(0.1)}`, color: '#86efac' }}>
+                                <div style={{ fontSize: '0.35rem', color: '#86efac', letterSpacing: '0.12em', marginBottom: 3 }}>
+                                  TRANSLATED · {getTranslationLanguage(getTranslationPreferences().target).nativeName.toUpperCase()}
+                                </div>
+                                {translatedTranscripts[c.callSid]}
+                              </div>
+                            )}
                           </div>
                         </div>
 

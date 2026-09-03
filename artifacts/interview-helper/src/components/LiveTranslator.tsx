@@ -9,7 +9,7 @@ import {
 
 interface SpeechRecognitionResultEventLike {
   resultIndex: number;
-  results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }>>;
+  results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }>;
 }
 
 interface SpeechRecognitionLike {
