@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLASSIC_ARCADE_GAME_IDS, REC_GAME_IDS, REC_GAMES, REC_ITEMS, isClassicArcadeGameId, normalizeRecState, settleRecGame,
+  CLASSIC_ARCADE_GAME_IDS, CLASSIC_ARCADE_PRICES, REC_GAME_IDS, REC_GAMES, REC_ITEMS, isClassicArcadeGameId, normalizeRecState, settleRecGame,
 } from "../lib/recreation";
 
 describe("REC authoritative rules", () => {
@@ -8,6 +8,16 @@ describe("REC authoritative rules", () => {
     expect(CLASSIC_ARCADE_GAME_IDS).toEqual(["cyber_serpent", "void_invaders", "barrel_runner", "neon_breaker"]);
     for (const id of CLASSIC_ARCADE_GAME_IDS) expect(isClassicArcadeGameId(id)).toBe(true);
     expect(isClassicArcadeGameId("pacman")).toBe(false);
+    expect(CLASSIC_ARCADE_PRICES).toEqual({
+      cyber_serpent: 10,
+      void_invaders: 25,
+      barrel_runner: 50,
+      neon_breaker: 100,
+    });
+    for (const price of Object.values(CLASSIC_ARCADE_PRICES)) {
+      expect(price).toBeGreaterThanOrEqual(10);
+      expect(price).toBeLessThanOrEqual(100);
+    }
   });
 
   it("defines all seven playable stations with positive stamina costs", () => {

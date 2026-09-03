@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface ArcadeGameProps {
   gameId: string;
-  priceFiat: number;
+  priceFiat?: number;
   onExit: () => void;
   onDeductFiat: () => boolean | Promise<boolean>;
   salary: number;
@@ -31,6 +31,7 @@ export default function ArcadeGame({ gameId, priceFiat, onExit, onDeductFiat, sa
   const [isStarting, setIsStarting] = useState(false);
 
   const game = GAME_LIST.find(g => g.id === gameId) ?? GAME_LIST[0];
+  const playPrice = priceFiat ?? game.priceFiat;
 
   const startGame = useCallback(async () => {
     if (startingRef.current) return;
@@ -93,7 +94,7 @@ export default function ArcadeGame({ gameId, priceFiat, onExit, onDeductFiat, sa
         ctx.fillStyle = 'rgba(255,255,255,.5)';
         ctx.fillText(game.desc, W / 2, 90);
         ctx.fillStyle = 'rgba(255,255,255,.3)';
-         ctx.fillText(`COST: ƒ${priceFiat}  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 120);
+         ctx.fillText(`COST: ƒ${playPrice}  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 120);
         const blink = Math.sin(frameRef.current * 0.08) > 0;
         if (blink) {
           ctx.fillStyle = game.color;
@@ -134,7 +135,7 @@ export default function ArcadeGame({ gameId, priceFiat, onExit, onDeductFiat, sa
         }
         ctx.fillStyle = 'rgba(255,255,255,.3)';
         ctx.font = '10px "Fira Code", monospace';
-         ctx.fillText(`INSERT ƒ${priceFiat} TO CONTINUE  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 155);
+         ctx.fillText(`INSERT ƒ${playPrice} TO CONTINUE  |  BALANCE: ƒ${salary.toLocaleString()}`, W / 2, 155);
         const blink = Math.sin(frameRef.current * 0.08) > 0;
         if (blink) {
           ctx.fillStyle = game.color;
@@ -160,7 +161,7 @@ export default function ArcadeGame({ gameId, priceFiat, onExit, onDeductFiat, sa
         />
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '10px 12px', background: '#0a0a0a' }}>
           <button type="button" onClick={() => void startGame()} disabled={isStarting} style={{ border: `1px solid ${game.color}`, color: game.color, background: 'transparent', padding: '8px 12px', font: 'bold 11px "Fira Code", monospace', cursor: isStarting ? 'wait' : 'pointer' }}>
-            {isStarting ? 'CHARGING…' : stateRef.current === 'gameover' ? `PLAY AGAIN · ƒ${priceFiat}` : `START · ƒ${priceFiat}`}
+            {isStarting ? 'CHARGING…' : stateRef.current === 'gameover' ? `PLAY AGAIN · ƒ${playPrice}` : `START · ƒ${playPrice}`}
           </button>
           <button type="button" onClick={onExit} style={{ border: '1px solid rgba(255,255,255,.25)', color: 'rgba(255,255,255,.7)', background: 'transparent', padding: '8px 12px', font: '11px "Fira Code", monospace', cursor: 'pointer' }}>
             EXIT
