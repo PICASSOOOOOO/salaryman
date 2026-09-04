@@ -280,11 +280,36 @@ export const TOWER_RESIDENTS: readonly TowerResident[] = [
   },
 ];
 
-export type TowerAmbientOccupant = Pick<TowerResident, "id" | "name" | "col" | "row" | "color" | "path" | "speed">;
+export type TowerAmbientOccupant = Pick<TowerResident, "id" | "name" | "col" | "row" | "color" | "path" | "speed" | "role" | "errands"> & {
+  /** Optional shipped named-art asset; IsoOffice keeps a procedural fallback. */
+  artSrc?: string;
+  /** The concrete task currently visible on the resident's route. */
+  workLabel: string;
+};
+
+function ambientArtSrc(id: number): string | undefined {
+  return id === 501 ? "tower-art/character-claw-prime.png" : undefined;
+}
+
+function projectAmbientResident(resident: TowerResident): TowerAmbientOccupant {
+  return {
+    id: resident.id,
+    name: resident.name,
+    col: resident.col,
+    row: resident.row,
+    color: resident.color,
+    path: resident.path,
+    speed: resident.speed,
+    role: resident.role,
+    errands: resident.errands,
+    workLabel: resident.errands[0] ?? resident.role,
+    artSrc: ambientArtSrc(resident.id),
+  };
+}
 
 export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupant[] {
   if (typeof floor === "number" && floor >= 5) {
-    return getShadowTowerCommercialTenants(floor).map(({ resident }) => ({
+    return getShadowTowerCommercialTenants(floor).map(({ resident, business }) => ({
       id: resident.id,
       name: resident.name,
       col: resident.col,
@@ -292,11 +317,15 @@ export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupan
       color: resident.color,
       path: resident.path,
       speed: resident.speed,
+      role: resident.role,
+      errands: [business.service],
+      workLabel: business.service,
+      artSrc: ambientArtSrc(resident.id),
     }));
   }
-  return TOWER_RESIDENTS.filter((resident) => resident.floor === floor || resident.serviceFloors?.includes(floor)).map(({ id, name, col, row, color, path, speed }) => ({
-    id, name, col, row, color, path, speed,
-  }));
+  return TOWER_RESIDENTS
+    .filter((resident) => resident.floor === floor || resident.serviceFloors?.includes(floor))
+    .map(projectAmbientResident);
 }
 
 export const TOWER_GOSSIP = [

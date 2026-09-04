@@ -126,7 +126,7 @@ describe("hydrateOnboardingStatus", () => {
     const { hydrateOnboardingStatus } = await loadModule();
     await Promise.all([hydrateOnboardingStatus(), hydrateOnboardingStatus()]);
 
-    expect(apiFetch).toHaveBeenCalledTimes(2);
+    expect(apiFetch).toHaveBeenCalledTimes(3);
   });
 
   it("is a no-op once already resolved", async () => {
@@ -136,7 +136,7 @@ describe("hydrateOnboardingStatus", () => {
     await hydrateOnboardingStatus();
     await hydrateOnboardingStatus();
 
-    expect(apiFetch).toHaveBeenCalledTimes(2);
+    expect(apiFetch).toHaveBeenCalledTimes(3);
   });
 
   it("notifies subscribers when the status resolves", async () => {
@@ -150,5 +150,23 @@ describe("hydrateOnboardingStatus", () => {
 
     expect(cb).toHaveBeenCalled();
     unsub();
+  });
+
+  it("clears stale local onboarding when authenticated saves are successfully empty", async () => {
+    localStorage.setItem(TUTORIAL_KEY, "1");
+    localStorage.setItem("salaryman_building_onboarding_v1", "complete");
+    apiFetch.mockImplementation((path: string) => Promise.resolve(
+      path === "/api/salaryman/saves"
+        ? fakeResponse({ saves: [] })
+        : path === "/api/world/home-city"
+          ? fakeResponse({ homeCityId: "minx_city" })
+          : fakeResponse({ businesses: [] }),
+    ));
+
+    const { hydrateOnboardingStatus } = await loadModule();
+    await hydrateOnboardingStatus();
+
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBeNull();
+    expect(localStorage.getItem("salaryman_building_onboarding_v1")).toBeNull();
   });
 });

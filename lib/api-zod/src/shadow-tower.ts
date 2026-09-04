@@ -201,6 +201,35 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
   return plan;
 }
 
+/** Physical arrival hall. This is deliberately not the public computer
+ * mezzanine: reception, waiting, directory, and building operations live here
+ * without any workstation objects. */
+export function getLobbyPlan(city: ShadowTowerCity): ShadowTowerPlan {
+  const objects: ShadowTowerPlan["objects"] = [
+    { id: "lobby-elevator", kind: "elevator", footprint: rect(1, 1, 2, 2), interactive: true },
+    { id: "lobby-reception-wall", kind: "executive_room", footprint: rect(6, 1, 8, 2), interactive: false },
+    { id: "lobby-reception-desk", kind: "tenant_station", footprint: rect(8, 2, 3, 1), interactive: true },
+    { id: "lobby-waiting-wall", kind: "executive_room", footprint: rect(16, 1, 9, 2), interactive: false },
+    { id: "lobby-lounge", kind: "tenant_station", footprint: rect(17, 4, 5, 2), interactive: true },
+    { id: "lobby-mail-services", kind: "tenant_station", footprint: rect(3, 4, 2, 1), interactive: true },
+    { id: "lobby-directory", kind: "work_board", footprint: rect(5, 4, 4, 1), interactive: true },
+    { id: "lobby-radio", kind: "radio", footprint: rect(11, 4, 1, 1), interactive: true },
+    { id: "lobby-notice-board", kind: "tenant_station", footprint: rect(13, 4, 3, 1), interactive: true },
+    { id: "lobby-stairs", kind: "stairs", footprint: rect(26, 13, 2, 2), interactive: true },
+  ];
+  return {
+    floorType: "recreation",
+    city,
+    floorNumber: 1,
+    cols: 30,
+    rows: 18,
+    spawn: { x: 4, y: 10 },
+    upgrades: [],
+    objects,
+    collisionFootprints: objects.map((object) => object.footprint),
+  };
+}
+
 const REC_STATIONS = [
   ["arcade", 4, 4, 2, 2], ["pool", 9, 4, 3, 2], ["air-hockey", 15, 4, 3, 2],
   ["foosball", 4, 9, 3, 2], ["shuffleboard", 10, 9, 3, 2],

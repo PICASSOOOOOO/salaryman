@@ -1,6 +1,7 @@
 import { apiFetch } from "./api-client";
 import { CITY_DEFS, setActiveCityId } from "./city-defs";
-import { isTutorialDone, markTutorialDone } from "./tutorial-progress";
+import { resetBuildingOnboarding } from "./building-onboarding";
+import { isTutorialDone, markTutorialDone, resetTutorial } from "./tutorial-progress";
 
 // ── Server-authoritative onboarding-complete signal ──────────────────────────
 // "Has this user finished onboarding?" is normally tracked only in localStorage
@@ -85,9 +86,10 @@ export function hydrateOnboardingStatus(): Promise<void> {
 
   inFlight = (async () => {
     try {
-      const [businessResult, homeCityResult] = await Promise.allSettled([
+      const [businessResult, homeCityResult, savesResult] = await Promise.allSettled([
         apiFetch("/api/world/my-business"),
         apiFetch("/api/world/home-city"),
+        apiFetch("/api/salaryman/saves"),
       ]);
       if (businessResult.status === "fulfilled" && businessResult.value.ok) {
         const data = (await businessResult.value.json()) as { businesses?: unknown };
@@ -100,6 +102,15 @@ export function hydrateOnboardingStatus(): Promise<void> {
       if (homeCityResult.status === "fulfilled" && homeCityResult.value.ok) {
         const data = (await homeCityResult.value.json()) as { homeCityId?: unknown };
         applyServerHomeCity(data.homeCityId);
+      }
+      if (savesResult.status === "fulfilled" && savesResult.value.ok) {
+        const data = (await savesResult.value.json()) as { saves?: unknown };
+        if (Array.isArray(data.saves) && data.saves.length === 0) {
+          // A successful empty save list is the reset signal. Never clear local
+          // onboarding state on a network error or a non-OK response.
+          resetTutorial();
+          resetBuildingOnboarding();
+        }
       }
     } catch {
       // Offline / transient error — keep the local-only flow. A brand-new user

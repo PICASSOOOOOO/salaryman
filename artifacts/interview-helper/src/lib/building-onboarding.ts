@@ -33,6 +33,12 @@ export function startBuildingOnboarding() {
   writeStage("reception");
 }
 
+export function resetBuildingOnboarding() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: "not_started" }));
+}
+
 export function completeReceptionTask() {
   if (readStage() === "reception") writeStage("work");
 }

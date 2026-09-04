@@ -481,6 +481,11 @@ function AppShell() {
   // through intake. Anonymous visitors don't run that check, so this never
   // delays their bounce to /pablo.
   const onboardingPending = isAuthenticated && !onboardingResolved;
+  // Do not mount a protected game/office surface while the save-list check is
+  // still deciding whether this browser is stale after a development reset.
+  // Once an authenticated empty list is observed, hydration clears the local
+  // tutorial flag and this rerenders into the Tower reception redirect.
+  const holdForOnboarding = onboardingPending && isAuthenticated && !allowedForAuthedNew;
   const newUserBlocked = !isLoading && !onboardingPending && !tutorialDone && !isAllowedForNewUser;
   // Close the hydration window: while auth is still resolving, hold any path an
   // anonymous visitor may NOT see behind a loading screen instead of rendering
@@ -537,7 +542,7 @@ function AppShell() {
 
   // Hold protected paths behind a loading screen until auth resolves (see
   // holdForAuth above) so a logged-out deep link can never flash the page.
-  if (holdForAuth) return <LoadingFallback />;
+  if (holdForAuth || holdForOnboarding) return <LoadingFallback />;
   // Do not mount a protected route for even one frame while the effect above
   // updates browser history. Mounting it can start authenticated API requests;
   // their expected 401 would otherwise win the race and send the visitor to

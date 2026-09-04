@@ -5,6 +5,7 @@ import {
   getActivePlayerTask,
   getBuildingOnboardingStage,
   getPlayerTasks,
+  resetBuildingOnboarding,
   startBuildingOnboarding,
   subscribeBuildingOnboarding,
 } from "./building-onboarding";
@@ -42,5 +43,17 @@ describe("building onboarding tasks", () => {
     unsubscribe();
     expect(listener).toHaveBeenNthCalledWith(1, "reception");
     expect(listener).toHaveBeenNthCalledWith(2, "work");
+  });
+
+  it("can clear stale local progress after a server-side fresh start", () => {
+    startBuildingOnboarding();
+    completeReceptionTask();
+    completeWorkArrivalTask();
+    expect(getBuildingOnboardingStage()).toBe("complete");
+
+    resetBuildingOnboarding();
+
+    expect(getBuildingOnboardingStage()).toBe("not_started");
+    expect(getActivePlayerTask()).toBeNull();
   });
 });

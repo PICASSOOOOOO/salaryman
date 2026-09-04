@@ -1,5 +1,6 @@
 import {
   getRecreationPlan,
+  getLobbyPlan,
   getMezzaninePlan,
   getRestFloorPlan,
   getSecurityPlan,
@@ -151,6 +152,18 @@ export function getRecreationOfficeLayout(city: ShadowTowerCity): OfficeProperty
 export function getPublicFloorOfficeLayout(city: ShadowTowerCity, floor: 2 | 3 | 4): OfficePropertyLayout {
   const plan = floor === 2 ? getMezzaninePlan(city) : floor === 3 ? getRestFloorPlan(city) : getSecurityPlan(city);
   return officePropertyLayoutFromPlan(plan, `${city}:public:${floor}`);
+}
+
+/** The arrival hall is a separate physical scene from the public computer
+ * mezzanine. It has no workstation or terminal objects, so reception cannot
+ * accidentally inherit a computer-cafe fit-out. */
+export function getLobbyOfficeLayout(city: ShadowTowerCity): OfficePropertyLayout {
+  const layout = officePropertyLayoutFromPlan(getLobbyPlan(city), `${city}:lobby`);
+  return {
+    ...layout,
+    label: "SHADOW TOWER · MAIN LOBBY",
+    representation: `${city.replace("_", " ").toUpperCase()} · ARRIVAL HALL`,
+  };
 }
 
 /** Compatibility keys resolve to an archetype, never legacy geometry. */

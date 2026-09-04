@@ -6,6 +6,7 @@ import { getShadowTowerCommercialTenants, quoteShadowTowerArea, SHADOW_TOWER_FLO
 import {
   completeReceptionTask,
   getBuildingOnboardingStage,
+  resetBuildingOnboarding,
   startBuildingOnboarding,
   subscribeBuildingOnboarding,
   type BuildingOnboardingStage,
@@ -18,7 +19,7 @@ import { getSalarymanName, markTutorialDone } from "@/lib/tutorial-progress";
 import { PabloOnboarding, type OnboardingAnswers } from "@/components/PabloOnboarding";
 import { persistTowerOnboardingState, type TowerOnboardingState } from "@/lib/tower-onboarding";
 import { IsoOffice } from "@/components/IsoOffice";
-import { getPublicFloorOfficeLayout } from "@/lib/office-property-layouts";
+import { getLobbyOfficeLayout } from "@/lib/office-property-layouts";
 import { getTowerAmbientOccupants } from "@/lib/tower-life";
 
 const occupiedFloors = new Map([
@@ -88,9 +89,10 @@ function TowerReceptionScene({
   }, []);
   const city = getActiveCityId() === "huda_city" ? "huda_city" : "minx_city";
   const layout = useMemo(() => {
-    const base = getPublicFloorOfficeLayout(city, 2);
+    const base = getLobbyOfficeLayout(city);
     return {
       ...base,
+      stations: base.stations.filter((station) => station.id !== "lobby-elevator"),
       propertyKey: `${city}:lobby`,
       label: "SHADOW TOWER · MAIN LOBBY",
       representation: "ARRIVAL HALL · ELEVATOR CORE",
@@ -171,7 +173,8 @@ export default function TowerDirectory() {
   const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "complete">("arrival");
   const [receptionDialogueStep, setReceptionDialogueStep] = useState(0);
   const [savingOnboarding, setSavingOnboarding] = useState(false);
-  const onboardingLocked = stage === "not_started" || stage === "reception";
+  const [reconcilingServerState, setReconcilingServerState] = useState(isAuthenticated);
+  const onboardingLocked = reconcilingServerState || stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
   const receptionDialogue = [
     "Good. You found the desk.",
@@ -185,6 +188,28 @@ export default function TowerDirectory() {
   }, []);
 
   useEffect(() => subscribeBuildingOnboarding(setStage), []);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setReconcilingServerState(false);
+      return;
+    }
+    let cancelled = false;
+    apiFetch("/api/salaryman/saves", { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = await response.json().catch(() => null);
+        if (cancelled) return;
+        if (Array.isArray(body?.saves) && body.saves.length === 0) {
+          resetBuildingOnboarding();
+          setStage("not_started");
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setReconcilingServerState(false);
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
   useEffect(() => {
     if (stage !== "not_started") return;
     startBuildingOnboarding();

@@ -27,6 +27,7 @@ import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, syncOwnedPro
 import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { useCityClock } from '@/components/CityClock';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
+import { getOfficeCameraScale } from '@/lib/office-camera';
 import { setMapContext } from '@/lib/map-context';
 import { startPendingHousingAssessmentRetry } from '@/lib/onboarding-housing';
 import {
@@ -742,19 +743,13 @@ export default function PabloOffice() {
   const FLOOR_W_TILES = officeLayout.cols;
   const FLOOR_H_TILES = floorRows;            // tier minimum, grown by the exec wing
   const officeScale = useMemo(() => {
-    if (surveillance) {
-      // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
-      // (phone) still shows the whole floor instead of overflowing and
-      // letting the camera clamp hide the edges. Floor at a tiny positive value.
-      const fitW = viewportW / (FLOOR_W_TILES * 16);
-      const fitH = viewportH / (FLOOR_H_TILES * 16);
-      return Math.max(0.2, Math.min(fitW, fitH));
-    }
-    // LIVE — zoomed-in "almost first person" camera locked on the player. Scale
-    // UP enough that the room fills the viewport height (no letterbox), but keep
-    // the minimum modest so small screens still reveal a useful slice of floor.
-    const fillH = viewportH / (FLOOR_H_TILES * 16);
-    return Math.max(2.4, fillH);
+    return getOfficeCameraScale({
+      surveillance,
+      viewportWidth: viewportW,
+      viewportHeight: viewportH,
+      floorWidthTiles: FLOOR_W_TILES,
+      floorHeightTiles: FLOOR_H_TILES,
+    });
   }, [surveillance, viewportW, viewportH]);
   // LIVE always follows the player (on touch too); surveillance parks on the
   // fixed overview. Tap-to-move still reaches off-screen stations: tap toward an

@@ -66,6 +66,11 @@ export interface OfficeAmbientOccupant {
   /** Optional looped route for staff who work the floor instead of standing still. */
   path?: readonly { col: number; row: number }[];
   speed?: number;
+  role?: string;
+  /** Concrete task shown above the resident while they follow their route. */
+  workLabel?: string;
+  /** Workspace-relative public art path, resolved against the artifact base URL. */
+  artSrc?: string;
 }
 // `colCount` / `rowCount` cap how many desk columns/rows are generated so the
 // furnished desk count scales with the owned property tier (capsule → suite).
@@ -1024,6 +1029,9 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
       name: occupant.name,
       status: 'active',
       teamColor: occupant.color,
+      workLabel: occupant.workLabel,
+      role: occupant.role,
+      artSrc: occupant.artSrc,
     }));
   }
 
@@ -1137,7 +1145,13 @@ function drawChair(ctx: CanvasRenderingContext2D, s: SceneCtx, c: number, r: num
   isoBox(ctx, s, c, r, 0.8, 0.2, 12, '#e0764a', '#b04a2c', '#cc5e38'); // back
 }
 
-function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: number, bot: PixelOfficeBot) {
+function drawBot(
+  ctx: CanvasRenderingContext2D,
+  s: SceneCtx,
+  tx: number,
+  ty: number,
+  bot: PixelOfficeBot & { workLabel?: string; role?: string; artSrc?: string },
+) {
   const { P } = s;
   const p = P(tx, ty);
   const u = Math.max(0.7, (s.T / TILE) * 0.5);
@@ -1164,6 +1178,24 @@ function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: num
   }
 
   const baseY = p.y + bob;
+  const namedArt = bot.artSrc
+    ? getMachineArt(`${import.meta.env.BASE_URL}${bot.artSrc.replace(/^\/+/, '')}`)
+    : null;
+  if (namedArt?.complete && namedArt.naturalWidth > 0) {
+    const artW = 24 * u;
+    const artH = artW * (namedArt.naturalHeight / namedArt.naturalWidth);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(namedArt, p.x - artW / 2, baseY - artH, artW, artH);
+    ctx.restore();
+    drawAmbientWorkBadge(ctx, s, p.x, baseY - artH, u, bot.workLabel);
+    ctx.fillStyle = active ? '#b9f5ff' : bot.teamColor ?? 'rgba(180,255,220,0.85)';
+    ctx.font = `700 ${Math.max(7, 4 * u)}px "Fira Code", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(bot.name.slice(0, 14).toUpperCase(), p.x, baseY + 7 * u);
+    ctx.textAlign = 'left';
+    return;
+  }
   const legY = baseY - 2 * u;
   const hipY = baseY - bodyH - 4 * u;
   const headR = 3.4 * u;
@@ -1216,6 +1248,33 @@ function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: num
   ctx.textAlign = 'center';
   ctx.fillText(bot.name.slice(0, 8).toUpperCase(), p.x, baseY + 7 * u);
   ctx.textAlign = 'left';
+  drawAmbientWorkBadge(ctx, s, p.x, headY, u, bot.workLabel);
+}
+
+function drawAmbientWorkBadge(
+  ctx: CanvasRenderingContext2D,
+  s: SceneCtx,
+  x: number,
+  y: number,
+  u: number,
+  workLabel?: string,
+) {
+  if (!workLabel) return;
+  const text = `WORK · ${workLabel.slice(0, 22).toUpperCase()}`;
+  ctx.save();
+  ctx.font = `700 ${Math.max(7, 3.1 * u)}px "Fira Code", monospace`;
+  ctx.textAlign = "center";
+  const width = Math.min(150 * u, Math.max(48 * u, ctx.measureText(text).width + 8 * u));
+  const height = Math.max(11 * u, 10);
+  ctx.fillStyle = "rgba(5, 18, 29, .9)";
+  rrect(ctx, x - width / 2, y - 12 * u, width, height, 2 * u);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(103, 232, 249, .72)";
+  ctx.lineWidth = Math.max(1, u * .45);
+  ctx.stroke();
+  ctx.fillStyle = "#a5f3fc";
+  ctx.fillText(text, x, y - 4 * u);
+  ctx.restore();
 }
 
 function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: number) {

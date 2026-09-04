@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SHADOW_TOWER_LISTINGS, getShadowTowerCommercialTenants, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
 import {
   findOfficeRoute, getOfficeBlockedTiles, getShadowTowerOfficeLayout,
-  officePropertyLayoutFromPlan, routeOfficePath, validateOfficePose,
+  getLobbyOfficeLayout, officePropertyLayoutFromPlan, routeOfficePath, validateOfficePose,
 } from "./office-property-layouts";
 import { getTowerAmbientOccupants } from "./tower-life";
 
@@ -72,6 +72,16 @@ describe("Shadow Tower office projection", () => {
       const path = routeOfficePath(layout, occupant.path ?? [{ col: occupant.col, row: occupant.row }]);
       for (const tile of path) expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false);
     }
+  });
+
+  it("keeps the arrival lobby free of computer furniture", () => {
+    const layout = getLobbyOfficeLayout("minx_city");
+    expect(layout.teamDesks).toEqual([]);
+    expect(layout.playerDesk).toBeUndefined();
+    expect(layout.plan.objects.some((object) => object.kind === "workstation" || object.kind === "terminal")).toBe(false);
+    expect(layout.stations.map((station) => station.id)).toEqual(expect.arrayContaining([
+      "lobby-reception-desk", "lobby-directory", "lobby-elevator",
+    ]));
   });
 
   it("routes every commercial resident to a reachable tenant station", () => {

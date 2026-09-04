@@ -31,6 +31,16 @@ describe("Tower Life operating catalog", () => {
     expect(floorThree).toContain("WARD 67");
   });
 
+  it("gives ambient residents a concrete productive routine and optional named art", () => {
+    const residents = getTowerAmbientOccupants("lobby");
+    expect(residents.length).toBeGreaterThan(0);
+    expect(residents.every((resident) => resident.workLabel.length > 0)).toBe(true);
+    expect(residents.find((resident) => resident.name === "CLAW PRIME")?.artSrc)
+      .toBe("tower-art/character-claw-prime.png");
+    expect(residents.find((resident) => resident.name === "FINANCE TRACKER")?.artSrc)
+      .toBeUndefined();
+  });
+
   it("projects only catalog-backed commercial residents onto occupied floors", () => {
     expect(getTowerAmbientOccupants(18).map((occupant) => occupant.name)).toEqual([
       "VALE PRIVATE MEDICINE OPERATOR",
