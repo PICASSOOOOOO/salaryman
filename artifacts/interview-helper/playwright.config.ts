@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const port = process.env.PORT ?? "3000";
-const baseURL = `http://localhost:${port}`;
+// Real-Clerk smoke runs may target a dedicated controlled environment rather
+// than the local workflow. Credentials are intentionally not part of config.
+const baseURL = process.env.TOWER_E2E_BASE_URL ?? `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
