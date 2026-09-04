@@ -19,6 +19,7 @@ import {
 } from "@workspace/db";
 import { eq, desc, and, inArray, sql, gte } from "drizzle-orm";
 import { getPabloTaxSnapshot, FIAT_PER_USD, GOLD_OZ_PER_USD } from "../lib/pablo-tax";
+import { ensureFiatAccounts } from "../lib/fiat-wallet";
 
 type SaveBlob = Record<string, unknown>;
 const num = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
@@ -42,6 +43,10 @@ const router = Router();
 router.get("/wallet/snapshot", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
+  // Snapshot is also a first-touch wallet read. This is important for the
+  // lobby: a new player must see the same seeded/admin balance before opening
+  // Banco Ombra or entering the city.
+  await db.transaction((tx) => ensureFiatAccounts(tx, userId));
 
   const [
     accounts,
@@ -247,6 +252,7 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
       quarantineFiat,
       earnedFiat,
     },
+    gold: saveGold,
     debt: led?.debt ?? 0,
     creditScore: led?.creditScore ?? 680,
     employment: {

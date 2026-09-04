@@ -1,0 +1,69 @@
+import asyncio
+import websockets
+import os
+import subprocess
+from http.server import SimpleHTTPRequestHandler, HTTPServer
+import threading
+
+# 1. Global storage for the latest image frame sent by Godot
+latest_frame = None
+
+async def handler(websocket):
+    global latest_frame
+    print("🚀 Replit Frontend Connected via WebSocket")
+    try:
+        async for message in websocket:
+            # Godot will stream raw binary jpeg/png data here
+            if isinstance(message, bytes):
+                latest_frame = message
+                # Broadcast the live frame to any connected browser UI
+                await websocket.send(latest_frame)
+    except websockets.ConnectionClosed:
+        print("❌ Connection closed")
+
+# 2. Start a simple web viewer interface
+def run_web_viewer():
+    class CustomHandler(SimpleHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/':
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                # Inline minimal UI to listen and display the image stream
+                html = """
+                <!DOCTYPE html>
+                <html>
+                <head><title>Godot Replit Viewer</title></head>
+                <body style="background:#111; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+                    <img id="stream" style="max-width:100%; max-height:100%; border: 2px solid #333;" src="" />
+                    <script>
+                        const img = document.getElementById('stream');
+                        const ws = new WebSocket('ws://' + window.location.hostname + ':8080');
+                        ws.onmessage = (event) => {
+                            if (event.data instanceof Blob) {
+                                img.src = URL.createObjectURL(event.data);
+                            }
+                        };
+                    </script>
+                </body>
+                </html>
+                """
+                self.wfile.write(html.encode())
+            else:
+                super().do_GET()
+
+    server = HTTPServer(('0.0.0.0', 3000), CustomHandler)
+    print("🌐 Web Preview listening on port 3000")
+    server.serve_forever()
+
+async def main():
+    # Start the web viewing server in the background
+    threading.Thread(target=run_web_viewer, daemon=True).start()
+    
+    # Launch the WebSocket communication pipeline
+    print("📡 WebSocket pipeline standing by on port 8080...")
+    async with websockets.serve(handler, "0.0.0.0", 8080):
+        await asyncio.Future()  # run forever
+
+if __name__ == "__main__":
+    asyncio.run(main())

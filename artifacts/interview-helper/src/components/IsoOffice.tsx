@@ -1182,8 +1182,15 @@ function drawBot(
     ? getMachineArt(`${import.meta.env.BASE_URL}${bot.artSrc.replace(/^\/+/, '')}`)
     : null;
   if (namedArt?.complete && namedArt.naturalWidth > 0) {
-    const artW = 24 * u;
-    const artH = artW * (namedArt.naturalHeight / namedArt.naturalWidth);
+    // All named Tower residents occupy the same character frame as the
+    // procedural residents: fixed 24×32 logical px, feet on the same baseline.
+    // This keeps a single hand-painted asset from reading as a giant or tiny
+    // exception when it shares a floor with the NPC paper dolls.
+    const frameW = 24 * u;
+    const frameH = 32 * u;
+    const fit = Math.min(frameW / namedArt.naturalWidth, frameH / namedArt.naturalHeight);
+    const artW = namedArt.naturalWidth * fit;
+    const artH = namedArt.naturalHeight * fit;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(namedArt, p.x - artW / 2, baseY - artH, artW, artH);

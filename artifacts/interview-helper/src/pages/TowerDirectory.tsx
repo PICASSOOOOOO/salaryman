@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Bell, Building2, CalendarDays, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, Bell, Building2, CalendarDays, ClipboardList, Clock3, Coins, DoorOpen, Footprints, KeyRound, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound, WalletCards } from "lucide-react";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import { getShadowTowerCommercialTenants, quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 import {
@@ -45,6 +45,66 @@ for (const floorNumber of Array.from({ length: 60 }, (_, index) => index + 5)) {
     tone: "tenant",
     icon: Building2,
   });
+}
+
+type LobbyFinancialSnapshot = {
+  bank?: { earnedFiat?: number; fiatTotal?: number; quarantineFiat?: number };
+  gold?: number;
+  debt?: number;
+  property?: { netWorth?: number };
+};
+
+function formatFiat(value: unknown): string {
+  const amount = Number(value);
+  return `ƒ${(Number.isFinite(amount) ? Math.round(amount) : 0).toLocaleString()}`;
+}
+
+function LobbyFinancials({ snapshot, loading }: { snapshot: LobbyFinancialSnapshot | null; loading: boolean }) {
+  const spendable = snapshot?.bank?.earnedFiat ?? 0;
+  const total = snapshot?.bank?.fiatTotal ?? spendable;
+  const gold = snapshot?.gold ?? 0;
+  const debt = snapshot?.debt ?? 0;
+  const netWorth = snapshot?.property?.netWorth ?? 0;
+  const metrics = [
+    { label: "SPENDABLE FIAT", value: loading ? "LOADING…" : formatFiat(spendable), tone: "text-emerald-100" },
+    { label: "TOTAL FIAT", value: loading ? "—" : formatFiat(total), tone: "text-cyan-100" },
+    { label: "GOLD", value: loading ? "—" : `${gold.toFixed(gold < 10 ? 1 : 0)} oz`, tone: "text-amber-100" },
+    { label: "DEBT", value: loading ? "—" : formatFiat(debt), tone: debt > 0 ? "text-rose-200" : "text-zinc-200" },
+    { label: "NET WORTH", value: loading ? "—" : formatFiat(netWorth), tone: "text-violet-100" },
+  ];
+  return (
+    <section
+      className="border border-emerald-300/30 bg-[linear-gradient(135deg,rgba(16,55,48,.72),rgba(7,17,27,.96))] p-4 shadow-[0_0_34px_rgba(52,211,153,.08)]"
+      data-testid="lobby-financials"
+      aria-label="Live personal finances"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <WalletCards className="h-5 w-5 text-emerald-300" />
+          <div>
+            <p className="text-[10px] font-black tracking-[.25em] text-emerald-300">PERSONAL FINANCES · LIVE</p>
+            <p className="mt-1 text-xs text-emerald-100/65">Your spendable FIAT is shown here before you leave reception.</p>
+          </div>
+        </div>
+        <Link href="/game/bank" className="border border-emerald-200/35 bg-emerald-300/10 px-3 py-2 text-[10px] font-black tracking-[.16em] text-emerald-100 transition hover:bg-emerald-300/20">
+          OPEN BANCO OMBRA
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="border border-white/10 bg-black/20 px-3 py-2">
+            <p className="text-[8px] font-bold tracking-[.16em] text-zinc-500">{metric.label}</p>
+            <p className={`mt-1 break-words font-mono text-base font-black ${metric.tone}`}>{metric.value}</p>
+          </div>
+        ))}
+      </div>
+      {snapshot?.bank?.quarantineFiat ? (
+        <p className="mt-3 text-[10px] tracking-[.12em] text-amber-200/75">
+          {formatFiat(snapshot.bank.quarantineFiat)} is quarantined and not spendable.
+        </p>
+      ) : null}
+    </section>
+  );
 }
 
 function TowerEntry() {
@@ -120,8 +180,8 @@ function TowerReceptionScene({
         viewportWidth={viewport.width}
         viewportHeight={viewport.height}
         playable
-        followCam={viewport.width < 760}
-         scale={viewport.width < 760 ? 3.6 : 3.25}
+        followCam
+        scale={viewport.width < 760 ? 4.7 : 4.15}
         stations={stations}
         rooms={layout.rooms}
         initialPose={layout.spawn}
@@ -174,6 +234,8 @@ export default function TowerDirectory() {
   const [receptionDialogueStep, setReceptionDialogueStep] = useState(0);
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [reconcilingServerState, setReconcilingServerState] = useState(isAuthenticated);
+  const [financialSnapshot, setFinancialSnapshot] = useState<LobbyFinancialSnapshot | null>(null);
+  const [financialsLoading, setFinancialsLoading] = useState(false);
   const onboardingLocked = reconcilingServerState || stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
   const receptionDialogue = [
@@ -221,6 +283,34 @@ export default function TowerDirectory() {
     }
     setOnboardingStep("reception");
   }, [onboardingLocked]);
+  useEffect(() => {
+    if (reconcilingServerState || stage !== "reception" || onboardingStep !== "reception") return;
+    const timer = window.setTimeout(() => setTalking(true), 350);
+    return () => window.clearTimeout(timer);
+  }, [onboardingStep, reconcilingServerState, stage]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let alive = true;
+    const loadFinancials = async () => {
+      setFinancialsLoading(true);
+      try {
+        const response = await apiFetch("/api/wallet/snapshot", { credentials: "include" });
+        if (!response.ok) return;
+        const data = await response.json() as LobbyFinancialSnapshot;
+        if (alive) setFinancialSnapshot(data);
+      } catch {
+        // The lobby remains usable when the wallet service is temporarily unavailable.
+      } finally {
+        if (alive) setFinancialsLoading(false);
+      }
+    };
+    void loadFinancials();
+    const interval = window.setInterval(loadFinancials, 30_000);
+    return () => {
+      alive = false;
+      window.clearInterval(interval);
+    };
+  }, [isAuthenticated]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
@@ -323,7 +413,18 @@ export default function TowerDirectory() {
           </div>
         )}
 
-         <TowerReceptionScene
+        <LobbyFinancials snapshot={financialSnapshot} loading={financialsLoading} />
+        {onboardingLocked && onboardingStep === "reception" && !talking && (
+          <button
+            type="button"
+            onClick={beginReception}
+            className="my-3 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.18em] text-amber-100 shadow-[0_0_28px_rgba(252,211,77,.12)]"
+            data-testid="begin-lobby-onboarding"
+          >
+            <UserRound className="h-4 w-4" /> BEGIN RECEPTION INTAKE
+          </button>
+        )}
+        <TowerReceptionScene
           locked={onboardingLocked}
            frozen={talking}
           onReception={beginReception}

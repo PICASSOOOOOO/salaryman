@@ -197,7 +197,7 @@ export default function GameEconomy() {
 
         {/* Live ticker */}
         <div className="rounded-lg border border-amber-700/40 bg-amber-500/5 p-3 mb-6 flex items-center gap-3 overflow-x-auto">
-          <CurrencyTicker />
+          <CurrencyTicker showPlayerFiat />
         </div>
 
         <Card title="LIVE FIAT ↔ GOLD · BANCO OMBRA" accent="amber">

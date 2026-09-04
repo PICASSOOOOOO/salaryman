@@ -35,6 +35,7 @@ export async function ensureFiatAccounts(
   seeds?: readonly FiatAccountSeed[],
 ) {
   let selectedSeeds = seeds;
+  let staffSeed = false;
   if (!selectedSeeds) {
     const [user] = await db
       .select({ email: usersTable.email })
@@ -44,6 +45,7 @@ export async function ensureFiatAccounts(
     const staff = isOwnerEmail(user?.email)
       || isPicassoOrgMemberEmail(user?.email)
       || await isActiveDeveloperOrgMember(userId);
+    staffSeed = staff;
     selectedSeeds = staff ? STAFF_FIAT_ACCOUNT_SEEDS : DEFAULT_FIAT_ACCOUNT_SEEDS;
   }
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), 41001)`);
@@ -62,6 +64,29 @@ export async function ensureFiatAccounts(
         .returning();
       await tx.delete(bankAccountsTable).where(and(eq(bankAccountsTable.userId, userId), sql`${bankAccountsTable.id} <> ${existing[0].id}`));
       return cash ? [cash] : [];
+    }
+    // A Picasso/admin account can have been touched once by an older client
+    // before the staff wallet seed existed. Upgrade that exact starter wallet
+    // once, but never refill an admin who has already spent from it.
+    if (staffSeed && existing.length === 1 && existing[0].kind === "cash" && existing[0].balance === STARTER_CHECKING_BALANCE) {
+      const target = STAFF_FIAT_ACCOUNT_SEEDS.reduce((sum, seed) => sum + seed.balance, 0);
+      const amount = target - existing[0].balance;
+      if (amount > 0) {
+        const balanceAfter = existing[0].balance + amount;
+        const [updated] = await tx.update(bankAccountsTable)
+          .set({ balance: balanceAfter, updatedAt: new Date() })
+          .where(and(eq(bankAccountsTable.id, existing[0].id), eq(bankAccountsTable.userId, userId)))
+          .returning();
+        await tx.insert(bankTransactionsTable).values({
+          userId,
+          accountId: existing[0].id,
+          kind: "admin_grant",
+          description: "PICASSO ADMIN STARTER WALLET UPGRADE",
+          amount,
+          balanceAfter,
+        });
+        return updated ? [updated] : existing;
+      }
     }
     return existing;
   }
