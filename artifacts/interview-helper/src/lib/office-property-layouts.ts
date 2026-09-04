@@ -161,8 +161,9 @@ export function getOfficeBlockedTiles(layout: OfficePropertyLayout): Set<string>
   return blocked;
 }
 export interface OfficeTile { col: number; row: number; }
-export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, to: OfficeTile): OfficeTile[] {
+export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, to: OfficeTile, additionalBlocked?: ReadonlySet<string>): OfficeTile[] {
   const blocked = getOfficeBlockedTiles(layout), key = (p: OfficeTile) => `${p.col},${p.row}`;
+  additionalBlocked?.forEach((tile) => blocked.add(tile));
   const start = { col: Math.max(0, Math.min(layout.cols - 1, Math.floor(from.col))), row: Math.max(0, Math.min(layout.rows - 1, Math.floor(from.row))) };
   const goal = { col: Math.max(0, Math.min(layout.cols - 1, Math.floor(to.col))), row: Math.max(0, Math.min(layout.rows - 1, Math.floor(to.row))) };
   blocked.delete(key(start)); const queue = [start], previous = new Map<string, OfficeTile | null>([[key(start), null]]);
@@ -184,6 +185,33 @@ export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, 
   const route: OfficeTile[] = []; let cursor: OfficeTile | null = destination;
   while (cursor && key(cursor) !== key(start)) { route.push(cursor); cursor = previous.get(key(cursor)) ?? null; }
   return route.reverse();
+}
+
+/**
+ * Convert authored resident waypoints into a walkable tile route. Authored paths
+ * are intentionally loose (they describe a character's intention, not geometry);
+ * this projection is the last-mile authority that keeps them out of walls and
+ * furniture while preserving the authored order and destination.
+ */
+export function routeOfficePath(layout: OfficePropertyLayout, path: readonly OfficeTile[]): OfficeTile[] {
+  if (path.length < 2) return path.slice();
+  const clamp = (point: OfficeTile): OfficeTile => ({
+    col: Math.max(0, Math.min(layout.cols - 1, Math.floor(point.col))),
+    row: Math.max(0, Math.min(layout.rows - 1, Math.floor(point.row))),
+  });
+  const start = clamp(path[0]);
+  const routed: OfficeTile[] = [{ col: start.col, row: start.row }];
+  let current = start;
+  for (const waypoint of path.slice(1)) {
+    const target = clamp(waypoint);
+    const segment = findOfficeRoute(layout, current, target);
+    for (const tile of segment) {
+      const previous = routed[routed.length - 1];
+      if (!previous || previous.col !== tile.col || previous.row !== tile.row) routed.push(tile);
+    }
+    current = routed[routed.length - 1] ?? current;
+  }
+  return routed;
 }
 export const OFFICE_OBJECT_DESTINATIONS = { terminal: "/console", atm: "/game/bank", vending: "/vending?from=office", elevator: "/tower" } as const;
 export type OfficeDestinationObject = keyof typeof OFFICE_OBJECT_DESTINATIONS;

@@ -5,6 +5,7 @@ import { approachMovementVelocity, isometricKeyboardMovementVector } from '@/lib
 import {
   findOfficeRoute,
   getOfficeBlockedTiles,
+  routeOfficePath,
   type OfficePropertyLayout,
 } from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
@@ -126,6 +127,8 @@ export interface IsoOfficeProps {
   /** Walk-up activation for a bullpen/capsule bot — opens its command center.
    *  Mirrors the YOUR DESK computer interaction; computer keeps precedence. */
   onBotInteract?: (bot: { id: number; name: string }) => void;
+  /** Walk-up activation for a physical Tower resident/operator. */
+  onAmbientInteract?: (occupant: { id: number; name: string }) => void;
   /** Tier-driven furniture counts (default: the full hard-coded layout). */
   deskColCount?: number;
   deskRowCount?: number;
@@ -179,6 +182,7 @@ export function IsoOffice({
   doorTopRow: doorTopRowProp,
   doorBotRow: doorBotRowProp,
   onBotInteract,
+  onAmbientInteract,
   deskColCount,
   deskRowCount,
   capsuleCount,
@@ -298,6 +302,19 @@ export function IsoOffice({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, stations, onEnterTerminal]);
 
+  // Authored resident paths describe intent, not geometry. Project them through
+  // the same authoritative floor collision contract as the player so staff
+  // avoid walls, furniture, stations, and lift banks when a layout changes.
+  const collisionSafeAmbientOccupants = useMemo(
+    () => ambientOccupants.map((occupant) => ({
+      ...occupant,
+      path: occupant.path && occupant.path.length > 1
+        ? routeOfficePath(layout, occupant.path)
+        : occupant.path,
+    })),
+    [ambientOccupants, layout],
+  );
+
   // ── Refs the rAF loop reads (so the loop never restarts on prop churn) ──
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -320,7 +337,9 @@ export function IsoOffice({
   const activeStationRef = useRef<string | null>(null);
   const activeBotRef = useRef<number | null>(null);
   const activeBotObjRef = useRef<{ id: number; name: string } | null>(null);
+  const activeAmbientRef = useRef<{ id: number; name: string } | null>(null);
   const onBotInteractRef = useRef(onBotInteract);
+  const onAmbientInteractRef = useRef(onAmbientInteract);
   const onEnterRef = useRef(onEnterTerminal);
   const onMoveRef = useRef(onMove);
   const onPoseChangeRef = useRef(onPoseChange);
@@ -347,6 +366,7 @@ export function IsoOffice({
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const [activeBot, setActiveBot] = useState<{ id: number; name: string } | null>(null);
+  const [activeAmbient, setActiveAmbient] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     frozenRef.current = frozen;
@@ -365,11 +385,12 @@ export function IsoOffice({
   useEffect(() => { lightingRef.current = lighting; }, [lighting]);
   useEffect(() => { hallwayStyleRef.current = hallwayStyle; }, [hallwayStyle]);
   useEffect(() => { hallwaySignageRef.current = hallwaySignage; }, [hallwaySignage]);
-  useEffect(() => { ambientOccupantsRef.current = ambientOccupants; }, [ambientOccupants]);
+  useEffect(() => { ambientOccupantsRef.current = collisionSafeAmbientOccupants; }, [collisionSafeAmbientOccupants]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onPoseChangeRef.current = onPoseChange; }, [onPoseChange]);
   useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
+  useEffect(() => { onAmbientInteractRef.current = onAmbientInteract; }, [onAmbientInteract]);
   useEffect(() => { stationsRef.current = stations; }, [stations]);
   useEffect(() => { blockedRef.current = blockedTiles; }, [blockedTiles]);
   useEffect(() => { stationBlockedRef.current = stationBlocked; }, [stationBlocked]);
@@ -545,12 +566,26 @@ export function IsoOffice({
           runRef.current = false;
         }
 
-        // Proximity — computer + nearest station (world-space, same as PixelOffice).
+        // Proximity — computer + resident + nearest station (world-space).
         const cx = fxRef.current;
         const cy = fyRef.current;
         if (onEnterRef.current) {
           const near = Math.hypot(cx - COMPUTER_X, cy - COMPUTER_Y) <= 26;
           if (near !== nearComputerRef.current) { nearComputerRef.current = near; setNearComputer(near); }
+        }
+        let bestAmbient: { id: number; name: string } | null = null;
+        let bestAmbientDist = Infinity;
+        for (const occupant of ambientOccupantsRef.current) {
+          const position = getAmbientPosition(occupant, now);
+          const distance = Math.hypot(cx - position.col * TILE, cy - position.row * TILE);
+          if (distance <= 30 && distance < bestAmbientDist) {
+            bestAmbientDist = distance;
+            bestAmbient = { id: occupant.id, name: occupant.name };
+          }
+        }
+        if (bestAmbient?.id !== activeAmbientRef.current?.id) {
+          activeAmbientRef.current = bestAmbient;
+          setActiveAmbient(bestAmbient);
         }
         let bestId: string | null = null;
         let bestDist = Infinity;
@@ -665,6 +700,7 @@ export function IsoOffice({
       }
       if (key === 'e' || key === 'enter') {
         if (hasComputer && nearComputerRef.current) { onEnterRef.current?.(); return; }
+        if (activeAmbientRef.current) { onAmbientInteractRef.current?.(activeAmbientRef.current); return; }
         if (activeBotObjRef.current) { onBotInteractRef.current?.(activeBotObjRef.current); return; }
         const sid = activeStationRef.current;
         if (sid) { stationsRef.current.find((s) => s.id === sid)?.onInteract(); return; }
@@ -732,9 +768,10 @@ export function IsoOffice({
   };
 
   const showComputerPrompt = hasComputer && !!onEnterTerminal && nearComputer;
-  // Precedence: computer (YOUR DESK) > walk-up bot > generic station.
-  const promptBot = !nearComputer && activeBot ? activeBot : undefined;
-  const promptStation = !nearComputer && !promptBot && activeStationId
+  // Precedence: computer (YOUR DESK) > resident > bot command center > station.
+  const promptAmbient = !nearComputer && activeAmbient ? activeAmbient : undefined;
+  const promptBot = !nearComputer && !promptAmbient && activeBot ? activeBot : undefined;
+  const promptStation = !nearComputer && !promptAmbient && !promptBot && activeStationId
     ? stations.find((s) => s.id === activeStationId)
     : undefined;
 
@@ -773,22 +810,26 @@ export function IsoOffice({
         </>
       )}
 
-      {/* Walk-up prompt — computer > bot command center > nearest station. */}
-      {playable && !frozen && (showComputerPrompt || promptBot || promptStation) && (
+      {/* Walk-up prompt — computer > resident > bot command center > nearest station. */}
+      {playable && !frozen && (showComputerPrompt || promptAmbient || promptBot || promptStation) && (
         <button
           type="button"
           data-testid={
             showComputerPrompt
               ? 'office-computer-enter'
-              : promptBot
-                ? `office-bot-${promptBot.id}`
+              : promptAmbient
+                ? `office-resident-${promptAmbient.id}`
+                : promptBot
+                  ? `office-bot-${promptBot.id}`
                 : `office-station-${promptStation?.id}`
           }
           onClick={
             showComputerPrompt
               ? () => onEnterTerminal?.()
-              : promptBot
-                ? () => onBotInteract?.(promptBot)
+              : promptAmbient
+                ? () => onAmbientInteract?.(promptAmbient)
+                : promptBot
+                  ? () => onBotInteract?.(promptBot)
                 : () => promptStation?.onInteract()
           }
           style={{
@@ -805,8 +846,10 @@ export function IsoOffice({
         >
           ▸ {showComputerPrompt
             ? 'ENTER TERMINAL'
-            : promptBot
-              ? `MANAGE ${promptBot.name.toUpperCase()}`
+            : promptAmbient
+              ? `TALK TO ${promptAmbient.name.toUpperCase()}`
+              : promptBot
+                ? `MANAGE ${promptBot.name.toUpperCase()}`
               : promptStation?.label}
           {isTouch ? ' · TAP TO USE' : ' · E · USE'}
         </button>

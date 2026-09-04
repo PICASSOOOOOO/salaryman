@@ -11,7 +11,7 @@ import { completeWorkArrivalTask, getBuildingOnboardingStage } from "@/lib/build
 import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getAmbianceEnabled, getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
-import { getTowerAmbientOccupants } from "@/lib/tower-life";
+import { getTowerAmbientOccupants, TOWER_BUSINESSES, TOWER_RESIDENTS } from "@/lib/tower-life";
 
 type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {
@@ -37,6 +37,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
   });
   const [message, setMessage] = useState("WALK TO A STATION · PRESS E OR TAP");
   const [busy, setBusy] = useState(false);
+  const [residentNotice, setResidentNotice] = useState("");
   const [beds, setBeds] = useState<BedListing[]>([]);
   const layout = useMemo(
     () => getPublicFloorOfficeLayout(getActiveCityId() === "huda_city" ? "huda_city" : "minx_city", floor),
@@ -139,6 +140,37 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     } catch (error) { setMessage(error instanceof Error ? error.message : "BED BOOKING FAILED"); }
   };
 
+  const talkToResident = async (occupant: { id: number; name: string }) => {
+    const resident = TOWER_RESIDENTS.find((candidate) => candidate.id === occupant.id);
+    const business = resident ? TOWER_BUSINESSES.find((candidate) => candidate.code === resident.businessCode) : undefined;
+    if (!resident) return;
+    if (resident.id !== 509) {
+      setResidentNotice(`${resident.name} · ${business?.playerService ?? "SERVICE DESK"} · ${business?.playerJob ?? "WORK ORDER AVAILABLE"}`);
+      setMessage(`${resident.name} IS ON ROUTE · PRESS E TO SPEAK AGAIN`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await apiFetch("/api/tower/resident-task", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot: slotIndex, residentId: "mender-9", taskId: "terminal-recovery", requestId: requestId() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "WORK ORDER REJECTED");
+      setResidentNotice(data.alreadyCompleted
+        ? "MENDER-9 REMEMBERS THIS REPAIR · RELATIONSHIP +1 ALREADY RECORDED"
+        : `MENDER-9 PAID THE REPAIR ORDER · ƒ${data.rewardFiat} · RELATIONSHIP +1`);
+      setMessage(`MENDER-9 · TERMINAL RECOVERY COMPLETE · BANK ƒ${Number(data.spendable ?? data.balance).toLocaleString()}`);
+      await load();
+    } catch (error) {
+      setResidentNotice(error instanceof Error ? error.message : "RESIDENT WORK ORDER FAILED");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const mezzanine = floor === 2;
   const security = floor === 4;
   const stations = useMemo(() => [
@@ -208,8 +240,11 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
           suppressLabels={window.innerWidth < 680} frozen={!!panel}
           playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
            ambientOccupants={getTowerAmbientOccupants(floor)}
+           onAmbientInteract={(occupant) => void talkToResident(occupant)}
         />
       </main>
+
+       {residentNotice && <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-[min(92vw,760px)] -translate-x-1/2 border border-amber-300/35 bg-[#0b0e18]/95 px-4 py-3 text-center text-[10px] font-bold tracking-[.12em] text-amber-100 shadow-2xl">{residentNotice}</div>}
 
       {panel && <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm grid place-items-center p-3 animate-in fade-in duration-300">
         <section className="w-full max-w-3xl max-h-[88dvh] overflow-y-auto border border-cyan-400/30 bg-[#0a0f1a] shadow-2xl rounded-xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">

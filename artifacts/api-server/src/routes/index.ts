@@ -109,6 +109,7 @@ import marketplaceRouter from "./marketplace";
 import shadowTowerRouter from "./shadow-tower";
 import recreationRouter from "./recreation";
 import towerMarketRouter from "./tower-market";
+import towerLifeRouter from "./tower-life";
 
 const router: IRouter = Router();
 
@@ -222,6 +223,7 @@ router.use(gameplayWorldEconomyRouter);
 router.use(shadowTowerRouter);
 router.use(recreationRouter);
 router.use(towerMarketRouter);
+router.use(towerLifeRouter);
   router.use(marketplaceRouter);
 
 export default router;

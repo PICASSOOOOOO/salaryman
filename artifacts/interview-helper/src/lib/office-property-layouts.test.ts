@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { SHADOW_TOWER_LISTINGS, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
 import {
   findOfficeRoute, getOfficeBlockedTiles, getShadowTowerOfficeLayout,
-  officePropertyLayoutFromPlan, validateOfficePose,
+  officePropertyLayoutFromPlan, routeOfficePath, validateOfficePose,
 } from "./office-property-layouts";
+import { getTowerAmbientOccupants } from "./tower-life";
 
 describe("Shadow Tower office projection", () => {
   it("projects every shared plan object without adding legacy geometry", () => {
@@ -63,4 +64,17 @@ describe("Shadow Tower office projection", () => {
     expect(layout.teamDesks).toHaveLength(4);
     expect(layout.stations.map(station => station.id)).toContain("operations-terminal");
   });
+
+  it("projects Tower resident paths through solid floor geometry", () => {
+    const layout = officePropertyLayoutFromPlan(getSecurityPlanForTest());
+    const blocked = getOfficeBlockedTiles(layout);
+    for (const occupant of getTowerAmbientOccupants(4)) {
+      const path = routeOfficePath(layout, occupant.path ?? [{ col: occupant.col, row: occupant.row }]);
+      for (const tile of path) expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false);
+    }
+  });
 });
+
+function getSecurityPlanForTest() {
+  return getShadowTowerPlan("minx_city", 4, "founder_team");
+}

@@ -58,9 +58,12 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
                   <span className="grid h-12 w-12 place-items-center border border-current/40 bg-current/10 text-2xl">{business.logo}</span>
                   <div><strong className="block text-xs tracking-[.12em]">{business.name}</strong><span className="text-[9px] tracking-widest opacity-75">{business.category}</span></div>
               </div>
+                <p className="mt-3 text-[11px] leading-5 text-zinc-300">{business.playerService}</p>
+                <p className="mt-2 text-[9px] leading-4 text-amber-200/80"><span className="font-bold tracking-widest text-amber-300">JOB</span> · {business.playerJob} · ƒ{business.rewardFiat}</p>
+                <p className="mt-2 text-[9px] leading-4 text-violet-200/70"><span className="font-bold tracking-widest text-violet-300">STORY</span> · {business.storyHook}</p>
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
                   <span className="text-[10px] font-bold tracking-wider text-zinc-500">{business.floor}</span>
-                  <span className="text-[9px] font-bold tracking-widest text-violet-300">VIEW</span>
+                  <span className="text-[9px] font-bold tracking-widest text-violet-300">{business.coverage.replace("_", " ").toUpperCase()}</span>
                 </div>
             </button>
           ))}
@@ -97,6 +100,8 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
             <article key={business.code} className="border border-white/10 bg-white/[.025] p-4">
                 <div className="flex items-center justify-between gap-2"><strong style={{ color: business.color }} className="text-xs tracking-[.15em]">{business.logo} {business.name}</strong><span className="text-[9px] text-zinc-600">{business.floor}</span></div>
                 <p className="mt-3 border-l-2 pl-3 text-xs leading-5 text-zinc-300" style={{ borderColor: business.color }}>{business.appointment}</p>
+                <p className="mt-3 text-[10px] leading-4 text-amber-200/80"><span className="font-bold tracking-widest text-amber-300">PLAYER JOB</span> · {business.playerJob} · ƒ{business.rewardFiat}</p>
+                <p className="mt-2 text-[10px] leading-4 text-violet-200/70"><span className="font-bold tracking-widest text-violet-300">ART DIRECTION</span> · {business.artDirection}</p>
                 <button type="button" onClick={() => announce(`${business.name} sheet read aloud. ${business.appointment}`)} className="mt-3 inline-flex items-center gap-2 border border-white/15 px-3 py-2 text-[9px] font-bold tracking-widest text-zinc-300 hover:border-violet-300/50"><Megaphone className="h-3 w-3" /> ANNOUNCE</button>
             </article>
           ))}

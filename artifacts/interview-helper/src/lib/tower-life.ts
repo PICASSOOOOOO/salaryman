@@ -12,14 +12,67 @@ export type TowerNpc = {
 };
 
 export type TowerBusiness = {
+  key: string;
   code: string;
+  ticker: string;
   name: string;
   category: string;
   color: string;
   logo: string;
   floor: string;
+  coverage: "single_suite" | "lobby" | "every_floor";
+  operatorCode: string;
   ad: string;
   appointment: string;
+  playerService: string;
+  playerJob: string;
+  rewardFiat: number;
+  storyHook: string;
+  artDirection: string;
+};
+
+type TowerBusinessOperation = Pick<TowerBusiness, "playerService" | "playerJob" | "rewardFiat" | "storyHook" | "artDirection">;
+
+const operation = (
+  playerService: string,
+  playerJob: string,
+  rewardFiat: number,
+  storyHook: string,
+  artDirection: string,
+): TowerBusinessOperation => ({ playerService, playerJob, rewardFiat, storyHook, artDirection });
+
+/** The catalog's business cards are also playable contracts, not just lore. */
+const TOWER_BUSINESS_OPERATIONS: Record<string, TowerBusinessOperation> = {
+  shadow_cafeteria: operation("Order a shift tray or deliver a late meal.", "Tray runner · load and deliver staff meals", 18, "A missing tray exposes who is quietly working unpaid night shifts.", "Warm stainless counter, amber heat lamps, stacked numbered trays."),
+  lobby_gift_shop: operation("Buy a visitor gift, card, or apology delivery.", "Gift courier · assemble a floor-specific order", 14, "A gift arrives with a message that changes a tenant introduction.", "Black-glass vitrine, pressed flowers, receipt printer, soft rose light."),
+  tower_vending: operation("Buy food, water, batteries, and low-cost work supplies.", "Route restocker · service vending bays between floors", 22, "A vending route reveals which floor is running out of power.", "Service nook with lit coils, access panel, and a rolling stock cart."),
+  tower_atm: operation("Access FIAT and account services at the lift bank.", "Cash-route auditor · reconcile a machine exception", 28, "A balance mismatch points to a tenant being charged twice.", "Green-lit brass ATM wall with paper audit slips and a camera eye."),
+  tower_restaurant: operation("Book a private table or corporate dinner.", "Reservation fixer · recover a canceled executive table", 36, "A dinner reservation becomes a quiet negotiation between floors.", "Rain-dark dining room, narrow lamps, mirrored service hatch."),
+  tower_clinic: operation("Get triage, diagnostics, and observation care.", "Care runner · deliver a sealed diagnostic kit", 26, "A diagnostic result proves a service bot is not malfunctioning.", "Clean care bay, cyan monitors, privacy curtains, practical clutter."),
+  tower_doctor: operation("Book primary care or an executive physical.", "Patient coordinator · fill a same-day appointment gap", 24, "A routine physical uncovers a worker being pushed past safe limits.", "Quiet walnut consultation room, city glass, one precise exam light."),
+  tower_dentist: operation("Book human dental care or replicant jaw service.", "Sterilizer tech · reopen a canceled clinic slot", 20, "A damaged replicant plate carries evidence from another floor.", "Violet dental chair, chrome instruments, tiny diagnostic display."),
+  tower_law: operation("Get tenancy, licensing, contract, or defense counsel.", "Filing runner · assemble an evidence-backed contract packet", 42, "A lease clause decides who owns a neglected service corridor.", "Tall legal shelves, redline glass, sealed folders, severe task light."),
+  tower_weapons_licensing: operation("Apply for fictional civic licensing and storage compliance.", "Compliance clerk · verify a permit trail", 44, "A missing signature turns a legal armory into a political fault line.", "Security desk, lock drawers, permit scanner, warning stripes."),
+  tower_black_market: operation("Request a restricted fictional inventory appointment.", "Discreet broker · move a sealed parcel to the appointment point", 60, "A rare item comes with a name the Tower tried to erase.", "Unmarked service room, red slit light, velvet cases, hidden pass-through."),
+  tower_stock_broker: operation("Execute Tower securities trades and research.", "Market board runner · verify a quote packet before open", 48, "A suspicious bid reveals a floor being quietly accumulated.", "Exchange gallery, green ticker glass, brass rails, layered paper charts."),
+  tower_import_export: operation("Arrange freight, customs, sourcing, and export desks.", "Manifest checker · clear a delayed shipment", 34, "One container is labeled for a floor that officially does not exist.", "Blue logistics cage, cargo tags, lift manifest wall, rolling pallets."),
+  tower_mineral_rights: operation("File claims, leases, surveys, and royalty administration.", "Survey aide · compare a claim map with the registry", 40, "The useful part of a Tower-owned parcel is under someone else's story.", "Stone sample drawers, topographic light table, dusty survey instruments."),
+  tower_gold_exchange: operation("Exchange in-game GOLD and arrange secure custody.", "Assay runner · carry a sealed weight record", 46, "An assay disagrees with the owner's wealth story.", "Gold counter, assay lamps, dark velvet, heavy numbered vault door."),
+  tower_jeweler: operation("Commission, repair, appraise, or collect jewelry.", "Atelier assistant · locate a repair and return it upstairs", 30, "A repaired piece becomes proof of an old promise.", "Cool atelier glass, gem trays, focused bench lights, fine tools."),
+  tower_terminal_repair: operation("Repair terminals, computers, lifts, and replicants.", "Diagnostic runner · recover and return a damaged terminal", 32, "A broken terminal contains an instruction someone meant to delete.", "Copper service bay, hanging cables, parts drawers, amber diagnostic glow."),
+  tower_realty: operation("Rent, buy, list, lease, and inspect Tower property.", "Floor scout · verify a vacant suite before a showing", 38, "A vacant floor has fresh power use and an old tenant's key.", "Reception annex, vertical blueprints, brass keys, lit model tower."),
+  tower_massage: operation("Book massage, recovery, and ergonomic care.", "Recovery aide · reset a room between shift appointments", 16, "A regular's pain tells the truth about a workplace.", "Soft green circuit motifs, low lamps, linen screens, quiet water wall."),
+  tower_pharmacy: operation("Fill prescriptions and buy first-aid supplies.", "Night dispenser · reconcile a medicine cabinet count", 24, "A shortage connects three apparently unrelated work accidents.", "Backlit drawers, cyan labels, rolling ladder, after-hours hatch."),
+  tower_childcare: operation("Arrange childcare, tutoring, and shift coverage.", "Shift helper · deliver a lesson kit and cover a handoff", 18, "A child's drawing maps the Tower's hidden service elevators.", "Sun-yellow family room, modular tables, lesson screens, soft flooring."),
+  tower_laundry: operation("Send uniforms, linens, and workwear through the wash.", "Laundry route · return a clean uniform before shift change", 15, "A pocket left in a uniform changes a resident's loyalties.", "Blue service corridor, rolling hampers, steam, tagged garment rail."),
+  tower_tailor: operation("Alter uniforms, suits, and repaired workwear.", "Fitting runner · deliver measurements between the lobby and atelier", 17, "A tailored insignia identifies a group that claims not to exist.", "Sharp red seam lights, mannequins, chalk marks, brass scissors."),
+  tower_courier: operation("Move documents and parcels between the lobby and floors.", "Liftline runner · collect a signature at two destinations", 25, "A delivery route turns into a map of who still talks to whom.", "Cyan delivery desk, parcel cages, lift tags, handheld scanner."),
+  tower_security: operation("Request access, response, escort, and evidence handling.", "Floor escort · walk a contractor through a safe route", 35, "A routine escort finds a door that is not on the public directory.", "Red operations wall, camera feeds, evidence seals, hard bench."),
+  tower_insurance: operation("Cover property, health, liability, and cargo risks.", "Claims aide · document a real loss without inflating it", 29, "A denied claim reveals the Tower's risk model is political.", "Indigo risk office, incident boards, stamped forms, rain-lit windows."),
+  tower_print: operation("Print notices, ads, signage, menus, and classifieds.", "Press runner · proof and post a floor notice", 19, "A correction printed overnight names the wrong owner on purpose.", "Magenta press room, paper stacks, ink rollers, glowing layout table."),
+  tower_sanitation: operation("Request cleaning, waste, and environmental service.", "Night crew · clear a blocked operations route", 21, "A discarded component proves a business is hiding its labor cost.", "Teal utility closets, carts, drain grates, reflective safety tape."),
+  tower_florist: operation("Send flowers, plants, and office arrangements upstairs.", "Plant runner · deliver and place a floor arrangement", 13, "A condolence order becomes an invitation to a forbidden floor.", "Black glass, pink petals, grow lamps, clipped stems in metal tubs."),
+  tower_accounting: operation("Reconcile books, payroll, tax filings, and invoices.", "Ledger clerk · match a receipt to its actual service", 33, "A clean ledger makes one worker's missing pay impossible to ignore.", "Green accounting suite, receipt walls, calculator glow, archive drawers."),
 };
 
 export const TOWER_NPCS: TowerNpc[] = [
@@ -86,14 +139,25 @@ export const TOWER_NPCS: TowerNpc[] = [
 ];
 
 export const TOWER_BUSINESSES: TowerBusiness[] = TOWER_INFRASTRUCTURE_BUSINESSES.map((business) => ({
+  key: business.key,
   code: business.code,
+  ticker: business.ticker,
   name: business.name,
   category: `${business.category.toUpperCase()} · ${business.ticker}`,
   color: business.color,
   logo: business.logo,
   floor: business.floor,
+  coverage: business.coverage,
+  operatorCode: business.operatorCode,
   ad: business.ad,
   appointment: business.service,
+  ...(TOWER_BUSINESS_OPERATIONS[business.key] ?? operation(
+    business.service,
+    "Tower operations assistant · follow a resident's work order",
+    20,
+    "A routine work order reveals how the Tower's businesses depend on one another.",
+    "A distinct branded service suite with visible tools and an active work counter.",
+  )),
 }));
 
 export type TowerFloor = "lobby" | 2 | 3 | 4;
@@ -105,6 +169,8 @@ export type TowerResident = {
   color: string;
   logo: string;
   floor: TowerFloor;
+  /** Floors this resident can be encountered on while carrying out service work. */
+  serviceFloors?: readonly TowerFloor[];
   businessCode: string;
   route: string;
   caresFor: string;
@@ -176,14 +242,14 @@ export const TOWER_RESIDENTS: readonly TowerResident[] = [
   },
   {
     id: 509, name: "MENDER-9", role: "MENDER-9 TERMINAL WORKS · MECHANIC", color: "#fbbf24", logo: "⚙",
-    floor: 4, businessCode: "TWR-TECH-017", route: "FLOOR 4 · SERVICE BAY → EVERY FLOOR",
+    floor: 4, serviceFloors: ["lobby", 2, 3, 4], businessCode: "TWR-TECH-017", route: "FLOOR 4 · SERVICE BAY → EVERY FLOOR",
     caresFor: "lifts, terminals, service bots, and anything that hums wrong",
     errands: ["calibrating an elevator", "collecting a damaged terminal", "delivering a repaired service bot"],
     col: 7, row: 8, path: [{ col: 7, row: 8 }, { col: 12, row: 8 }, { col: 15, row: 12 }, { col: 10, row: 14 }], speed: 0.26,
   },
   {
     id: 510, name: "WARD 67", role: "WARD 67 SECURITY · FLOOR CAPTAIN", color: "#f87171", logo: "⬟",
-    floor: 4, businessCode: "TWR-SEC-025", route: "FLOOR 4 → EVERY FLOOR",
+    floor: 4, serviceFloors: ["lobby", 2, 3, 4], businessCode: "TWR-SEC-025", route: "FLOOR 4 → EVERY FLOOR",
     caresFor: "access, response, escorts, and evidence",
     errands: ["checking a door lock", "escorting a contractor", "logging a custody transfer"],
     col: 14, row: 7, path: [{ col: 14, row: 7 }, { col: 18, row: 7 }, { col: 18, row: 13 }, { col: 14, row: 14 }], speed: 0.23,
@@ -193,7 +259,7 @@ export const TOWER_RESIDENTS: readonly TowerResident[] = [
 export type TowerAmbientOccupant = Pick<TowerResident, "id" | "name" | "col" | "row" | "color" | "path" | "speed">;
 
 export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupant[] {
-  return TOWER_RESIDENTS.filter((resident) => resident.floor === floor).map(({ id, name, col, row, color, path, speed }) => ({
+  return TOWER_RESIDENTS.filter((resident) => resident.floor === floor || resident.serviceFloors?.includes(floor)).map(({ id, name, col, row, color, path, speed }) => ({
     id, name, col, row, color, path, speed,
   }));
 }
