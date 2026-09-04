@@ -1039,3 +1039,31 @@ mtime_ms = 1788534087852
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/3a98bdb0-58fd-4c88-ab7e-619609089cfc/4efe4a0a-9ef7-43a2-b132-6c57fb72a8f7"
 storage_version_token = "1788534271914804"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "qLE92xfsRUOSufZorcyOJ"
+uri = "file://exports/salaryman-hummingbird-transfer.zip"
+type = "unspecified"
+title = "SALARYMAN Hummingbird Transfer Bundle"
+description = "Complete Hummingbird layer: persistent player, Winamp-style UI, playlists, track picker, attach controls, export bridge, navigation shortcut, audio coordination, API routes, and database schema."
+logical_id = "60dbb867-450b-4d6f-9674-a629b1b20b6e"
+content_hash = "sha256:40cc7c9fd91a2c84b0ee48a1bb97a0c62838f660c5edf841268939a44aec3451"
+size = 446644
+mtime_ms = 1788534528801
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/60dbb867-450b-4d6f-9674-a629b1b20b6e/9b727569-6dcd-43b2-9198-72b2276c19ad"
+storage_version_token = "1788534534506849"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "REjSgv4fn_LyWH_53GCml"
+uri = "file://exports/HUMMINGBIRD_TRANSFER.md"
+type = "text"
+title = "Hummingbird Transfer Guide"
+description = "Hummingbird architecture, features, endpoints, wiring checklist, and security notes for moving it into another app."
+logical_id = "c9f11df7-2e12-4e98-bd4d-80c3ceb47802"
+content_hash = "sha256:b41dff3c5f7e198a6be5bb549918a44e2a44830bbe89509ac9f8c5cdfc69ddcd"
+size = 3573
+mtime_ms = 1788534528813
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c9f11df7-2e12-4e98-bd4d-80c3ceb47802/92cd2e87-4e03-4fcb-9706-ba75103385d9"
+storage_version_token = "1788534535409667"
+content_type = "text/markdown"
