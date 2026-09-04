@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Radio, Wrench } from "lucide-react";
 import { TOWER_BUSINESSES, TOWER_GOSSIP, TOWER_RESIDENTS, getTowerGossip } from "@/lib/tower-life";
+import { getActiveCityId } from "@/lib/city-defs";
+import { CityClock, useCityClock } from "@/components/CityClock";
+import { businessOfficeHours, isOfficeOpenAt, officeHoursLabel } from "@workspace/api-zod";
 
 export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floorLabel = "ALL FLOORS" }: {
   compact?: boolean;
   cityLabel?: string;
   floorLabel?: string;
 }) {
+  const cityId = getActiveCityId();
+  const { clock } = useCityClock(cityId);
   const [tab, setTab] = useState<"classifieds" | "residents">("classifieds");
   const [gossipIndex, setGossipIndex] = useState(0);
   const [broadcast, setBroadcast] = useState("");
@@ -33,6 +38,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
           <p className="text-[10px] font-bold tracking-[.24em] text-violet-300">TOWER LIFE NETWORK · {cityLabel}</p>
           <h2 className="mt-1 text-lg font-black tracking-[.12em] text-white">TOWER LIFE</h2>
           <p className="mt-1 text-[10px] font-bold tracking-[.16em] text-zinc-500">{floorLabel} · LIVE BUILDING SIGNALS</p>
+          <div className="mt-2"><CityClock cityId={cityId} compact /></div>
         </div>
         <Radio className="h-5 w-5 text-violet-300" />
       </div>
@@ -67,6 +73,16 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
                 <p className="mt-2 text-[9px] leading-4 text-amber-200/80"><span className="font-bold tracking-widest text-amber-300">JOB</span> · {business.playerJob} · ƒ{business.rewardFiat}</p>
                 <p className="mt-2 text-[9px] leading-4 text-violet-200/70"><span className="font-bold tracking-widest text-violet-300">STORY</span> · {business.storyHook}</p>
                  <p className="mt-2 text-[9px] leading-4 text-zinc-500"><span className="font-bold tracking-widest text-zinc-400">ART</span> · {business.artDirection}</p>
+                {(() => {
+                  const hours = businessOfficeHours(business.key, business.category);
+                  const open = clock ? isOfficeOpenAt(new Date(clock.serverNow), cityId, hours.profile) : null;
+                  return (
+                    <p className={`mt-2 text-[9px] leading-4 ${open === true ? "text-emerald-300" : open === false ? "text-rose-300" : "text-zinc-500"}`}>
+                      <span className="font-bold tracking-widest">{open === true ? "OPEN" : open === false ? "CLOSED" : "HOURS"}</span>
+                      {" · LOCAL "}{officeHoursLabel(hours.profile)}
+                    </p>
+                  );
+                })()}
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
                   <span className="text-[10px] font-bold tracking-wider text-zinc-500">{business.floor}</span>
                    <span className="text-right text-[9px] font-bold tracking-widest text-violet-300">

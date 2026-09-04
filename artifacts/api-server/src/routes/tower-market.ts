@@ -1,11 +1,23 @@
 import { Router, type Request, type Response } from "express";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, towerMarketHoldingsTable, towerMarketTradesTable } from "@workspace/db";
-import { getTowerBusinessPlacement, sortTowerBusinessesByExitPriority, towerBusinessByKey } from "@workspace/api-zod";
+import {
+  businessOfficeHours,
+  getCityClock,
+  getTowerBusinessPlacement,
+  isOfficeOpenAt,
+  officeHoursLabel,
+  sortTowerBusinessesByExitPriority,
+  towerBusinessByKey,
+} from "@workspace/api-zod";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 
 const router = Router();
 const MAX_TRADE_SHARES = 1_000;
+
+function requestedCity(req: Request): string {
+  return typeof req.query.city === "string" && req.query.city.length <= 64 ? req.query.city : "minx_city";
+}
 
 function userId(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.() || !req.user?.id) {
@@ -46,11 +58,36 @@ router.get("/tower-market/companies", async (_req, res) => {
       return {
         ...company,
         ...quote,
+        officeHours: businessOfficeHours(company.key, company.category),
         placement: getTowerBusinessPlacement(company),
         publicSharesHeld,
         sharesAvailable: Math.max(0, company.publicFloatShares - publicSharesHeld),
       };
     }),
+  });
+});
+
+// Public server-synchronised clock. It is intentionally not derived from the
+// browser locale: a Huda floor must read Asia/Ho_Chi_Minh even when the player
+// is visiting from another timezone.
+router.get("/tower-market/clock", (req, res) => {
+  const cityId = requestedCity(req);
+  res.json(getCityClock(new Date(), cityId));
+});
+
+router.get("/tower-market/business-hours/:key", (req, res) => {
+  const company = towerBusinessByKey(req.params.key);
+  if (!company) {
+    res.status(404).json({ error: "Business not found" });
+    return;
+  }
+  const cityId = requestedCity(req);
+  const officeHours = businessOfficeHours(company.key, company.category);
+  res.json({
+    businessKey: company.key,
+    cityId,
+    ...officeHours,
+    openNow: isOfficeOpenAt(new Date(), cityId, officeHours.profile),
   });
 });
 
@@ -83,6 +120,18 @@ router.post("/tower-market/trade", async (req, res) => {
   if (requestId.length < 8) { res.status(400).json({ error: "Stable requestId required" }); return; }
 
   const quote = quoteFor(company.key)!;
+  const cityId = requestedCity(req);
+  const officeHours = businessOfficeHours(company.key, company.category);
+  if (!isOfficeOpenAt(new Date(), cityId, officeHours.profile)) {
+    res.status(409).json({
+      error: "This Tower service is closed",
+      businessKey: company.key,
+      cityId,
+      officeHours: officeHoursLabel(officeHours.profile),
+      openNow: false,
+    });
+    return;
+  }
   const totalFiat = quote.priceFiat * shares;
   const result = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${company.key}), 42067)`);

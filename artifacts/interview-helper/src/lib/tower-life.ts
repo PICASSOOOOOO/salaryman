@@ -1,8 +1,8 @@
 import {
   getTowerBusinessPlacement,
+  getShadowTowerCommercialTenants,
   TOWER_INFRASTRUCTURE_BUSINESSES,
 } from "@workspace/api-zod";
-import { getShadowTowerCommercialTenants, TOWER_INFRASTRUCTURE_BUSINESSES } from "@workspace/api-zod";
 
 export type TowerNpc = {
   code: string;

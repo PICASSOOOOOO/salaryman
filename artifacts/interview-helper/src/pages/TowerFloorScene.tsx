@@ -9,6 +9,7 @@ import {
   type OfficePropertyLayout,
 } from "@/lib/office-property-layouts";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
+import { CityClock } from "@/components/CityClock";
 import { getTowerAmbientOccupants } from "@/lib/tower-life";
 import { getTowerSpaceArtKind, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 import { useAuth } from "@/hooks/use-auth";
@@ -354,6 +355,7 @@ export default function TowerFloorScene({
               <span className="text-zinc-600">/</span>
               <span>SHADOW TOWER</span>
             </div>
+            <div className="mt-1"><CityClock cityId={city} compact /></div>
             <div className="mt-2 flex items-center gap-2">
               <span className="grid h-9 min-w-12 place-items-center border border-cyan-200/50 bg-cyan-300/10 px-2 font-mono text-sm font-bold text-cyan-100">
                 {identity.shortLabel}

@@ -25,6 +25,7 @@ import { getRealQuarter } from '@/gameSystems';
 import { type AssignmentStorySnapshot, type StoryAssignmentDef } from '@/lib/story-assignments';
 import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, syncOwnedPropertiesLocal, type OwnedProperty } from '@/lib/owned-office';
 import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@/lib/city-defs';
+import { useCityClock } from '@/components/CityClock';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
 import { setMapContext } from '@/lib/map-context';
 import { startPendingHousingAssessmentRetry } from '@/lib/onboarding-housing';
@@ -104,6 +105,7 @@ function taskToTool(t: BusinessTask): string {
 export default function PabloOffice() {
   hydrateActiveCityFromSave();
   const { isAuthenticated } = useAuth();
+  const { clock: cityClock, syncError: cityClockSyncError } = useCityClock(getActiveCityId());
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   // Which arcade cabinet game is open on top of the office (null = none). Reuses
@@ -286,15 +288,6 @@ export default function PabloOffice() {
   });
   const [isTouch] = useState(() =>
     typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
-  // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
-  const [camClock, setCamClock] = useState(() => new Date());
-  useEffect(() => {
-    if (!surveillance) return;
-    const iv = setInterval(() => setCamClock(new Date()), 1000);
-    return () => clearInterval(iv);
-  }, [surveillance]);
-
-
   // Quick keys (desktop): Z cycle camera, C toggle CCTV/live, H/? help, Esc → hub.
   // WASD/E are owned by PixelOffice and never overlap these. Suspended while the
   // arcade overlay is open so it can own the keyboard.
@@ -885,6 +878,9 @@ export default function PabloOffice() {
           </span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexShrink: 0 }}>
+           {!compactHud && <span style={{ fontSize: '.55rem', letterSpacing: '.1em', color: cityClockSyncError ? '#fb7185' : '#bae6fd', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+             {cityClock ? `${cityClock.label} · ${cityClock.timezone}` : cityClockSyncError ? 'CLOCK OFFLINE' : 'SYNCING CLOCK'}
+           </span>}
           <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 5, overflow: 'hidden' }}>
             {(['live', 'surveillance'] as const).map(m => {
               const on = officeMode === m;
@@ -1217,8 +1213,8 @@ export default function PabloOffice() {
                 {/* Camera id + timestamp — top-right. */}
                 <div style={{ position: 'absolute', top: 15, right: 20, textAlign: 'right', fontSize: '.56rem', letterSpacing: '.16em', color: 'rgba(190,230,255,.85)', textShadow: '0 0 6px rgba(0,0,0,.9)', lineHeight: 1.4 }}>
                   <div style={{ color: '#fb7185' }}>CAM 01</div>
-                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>{camClock.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
-                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>{camClock.toLocaleTimeString([], { hour12: false })}</div>
+                   <div style={{ fontVariantNumeric: 'tabular-nums' }}>{cityClock?.localDate ?? (cityClockSyncError ? 'CLOCK OFFLINE' : 'SYNCING')}</div>
+                   <div style={{ fontVariantNumeric: 'tabular-nums' }}>{cityClock?.label ?? '—'}</div>
                 </div>
                 {/* In the full /office view the corners also carry the location
                     label + signal meter. In embed mode the host /my-office pane
