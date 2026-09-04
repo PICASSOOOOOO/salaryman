@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, towerMarketHoldingsTable, towerMarketTradesTable } from "@workspace/db";
-import { TOWER_INFRASTRUCTURE_BUSINESSES, towerBusinessByKey } from "@workspace/api-zod";
+import { getTowerBusinessPlacement, sortTowerBusinessesByExitPriority, towerBusinessByKey } from "@workspace/api-zod";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 
 const router = Router();
@@ -40,10 +40,16 @@ router.get("/tower-market/companies", async (_req, res) => {
   res.json({
     issuer: "PABLO CORP / SHADOW CORP",
     market: "SHADOW TOWER EXCHANGE",
-    companies: TOWER_INFRASTRUCTURE_BUSINESSES.map((company) => {
+    companies: sortTowerBusinessesByExitPriority().map((company) => {
       const quote = quoteFor(company.key)!;
       const publicSharesHeld = heldByCompany.get(company.key) ?? 0;
-      return { ...company, ...quote, publicSharesHeld, sharesAvailable: Math.max(0, company.publicFloatShares - publicSharesHeld) };
+      return {
+        ...company,
+        ...quote,
+        placement: getTowerBusinessPlacement(company),
+        publicSharesHeld,
+        sharesAvailable: Math.max(0, company.publicFloatShares - publicSharesHeld),
+      };
     }),
   });
 });

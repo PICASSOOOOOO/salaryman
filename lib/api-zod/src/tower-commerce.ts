@@ -17,6 +17,16 @@ export type TowerInfrastructureBusiness = {
   physicalState: "awaiting_art_direction";
 };
 
+export type TowerBusinessPlacement = {
+  businessKey: string;
+  floorNumber: number | null;
+  unitNumber: number | null;
+  coverage: TowerInfrastructureBusiness["coverage"];
+  /** Lower values are closer to the Tower exit. Lobby-only businesses are
+   * intentionally unranked so "lobby" never becomes a placement advantage. */
+  exitPriority: number | null;
+};
+
 export const TOWER_INFRASTRUCTURE_BUSINESSES: readonly TowerInfrastructureBusiness[] = [
   { key:"shadow_cafeteria", code:"TWR-FOOD-001", ticker:"TRAY", name:"COMMON TABLE 67", category:"Cafeteria", issuer:"PABLO CORP / SHADOW CORP", logo:"▤", color:"#fbbf24", floor:"FLOOR 2 · PUBLIC COMMONS", coverage:"single_suite", ad:"Three shifts fed. No meeting required.", service:"Meals, staff catering, shift trays", operatorCode:"STEWARD-TRAY-01", baseSharePriceFiat:42, publicFloatShares:180000, physicalState:"awaiting_art_direction" },
   { key:"lobby_gift_shop", code:"TWR-RETAIL-002", ticker:"GIFT", name:"LAST LOOK GIFT CO.", category:"Gift Shop", issuer:"PABLO CORP / SHADOW CORP", logo:"◇", color:"#f9a8d4", floor:"LOBBY · ARRIVAL WALL", coverage:"lobby", ad:"Proof you made it into the Tower.", service:"Gifts, flowers, cards, visitor goods", operatorCode:"CURATOR-GIFT-02", baseSharePriceFiat:31, publicFloatShares:140000, physicalState:"awaiting_art_direction" },
@@ -56,4 +66,61 @@ export function towerBusinessByKey(key: string) {
 
 export function towerBusinessByTicker(ticker: string) {
   return TOWER_INFRASTRUCTURE_BUSINESSES.find((company) => company.ticker === ticker.toUpperCase());
+}
+
+function floorNumberFromLabel(company: TowerInfrastructureBusiness): number | null {
+  const match = company.floor.match(/\bFLOOR\s+(\d+)\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+const SINGLE_SUITE_PLACEMENTS = (() => {
+  const counts = new Map<number, number>();
+  const placements = new Map<string, TowerBusinessPlacement>();
+  for (const company of [...TOWER_INFRASTRUCTURE_BUSINESSES]
+    .filter((item) => item.coverage === "single_suite")
+    .sort((a, b) => {
+      const floorA = floorNumberFromLabel(a) ?? Number.MAX_SAFE_INTEGER;
+      const floorB = floorNumberFromLabel(b) ?? Number.MAX_SAFE_INTEGER;
+      return floorA - floorB || a.key.localeCompare(b.key);
+    })) {
+    const floorNumber = floorNumberFromLabel(company);
+    const unitNumber = floorNumber == null ? null : (counts.get(floorNumber) ?? 0) + 1;
+    if (floorNumber != null) counts.set(floorNumber, unitNumber!);
+    placements.set(company.key, {
+      businessKey: company.key,
+      floorNumber,
+      unitNumber,
+      coverage: company.coverage,
+      // Floor 1 is the lobby and is intentionally not a priority tier.
+      exitPriority: floorNumber != null && floorNumber > 1 ? floorNumber : null,
+    });
+  }
+  return placements;
+})();
+
+export function getTowerBusinessPlacement(
+  business: TowerInfrastructureBusiness | string,
+): TowerBusinessPlacement | null {
+  const company = typeof business === "string" ? towerBusinessByKey(business) : business;
+  if (!company) return null;
+  const fixed = SINGLE_SUITE_PLACEMENTS.get(company.key);
+  if (fixed) return fixed;
+  return {
+    businessKey: company.key,
+    floorNumber: company.coverage === "every_floor" ? 1 : floorNumberFromLabel(company),
+    unitNumber: null,
+    coverage: company.coverage,
+    exitPriority: null,
+  };
+}
+
+/** Stable catalog order for assigning fixed-suite businesses from the exit up. */
+export function sortTowerBusinessesByExitPriority(
+  businesses: readonly TowerInfrastructureBusiness[] = TOWER_INFRASTRUCTURE_BUSINESSES,
+) {
+  return [...businesses].sort((a, b) => {
+    const aPriority = getTowerBusinessPlacement(a)?.exitPriority ?? Number.MAX_SAFE_INTEGER;
+    const bPriority = getTowerBusinessPlacement(b)?.exitPriority ?? Number.MAX_SAFE_INTEGER;
+    return aPriority - bPriority || a.key.localeCompare(b.key);
+  });
 }
