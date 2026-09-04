@@ -41,7 +41,7 @@ const operation = (
   artDirection: string,
 ): TowerBusinessOperation => ({ playerService, playerJob, rewardFiat, storyHook, artDirection });
 
-/** The catalog's business cards are also playable contracts, not just lore. */
+/** The catalog's business listings are also playable contracts, not just lore. */
 const TOWER_BUSINESS_OPERATIONS: Record<string, TowerBusinessOperation> = {
   shadow_cafeteria: operation("Order a shift tray or deliver a late meal.", "Tray runner · load and deliver staff meals", 18, "A missing tray exposes who is quietly working unpaid night shifts.", "Warm stainless counter, amber heat lamps, stacked numbered trays."),
   lobby_gift_shop: operation("Buy a visitor gift, card, or apology delivery.", "Gift courier · assemble a floor-specific order", 14, "A gift arrives with a message that changes a tenant introduction.", "Black-glass vitrine, pressed flowers, receipt printer, soft rose light."),

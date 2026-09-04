@@ -249,7 +249,7 @@ export default function Console() {
           style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(196,181,253,0.95)', border: '1px solid rgba(196,181,253,0.32)', background: 'rgba(196,181,253,0.06)' }}
           data-testid="console-open-tower-life"
         >
-          TOWER SHEETS
+          TOWER CLASSIFIEDS
         </button>
         <span className="hidden md:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}

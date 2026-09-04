@@ -270,7 +270,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
                <Link href="/console" className="block w-full bg-cyan-300 text-black text-center font-black py-3 transition hover:bg-cyan-200 active:scale-[.99]">ALL SYSTEMS TERMINAL</Link>
                <Link href="/phone?from=public-terminal" className="block w-full border border-emerald-300/50 bg-emerald-300/10 text-center font-black py-3 text-emerald-100 transition hover:bg-emerald-300/20 active:scale-[.99]">PHONE SYSTEM</Link>
              </div>
-            <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="PUBLIC TERMINAL · WALL SHEETS" />
+             <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="PUBLIC TERMINAL · CLASSIFIEDS" />
           </div>}
           {panel === "work" && <div className="p-4">
             <p className="mb-4 text-xs text-zinc-400">Public work access is free. Debtor labor pays Banco Ombra first; the remainder of eligible paid work reaches checking only after debt settlement.</p>
