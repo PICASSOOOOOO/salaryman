@@ -64,6 +64,7 @@ interface ServiceListing {
   payType: "flat" | "hourly";
   cityId: string;
   location: string;
+  businessKey: string | null;
   deadline: string | null;
   status: string;
   claimerUserId: string | null;
@@ -112,7 +113,7 @@ interface CityMarketDisplay {
 
 export default function BusinessServices() {
   hydrateActiveCityFromSave();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>("browse");
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [mine, setMine] = useState<ServiceListing[]>([]);
@@ -125,6 +126,20 @@ export default function BusinessServices() {
   const [showPostBounty, setShowPostBounty] = useState(false);
   const [ratingTarget, setRatingTarget] = useState<{ listingId: number } | null>(null);
   const [market, setMarket] = useState<{ multiplier: number; cityMultipliers?: Record<string, { labor: number; property: number }> } | null>(null);
+  const tenantBusinessKey = useMemo(() => {
+    const query = location.split("?")[1] ?? "";
+    const value = new URLSearchParams(query).get("tenant")?.trim();
+    return value || null;
+  }, [location]);
+  const [tenantContext, setTenantContext] = useState<{
+    businessKey: string;
+    name: string;
+    service: string;
+    description: string;
+    floorNumber: number;
+    unitNumber: number;
+  } | null>(null);
+  const [tenantResolved, setTenantResolved] = useState(!tenantBusinessKey);
   const activeCityId = getActiveCityId();
   const localCcy = getCityCurrency(activeCityId);
   const laborMultiplier = market?.cityMultipliers?.[activeCityId]?.labor
@@ -137,20 +152,35 @@ export default function BusinessServices() {
     laborMultiplier,
   };
 
+  useEffect(() => {
+    setTenantContext(null);
+    setTenantResolved(!tenantBusinessKey);
+  }, [tenantBusinessKey]);
 
   const loadListings = useCallback(async () => {
     try {
-      const r = await apiFetch(`api/services${catFilter ? `?category=${catFilter}` : ""}`);
-      if (r.ok) setListings((await r.json()).listings ?? []);
+      const params = new URLSearchParams();
+      if (catFilter) params.set("category", catFilter);
+      if (tenantBusinessKey) params.set("tenant", tenantBusinessKey);
+      const r = await apiFetch(`api/services${params.toString() ? `?${params}` : ""}`);
+      if (r.ok) {
+        const body = await r.json();
+        setListings(body.listings ?? []);
+        if (tenantBusinessKey) {
+          setTenantContext(body.tenant ?? null);
+          setTenantResolved(true);
+        }
+      }
     } catch { /* */ }
-  }, [catFilter]);
+  }, [catFilter, tenantBusinessKey]);
 
   const loadMine = useCallback(async () => {
     try {
-      const r = await apiFetch("api/services/mine", { credentials: "include" });
+      const query = tenantBusinessKey ? `?tenant=${encodeURIComponent(tenantBusinessKey)}` : "";
+      const r = await apiFetch(`api/services/mine${query}`, { credentials: "include" });
       if (r.ok) setMine((await r.json()).listings ?? []);
     } catch { /* */ }
-  }, []);
+  }, [tenantBusinessKey]);
 
   const loadBounties = useCallback(async () => {
     try {
@@ -217,6 +247,7 @@ export default function BusinessServices() {
   const filtered = useMemo(() =>
     catFilter ? listings.filter((l) => l.category === catFilter) : listings,
     [listings, catFilter]);
+  const tenantViewUnavailable = Boolean(tenantBusinessKey && tenantResolved && !tenantContext);
 
   return (
     <div className="min-h-screen bg-black text-zinc-200">
@@ -227,11 +258,11 @@ export default function BusinessServices() {
         </button>
         <div className="text-cyan-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center"
           style={{ fontFamily: "var(--font-sans)" }}>
-          ▌ SERVICES BOARD <span className="text-pink-400">サービス</span> ▌
+          ▌ {tenantContext ? `${tenantContext.name} · ${tenantContext.service}` : tenantBusinessKey ? "TENANT SERVICE COUNTER" : "SERVICES BOARD"} <span className="text-pink-400">サービス</span> ▌
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={() => { setMsg(null); setShowPostGig(true); }}
-            className="px-3 py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-100 text-[10px] tracking-[0.2em] flex items-center gap-1.5">
+          <button type="button" disabled={tenantViewUnavailable} onClick={() => { setMsg(null); setShowPostGig(true); }}
+            className="px-3 py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-100 text-[10px] tracking-[0.2em] flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50">
             <Plus className="w-3 h-3" /> POST GIG
           </button>
           <button type="button" onClick={() => { setMsg(null); setShowPostBounty(true); }}
@@ -252,7 +283,7 @@ export default function BusinessServices() {
         ))}
       </div>
       <div className="px-4 sm:px-8 py-2 border-b border-amber-500/15 bg-amber-950/10 text-[10px] tracking-[0.2em] text-amber-200/80">
-        {cityMarket.cityName} · {cityMarket.currencyCode} {cityMarket.currencySymbol} · LABOR DISPLAY RATE ×{cityMarket.laborMultiplier.toFixed(2)}
+        {tenantContext ? `${tenantContext.name} · FLOOR ${tenantContext.floorNumber} UNIT ${tenantContext.unitNumber}` : tenantBusinessKey ? "TENANT SERVICE SCOPE · VERIFYING COUNTER" : `${cityMarket.cityName} · ${cityMarket.currencyCode} ${cityMarket.currencySymbol} · LABOR DISPLAY RATE ×${cityMarket.laborMultiplier.toFixed(2)}`}
       </div>
 
       {msg && (
@@ -266,7 +297,8 @@ export default function BusinessServices() {
       <div className="px-4 sm:px-8 py-6 max-w-6xl mx-auto">
         {tab === "browse" && (
           <BrowseTab listings={filtered} catFilter={catFilter} setCatFilter={setCatFilter}
-            onClaim={claimGig} busy={busy} cityMarket={cityMarket} />
+            onClaim={claimGig} busy={busy} cityMarket={cityMarket}
+            tenantName={tenantContext?.name ?? null} tenantUnavailable={tenantViewUnavailable} />
         )}
         {tab === "mine" && (
           <MyGigsTab listings={mine} onComplete={completeGig} onDispute={disputeGig}
@@ -283,6 +315,7 @@ export default function BusinessServices() {
 
       {showPostGig && (
         <PostGigModal onClose={() => setShowPostGig(false)}
+          businessKey={tenantContext?.businessKey ?? null}
           onCreated={async () => { setShowPostGig(false); await loadListings(); await loadMine(); }} />
       )}
       {showPostBounty && (
@@ -299,9 +332,10 @@ export default function BusinessServices() {
 }
 
 // ── Browse Tab ──────────────────────────────────────────────────────────────
-function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy, cityMarket }: {
+function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy, cityMarket, tenantName, tenantUnavailable }: {
   listings: ServiceListing[]; catFilter: string; setCatFilter: (c: string) => void;
   onClaim: (id: number) => void; busy: boolean; cityMarket: CityMarketDisplay;
+  tenantName: string | null; tenantUnavailable: boolean;
 }) {
   return (
     <div>
@@ -319,7 +353,11 @@ function BrowseTab({ listings, catFilter, setCatFilter, onClaim, busy, cityMarke
       </div>
       {listings.length === 0 && (
         <div className="text-zinc-600 text-xs text-center py-12 border border-dashed border-zinc-800 rounded">
-          No open gigs yet — post one above!
+          {tenantUnavailable
+            ? "This Tower counter is unavailable or has no registered service scope."
+            : tenantName
+              ? `No open gigs published by ${tenantName} yet.`
+              : "No open gigs yet — post one above!"}
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -561,7 +599,11 @@ function ServiceCard({ listing, cityMarket, children }: { listing: ServiceListin
 }
 
 // ── Post Gig Modal ──────────────────────────────────────────────────────────
-function PostGigModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function PostGigModal({ onClose, onCreated, businessKey }: {
+  onClose: () => void;
+  onCreated: () => void;
+  businessKey: string | null;
+}) {
   const [form, setForm] = useState({
     title: "", description: "", category: "Other", payFiat: "", payType: "flat", cityId: "minx_prime", location: "city", deadline: "",
   });
@@ -577,7 +619,11 @@ function PostGigModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       const r = await apiFetch("api/services", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, payFiat: parseInt(form.payFiat) || 0 }),
+        body: JSON.stringify({
+          ...form,
+          payFiat: parseInt(form.payFiat) || 0,
+          ...(businessKey ? { businessKey } : {}),
+        }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setErr(j?.error || "Failed"); return; }

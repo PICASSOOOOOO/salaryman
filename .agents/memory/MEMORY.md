@@ -154,3 +154,4 @@
 - [Tower floor defaults](tower-floor-defaults.md) — commercial floors start with one furnished executive suite; suites, desks, and terminals expand through paid canonical-plan fit-outs.
 - [Startup art bake](startup-art-bake.md) — boot may register art rows but must not launch paid image-generation jobs.
 - [Tower physical floor shells](tower-floor-physical-shells.md) — every elevator stop renders a physical shell; vacant/sealed/restricted addresses hold access at the boundary instead of disappearing.
+- [Tower service scopes](tower-service-scopes.md) — only fixed-suite tenants have service counters; lobby/every-floor businesses resolve empty instead of falling back to shared listings.

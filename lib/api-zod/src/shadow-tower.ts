@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   getTowerBusinessConversation,
+  getTowerBusinessPlacement,
   TOWER_INFRASTRUCTURE_BUSINESSES,
   type TowerBusinessConversation,
   type TowerInfrastructureBusiness,
@@ -524,6 +525,20 @@ export function getShadowTowerCommercialTenants(floorNumber: number): ShadowTowe
       conversation: getTowerBusinessConversation(business)!,
     };
   });
+}
+
+/**
+ * Resolve only businesses with a real, fixed commercial suite into a service
+ * scope. Lobby/every-floor catalog entries have no tenant station and must not
+ * manufacture a service board view.
+ */
+export function getShadowTowerServiceTenant(businessKey: string): ShadowTowerCommercialTenant | null {
+  const business = TOWER_INFRASTRUCTURE_BUSINESSES.find((candidate) => candidate.key === businessKey);
+  if (!business || business.coverage !== "single_suite") return null;
+  const placement = getTowerBusinessPlacement(business);
+  if (placement?.floorNumber == null || placement.unitNumber == null) return null;
+  return getShadowTowerCommercialTenants(placement.floorNumber)
+    .find((tenant) => tenant.businessKey === business.key) ?? null;
 }
 
 export type ShadowTowerCommercialFloor = {

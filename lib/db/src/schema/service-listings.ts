@@ -28,6 +28,9 @@ export const serviceListingsTable = pgTable("service_listings", {
   cityId: varchar("city_id", { length: 32 }).notNull().default("minx_prime"),
   location: varchar("location", { length: 32 }).notNull().default("city"), // 'city' | 'remote'
   deadline: timestamp("deadline", { withTimezone: true }),
+  // Optional canonical Shadow Tower tenant scope. Null keeps legacy board gigs
+  // visible on the shared Services Board.
+  businessKey: varchar("business_key", { length: 64 }),
 
   // Lifecycle
   status: varchar("status", { length: 16 }).notNull().default("open"),
@@ -53,6 +56,7 @@ export const serviceListingsTable = pgTable("service_listings", {
 }, (t) => ({
   byStatus: index("svc_listings_status_idx").on(t.status),
   byCity: index("svc_listings_city_idx").on(t.cityId, t.status),
+  byBusiness: index("svc_listings_business_idx").on(t.businessKey, t.status),
   byPoster: index("svc_listings_poster_idx").on(t.posterUserId),
   byClaimer: index("svc_listings_claimer_idx").on(t.claimerUserId),
 }));

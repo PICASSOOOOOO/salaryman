@@ -14,6 +14,7 @@
  */
 import { Router, type Request, type Response } from "express";
 import { db, serviceListingsTable, serviceRatingsTable, bankAccountsTable, bankTransactionsTable, playerLedgerTable, cfSubmissionsTable, orgMembersTable, hasRoleAccess, type OrgRole } from "@workspace/db";
+import { getShadowTowerServiceTenant } from "@workspace/api-zod/shadow-tower";
 import { eq, and, desc, sql, or, isNull, lte, inArray } from "drizzle-orm";
 
 const router = Router();
@@ -45,11 +46,35 @@ async function getCheckingAccount(userId: string) {
   return accounts.find((a) => a.kind === "checking") ?? accounts[0] ?? null;
 }
 
-// GET /services — browse open gigs, filterable by category and city
+function requestedBusinessKey(req: Request): string | null {
+  const value = req.query.tenant ?? req.query.businessKey;
+  if (typeof value !== "string") return null;
+  const key = value.trim();
+  return key.length > 0 ? key : null;
+}
+
+function tenantResponse(businessKey: string | null) {
+  if (!businessKey) return null;
+  const tenant = getShadowTowerServiceTenant(businessKey);
+  return tenant
+    ? {
+        businessKey: tenant.businessKey,
+        name: tenant.business.name,
+        service: tenant.service.label,
+        description: tenant.service.description,
+        floorNumber: tenant.floorNumber,
+        unitNumber: tenant.unitNumber,
+      }
+    : null;
+}
+
+// GET /services — browse open gigs, filterable by category, city, and Tower tenant
 router.get("/services", async (req: Request, res: Response) => {
   try {
     const { category, city, status } = req.query;
     const st = String(status || "open");
+    const businessKey = requestedBusinessKey(req);
+    const tenant = tenantResponse(businessKey);
     let rows = await db
       .select()
       .from(serviceListingsTable)
@@ -58,13 +83,16 @@ router.get("/services", async (req: Request, res: Response) => {
           eq(serviceListingsTable.status, st),
           category ? eq(serviceListingsTable.category, String(category)) : undefined,
           city ? eq(serviceListingsTable.cityId, String(city)) : undefined,
+          businessKey ? eq(serviceListingsTable.businessKey, businessKey) : undefined,
         ),
       )
       .orderBy(desc(serviceListingsTable.createdAt))
       .limit(100);
 
     // Attach aggregated ratings for each poster
-    res.json({ listings: rows });
+    // Unknown or unavailable tenant keys intentionally resolve to an empty
+    // board rather than falling back to shared listings or inventing content.
+    res.json({ listings: tenant ? rows : businessKey ? [] : rows, tenant });
   } catch (e: any) {
     console.error("[services] GET error", e);
     res.status(500).json({ error: "Failed to load services" });
@@ -103,18 +131,23 @@ router.get("/services/mine", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
+    const businessKey = requestedBusinessKey(req);
+    const tenant = tenantResponse(businessKey);
     const rows = await db
       .select()
       .from(serviceListingsTable)
       .where(
-        or(
-          eq(serviceListingsTable.posterUserId, userId),
-          eq(serviceListingsTable.claimerUserId, userId),
+        and(
+          or(
+            eq(serviceListingsTable.posterUserId, userId),
+            eq(serviceListingsTable.claimerUserId, userId),
+          ),
+          businessKey ? eq(serviceListingsTable.businessKey, businessKey) : undefined,
         ),
       )
       .orderBy(desc(serviceListingsTable.createdAt))
       .limit(200);
-    res.json({ listings: rows });
+    res.json({ listings: tenant ? rows : businessKey ? [] : rows, tenant });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || "Failed" });
   }
@@ -146,13 +179,21 @@ router.post("/services", async (req: Request, res: Response) => {
   try {
     const {
       category, title, description, payFiat, payType, cityId, location, deadline, posterOrgId,
+      businessKey: rawBusinessKey,
     } = req.body ?? {};
+    const businessKey = typeof (rawBusinessKey ?? req.body?.tenant) === "string"
+      ? String(rawBusinessKey ?? req.body.tenant).trim() || null
+      : null;
 
     if (typeof title !== "string" || title.trim().length < 2) {
       res.status(400).json({ error: "title required (min 2 chars)" }); return;
     }
     if (!SERVICE_CATEGORIES.has(String(category))) {
       res.status(400).json({ error: "invalid category" }); return;
+    }
+    const tenant = businessKey ? getShadowTowerServiceTenant(businessKey) : null;
+    if (businessKey && !tenant) {
+      res.status(400).json({ error: "Tower tenant service is unavailable" }); return;
     }
     const pay = Math.max(0, Math.min(parseInt(String(payFiat || 0), 10) || 0, 500_000_000));
     if (pay <= 0) { res.status(400).json({ error: "payFiat required" }); return; }
@@ -208,6 +249,7 @@ router.post("/services", async (req: Request, res: Response) => {
         cityId: String(cityId || "minx_prime").slice(0, 32),
         location: location === "remote" ? "remote" : "city",
         deadline: dlDate ?? undefined,
+        businessKey: tenant?.businessKey,
         status: "open",
         escrowFiat: pay,
       }).returning();
