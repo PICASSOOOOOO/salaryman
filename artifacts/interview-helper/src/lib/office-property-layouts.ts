@@ -124,7 +124,8 @@ export function officePropertyLayoutFromPlan(
     footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
   };
   });
-  const archetype = projectedPlan.floorType === "recreation" ? "RECREATION · REC"
+  const archetype = projectedPlan.floorType === "lobby" ? "SHADOW TOWER · RECEPTION"
+    : projectedPlan.floorType === "recreation" ? "RECREATION · REC"
     : projectedPlan.floorType === "mezzanine" ? "PUBLIC MEZZANINE · COMPUTER CAFE"
         : projectedPlan.floorType === "rest" ? "REST WARD · CLINIC"
         : projectedPlan.floorType === "security" ? "SECURITY FLOOR · CUSTODY"

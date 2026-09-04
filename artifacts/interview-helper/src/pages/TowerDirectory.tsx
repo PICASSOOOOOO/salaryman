@@ -199,15 +199,15 @@ export default function TowerDirectory() {
         if (!response.ok) return;
         const body = await response.json().catch(() => null);
         if (cancelled) return;
-        if (Array.isArray(body?.saves) && body.saves.length === 0) {
-          resetBuildingOnboarding();
-          setStage("not_started");
+        if (Array.isArray(body?.saves)) {
+          if (body.saves.length === 0) {
+            resetBuildingOnboarding();
+            setStage("not_started");
+          }
+          setReconcilingServerState(false);
         }
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setReconcilingServerState(false);
-      });
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [isAuthenticated]);
   useEffect(() => {

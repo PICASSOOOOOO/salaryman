@@ -24,3 +24,13 @@ should use rendered art assets rather than generic placeholder shapes where an a
 The registration request made at reception must remain server-authoritative and create the
 onboarding-complete row before setting the local tutorial flag. This keeps returning-device
 hydration consistent.
+
+Fresh-start reconciliation must fail closed: protected routes and lobby access stay held until
+the server returns a successful, well-formed save list. Network, non-OK, or malformed responses
+must never trust stale local completion flags or clear local state.
+
+**Why:** Development/world resets can leave old browser onboarding flags behind; allowing those
+flags through when the authoritative read fails lets a reset account bypass reception.
+
+**How to apply:** Only a verified empty save list may clear local tutorial/building progress, and
+only a verified save-list response may release protected-route or lobby reconciliation gates.

@@ -20,7 +20,7 @@ export const SHADOW_TOWER_UPGRADES = [
   "extra_workstations", "operations_terminal",
 ] as const;
 export type ShadowTowerUpgrade = (typeof SHADOW_TOWER_UPGRADES)[number];
-export const SHADOW_TOWER_FLOOR_TYPES = ["office", "recreation", "mezzanine", "rest", "security"] as const;
+export const SHADOW_TOWER_FLOOR_TYPES = ["office", "lobby", "recreation", "mezzanine", "rest", "security"] as const;
 export type ShadowTowerFloorType = (typeof SHADOW_TOWER_FLOOR_TYPES)[number];
 
 const pointSchema = z.object({ x: z.number().int().nonnegative(), y: z.number().int().nonnegative() }).strict();
@@ -218,7 +218,7 @@ export function getLobbyPlan(city: ShadowTowerCity): ShadowTowerPlan {
     { id: "lobby-stairs", kind: "stairs", footprint: rect(26, 13, 2, 2), interactive: true },
   ];
   return {
-    floorType: "recreation",
+    floorType: "lobby",
     city,
     floorNumber: 1,
     cols: 30,
@@ -355,7 +355,14 @@ export function validateShadowTowerPlan(value: unknown): { ok: true; plan: Shado
       errors.push(`${object.id} has no collision footprint`);
     }
   }
-  if (plan.floorType === "recreation") {
+  if (plan.floorType === "lobby") {
+    for (const kind of ["elevator", "stairs", "work_board"]) {
+      if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`lobby requires one ${kind}`);
+    }
+    if (plan.objects.some((o) => o.kind === "workstation" || o.kind === "terminal")) {
+      errors.push("lobby must not contain computers");
+    }
+  } else if (plan.floorType === "recreation") {
     const requiredRec = ["elevator", "stairs", "vending_machine", "bar"];
     for (const kind of requiredRec) if (plan.objects.filter((o) => o.kind === kind).length !== 1) errors.push(`requires exactly one ${kind}`);
     if (plan.objects.filter((o) => o.kind === "rec_station").length !== 7) errors.push("requires exactly seven recreation stations");

@@ -9,10 +9,10 @@
 //     so every routing gate treats the user as cleared.
 //   • GET /world/home-city: the server-owned home city becomes both the active
 //     realm and the cached current city, without reading location metadata.
-//   • No row / non-ok / network error → leave the flag unset so a brand-new user
-//     still runs the full intake.
-//   • Resolves the subscribable "resolved" state in every case so gates that hold
-//     until resolution can proceed.
+//   • No row with a verified saves response → leave the flag unset so a brand-new
+//     user still runs the full intake.
+//   • Non-ok / network / malformed saves responses stay unresolved so protected
+//     routes remain fail-closed.
 //
 // apiFetch is mocked so no real network happens. The module keeps module-level
 // state (the resolved latch + in-flight promise), so each test resets modules and
@@ -32,6 +32,16 @@ function fakeResponse(body: unknown, ok = true): Response {
   } as unknown as Response;
 }
 
+function successfulResponseFor(path: string, businesses: unknown[] = []): Promise<Response> {
+  return Promise.resolve(
+    path === "/api/salaryman/saves"
+      ? fakeResponse({ saves: [{ slot: 1 }] })
+      : path === "/api/world/home-city"
+        ? fakeResponse({ homeCityId: "minx_city" })
+        : fakeResponse({ businesses }),
+  );
+}
+
 // Fresh module instance (clears the resolved latch + any in-flight promise).
 async function loadModule() {
   vi.resetModules();
@@ -45,7 +55,7 @@ beforeEach(() => {
 
 describe("hydrateOnboardingStatus", () => {
   it("flips the local flag when the server reports a world business row", async () => {
-    apiFetch.mockResolvedValue(fakeResponse({ businesses: [{ id: "biz-1" }] }));
+    apiFetch.mockImplementation((path: string) => successfulResponseFor(path, [{ id: "biz-1" }]));
 
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await hydrateOnboardingStatus();
@@ -56,7 +66,7 @@ describe("hydrateOnboardingStatus", () => {
   });
 
   it("leaves the flag unset for a brand-new user with no business row", async () => {
-    apiFetch.mockResolvedValue(fakeResponse({ businesses: [] }));
+    apiFetch.mockImplementation((path: string) => successfulResponseFor(path));
 
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await hydrateOnboardingStatus();
@@ -71,7 +81,9 @@ describe("hydrateOnboardingStatus", () => {
     apiFetch.mockImplementation((path: string) => Promise.resolve(
       path === "/api/world/home-city"
         ? fakeResponse({ homeCityId: "huda_city" })
-        : fakeResponse({ businesses: [] }),
+        : path === "/api/salaryman/saves"
+          ? fakeResponse({ saves: [{ slot: 1 }] })
+          : fakeResponse({ businesses: [] }),
     ));
 
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
@@ -100,28 +112,30 @@ describe("hydrateOnboardingStatus", () => {
     expect(JSON.parse(localStorage.getItem("sm_save") ?? "{}").cityId).toBe("minx_city");
   });
 
-  it("leaves the flag unset (but still resolves) when the response is not ok", async () => {
+  it("leaves stale completion fail-closed when the saves response is not ok", async () => {
+    localStorage.setItem(TUTORIAL_KEY, "1");
     apiFetch.mockResolvedValue(fakeResponse(null, false));
 
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await hydrateOnboardingStatus();
 
-    expect(localStorage.getItem(TUTORIAL_KEY)).toBeNull();
-    expect(getOnboardingResolved()).toBe(true);
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBe("1");
+    expect(getOnboardingResolved()).toBe(false);
   });
 
-  it("swallows network errors, keeps the flag unset, and still resolves", async () => {
+  it("swallows network errors but keeps stale completion fail-closed", async () => {
+    localStorage.setItem(TUTORIAL_KEY, "1");
     apiFetch.mockRejectedValue(new Error("offline"));
 
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await expect(hydrateOnboardingStatus()).resolves.toBeUndefined();
 
-    expect(localStorage.getItem(TUTORIAL_KEY)).toBeNull();
-    expect(getOnboardingResolved()).toBe(true);
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBe("1");
+    expect(getOnboardingResolved()).toBe(false);
   });
 
   it("coalesces concurrent calls into a single network request", async () => {
-    apiFetch.mockResolvedValue(fakeResponse({ businesses: [{ id: "biz-1" }] }));
+    apiFetch.mockImplementation((path: string) => successfulResponseFor(path, [{ id: "biz-1" }]));
 
     const { hydrateOnboardingStatus } = await loadModule();
     await Promise.all([hydrateOnboardingStatus(), hydrateOnboardingStatus()]);
@@ -130,7 +144,7 @@ describe("hydrateOnboardingStatus", () => {
   });
 
   it("is a no-op once already resolved", async () => {
-    apiFetch.mockResolvedValue(fakeResponse({ businesses: [] }));
+    apiFetch.mockImplementation((path: string) => successfulResponseFor(path));
 
     const { hydrateOnboardingStatus } = await loadModule();
     await hydrateOnboardingStatus();
@@ -140,7 +154,7 @@ describe("hydrateOnboardingStatus", () => {
   });
 
   it("notifies subscribers when the status resolves", async () => {
-    apiFetch.mockResolvedValue(fakeResponse({ businesses: [] }));
+    apiFetch.mockImplementation((path: string) => successfulResponseFor(path));
 
     const { hydrateOnboardingStatus, subscribeOnboardingResolved } = await loadModule();
     const cb = vi.fn();

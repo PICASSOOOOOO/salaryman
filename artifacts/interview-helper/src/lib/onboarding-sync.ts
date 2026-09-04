@@ -78,19 +78,32 @@ function applyServerHomeCity(value: unknown): void {
 // - The separately scoped home-city read is always made after sign-in, including
 //   on a device that has the local tutorial flag, so the server choice wins
 //   across devices and is available before office/HUD/world routes mount.
-// - On any error / no row, leave the flag untouched so a genuinely brand-new
-//   user still falls through to the full immigration intake.
+// - The gate resolves only after an authoritative saves response. On a network,
+//   non-OK, or malformed saves response, keep protected surfaces fail-closed.
 export function hydrateOnboardingStatus(): Promise<void> {
   if (resolved) return Promise.resolve();
   if (inFlight) return inFlight;
 
   inFlight = (async () => {
+    let authoritativeSavesRead = false;
     try {
       const [businessResult, homeCityResult, savesResult] = await Promise.allSettled([
         apiFetch("/api/world/my-business"),
         apiFetch("/api/world/home-city"),
         apiFetch("/api/salaryman/saves"),
       ]);
+      if (savesResult.status === "fulfilled" && savesResult.value.ok) {
+        const data = (await savesResult.value.json()) as { saves?: unknown };
+        if (Array.isArray(data.saves)) {
+          authoritativeSavesRead = true;
+          if (data.saves.length === 0) {
+            // A successful empty save list is the reset signal. Never clear local
+            // onboarding state on a network error or a non-OK response.
+            resetTutorial();
+            resetBuildingOnboarding();
+          }
+        }
+      }
       if (businessResult.status === "fulfilled" && businessResult.value.ok) {
         const data = (await businessResult.value.json()) as { businesses?: unknown };
         if (Array.isArray(data.businesses) && data.businesses.length > 0) {
@@ -103,21 +116,10 @@ export function hydrateOnboardingStatus(): Promise<void> {
         const data = (await homeCityResult.value.json()) as { homeCityId?: unknown };
         applyServerHomeCity(data.homeCityId);
       }
-      if (savesResult.status === "fulfilled" && savesResult.value.ok) {
-        const data = (await savesResult.value.json()) as { saves?: unknown };
-        if (Array.isArray(data.saves) && data.saves.length === 0) {
-          // A successful empty save list is the reset signal. Never clear local
-          // onboarding state on a network error or a non-OK response.
-          resetTutorial();
-          resetBuildingOnboarding();
-        }
-      }
     } catch {
-      // Offline / transient error — keep the local-only flow. A brand-new user
-      // (no server record) still runs the full intake; a returning user can
-      // retry on the next load.
+      // Keep protected routes held until a future load can verify server state.
     } finally {
-      markResolved();
+      if (authoritativeSavesRead) markResolved();
       inFlight = null;
     }
   })();

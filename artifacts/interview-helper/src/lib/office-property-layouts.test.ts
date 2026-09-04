@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHADOW_TOWER_LISTINGS, getShadowTowerCommercialTenants, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
+import { SHADOW_TOWER_LISTINGS, getLobbyPlan, getShadowTowerCommercialTenants, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
 import {
   findOfficeRoute, getOfficeBlockedTiles, getShadowTowerOfficeLayout,
   getLobbyOfficeLayout, officePropertyLayoutFromPlan, routeOfficePath, validateOfficePose,
@@ -75,6 +75,7 @@ describe("Shadow Tower office projection", () => {
   });
 
   it("keeps the arrival lobby free of computer furniture", () => {
+    expect(validateShadowTowerPlan(getLobbyPlan("minx_city"))).toMatchObject({ ok: true });
     const layout = getLobbyOfficeLayout("minx_city");
     expect(layout.teamDesks).toEqual([]);
     expect(layout.playerDesk).toBeUndefined();
