@@ -15,6 +15,10 @@ dev server is `vite` (esbuild transform, no type errors). So TypeScript errors
 accumulate silently during normal development and only ever surface at publish
 time as a "deployment build failed".
 
+Merged feature work can leave simple structural errors such as duplicate imports
+that Vite tolerates but `tsc` rejects; the publish preflight is the authoritative
+check for those regressions.
+
 **Why:** Task-agent merge notes frequently say things like "pre-existing
 unrelated TS errors (loginWithGithub, art_assets schema columns,
 accountIdentitiesTable) are not from this change." Those get waved past because

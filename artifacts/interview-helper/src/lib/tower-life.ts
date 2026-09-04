@@ -1,7 +1,6 @@
 import {
   getShadowTowerCommercialTenants,
   getTowerBusinessPlacement,
-  getShadowTowerCommercialTenants,
   TOWER_INFRASTRUCTURE_BUSINESSES,
   type ShadowTowerCommercialTenant,
 } from "@workspace/api-zod";
