@@ -20,6 +20,11 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
   const announce = (text: string) => {
     setBroadcast(text);
   };
+  const businessesByExit = [...TOWER_BUSINESSES].sort((a, b) => {
+    const aPriority = a.exitPriority ?? Number.MAX_SAFE_INTEGER;
+    const bPriority = b.exitPriority ?? Number.MAX_SAFE_INTEGER;
+    return aPriority - bPriority || a.key.localeCompare(b.key);
+  });
 
   return (
     <section className={`border border-violet-300/25 bg-[#090d18] ${compact ? "p-3" : "p-5"}`} data-testid="tower-life-hub">
@@ -51,7 +56,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
 
       {tab === "classifieds" && (
           <div className="mt-4 grid max-h-[min(62vh,760px)] gap-3 overflow-y-auto pr-1 md:grid-cols-3">
-          {TOWER_BUSINESSES.map((business) => (
+           {businessesByExit.map((business) => (
             <button key={business.code} type="button" onClick={() => announce(`${business.name}: ${business.appointment}`)} className="text-left border border-white/10 bg-white/[.025] p-3 transition hover:-translate-y-0.5 hover:border-white/30">
               <div className="flex items-center gap-2" style={{ color: business.color }}>
                   <span className="grid h-12 w-12 place-items-center border border-current/40 bg-current/10 text-2xl">{business.logo}</span>
@@ -64,7 +69,11 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
                  <p className="mt-2 text-[9px] leading-4 text-zinc-500"><span className="font-bold tracking-widest text-zinc-400">ART</span> · {business.artDirection}</p>
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
                   <span className="text-[10px] font-bold tracking-wider text-zinc-500">{business.floor}</span>
-                  <span className="text-[9px] font-bold tracking-widest text-violet-300">{business.coverage.replace("_", " ").toUpperCase()}</span>
+                   <span className="text-right text-[9px] font-bold tracking-widest text-violet-300">
+                     {business.exitPriority != null
+                       ? `EXIT ORDER · F${business.floorNumber} · UNIT ${business.unitNumber}`
+                       : business.coverage.replace("_", " ").toUpperCase()}
+                   </span>
                 </div>
             </button>
           ))}

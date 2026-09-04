@@ -1,4 +1,7 @@
-import { TOWER_INFRASTRUCTURE_BUSINESSES } from "@workspace/api-zod";
+import {
+  getTowerBusinessPlacement,
+  TOWER_INFRASTRUCTURE_BUSINESSES,
+} from "@workspace/api-zod";
 
 export type TowerNpc = {
   code: string;
@@ -21,6 +24,9 @@ export type TowerBusiness = {
   logo: string;
   floor: string;
   coverage: "single_suite" | "lobby" | "every_floor";
+  floorNumber: number | null;
+  unitNumber: number | null;
+  exitPriority: number | null;
   operatorCode: string;
   ad: string;
   appointment: string;
@@ -139,6 +145,14 @@ export const TOWER_NPCS: TowerNpc[] = [
 ];
 
 export const TOWER_BUSINESSES: TowerBusiness[] = TOWER_INFRASTRUCTURE_BUSINESSES.map((business) => ({
+  ...(() => {
+    const placement = getTowerBusinessPlacement(business);
+    return {
+      floorNumber: placement?.floorNumber ?? null,
+      unitNumber: placement?.unitNumber ?? null,
+      exitPriority: placement?.exitPriority ?? null,
+    };
+  })(),
   key: business.key,
   code: business.code,
   ticker: business.ticker,
