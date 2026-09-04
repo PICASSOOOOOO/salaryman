@@ -969,3 +969,73 @@ type = "unspecified"
 title = "Shadow Tower Analog Office Kit"
 description = "Final optimized transparent PNG kit with placement, collision, and retro-industrial usage metadata."
 logical_id = "f2b98ba1-239d-44e0-a282-211c65549d41"
+
+[[outputs]]
+id = "c5a1a43EX31HbGbjDQeiW"
+uri = "file://exports/salaryman-source-code.zip"
+type = "unspecified"
+title = "SALARYMAN Source Code"
+description = "Lightweight tracked source/configuration archive for GitHub transfer; excludes raw uploads, binaries, generated media, dependencies, build output, and internal Replit metadata."
+logical_id = "82672e0b-353b-4cf4-ae07-2931bf373ee2"
+content_hash = "sha256:97d383d7391a27d87a197b3e6c0e0904d343f188ab70081e3123e81719152f09"
+size = 4928419
+mtime_ms = 1788534258108
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/82672e0b-353b-4cf4-ae07-2931bf373ee2/fb2c9629-25f4-4a6c-9856-86cee93a663a"
+storage_version_token = "1788534265343218"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "jEQ5v248cdLgcoqbO9dpZ"
+uri = "file://exports/salaryman-1999-music-code.zip"
+type = "unspecified"
+title = "SALARYMAN 1999 + Music Code"
+description = "Focused code bundle containing SoundLab, Music Jukebox, player context, audio engine, Shadow Radio, import/generation APIs, Replicate MusicGen adapter, and music schema."
+logical_id = "84603eea-5e3d-4dd8-b903-768cad00dfbc"
+content_hash = "sha256:cff7bf9c21324adade90792d4f3f7987527f2503147f53981448d50ba3c5bb44"
+size = 851614
+mtime_ms = 1788534153280
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/84603eea-5e3d-4dd8-b903-768cad00dfbc/cb5834ee-effa-484a-a6de-e60a753e2705"
+storage_version_token = "1788534266447658"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "dozz6aOp2Y4QtTO3w6u0v"
+uri = "file://exports/salaryman-callhome-audio-01-15.zip"
+type = "unspecified"
+title = "Call Home Audio Tracks 01–15"
+description = "First delivery-safe pack of bundled Shadow Radio / Call Home MP3 tracks."
+logical_id = "2de5c023-37d1-4d97-880c-049434c4746b"
+content_hash = "sha256:2668cb8e472794763b19b8cdd3ebad3686e13f4ad277856c714cc3cacea6c5bd"
+size = 84948508
+mtime_ms = 1788534159492
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/2de5c023-37d1-4d97-880c-049434c4746b/3e64450f-be50-4d4e-8861-6bc19f1e811b"
+storage_version_token = "1788534268579153"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "xb-1GolQolfG58uCquzDG"
+uri = "file://exports/salaryman-callhome-audio-16-31.zip"
+type = "unspecified"
+title = "Call Home Audio Tracks 16–31"
+description = "Second delivery-safe pack of bundled Shadow Radio / Call Home MP3 tracks."
+logical_id = "30f60925-c2d9-4d18-8c29-58d295c9b4b1"
+content_hash = "sha256:cbd1aa3af5eb1614bace61a012a026794e8b6b9dd3c4e7738765eeed59fd522a"
+size = 91049928
+mtime_ms = 1788534164068
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/30f60925-c2d9-4d18-8c29-58d295c9b4b1/8dad9969-0a9a-40be-b762-e8fd7b16c381"
+storage_version_token = "1788534270783608"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "aMkuFItxuAu9YDSOZSnd9"
+uri = "file://exports/SALARYMAN_MUSIC_TRANSFER.md"
+type = "text"
+title = "Music Transfer Guide"
+description = "Map of the 1999 and music features, routes, dependencies, required setup, and redistribution warning for bundled audio."
+logical_id = "3a98bdb0-58fd-4c88-ab7e-619609089cfc"
+content_hash = "sha256:82506534ef5777c6e244161e6457a55b7ffd797bd0e5c754281332173ea4a124"
+size = 2859
+mtime_ms = 1788534087852
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/3a98bdb0-58fd-4c88-ab7e-619609089cfc/4efe4a0a-9ef7-43a2-b132-6c57fb72a8f7"
+storage_version_token = "1788534271914804"
+content_type = "text/markdown"
