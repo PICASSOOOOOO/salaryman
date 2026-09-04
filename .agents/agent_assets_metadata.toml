@@ -1095,3 +1095,17 @@ mtime_ms = 1788534602708
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/4b8fb142-0e32-4247-b5dc-ed70e1efdb77/555fd0cd-f7ad-4272-9d49-607b6341b380"
 storage_version_token = "1788534610535862"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "_6NDA3dhg6xyAhg8WZa1S"
+uri = "file://exports/SALARYMAN_1999_CODE.txt"
+type = "text"
+title = "SALARYMAN 1999 — Copyable Text Code"
+description = "Plain TXT file containing the Creative Lab / SoundLab source, route wiring, audio dependencies, MusicGen server adapter, optional music API, schema, and setup notes."
+logical_id = "32ed271d-a2bc-4282-8c08-e0b1effda650"
+content_hash = "sha256:86db85db7ac79cd7855a30af9566cc4e16e404417b3ee5b25313ff48797a7853"
+size = 412618
+mtime_ms = 1788535174236
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/32ed271d-a2bc-4282-8c08-e0b1effda650/9001bfd7-5d46-4a0e-8848-70e75ea7fc5f"
+storage_version_token = "1788535179693971"
+content_type = "text/plain"
