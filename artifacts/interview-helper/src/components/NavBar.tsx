@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, FlaskConical, ArrowLeft } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, ExternalLink, FlaskConical, ArrowLeft } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
@@ -12,9 +12,7 @@ import { useFeatureLabel } from '../hooks/use-feature-label';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PABLO_PRODUCTS } from '../lib/product-names';
-import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
-import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
 import { HummingbirdNavButton } from './HummingbirdNavButton';
@@ -55,21 +53,12 @@ export function NavBar() {
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
   const { label: featureLabel } = useFeatureLabel();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [moreOpen, setMoreOpen] = useState(false);
   const [subnavOpen, setSubnavOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const [morePos, setMorePos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
-  const [showFeedback, setShowFeedback] = useState(false);
   const { t } = useTranslation();
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const pathname = location.split('?')[0];
   const isHome = pathname === "/";
@@ -138,10 +127,7 @@ export function NavBar() {
     // The classroom/live-session entry is renamed dynamically: education orgs
     // see "Classroom", everyone else "Conference".
     if (sub.id === 'classroom') return featureLabel.toUpperCase();
-    if (boomerMode) {
-      return t(`labels.${sub.id}`, sub.boomerLabel);
-    }
-    return t(`codenames.${sub.id}`, sub.codename);
+    return t(`labels.${sub.id}`, sub.boomerLabel);
   };
 
   return (
@@ -183,25 +169,9 @@ export function NavBar() {
             </button>
           </div>
           <div className="flex items-center gap-2.5">
-            <span className="font-mono text-xs text-zinc-500 tracking-widest uppercase">
-              {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
-            </span>
-            <span className="text-zinc-700 text-xs">◆</span>
             <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
               ALPHA {__BUILD_VERSION__}
             </span>
-            <button
-              onClick={() => navigate('/pledge')}
-              className="font-mono text-[11px] text-amber-500/70 tracking-widest uppercase hover:text-amber-400 transition-colors"
-            >
-              PLEDGE STORE
-            </button>
-            <button
-              onClick={() => navigate('/feedback')}
-              className="font-mono text-[11px] text-zinc-600 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
-            >
-              Feedback
-            </button>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -210,20 +180,11 @@ export function NavBar() {
               world HUD (WorldPlay), where it also shows the player's spendable
               ƒ balance. It was removed from the top nav to declutter. */}
           <span className="flex items-center gap-1.5">
-            {isOwner ? (
-              <span className="flex items-center gap-1.5" title={t('nav.corpAdmin')}>
-                <Zap className="w-3 h-3 text-amber-500" />
-                <span className="font-mono text-xs text-amber-400 tracking-wide">
-                  {t('nav.corpAdmin')}
-                </span>
-              </span>
-            ) : isPro || features.size > 0 ? (
+            {!isOwner && (isPro || features.size > 0 ? (
               <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
                 <Zap className="w-3 h-3 text-amber-500" />
                 <span className="font-mono text-xs text-amber-400 tracking-wide">
-                  {boomerMode
-                    ? `${features.size} ${t('nav.active')}`
-                    : `${features.size} ${t('nav.module', { count: features.size })}${features.size !== 1 ? 'S' : ''}`}
+                  {`${features.size} ${t('nav.active')}`}
                 </span>
               </button>
             ) : (
@@ -233,30 +194,11 @@ export function NavBar() {
                   onClick={() => navigate('/pricing')}
                   className="font-mono text-xs text-red-400 tracking-wide hover:text-red-300 transition-colors"
                 >
-                  {boomerMode ? 'PRICING' : t('nav.upgradeLabelCodename')}
+                  PRICING
                 </button>
               </>
-            )}
+            ))}
           </span>
-          {!location.startsWith('/world') && (
-            <button
-              onClick={() => {
-                const nb = !boomerMode;
-                setBoomerMode(nb);
-                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-              }}
-              className={`font-mono text-xs tracking-wide px-2 py-0.5 rounded border transition-colors ${
-                boomerMode
-                  ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
-                  : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
-              }`}
-              title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
-            >
-              {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
-            </button>
-          )}
-          <LanguageSelector />
-          <CurrencySelector />
         </div>
       </div>
 
@@ -349,6 +291,14 @@ export function NavBar() {
                     </button>
                   );
                 })}
+                <div className="mt-1 grid grid-cols-2 gap-2 border-t border-white/[0.08] px-3 pt-2">
+                  <div className="flex items-center justify-center rounded-md bg-white/[0.03]">
+                    <LanguageSelector compact />
+                  </div>
+                  <div className="flex items-center justify-center rounded-md bg-white/[0.03]">
+                    <CurrencySelector compact />
+                  </div>
+                </div>
               </div>,
               document.body
             )}
@@ -369,14 +319,6 @@ export function NavBar() {
               className="p-1.5 text-zinc-600 hover:text-fuchsia-400 transition-colors rounded-md hover:bg-fuchsia-500/8"
             >
               <FlaskConical className="w-3.5 h-3.5" />
-            </button>
-            {/* Bug report button */}
-            <button
-              onClick={() => setShowFeedback(true)}
-              title="Report an issue"
-              className="p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md hover:bg-sky-500/8"
-            >
-              <Bug className="w-3.5 h-3.5" />
             </button>
             {isLoading ? (
               <div className="w-7 h-7 rounded-md bg-white/4 animate-pulse" />
@@ -495,7 +437,6 @@ export function NavBar() {
         </div>
       )}
 
-      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </header>
   );
 }

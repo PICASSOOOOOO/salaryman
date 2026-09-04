@@ -92,7 +92,8 @@ body:not(.game-route) .rounded-lg {
   #root {
     width: 100%;
     min-height: 100%;
-    overflow-x: clip;
+    max-width: 100%;
+    overflow-x: hidden;
   }
   #root {
     min-height: var(--app-viewport-height, 100dvh);
@@ -112,6 +113,7 @@ body:not(.game-route) .rounded-lg {
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    overscroll-behavior-x: none;
   }
   html {
     overscroll-behavior-y: none;
@@ -316,6 +318,8 @@ header {
   padding-left: var(--app-safe-left);
   padding-right: var(--app-safe-right);
   background: #0a0a0b;
+  max-width: 100vw;
+  overflow-x: clip;
 }
 
 .desktop-app-nav { display: none; }
@@ -326,6 +330,21 @@ header {
 @media (min-width: 640px) and (min-height: 501px) {
   .desktop-app-nav { display: block; }
   .mobile-app-nav { display: none; }
+}
+
+/* Keep compact landscape phones on the same readable, single-column canvas.
+   The PWA manifest requests portrait; this is the safe browser fallback when
+   the device has not honored that request yet. */
+@media (max-width: 639px) and (orientation: landscape) {
+  body {
+    min-width: 320px;
+  }
+  .app-chrome {
+    position: sticky;
+  }
+  .mobile-app-nav .mobile-tap-target {
+    min-height: 40px;
+  }
 }
 
 .app-bottom-safe {

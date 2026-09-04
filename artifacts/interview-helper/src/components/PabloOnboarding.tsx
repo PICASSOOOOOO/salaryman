@@ -791,12 +791,13 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
       setStep('business');
       return;
     }
-    setStep('submitting');
-    const isBusiness = shouldFileOnboardingRegistry(a.bizPath);
-    if (!isBusiness) {
-      onComplete(a);
+    if (!a.homeCityId || !getCityById(a.homeCityId)?.isLive) {
+      setSubmitErr('Choose an operational city before completing registration.');
+      setStep('destination');
       return;
     }
+    setStep('submitting');
+    const isBusiness = shouldFileOnboardingRegistry(a.bizPath);
     const sizeLabel = !isBusiness
       ? null
       : a.employeeCount === 0 ? 'SOLO OPERATOR'
@@ -833,7 +834,7 @@ export function PabloOnboarding({ charName, charClass, venue = 'registry', onCom
         throw new Error(j?.error || `Registration failed (${res.status}).`);
       }
       // 409 = company name taken; surface it but stay on the business page.
-      if (res.status === 409) {
+       if (res.status === 409) {
         playError();
         setSubmitErr('That company name is taken. Pick another.');
         setStep('business');

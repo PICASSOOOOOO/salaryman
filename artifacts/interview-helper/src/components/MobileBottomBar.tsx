@@ -1,9 +1,8 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, ChevronDown, ArrowLeft } from 'lucide-react';
+import { User, ChevronDown, ArrowLeft, WalletCards, X, Languages, Coins } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
-import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
 import { usePlan } from '../hooks/use-plan';
@@ -13,6 +12,9 @@ import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { NotificationBell } from './NotificationBell';
+import { apiFetch } from '@/lib/api-client';
+import { LanguageSelector } from './LanguageSelector';
+import { CurrencySelector } from './CurrencySelector';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -26,17 +28,9 @@ import {
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const scrollRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { label: featureLabel } = useFeatureLabel();
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
@@ -55,9 +49,7 @@ export function MobileSubNav() {
           const Icon = sub.icon;
           const label = sub.id === 'classroom'
             ? featureLabel.toUpperCase()
-            : boomerMode
-              ? t(`labels.${sub.id}`, sub.boomerLabel)
-              : t(`codenames.${sub.id}`, sub.codename);
+            : t(`labels.${sub.id}`, sub.boomerLabel);
           return (
             <button
               key={sub.id}
@@ -85,19 +77,46 @@ export function MobileModuleNav() {
   const { org: userOrg } = useOrg();
   const { isApprovedDev, isApprovedTester } = useAlpha();
   const { total: commsCount } = useCommsSummary();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summary, setSummary] = useState<MobileAccountSummary | null>(null);
+  const [currentLocation, setCurrentLocation] = useState('CITY / BUILDING NOT REPORTED');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownPanelRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const { t } = useTranslation();
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
+    if (!summaryOpen || !isAuthenticated) return;
+    let alive = true;
+    setSummaryLoading(true);
+    Promise.allSettled([
+      apiFetch('/api/wallet/snapshot', { credentials: 'include' }),
+      apiFetch('/api/orgs/me', { credentials: 'include' }),
+      apiFetch('/api/enterprise/summary', { credentials: 'include' }),
+    ]).then(async ([walletResult, orgResult, enterpriseResult]) => {
+      const read = async (result: PromiseSettledResult<Response>): Promise<unknown> =>
+        result.status === 'fulfilled' && result.value.ok ? result.value.json().catch(() => null) : null;
+      const [wallet, org, enterprise] = await Promise.all([
+        read(walletResult), read(orgResult), read(enterpriseResult),
+      ]);
+      if (alive) setSummary({
+        wallet: wallet as MobileAccountSummary['wallet'],
+        org: org as MobileAccountSummary['org'],
+        enterprise: enterprise as MobileAccountSummary['enterprise'],
+      });
+    }).finally(() => { if (alive) setSummaryLoading(false); });
+    try {
+      const save = JSON.parse(localStorage.getItem('sm_save') || '{}') as { cityId?: string; buildingId?: string };
+      const city = save.cityId ? save.cityId.replace(/_/g, ' ').toUpperCase() : 'CITY';
+      const building = save.buildingId ? ` · ${save.buildingId.replace(/_/g, ' ').toUpperCase()}` : '';
+      setCurrentLocation(`${city}${building}`);
+    } catch {
+      setCurrentLocation('CITY / BUILDING NOT REPORTED');
+    }
+    return () => { alive = false; };
+  }, [summaryOpen, isAuthenticated]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -300,7 +319,7 @@ export function MobileModuleNav() {
               iconClassName="w-5 h-5"
             />
             <button
-              onClick={() => navigate('/profile')}
+              onClick={() => setSummaryOpen(true)}
               className="mobile-tap-target flex items-center justify-center hover:opacity-80 transition-opacity touch-manipulation"
               aria-label="Profile"
             >
@@ -319,10 +338,145 @@ export function MobileModuleNav() {
           </div>
         )}
       </div>
+      {summaryOpen && createPortal(
+        <MobileAccountSheet
+          summary={summary}
+          loading={summaryLoading}
+          currentLocation={currentLocation}
+          onClose={() => setSummaryOpen(false)}
+          onNavigate={(path) => { setSummaryOpen(false); navigate(path); }}
+        />,
+        document.body,
+      )}
     </div>
   );
 }
 
 export function MobileBottomBar() {
   return null;
+}
+
+type MobileAccountSummary = {
+  wallet?: {
+    bank?: { earnedFiat?: number; fiatTotal?: number };
+    faction?: { totalSalary?: number; primary?: { name?: string | null } | null };
+    property?: { netWorth?: number };
+  } | null;
+  org?: {
+    org?: { name?: string | null; businessAddress?: string | null } | null;
+    members?: Array<{ lastSeenAt?: string | null; status?: string }>;
+  } | null;
+  enterprise?: {
+    employees?: { active?: number };
+    financials?: { grossIncome?: number; todayRevenue?: number; netProfit?: number };
+  } | null;
+};
+
+function fiat(value: unknown): string {
+  const amount = Number(value);
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  return `ƒ${Math.round(safeAmount).toLocaleString()}`;
+}
+
+function MobileAccountSheet({
+  summary,
+  loading,
+  currentLocation,
+  onClose,
+  onNavigate,
+}: {
+  summary: MobileAccountSummary | null;
+  loading: boolean;
+  currentLocation: string;
+  onClose: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  const spendable = summary?.wallet?.bank?.earnedFiat ?? summary?.wallet?.bank?.fiatTotal ?? 0;
+  const org = summary?.org?.org;
+  const members = summary?.org?.members ?? [];
+  const liveMembers = members.filter(member => {
+    if (!member.lastSeenAt) return false;
+    return Date.now() - new Date(member.lastSeenAt).getTime() < 90_000;
+  }).length;
+  const employeeCount = summary?.enterprise?.employees?.active ?? members.length;
+  const companyName = org?.name ?? summary?.wallet?.faction?.primary?.name ?? 'NO COMPANY FILED';
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/65 p-2 sm:items-center" onClick={onClose}>
+      <section
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-sky-400/25 bg-[#101217] shadow-2xl shadow-black/70"
+        onClick={event => event.stopPropagation()}
+        aria-label="Account summary"
+      >
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[.2em] text-sky-300">ACCOUNT SNAPSHOT</p>
+            <p className="mt-1 text-xs text-zinc-500">Spendable balance and company health</p>
+          </div>
+          <button className="mobile-tap-target rounded-lg text-zinc-400 active:bg-white/10" onClick={onClose} aria-label="Close account summary">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="max-h-[75dvh] overflow-y-auto p-3">
+          {loading && !summary ? (
+            <div className="rounded-xl border border-white/10 bg-white/[.03] p-6 text-center font-mono text-xs uppercase tracking-widest text-zinc-500">LOADING ACCOUNT…</div>
+          ) : (
+            <>
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] p-4">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[.18em] text-emerald-300">
+                  <WalletCards className="h-4 w-4" /> SPENDABLE ACCOUNT
+                </div>
+                <div className="mt-2 text-3xl font-semibold tracking-tight text-white">{fiat(spendable)}</div>
+                <p className="mt-1 text-xs text-emerald-100/70">Available now for shopping, travel, and operating costs.</p>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <SummaryMetric label="CURRENT INCOME" value={fiat(summary?.wallet?.faction?.totalSalary)} />
+                <SummaryMetric label="NET WORTH" value={fiat(summary?.wallet?.property?.netWorth)} />
+                <SummaryMetric label="EMPLOYEES" value={String(employeeCount)} />
+                <SummaryMetric label="LIVE NOW" value={`${liveMembers} / ${employeeCount}`} />
+              </div>
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-[.16em] text-zinc-500">COMPANY</p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-100">{companyName}</p>
+                    <p className="mt-1 text-xs text-zinc-400">{org?.businessAddress || 'Location not filed'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-mono uppercase tracking-[.16em] text-zinc-500">TODAY / CITY</p>
+                    <p className="mt-1 text-xs text-sky-300">{currentLocation}</p>
+                    <p className="mt-1 text-xs text-zinc-500">Live presence {liveMembers > 0 ? 'active' : 'quiet'}</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3 text-xs">
+                  <div><span className="text-zinc-500">Today’s revenue</span><br /><strong className="text-zinc-200">{fiat(summary?.enterprise?.financials?.todayRevenue)}</strong></div>
+                  <div><span className="text-zinc-500">Net profit</span><br /><strong className="text-zinc-200">{fiat(summary?.enterprise?.financials?.netProfit)}</strong></div>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => onNavigate('/profile')} className="mobile-tap-target flex flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[.04] px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-zinc-300">
+                  PROFILE
+                </button>
+                <button onClick={() => onNavigate('/business')} className="mobile-tap-target flex flex-1 items-center justify-center gap-2 rounded-lg border border-sky-400/25 bg-sky-400/[.08] px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-sky-200">
+                  COMPANY
+                </button>
+              </div>
+            </>
+          )}
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[.025] px-3 py-2"><Languages className="h-4 w-4 text-zinc-500" /><LanguageSelector /></div>
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[.025] px-3 py-2"><Coins className="h-4 w-4 text-amber-300" /><CurrencySelector /></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+      <p className="text-[9px] font-mono uppercase tracking-[.15em] text-zinc-500">{label}</p>
+      <p className="mt-1 text-base font-semibold text-zinc-100">{value}</p>
+    </div>
+  );
 }

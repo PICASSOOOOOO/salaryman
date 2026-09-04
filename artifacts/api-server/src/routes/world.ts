@@ -275,11 +275,6 @@ router.post("/world/register", async (req, res) => {
     const incomingType = businessType === "fictitious" ? "minx" : businessType;
     const finalBizType = validTypes.includes(incomingType) ? incomingType : "minx";
 
-    if (finalBizType === "unemployed") {
-      res.status(400).json({ error: "Unemployment onboarding does not create a registry entry" });
-      return;
-    }
-
     if (finalBizType !== "unemployed" && (!companyName || !String(companyName).trim())) {
       res.status(400).json({ error: "companyName required for business registration" });
       return;
@@ -337,6 +332,9 @@ router.post("/world/register", async (req, res) => {
       locationConsent: Boolean(locationConsent),
       coarseLocation,
     };
+    // Unemployed arrivals still need a registry row: it is the server's
+    // onboarding-complete signal and carries the selected home city. Employment
+    // can be filed later from reception without pretending a company exists.
     const [row] = await db
       .insert(worldBusinessesTable)
       .values({

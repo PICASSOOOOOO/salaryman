@@ -667,11 +667,25 @@ router.get("/enterprise/summary", async (req, res) => {
     .from(invoicesTable)
     .where(and(eq(invoicesTable.userId, userId), eq(invoicesTable.status, "paid")));
 
+  const paidInvoicesToday = await db
+    .select()
+    .from(invoicesTable)
+    .where(and(
+      eq(invoicesTable.userId, userId),
+      eq(invoicesTable.status, "paid"),
+      eq(invoicesTable.issueDate, today()),
+    ));
+
   const grossIncome = paidInvoices.reduce((sum, inv) => {
     const lineItems = Array.isArray(inv.lineItems) ? inv.lineItems as { quantity: number; rate: number }[] : [];
     const sub = lineItems.reduce((s, item) => s + item.quantity * item.rate, 0);
     const tax = sub * ((inv.taxRate || 0) / 100);
     return sum + sub + tax;
+  }, 0);
+  const todayRevenue = paidInvoicesToday.reduce((sum, inv) => {
+    const lineItems = Array.isArray(inv.lineItems) ? inv.lineItems as { quantity: number; rate: number }[] : [];
+    const sub = lineItems.reduce((s, item) => s + item.quantity * item.rate, 0);
+    return sum + sub + sub * ((inv.taxRate || 0) / 100);
   }, 0);
 
   const txRows = await db
@@ -689,7 +703,7 @@ router.get("/enterprise/summary", async (req, res) => {
     expenses: { total: expenseRows.count, amount: Number(expenseRows.total) },
     invoices: { total: invoiceRows.count, paid: invoiceRows.paidCount, open: invoiceRows.openCount, overdue: invoiceRows.overdueCount },
     payroll: { runs: payrollRows.count, total: Number(payrollRows.total) },
-    financials: { grossIncome, payrollTotal, billsTotal, expensesTotal, netProfit: grossIncome - payrollTotal - billsTotal - expensesTotal },
+    financials: { grossIncome, todayRevenue, payrollTotal, billsTotal, expensesTotal, netProfit: grossIncome - payrollTotal - billsTotal - expensesTotal },
   });
 });
 
