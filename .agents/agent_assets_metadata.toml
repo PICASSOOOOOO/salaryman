@@ -1067,3 +1067,31 @@ mtime_ms = 1788534528813
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c9f11df7-2e12-4e98-bd4d-80c3ceb47802/92cd2e87-4e03-4fcb-9706-ba75103385d9"
 storage_version_token = "1788534535409667"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "Uew--6gcfZr2Yu1jvLiJj"
+uri = "file://exports/HUMMINGBIRD_CORE_CODE.md"
+type = "text"
+title = "Hummingbird Core — Copyable Code"
+description = "Plain Markdown source document with the main Hummingbird files separated by original path for direct viewing and copy/paste."
+logical_id = "334c711e-ac0c-4c35-84e4-6394fd0c913c"
+content_hash = "sha256:bf44165db833151f60a10343a3802073a15fcebda882ff3dff074a5684cfbd29"
+size = 158145
+mtime_ms = 1788534602236
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/334c711e-ac0c-4c35-84e4-6394fd0c913c/84c24d0e-da4d-4f77-8fcd-2cee08d23558"
+storage_version_token = "1788534609332144"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "7a6oKIJ9kSUyIWX2g5vuj"
+uri = "file://exports/HUMMINGBIRD_ALL_CODE.md"
+type = "text"
+title = "Hummingbird Complete — Copyable Code"
+description = "Plain Markdown source document with Hummingbird core code plus app wiring, audio helpers, API integration, and creative-tool examples."
+logical_id = "4b8fb142-0e32-4247-b5dc-ed70e1efdb77"
+content_hash = "sha256:753d2b2515ccb0cf0fa47988070ff93060fe1b87ff4a0f93ab596850a35983c2"
+size = 1118046
+mtime_ms = 1788534602708
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/4b8fb142-0e32-4247-b5dc-ed70e1efdb77/555fd0cd-f7ad-4272-9d49-607b6341b380"
+storage_version_token = "1788534610535862"
+content_type = "text/markdown"
