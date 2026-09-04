@@ -62,6 +62,12 @@ describe("Shadow Tower contract", () => {
     expect(floor.tenants.map((tenant) => tenant.unitNumber)).toEqual([1, 2]);
     expect(floor.tenants.every((tenant) => tenant.floorNumber === 18)).toBe(true);
     expect(floor.tenants.every((tenant) => tenant.service.settlementPath === "/business/services")).toBe(true);
+    expect(floor.tenants.map((tenant) => tenant.conversation.businessName)).toEqual([
+      "VALE PRIVATE MEDICINE",
+      "BITE//BYTE DENTAL",
+    ]);
+    expect(floor.tenants.every((tenant) => tenant.conversation.service === tenant.business.service)).toBe(true);
+    expect(floor.tenants.every((tenant) => tenant.conversation.offer === tenant.business.ad)).toBe(true);
   });
 
   it("keeps an unassigned commercial floor truthful and adds no occupants", () => {

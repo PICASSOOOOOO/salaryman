@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SHADOW_TOWER_MAX_OFFICE_UNITS,
+  getTowerBusinessConversation,
   getTowerBusinessPlacement,
   sortTowerBusinessesByExitPriority,
   TOWER_INFRASTRUCTURE_BUSINESSES,
@@ -39,5 +40,16 @@ describe("Tower business exit placement", () => {
     expect(priorities).toEqual([...priorities].sort((a, b) => a - b));
     expect(getTowerBusinessPlacement("lobby_gift_shop")?.exitPriority).toBeNull();
     expect(getTowerBusinessPlacement("tower_restaurant")?.exitPriority).toBe(12);
+  });
+
+  it("derives operator conversation fields from the canonical catalog", () => {
+    const business = TOWER_INFRASTRUCTURE_BUSINESSES.find((item) => item.key === "tower_doctor")!;
+    expect(getTowerBusinessConversation(business)).toEqual({
+      businessName: business.name,
+      role: `${business.category.toUpperCase()} · ${business.operatorCode}`,
+      service: business.service,
+      offer: business.ad,
+    });
+    expect(getTowerBusinessConversation("missing-business")).toBeNull();
   });
 });

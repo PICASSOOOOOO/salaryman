@@ -17,6 +17,13 @@ export type TowerInfrastructureBusiness = {
   physicalState: "awaiting_art_direction";
 };
 
+export type TowerBusinessConversation = {
+  businessName: string;
+  role: string;
+  service: string;
+  offer: string;
+};
+
 export type TowerBusinessPlacement = {
   businessKey: string;
   floorNumber: number | null;
@@ -66,6 +73,24 @@ export function towerBusinessByKey(key: string) {
 
 export function towerBusinessByTicker(ticker: string) {
   return TOWER_INFRASTRUCTURE_BUSINESSES.find((company) => company.ticker === ticker.toUpperCase());
+}
+
+/**
+ * Build the operator-facing conversation from the canonical business record.
+ * Keeping these fields here prevents floor scenes from inventing a second set
+ * of tenant names, roles, or service copy.
+ */
+export function getTowerBusinessConversation(
+  business: TowerInfrastructureBusiness | string,
+): TowerBusinessConversation | null {
+  const company = typeof business === "string" ? towerBusinessByKey(business) : business;
+  if (!company) return null;
+  return {
+    businessName: company.name,
+    role: `${company.category.toUpperCase()} · ${company.operatorCode}`,
+    service: company.service,
+    offer: company.ad,
+  };
 }
 
 function floorNumberFromLabel(company: TowerInfrastructureBusiness): number | null {

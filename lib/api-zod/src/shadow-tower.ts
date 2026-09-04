@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { TOWER_INFRASTRUCTURE_BUSINESSES, type TowerInfrastructureBusiness } from "./tower-commerce";
+import {
+  getTowerBusinessConversation,
+  TOWER_INFRASTRUCTURE_BUSINESSES,
+  type TowerBusinessConversation,
+  type TowerInfrastructureBusiness,
+} from "./tower-commerce";
 
 /** The only purchasable Shadow Tower floor plans. */
 export const SHADOW_TOWER_ARCHETYPES = ["founder_team", "company"] as const;
@@ -465,6 +470,7 @@ export type ShadowTowerCommercialTenant = {
     description: string;
     settlementPath: "/business/services";
   };
+  conversation: TowerBusinessConversation;
 };
 
 function businessFloorNumber(business: TowerInfrastructureBusiness) {
@@ -515,6 +521,7 @@ export function getShadowTowerCommercialTenants(floorNumber: number): ShadowTowe
         description: business.ad,
         settlementPath: "/business/services",
       },
+      conversation: getTowerBusinessConversation(business)!,
     };
   });
 }

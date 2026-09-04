@@ -1,7 +1,9 @@
 import {
+  getShadowTowerCommercialTenants,
   getTowerBusinessPlacement,
   getShadowTowerCommercialTenants,
   TOWER_INFRASTRUCTURE_BUSINESSES,
+  type ShadowTowerCommercialTenant,
 } from "@workspace/api-zod";
 
 export type TowerNpc = {
@@ -177,6 +179,14 @@ export const TOWER_BUSINESSES: TowerBusiness[] = TOWER_INFRASTRUCTURE_BUSINESSES
 
 export type TowerFloor = "lobby" | number;
 
+export type TowerOperatorDialogue = {
+  residentName: string;
+  businessName: string;
+  role: string;
+  service: string;
+  offer: string;
+  lines: readonly [string, string, string];
+};
 export type TowerResident = {
   id: number;
   name: string;
@@ -301,4 +311,36 @@ export const TOWER_GOSSIP = [
 
 export function getTowerGossip(index = 0) {
   return TOWER_GOSSIP[index % TOWER_GOSSIP.length];
+}
+
+/** Occupied commercial floors have dialogue; vacant and non-commercial floors do not. */
+export function getTowerOperatorDialogues(floor: TowerFloor): TowerOperatorDialogue[] {
+  if (typeof floor !== "number") return [];
+  return getShadowTowerCommercialTenants(floor)
+    .map((tenant) => getTowerOperatorDialogue(tenant))
+    .filter((dialogue): dialogue is TowerOperatorDialogue => dialogue !== null);
+}
+
+/**
+ * Project a commercial tenant into the short conversation shown when a player
+ * walks up to its resident. Tenant fields are already sourced from the shared
+ * catalog; this helper only supplies the conversational framing.
+ */
+export function getTowerOperatorDialogue(
+  tenant: ShadowTowerCommercialTenant | undefined,
+): TowerOperatorDialogue | null {
+  if (!tenant) return null;
+  const { conversation } = tenant;
+  return {
+    residentName: tenant.resident.name,
+    businessName: conversation.businessName,
+    role: conversation.role,
+    service: conversation.service,
+    offer: conversation.offer,
+    lines: [
+      `Welcome to ${conversation.businessName}.`,
+      `I am the ${conversation.role.toLowerCase()} on this floor.`,
+      `Our current offer is ${conversation.service.toLowerCase()}. ${conversation.offer}`,
+    ],
+  };
 }

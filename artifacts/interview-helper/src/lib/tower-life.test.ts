@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { TOWER_INFRASTRUCTURE_BUSINESSES } from "@workspace/api-zod";
-import { getTowerAmbientOccupants, TOWER_BUSINESSES } from "./tower-life";
+import { getShadowTowerCommercialTenants } from "@workspace/api-zod/shadow-tower";
+import {
+  getTowerAmbientOccupants,
+  getTowerOperatorDialogue,
+  getTowerOperatorDialogues,
+  TOWER_BUSINESSES,
+} from "./tower-life";
 
 describe("Tower Life operating catalog", () => {
   it("keeps every canonical business operationally described", () => {
@@ -31,5 +37,32 @@ describe("Tower Life operating catalog", () => {
       "BITE//BYTE DENTAL OPERATOR",
     ]);
     expect(getTowerAmbientOccupants(13)).toEqual([]);
+  });
+
+  it("gives each occupied resident a catalog-backed conversation", () => {
+    const tenants = getShadowTowerCommercialTenants(18);
+    const dialogues = getTowerOperatorDialogues(18);
+    expect(dialogues).toHaveLength(tenants.length);
+    expect(dialogues.map((dialogue) => dialogue.residentName)).toEqual(
+      tenants.map((tenant) => tenant.resident.name),
+    );
+    for (const [index, dialogue] of dialogues.entries()) {
+      const tenant = tenants[index];
+      expect(dialogue.businessName).toBe(tenant.business.name);
+      expect(dialogue.role).toBe(tenant.resident.role);
+      expect(dialogue.service).toBe(tenant.business.service);
+      expect(dialogue.offer).toBe(tenant.business.ad);
+      expect(dialogue.lines).toEqual([
+        `Welcome to ${tenant.business.name}.`,
+        `I am the ${tenant.resident.role.toLowerCase()} on this floor.`,
+        `Our current offer is ${tenant.business.service.toLowerCase()}. ${tenant.business.ad}`,
+      ]);
+    }
+  });
+
+  it("keeps operator dialogue unavailable on vacant and non-commercial floors", () => {
+    expect(getTowerOperatorDialogues(13)).toEqual([]);
+    expect(getTowerOperatorDialogues("lobby")).toEqual([]);
+    expect(getTowerOperatorDialogue(undefined)).toBeNull();
   });
 });

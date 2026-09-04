@@ -10,7 +10,7 @@ import {
 } from "@/lib/office-property-layouts";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { CityClock } from "@/components/CityClock";
-import { getTowerAmbientOccupants } from "@/lib/tower-life";
+import { getTowerAmbientOccupants, getTowerOperatorDialogue, type TowerOperatorDialogue } from "@/lib/tower-life";
 import { getTowerSpaceArtKind, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -252,6 +252,7 @@ export default function TowerFloorScene({
   }));
   const [feedback, setFeedback] = useState("WALK THE FLOOR · APPROACH A STATION · PRESS E");
   const [lastInteraction, setLastInteraction] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<TowerOperatorDialogue | null>(null);
 
   const safeFloor = Number.isFinite(floor) ? Math.trunc(floor) : 1;
   const city = useMemo(() => resolveCity(cityProp), [cityProp]);
@@ -280,6 +281,7 @@ export default function TowerFloorScene({
   useEffect(() => {
     setFeedback("WALK THE FLOOR · APPROACH A STATION · PRESS E");
     setLastInteraction(null);
+    setActiveConversation(null);
   }, [safeFloor]);
 
   const elevatorDestination = useMemo(
@@ -400,8 +402,10 @@ export default function TowerFloorScene({
           onAmbientInteract={(occupant) => {
             const tenant = commercialTenants.find((candidate) => candidate.resident.id === occupant.id);
             setLastInteraction(occupant.name);
-            setFeedback(tenant
-              ? `${occupant.name.toUpperCase()} · ${tenant.business.service.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`
+            const dialogue = getTowerOperatorDialogue(tenant);
+            setActiveConversation(dialogue);
+            setFeedback(dialogue
+              ? `${dialogue.residentName.toUpperCase()} · ${dialogue.service.toUpperCase()} · CONVERSATION OPEN`
               : `${occupant.name.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`);
           }}
           towerArt
@@ -432,6 +436,38 @@ export default function TowerFloorScene({
             <span>STATIONS</span>
           </div>
         </div>
+
+        {activeConversation && (
+          <section
+            className="absolute bottom-20 left-3 z-40 w-[min(30rem,calc(100%-1.5rem))] border border-fuchsia-300/35 bg-[#0b1020]/95 p-4 shadow-2xl backdrop-blur-md sm:bottom-24 sm:left-6"
+            data-testid="tower-operator-conversation"
+            role="dialog"
+            aria-label={`Conversation with ${activeConversation.residentName}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black tracking-[.2em] text-fuchsia-200">TENANT CONVERSATION</p>
+                <h2 className="mt-1 truncate text-sm font-black tracking-[.1em] text-white">{activeConversation.residentName}</h2>
+                <p className="mt-1 text-[10px] font-mono tracking-[.08em] text-fuchsia-200/75">
+                  {activeConversation.businessName} · {activeConversation.role}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 border border-white/15 px-2 py-1 text-[9px] font-black tracking-[.14em] text-zinc-400 transition hover:border-white/35 hover:text-white"
+                onClick={() => setActiveConversation(null)}
+              >
+                CLOSE
+              </button>
+            </div>
+            <div className="mt-3 space-y-2 border-l border-fuchsia-300/30 pl-3 text-xs leading-5 text-zinc-200">
+              {activeConversation.lines.map((line) => <p key={line}>{line}</p>)}
+            </div>
+            <p className="mt-3 text-[9px] font-black tracking-[.14em] text-cyan-200/70">
+              CURRENT SERVICE · {activeConversation.service.toUpperCase()}
+            </p>
+          </section>
+        )}
 
         {!isAuthenticated && (
           <div className="absolute inset-0 z-30 grid place-items-center bg-[#04060c]/55 p-4 backdrop-blur-[2px]">
