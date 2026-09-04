@@ -50,11 +50,15 @@ function TowerReceptionScene({
   locked,
   frozen,
   onReception,
+  onResidentInteract,
+  onElevator,
   onLockedExit,
 }: {
   locked: boolean;
   frozen: boolean;
   onReception: () => void;
+  onResidentInteract: (occupant: { id: number; name: string }) => void;
+  onElevator: () => void;
   onLockedExit: (label: string) => void;
 }) {
   const [viewport, setViewport] = useState(() => ({
@@ -89,7 +93,7 @@ function TowerReceptionScene({
       radius: 42,
       footprint: { w: 2, d: 2 },
       glyph: "elevator" as const,
-        onInteract: () => locked ? onLockedExit("ELEVATOR") : onReception(),
+        onInteract: () => locked ? onLockedExit("ELEVATOR") : onElevator(),
     },
   ], [locked, onLockedExit, onReception]);
   return (
@@ -110,16 +114,10 @@ function TowerReceptionScene({
         suppressLabels={viewport.width < 680}
          playerName="YOU"
          hallwaySignage="MAIN LOBBY · ELEVATOR CORE"
-         ambientOccupants={getTowerAmbientOccupants("lobby")}
+          ambientOccupants={getTowerAmbientOccupants("lobby")}
+          onAmbientInteract={onResidentInteract}
         lighting="cool"
       />
-      <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[calc(100%-1.5rem)] border border-cyan-200/35 bg-[#050914]/90 px-3 py-2 backdrop-blur">
-            <p className="text-[9px] font-black tracking-[.24em] text-cyan-200">LOBBY · ELEVATOR CORE</p>
-          <p className="mt-1 text-[10px] text-zinc-400">{locked ? "Walk to reception." : "Walk to the elevator or stairs."}</p>
-      </div>
-      <div className="pointer-events-none absolute bottom-3 right-3 z-20 border border-violet-300/25 bg-[#050914]/85 px-2 py-1 text-[8px] tracking-[.2em] text-violet-200/55">
-        PABLO CORP · OPERATIONS
-      </div>
     </section>
   );
 }
@@ -158,9 +156,15 @@ export default function TowerDirectory() {
   const [filing, setFiling] = useState(false);
   const [filingResult, setFilingResult] = useState("");
   const [onboardingStep, setOnboardingStep] = useState<"arrival" | "reception" | "questions" | "complete">("arrival");
+  const [receptionDialogueStep, setReceptionDialogueStep] = useState(0);
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const onboardingLocked = stage === "not_started" || stage === "reception";
   const workTaskActive = stage === "work";
+  const receptionDialogue = [
+    "Good. You found the desk.",
+    "Name for the register. Company, or looking for work?",
+    "Stay here. I will finish your intake, then the building will open.",
+  ];
 
   useEffect(() => {
     startTowerAmbient("lobby");
@@ -178,7 +182,6 @@ export default function TowerDirectory() {
       return;
     }
     setOnboardingStep("reception");
-    setTalking(true);
   }, [onboardingLocked]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -193,6 +196,19 @@ export default function TowerDirectory() {
   const finishReception = () => {
     setTalking(false);
     setOnboardingStep("questions");
+  };
+
+  const beginReception = () => {
+    setReceptionDialogueStep(0);
+    setTalking(true);
+  };
+
+  const advanceReceptionDialogue = () => {
+    if (receptionDialogueStep < receptionDialogue.length - 1) {
+      setReceptionDialogueStep((step) => step + 1);
+      return;
+    }
+    finishReception();
   };
 
   const finishQuestions = async (answers: OnboardingAnswers) => {
@@ -252,16 +268,16 @@ export default function TowerDirectory() {
   if (!isAuthenticated) return <TowerEntry />;
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#050711] px-3 py-5 text-zinc-100 sm:px-8">
+    <main className={`min-h-screen overflow-x-hidden bg-[#050711] text-zinc-100 ${onboardingLocked ? "p-0" : "px-3 py-5 sm:px-8"}`}>
       <style>{`@keyframes lobbyLight{0%,100%{opacity:.48;filter:brightness(.9)}50%{opacity:.9;filter:brightness(1.2)}}@keyframes lobbyPlant{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(3deg)}}@keyframes lobbyStatus{0%,100%{box-shadow:0 0 0 rgba(34,211,238,0)}50%{box-shadow:0 0 14px rgba(34,211,238,.2)}}`}</style>
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-4 flex items-end justify-between gap-4 border-b border-cyan-300/20 pb-4">
+      <div className={onboardingLocked ? "w-full" : "mx-auto max-w-6xl"}>
+        {!onboardingLocked && <header className="mb-4 flex items-end justify-between gap-4 border-b border-cyan-300/20 pb-4">
           <div>
             <p className="animate-pulse text-[10px] tracking-[.35em] text-cyan-300">SHADOW TOWER · {getActiveCityName().toUpperCase()} · LOBBY FLOOR</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">LOBBY.</h1>
             <p className="mt-2 text-[10px] font-bold tracking-[.2em] text-zinc-500">RECEPTION · FLOOR L</p>
           </div>
-        </header>
+        </header>}
 
         {notice && (
           <div className="fixed left-1/2 top-20 z-[900] -translate-x-1/2 border border-amber-300/50 bg-[#160f05]/95 px-4 py-2 text-center text-[10px] font-bold tracking-[.2em] text-amber-200 shadow-xl" role="status">
@@ -272,7 +288,12 @@ export default function TowerDirectory() {
          <TowerReceptionScene
           locked={onboardingLocked}
            frozen={talking}
-          onReception={() => setTalking(true)}
+          onReception={beginReception}
+          onResidentInteract={(occupant) => {
+            if (occupant.id === 501) beginReception();
+            else setNotice(`${occupant.name} IS BUSY`);
+          }}
+          onElevator={() => setNotice("ELEVATOR DIRECTORY OPEN")}
           onLockedExit={explainLock}
         />
         <section className="hidden" aria-hidden="true" data-testid="legacy-lobby-map">
@@ -429,7 +450,7 @@ export default function TowerDirectory() {
         </section>
 
         <section
-          className="mb-5 border border-cyan-300/35 bg-[radial-gradient(circle_at_85%,#12364a,#08111b)] p-5 shadow-[0_0_40px_rgba(34,211,238,.08)]"
+          className={`mb-5 border border-cyan-300/35 bg-[radial-gradient(circle_at_85%,#12364a,#08111b)] p-5 shadow-[0_0_40px_rgba(34,211,238,.08)] ${onboardingLocked ? "hidden" : ""}`}
           data-testid="reception-desk"
         >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -468,11 +489,11 @@ export default function TowerDirectory() {
           )}
         </section>
 
-        <div className="mb-5">
-          <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="RECEPTION WALL · ALL TENANTS" />
+        <div className={onboardingLocked ? "hidden" : "mb-5"}>
+          <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="RECEPTION · CLASSIFIEDS · ALL TENANTS" />
         </div>
 
-        <details className="border border-white/10 bg-white/[.015]">
+        <details className={`border border-white/10 bg-white/[.015] ${onboardingLocked ? "hidden" : ""}`}>
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4 text-[10px] font-bold tracking-[.2em] text-zinc-400 hover:text-cyan-200">
             <span>FULL 67-FLOOR DIRECTORY</span>
             <span>{onboardingLocked ? "LOCKED UNTIL CHECK-IN" : "OPEN"}</span>
@@ -527,7 +548,7 @@ export default function TowerDirectory() {
           })}
           </div>
         </details>
-        <footer className="mt-5 flex items-center gap-2 text-[10px] tracking-[.2em] text-zinc-600"><KeyRound className="h-3 w-3" /> HIGHER FLOORS COST MORE · ACCESS IS DECIDED AT THE DOOR · PIN OR ROLE REQUIRED FOR PRIVATE SPACE</footer>
+        <footer className={`mt-5 flex items-center gap-2 text-[10px] tracking-[.2em] text-zinc-600 ${onboardingLocked ? "hidden" : ""}`}><KeyRound className="h-3 w-3" /> HIGHER FLOORS COST MORE · ACCESS IS DECIDED AT THE DOOR · PIN OR ROLE REQUIRED FOR PRIVATE SPACE</footer>
       </div>
 
       {onboardingLocked && onboardingStep === "questions" && (
@@ -540,22 +561,20 @@ export default function TowerDirectory() {
       )}
 
       {talking && (
-        <div className="fixed inset-0 z-[950] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Receptionist onboarding">
-           <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-cyan-200/45 bg-[#07111b] p-5 shadow-[0_30px_100px_rgba(0,0,0,.7)] sm:max-h-[calc(100dvh-3rem)]">
+        <div className="fixed inset-0 z-[950] grid place-items-center bg-black/55 p-4 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-label="Conversation with Claw Prime">
+           <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-cyan-200/45 bg-[#07111b]/[.98] p-5 shadow-[0_30px_100px_rgba(0,0,0,.7)] sm:max-h-[calc(100dvh-3rem)]">
             <div className="flex items-center gap-3 border-b border-cyan-300/20 pb-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10"><UserRound className="h-6 w-6 text-cyan-100" /></span>
+              <span className="flex h-14 w-14 items-end justify-center overflow-hidden rounded-full border border-cyan-300/35 bg-cyan-300/10"><img src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`} alt="Claw Prime" className="h-16 w-16 object-contain object-bottom" /></span>
               <div>
-                <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">SHADOW TOWER RECEPTION</p>
-                <h2 className="text-lg font-black tracking-[.08em] text-white">FRONT DESK</h2>
+                <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">CLAW PRIME</p>
+                <h2 className="text-lg font-black tracking-[.08em] text-white">RECEPTION</h2>
               </div>
             </div>
             {onboardingLocked ? (
               <>
-                 <p className="mt-5 text-sm leading-6 text-zinc-300">
-                   Name, work, then enter.
-                 </p>
-                <button type="button" onClick={finishReception} className="mt-6 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15" data-testid="finish-reception-onboarding">
-                  CONTINUE <ArrowRight className="h-4 w-4" />
+                 <p className="mt-5 min-h-16 text-sm leading-7 text-zinc-200">{receptionDialogue[receptionDialogueStep]}</p>
+                <button type="button" onClick={advanceReceptionDialogue} className="mt-6 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15" data-testid="finish-reception-onboarding">
+                  {receptionDialogueStep < receptionDialogue.length - 1 ? "NEXT" : "CONTINUE"} <ArrowRight className="h-4 w-4" />
                 </button>
               </>
             ) : (
