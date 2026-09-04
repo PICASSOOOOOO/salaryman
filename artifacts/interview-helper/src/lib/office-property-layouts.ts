@@ -4,8 +4,10 @@ import {
   getRestFloorPlan,
   getSecurityPlan,
   getShadowTowerPlan,
+  withShadowTowerTenantFitout,
   type ShadowTowerArchetype,
   type ShadowTowerCity,
+  type ShadowTowerCommercialTenant,
   type ShadowTowerPlan,
 } from "@workspace/api-zod/shadow-tower";
 import type { OfficeCapsule, OfficeDesk, OfficeFloorRect, OfficeRoom, OfficeStation } from "@/components/office/office-types";
@@ -18,7 +20,7 @@ export function defaultShadowTowerOfficeName(city: ShadowTowerCity, floorNumber:
   return `${cityCode} · SUITE F${floorNumber}-01`;
 }
 
-/** Renderer-ready projection of the shared Shadow Tower plan. No furniture is invented here. */
+/** Renderer-ready projection of the shared Shadow Tower plan and catalog fit-out. */
 export interface OfficePropertyLayout {
   propertyKey: string;
   label: string;
@@ -34,6 +36,7 @@ export interface OfficePropertyLayout {
   capsuleSpots: OfficeCapsule[];
   stations: Omit<OfficeStation, "onInteract">[];
   rooms: OfficeRoom[];
+  tenants: readonly ShadowTowerCommercialTenant[];
   plan: ShadowTowerPlan;
 }
 
@@ -59,24 +62,35 @@ const labelFor = (id: string, kind: string) =>
           kind === "work_board" ? "WORLD WORK BOARD" :
           id.startsWith("rec-") ? id.slice(4).replace(/-/g, " ").toUpperCase() : id.toUpperCase().replace(/-/g, " ");
 
-export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey = `${plan.city}:${plan.floorNumber}`): OfficePropertyLayout {
-  const objects = plan.objects;
+export function officePropertyLayoutFromPlan(
+  plan: ShadowTowerPlan,
+  propertyKey = `${plan.city}:${plan.floorNumber}`,
+  tenants: readonly ShadowTowerCommercialTenant[] = [],
+): OfficePropertyLayout {
+  const projectedPlan = withShadowTowerTenantFitout(plan, tenants.map((tenant) => tenant.businessKey));
+  const objects = projectedPlan.objects;
   const executive = objects.find((object) => object.kind === "executive_desk");
   const workstations = objects.filter((object) => object.kind === "workstation");
   const desk = (object: { id: string; footprint: { x: number; y: number; cols: number; rows: number } }, kind: OfficeDesk["kind"]): OfficeDesk => ({
     id: object.id, kind, col: object.footprint.x, row: object.footprint.y, w: object.footprint.cols, d: object.footprint.rows,
   });
-  const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "elevator_hall" || object.kind === "executive_room" || object.kind === "office_unit").map((object) => ({
+  const rooms: OfficeRoom[] = objects.filter((object) => object.kind === "elevator_hall" || object.kind === "executive_room" || object.kind === "office_unit").map((object) => {
+    const unitNumber = object.kind === "office_unit" ? Number(object.id.slice(-2)) : 0;
+    const tenant = tenants.find((candidate) => candidate.unitNumber === unitNumber);
+    return {
     id: object.id,
     label: object.kind === "office_unit"
-      ? `${plan.city === "huda_city" ? "HUDA" : "MINX"} · FLOOR ${plan.floorNumber} · OFFICE ${object.id.slice(-2)}`
+      ? tenant?.business.name ?? `${projectedPlan.city === "huda_city" ? "HUDA" : "MINX"} · FLOOR ${projectedPlan.floorNumber} · OFFICE ${object.id.slice(-2)}`
       : object.kind === "elevator_hall" ? "ELEVATOR HALL" : plan.floorType === "office" ? defaultShadowTowerOfficeName(plan.city, plan.floorNumber) : "EXECUTIVE ROOM",
-    sub: object.kind === "office_unit" ? "FOR SALE · LEASE" : undefined,
+    sub: object.kind === "office_unit"
+      ? tenant ? `${tenant.fitout.label} · OCCUPIED` : "FOR SALE · LEASE"
+      : undefined,
     x: object.footprint.x, y: object.footprint.y,
     w: object.footprint.cols, h: object.footprint.rows, doorSide: "bottom", doorSpan: object.footprint.cols,
-    accent: object.kind === "office_unit" ? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][Number(object.id.slice(-2)) - 1] : undefined,
-  }));
-  const elevator = objects.find((object) => object.kind === "elevator");
+    accent: object.kind === "office_unit" ? tenant?.business.color ?? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][unitNumber - 1] : undefined,
+  };
+  });
+  const elevator = projectedPlan.objects.find((object) => object.kind === "elevator");
   if (elevator && !rooms.some((room) => room.id === `${elevator.id}-hall`)) {
     // The lift belongs to the shared circulation core, not to an office. Keep
     // its footprint against the outside wall and give it its own small hall
@@ -94,10 +108,12 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
       accent: "#38bdf8",
     });
   }
-  const stations = objects.filter((object) => object.interactive && object.kind !== "workstation" && object.kind !== "executive_desk").map((object) => ({
+  const stations = objects.filter((object) => object.interactive && object.kind !== "workstation" && object.kind !== "executive_desk").map((object) => {
+    const tenant = object.businessKey ? tenants.find((candidate) => candidate.businessKey === object.businessKey) : undefined;
+    return {
     id: object.id,
-    label: object.kind === "stairs"
-      ? `STAIRS ${plan.floorNumber <= 1 ? "UP · F2" : `DOWN · F${plan.floorNumber - 1}`}`
+    label: tenant ? `${tenant.business.name} · SERVICE DESK` : object.kind === "stairs"
+      ? `STAIRS ${projectedPlan.floorNumber <= 1 ? "UP · F2" : `DOWN · F${projectedPlan.floorNumber - 1}`}`
       : labelFor(object.id, object.kind),
     col: object.footprint.x,
     row: object.footprint.y,
@@ -105,20 +121,22 @@ export function officePropertyLayoutFromPlan(plan: ShadowTowerPlan, propertyKey 
     // A fixed 30px radius leaves a 3x2 station's centre physically unreachable.
     radius: Math.max(30, Math.hypot(object.footprint.cols * 8, object.footprint.rows * 8) + 22),
     footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
-  }));
-  const archetype = plan.floorType === "recreation" ? "RECREATION · REC"
-    : plan.floorType === "mezzanine" ? "PUBLIC MEZZANINE · COMPUTER CAFE"
-        : plan.floorType === "rest" ? "REST WARD · CLINIC"
-        : plan.floorType === "security" ? "SECURITY FLOOR · CUSTODY"
+  };
+  });
+  const archetype = projectedPlan.floorType === "recreation" ? "RECREATION · REC"
+    : projectedPlan.floorType === "mezzanine" ? "PUBLIC MEZZANINE · COMPUTER CAFE"
+        : projectedPlan.floorType === "rest" ? "REST WARD · CLINIC"
+        : projectedPlan.floorType === "security" ? "SECURITY FLOOR · CUSTODY"
+        : tenants.length ? tenants.map((tenant) => tenant.business.name).join(" + ")
         : workstations.length > 10 ? "COMPANY FLOOR" : "FOUNDER + TEAM FLOOR";
   return {
-    propertyKey, label: archetype, representation: `${plan.city.replace("_", " ").toUpperCase()} · FLOOR ${plan.floorNumber}`,
-    cols: plan.cols, rows: plan.rows, deskCols: workstations.length, deskRows: 1, capsules: 0,
-    spawn: { x: plan.spawn.x * 16 + 8, y: plan.spawn.y * 16 + 8, facing: "right" },
+    propertyKey, label: archetype, representation: `${projectedPlan.city.replace("_", " ").toUpperCase()} · FLOOR ${projectedPlan.floorNumber}`,
+    cols: projectedPlan.cols, rows: projectedPlan.rows, deskCols: workstations.length, deskRows: 1, capsules: 0,
+    spawn: { x: projectedPlan.spawn.x * 16 + 8, y: projectedPlan.spawn.y * 16 + 8, facing: "right" },
     playerDesk: executive ? desk(executive, "player") : undefined,
     teamDesks: workstations.map((object) => desk(object, "team")),
     capsuleSpots: [],
-    stations, rooms, plan,
+    stations, rooms, tenants, plan: projectedPlan,
   };
 }
 

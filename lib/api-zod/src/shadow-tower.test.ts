@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { SHADOW_TOWER_LISTINGS, consolidateShadowTowerBots, getMezzaninePlan, getRecreationPlan, getRestFloorPlan, getShadowTowerPlan, selectShadowTowerArchetype, validateShadowTowerPlan } from "./shadow-tower";
+import {
+  SHADOW_TOWER_LISTINGS,
+  consolidateShadowTowerBots,
+  getMezzaninePlan,
+  getRecreationPlan,
+  getRestFloorPlan,
+  getShadowTowerCommercialFloor,
+  getShadowTowerCommercialTenants,
+  getShadowTowerPlan,
+  selectShadowTowerArchetype,
+  validateShadowTowerPlan,
+  withShadowTowerTenantFitout,
+} from "./shadow-tower";
 
 describe("Shadow Tower contract", () => {
   it("keeps catalog and numbered plans faithful", () => {
@@ -41,5 +53,35 @@ describe("Shadow Tower contract", () => {
     expect(validateShadowTowerPlan(rest).ok).toBe(true);
     expect(mezzanine.objects.filter((item) => item.kind === "work_board")).toHaveLength(1);
     expect(rest.objects.filter((item) => item.kind === "bed").length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("assigns catalog tenants to their exact commercial suites", () => {
+    const floor = getShadowTowerCommercialFloor(18);
+    expect(floor.status).toBe("occupied");
+    expect(floor.tenants.map((tenant) => tenant.businessKey)).toEqual(["tower_doctor", "tower_dentist"]);
+    expect(floor.tenants.map((tenant) => tenant.unitNumber)).toEqual([1, 2]);
+    expect(floor.tenants.every((tenant) => tenant.floorNumber === 18)).toBe(true);
+    expect(floor.tenants.every((tenant) => tenant.service.settlementPath === "/business/services")).toBe(true);
+  });
+
+  it("keeps an unassigned commercial floor truthful and adds no occupants", () => {
+    expect(getShadowTowerCommercialTenants(13)).toEqual([]);
+    expect(getShadowTowerCommercialFloor(13)).toMatchObject({ status: "vacant", tenants: [] });
+    const plan = getShadowTowerPlan("minx_city", 13, "founder_team");
+    const projected = withShadowTowerTenantFitout(plan, []);
+    expect(projected.objects.some((object) => object.kind === "tenant_station")).toBe(false);
+    expect(validateShadowTowerPlan(projected).ok).toBe(true);
+  });
+
+  it("keeps tenant stations in the authoritative collision plan", () => {
+    const tenants = getShadowTowerCommercialTenants(18);
+    const plan = withShadowTowerTenantFitout(
+      getShadowTowerPlan("huda_city", 18, "company", [], tenants.length),
+      tenants.map((tenant) => tenant.businessKey),
+    );
+    const stations = plan.objects.filter((object) => object.kind === "tenant_station");
+    expect(stations).toHaveLength(2);
+    expect(plan.collisionFootprints).toEqual(expect.arrayContaining(stations.map((station) => station.footprint)));
+    expect(validateShadowTowerPlan(plan).ok).toBe(true);
   });
 });

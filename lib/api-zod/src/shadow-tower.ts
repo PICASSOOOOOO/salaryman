@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TOWER_INFRASTRUCTURE_BUSINESSES, type TowerInfrastructureBusiness } from "./tower-commerce";
 
 /** The only purchasable Shadow Tower floor plans. */
 export const SHADOW_TOWER_ARCHETYPES = ["founder_team", "company"] as const;
@@ -23,7 +24,10 @@ const footprintSchema = z.object({
 }).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["elevator_hall", "stairs", "executive_room", "office_unit", "executive_desk", "workstation", "terminal", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
+  kind: z.enum(["elevator_hall", "stairs", "executive_room", "office_unit", "executive_desk", "workstation", "terminal", "tenant_station", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
+  businessKey: z.string().min(1).optional(),
+  zoneId: z.string().min(1).optional(),
+  label: z.string().min(1).optional(),
   footprint: footprintSchema,
   interactive: z.boolean(),
 }).strict();
@@ -434,4 +438,129 @@ export function quoteBusinessFitout(kind: BusinessFloorKind, laborMode: Business
   const customizationFiat = Math.max(0, Math.min(6, Math.trunc(optionCount))) * 2_500;
   const laborFiat = laborMode === "hire" ? template.hiredLaborFiat : 0;
   return { materialsFiat: template.baseMaterialsFiat + customizationFiat, laborFiat, totalFiat: template.baseMaterialsFiat + customizationFiat + laborFiat, laborUnits: laborMode === "self" ? template.laborUnits : 0 };
+}
+
+export type ShadowTowerTenantResident = {
+  id: number;
+  name: string;
+  role: string;
+  color: string;
+  logo: string;
+  col: number;
+  row: number;
+  path: readonly { col: number; row: number }[];
+  speed: number;
+};
+
+export type ShadowTowerCommercialTenant = {
+  business: TowerInfrastructureBusiness;
+  businessKey: string;
+  floorNumber: number;
+  unitNumber: number;
+  fitoutKind: BusinessFloorKind;
+  fitout: BusinessFloorTemplate;
+  resident: ShadowTowerTenantResident;
+  service: {
+    label: string;
+    description: string;
+    settlementPath: "/business/services";
+  };
+};
+
+function businessFloorNumber(business: TowerInfrastructureBusiness) {
+  const match = business.floor.match(/\bFLOOR\s+(\d+)\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * The infrastructure catalog is the source for the Tower's permanent
+ * commercial tenants. Lobby, public-floor, every-floor, and withheld
+ * businesses are services, not a fabricated commercial address.
+ */
+export function getShadowTowerCommercialTenants(floorNumber: number): ShadowTowerCommercialTenant[] {
+  if (!isCommercialShadowTowerFloor(floorNumber)) return [];
+  const businesses = TOWER_INFRASTRUCTURE_BUSINESSES.filter((business) =>
+    business.coverage === "single_suite" && businessFloorNumber(business) === floorNumber,
+  );
+  return businesses.map((business, index) => {
+    const unitNumber = index + 1;
+    const unitCol = 5 + (unitNumber - 1) * 12;
+    const residentId = 1400 + TOWER_INFRASTRUCTURE_BUSINESSES.indexOf(business);
+    const residentName = `${business.name} OPERATOR`;
+    return {
+      business,
+      businessKey: business.key,
+      floorNumber,
+      unitNumber,
+      fitoutKind: resolveBusinessFloorKind(business.category),
+      fitout: BUSINESS_FLOOR_TEMPLATES[resolveBusinessFloorKind(business.category)],
+      resident: {
+        id: residentId,
+        name: residentName,
+        role: `${business.category.toUpperCase()} · ${business.operatorCode}`,
+        color: business.color,
+        logo: business.logo,
+        col: unitCol,
+        row: 8,
+        path: [
+          { col: unitCol, row: 8 },
+          { col: Math.min(unitCol + 3, 26), row: 8 },
+          { col: Math.min(unitCol + 3, 26), row: 12 },
+          { col: unitCol, row: 12 },
+        ],
+        speed: 0.12 + (residentId % 7) * 0.025,
+      },
+      service: {
+        label: business.service,
+        description: business.ad,
+        settlementPath: "/business/services",
+      },
+    };
+  });
+}
+
+export type ShadowTowerCommercialFloor = {
+  floorNumber: number;
+  tenants: ShadowTowerCommercialTenant[];
+  status: "occupied" | "vacant";
+};
+
+export function getShadowTowerCommercialFloor(floorNumber: number): ShadowTowerCommercialFloor {
+  const tenants = getShadowTowerCommercialTenants(floorNumber);
+  return { floorNumber, tenants, status: tenants.length ? "occupied" : "vacant" };
+}
+
+/**
+ * Project a tenant's fit-out into the same serialized plan as the shell.
+ * The client and server can opt into the same business keys; no renderer may
+ * add a station without a matching collision footprint.
+ */
+export function withShadowTowerTenantFitout(
+  plan: ShadowTowerPlan,
+  businessKeys: readonly string[],
+): ShadowTowerPlan {
+  const tenants = businessKeys.flatMap((businessKey) =>
+    getShadowTowerCommercialTenants(plan.floorNumber).filter((tenant) => tenant.businessKey === businessKey),
+  );
+  if (!tenants.length || plan.floorType !== "office") return plan;
+  const officeUnits = plan.objects.filter((object) => object.kind === "office_unit").sort((a, b) => a.id.localeCompare(b.id));
+  const tenantObjects = tenants.map((tenant) => {
+    const suite = officeUnits[tenant.unitNumber - 1] ?? officeUnits[0];
+    const x = Math.max(4, Math.min(plan.cols - 3, (suite?.footprint.x ?? 5) + 2));
+    const y = Math.max(9, Math.min(plan.rows - 3, plan.rows - 5));
+    return {
+      id: `tenant-service-${tenant.businessKey}`,
+      kind: "tenant_station" as const,
+      businessKey: tenant.businessKey,
+      zoneId: tenant.fitout.zones[0]?.id ?? "service",
+      label: tenant.business.name,
+      footprint: rect(x, y, 2, 1),
+      interactive: true,
+    };
+  });
+  return {
+    ...plan,
+    objects: [...plan.objects, ...tenantObjects],
+    collisionFootprints: [...plan.collisionFootprints, ...tenantObjects.map((object) => object.footprint)],
+  };
 }

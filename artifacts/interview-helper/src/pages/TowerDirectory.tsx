@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Bell, Building2, CalendarDays, ClipboardList, Clock3, DoorOpen, Footprints, KeyRound, LockKeyhole, Mail, MapPinned, Shield, Sparkles, UserRound } from "lucide-react";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
-import { quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
+import { getShadowTowerCommercialTenants, quoteShadowTowerArea, SHADOW_TOWER_FLOOR_ENVELOPE } from "@workspace/api-zod/shadow-tower";
 import {
   completeReceptionTask,
   getBuildingOnboardingStage,
@@ -32,6 +32,19 @@ const occupiedFloors = new Map([
   [2, { name: "COMPUTER CAFE", kind: "PUBLIC", detail: "Work board, terminals, and elevator music.", href: "/tower/mezzanine?focus=classifieds", tone: "cafe", icon: Building2 }],
   [1, { name: "RECREATION", kind: "PUBLIC", detail: "Games, food, conversation, and a place to begin.", href: "/recreation", tone: "rec", icon: Sparkles }],
 ]);
+
+for (const floorNumber of Array.from({ length: 60 }, (_, index) => index + 5)) {
+  const tenants = getShadowTowerCommercialTenants(floorNumber);
+  if (!tenants.length) continue;
+  occupiedFloors.set(floorNumber, {
+    name: tenants.map((tenant) => tenant.business.name).join(" + "),
+    kind: "TENANT OPERATING",
+    detail: tenants.map((tenant) => tenant.fitout.label).join(" · "),
+    href: `/tower/floor/${floorNumber}`,
+    tone: "tenant",
+    icon: Building2,
+  });
+}
 
 function TowerEntry() {
   return (

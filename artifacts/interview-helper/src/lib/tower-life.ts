@@ -2,6 +2,7 @@ import {
   getTowerBusinessPlacement,
   TOWER_INFRASTRUCTURE_BUSINESSES,
 } from "@workspace/api-zod";
+import { getShadowTowerCommercialTenants, TOWER_INFRASTRUCTURE_BUSINESSES } from "@workspace/api-zod";
 
 export type TowerNpc = {
   code: string;
@@ -174,7 +175,7 @@ export const TOWER_BUSINESSES: TowerBusiness[] = TOWER_INFRASTRUCTURE_BUSINESSES
   )),
 }));
 
-export type TowerFloor = "lobby" | 2 | 3 | 4;
+export type TowerFloor = "lobby" | number;
 
 export type TowerResident = {
   id: number;
@@ -273,6 +274,17 @@ export const TOWER_RESIDENTS: readonly TowerResident[] = [
 export type TowerAmbientOccupant = Pick<TowerResident, "id" | "name" | "col" | "row" | "color" | "path" | "speed">;
 
 export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupant[] {
+  if (typeof floor === "number" && floor >= 5) {
+    return getShadowTowerCommercialTenants(floor).map(({ resident }) => ({
+      id: resident.id,
+      name: resident.name,
+      col: resident.col,
+      row: resident.row,
+      color: resident.color,
+      path: resident.path,
+      speed: resident.speed,
+    }));
+  }
   return TOWER_RESIDENTS.filter((resident) => resident.floor === floor || resident.serviceFloors?.includes(floor)).map(({ id, name, col, row, color, path, speed }) => ({
     id, name, col, row, color, path, speed,
   }));

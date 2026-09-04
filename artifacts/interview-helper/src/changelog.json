@@ -1726,5 +1726,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.20.8.2132",
+    "date": "2026-09-04",
+    "commitHash": "d32ca20f4d3e0f63dd12a7b1b3234a0e51d71928",
+    "changes": [
+      "Implement TowerFloorScene component and tests with supporting documentation",
+      "Add protected scheduled Tower Clerk handoff check",
+      "Update office layout components and add tower life logic",
+      "Add route-level arcade FIAT charge regression coverage",
+      "Add opt-in real Clerk Tower handoff smoke coverage"
+    ]
   }
 ]

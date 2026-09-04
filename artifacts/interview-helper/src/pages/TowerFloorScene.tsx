@@ -5,7 +5,6 @@ import { IsoOffice } from "@/components/IsoOffice";
 import {
   getPublicFloorOfficeLayout,
   getRecreationOfficeLayout,
-  getShadowTowerOfficeLayout,
   officePropertyLayoutFromPlan,
   type OfficePropertyLayout,
 } from "@/lib/office-property-layouts";
@@ -13,7 +12,13 @@ import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { getTowerAmbientOccupants } from "@/lib/tower-life";
 import { getTowerSpaceArtKind, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 import { useAuth } from "@/hooks/use-auth";
-import type { ShadowTowerArchetype, ShadowTowerCity } from "@workspace/api-zod/shadow-tower";
+import {
+  getShadowTowerCommercialTenants,
+  getShadowTowerPlan,
+  type ShadowTowerArchetype,
+  type ShadowTowerCity,
+  type ShadowTowerCommercialTenant,
+} from "@workspace/api-zod/shadow-tower";
 
 export type TowerFloorStatus = "service" | "public" | "available" | "occupied" | "sealed" | "restricted";
 
@@ -25,6 +30,9 @@ export interface TowerFloorIdentity {
   statusLabel: string;
   detail: string;
   accessLabel: string;
+  tenantKey?: string;
+  tenantName?: string;
+  tenantService?: string;
 }
 
 /**
@@ -32,8 +40,10 @@ export interface TowerFloorIdentity {
  * This keeps a directory label from accidentally making a sealed floor look
  * enterable, while still allowing every floor to render its real shell.
  */
-export function getTowerFloorIdentity(floor: number): TowerFloorIdentity {
+export function getTowerFloorIdentity(floor: number, tenant?: ShadowTowerCommercialTenant): TowerFloorIdentity {
   const normalized = Number.isFinite(floor) ? Math.trunc(floor) : 1;
+  const catalogTenants = getShadowTowerCommercialTenants(normalized);
+  const catalogTenant = tenant ?? catalogTenants[0];
   if (normalized === -1) {
     return {
       floor: normalized,
@@ -123,6 +133,22 @@ export function getTowerFloorIdentity(floor: number): TowerFloorIdentity {
     };
   }
   if (normalized >= 5 && normalized <= 64) {
+    if (catalogTenant) {
+      return {
+        floor: normalized,
+        shortLabel: `F${normalized}`,
+        label: catalogTenants.length > 1
+          ? catalogTenants.map((candidate) => candidate.business.name).join(" + ")
+          : catalogTenant.business.name,
+        status: "occupied",
+        statusLabel: "OCCUPIED",
+        detail: `${catalogTenants.map((candidate) => candidate.fitout.label).join(" · ")} · ${catalogTenants.length} resident operator${catalogTenants.length === 1 ? "" : "s"} on route.`,
+        accessLabel: "TENANT SERVICE ACCESS",
+        tenantKey: catalogTenant.businessKey,
+        tenantName: catalogTenant.business.name,
+        tenantService: catalogTenant.service.label,
+      };
+    }
     return {
       floor: normalized,
       shortLabel: `F${normalized}`,
@@ -193,6 +219,7 @@ function getLayoutForFloor(
   city: ShadowTowerCity,
   archetype: ShadowTowerArchetype,
   upgrades: readonly string[],
+  tenants: readonly ShadowTowerCommercialTenant[],
 ): OfficePropertyLayout {
   if (floor === 1) return getRecreationOfficeLayout(city);
   if (floor === 2 || floor === 3 || floor === 4) return getPublicFloorOfficeLayout(city, floor);
@@ -200,8 +227,8 @@ function getLayoutForFloor(
   // The server plan schema starts at F1. B1 is the same built shell rendered as
   // a service level, with a distinct property key and identity in the chrome.
   const planFloor = floor === -1 ? 1 : Math.max(1, floor);
-  const base = getShadowTowerOfficeLayout(city, planFloor, archetype, upgrades);
-  return officePropertyLayoutFromPlan(base.plan, `${city}:${floor === -1 ? "b1" : floor}`);
+  const plan = getShadowTowerPlan(city, planFloor, archetype, upgrades, Math.max(1, tenants.length));
+  return officePropertyLayoutFromPlan(plan, `${city}:${floor === -1 ? "b1" : floor}`, tenants);
 }
 
 function floorPathFor(location: string, floor: number): string {
@@ -226,18 +253,18 @@ export default function TowerFloorScene({
   const [lastInteraction, setLastInteraction] = useState<string | null>(null);
 
   const safeFloor = Number.isFinite(floor) ? Math.trunc(floor) : 1;
-  const identity = useMemo(() => getTowerFloorIdentity(safeFloor), [safeFloor]);
   const city = useMemo(() => resolveCity(cityProp), [cityProp]);
+  const commercialTenants = useMemo(() => getShadowTowerCommercialTenants(safeFloor), [safeFloor]);
+  const identity = useMemo(() => getTowerFloorIdentity(safeFloor, commercialTenants[0]), [commercialTenants, safeFloor]);
   const selectedArchetype: ShadowTowerArchetype = archetype ?? (identity.status === "available" ? "founder_team" : "company");
   const layout = useMemo(
-    () => getLayoutForFloor(safeFloor, city, selectedArchetype, upgrades),
-    [city, safeFloor, selectedArchetype, upgrades],
+    () => getLayoutForFloor(safeFloor, city, selectedArchetype, upgrades, commercialTenants),
+    [city, commercialTenants, safeFloor, selectedArchetype, upgrades],
   );
   const artKind: TowerSpaceArtKind = useMemo(() => getTowerSpaceArtKind(layout), [layout]);
   const floorPath = useMemo(() => floorPathFor(location, safeFloor), [location, safeFloor]);
   const ambientOccupants = useMemo(() => {
-    if (safeFloor === 2 || safeFloor === 3 || safeFloor === 4) return getTowerAmbientOccupants(safeFloor);
-    return [];
+    return getTowerAmbientOccupants(safeFloor);
   }, [safeFloor]);
 
   useEffect(() => {
@@ -262,6 +289,12 @@ export default function TowerFloorScene({
   const interact = useCallback((station: { id: string; label: string; glyph?: string }) => {
     const id = station.id.toLowerCase();
     const label = station.label.toUpperCase();
+    const tenant = commercialTenants.find((candidate) => id === `tenant-service-${candidate.businessKey}`);
+    if (tenant) {
+      setFeedback(`${tenant.business.name.toUpperCase()} · ${tenant.service.label.toUpperCase()} · OPENING SERVER SERVICES BOARD`);
+      navigate(`${tenant.service.settlementPath}?tenant=${encodeURIComponent(tenant.businessKey)}&floor=${safeFloor}`);
+      return;
+    }
     if (id.includes("elevator") || station.glyph === "elevator" && !id.includes("stairs")) {
       setFeedback("LIFT STATION READY · OPENING THE TOWER DIRECTORY");
       navigate(elevatorDestination);
@@ -281,7 +314,7 @@ export default function TowerFloorScene({
       setFeedback(`${label} · INTERACTION LOGGED · ${identity.label}`);
     }
     setLastInteraction(label);
-  }, [elevatorDestination, identity, navigate, safeFloor]);
+  }, [commercialTenants, elevatorDestination, identity, navigate, safeFloor]);
 
   const stations = useMemo(
     () => layout.stations.map((station) => ({
@@ -363,13 +396,19 @@ export default function TowerFloorScene({
           playerName={playerName}
           ambientOccupants={ambientOccupants}
           onAmbientInteract={(occupant) => {
+            const tenant = commercialTenants.find((candidate) => candidate.resident.id === occupant.id);
             setLastInteraction(occupant.name);
-            setFeedback(`${occupant.name.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`);
+            setFeedback(tenant
+              ? `${occupant.name.toUpperCase()} · ${tenant.business.service.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`
+              : `${occupant.name.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`);
           }}
           towerArt
+           accentColor={commercialTenants[0]?.business.color ?? null}
           lighting={identity.status === "occupied" ? "warm" : isSealed ? "dim" : "cool"}
           hallwayStyle={identity.status === "occupied" ? "executive" : "central"}
-          hallwaySignage={identity.shortLabel + " · " + identity.statusLabel}
+           hallwaySignage={commercialTenants.length
+             ? commercialTenants.map((tenant) => tenant.business.name).join(" · ")
+             : identity.shortLabel + " · " + identity.statusLabel}
           deskColCount={layout.deskCols}
           deskRowCount={layout.deskRows}
           capsuleCount={layout.capsules}

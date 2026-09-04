@@ -24,4 +24,12 @@ describe("Tower Life operating catalog", () => {
     expect(floorThree).toContain("MENDER-9");
     expect(floorThree).toContain("WARD 67");
   });
+
+  it("projects only catalog-backed commercial residents onto occupied floors", () => {
+    expect(getTowerAmbientOccupants(18).map((occupant) => occupant.name)).toEqual([
+      "VALE PRIVATE MEDICINE OPERATOR",
+      "BITE//BYTE DENTAL OPERATOR",
+    ]);
+    expect(getTowerAmbientOccupants(13)).toEqual([]);
+  });
 });

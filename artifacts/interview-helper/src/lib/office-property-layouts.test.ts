@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHADOW_TOWER_LISTINGS, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
+import { SHADOW_TOWER_LISTINGS, getShadowTowerCommercialTenants, getShadowTowerPlan, validateShadowTowerPlan } from "@workspace/api-zod/shadow-tower";
 import {
   findOfficeRoute, getOfficeBlockedTiles, getShadowTowerOfficeLayout,
   officePropertyLayoutFromPlan, routeOfficePath, validateOfficePose,
@@ -71,6 +71,31 @@ describe("Shadow Tower office projection", () => {
     for (const occupant of getTowerAmbientOccupants(4)) {
       const path = routeOfficePath(layout, occupant.path ?? [{ col: occupant.col, row: occupant.row }]);
       for (const tile of path) expect(blocked.has(`${tile.col},${tile.row}`)).toBe(false);
+    }
+  });
+
+  it("routes every commercial resident to a reachable tenant station", () => {
+    for (const floor of [7, 9, 12, 14, 16, 18, 21, 24, 26, 27, 29, 31, 34, 38]) {
+      const tenants = getShadowTowerCommercialTenants(floor);
+      const layout = officePropertyLayoutFromPlan(
+        getShadowTowerPlan("minx_city", floor, "company", [], tenants.length),
+        `minx_city:${floor}`,
+        tenants,
+      );
+      const blocked = getOfficeBlockedTiles(layout);
+      for (const tenant of tenants) {
+        const residentPath = routeOfficePath(layout, tenant.resident.path);
+        expect(residentPath.length, `${tenant.businessKey} resident route`).toBeGreaterThan(0);
+        residentPath.forEach((tile) => expect(blocked.has(`${tile.col},${tile.row}`), tenant.businessKey).toBe(false));
+        const station = layout.stations.find((candidate) => candidate.id === `tenant-service-${tenant.businessKey}`)!;
+        const route = findOfficeRoute(
+          layout,
+          { col: tenant.resident.col, row: tenant.resident.row },
+          { col: station.col, row: station.row },
+        );
+        expect(route.length, `${tenant.businessKey} station route`).toBeGreaterThan(0);
+        expect(blocked.has(`${route.at(-1)!.col},${route.at(-1)!.row}`)).toBe(false);
+      }
     }
   });
 });
