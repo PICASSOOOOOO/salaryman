@@ -8,14 +8,14 @@ import { getActiveCityName } from "@/lib/city-defs";
 type FloorInfo = { label: string; detail: string; destination?: string; tone: string };
 
 const FLOOR_INFO: Record<number, FloorInfo> = {
-  [-1]: { label: "B1 · SECURITY / UNDERGROUND", detail: "Guarded service level and Undercity map access", destination: "/game/map", tone: "fuchsia" },
+  [-1]: { label: "B1 · SECURITY / UNDERGROUND", detail: "Guarded service level and Undercity map access", destination: "/tower/floor/b1", tone: "fuchsia" },
   1: { label: "LOBBY / RECREATION", detail: "Tower reception, dining, games, and conversation", destination: "/tower", tone: "emerald" },
   2: { label: "CAFE / WORK FLOOR", detail: "Dining counter, free computers, and work board", destination: "/tower/mezzanine", tone: "cyan" },
   3: { label: "INFIRMARY / HOTELS", detail: "Medical observation and beds", destination: "/tower/rest", tone: "cyan" },
   4: { label: "SECURITY / CUSTODY", detail: "Guards, evidence, holding", destination: "/tower/security", tone: "red" },
-  5: { label: "PUBLIC SERVICES", detail: "Phone, vending, and public service terminal", destination: "/tower/mezzanine?focus=phone", tone: "cyan" },
-  66: { label: "PICASSO ORG", detail: "Private organization operations", destination: "/office", tone: "amber" },
-  67: { label: "SHADOW CORP / ROOFTOP", detail: "Restricted offices · rooftop restaurant access is controlled", tone: "violet" },
+  5: { label: "PUBLIC SERVICES", detail: "Phone, vending, and public service terminal", destination: "/tower/floor/5", tone: "cyan" },
+  66: { label: "PICASSO ORG", detail: "Private organization operations", destination: "/tower/floor/66", tone: "amber" },
+  67: { label: "SHADOW CORP / ROOFTOP", detail: "Restricted offices · rooftop restaurant access is controlled", destination: "/tower/floor/67", tone: "violet" },
 };
 
 const SEALED_FLOORS = new Set([40, 52, 65]);
@@ -23,8 +23,8 @@ const SEALED_FLOORS = new Set([40, 52, 65]);
 function floorInfo(floor: number): FloorInfo {
   return FLOOR_INFO[floor] ?? (
     SEALED_FLOORS.has(floor)
-      ? { label: "SEALED FLOOR", detail: "No public access", tone: "zinc" }
-      : { label: "COMMERCIAL FLOOR", detail: "Office access requires a lease or purchase", destination: `/store/realty?floor=${floor}&from=elevator`, tone: "zinc" }
+      ? { label: `SEALED FLOOR ${floor}`, detail: "The physical floor exists; access is held at the lift boundary", destination: `/tower/floor/${floor}`, tone: "zinc" }
+      : { label: "COMMERCIAL FLOOR", detail: "A physical address awaiting tenant fit-out", destination: `/tower/floor/${floor}`, tone: "zinc" }
   );
 }
 
@@ -195,7 +195,7 @@ export default function ElevatorCabin() {
             <button type="button" onClick={travel} disabled={!selected.destination || traveling} className="mt-2 flex w-full items-center justify-center gap-2 bg-cyan-300 px-3 py-3 text-[11px] font-black tracking-[.2em] text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-600">
               {direction === "down" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />} {traveling ? "ELEVATOR IN MOTION" : selected.destination ? `GO TO FLOOR ${selectedFloor === -1 ? "B1" : selectedFloor}` : "ACCESS RESTRICTED"}
             </button>
-            <p className="mt-3 text-center text-[9px] leading-4 tracking-[.08em] text-zinc-600">Public stops are open. Commercial floors route to Realty until an office shell is assigned; restricted floors remain locked.</p>
+            <p className="mt-3 text-center text-[9px] leading-4 tracking-[.08em] text-zinc-600">Every stop has a physical floor shell. Access, fit-out, and tenant permissions are decided inside the building.</p>
           </aside>
         </section>
       </div>

@@ -54,6 +54,7 @@ const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const RecreationFloor = lazy(() => import("@/pages/RecreationFloor"));
 const PublicTowerFloor = lazy(() => import("@/pages/PublicTowerFloor"));
+const TowerFloorScene = lazy(() => import("@/pages/TowerFloorScene"));
 const ElevatorCabin = lazy(() => import("@/pages/ElevatorCabin"));
 const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
@@ -655,6 +656,12 @@ function AppShell() {
             <Route path="/tower/rest">{() => <GameLock><PublicTowerFloor floor={3} /></GameLock>}</Route>
             <Route path="/tower/security">{() => <GameLock><PublicTowerFloor floor={4} /></GameLock>}</Route>
             <Route path="/tower/elevator">{() => <GameLock><ElevatorCabin /></GameLock>}</Route>
+            <Route path="/tower/floor/b1">{() => <GameLock><TowerFloorScene floor={-1} /></GameLock>}</Route>
+            <Route path="/tower/floor/:floor">{(params) => {
+              const parsedFloor = Number(params.floor);
+              const floor = Number.isInteger(parsedFloor) && parsedFloor >= 1 && parsedFloor <= 67 ? parsedFloor : 1;
+              return <GameLock><TowerFloorScene floor={floor} /></GameLock>;
+            }}</Route>
             <Route path="/tower">{() => <GameLock><TowerDirectory /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
                 office surface (same artwork, passive feed). Any lingering deep
