@@ -1109,3 +1109,17 @@ mtime_ms = 1788535174236
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/32ed271d-a2bc-4282-8c08-e0b1effda650/9001bfd7-5d46-4a0e-8848-70e75ea7fc5f"
 storage_version_token = "1788535179693971"
 content_type = "text/plain"
+
+[[outputs]]
+id = "UBqEKq0GMVsCAtZJaIvy5"
+uri = "file://exports/SALARYMAN_MUSIC_WRITING_MARKETING_CODE.txt"
+type = "text"
+title = "SALARYMAN Music + Writing + Marketing Code"
+description = "Copyable text bundle containing 66 current production source files for music creation/playback, Hummingbird, Shadow Radio, writing/content tools, marketing/social tools, assistant support, backend routes, and database schemas. No secret values or binary audio are included."
+logical_id = "cb9f152c-3170-443f-96a2-92a9403aa100"
+content_hash = "sha256:a98bfbab3e9829de4a5596e1da71d7616f2e1a1714521ab1ebae20a69a900faa"
+size = 1225699
+mtime_ms = 1788536415929
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/cb9f152c-3170-443f-96a2-92a9403aa100/0d9e29db-796b-40e0-8168-9f44f177f75a"
+storage_version_token = "1788536580275253"
+content_type = "text/plain"
