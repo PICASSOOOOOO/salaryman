@@ -89,12 +89,14 @@ export function approachMovementVelocity(
     && targetSpeed > 0.01
     && current.x * target.x + current.y * target.y < currentSpeed * targetSpeed * 0.75;
   // Ease into a walk, carve through turns, and settle to rest instead of
-  // snapping the sprite onto a new axis in a frame or two.
+  // snapping the sprite onto a new axis in a frame or two. Direction changes
+  // get a slightly stronger brake than straight-line acceleration so the
+  // character feels intentional rather than skating past corners.
   const rate = changingDirection
-    ? Math.max(0.1, targetSpeed * 0.16)
+    ? Math.max(0.14, targetSpeed * 0.24)
     : accelerating
-      ? Math.max(0.12, targetSpeed * 0.18)
-      : Math.max(0.16, currentSpeed * 0.22);
+      ? Math.max(0.14, targetSpeed * 0.24)
+      : Math.max(0.2, currentSpeed * 0.3);
   const maxDelta = rate * dt;
   const dx = target.x - current.x;
   const dy = target.y - current.y;
@@ -112,7 +114,7 @@ export function moveWithCollision(
   position: MovementVector,
   delta: MovementVector,
   collides: (x: number, y: number) => boolean,
-  maxStep = 4,
+  maxStep = 3,
 ): MovementVector {
   const distance = Math.hypot(delta.x, delta.y);
   if (!Number.isFinite(distance) || distance < 0.0001) return { ...position };

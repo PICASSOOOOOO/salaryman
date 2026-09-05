@@ -147,6 +147,7 @@ import { useGamepad } from '../hooks/useGamepad';
 import {
   approachAngle,
   approachMovementVelocity,
+  analogMovementVector,
   keyboardMovementVector,
   moveWithCollision,
   normalizeMovementVector,
@@ -272,17 +273,15 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-const ISO_ZOOM_DEFAULT = 4.4;
+const ISO_ZOOM_DEFAULT = 3.0;
 const ISO_ZOOM_MIN = 0.8;
 const ISO_ZOOM_MAX = 5.0;
-// The camera starts zoomed in CLOSE on the character for an immersive framing
-// ("get a good look at our character"). On very narrow phones we ease out only
-// slightly so the view isn't fully tunnel-boxed — never below a close floor.
-// The old behaviour scaled the zoom *down* on small screens, which is what made
-// the view feel "too wide". Players set their own persistent zoom in
-// Settings → Display → Camera Zoom, and can still pinch / wheel live.
+// The camera defaults to a readable play-space instead of a character-only
+// close-up. Portrait phones remain a little tighter so landmarks and touch
+// controls still feel immediate, while desktop and short-landscape views show
+// enough road to make navigation legible.
 const ISO_ZOOM_REFERENCE_WIDTH = 1280;
-const ISO_ZOOM_NARROW_FLOOR = 3.2;
+const ISO_ZOOM_NARROW_FLOOR = 2.55;
 // Reads the saved Camera Zoom preference (Settings → Display). Returns null when
 // the player hasn't set one yet so we can fall back to the fixed close default.
 function readCameraZoomPref(): number | null {
@@ -338,8 +337,11 @@ function computeDefaultZoom(): number {
   const pref = readCameraZoomPref();
   if (pref != null) return pref;
   const w = window.innerWidth || ISO_ZOOM_REFERENCE_WIDTH;
-  const scaled = ISO_ZOOM_DEFAULT * (w / ISO_ZOOM_REFERENCE_WIDTH);
-  return Math.max(ISO_ZOOM_NARROW_FLOOR, Math.min(ISO_ZOOM_DEFAULT, scaled));
+  const h = window.innerHeight || 800;
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+  const shortLandscape = w > h && h < 560;
+  if (coarse || w < 800) return shortLandscape ? 2.75 : 3.25;
+  return 2.85;
 }
 
 // ── Living food/market details ──────────────────────────────────────────────
@@ -4647,9 +4649,13 @@ export default function WorldPlay() {
     const radius = Math.max(1, rect.width * 0.34);
     const rawX = (clientX - (rect.left + rect.width / 2)) / radius;
     const rawY = (clientY - (rect.top + rect.height / 2)) / radius;
-    const vector = normalizeMovementVector(rawX, rawY);
+    // Keep the knob honest to the finger, but feed the simulation a radial
+    // deadzone/response curve so tiny touch noise does not cause walking and
+    // full travel still reaches exactly full speed.
+    const knob = normalizeMovementVector(rawX, rawY);
+    const vector = analogMovementVector(rawX, rawY, 0.18);
     touchMoveRef.current = vector;
-    setTouchStickOffset({ x: vector.x * radius, y: vector.y * radius });
+    setTouchStickOffset({ x: knob.x * radius, y: knob.y * radius });
   }, []);
 
   const resetTouchMovement = useCallback(() => {
@@ -12019,14 +12025,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      if (isTouchDevice && !g.interior && !g.subwayTransit) {
-        const spawnBid = g.hamletBuildingId;
-        const spawnB = BUILDINGS.find(b => b.id === spawnBid) ?? BUILDINGS.find(b => b.id === 'minx_arms')!;
-        g.px = spawnB.x + spawnB.w / 2;
-        g.py = spawnB.y + spawnB.h + 20;
-        enterInterior(spawnBid);
-      }
-
       if (!frozen() && !g.subwayTransit && !gamePausedRef.current) {
         if (movementSpaceRef.current !== 'world') {
           movementSpaceRef.current = 'world';
@@ -12994,7 +12992,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
-      const zoomLerp = 0.08;
+      const zoomLerp = 1 - Math.pow(1 - 0.08, dtFactor);
       zoomRef.current += (targetZoomRef.current - zoomRef.current) * zoomLerp;
 
       const entryZoom = buildingEntryZoomRef.current;
@@ -13007,15 +13005,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Look-ahead: camera leads in the movement direction
-      let dx2 = 0, dy2 = 0;
-      if (g.keys.has('arrowleft') || g.keys.has('a')) dx2 = -1;
-      if (g.keys.has('arrowright') || g.keys.has('d')) dx2 = 1;
-      if (g.keys.has('arrowup') || g.keys.has('w')) dy2 = -1;
-      if (g.keys.has('arrowdown') || g.keys.has('s')) dy2 = 1;
-      const isMoving = dx2 !== 0 || dy2 !== 0;
-      const lookAheadDist = 60;
-      const laLerp = isMoving ? 0.10 : 0.14;
+      // Look-ahead follows actual velocity rather than only keyboard state, so
+      // touch, gamepad, tap-to-move, and keyboard all share the same framing.
+      const velocityDirection = normalizeMovementVector(g.moveVx, g.moveVy);
+      const velocityMoving = Math.hypot(g.moveVx, g.moveVy) > 0.02;
+      const dx2 = velocityMoving ? velocityDirection.x : 0;
+      const dy2 = velocityMoving ? velocityDirection.y : 0;
+      const isMoving = velocityMoving;
+      const shortLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 560;
+      const lookAheadDist = isTouchDeviceRef.current
+        ? (shortLandscape ? 38 : 30)
+        : 64;
+      const laLerp = 1 - Math.pow(1 - (isMoving ? 0.12 : 0.18), dtFactor);
       cameraLookAheadRef.current.x += (dx2 * lookAheadDist - cameraLookAheadRef.current.x) * laLerp;
       cameraLookAheadRef.current.y += (dy2 * lookAheadDist - cameraLookAheadRef.current.y) * laLerp;
 
@@ -13036,7 +13037,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const camDiffY = clampedY - g.cam.y;
       const DEADZONE = 2;
       if (Math.abs(camDiffX) > DEADZONE || Math.abs(camDiffY) > DEADZONE) {
-        const camSpeed = isMoving ? 0.16 : 0.22;
+         const camSpeed = 1 - Math.pow(1 - (isMoving ? 0.16 : 0.22), dtFactor);
         g.cam.x += camDiffX * camSpeed;
         g.cam.y += camDiffY * camSpeed;
       } else {
@@ -17379,6 +17380,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const viewL = g.cam.x - 40, viewR = g.cam.x + cw + 40;
         const viewT = g.cam.y - 40, viewB = g.cam.y + ch + 40;
 
+        // Ground dressing: give each city block a repeatable paved module so
+        // the scene has readable spatial rhythm before roads and buildings are
+        // painted on top. This is deliberately render-only and viewport-culled
+        // (roughly 100 small rects at most), so it adds depth without becoming
+        // a mobile particle workload.
+        const padSize = 64;
+        const padStartX = Math.max(CITY_LEFT, Math.floor(viewL / padSize) * padSize);
+        const padEndX = Math.min(CITY_RIGHT, Math.ceil(viewR / padSize) * padSize);
+        const padStartY = Math.max(CITY_TOP, Math.floor(viewT / padSize) * padSize);
+        const padEndY = Math.min(CITY_BOTTOM, Math.ceil(viewB / padSize) * padSize);
+        ctx.save();
+        ctx.lineWidth = 0.7;
+        for (let px2 = padStartX; px2 < padEndX; px2 += padSize) {
+          for (let py2 = padStartY; py2 < padEndY; py2 += padSize) {
+            const ps = seed(px2 * 0.7, py2 * 0.9);
+            if (ps < 0.2) continue;
+            const padX = px2 + ox + 2;
+            const padY = py2 + oy + 2;
+            const padW = padSize - 4;
+            const padH = padSize - 4;
+            ctx.fillStyle = ps > 0.62
+              ? `rgba(198,185,143,${0.11 * br})`
+              : `rgba(116,130,119,${0.09 * br})`;
+            ctx.fillRect(padX, padY, padW, padH);
+            ctx.strokeStyle = `rgba(235,222,177,${0.1 * br})`;
+            ctx.strokeRect(padX, padY, padW, padH);
+            // A few larger pads become planted courtyards instead of a flat
+            // checkerboard. Buildings and roads naturally occlude these.
+            if (ps > 0.86) {
+              ctx.fillStyle = `rgba(45,62,49,${0.42 * br})`;
+              ctx.fillRect(padX + 10, padY + padH - 9, padW - 20, 5);
+              ctx.fillStyle = `rgba(160,171,115,${0.65 * br})`;
+              ctx.fillRect(padX + 13, padY + padH - 14, 3, 6);
+              ctx.fillRect(padX + padW - 16, padY + padH - 14, 3, 6);
+            }
+          }
+        }
+        ctx.restore();
+
         const CITY_TREE_SPACING = 180;
         for (let wx = CITY_LEFT + 60; wx < CITY_RIGHT - 60; wx += CITY_TREE_SPACING) {
           for (let wy = CITY_TOP + 60; wy < CITY_BOTTOM - 60; wy += CITY_TREE_SPACING) {
@@ -20573,6 +20613,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         drawGearVehicle(ctx, px, py2, g.frame, gearVeh);
       }
       ctx.globalAlpha = bodyAlpha;
+      // Give the avatar enough visual weight to read against the world on both
+      // a laptop and a phone. This is render-only; collision remains governed
+      // by PSIZE so save/network geometry stays unchanged.
+      const playerScale = isTouchDeviceRef.current ? 1.14 : 1.08;
+      ctx.save();
+      ctx.translate(px, py2);
+      ctx.scale(playerScale, playerScale);
+      ctx.translate(-px, -py2);
       const wf = g.walkFrame;
       // Compact character sprites: ~20px tall with proper proportions
       const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3;
@@ -20946,7 +20994,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      ctx.restore();
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      // A small contact streak sells motion without adding a particle system.
+      // It is cheap enough for mobile and only appears while the feet animate.
+      if (g.walkFrame !== 0 && !g.vehicle && !gearVeh) {
+        const stepAlpha = 0.08 + Math.abs(Math.sin(g.walkFrame / 28 * Math.PI * 2)) * 0.08;
+        ctx.save();
+        ctx.globalAlpha = stepAlpha;
+        ctx.strokeStyle = '#e8d8a8';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(px - 3, py2 + 10, 3.5, 1.2, 0, 0, Math.PI * 2);
+        ctx.ellipse(px + 3, py2 + 10, 3.5, 1.2, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
       if (gamePausedRef.current) {
         const shieldPulse = 0.35 + Math.sin(g.frame * 0.06) * 0.15;
         ctx.strokeStyle = `rgba(100,220,255,${shieldPulse})`;
