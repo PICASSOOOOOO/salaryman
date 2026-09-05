@@ -1738,5 +1738,17 @@
       "Add route-level arcade FIAT charge regression coverage",
       "Add opt-in real Clerk Tower handoff smoke coverage"
     ]
+  },
+  {
+    "version": "v.20.9.2175",
+    "date": "2026-09-05",
+    "commitHash": "fdaef33b2d89fd770afaf340305986498ac86f22",
+    "changes": [
+      "Update agent metadata and include salaryman engine kit manifest",
+      "Add salaryman engine kit documentation and exports",
+      "Update gameplay world economy logic and tests",
+      "Update gameplay world economy tests and UI integration",
+      "Update world economy location logic and tests"
+    ]
   }
 ]

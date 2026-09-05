@@ -3,7 +3,7 @@ name: Concept-art fidelity = palette, not detail
 description: Why "make SALARYMAN match its concept art" is a palette/style problem, and where the city cohesion lever lives.
 ---
 
-# Concept-art fidelity is a palette/style gap, not a detail gap
+# Concept-art fidelity is a live-renderer style gap, not a detail-count gap
 
 The complaint "the game looks like a kid made it vs the painted Minx City concept
 art" is NOT about missing detail. The rendered world is already heavily detailed
@@ -17,32 +17,22 @@ procedural art:
   supertall. NPCs have hair/clothing/accessories.
 
 The real gulf vs the painted concept art is **procedural-vector style vs painted**
-plus a **non-noir palette**. Full re-render / painted-art overlay is infeasible and
-high-regression-risk (collision/camera/interaction all keyed to the geometry).
+plus an inconsistent palette. Full re-render / painted-art overlay is infeasible
+and high-regression-risk (collision/camera/interaction all keyed to the geometry).
 
-**Why:** The single highest-impact, zero-geometry-risk lever is colour. The generic
-city building material picker (in the "Isometric building cube rendering" block of
-WorldPlay's building loop) used earthy "generic town" tones — terracotta brick,
-concrete grey, ochre plaster — that clash with the neon-noir onboarding/Pledge art.
+**Why:** The safest high-impact lever is the live renderer's material and dressing
+layer. It can change the perceived artwork without moving gameplay geometry,
+collision, camera timing, or interaction targets.
 
-**How to apply:** That material picker is 6 hash buckets (`isLocked` + 5 `bHash`
-ranges) setting only `wallR/G/B`, `roofR/G/B`, `accentR/G/B`. All textures, windows,
-awnings, archetypes DERIVE from these constants, so re-grading the constants alone
-re-skins the whole city with zero geometry change. Re-graded to a cool jewel-toned
-noir key (indigo / slate / teal / plum / cool-brutalist); kept `isLocked` warm rust
-so the "seized" signal still reads. Amber night-lit windows pop against cool walls.
-Roads are neutral grey asphalt (Minx) — fine; Huda has its own warm-tan road tint.
+**How to apply:** The six building material buckets (`isLocked` + 5 `bHash`
+ranges) and the terrain districts are the stable style levers. Current direction is
+physical 1970s–1980s solar-punk: adobe, ceramic, oxidised teal, terracotta, shaded
+clay, warm plaques, cloth banners, and rooftop solar collectors. Keep silhouettes
+and interaction geometry unchanged. Avoid bringing back neon-noir treatments just
+because they are visually easy.
 Don't try to overlay the unused iso building art keys (building_office_iso etc.) onto
 extruded buildings — judged messy/misaligned earlier.
 
-**Ground/roads cohesion pass (follow-up):** the city SURFACE was a separate warm
-"daytime town" leftover and got the same treatment. Re-graded, colour-only, to the
-cool noir key: the `inCity` branch of `getBiomeColor` (4 districts: downtown / neon
-strip / industrial / old district) is now blue-dominant slate/indigo/teal/plum; the
-`drawCityTerrain` street-tree canopies went grass-green→desaturated teal w/ cool
-slate trunks; parking-lot asphalt went warm grey→cool slate. Roads keep neutral grey
-asphalt but `drawRoad` now adds faint cyan/magenta wet-reflection streaks gated on a
-`_night` factor `(0.55 - roadBr)/0.25` (roadBr = dayBright), so they only glow after
-dusk. Terrain is chunk-cached (`terrainChunkCache`) and auto-invalidates on dayBright
-change, so ground colour edits show up without extra cache busting. Huda still has its
-own warm-tan road tint via `_isHuda` — don't clobber it.
+**Ground/roads cohesion:** the city surface is chunk-cached
+(`terrainChunkCache`) and invalidates on lighting changes, so ground-style edits show
+without a separate cache-busting system. Keep Huda's city-aware road tint intact.

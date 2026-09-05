@@ -894,16 +894,16 @@ const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
 const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
 
-// ── Ambient animation spots (neon signs, steam vents, debris) ─────────────────
+// ── Ambient dressing (painted storefronts, vents, debris) ──────────────────────
 interface NeonSignDef { x: number; y: number; text: string; color: string; w: number; }
 const NEON_SIGNS: NeonSignDef[] = [
-  { x: 6240, y: 5840, text: 'MINX BAR', color: '#ff44aa', w: 40 },
-  { x: 6840, y: 5860, text: 'NOODLE HUT', color: '#ffaa00', w: 48 },
-  { x: 7240, y: 5880, text: 'DATA VAULT', color: '#00ffcc', w: 44 },
-  { x: 6440, y: 6140, text: 'ARCADE', color: '#ff5500', w: 36 },
-  { x: 7040, y: 6140, text: 'MARKET', color: '#aaff00', w: 36 },
-  { x: 6640, y: 6440, text: 'HOTEL', color: '#ff00aa', w: 32 },
-  { x: 7340, y: 6240, text: 'NIGHTCLUB', color: '#aa00ff', w: 44 },
+  { x: 6240, y: 5840, text: 'MINX BAR', color: '#d39a54', w: 40 },
+  { x: 6840, y: 5860, text: 'NOODLE HUT', color: '#c77b4b', w: 48 },
+  { x: 7240, y: 5880, text: 'DATA VAULT', color: '#87b9a2', w: 44 },
+  { x: 6440, y: 6140, text: 'ARCADE', color: '#d7b85d', w: 36 },
+  { x: 7040, y: 6140, text: 'MARKET', color: '#8fb26b', w: 36 },
+  { x: 6640, y: 6440, text: 'HOTEL', color: '#c99370', w: 32 },
+  { x: 7340, y: 6240, text: 'NIGHTCLUB', color: '#9f8a72', w: 44 },
 ];
 interface SteamVentDef { x: number; y: number; }
 const STEAM_VENTS: SteamVentDef[] = [
@@ -16526,22 +16526,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const inNeonStrip2 = wx >= CITY_LEFT + 600 && wy < CITY_TOP + 500;
           const inIndustrial2 = wx >= CITY_LEFT + 600 && wy >= CITY_TOP + 500;
           const inOldDistrict2 = wx < CITY_LEFT + 100;
-          // ── Neon-noir ground grade — cool cousins of the building palette ──
-          // Re-graded from the old warm grey/brown "daytime town" tones to the
-          // same indigo/slate/teal/plum noir key as the buildings, so the city
-          // surface reads as one cohesive world. Each district keeps a distinct
-          // hue (cool slate / indigo-plum / teal-steel / plum-slate) but all
-          // sit blue-dominant so amber-lit windows still pop. Colour-only.
+           // ── Physical solar-punk ground grade ─────────────────────────────
+           // Keep the districts distinct, but make the street surface read as
+           // sun-warmed concrete, terracotta, oxidised steel, and planted verge
+           // instead of a blue neon wash.
           if (inDowntown2) {
-            r = 58 + n1 * 12 + n2 * 6; g3 = 62 + n1 * 11 + n2 * 4; b = 78 + n1 * 12 + n2 * 5;
+             r = 112 + n1 * 14 + n2 * 7; g3 = 104 + n1 * 13 + n2 * 6; b = 82 + n1 * 10 + n2 * 5;
           } else if (inNeonStrip2) {
-            r = 64 + n1 * 12 + n3 * 5; g3 = 56 + n1 * 10 + n3 * 4; b = 84 + n1 * 14 + n3 * 8;
+             r = 128 + n1 * 16 + n3 * 6; g3 = 86 + n1 * 12 + n3 * 5; b = 68 + n1 * 10 + n3 * 5;
           } else if (inIndustrial2) {
-            r = 56 + n1 * 10 + n2 * 7; g3 = 72 + n1 * 11 + n2 * 7; b = 84 + n1 * 10 + n2 * 6;
+             r = 72 + n1 * 10 + n2 * 7; g3 = 96 + n1 * 13 + n2 * 7; b = 84 + n1 * 10 + n2 * 6;
           } else if (inOldDistrict2) {
-            r = 78 + n1 * 14 + n3 * 7; g3 = 66 + n1 * 11 + n3 * 6; b = 88 + n1 * 12 + n3 * 6;
+             r = 132 + n1 * 16 + n3 * 7; g3 = 112 + n1 * 13 + n3 * 6; b = 78 + n1 * 10 + n3 * 5;
           } else {
-            r = 62 + n1 * 12 + n2 * 6; g3 = 66 + n1 * 10 + n2 * 5; b = 82 + n1 * 11 + n2 * 5;
+             r = 104 + n1 * 14 + n2 * 6; g3 = 102 + n1 * 12 + n2 * 5; b = 82 + n1 * 10 + n2 * 5;
           }
         } else {
           // Wasteland/open terrain base
@@ -16648,7 +16646,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Neon puddle reflections at night (neon strip, drawn on top of terrain)
+       // Warm pavement reflections at night (the city keeps its material identity
+       // after dark; avoid animated cyberpunk colour noise).
       if (isNight) {
         const neonNoiseHash = (x: number, y: number) => {
           const hv = Math.sin(x * 4.1 + y * 3.7 + 20) * 43758.5;
@@ -16664,10 +16663,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           for (let ny2 = nyStart; ny2 < nyEnd; ny2 += TILE) {
             const ph4 = neonNoiseHash(nx2 / TILE, ny2 / TILE);
             if (ph4 > 0.76) {
-              const rc2 = Math.floor(ph4 * 3) % 3;
+               const rc2 = Math.floor(ph4 * 3) % 3;
               const pudA = (ph4 - 0.76) * 0.45;
               const sx2 = nx2 + ox, sy2 = ny2 + oy;
-              ctx.fillStyle = rc2 === 0 ? `rgba(255,80,150,${pudA})` : rc2 === 1 ? `rgba(0,200,255,${pudA})` : `rgba(180,0,255,${pudA * 0.8})`;
+               ctx.fillStyle = rc2 === 0 ? `rgba(214,154,80,${pudA})` : rc2 === 1 ? `rgba(128,164,128,${pudA})` : `rgba(176,118,76,${pudA * 0.8})`;
               ctx.fillRect(sx2, sy2, TILE, TILE);
             }
           }
@@ -18497,39 +18496,37 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let wallR: number, wallG: number, wallB: number;
         let roofR: number, roofG: number, roofB: number;
         let accentR: number, accentG: number, accentB: number;
-        // ── Minx City neon-noir material palette ───────────────────────────
-        // Re-graded from the old earthy "generic town" tones (terracotta /
-        // concrete / ochre) to the cool jewel-toned noir key of the onboarding
-        // & Pledge concept art. Six buckets keep material variety (distinct
-        // hue + luminance) but unify around indigo/teal/slate/plum so the city
-        // reads as one cohesive world. Amber-lit windows (below) pop against
-        // these cool walls for the classic neon-noir read. Colour-only change —
-        // no geometry, texture, or window logic touched.
+         // ── Minx City physical solar-punk material palette ────────────────
+         // This is the live artwork layer, not a UI tint: adobe, ceramic,
+         // oxidised steel, terracotta, and shaded clay are used by every
+         // procedural building face below. The geometry/collision contract stays
+         // unchanged, but the city now reads as a built place in daylight rather
+         // than a collection of neon cubes.
         if (isLocked) {
           // Seized / locked — kept warm rust so the "claimed" signal still reads.
           wallR = 128; wallG = 72; wallB = 52;
           roofR = 98; roofG = 54; roofB = 38;
           accentR = 172; accentG = 96; accentB = 60;
-        } else if (bHash < 0.22) {
-          // Indigo masonry
-          wallR = 84; wallG = 74; wallB = 116; roofR = 60; roofG = 52; roofB = 88;
-          accentR = 132; accentG = 108; accentB = 176;
-        } else if (bHash < 0.44) {
-          // Slate panel
-          wallR = 96; wallG = 104; wallB = 124; roofR = 70; roofG = 78; roofB = 98;
-          accentR = 128; accentG = 138; accentB = 162;
-        } else if (bHash < 0.66) {
-          // Teal glass / steel
-          wallR = 60; wallG = 96; wallB = 116; roofR = 42; roofG = 74; roofB = 96;
-          accentR = 96; accentG = 156; accentB = 184;
-        } else if (bHash < 0.82) {
-          // Plum plaster
-          wallR = 122; wallG = 82; wallB = 112; roofR = 92; roofG = 60; roofB = 86;
-          accentR = 174; accentG = 112; accentB = 156;
+         } else if (bHash < 0.22) {
+           // Sun-baked adobe
+           wallR = 148; wallG = 112; wallB = 78; roofR = 108; roofG = 78; roofB = 54;
+           accentR = 202; accentG = 156; accentB = 80;
+         } else if (bHash < 0.44) {
+           // Warm ceramic / concrete
+           wallR = 134; wallG = 126; wallB = 105; roofR = 96; roofG = 90; roofB = 72;
+           accentR = 188; accentG = 168; accentB = 115;
+         } else if (bHash < 0.66) {
+           // Oxidised teal steel
+           wallR = 70; wallG = 112; wallB = 105; roofR = 46; roofG = 78; roofB = 76;
+           accentR = 122; accentG = 174; accentB = 145;
+         } else if (bHash < 0.82) {
+           // Terracotta plaster
+           wallR = 146; wallG = 88; wallB = 68; roofR = 106; roofG = 58; roofB = 48;
+           accentR = 214; accentG = 132; accentB = 82;
         } else {
-          // Cool brutalist
-          wallR = 58; wallG = 62; wallB = 80; roofR = 42; roofG = 46; roofB = 62;
-          accentR = 86; accentG = 92; accentB = 116;
+           // Shaded clay / basalt
+           wallR = 78; wallG = 75; wallB = 67; roofR = 53; roofG = 53; roofB = 47;
+           accentR = 132; accentG = 120; accentB = 88;
         }
 
         const isTower = b.w >= 50 || b.h >= 50;
@@ -18669,7 +18666,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const wy = winStartY + wr * (winH + winGapY);
             const winLit = tileHash(b.x + wc * 17, b.y + wr * 11);
             const isLitWin = isNight ? winLit > 0.38 : winLit > 0.85;
-            const winPulse = isLitWin && isNight ? 0.8 + Math.sin(g.frame * 0.025 + wc + wr * 3) * 0.2 : 1;
+             // Windows are occupied rooms, not a synchronized flicker effect.
+             const winPulse = 1;
             if (isLitWin) {
               if (isNight) {
                 ctx.fillStyle = `rgba(255,${Math.floor(220 * winPulse)},${Math.floor(90 * winPulse)},${0.85 * winPulse})`;
@@ -18812,39 +18810,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           for (let sw = 2; sw < sbW - 2; sw += 5) ctx.fillRect(sbX + sw, sbY + 2, 2, sbH - 3);
           ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
           ctx.fillRect(sbX + sbW / 2, sbY - 9, 1, 9);
-          if ((g.frame >> 4) % 2 === 0) {
-            ctx.fillStyle = 'rgba(255,60,60,.95)';
-            ctx.fillRect(sbX + sbW / 2 - 1, sbY - 10, 2, 2);
-          }
+           ctx.fillStyle = 'rgba(194,112,64,.9)';
+           ctx.fillRect(sbX + sbW / 2 - 1, sbY - 10, 2, 2);
         } else if (archHash < 0.55 && b.w >= 28) {
-          // BILLBOARD — rooftop neon sign
+          // SOLAR ARRAY — rooftop collector, not a glowing ad box.
           const bbW = Math.min(b.w - 4, 44);
-          const bbH = 10;
+          const bbH = 8;
           const bbX = bx + (b.w - bbW) / 2;
           const bbY = by - roofSkew - bbH - 2;
           ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
           ctx.fillRect(bbX + 3, bbY + bbH, 1, 3);
           ctx.fillRect(bbX + bbW - 4, bbY + bbH, 1, 3);
-          const neon: [number,number,number] = faceHash < 0.33 ? [255,80,170] : faceHash < 0.66 ? [80,220,255] : [255,200,60];
-          ctx.fillStyle = `rgb(${Math.floor(14 * bBr)},${Math.floor(16 * bBr)},${Math.floor(20 * bBr)})`;
+          ctx.fillStyle = `rgb(${Math.floor(34 * bBr)},${Math.floor(43 * bBr)},${Math.floor(42 * bBr)})`;
           ctx.fillRect(bbX, bbY, bbW, bbH);
-          ctx.strokeStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.strokeStyle = `rgba(205,184,120,${isNight ? 0.52 : 0.78})`;
           ctx.lineWidth = 1; ctx.strokeRect(bbX + 0.5, bbY + 0.5, bbW - 1, bbH - 1);
-          const glowA = isNight ? 0.95 : 0.55;
-          ctx.fillStyle = `rgba(${neon[0]},${neon[1]},${neon[2]},${glowA})`;
-          const glyphs = 4;
-          for (let gi = 0; gi < glyphs; gi++) {
-            const gx = bbX + 4 + gi * ((bbW - 8) / glyphs);
-            ctx.fillRect(gx, bbY + 3, 4, 1);
-            ctx.fillRect(gx + 1, bbY + 5, 2, 1);
-            ctx.fillRect(gx, bbY + 7, 4, 1);
-          }
-          if (isNight) {
-            ctx.shadowColor = `rgb(${neon[0]},${neon[1]},${neon[2]})`;
-            ctx.shadowBlur = 6;
-            ctx.strokeStyle = `rgba(${neon[0]},${neon[1]},${neon[2]},.5)`;
-            ctx.strokeRect(bbX, bbY, bbW, bbH);
-            ctx.shadowBlur = 0;
+          ctx.fillStyle = `rgba(108,150,142,${isNight ? 0.72 : 0.9})`;
+          for (let gi = 0; gi < 4; gi++) {
+            const gx = bbX + 3 + gi * ((bbW - 6) / 4);
+            ctx.fillRect(gx, bbY + 2, 5, 4);
+            ctx.fillStyle = 'rgba(38,64,65,.78)';
+            ctx.fillRect(gx + 2, bbY + 2, 1, 4);
+            ctx.fillStyle = `rgba(108,150,142,${isNight ? 0.72 : 0.9})`;
           }
         } else if (archHash < 0.68) {
           // WATER TOWER — squat cylinder w/ conical cap on legs
@@ -18868,25 +18855,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(wtX - wtR + 2, wtY + 4, 1, wtR * 2 - 2);
           ctx.fillRect(wtX + 1, wtY + 6, 1, wtR * 2 - 3);
         } else if (archHash < 0.80 && b.h >= 22) {
-          // VERTICAL NEON — banner mounted on front face
+          // VERTICAL CLOTH BANNER — painted storefront identity.
           const leftMount = faceHash < 0.5;
           const signX = bx + (leftMount ? 3 : b.w - 7);
           const signY = by + 4;
           const signH = Math.min(b.h - 10, 34);
-          const tint: [number,number,number] = faceHash < 0.33 ? [255,70,170] : faceHash < 0.66 ? [70,210,255] : [255,180,60];
-          ctx.fillStyle = `rgb(${Math.floor(10 * bBr)},${Math.floor(10 * bBr)},${Math.floor(14 * bBr)})`;
+          const tint: [number,number,number] = faceHash < 0.33 ? [190,112,68] : faceHash < 0.66 ? [92,145,125] : [198,164,88];
+          ctx.fillStyle = `rgb(${Math.floor(58 * bBr)},${Math.floor(42 * bBr)},${Math.floor(28 * bBr)})`;
           ctx.fillRect(signX, signY, 4, signH);
-          ctx.strokeStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},${isNight ? 0.95 : 0.6})`;
+          ctx.fillStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},${isNight ? 0.82 : 0.92})`;
+          ctx.fillRect(signX + 1, signY + 1, 2, signH - 2);
+          ctx.strokeStyle = `rgba(46,36,27,${isNight ? 0.7 : 0.5})`;
           ctx.lineWidth = 1;
           for (let sy2 = 2; sy2 < signH - 2; sy2 += 6) {
-            ctx.strokeRect(signX + 1, signY + sy2, 2, 4);
-          }
-          if (isNight) {
-            ctx.shadowColor = `rgb(${tint[0]},${tint[1]},${tint[2]})`;
-            ctx.shadowBlur = 5;
-            ctx.strokeStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},.6)`;
-            ctx.strokeRect(signX, signY, 4, signH);
-            ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.moveTo(signX + 1, signY + sy2); ctx.lineTo(signX + 3, signY + sy2); ctx.stroke();
           }
           ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
           ctx.fillRect(signX + (leftMount ? -2 : 4), signY + 4, 2, 1);
@@ -18908,10 +18890,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.moveTo(amX, amTop);
           ctx.lineTo(amX - 9, amBase);
           ctx.stroke();
-          if ((g.frame >> 5) % 2 === 0) {
-            ctx.fillStyle = 'rgba(255,50,50,.95)';
-            ctx.fillRect(amX - 1, amTop - 2, 2, 2);
-          }
+           ctx.fillStyle = 'rgba(194,112,64,.9)';
+           ctx.fillRect(amX - 1, amTop - 2, 2, 2);
         } else if (b.w >= 26) {
           // DOME — half-dome observatory/shrine top
           const dR = Math.min(b.w * 0.35, 14);
@@ -19514,21 +19494,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         drawVehicleSprite(tvx, tvy, tv.type, tvFacing, tv.color);
       }
 
-      // ── Neon signs ──
+       // ── Painted storefront plaques ───────────────────────────────────────
+       // These are deliberately static physical dressing. The old animated
+       // neon bars made every block feel like the same looping placeholder.
       for (const ns of NEON_SIGNS) {
         const nsx = ns.x + ox, nsy = ns.y + oy;
         if (nsx < -60 || nsx > cw + 60 || nsy < -20 || nsy > ch + 20) continue;
-        const flicker = Math.sin(g.frame * 0.15 + ns.x * 0.03) > -0.7 ? 1 : (Math.sin(g.frame * 0.5 + ns.x * 0.02) * 0.5 + 0.5);
-        const nAlpha = flicker * (isNight ? 0.9 : 0.5);
         ctx.save();
-        ctx.globalAlpha = nAlpha;
-        ctx.shadowColor = ns.color; ctx.shadowBlur = isNight ? 12 : 4;
-        ctx.fillStyle = ns.color;
-        ctx.fillRect(nsx - ns.w / 2, nsy - 4, ns.w, 8);
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
+         ctx.globalAlpha = isNight ? 0.94 : 0.82;
+         ctx.fillStyle = 'rgba(47,38,28,.92)';
+         ctx.fillRect(nsx - ns.w / 2 - 2, nsy - 5, ns.w + 4, 10);
+         ctx.fillStyle = ns.color;
+         ctx.fillRect(nsx - ns.w / 2, nsy - 4, ns.w, 8);
+         ctx.fillStyle = 'rgba(38,30,22,.9)';
+         ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText(ns.text, nsx, nsy + 2);
-        ctx.shadowBlur = 0;
+         ctx.fillStyle = 'rgba(255,235,190,.38)';
+         ctx.fillRect(nsx - ns.w / 2 + 2, nsy - 3, ns.w - 4, 1);
         ctx.restore();
       }
 
@@ -23028,7 +23010,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
       {/* TOP-LEFT — health bar, wanted, gold, fiat, zone, character class */}
-      <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 6 : 10, zIndex: 100, display: hudSuppressed ? 'none' : 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isTouchDevice ? '2px' : '4px', maxWidth: isTouchDevice ? 240 : 340, transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left' }}>
+      <div
+        data-testid="gameplay-top-hud"
+        style={{
+          position: 'fixed',
+          top: 'env(safe-area-inset-top, 0px)',
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          display: hudSuppressed ? 'none' : 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: isTouchDevice ? '2px' : '4px',
+          maxWidth: isTouchDevice ? 'none' : 340,
+          padding: isTouchDevice ? '6px 8px 7px' : '10px',
+          background: isTouchDevice ? 'linear-gradient(180deg, rgba(4,12,16,.94), rgba(4,12,16,.72) 72%, transparent)' : 'transparent',
+          pointerEvents: 'none',
+        }}
+      >
         {/* ── NET WORTH HUD ──────────────────────────────────────────────
             Net worth replaces the HP arc as the headline player stat.
             Survival pressure routes through MONEY (net worth) and STAMINA
@@ -23038,20 +23037,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const propVal = (gs.current.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
           const nw = salary + (gs.current.savings ?? 0) + goldBalance * FIAT_PER_GOLD + propVal - (gs.current.taxDebt ?? 0);
           const comboStep = gs.current.combo?.count ?? 0;
-          return (
-            <NetWorthHUD
-              netWorth={nw}
-              cash={salary}
-              bankBalance={gs.current.savings ?? 0}
-              savings={gs.current.savings ?? 0}
-              gold={goldBalance}
-              fiatPerGold={FIAT_PER_GOLD}
-              stamina={energy}
-              creditScore={creditInfo?.score}
-              creditTier={creditInfo?.tier}
-              comboCount={comboStep}
-            />
-          );
+           return (
+             <div style={{ pointerEvents: 'auto' }}>
+               <NetWorthHUD
+                 netWorth={nw}
+                 cash={salary}
+                 bankBalance={gs.current.savings ?? 0}
+                 savings={gs.current.savings ?? 0}
+                 gold={goldBalance}
+                 fiatPerGold={FIAT_PER_GOLD}
+                 stamina={energy}
+                 creditScore={creditInfo?.score}
+                 creditTier={creditInfo?.tier}
+                 comboCount={comboStep}
+                 compact={isTouchDevice}
+               />
+             </div>
+           );
         })()}
         {/* Hunger/thirst pips — stamina is shown by the larger labeled bar above. */}
         <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>

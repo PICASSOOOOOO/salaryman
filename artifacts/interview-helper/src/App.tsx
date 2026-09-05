@@ -554,7 +554,7 @@ function AppShell() {
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && !showNavBar && !isRootRoute && <AlphaWipeBanner />}
+      {!isEmbed && !isGameRoute && !showNavBar && !isRootRoute && <AlphaWipeBanner />}
       {showNavBar && (
         <div className="app-chrome">
           {!isEmbed && <AlphaWipeBanner />}
@@ -570,11 +570,11 @@ function AppShell() {
       <Suspense fallback={null}>
         {showNavBar && <CommandPalette />}
         {showFloatingBar && <ActiveCallBar />}
-      {/* Route-independent toaster for the persistent notification stream —
-          mounted OUTSIDE the chat gate so org invites, ticket replies, missed
-          DMs & mentions still pop (with chime) on game/full-screen routes. */}
-        {isAuthenticated && !isEmbed && !isRootRoute && <NotificationToaster />}
-        {showFullscreenPabloAccess && <FullscreenPabloAccess inGame={isGameRoute} />}
+      {/* Route-independent toaster for the persistent notification stream.
+          Immersive gameplay intentionally keeps this surface out of the
+          viewport; ordinary fullscreen routes still receive it. */}
+        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && <NotificationToaster />}
+        {showFullscreenPabloAccess && !isGameRoute && <FullscreenPabloAccess inGame={isGameRoute} />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
