@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 const { getPlayerPosition } = vi.hoisted(() => ({ getPlayerPosition: vi.fn() }));
 vi.mock("../worldServer", () => ({ getPlayerPosition }));
 
-import worldEconomyRouter, { isQuoteLocationAuthorized, locationForLivePlayer } from "../routes/gameplay-world-economy";
+import worldEconomyRouter, { isQuoteLocationAuthorized, locationForLivePlayer, QUICK_JOBS } from "../routes/gameplay-world-economy";
 
 describe("authoritative world economy location gates", () => {
   const source = readFileSync(new URL("../routes/gameplay-world-economy.ts", import.meta.url), "utf8");
@@ -46,6 +46,16 @@ describe("authoritative world economy location gates", () => {
     });
     expect(response.status).toBe(409);
     expect(response.body.error).toBe("job_location_required");
+  });
+
+  it("keeps watering plants as the lowest-paid always-available quick job", () => {
+    expect(QUICK_JOBS.water_plants).toEqual({
+      buildingId: "water_plants",
+      label: "WATER PLANTS",
+      payFiat: 1,
+      durationMs: 5_000,
+      cooldownMs: 10_000,
+    });
   });
 
   it("detects leaving the quoted exchange and checks it before cargo or wallet work", () => {

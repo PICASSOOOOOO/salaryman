@@ -1843,6 +1843,7 @@ export const BUILDINGS = (() => {
       ['eastside_flat',    'EASTSIDE FLATS',      false],
       ['food_court',       'FOOD COURT',          true],
       ['arcade',           'PIXEL ARCADE',        true,  false, true],
+      ['water_plants',     'WATER GARDENS',       true],
       ['scrap',            'SCRAP YARD',          false],
       ['bunker',           'BUNKER-09',           false, false, true],
       ['nightclub',        'CLUB NEON',           true,  false, true],

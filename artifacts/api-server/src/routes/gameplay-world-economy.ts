@@ -26,7 +26,7 @@ const WORLD_BUILDING_CENTERS = {
   nexus_hub: { x: 6470, y: 7450 }, noodle_bar: { x: 6930, y: 7450 },
   print_shop: { x: 7140, y: 7450 }, radio: { x: 7210, y: 7450 },
   public_office: { x: 7350, y: 7450 }, pawn_shop: { x: 6230, y: 7520 },
-  waste_exchange: { x: 6330, y: 7520 },
+  waste_exchange: { x: 6330, y: 7520 }, water_plants: { x: 6120, y: 7450 },
 } as const;
 
 export function locationForLivePlayer(userId: string): "city" | "waste" | null {
@@ -66,6 +66,7 @@ export const QUICK_JOBS = {
   food_court: { buildingId: "food_court", label: "SERVE TABLES", payFiat: 1_800, durationMs: 3_000, cooldownMs: 10_000 },
   nightclub: { buildingId: "nightclub", label: "BOUNCER SHIFT", payFiat: 3_500, durationMs: 5_000, cooldownMs: 30_000 },
   pawn_shop: { buildingId: "pawn_shop", label: "APPRAISE GOODS", payFiat: 2_800, durationMs: 4_000, cooldownMs: 15_000 },
+  water_plants: { buildingId: "water_plants", label: "WATER PLANTS", payFiat: 1, durationMs: 5_000, cooldownMs: 10_000 },
 } as const;
 
 export const COMMODITY_PRICES = {
