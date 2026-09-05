@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Copy, ExternalLink, Monitor, RefreshCw, ShieldCheck, Smartphone, Unlink } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { apiFetch } from "@/lib/api-client";
 import "./device-link.css";
@@ -23,6 +23,8 @@ type DeviceLinkMode = "desktop" | "mobile";
 
 const DESKTOP_DEVICE_KEY = "salaryman_desktop_device_id";
 const MOBILE_DEVICE_KEY = "salaryman_mobile_device_id";
+const DESKTOP_LINK_KEY = "salaryman_desktop_link";
+const MOBILE_LINK_KEY = "salaryman_mobile_link";
 
 const remoteRoutes = [
   { path: "/office", name: "Office", detail: "the work floor" },
@@ -94,6 +96,20 @@ function linkCode(link: DeviceLinkRecord | null): string {
 
 function linkStatus(link: DeviceLinkRecord | null): string {
   return String(link?.status ?? link?.state ?? "").toLowerCase();
+}
+
+function rememberLink(storageKey: string, link: DeviceLinkRecord, deviceId: string): void {
+  const id = linkId(link);
+  if (!id) return;
+  window.localStorage.setItem(storageKey, JSON.stringify({ linkId: id, deviceId }));
+}
+
+function controlSocketUrl(link: DeviceLinkRecord, role: "mobile", deviceId: string): string | null {
+  const id = linkId(link);
+  if (!id) return null;
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${protocol}//${window.location.host}${base}/ws/device-control/${encodeURIComponent(id)}?role=${role}&deviceId=${encodeURIComponent(deviceId)}`;
 }
 
 function statusLabel(link: DeviceLinkRecord | null): string {
@@ -178,6 +194,9 @@ function DesktopMode() {
   }, [links]);
   const code = linkCode(currentLink);
   const isLinked = ["linked", "approved", "connected", "active"].includes(linkStatus(currentLink));
+  useEffect(() => {
+    if (currentLink && isLinked) rememberLink(DESKTOP_LINK_KEY, currentLink, desktopDeviceId);
+  }, [currentLink, desktopDeviceId, isLinked]);
 
   async function createPairingRequest() {
     setWorking(true);
@@ -312,22 +331,44 @@ function DesktopMode() {
 function MobileRemotePanel({ link }: { link: DeviceLinkRecord }) {
   const [activeRoute, setActiveRoute] = useState(remoteRoutes[0].path);
   const mobileDeviceId = useMemo(() => getDeviceId(MOBILE_DEVICE_KEY), []);
+  const [connectionState, setConnectionState] = useState("connecting");
+  const socketRef = useRef<WebSocket | null>(null);
+  useEffect(() => {
+    rememberLink(MOBILE_LINK_KEY, link, mobileDeviceId);
+    const url = controlSocketUrl(link, "mobile", mobileDeviceId);
+    if (!url) return;
+    const socket = new WebSocket(url);
+    socketRef.current = socket;
+    socket.addEventListener("open", () => setConnectionState("connected"));
+    socket.addEventListener("close", () => setConnectionState("offline"));
+    socket.addEventListener("error", () => setConnectionState("offline"));
+    return () => {
+      socket.close();
+      socketRef.current = null;
+    };
+  }, [link, mobileDeviceId]);
+  const sendControl = (message: object) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: "control", ...message }));
+  };
   return (
     <div className="device-link-remote" data-testid="panel-mobile-remote">
       <div className="device-link-remote-heading">
         <h3><ShieldCheck size={14} aria-hidden /> trusted remote</h3>
-        <span>mobile / {mobileDeviceId.slice(0, 8)}</span>
+         <span>mobile / {mobileDeviceId.slice(0, 8)}</span>
       </div>
       <div className="device-link-status" data-testid="status-mobile-linked">
         <span className="device-link-status-dot live" aria-hidden />
-        <span>linked to {String(link.desktopName ?? link.desktop_name ?? "desktop station")}</span>
+         <span>{connectionState} / linked to {String(link.desktopName ?? link.desktop_name ?? "desktop station")}</span>
       </div>
       <div className="device-link-route-list" aria-label="Allowlisted SALARYMAN routes">
         {remoteRoutes.map((route) => (
           <button
             key={route.path}
             className={`device-link-route${activeRoute === route.path ? " active" : ""}`}
-            onClick={() => setActiveRoute(route.path)}
+             onClick={() => {
+               setActiveRoute(route.path);
+               sendControl({ action: "navigate", path: route.path });
+             }}
             aria-pressed={activeRoute === route.path}
             data-testid={`button-remote-route-${route.name.toLowerCase()}`}
           >
@@ -337,7 +378,7 @@ function MobileRemotePanel({ link }: { link: DeviceLinkRecord }) {
         ))}
       </div>
       <div className="device-link-remote-actions">
-        <button className="device-link-secondary" onClick={() => window.location.reload()} data-testid="button-reload-remote">
+         <button className="device-link-secondary" onClick={() => sendControl({ action: "reload" })} data-testid="button-reload-remote">
           <RefreshCw size={13} aria-hidden /> reload remote
         </button>
       </div>
@@ -400,6 +441,7 @@ function MobileMode() {
       const link = unwrapLink(payload) ?? resolvedLink;
       setApprovedLink(link);
       setResolvedLink(link);
+      rememberLink(MOBILE_LINK_KEY, link, mobileDeviceId);
       setNotice("Approved. This phone is now a trusted remote.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Approval could not be completed.");

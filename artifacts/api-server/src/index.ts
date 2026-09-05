@@ -29,6 +29,7 @@ import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 import { expireOverdueRentals } from './routes/fleet';
 import { purgeOutsideWorldState } from './lib/outside-world';
 import { setupGodotRenderBridge } from './godot-render-bridge';
+import { setupDeviceControlBridge } from './device-control-bridge';
 
 const rawPort = process.env["PORT"];
 
@@ -46,6 +47,7 @@ const httpServer = createServer(app);
 attachWorldServer(httpServer);
 setupChatServer(httpServer);
 setupGodotRenderBridge(httpServer);
+setupDeviceControlBridge(httpServer);
 
 const ownerEmails = (process.env.OWNER_EMAILS ?? "").split(",").map(e => e.trim()).filter(Boolean);
 

@@ -435,6 +435,13 @@
       "when": 1789963200000,
       "tag": "0061_tower_service_listing_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1789966800000,
+      "tag": "0062_device_links",
+      "breakpoints": true
     }
   ]
 }

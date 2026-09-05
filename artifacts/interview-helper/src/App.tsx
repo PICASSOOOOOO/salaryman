@@ -35,6 +35,7 @@ import {
   fetchServerStoryActive,
 } from "@/lib/story-gate";
 import { MessageCircle } from "lucide-react";
+import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -553,6 +554,7 @@ function AppShell() {
 
   return (
     <>
+      <DeviceControlBridge />
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
