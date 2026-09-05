@@ -130,6 +130,7 @@ const LegalReturns = lazy(() => import("@/pages/legal/ReturnPolicy"));
 const LegalCancellation = lazy(() => import("@/pages/legal/CancellationPolicy"));
 const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
+const SmsOptIn = lazy(() => import("@/pages/SmsOptIn"));
 
 const BusinessHub = lazy(() => import("@/pages/BusinessHub"));
 const Payroll = lazy(() => import("@/pages/Payroll"));
@@ -217,7 +218,7 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater", "/device-link"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
 function LoadingFallback() {
@@ -458,8 +459,8 @@ function AppShell() {
   //
   // Once authenticated — but not yet cleared through immigration — the
   // intake desk and legal pages open up too (those are post-sign-in).
-  const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/device-link", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -630,6 +631,7 @@ function AppShell() {
             <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/deck">{() => <GameLock><PabloDeck /></GameLock>}</Route>
             <Route path="/pablo" component={PabloTerminal} />
+            <Route path="/sms-opt-in" component={SmsOptIn} />
             <Route path="/immigration" component={Immigration} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
