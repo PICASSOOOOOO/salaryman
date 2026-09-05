@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn, ShieldCheck, X } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
@@ -795,6 +795,7 @@ function PabloTerminalAuthed() {
   // The front door uses one verified platform-auth flow. Provider-specific
   // buttons stay out of onboarding until their production callbacks are proven.
   const [authChoice, setAuthChoice] = useState<{ dest: string; hint: string | null } | null>(null);
+  const [showLegalDisclosure, setShowLegalDisclosure] = useState(false);
   const nebulaSize = useNebulaSize();
   // GFX quality toggle — exposed in the top-right of the terminal so
   // visitors on slow phones / integrated GPUs can drop the WebGL nebula
@@ -2312,6 +2313,140 @@ function PabloTerminalAuthed() {
 
       {/* Camera + file + URL go live exclusively post-onboarding. */}
       {hasFinishedOnboarding && <VisionIntake />}
+
+      {/* Keep the compliance entry point quiet but discoverable. The full
+          policies remain on /legal; this drawer gives a visitor the material
+          sharing, location, SMS, and service-limit disclosures without
+          crowding the nebula front door. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-1 z-30 flex justify-center px-4">
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); setShowLegalDisclosure(true); }}
+          className="pointer-events-auto rounded px-2 py-1 font-mono text-[9px] tracking-[0.12em] text-zinc-400/70 underline decoration-zinc-500/40 underline-offset-2 transition-colors hover:text-zinc-200"
+          data-testid="pablo-legal-disclosure"
+        >
+          Privacy, data &amp; location disclosure
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showLegalDisclosure && (
+          <motion.div
+            key="legal-disclosure"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100000] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+            onClick={() => setShowLegalDisclosure(false)}
+            role="presentation"
+          >
+            <motion.section
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 18 }}
+              transition={{ duration: 0.18 }}
+              className="max-h-[min(720px,calc(100svh-1.5rem))] w-full max-w-2xl overflow-y-auto rounded-2xl border border-zinc-700/80 bg-zinc-950 p-5 text-left shadow-2xl shadow-black/60 sm:p-7"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pablo-legal-title"
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-sky-400/70">
+                    PICASSO AI LLC · SALARYMAN
+                  </p>
+                  <h2 id="pablo-legal-title" className="text-xl font-semibold tracking-tight text-zinc-100">
+                    Privacy, data &amp; location disclosure
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLegalDisclosure(false)}
+                  className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                  aria-label="Close privacy disclosure"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-5 text-sm leading-6 text-zinc-400">
+                <div className="rounded-xl border border-sky-400/15 bg-sky-400/[0.05] p-4">
+                  <p className="text-zinc-300">
+                    SALARYMAN is operated by PICASSO AI LLC. This short notice summarizes
+                    the most important site-wide data practices. The full{" "}
+                    <a className="text-sky-300 underline underline-offset-2" href="/legal/privacy">Privacy Policy</a>{" "}
+                    and <a className="text-sky-300 underline underline-offset-2" href="/legal/terms">Terms of Service</a>{" "}
+                    control if there is any conflict.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-1 font-mono text-xs uppercase tracking-[0.16em] text-zinc-200">Information we use</h3>
+                  <p>
+                    Depending on the features you use, we may process account and profile details,
+                    device and browser data, IP address, activity, prompts and uploads, purchases,
+                    phone metadata, messages, recordings or transcripts when enabled, and support
+                    communications.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-1 font-mono text-xs uppercase tracking-[0.16em] text-zinc-200">Shared information</h3>
+                  <p>
+                    We do not sell personal information. We share only what is needed with hosting,
+                    authentication, payment, communications, analytics, and AI service providers;
+                    with organization members or recipients when a feature is intentionally shared;
+                    and when required for security, law, or a business transfer. Access remains
+                    subject to account, organization, and feature permissions.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-1 font-mono text-xs uppercase tracking-[0.16em] text-zinc-200">Approximate location and regional services</h3>
+                  <p>
+                    We may infer an approximate region or timezone from signals such as IP address,
+                    browser timezone, language, device settings, or a city you select. We use these
+                    signals for regional routing, local clocks, city availability, safety, fraud
+                    prevention, and relevant service behavior. These signals are approximate, are
+                    not proof of residence, and are not emergency or guaranteed GPS location.
+                    We do not request precise device GPS from this page.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-1 font-mono text-xs uppercase tracking-[0.16em] text-zinc-200">SMS and phone communications</h3>
+                  <p>
+                    SMS is sent through Twilio only for users who provide the required consent.
+                    Message frequency varies. Message and data rates may apply. Reply{" "}
+                    <strong className="text-zinc-200">STOP</strong> to opt out or{" "}
+                    <strong className="text-zinc-200">HELP</strong> for help. See the{" "}
+                    <a className="text-sky-300 underline underline-offset-2" href="/sms-opt-in">SMS opt-in page</a>.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 border-t border-zinc-800 pt-4">
+                  <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-sky-300/80" aria-hidden="true" />
+                  <p className="text-xs text-zinc-500">
+                    <strong className="text-zinc-300">Important disclaimer:</strong> SALARYMAN
+                    includes fictional simulation, AI-generated output, communications, financial
+                    features, and regional services. Information may be incomplete, inaccurate,
+                    delayed, unavailable, or wrong. Nothing here is legal, financial, medical,
+                    employment, emergency, or immigration advice. Verify important decisions
+                    independently and follow the laws that apply to you.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-800 pt-4 font-mono text-[10px] uppercase tracking-[0.14em]">
+                  <a className="text-sky-300 hover:text-sky-200" href="/legal/privacy">Full privacy policy</a>
+                  <a className="text-sky-300 hover:text-sky-200" href="/legal/terms">Terms of service</a>
+                  <a className="text-sky-300 hover:text-sky-200" href="/legal/contact">Privacy requests</a>
+                </div>
+              </div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sign-in method choice. Reached when onboarding hits the auth moment.
           Default path is Replit; Discord is the opt-in that also routes the

@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/LegalLayout";
 
 export default function TermsOfService() {
   return (
-    <LegalLayout title="Terms of Service" lastUpdated="March 20, 2026">
+    <LegalLayout title="Terms of Service" lastUpdated="September 5, 2026">
       <div className="highlight-box">
         <p>These Terms of Service ("Terms") govern your access to and use of SALARYMAN, a platform operated by <strong>PICASSO AI LLC</strong>. By creating an account or using any part of the service, you agree to be bound by these Terms.</p>
       </div>
@@ -45,6 +45,7 @@ export default function TermsOfService() {
 
       <h2>10. Disclaimer of Warranties</h2>
       <p>The Service is provided "as is" and "as available" without warranties of any kind, whether express or implied. PICASSO AI LLC does not warrant that the Service will be uninterrupted, error-free, or free of viruses or other harmful components.</p>
+      <p>The Service may use approximate regional signals such as IP-derived region, browser timezone, language, device settings, or a selected city to route services and display local information. These signals are not precise GPS, proof of residence, emergency location, or a guarantee that any regional service is available. AI output, fictional simulation, financial features, communications, and location-based information are provided for general use and are not legal, financial, medical, employment, emergency, or immigration advice.</p>
 
       <h2>11. Limitation of Liability</h2>
       <p>To the fullest extent permitted by law, PICASSO AI LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of or inability to use the Service, even if advised of the possibility of such damages.</p>
