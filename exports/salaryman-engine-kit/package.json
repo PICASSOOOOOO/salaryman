@@ -1,0 +1,9 @@
+{
+  "name": "salaryman-engine-kit",
+  "private": true,
+  "type": "module",
+  "description": "Portable source export of the SALARYMAN engines; adapt imports and adapters for the destination app.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
