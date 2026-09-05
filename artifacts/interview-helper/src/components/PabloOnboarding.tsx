@@ -217,7 +217,7 @@ function genderToAppearance(g: SalarymanGender): Gender {
  * it falls back to the pixel diorama so the step never renders empty.
  */
 function PaintedIntakeOffice() {
-  const url = useArtAsset('scene_office');
+  const url = useArtAsset('scene_office', 4000, { retryOnFail: true });
   if (!url) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -253,7 +253,7 @@ function PaintedIntakeOffice() {
  * + emoji fallback in CityHero shows through. Graceful, credit-gated.
  */
 function CityHeroArt({ artKey }: { artKey: string }) {
-  const url = useArtAsset(artKey);
+  const url = useArtAsset(artKey, 4000, { retryOnFail: true });
   if (!url) return null;
   return (
     <img
@@ -351,7 +351,7 @@ function TemplateCard({
   // Fallback (non-art) options carry a sentinel "__" key — skip the fetch for
   // those so we don't spray 404s at the art route.
   const fetchKey = opt.artKey && !opt.artKey.startsWith('__') ? opt.artKey : '';
-  const live = useArtAsset(fetchKey);
+  const live = useArtAsset(fetchKey, 4000, { retryOnFail: true });
   const url = live ?? opt.imageUrl ?? null;
 
   const fallbackAppr = useMemo(

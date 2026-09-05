@@ -434,7 +434,7 @@ function TeamBannerArt(props: {
   count: number;
   sample: Agent[];
 }) {
-  const art = useArtAsset(`team_${props.category}`);
+  const art = useArtAsset(`team_${props.category}`, 4000, { retryOnFail: true });
   return <TeamBannerBody {...props} art={art} />;
 }
 

@@ -30,7 +30,7 @@ import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
 import { hasFeature, isOwnerEmail, isPicassoOrgMember } from "../lib/plan";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { getOpenAiTextModel } from "../lib/openai-models";
+import { getOpenAiTextModel, OPENAI_FALLBACK_TEXT_MODEL } from "../lib/openai-models";
 
 const router = Router();
 
@@ -1835,15 +1835,25 @@ router.post("/bots/recommend", requireAuth, async (req: Request, res: Response) 
 
     const catalogText = marketplaceItems.map(b => `- ${b.name} (${b.slug}) [${b.category}]: ${b.tagline}`).join("\n");
 
-    const completion = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
-      messages: [
-        { role: "system", content: BOT_RECOMMEND_SYSTEM },
-        { role: "user", content: `MARKETPLACE CATALOG:\n${catalogText}\n\nUSER NEED: ${description.slice(0, 500)}` },
-      ],
+    const messages = [
+      { role: "system" as const, content: BOT_RECOMMEND_SYSTEM },
+      { role: "user" as const, content: `MARKETPLACE CATALOG:\n${catalogText}\n\nUSER NEED: ${description.slice(0, 500)}` },
+    ];
+    const createRecommendation = (model: string) => openai.chat.completions.create({
+      model,
+      messages,
       max_completion_tokens: 1200,
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" as const },
     });
+    let completion;
+    const model = getOpenAiTextModel();
+    try {
+      completion = await createRecommendation(model);
+    } catch (firstError) {
+      if (model === OPENAI_FALLBACK_TEXT_MODEL) throw firstError;
+      console.warn(`[Bot Recommend] ${model} unavailable; falling back to ${OPENAI_FALLBACK_TEXT_MODEL}`);
+      completion = await createRecommendation(OPENAI_FALLBACK_TEXT_MODEL);
+    }
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: any;

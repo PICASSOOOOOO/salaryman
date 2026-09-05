@@ -59,7 +59,7 @@ export default function OfficeStage({
   children,
   caption,
 }: Props) {
-  const sceneUrl = useArtAsset("scene_office");
+  const sceneUrl = useArtAsset("scene_office", 4000, { retryOnFail: true });
   const cctv = variant === "cctv";
 
   // Order: principals first, then active crew, then idle.
@@ -173,7 +173,7 @@ function CrewPortrait({
   index: number;
   cctv: boolean;
 }) {
-  const url = useArtAsset(portraitKey(member));
+  const url = useArtAsset(portraitKey(member), 4000, { retryOnFail: true });
   const principal = member.kind === "pablo" || member.kind === "jean";
   const active = !!member.active;
 

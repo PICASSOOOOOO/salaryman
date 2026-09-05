@@ -33,7 +33,7 @@ const TABS: { id: TabId; label: string; sub: string }[] = [
 
 export default function VendingMachine({ onClose, initialTab = "work" }: VendingMachineProps) {
   const [, navigate] = useLocation();
-  const machineUrl = useArtAsset("vending_machine_iso");
+  const machineUrl = useArtAsset("vending_machine_iso", 4000, { retryOnFail: true });
   const [tab, setTab] = useState<TabId>(initialTab);
   const fromOffice =
     typeof window !== "undefined" &&

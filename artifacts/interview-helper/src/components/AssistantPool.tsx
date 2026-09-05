@@ -104,7 +104,7 @@ function AssistantSprite({
   index: number;
   total: number;
 }) {
-  const url = useArtAsset(ROLE_ART[a.role]);
+  const url = useArtAsset(ROLE_ART[a.role], 4000, { retryOnFail: true });
   // Stagger horizontal home positions evenly across the floor band.
   const homeX = 12 + (index + 0.5) * (76 / Math.max(1, total));
   const [x, setX] = useState(homeX);

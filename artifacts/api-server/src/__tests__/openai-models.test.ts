@@ -13,13 +13,13 @@ afterEach(() => {
 });
 
 describe("OpenAI text model selection", () => {
-  it("prefers Astra by default", () => {
+  it("uses the known-good fallback by default", () => {
     delete process.env.OPENAI_TEXT_MODEL;
-    expect(getOpenAiTextModel()).toBe(OPENAI_ASTRA_MODEL);
+    expect(getOpenAiTextModel()).toBe(OPENAI_FALLBACK_TEXT_MODEL);
   });
 
-  it("supports a controlled rollout override", () => {
-    process.env.OPENAI_TEXT_MODEL = OPENAI_FALLBACK_TEXT_MODEL;
-    expect(getOpenAiTextModel()).toBe(OPENAI_FALLBACK_TEXT_MODEL);
+  it("supports a controlled Astra rollout override", () => {
+    process.env.OPENAI_TEXT_MODEL = OPENAI_ASTRA_MODEL;
+    expect(getOpenAiTextModel()).toBe(OPENAI_ASTRA_MODEL);
   });
 });

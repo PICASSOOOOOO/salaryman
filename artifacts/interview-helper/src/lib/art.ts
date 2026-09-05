@@ -59,8 +59,8 @@ export interface UseArtAssetOptions {
    * backend was momentarily out of credit / unreachable when it first baked)
    * recover on its own instead of staying blank forever. The server re-attempts
    * generation for a failed asset when it's polled after a cooldown, so the URL
-   * appears here once it succeeds. Off by default to preserve the existing
-   * "give up on failed" behavior at other call sites.
+   * appears here once it succeeds. Callers opt in when a visible surface should
+   * recover automatically from a transient provider outage.
    */
   retryOnFail?: boolean;
   /** Upper bound on the delay between retries once failures start (ms). */

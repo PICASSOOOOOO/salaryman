@@ -35,7 +35,7 @@ export default function OfficeScene() {
   const [terminalArmed, setTerminalArmed] = useState(false);
   // Use the SAME art the realty page uses for the entry-tier office, so
   // the cutscene matches the storefront 1:1.
-  const officeArt = useArtAsset("property_apartment_office");
+  const officeArt = useArtAsset("property_apartment_office", 4000, { retryOnFail: true });
 
   const spokenRef = useRef<Set<Step>>(new Set());
   const ttsHandleRef = useRef<{ cancel: () => void } | null>(null);

@@ -32,10 +32,11 @@ export default function BathroomScene() {
   const [, navigate] = useLocation();
   const [step, setStep] = useState<Step>("intro");
   // Nano Banana-baked art (loads asynchronously; CSS art is the placeholder)
-  const bathroomArt = useArtAsset("scene_bathroom");
-  const sinkArt = useArtAsset("prop_sink");
-  const dryerArt = useArtAsset("prop_dryer");
-  const doorArt = useArtAsset("prop_door");
+  const artRecovery = { retryOnFail: true };
+  const bathroomArt = useArtAsset("scene_bathroom", 4000, artRecovery);
+  const sinkArt = useArtAsset("prop_sink", 4000, artRecovery);
+  const dryerArt = useArtAsset("prop_dryer", 4000, artRecovery);
+  const doorArt = useArtAsset("prop_door", 4000, artRecovery);
   const [washing, setWashing] = useState(false);
   const [drying, setDrying] = useState(false);
   const spokenRef = useRef<Set<Step>>(new Set());

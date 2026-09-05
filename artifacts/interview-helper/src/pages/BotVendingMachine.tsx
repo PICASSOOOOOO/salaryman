@@ -29,7 +29,7 @@ const SLOT_COUNT = 6;
 
 export default function BotVendingMachine() {
   const [, navigate] = useLocation();
-  const machineUrl = useArtAsset("vending_machine_iso");
+  const machineUrl = useArtAsset("vending_machine_iso", 4000, { retryOnFail: true });
 
   const [items, setItems] = useState<MarketplaceItem[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);

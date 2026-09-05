@@ -48,8 +48,8 @@ const ACTION_TINT: Record<CutsceneActionKind, string> = {
 
 export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_player_default", onClose }: Props) {
   const [, setLocation] = useLocation();
-  const partnerUrl = useArtAsset(cutscene.partner.artKey);
-  const playerUrl = useArtAsset(playerArtKey);
+  const partnerUrl = useArtAsset(cutscene.partner.artKey, 4000, { retryOnFail: true });
+  const playerUrl = useArtAsset(playerArtKey, 4000, { retryOnFail: true });
 
   const [lineIdx, setLineIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);

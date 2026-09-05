@@ -540,7 +540,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   // Painted cinematic base — the border-control terminal in the game's
   // painted style (Nano Banana). Sits behind the canonical Pablo orb so the
   // whole intake reads as one painted scene instead of a flat gradient.
-  const sceneUrl = useArtAsset(phase === 'stamping' ? 'scene_pablo_terminal' : 'scene_office');
+  const sceneUrl = useArtAsset(phase === 'stamping' ? 'scene_pablo_terminal' : 'scene_office', 4000, { retryOnFail: true });
   return (
     <>
       {/* Painted establishing scene (base layer). */}
