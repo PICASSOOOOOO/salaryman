@@ -556,10 +556,9 @@ router.post("/chat/pablo/public", async (req: Request, res: Response) => {
     messages.push({ role: "user", content: safeTranscript });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       messages,
       max_completion_tokens: 500,
-      reasoning_effort: "minimal",
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() || "I'm here.";

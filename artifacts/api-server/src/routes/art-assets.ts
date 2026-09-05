@@ -29,6 +29,7 @@ import {
 import { isFalOutage } from "../lib/fal";
 import { getArtQaRecipe, validateArtOutput, type ArtQaResult } from "../lib/art-qa";
 import { isOwnerEmail } from "../lib/plan";
+import { generateArtDirectionBrief } from "../lib/art-direction";
 import {
   deliverIncidentReport,
   incidentChannelsConfigured,
@@ -437,6 +438,28 @@ router.get("/art/library", async (_req: Request, res: Response) => {
   } catch (e: any) {
     console.error("[art] library error", e);
     res.status(500).json({ error: e?.message || "Failed to load library" });
+  }
+});
+
+/** POST /api/art/direction/brief — owner-only Astra production planning. */
+router.post("/art/direction/brief", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+    const focus = typeof body.focus === "string" ? body.focus.trim().slice(0, 400) : "";
+    if (!focus) {
+      res.status(400).json({ error: "focus is required" });
+      return;
+    }
+    const assetTypes = Array.isArray(body.assetTypes)
+      ? body.assetTypes.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 80)).filter(Boolean).slice(0, 12)
+      : [];
+    const notes = typeof body.notes === "string" ? body.notes.trim().slice(0, 1000) : undefined;
+    const count = typeof body.count === "number" && Number.isFinite(body.count) ? body.count : undefined;
+    const brief = await generateArtDirectionBrief({ focus, assetTypes, notes, count });
+    res.json({ brief });
+  } catch (error) {
+    console.error("[art] direction brief error", error);
+    res.status(502).json({ error: error instanceof Error ? error.message : "Failed to generate art-direction brief" });
   }
 });
 

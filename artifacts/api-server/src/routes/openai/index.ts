@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../../lib/openai-models";
 import { db } from "@workspace/db";
 import { conversations, messages } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
@@ -489,7 +490,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   let fullResponse = "";
 
   const stream = await openai.chat.completions.create({
-    model: "gpt-5.2",
+    model: getOpenAiTextModel(),
     max_completion_tokens: 8192,
     messages: chatMessages,
     stream: true,

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import {
   db,
   classroomsTable,
@@ -639,7 +640,7 @@ Return ONLY valid JSON (no markdown fences) with exactly these fields:
 
   const response = await openai.chat.completions.create(
     {
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 1200,
       messages: [
         {
@@ -775,7 +776,7 @@ Produce 5-8 questions mixing the kinds. Keep them grounded in the material.`;
 
   const response = await openai.chat.completions.create(
     {
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 2000,
       messages: [
         { role: "system", content: "You are a teacher's assistant generating fair, well-scoped practice questions. Respond with valid JSON only — no markdown, no commentary." },
@@ -998,7 +999,7 @@ router.post("/education/translate", async (req: Request, res: Response) => {
   try {
     const response = await openai.chat.completions.create(
       {
-        model: "gpt-5.2",
+        model: getOpenAiTextModel(),
         max_completion_tokens: 2000,
         messages: [
           { role: "system", content: `You are a translator. Translate the user's text into ${targetName}. Preserve meaning, tone, and line breaks. Output ONLY the translation with no quotes, labels, or commentary.` },

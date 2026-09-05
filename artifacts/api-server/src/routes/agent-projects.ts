@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 const router: IRouter = Router();
 
@@ -260,10 +261,9 @@ router.post("/agent-projects/briefing", async (req, res) => {
     let briefing = "";
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: getOpenAiTextModel(),
         messages,
         max_completion_tokens: 700,
-        reasoning_effort: "minimal",
       });
       briefing = completion.choices[0]?.message?.content?.trim() ?? "";
     } catch (e) {

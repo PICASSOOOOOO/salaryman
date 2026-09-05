@@ -30,6 +30,7 @@ import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
 import { hasFeature, isOwnerEmail, isPicassoOrgMember } from "../lib/plan";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 const router = Router();
 
@@ -1835,13 +1836,12 @@ router.post("/bots/recommend", requireAuth, async (req: Request, res: Response) 
     const catalogText = marketplaceItems.map(b => `- ${b.name} (${b.slug}) [${b.category}]: ${b.tagline}`).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       messages: [
         { role: "system", content: BOT_RECOMMEND_SYSTEM },
         { role: "user", content: `MARKETPLACE CATALOG:\n${catalogText}\n\nUSER NEED: ${description.slice(0, 500)}` },
       ],
       max_completion_tokens: 1200,
-      reasoning_effort: "minimal",
       response_format: { type: "json_object" },
     });
 

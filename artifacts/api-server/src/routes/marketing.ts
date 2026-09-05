@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, desc, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import type { GptImageSize } from "@workspace/integrations-openai-ai-server/image";
 import {
   db,
@@ -184,7 +185,7 @@ Return ONLY valid JSON (no markdown fences) with exactly these fields:
 }`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5.2",
+    model: getOpenAiTextModel(),
     max_completion_tokens: 1200,
     messages: [
       {

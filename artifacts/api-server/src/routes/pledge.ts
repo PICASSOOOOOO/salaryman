@@ -13,6 +13,7 @@ import {
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import Stripe from "stripe";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
@@ -921,10 +922,9 @@ router.post("/pledge/admin/briefing", async (req, res) => {
     let briefing = "";
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: getOpenAiTextModel(),
         messages,
         max_completion_tokens: 700,
-        reasoning_effort: "minimal",
       });
       briefing = completion.choices[0]?.message?.content?.trim() ?? "";
     } catch {

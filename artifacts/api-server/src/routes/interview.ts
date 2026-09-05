@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { SolveInterviewQuestionBody } from "@workspace/api-zod";
 import { streamWithRouter } from "../lib/ai-router";
@@ -56,7 +57,7 @@ router.post("/interview/solve", async (req, res) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 8192,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -121,7 +122,7 @@ router.post("/interview/scan", requireFeature("screen_scan"), async (req, res) =
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       max_completion_tokens: maxTokens,
       messages: [
         {
@@ -184,7 +185,7 @@ router.post("/interview/listen", requireFeature("live_listen"), async (req, res)
     const sayItPrompt = `You are helping a non-technical person sound smart in a coding interview. They just heard this question: "${transcript}"\n\nGive EXACTLY 3 bullet points. Rules: NO code whatsoever. NO jargon. Each bullet is ONE short simple sentence (max 15 words). Write it so they can read it off a screen and say it out loud naturally right now. Think of it as a teleprompter script.\n\nFormat:\n• [sentence]\n• [sentence]\n• [sentence]`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 300,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -400,7 +401,7 @@ router.post("/interview/analyze-media", requirePro(), upload.single('file'), asy
       const dataUrl = `data:${mime};base64,${fileBuffer.toString('base64')}`;
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         max_completion_tokens: 4096,
         messages: [{
           role: "user",
@@ -433,7 +434,7 @@ router.post("/interview/analyze-media", requirePro(), upload.single('file'), asy
       sendSSE({ phase: 'analyzing', label: 'Analyzing audio content...' });
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         max_completion_tokens: 2048,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
@@ -490,7 +491,7 @@ router.post("/interview/analyze-media", requirePro(), upload.single('file'), asy
       const analysisPrompt = `Analyze this video for research purposes. ${frames.length > 0 ? `I've extracted ${frames.length} key frames for visual analysis.` : 'No frames could be extracted.'} ${audioTranscript ? `The audio transcript is: "${audioTranscript}"` : 'No audio could be extracted.'}\n\nProvide:\n1. Visual content summary — what is shown across the frames\n2. Scene transitions and key moments\n3. ${audioTranscript ? 'Audio/speech content analysis and how it relates to the visuals' : 'Visual-only analysis since no audio was detected'}\n4. Overall research summary combining visual and audio elements\n5. Key takeaways and notable details`;
 
       const stream = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         max_completion_tokens: 4096,
         messages: [{
           role: "user",
@@ -665,7 +666,7 @@ router.post("/interview/extract-context", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 300,
       stream: false,
       messages: [
@@ -703,7 +704,7 @@ router.post("/advisor/chat", async (req, res) => {
   }
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 300,
       stream: false,
       messages: [

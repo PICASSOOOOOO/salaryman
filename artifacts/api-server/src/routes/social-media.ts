@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { eq, desc, and, sql, gte, lte } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import { db, socialPostsTable } from "@workspace/db";
 import { generateSocialCopy, publishSocialPost, isSocialPlatform } from "../lib/social-service";
 import { requireFeature } from "../middlewares/requirePro";
@@ -155,9 +156,8 @@ router.post("/social/generate-variants", requireClaw, async (req: Request, res: 
     const charLimits: Record<string, number> = { twitter: 280, threads: 500, linkedin: 3000, instagram: 2200, facebook: 5000, tiktok: 300, youtube: 5000, bluesky: 300 };
     const platformList = platforms.map((p: string) => `${p} (max ${charLimits[p] || 1000} chars)`).join(", ");
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 600,
-      reasoning_effort: "minimal",
       messages: [
         { role: "system", content: `You are a social media copywriter. Adapt the given content for multiple platforms. Return a JSON object where keys are platform names and values are the adapted post text. Include relevant hashtags. Return ONLY valid JSON.` },
         { role: "user", content: `Adapt this content for these platforms: ${platformList}\n\nOriginal content:\n${content}` },

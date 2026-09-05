@@ -10,6 +10,7 @@
  * cleaned up after a TTL.
  */
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "./openai-models";
 import { spawn } from "node:child_process";
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -298,7 +299,7 @@ Rules:
 - "imagePrompt": a vivid, cinematic, photoreal image description for this scene (lighting, subject, mood). One clear focal point, deliberate composition, restrained 2-3 tone palette, real material texture — avoid generic AI-stock staging, dead-centered symmetry, and over-saturation. No text in the image.`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-5.2",
+    model: getOpenAiTextModel(),
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: sys },

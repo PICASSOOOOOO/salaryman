@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import {
   db,
   emailCampaignsTable,
@@ -812,9 +813,8 @@ router.post("/campaigns/generate-sms", async (req: Request, res: Response) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 400,
-      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",

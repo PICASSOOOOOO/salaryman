@@ -1205,9 +1205,8 @@ Generate ONE short piece of in-world lore: a story Pablo knows, a rumor about a 
 Then offer the user TWO short cheeky reply tokens (1–4 words each, ALL CAPS works well) framed as a binary choice the user might pick — NEVER plain "yes/no" or the word "text/texting". Examples to riff on, never reuse: "ON THE LOW" / "CONFETTI", "HIDE ME" / "COME CLOSER", "BOSS" / "TROUBLE", "WHISPER" / "HOLLER", "DOUBLE DOWN" / "FOLD", "MORE COFFEE" / "MORE WHISKEY", "TELL ME MORE" / "I'M BORED".
 Return strict JSON only: {"line": "...", "options": ["X","Y"]}.`;
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 500,
-      reasoning_effort: "minimal",
       response_format: { type: "json_object" },
       messages: [{ role: "system", content: LORE_PROMPT }, { role: "user", content: "give me a fresh Pablo lore beat" }],
     });
@@ -1306,7 +1305,6 @@ async function runPabloCompletion(
       model: getOpenAiTextModel(),
       messages,
       max_completion_tokens: 600,
-      reasoning_effort: "minimal",
       tools: tools as any,
       tool_choice: "auto",
     });
@@ -1426,7 +1424,6 @@ async function runPabloCompletion(
       model: getOpenAiTextModel(),
       messages: followMessages,
       max_completion_tokens: 400,
-      reasoning_effort: "minimal",
     });
     if (second.usage) usages.push({ prompt_tokens: second.usage.prompt_tokens, completion_tokens: second.usage.completion_tokens });
     reply = second.choices[0]?.message?.content ?? (imageMarkdown.length ? "Here you go." : "I'm here. How can I help?");

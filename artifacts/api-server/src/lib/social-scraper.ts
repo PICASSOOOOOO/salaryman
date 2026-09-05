@@ -1,4 +1,5 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "./openai-models";
 
 export interface ProspectingCriteria {
   targetTitles: string[];
@@ -82,7 +83,7 @@ Output ONLY valid JSON with this structure:
 Make profiles realistic and diverse. qualificationScore is 1-100 based on how well the profile matches the criteria. All profiles are fictional for demonstration purposes.`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-5",
+    model: getOpenAiTextModel(),
     max_completion_tokens: 2000,
     stream: false,
     messages: [
@@ -149,7 +150,7 @@ Output ONLY valid JSON with this structure:
 Make profiles realistic and diverse. qualificationScore is 1-100 based on match quality. All profiles are fictional for demonstration purposes.`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-5",
+    model: getOpenAiTextModel(),
     max_completion_tokens: 2000,
     stream: false,
     messages: [

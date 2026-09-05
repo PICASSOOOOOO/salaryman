@@ -6,6 +6,7 @@ import { getUserTier } from "../lib/plan";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy } from "../lib/objectAcl";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
 import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../lib/battery";
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
@@ -802,7 +803,7 @@ Pick the single best match for each. Never invent values outside the lists.`;
 async function deriveAppearanceFromDataUrl(dataUrl: string): Promise<Record<string, string> | null> {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 2048,
       response_format: { type: "json_object" },
       messages: [
@@ -1033,7 +1034,7 @@ router.post("/salaryman/appearance/from-photo", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 2048,
       response_format: { type: "json_object" },
       messages: [

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import { generateImageBuffer, type GptImageSize } from "@workspace/integrations-openai-ai-server/image";
 import { db, brandKitTable, filesFoldersTable } from "@workspace/db";
 import { eq, and, lt, isNull, isNotNull, sql } from "drizzle-orm";
@@ -189,7 +190,7 @@ Label each as Variation A, B, C.`,
     const userPrompt = typePrompts[type] ?? typePrompts.ad;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 2000,
       messages: [
         {
@@ -244,7 +245,7 @@ router.post("/studio/generate-social", requireClaw, async (req: Request, res: Re
     if (!userPrompt) { res.status(400).json({ error: "Invalid template" }); return; }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 2000,
       messages: [
         {
@@ -497,7 +498,7 @@ SECTION LENGTHS (typical):
 === END SONGWRITING CRAFT ===`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 8000,
       messages: [
         {
@@ -673,7 +674,7 @@ Include: mood/concept statement, model casting direction, styling notes per look
     const systemPrompt = systemPrompts[mode] ?? systemPrompts.video_commercial;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 4000,
       stream: true,
       messages: [
@@ -836,7 +837,7 @@ router.post("/studio/terrence-assist", requireClaw, async (req: Request, res: Re
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 1400,
       messages: [
         {

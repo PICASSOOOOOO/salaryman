@@ -6,6 +6,7 @@
 
 import { eq, and, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "./openai-models";
 import {
   db,
   socialPostsTable,
@@ -71,9 +72,8 @@ export async function generateSocialCopy(input: GenerateCopyInput): Promise<Gene
       ? "Include 3-5 relevant hashtags at the end."
       : "Do not include hashtags.";
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: getOpenAiTextModel(),
     max_completion_tokens: 600,
-    reasoning_effort: "minimal",
     messages: [
       {
         role: "system",

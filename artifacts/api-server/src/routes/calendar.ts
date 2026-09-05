@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, appointmentsTable } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 import { getUncachableResendClient } from "../lib/resend";
 
 const router: IRouter = Router();
@@ -319,7 +320,7 @@ Rules:
 - Only one action tag per response`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       max_completion_tokens: 400,
       stream: false,
       messages: [

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 const router: IRouter = Router();
 
@@ -238,7 +239,7 @@ ${extras || "(none)"}
 Draft the full contract now. End with the Notice + Signature blocks + (if any concerns) Negotiation Notes.`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       stream: true,
       max_completion_tokens: 4000,
       messages: [
@@ -314,7 +315,7 @@ Format:
 This is an AI-generated review, not legal advice. Engage a licensed attorney in the relevant jurisdiction before signing.`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       stream: true,
       max_completion_tokens: 3000,
       messages: [

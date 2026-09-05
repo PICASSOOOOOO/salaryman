@@ -1,4 +1,5 @@
 export type InternalAiProvider = "gpt" | "claude";
+import { getOpenAiTextModel } from "./openai-models";
 export type InternalMessage = { role: "system" | "user" | "assistant"; content: string };
 export type InternalToolDefinition = {
   name: string;
@@ -45,10 +46,9 @@ export async function completeInternalText(
       if (provider === "gpt") {
         const { openai } = await import("@workspace/integrations-openai-ai-server");
         const result = await openai.chat.completions.create({
-          model: "gpt-5",
+          model: getOpenAiTextModel(),
           messages,
           max_completion_tokens: maxTokens,
-          reasoning_effort: "minimal",
           ...(options.json ? { response_format: { type: "json_object" as const } } : {}),
         });
         const content = result.choices[0]?.message?.content?.trim();
