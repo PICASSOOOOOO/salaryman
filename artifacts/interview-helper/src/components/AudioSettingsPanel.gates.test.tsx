@@ -2,8 +2,8 @@
 //
 // Sibling of AudioControl.gates.test.tsx. That suite drives the global
 // AudioControl popup's two boolean GATES:
-//   • musicEnabled    — Shadow Radio. Default ON at low volume.
-//   • ambianceEnabled — the low ambient bed. Default ON.
+//   • musicEnabled    — Shadow Radio. Default OFF until enabled.
+//   • ambianceEnabled — the low ambient bed. Default OFF until enabled.
 // The SAME two gates are also exposed on a SECOND surface — the Hummingbird
 // "Audio Hub" panel (AudioSettingsPanel), the canonical full mixer. Those
 // gate buttons are not driven by any test, so a regression there (e.g. wiring
@@ -88,26 +88,26 @@ afterEach(() => {
 });
 
 describe("AudioSettingsPanel gate defaults", () => {
-  it("renders SHADOW RADIO ON and AMBIANCE ON at defaults", async () => {
+  it("renders SHADOW RADIO OFF and AMBIANCE OFF at defaults", async () => {
     await mount();
-    expect(blob().musicEnabled).toBe(true);
-    expect(blob().ambianceEnabled).toBe(true);
-    expect(buttonByText("SHADOW RADIO ·").textContent).toContain("ON");
-    expect(buttonByText("AMBIANCE ·").textContent).toContain("ON");
+    expect(blob().musicEnabled).toBe(false);
+    expect(blob().ambianceEnabled).toBe(false);
+    expect(buttonByText("SHADOW RADIO ·").textContent).toContain("OFF");
+    expect(buttonByText("AMBIANCE ·").textContent).toContain("OFF");
   });
 });
 
 describe("AudioSettingsPanel Shadow Radio gate toggle", () => {
   it("flips musicEnabled on/off without clobbering volumes or game keys", async () => {
     await mount();
-    expect(blob().musicEnabled).toBe(true);
+    expect(blob().musicEnabled).toBe(false);
 
-    // Turn Shadow Radio off.
+    // Turn Shadow Radio on.
     click(buttonByText("SHADOW RADIO ·"));
     let b = blob();
-    expect(b.musicEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(true);
     // ambiance gate untouched.
-    expect(b.ambianceEnabled).toBe(true);
+    expect(b.ambianceEnabled).toBe(false);
     // Volume keys preserved (the shared blob's audio half).
     expect(b.masterVolume).toBe(AUDIO_DEFAULTS.master);
     expect(b.musicVolume).toBe(AUDIO_DEFAULTS.music);
@@ -116,44 +116,44 @@ describe("AudioSettingsPanel Shadow Radio gate toggle", () => {
     expect(b.controlScheme).toBe("arrows");
     expect(b.invertY).toBe(true);
     expect(b.resolution).toBe("720p");
-    expect(buttonByText("SHADOW RADIO ·").textContent).toContain("OFF");
+    expect(buttonByText("SHADOW RADIO ·").textContent).toContain("ON");
 
-    // Turn Shadow Radio back on — round-trips cleanly.
+    // Turn Shadow Radio back off — round-trips cleanly.
     click(buttonByText("SHADOW RADIO ·"));
     b = blob();
-    expect(b.musicEnabled).toBe(true);
-    expect(b.ambianceEnabled).toBe(true);
+    expect(b.musicEnabled).toBe(false);
+    expect(b.ambianceEnabled).toBe(false);
     expect(b.controlScheme).toBe("arrows");
-    expect(buttonByText("SHADOW RADIO ·").textContent).toContain("ON");
+    expect(buttonByText("SHADOW RADIO ·").textContent).toContain("OFF");
   });
 });
 
 describe("AudioSettingsPanel AMBIANCE gate toggle", () => {
   it("flips ambianceEnabled on/off without clobbering volumes or game keys", async () => {
     await mount();
-    expect(blob().ambianceEnabled).toBe(true);
+    expect(blob().ambianceEnabled).toBe(false);
 
-    // Turn AMBIANCE off.
+    // Turn AMBIANCE on.
     click(buttonByText("AMBIANCE ·"));
     let b = blob();
-    expect(b.ambianceEnabled).toBe(false);
+    expect(b.ambianceEnabled).toBe(true);
     // music gate untouched.
-    expect(b.musicEnabled).toBe(true);
+    expect(b.musicEnabled).toBe(false);
     // Volume keys preserved.
     expect(b.masterVolume).toBe(AUDIO_DEFAULTS.master);
     expect(b.musicVolume).toBe(AUDIO_DEFAULTS.music);
     // Game keys preserved.
     expect(b.controlScheme).toBe("arrows");
     expect(b.resolution).toBe("720p");
-    expect(buttonByText("AMBIANCE ·").textContent).toContain("OFF");
+    expect(buttonByText("AMBIANCE ·").textContent).toContain("ON");
 
-    // Turn AMBIANCE back on — round-trips cleanly.
+    // Turn AMBIANCE back off — round-trips cleanly.
     click(buttonByText("AMBIANCE ·"));
     b = blob();
-    expect(b.ambianceEnabled).toBe(true);
-    expect(b.musicEnabled).toBe(true);
+    expect(b.ambianceEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(false);
     expect(b.invertY).toBe(true);
-    expect(buttonByText("AMBIANCE ·").textContent).toContain("ON");
+    expect(buttonByText("AMBIANCE ·").textContent).toContain("OFF");
   });
 });
 
@@ -161,15 +161,15 @@ describe("AudioSettingsPanel gates are independent", () => {
   it("toggling one gate never disturbs the other", async () => {
     await mount();
 
-    // Flip Shadow Radio off, leave AMBIANCE alone.
+    // Flip Shadow Radio on, leave AMBIANCE alone.
     click(buttonByText("SHADOW RADIO ·"));
-    expect(blob().musicEnabled).toBe(false);
-    expect(blob().ambianceEnabled).toBe(true);
+    expect(blob().musicEnabled).toBe(true);
+    expect(blob().ambianceEnabled).toBe(false);
 
-    // Now flip AMBIANCE off — Shadow Radio must stay off.
+    // Now flip AMBIANCE on — Shadow Radio must stay on.
     click(buttonByText("AMBIANCE ·"));
     const b = blob();
-    expect(b.musicEnabled).toBe(false);
-    expect(b.ambianceEnabled).toBe(false);
+    expect(b.musicEnabled).toBe(true);
+    expect(b.ambianceEnabled).toBe(true);
   });
 });

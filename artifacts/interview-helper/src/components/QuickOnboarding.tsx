@@ -30,7 +30,7 @@ export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) 
   );
   const [name, setName] = useState(charName.trim() || 'SALARYMAN');
   const [cityId, setCityId] = useState(suggestedCity);
-  const [path, setPath] = useState<'work' | 'business'>('work');
+  const [path, setPath] = useState<'office' | 'business'>('office');
   const [submitting, setSubmitting] = useState(false);
 
   const selectedCity = cities.find((city) => city.cityId === cityId);
@@ -177,7 +177,7 @@ export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) 
             <legend style={labelStyle}>START AS</legend>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([
-                ['work', 'FIND WORK'],
+                ['office', 'OFFICE'],
                 ['business', 'BUILD A BUSINESS'],
               ] as const).map(([value, label]) => {
                 const selected = path === value;

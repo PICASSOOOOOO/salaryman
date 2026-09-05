@@ -92,7 +92,6 @@ function persist(s: AudioSettings) {
 
 let state: AudioSettings = readPersisted();
 const listeners = new Set<(s: AudioSettings) => void>();
-const AUDIO_OPT_IN_MIGRATION_KEY = "salaryman.audio.opt-in-v1";
 
 // Voice ducking: while Pablo / an NPC / the phone is speaking (voice priority
 // from audio-bus), ALL background music must drop to silence — voice always
@@ -163,20 +162,6 @@ let _initialized = false;
 export function initAudioSettings() {
   if (_initialized) return;
   _initialized = true;
-  // Older builds persisted the old "on by default" values. Clear those once so
-  // returning players are not surprised by audio starting after an upgrade.
-  // New explicit choices are preserved after this migration.
-  if (typeof window !== "undefined") {
-    try {
-      if (!window.localStorage.getItem(AUDIO_OPT_IN_MIGRATION_KEY)) {
-        state = { ...state, musicEnabled: false, ambianceEnabled: false };
-        persist(state);
-        window.localStorage.setItem(AUDIO_OPT_IN_MIGRATION_KEY, "1");
-      }
-    } catch {
-      // Audio still works for this session when storage is unavailable.
-    }
-  }
   applyToEngine();
   // React to voice priority (Pablo/NPC TTS, phone): duck all music to silence
   // while a voice is speaking, restore the user's levels the instant it ends.

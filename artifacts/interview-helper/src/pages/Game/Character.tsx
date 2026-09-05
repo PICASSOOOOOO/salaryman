@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ChevronLeft, Heart, Wallet, Skull, Briefcase } from "lucide-react";
+import { ChevronLeft, Wallet, Briefcase } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
 import { resolveAvatarUrl } from "@/lib/avatar";
@@ -45,36 +45,21 @@ export default function GameCharacter() {
 
         <header className="mb-6 flex items-center gap-3">
           {resolveAvatarUrl(user?.profileImageUrl) ? (
-            <img src={resolveAvatarUrl(user?.profileImageUrl)} alt={name} className="w-14 h-14 rounded-md object-cover border border-cyan-500/30" />
+            <img src={resolveAvatarUrl(user?.profileImageUrl)} alt={name} className="w-20 h-20 rounded-md object-contain bg-zinc-900 border border-cyan-500/30" />
           ) : (
-            <div className="w-14 h-14 rounded-md flex items-center justify-center font-mono text-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-200">
+              <div className="w-20 h-20 rounded-md flex items-center justify-center font-mono text-3xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-200">
               {name[0]?.toUpperCase()}
             </div>
           )}
           <div>
-            <p className="text-[10px] font-mono text-zinc-500 tracking-widest">CHARACTER</p>
             <h1 className="text-xl font-mono tracking-[0.15em] text-cyan-100">{name.toUpperCase()}</h1>
-            <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{streamerMode ? STREAMER_MASK : user?.email}</p>
           </div>
         </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <Stat icon={Heart} label="HP" value="100/100" color="emerald" />
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <Stat icon={Wallet} label="WALLET" value="ƒ —" color="fuchsia" />
-          <Stat icon={Skull} label="BOUNTY" value="ƒ 0" color="red" />
           <Stat icon={Briefcase} label="JOB" value="—" color="cyan" />
         </div>
-
-        <section className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
-          <h2 className="text-[10px] font-mono tracking-[0.3em] text-zinc-300 mb-2">HOSPITAL RECORD</h2>
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Each death pulls a hospital fee from your wallet and clocks you out for the rest of the shift. No respawn penalty bigger than what's in your account.
-          </p>
-        </section>
-
-        <p className="mt-6 text-[10px] font-mono text-zinc-600 tracking-widest uppercase text-center">
-          Live wallet & bounty wire-up ships with the economy ledger.
-        </p>
       </div>
     </div>
   );

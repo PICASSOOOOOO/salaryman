@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Building2, ChevronLeft, Compass, Map as MapIcon, RotateCcw } from 'lucide-react';
+import { Building2, ChevronLeft, Map as MapIcon, RotateCcw } from 'lucide-react';
 import { BurnedPaperMap, type MapWaypoint, type WorldEventMarker } from '@/components/BurnedPaperMap';
 import { BuildingFloorPlan } from '@/components/BuildingFloorPlan';
 import { CORE_ANCHORS } from '@/lib/city-config';
@@ -77,9 +77,6 @@ function UndergroundMap({ exploredTiles, currentPosition }: {
           <div data-testid="marker-underground-player" className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_16px_#fff]"
             style={{ left: `${px(currentPosition.x)}%`, top: `${py(currentPosition.y)}%` }} />
         )}
-      </div>
-      <div className="absolute bottom-3 left-4 font-mono text-[9px] tracking-[.25em] text-fuchsia-200/70">
-        MINX UNDERCITY · LEVEL B1 · SIGNAL-REVEALED
       </div>
     </div>
   );
@@ -193,9 +190,7 @@ export default function GameMap() {
       <div className="max-w-6xl mx-auto px-3 sm:px-6">
         <header className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="text-[9px] font-mono tracking-[.48em] text-cyan-300/50">SALARYMAN // FIELD SYSTEM</p>
-            <h1 className="text-2xl sm:text-3xl font-mono tracking-[.16em] text-cyan-50 mt-1">VISITOR ATLAS</h1>
-            <p className="mt-1 text-[10px] font-mono tracking-widest text-slate-500">CITY SIGNALS · STREET GRID · INTERIOR SCHEMATICS</p>
+            <h1 className="text-2xl sm:text-3xl font-mono tracking-[.12em] text-cyan-50">MAP</h1>
           </div>
           <Link href="/office" data-testid="link-map-office"
             className="flex items-center gap-1 text-[10px] font-mono tracking-widest text-slate-500 hover:text-cyan-200">
@@ -221,9 +216,9 @@ export default function GameMap() {
               <Building2 className="w-3.5 h-3.5" /> BUILDING
             </button>
           </div>
-          <span className="text-[10px] font-mono tracking-widest text-slate-600">
-            {view === 'building' && buildingDef ? buildingLabel : view === 'underground' ? 'MINX CITY // LEVEL B1' : 'MINX CITY // SAFE CORE'}
-          </span>
+          {view === 'building' && buildingDef && (
+            <span className="text-[10px] font-mono tracking-widest text-slate-600">{buildingLabel}</span>
+          )}
           {view === 'building' && !buildingDef && (
             <span className="text-[10px] font-mono tracking-widest text-amber-300/70">NO INTERIOR SIGNAL</span>
           )}
@@ -289,39 +284,14 @@ export default function GameMap() {
 
         {view === 'surface' ? (
           <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] font-mono tracking-widest text-slate-500">
-            <span className="flex items-center gap-1.5"><Compass className="w-3 h-3 text-cyan-300" /> CLICK ATLAS TO MARK WAYPOINT</span>
             {waypoint && (
               <button type="button" data-testid="button-clear-waypoint" onClick={clearWaypoint}
                 className="flex items-center gap-1.5 rounded border border-lime-300/35 px-2 py-1 text-lime-200 hover:bg-lime-300/10">
                 <RotateCcw className="w-3 h-3" /> CLEAR WAYPOINT
               </button>
             )}
-            <span className="ml-auto" data-testid="text-explored-count">DISCOVERED TILES: {exploredTiles.filter(tile => !isUndergroundTile(tile)).length}</span>
           </div>
-        ) : view === 'underground' ? (
-          <div className="mt-3 flex items-center gap-2 text-[10px] font-mono tracking-widest text-fuchsia-200/60">
-            <span>UNDERGROUND VIEW · LANDMARKS REVEAL AS YOU EXPLORE</span>
-            <span className="ml-auto" data-testid="text-underground-explored-count">DISCOVERED TILES: {exploredTiles.filter(isUndergroundTile).length}</span>
-          </div>
-        ) : (
-          <div className="mt-3 flex items-center gap-2 text-[10px] font-mono tracking-widest text-slate-500">
-            <span>BUILDING VIEW · READ-ONLY LIVE DEFINITION</span>
-            <span className="ml-auto">CITY ACCESS REMAINS UNCHANGED</span>
-          </div>
-        )}
-
-        <section className="mt-6">
-          <h2 className="text-[10px] font-mono tracking-[.35em] text-slate-500 mb-2">KNOWN SIGNALS</h2>
-          <ul className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
-            {CORE_ANCHORS.map((anchor) => (
-              <li key={anchor.id} data-testid={`signal-${anchor.id}`}
-                className="rounded border border-cyan-300/10 bg-cyan-300/[.03] p-2">
-                <p className="tracking-widest text-cyan-200/80">{anchor.short}</p>
-                <p className="text-slate-600 text-[10px] mt-1 leading-relaxed">{anchor.desc}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+        ) : null}
       </div>
     </div>
   );

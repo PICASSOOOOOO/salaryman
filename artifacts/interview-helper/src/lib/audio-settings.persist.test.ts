@@ -61,7 +61,7 @@ describe("audio settings survive a page reload (readPersisted rehydration)", () 
   });
 
   it("rehydrates the boolean gates (muted/musicEnabled/ambianceEnabled) opposite to defaults", async () => {
-    // Defaults are muted:false, musicEnabled:false, ambianceEnabled:true — flip
+    // Defaults are muted:false, musicEnabled:false, ambianceEnabled:false — flip
     // all three so a gate that fails to read back would land on the default.
     const settings = await loadWith({
       audioMuted: true,
@@ -114,7 +114,7 @@ describe("malformed / partial blobs fall back to AUDIO_DEFAULTS per channel", ()
       voiceVolume: null,        // missing -> default
       audioMuted: "yes",        // wrong type -> default (false)
       musicEnabled: 1,          // wrong type -> default (false)
-      // ambianceEnabled omitted -> default (true)
+      // ambianceEnabled omitted -> default (false)
     });
 
     const s = settings.getAudioSettings();
