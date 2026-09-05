@@ -1,5 +1,5 @@
 import type { IncomingMessage, Server } from "node:http";
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer, type RawData } from "ws";
 import { and, eq } from "drizzle-orm";
 import { db, deviceLinkEventsTable, deviceLinksTable } from "@workspace/db";
 import { resolveClerkWebSocketUser } from "./lib/clerk-websocket-auth";
@@ -24,6 +24,12 @@ function relay(peer: Peer, payload: object): void {
   for (const other of peers.get(peer.linkId) ?? []) {
     if (other !== peer && other.role !== peer.role) send(other.ws, payload);
   }
+}
+
+function rawLength(raw: RawData): number {
+  if (Buffer.isBuffer(raw)) return raw.byteLength;
+  if (Array.isArray(raw)) return raw.reduce((total, part) => total + part.byteLength, 0);
+  return raw.byteLength;
 }
 
 function validControl(message: unknown): { action: "navigate" | "reload" | "request_file_picker"; path?: string } | null {
@@ -98,7 +104,7 @@ export function setupDeviceControlBridge(server: Server): void {
     ws.on("close", close);
     ws.on("error", close);
     ws.on("message", async (raw) => {
-      if (raw.byteLength > MAX_MESSAGE_BYTES) {
+      if (rawLength(raw) > MAX_MESSAGE_BYTES) {
         ws.close(1009, "Message too large");
         return;
       }

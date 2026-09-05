@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, or } from "drizzle-orm";
 import { db, deviceLinkEventsTable, deviceLinksTable } from "@workspace/db";
 
 const router: IRouter = Router();

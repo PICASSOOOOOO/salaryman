@@ -168,6 +168,7 @@ function DesktopMode() {
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
   const [desktopName, setDesktopName] = useState("SALARYMAN desktop");
+  const [issuedCode, setIssuedCode] = useState("");
   const desktopDeviceId = useMemo(() => getDeviceId(DESKTOP_DEVICE_KEY), []);
 
   const loadLinks = useCallback(async () => {
@@ -192,10 +193,13 @@ function DesktopMode() {
     const candidates = links.filter((link) => !["revoked", "expired", "cancelled"].includes(linkStatus(link)));
     return candidates[0] ?? links[0] ?? null;
   }, [links]);
-  const code = linkCode(currentLink);
+  const code = issuedCode || linkCode(currentLink);
   const isLinked = ["linked", "approved", "connected", "active"].includes(linkStatus(currentLink));
   useEffect(() => {
-    if (currentLink && isLinked) rememberLink(DESKTOP_LINK_KEY, currentLink, desktopDeviceId);
+    if (currentLink && isLinked) {
+      setIssuedCode("");
+      rememberLink(DESKTOP_LINK_KEY, currentLink, desktopDeviceId);
+    }
   }, [currentLink, desktopDeviceId, isLinked]);
 
   async function createPairingRequest() {
@@ -209,7 +213,10 @@ function DesktopMode() {
         body: JSON.stringify({ desktopDeviceId, desktopName: desktopName.trim() || "SALARYMAN desktop" }),
       });
       const created = unwrapLink(payload);
-      if (created) setLinks((previous) => [created, ...previous]);
+      if (created) {
+        setIssuedCode(linkCode(created));
+        setLinks((previous) => [created, ...previous]);
+      }
       else await loadLinks();
       setNotice("One-time code issued. Keep both devices nearby while the phone approves.");
     } catch (cause) {
@@ -227,6 +234,7 @@ function DesktopMode() {
     try {
       await readApi(`/api/device-links/${encodeURIComponent(id)}`, { method: "DELETE" });
       setLinks((previous) => previous.filter((link) => linkId(link) !== id));
+      setIssuedCode("");
       setNotice("The remote link was revoked.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not revoke this link.");
@@ -439,6 +447,7 @@ function MobileMode() {
         body: JSON.stringify({ mobileDeviceId, mobileName: mobileName.trim() || "SALARYMAN mobile" }),
       });
       const link = unwrapLink(payload) ?? resolvedLink;
+      if (!link) throw new Error("Approval completed without a device link.");
       setApprovedLink(link);
       setResolvedLink(link);
       rememberLink(MOBILE_LINK_KEY, link, mobileDeviceId);
@@ -516,7 +525,8 @@ function MobileMode() {
 
 export default function DeviceLink() {
   const [location] = useLocation();
-  const mode: DeviceLinkMode = new URLSearchParams(location.split("?")[1] ?? "").get("mode") === "mobile" ? "mobile" : "desktop";
+  const search = typeof window !== "undefined" ? window.location.search : location.split("?")[1] ?? "";
+  const mode: DeviceLinkMode = new URLSearchParams(search).get("mode") === "mobile" ? "mobile" : "desktop";
   return (
     <div className="device-link-root">
       <div className="device-link-inner">
