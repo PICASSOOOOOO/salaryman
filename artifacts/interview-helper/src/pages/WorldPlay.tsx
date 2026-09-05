@@ -8994,12 +8994,9 @@ export default function WorldPlay() {
     }
   }, [showIndoorStart, showHospitalPrompt, !!hospitalCinematic, isDead, showDialoguePanel, dialogueNode, !!sceneCine]);
 
-  // ── AMBIANCE — the low ambient bed plays during the game by default ──────────
-  // The procedural score IS the ambiance. It auto-starts on the first user gesture
-  // (needed to unlock WebAudio) when AMBIANCE is enabled, so the game has its low
-  // background bed without the player toggling anything. Audibility is gated
-  // centrally by the `ambianceEnabled` flag (volume → 0 when off), and the SCORE
-  // button still pauses/resumes it in-world.
+  // ── AMBIANCE — explicit opt-in only ─────────────────────────────────────────
+  // The first gesture only unlocks WebAudio. It must not silently start a second
+  // music source underneath the radio or other page audio.
   useEffect(() => {
     initMusic();
     const start = () => {

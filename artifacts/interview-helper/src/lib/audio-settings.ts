@@ -25,8 +25,8 @@ export interface AudioSettings {
   voice: number;      // 0–1 TTS / advisor voices
   soundtrack: number; // 0–1 SHADOW RADIO — Call Home tracks
   muted: boolean;     // master mute
-  musicEnabled: boolean;    // SHADOW RADIO — default ON at low volume, global except phone
-  ambianceEnabled: boolean; // AMBIANCE (low ambient bed) — default ON, in-game, toggleable off
+  musicEnabled: boolean;    // SHADOW RADIO — explicit opt-in
+  ambianceEnabled: boolean; // AMBIANCE (low ambient bed) — explicit opt-in
 }
 
 // Numeric volume channels only (the booleans above are gates, not levels).
@@ -37,10 +37,10 @@ export const AUDIO_DEFAULTS: AudioSettings = {
   music: 0.14,       // AMBIANCE is intentionally EXTREMELY LOW
   sfx: 0.9,
   voice: 1.0,
-  soundtrack: 0.16,  // Shadow Radio starts quietly; the physical source can adjust it
+  soundtrack: 0.16,  // Shadow Radio stays silent until explicitly enabled
   muted: false,
-  musicEnabled: true,    // radio is tuned in by default at the low source level above
-  ambianceEnabled: true, // low ambient bed plays during the game by default
+  musicEnabled: false,
+  ambianceEnabled: false,
 };
 
 // The settings page uses verbose key names; map between the two shapes so the
@@ -92,6 +92,7 @@ function persist(s: AudioSettings) {
 
 let state: AudioSettings = readPersisted();
 const listeners = new Set<(s: AudioSettings) => void>();
+const AUDIO_OPT_IN_MIGRATION_KEY = "salaryman.audio.opt-in-v1";
 
 // Voice ducking: while Pablo / an NPC / the phone is speaking (voice priority
 // from audio-bus), ALL background music must drop to silence — voice always
@@ -120,12 +121,12 @@ export function getAudioSettings(): AudioSettings {
   return state;
 }
 
-// Shadow Radio is on by default at a low source level and remains toggleable.
+// Shadow Radio is silent until the player explicitly enables it.
 export function getMusicEnabled(): boolean {
   return state.musicEnabled;
 }
 
-// AMBIANCE (low ambient bed) plays during the game unless toggled off.
+// AMBIANCE (low ambient bed) is silent until the player explicitly enables it.
 export function getAmbianceEnabled(): boolean {
   return state.ambianceEnabled;
 }
@@ -162,6 +163,20 @@ let _initialized = false;
 export function initAudioSettings() {
   if (_initialized) return;
   _initialized = true;
+  // Older builds persisted the old "on by default" values. Clear those once so
+  // returning players are not surprised by audio starting after an upgrade.
+  // New explicit choices are preserved after this migration.
+  if (typeof window !== "undefined") {
+    try {
+      if (!window.localStorage.getItem(AUDIO_OPT_IN_MIGRATION_KEY)) {
+        state = { ...state, musicEnabled: false, ambianceEnabled: false };
+        persist(state);
+        window.localStorage.setItem(AUDIO_OPT_IN_MIGRATION_KEY, "1");
+      }
+    } catch {
+      // Audio still works for this session when storage is unavailable.
+    }
+  }
   applyToEngine();
   // React to voice priority (Pablo/NPC TTS, phone): duck all music to silence
   // while a voice is speaking, restore the user's levels the instant it ends.

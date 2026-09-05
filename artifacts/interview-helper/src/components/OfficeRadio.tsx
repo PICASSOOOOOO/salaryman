@@ -59,7 +59,10 @@ export function OfficeRadio() {
   const phoneBlockedRef = useRef(isPhoneRoute(location) || isPhoneBusy());
   const djHandleRef = useRef<TTSHandle | null>(null);
   const lastSavedSecondRef = useRef(-1);
-  const proximityGainRef = useRef(1);
+  // A radio is silent until WorldPlay reports that the player is near a
+  // physical radio. This prevents the global station from becoming a second
+  // soundtrack on every route.
+  const proximityGainRef = useRef(0);
 
   const persistPosition = () => {
     const audio = audioRef.current;
@@ -157,7 +160,10 @@ export function OfficeRadio() {
     const s = getAudioSettings();
     audio.volume = channelGain("soundtrack") * proximityGainRef.current;
     audio.muted = s.muted;
-    shouldPlayRef.current = getMusicEnabled() && !phoneBlockedRef.current;
+    shouldPlayRef.current =
+      getMusicEnabled() &&
+      proximityGainRef.current > 0.03 &&
+      !phoneBlockedRef.current;
     if (shouldPlayRef.current) {
       claimBackgroundAudio(BG_OWNERS.radioPablo);
       // A call can cancel DJ banter after a track has ended. Continue with a
