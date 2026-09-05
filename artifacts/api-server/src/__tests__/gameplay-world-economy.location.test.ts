@@ -6,7 +6,14 @@ import { readFileSync } from "node:fs";
 const { getPlayerPosition } = vi.hoisted(() => ({ getPlayerPosition: vi.fn() }));
 vi.mock("../worldServer", () => ({ getPlayerPosition }));
 
-import worldEconomyRouter, { isNearJobBuilding, isQuoteLocationAuthorized, locationForLivePlayer, QUICK_JOBS } from "../routes/gameplay-world-economy";
+import worldEconomyRouter, {
+  isNearJobBuilding,
+  isQuoteLocationAuthorized,
+  locationForLivePlayer,
+  MINIMUM_WAGE_FIAT_PER_HOUR,
+  QUICK_JOBS,
+  STANDARD_SHIFT_MS,
+} from "../routes/gameplay-world-economy";
 
 describe("authoritative world economy location gates", () => {
   const source = readFileSync(new URL("../routes/gameplay-world-economy.ts", import.meta.url), "utf8");
@@ -52,10 +59,12 @@ describe("authoritative world economy location gates", () => {
     expect(QUICK_JOBS.water_plants).toEqual({
       buildingId: "water_plants",
       label: "WATER PLANTS",
-      payFiat: 1,
-      durationMs: 5_000,
+      payFiat: MINIMUM_WAGE_FIAT_PER_HOUR,
+      durationMs: STANDARD_SHIFT_MS,
       cooldownMs: 10_000,
     });
+    expect(MINIMUM_WAGE_FIAT_PER_HOUR).toBe(300);
+    expect(STANDARD_SHIFT_MS).toBe(60_000);
   });
 
   it("authorizes watering plants only at the canonical garden location", () => {

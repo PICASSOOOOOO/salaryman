@@ -16,6 +16,8 @@ const QUOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0
 const CARGO_CAPACITY = 5;
 const QUOTE_TTL_MS = 30_000;
 const INTERACTION_RADIUS = 55;
+export const MINIMUM_WAGE_FIAT_PER_HOUR = 300;
+export const STANDARD_SHIFT_MS = 60_000;
 // Centers/radius transcribed from WorldPlay's canonical BUILDINGS list. The
 // old-city entries are 60x60 rectangles; the radius matches WorldPlay's
 // building interaction range, not an untrusted browser-provided location.
@@ -66,7 +68,13 @@ export const QUICK_JOBS = {
   food_court: { buildingId: "food_court", label: "SERVE TABLES", payFiat: 1_800, durationMs: 3_000, cooldownMs: 10_000 },
   nightclub: { buildingId: "nightclub", label: "BOUNCER SHIFT", payFiat: 3_500, durationMs: 5_000, cooldownMs: 30_000 },
   pawn_shop: { buildingId: "pawn_shop", label: "APPRAISE GOODS", payFiat: 2_800, durationMs: 4_000, cooldownMs: 15_000 },
-  water_plants: { buildingId: "water_plants", label: "WATER PLANTS", payFiat: 1, durationMs: 5_000, cooldownMs: 10_000 },
+  water_plants: {
+    buildingId: "water_plants",
+    label: "WATER PLANTS",
+    payFiat: MINIMUM_WAGE_FIAT_PER_HOUR,
+    durationMs: STANDARD_SHIFT_MS,
+    cooldownMs: 10_000,
+  },
 } as const;
 
 export const COMMODITY_PRICES = {

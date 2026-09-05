@@ -2477,7 +2477,7 @@ const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; 
   food_court:     { label: 'SERVE TABLES',      pay: 1800,  seconds: 3, cooldownFrames: 600  },
   nightclub:      { label: 'BOUNCER SHIFT',     pay: 3500,  seconds: 5, cooldownFrames: 1800 },
   pawn_shop:      { label: 'APPRAISE GOODS',    pay: 2800,  seconds: 4, cooldownFrames: 900  },
-  water_plants:   { label: 'WATER PLANTS',      pay: 1,     seconds: 5, cooldownFrames: 600  },
+  water_plants:   { label: 'WATER PLANTS',      pay: 300,   seconds: 60, cooldownFrames: 600  },
 };
 const PUBLIC_OFFICE_TERMINAL_RATE = 50;
 const PUBLIC_OFFICE_TERMINALS = new Set(['TERMINAL 1','TERMINAL 2','TERMINAL 3','TERMINAL 4','TERMINAL 5','TERMINAL 6']);
@@ -7015,7 +7015,11 @@ export default function WorldPlay() {
       if (Date.now() >= completesAt) {
         if (jobTimerRef.current) clearInterval(jobTimerRef.current);
         jobTimerRef.current = null;
-        void completeQuickJob(runId);
+        if (jobPanel.bid === 'water_plants') {
+          setJobPanel((current) => current?.runId === runId ? { ...current, progress: current.seconds } : current);
+        } else {
+          void completeQuickJob(runId);
+        }
       }
     };
     tick();
@@ -7024,7 +7028,7 @@ export default function WorldPlay() {
       if (jobTimerRef.current) clearInterval(jobTimerRef.current);
       jobTimerRef.current = null;
     };
-  }, [jobPanel?.runId, jobPanel?.completesAt, jobPanel?.seconds, completeQuickJob]);
+  }, [jobPanel?.bid, jobPanel?.runId, jobPanel?.completesAt, jobPanel?.seconds, completeQuickJob]);
 
   useEffect(() => {
     if (!showTrade) return;
@@ -7269,7 +7273,7 @@ export default function WorldPlay() {
         setNarr(`> WATER GARDENS — The hose is coiled. Come back in ${Math.ceil((g.jobCooldowns.water_plants ?? 0) / 60)}s.`);
         return;
       }
-      setNarr('> WATER GARDENS — The beds are dry, but the plants are still alive. Five seconds of care earns ƒ1. No questions. No lockout.');
+      setNarr('> WATER GARDENS — START SHIFT. One in-game hour on the hose pays the floor minimum: ƒ300. No questions. No lockout.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'bunker')  { g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy); sfxHeal(); setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. You rest briefly. Energy +15. The screen reads: GAME OVER.'); }
@@ -25791,10 +25795,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {jobPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}>
           <div style={{ width: 360, border: '1px solid rgba(56,189,248,.4)', background: 'rgba(0,8,2,.97)', padding: '1.6rem', fontFamily: "var(--font-sans)" }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>QUICK JOB AVAILABLE</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>{jobPanel.bid === 'water_plants' ? 'SHIFT BOARD' : 'QUICK JOB AVAILABLE'}</div>
             <div style={{ fontFamily: "var(--font-sans)", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.15em', marginBottom: '.4rem' }}>{jobPanel.label}</div>
             <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginBottom: '1rem' }}>
-              Pay: <strong style={{ color: '#ffdd44' }}>${jobPanel.pay}</strong> · Duration: <strong style={{ color: '#38bdf8' }}>{jobPanel.seconds}s</strong>
+              Pay: <strong style={{ color: '#ffdd44' }}>ƒ{jobPanel.pay}</strong> · {jobPanel.bid === 'water_plants' ? 'One in-game hour' : 'Duration:'} <strong style={{ color: '#38bdf8' }}>{jobPanel.bid === 'water_plants' ? '60s' : `${jobPanel.seconds}s`}</strong>
             </div>
             {/* Progress bar */}
             <div style={{ height: 6, background: 'rgba(56,189,248,.1)', marginBottom: '1rem', position: 'relative', border: '1px solid rgba(56,189,248,.2)' }}>
@@ -25823,7 +25827,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     });
                   }).catch(() => { sfxError(); setNarr('> NETWORK ERROR — Job could not be started.'); });
                 }} style={{ flex: 1, padding: '.6rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '1.2rem', letterSpacing: '.1em' }}>
-                  START JOB
+                   {jobPanel.bid === 'water_plants' ? 'START SHIFT' : 'START JOB'}
                 </button>
                 <button onClick={() => { if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; } setJobPanel(null); }}
                   style={{ padding: '.6rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '1.2rem' }}>
@@ -25831,7 +25835,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </button>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', fontSize: '.6rem', color: '#ffdd44', letterSpacing: '.1em' }}>JOB IN PROGRESS — SERVER TIMING</div>
+              jobPanel.bid === 'water_plants' ? (
+                <button
+                  disabled={jobPanel.progress < jobPanel.seconds}
+                  onClick={() => void completeQuickJob(jobPanel.runId!)}
+                  style={{ width: '100%', padding: '.7rem', background: jobPanel.progress >= jobPanel.seconds ? 'rgba(255,221,68,.12)' : 'transparent', border: '1px solid rgba(255,221,68,.45)', color: jobPanel.progress >= jobPanel.seconds ? '#ffdd44' : 'rgba(255,221,68,.35)', cursor: jobPanel.progress >= jobPanel.seconds ? 'pointer' : 'not-allowed', fontFamily: "var(--font-sans)", fontSize: '1.2rem', letterSpacing: '.1em' }}
+                >
+                  {jobPanel.progress >= jobPanel.seconds ? 'END SHIFT' : 'SHIFT IN PROGRESS'}
+                </button>
+              ) : (
+                <div style={{ textAlign: 'center', fontSize: '.6rem', color: '#ffdd44', letterSpacing: '.1em' }}>JOB IN PROGRESS — SERVER TIMING</div>
+              )
             )}
           </div>
         </div>

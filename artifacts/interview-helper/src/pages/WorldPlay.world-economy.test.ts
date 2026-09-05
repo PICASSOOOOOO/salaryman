@@ -21,6 +21,13 @@ describe("WorldPlay authoritative world economy", () => {
     expect(source).toContain("/api/gameplay/market/cargo?slot=");
   });
 
+  it("exposes an explicit start/end shift flow for the minimum-wage garden job", () => {
+    expect(source).toContain("START SHIFT");
+    expect(source).toContain("END SHIFT");
+    expect(source).toMatch(/water_plants:[\s\S]{0,100}pay: 300[\s\S]{0,100}seconds: 60/);
+    expect(source).toMatch(/jobPanel\.bid === 'water_plants'[\s\S]{0,500}completeQuickJob/);
+  });
+
   it("applies server position corrections and clears movement targets", () => {
     expect(source).toMatch(/m\.type === 'position_correction'[\s\S]{0,300}g\.px = m\.x;[\s\S]{0,100}g\.py = m\.y;/);
     expect(source).toMatch(/m\.type === 'position_correction'[\s\S]{0,400}g\.moveTarget = null;[\s\S]{0,100}g\.interiorMoveTarget = null;/);
