@@ -86,6 +86,12 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Collections Facility:** Players in debt must perform labor (bug reports, features, data labels, ads) to pay down debt, with new server endpoints for work activities.
 - **Pablo Tax & Wallet:** Per-API-call usage billing engine (`lib/pablo-tax.ts`). Every external API call charges 4× cost basis to the user's meter. PABLO PRIME ($145/mo Stripe) is a pre-paid credit covering the first $145/month of marked-up usage; overage settles in $20 increments via a waterfall: EARNED ƒ → gold → Stripe USD → BTC. Starting ƒ is QUARANTINED and cannot pay the waterfall — players must earn ƒ in-game first. Single-pane wallet UI at `/wallet` shows bank breakdown, tax meter, recent line items, pending invoices. Pablo's system prompt explains all of this so he can answer billing questions correctly.
 
+## Game asset development
+
+- Use **Godot** for sprite sheets, animation cycles, 2D spatial blocking, and art review.
+- Use **Unreal Engine** for production-quality 3D characters, spatial environments, and cinematic assets.
+- Route both through the API-owned art catalog, explicit renderer selection, and QA/promotion flow. Never silently swap an explicitly selected renderer.
+
 ## External Dependencies
 
 - **Email:** Resend

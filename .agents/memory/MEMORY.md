@@ -155,4 +155,4 @@
 - [Tower service scopes](tower-service-scopes.md) — only fixed-suite tenants have service counters; lobby/every-floor businesses resolve empty instead of falling back to shared listings.
 - [Retail-grade asset pipeline](asset-pipeline-quality.md) — provider completion is not game readiness; validate outputs and require explicit review for questionable cutouts.
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
-- [Godot art development](godot-art-dev.md) — Godot 4 reviews shared sprite sheets and publishes PNG frames; web gameplay and API art authority remain unchanged.
+- [Godot and Unreal art development](godot-art-dev.md) — Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
