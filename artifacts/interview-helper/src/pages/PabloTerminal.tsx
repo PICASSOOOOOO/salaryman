@@ -2318,7 +2318,14 @@ function PabloTerminalAuthed() {
           policies remain on /legal; this drawer gives a visitor the material
           sharing, location, SMS, and service-limit disclosures without
           crowding the nebula front door. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-1 z-30 flex justify-center px-4">
+      <div
+        className="pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4"
+        style={{
+          bottom: mode === "text"
+            ? "calc(env(safe-area-inset-bottom, 0px) + 78px)"
+            : "calc(env(safe-area-inset-bottom, 0px) + 4px)",
+        }}
+      >
         <button
           type="button"
           onClick={(event) => { event.stopPropagation(); setShowLegalDisclosure(true); }}
