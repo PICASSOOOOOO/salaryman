@@ -1179,3 +1179,73 @@ mtime_ms = 1788583976877
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/16f6308c-7d6f-4d2b-8a6f-8bae88c80864/2e9ce60f-3051-48fd-a719-ef73e9074d02"
 storage_version_token = "1788583987313148"
 content_type = "image/png"
+
+[[outputs]]
+id = "gBXdXOODdksEnsHIIMZcX"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-character-v2.png"
+type = "image"
+title = "Solar-punk character design"
+description = "Physical 1970s–1980s solar-punk character direction with dark-noir narrative room."
+logical_id = "452e0ee2-aa6a-47ff-b377-efec36f91315"
+content_hash = "sha256:fc823442c834ca424352eadc9d9986c37039ec198d5284a2f94d4d78c6876336"
+size = 1354711
+mtime_ms = 1788587787255
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/452e0ee2-aa6a-47ff-b377-efec36f91315/2b30c700-2910-4db8-818b-5ee2d7c95e21"
+storage_version_token = "1788587858217584"
+content_type = "image/png"
+
+[[outputs]]
+id = "G0rjpjHGCLKz2vzJATqjJ"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-animation-v2.png"
+type = "image"
+title = "Solar-punk animation pose reference"
+description = "Readable key poses for a Godot animation pass."
+logical_id = "3cf52daf-2883-49e0-b7a2-0c246b634acf"
+content_hash = "sha256:81129dbab93c998816c83ae351f633443f14a9acc09cceee12044993f3f41301"
+size = 1920637
+mtime_ms = 1788587793579
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/3cf52daf-2883-49e0-b7a2-0c246b634acf/0ee61a40-982e-4dec-bcce-dfbcc6877de8"
+storage_version_token = "1788587859326365"
+content_type = "image/png"
+
+[[outputs]]
+id = "o8JC08j2YvdyWL9F38Z0O"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-landscape-v2.png"
+type = "image"
+title = "Solar-punk landscape direction"
+description = "Warm planted civic architecture for Unreal spatial production."
+logical_id = "f8fc77d3-f207-4108-9d88-62389ff250a2"
+content_hash = "sha256:6711f8d874125f41229b32be195cdf839bfaac3e92ee8ed7914bcfa264a7b39c"
+size = 2022236
+mtime_ms = 1788587785023
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f8fc77d3-f207-4108-9d88-62389ff250a2/3bc5a783-b5e9-4efc-b8d9-3ca63030ae4c"
+storage_version_token = "1788587860278492"
+content_type = "image/png"
+
+[[outputs]]
+id = "ReLIwyNQZH132HERoMAKN"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-object-kit-v2.png"
+type = "image"
+title = "Solar-punk object kit"
+description = "Modular, animation-friendly props for spatial gameplay."
+logical_id = "f2adb106-3d2e-4f24-832e-80ec74de003a"
+content_hash = "sha256:0c464c04839ee86e6f537bd2e020f091f16189793edc5a0047ef854c4a72c90b"
+size = 1461182
+mtime_ms = 1788587787655
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f2adb106-3d2e-4f24-832e-80ec74de003a/ac1b884d-c8e8-4e89-b3f0-e746fba7110c"
+storage_version_token = "1788587861178391"
+content_type = "image/png"
+
+[[outputs]]
+id = "qDS4Mij9TfdjwOlVFxK9W"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-tiles-v2.png"
+type = "image"
+title = "Solar-punk tile materials"
+description = "Seamless material direction for Godot blocking and environment production."
+logical_id = "090297fd-3505-48bb-a1ea-505951643530"
+content_hash = "sha256:4e1d2511ded301b23ea0d89847e193bbacd7ed1ad2917cbd177a0abda4783197"
+size = 2086627
+mtime_ms = 1788587785327
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/090297fd-3505-48bb-a1ea-505951643530/185838bc-9792-4f60-a700-fd81460d2078"
+storage_version_token = "1788587862246861"
+content_type = "image/png"
