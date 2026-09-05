@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
+import type { OnboardingAnswers } from '@/components/PabloOnboarding';
+import { QuickOnboarding } from '@/components/QuickOnboarding';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useOnboardingResolved } from '@/lib/onboarding-sync';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -416,9 +417,8 @@ export default function Immigration() {
     }}>
       <ImmigrationBackdrop phase={phase} />
       {phase === 'intake' && (
-        <PabloOnboarding
+        <QuickOnboarding
           charName={charName}
-          charClass="ARRIVAL"
           onComplete={handleComplete}
         />
       )}
