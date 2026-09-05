@@ -28,6 +28,7 @@ import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-a
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 import { expireOverdueRentals } from './routes/fleet';
 import { purgeOutsideWorldState } from './lib/outside-world';
+import { setupGodotRenderBridge } from './godot-render-bridge';
 
 const rawPort = process.env["PORT"];
 
@@ -44,6 +45,7 @@ if (Number.isNaN(port) || port <= 0) {
 const httpServer = createServer(app);
 attachWorldServer(httpServer);
 setupChatServer(httpServer);
+setupGodotRenderBridge(httpServer);
 
 const ownerEmails = (process.env.OWNER_EMAILS ?? "").split(",").map(e => e.trim()).filter(Boolean);
 
