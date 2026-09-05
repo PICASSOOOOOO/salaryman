@@ -112,18 +112,26 @@ export function ScoreHud({ visible, topOffset, scoreOn, scoreMuted, onToggleScor
 }
 
 export function useRadio() {
-  const [radioOn, setRadioOn] = useState(getMusicEnabled);
+  // A saved audio preference is permission, not an instruction to start a
+  // physical stereo. The player must turn the radio on deliberately in-world.
+  const [radioOn, setRadioOn] = useState(false);
+  const radioOnRef = useRef(false);
   const [radioVisible, setRadioVisible] = useState(false);
   const [radioFading, setRadioFading] = useState(false);
   const radioVisibleRef = useRef(false);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => subscribeAudioSettings((settings) => {
-    setRadioOn(settings.musicEnabled);
+    if (!settings.musicEnabled && radioOnRef.current) {
+      radioOnRef.current = false;
+      setRadioOn(false);
+    }
   }), []);
 
   const toggle = useCallback((): { on: boolean } => {
-    const newState = !getMusicEnabled();
+    const newState = !radioOnRef.current;
+    radioOnRef.current = newState;
+    setRadioOn(newState);
     setAudioSettings({ musicEnabled: newState });
     return { on: newState };
   }, []);

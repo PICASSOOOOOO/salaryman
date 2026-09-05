@@ -236,7 +236,7 @@ export default function TowerDirectory() {
   const [reconcilingServerState, setReconcilingServerState] = useState(isAuthenticated);
   const [financialSnapshot, setFinancialSnapshot] = useState<LobbyFinancialSnapshot | null>(null);
   const [financialsLoading, setFinancialsLoading] = useState(false);
-  const onboardingLocked = reconcilingServerState || stage === "not_started" || stage === "reception";
+  const onboardingLocked = reconcilingServerState;
   const workTaskActive = stage === "work";
   const receptionDialogue = [
     "Good. You found the desk.",
@@ -272,22 +272,6 @@ export default function TowerDirectory() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [isAuthenticated]);
-  useEffect(() => {
-    if (stage !== "not_started") return;
-    startBuildingOnboarding();
-    setStage("reception");
-  }, [stage]);
-  useEffect(() => {
-    if (!onboardingLocked) {
-      return;
-    }
-    setOnboardingStep("reception");
-  }, [onboardingLocked]);
-  useEffect(() => {
-    if (reconcilingServerState || stage !== "reception" || onboardingStep !== "reception") return;
-    const timer = window.setTimeout(() => setTalking(true), 350);
-    return () => window.clearTimeout(timer);
-  }, [onboardingStep, reconcilingServerState, stage]);
   useEffect(() => {
     if (!isAuthenticated) return;
     let alive = true;
@@ -327,6 +311,10 @@ export default function TowerDirectory() {
   };
 
   const beginReception = () => {
+    if (stage === "not_started") {
+      startBuildingOnboarding();
+      setStage("reception");
+    }
     setReceptionDialogueStep(0);
     setTalking(true);
   };
@@ -414,16 +402,6 @@ export default function TowerDirectory() {
         )}
 
         <LobbyFinancials snapshot={financialSnapshot} loading={financialsLoading} />
-        {onboardingLocked && onboardingStep === "reception" && !talking && (
-          <button
-            type="button"
-            onClick={beginReception}
-            className="my-3 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.18em] text-amber-100 shadow-[0_0_28px_rgba(252,211,77,.12)]"
-            data-testid="begin-lobby-onboarding"
-          >
-            <UserRound className="h-4 w-4" /> BEGIN RECEPTION INTAKE
-          </button>
-        )}
         <TowerReceptionScene
           locked={onboardingLocked}
            frozen={talking}
@@ -690,7 +668,7 @@ export default function TowerDirectory() {
         <footer className={`mt-5 flex items-center gap-2 text-[10px] tracking-[.2em] text-zinc-600 ${onboardingLocked ? "hidden" : ""}`}><KeyRound className="h-3 w-3" /> HIGHER FLOORS COST MORE · ACCESS IS DECIDED AT THE DOOR · PIN OR ROLE REQUIRED FOR PRIVATE SPACE</footer>
       </div>
 
-      {onboardingLocked && onboardingStep === "questions" && (
+      {stage === "reception" && onboardingStep === "questions" && (
         <PabloOnboarding
           charName={(getSalarymanName() || user?.firstName || "SALARYMAN").trim()}
           charClass="salaryman"
@@ -709,7 +687,7 @@ export default function TowerDirectory() {
                 <h2 className="text-lg font-black tracking-[.08em] text-white">RECEPTION</h2>
               </div>
             </div>
-            {onboardingLocked ? (
+            {stage === "reception" ? (
               <>
                  <p className="mt-5 min-h-16 text-sm leading-7 text-zinc-200">{receptionDialogue[receptionDialogueStep]}</p>
                 <button type="button" onClick={advanceReceptionDialogue} className="mt-6 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15" data-testid="finish-reception-onboarding">

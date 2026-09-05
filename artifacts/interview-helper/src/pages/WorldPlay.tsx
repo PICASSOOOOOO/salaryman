@@ -11060,12 +11060,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             (nearest, spot) => Math.min(nearest, Math.hypot(g.px - spot.x, g.py - spot.y)),
             Number.POSITIVE_INFINITY,
           );
-          // Full volume within conversational distance, then a smooth falloff
-          // until the station is inaudible. OfficeRadio owns the actual
-          // programme (music + host); WorldPlay only supplies spatial gain.
-          const radioGain = nearestRadioDistance <= 55
-            ? 1
-            : Math.max(0, Math.min(1, 1 - (nearestRadioDistance - 55) / 345));
+          // The world spots are paid physical stereo/radio units. Proximity
+          // alone is never an entitlement: the character must own the device.
+          // OfficeRadio owns the programme; WorldPlay only supplies spatial
+          // gain after this ownership check.
+          const radioGain = g.hasRadioImplant && radioOnRef.current
+            ? (nearestRadioDistance <= 55
+              ? 1
+              : Math.max(0, Math.min(1, 1 - (nearestRadioDistance - 55) / 345)))
+            : 0;
           window.dispatchEvent(new CustomEvent("salaryman:radio-proximity", {
             detail: { gain: radioGain, distance: nearestRadioDistance },
           }));
@@ -22401,7 +22404,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       canvas.removeEventListener('wheel', onWheel);
       stopCrowdMurmur(); crowdMurmurActiveRef.current = false;
       try { localStorage.removeItem('sm_live'); } catch { /* ignore */ }
-      window.dispatchEvent(new CustomEvent("salaryman:radio-proximity", { detail: { gain: 1 } }));
+      window.dispatchEvent(new CustomEvent("salaryman:radio-proximity", { detail: { gain: 0 } }));
     };
   }, [char, speaking]);
 

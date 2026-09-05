@@ -14,7 +14,6 @@ import { EconomyKey } from '@/components/EconomyKey';
 import { ensureOnboardingScore } from '@/lib/onboarding-score';
 import { sanitizeReturnPath } from '@/lib/safe-path';
 import { apiFetch } from '@/lib/api-client';
-import { startBuildingOnboarding } from '@/lib/building-onboarding';
 import { useAuth } from '@/hooks/use-auth';
 
 const SAVE_KEY = 'sm_save';
@@ -378,7 +377,6 @@ export default function Immigration() {
         destination = '/tower';
       }
     }
-    if (destination === '/tower') startBuildingOnboarding();
     navigate(destination, { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
     // base so we land inside this app, not at host root.
