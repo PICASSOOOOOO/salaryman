@@ -1123,3 +1123,59 @@ mtime_ms = 1788536415929
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/cb9f152c-3170-443f-96a2-92a9403aa100/0d9e29db-796b-40e0-8168-9f44f177f75a"
 storage_version_token = "1788536580275253"
 content_type = "text/plain"
+
+[[outputs]]
+id = "IawDPyqpXKRBbLnmaY06r"
+uri = "file://attached_assets/generated_images/salaryman-character-pablo-review.png"
+type = "image"
+title = "Pablo character design reference"
+description = "High-fidelity character direction for the Unreal production pass."
+logical_id = "609f7ed7-3636-480c-9f6f-ed8fe87cb034"
+content_hash = "sha256:70e741ff88d13f00eab0b5cb631b2cbe31ccb118735710a469cafe31be6f21d1"
+size = 1000705
+mtime_ms = 1788583971117
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/609f7ed7-3636-480c-9f6f-ed8fe87cb034/57b19acc-98a8-4702-a1f6-12ce671f1a29"
+storage_version_token = "1788583983962461"
+content_type = "image/png"
+
+[[outputs]]
+id = "RU60myNRisMe_P1N4phHB"
+uri = "file://attached_assets/generated_images/salaryman-shadow-tower-landscape-review.png"
+type = "image"
+title = "Shadow Tower landscape reference"
+description = "Wide spatial environment direction for the Unreal landscape pass."
+logical_id = "40db7804-62e0-492f-abe4-e3aca930f533"
+content_hash = "sha256:2186f5ce6dc01a321a23d1fb7d89576444d94d09b8d924a894f60c3ad66ec2fe"
+size = 1468414
+mtime_ms = 1788583973285
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/40db7804-62e0-492f-abe4-e3aca930f533/a173b541-a357-48eb-8437-b7c366325b3b"
+storage_version_token = "1788583985031919"
+content_type = "image/png"
+
+[[outputs]]
+id = "cLJ-QWnovkI_Y4cTD3pOQ"
+uri = "file://attached_assets/generated_images/salaryman-office-object-kit-review.png"
+type = "image"
+title = "Office object kit reference"
+description = "Production prop direction for spatial objects and interactables."
+logical_id = "da95f545-38c2-4223-b018-cb4d374a71f6"
+content_hash = "sha256:ec525270cbdd390e1f8d6f7e36eee99242033b3c3eccbc1cd98fa392f38aac9a"
+size = 1274702
+mtime_ms = 1788583972001
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/da95f545-38c2-4223-b018-cb4d374a71f6/a82b4708-8ad9-4a54-ab44-08fcf0436dcd"
+storage_version_token = "1788583986032619"
+content_type = "image/png"
+
+[[outputs]]
+id = "YTpEXgAT_r5WXpLrJKtKn"
+uri = "file://attached_assets/generated_images/salaryman-tile-material-review.png"
+type = "image"
+title = "Tile material direction reference"
+description = "Material and tile direction for Godot blocking and environment production."
+logical_id = "16f6308c-7d6f-4d2b-8a6f-8bae88c80864"
+content_hash = "sha256:ba71e33691148485a82338caea4b22db7cfc176ea192ed021fba30ee7cde74cc"
+size = 2237707
+mtime_ms = 1788583976877
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/16f6308c-7d6f-4d2b-8a6f-8bae88c80864/2e9ce60f-3051-48fd-a719-ef73e9074d02"
+storage_version_token = "1788583987313148"
+content_type = "image/png"

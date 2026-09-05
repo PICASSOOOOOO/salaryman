@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import GodotArtPreview from '@/components/GodotArtPreview';
 import ArtFamilyMatrix from '@/components/ArtFamilyMatrix';
+import GameAssetGallery from '@/components/GameAssetGallery';
+import GeneratedArtReviewBoard from '@/components/GeneratedArtReviewBoard';
 import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check, Send, Download } from 'lucide-react';
 
 /**
@@ -1084,6 +1086,8 @@ export default function ArtLibrary() {
 
         {!accessDenied && <GodotArtPreview />}
         {!accessDenied && <ArtFamilyMatrix />}
+        {!accessDenied && <GameAssetGallery />}
+        {!accessDenied && <GeneratedArtReviewBoard />}
 
         {/* Backends */}
         {!accessDenied && (
