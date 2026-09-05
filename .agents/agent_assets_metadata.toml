@@ -1249,3 +1249,59 @@ mtime_ms = 1788587785327
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/090297fd-3505-48bb-a1ea-505951643530/185838bc-9792-4f60-a700-fd81460d2078"
 storage_version_token = "1788587862246861"
 content_type = "image/png"
+
+[[outputs]]
+id = "GiK9KWjyHalXTigM4Vofq"
+uri = "file://exports/salaryman-engine-kit/text/SALARYMAN_ENGINE_KIT_ALL_CODE.txt"
+type = "text"
+title = "SALARYMAN all engines — plain text"
+description = "Complete 606-section text export of the reusable server, client, shared-contract, Godot, and renderer engine sources. Copy each section into the path shown after FILE: and adapt imports using COPY_MAP.md."
+logical_id = "20957940-2bc2-4de5-b9ce-d6e72ee6cd9f"
+content_hash = "sha256:97c80d451c3f1b4faa7cf58a578030ca71010b57d2c9aa9e693a55a23da31317"
+size = 7516365
+mtime_ms = 1788591383114
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/20957940-2bc2-4de5-b9ce-d6e72ee6cd9f/687c7cdc-d1ab-4098-a484-32a06b5f4799"
+storage_version_token = "1788591524091037"
+content_type = "text/plain"
+
+[[outputs]]
+id = "OnZDlRxzeIVIKolnkZnV8"
+uri = "file://exports/salaryman-engine-kit/text/SALARYMAN_ART_ENGINES.txt"
+type = "text"
+title = "SALARYMAN art engines — plain text"
+description = "Focused copy/paste export for art direction, style contracts, provider routing, QA, Godot review, office rendering, Unreal, and world-condition art rules."
+logical_id = "e1bdb7a6-8e6f-4042-bb17-26a95ba17da1"
+content_hash = "sha256:9f74fc7e96d532ffa87e9f9e3eed78eae812fd3f1ffaa6375c39aa1d8fec9b06"
+size = 528314
+mtime_ms = 1788591383422
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e1bdb7a6-8e6f-4042-bb17-26a95ba17da1/a6a22117-2332-4e2b-9a0f-923597c66d79"
+storage_version_token = "1788591525312261"
+content_type = "text/plain"
+
+[[outputs]]
+id = "VswgKKgDr-ltQBv6ZBubf"
+uri = "file://exports/salaryman-engine-kit/text/SALARYMAN_RUNTIME_ENGINES.txt"
+type = "text"
+title = "SALARYMAN runtime engines — plain text"
+description = "Server, client, and shared runtime engine sources without the separate Godot project and documentation files."
+logical_id = "43f1d73b-8d99-4440-baf6-02b531c81273"
+content_hash = "sha256:62f92614731c32bfa43ae52b8f50f0affb36f5076843f6a3f7134af314267022"
+size = 7477514
+mtime_ms = 1788591386450
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/43f1d73b-8d99-4440-baf6-02b531c81273/edac6d6f-b77a-44e5-a20d-98a5ea84a880"
+storage_version_token = "1788591526414280"
+content_type = "text/plain"
+
+[[outputs]]
+id = "aUNKaXr4Z1cxuZVMpb_eJ"
+uri = "file://exports/salaryman-engine-kit/text/MANIFEST.txt"
+type = "text"
+title = "SALARYMAN engine text manifest"
+description = "File counts, sizes, and source-section listing for the plain-text exports."
+logical_id = "76a8a569-67c6-4753-aadf-d5e532a8260a"
+content_hash = "sha256:3fd8ed3d440f392f621cf26d3733ce1d4829c37f59b161a286f7315a99b2a609"
+size = 21550
+mtime_ms = 1788591386530
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/76a8a569-67c6-4753-aadf-d5e532a8260a/a3c583d6-0c80-4b5f-888f-e4c8cd9cf400"
+storage_version_token = "1788591527225850"
+content_type = "text/plain"
