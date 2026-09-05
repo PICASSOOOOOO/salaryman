@@ -4,6 +4,7 @@ import { getOpenAiTextModel } from "../lib/openai-models";
 import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { SolveInterviewQuestionBody } from "@workspace/api-zod";
 import { streamWithRouter } from "../lib/ai-router";
+import { completeInternalText } from "../lib/internal-ai";
 import { requireFeature, requirePro } from "../middlewares/requirePro";
 import multer from "multer";
 
@@ -703,17 +704,14 @@ router.post("/advisor/chat", async (req, res) => {
     return;
   }
   try {
-    const completion = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
-      max_completion_tokens: 300,
-      stream: false,
-      messages: [
+    const completion = await completeInternalText(
+      [
         { role: "system", content: context || "You are PABLO, a gritty in-world AI assistant. Be brief and stay in character." },
         { role: "user", content: message },
       ],
-    });
-    const response = completion.choices[0]?.message?.content?.trim() ?? "Signal lost.";
-    res.json({ response });
+      { maxTokens: 300, prefer: "gpt", fallback: true },
+    );
+    res.json({ response: completion.content || "Signal lost." });
   } catch (err) {
     console.error("Error in /advisor/chat:", err);
     res.status(500).json({ error: "Failed to get response" });
