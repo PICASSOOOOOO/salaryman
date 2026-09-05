@@ -223,6 +223,45 @@ async function checkPhoneNumber(client: twilio.Twilio, num: string, results: Che
   }
 }
 
+async function checkTollfreeMessagingVerification(client: twilio.Twilio, num: string, results: CheckResult[]) {
+  // Twilio's shared sender is a US toll-free number. Toll-free SMS can be
+  // accepted by the API and still be blocked at delivery until verification is
+  // approved, so provisioning alone is not enough to call messaging healthy.
+  if (!/^\+1(?:800|888|877|866|855|844|833)/.test(num)) {
+    results.push({ name: "Toll-free SMS verification", status: "PASS", detail: "Not applicable to this sender" });
+    return;
+  }
+  try {
+    const numbers = await withTimeout(
+      client.incomingPhoneNumbers.list({ phoneNumber: num, limit: 1 }),
+      OP_TIMEOUT_MS,
+      "Toll-free sender lookup",
+    );
+    const phoneSid = numbers[0]?.sid;
+    if (!phoneSid) {
+      results.push({ name: "Toll-free SMS verification", status: "FAIL", detail: "Could not resolve the sender phone-number SID" });
+      return;
+    }
+    const verifications = await withTimeout(
+      client.messaging.v1.tollfreeVerifications.list({ tollfreePhoneNumberSid: phoneSid, limit: 10 }),
+      OP_TIMEOUT_MS,
+      "Toll-free verification lookup",
+    );
+    const status = verifications[0]?.status;
+    if (status === "TWILIO_APPROVED") {
+      results.push({ name: "Toll-free SMS verification", status: "PASS", detail: "Sender approved by Twilio" });
+    } else {
+      results.push({
+        name: "Toll-free SMS verification",
+        status: "FAIL",
+        detail: status ? `Sender verification status is ${status}` : "No toll-free verification record exists",
+      });
+    }
+  } catch (e: any) {
+    results.push({ name: "Toll-free SMS verification", status: "FAIL", detail: `Verification lookup failed: ${e?.message || e}` });
+  }
+}
+
 async function checkBalance(client: twilio.Twilio, results: CheckResult[]) {
   try {
     const bal = await withTimeout(client.balance.fetch(), OP_TIMEOUT_MS, "Twilio balance fetch");
@@ -337,6 +376,7 @@ async function main() {
     const client = twilio(sid, token);
     await checkAccountActive(client, sid, results);
     await checkPhoneNumber(client, num, results);
+    await checkTollfreeMessagingVerification(client, num, results);
     await checkBalance(client, results);
     await checkTwimlApplication(client, results);
   }
