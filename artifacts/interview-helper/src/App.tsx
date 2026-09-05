@@ -200,6 +200,7 @@ const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
 const TheaterPage = lazy(() => import("@/pages/TheaterPage"));
+const DeviceLink = lazy(() => import("@/pages/DeviceLink"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -215,7 +216,7 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater", "/device-link"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
 function LoadingFallback() {
@@ -412,6 +413,7 @@ function AppShell() {
   }, [pathname, stopHummingbird]);
 
   const isRootRoute = pathname === "/";
+  const isDeviceLinkRoute = pathname === "/device-link";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
@@ -455,8 +457,8 @@ function AppShell() {
   //
   // Once authenticated — but not yet cleared through immigration — the
   // intake desk and legal pages open up too (those are post-sign-in).
-  const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/device-link", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -554,7 +556,7 @@ function AppShell() {
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && !isGameRoute && !showNavBar && !isRootRoute && <AlphaWipeBanner />}
+      {!isEmbed && !isGameRoute && !showNavBar && !isRootRoute && !isDeviceLinkRoute && <AlphaWipeBanner />}
       {showNavBar && (
         <div className="app-chrome">
           {!isEmbed && <AlphaWipeBanner />}
@@ -573,8 +575,8 @@ function AppShell() {
       {/* Route-independent toaster for the persistent notification stream.
           Immersive gameplay intentionally keeps this surface out of the
           viewport; ordinary fullscreen routes still receive it. */}
-        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && <NotificationToaster />}
-        {showFullscreenPabloAccess && !isGameRoute && <FullscreenPabloAccess inGame={isGameRoute} />}
+        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
+        {showFullscreenPabloAccess && !isGameRoute && !isDeviceLinkRoute && <FullscreenPabloAccess inGame={isGameRoute} />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
@@ -582,14 +584,14 @@ function AppShell() {
           breaks the "you haven't been admitted yet" fiction. */}
         {!isFullscreenRoute && !isRootRoute && <GlobalMusicMiniIndicator />}
       {/* Shadow Radio — one headless station for every non-phone route. */}
-        {!isEmbed && !isRootRoute && !pathname.startsWith("/pablo") && <OfficeRadio />}
+        {!isEmbed && !isRootRoute && !pathname.startsWith("/pablo") && !isDeviceLinkRoute && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the audio from anywhere (full mixer still on /game/settings).
           Hidden on /immigration because PabloOnboarding is full-screen there
           and the FAB would overlap the "ASK ►" / NEXT ► buttons at the bottom
           of the screen on mobile. The subtle onboarding score still plays;
           users can adjust audio once they reach the main game. */}
-        {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && (
+        {!isEmbed && !isRootRoute && !isDeviceLinkRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && (
           <div className="hidden sm:contents">
             <AudioControl chatFabPresent={false} inGame={isGameRoute} />
           </div>
@@ -695,6 +697,7 @@ function AppShell() {
             }}</Route>
             <Route path="/mobile">{() => <MobileTerminal />}</Route>
             <Route path="/terminal">{() => <MobileTerminal physicalTerminal />}</Route>
+            <Route path="/device-link" component={DeviceLink} />
             <Route path="/theater" component={TheaterPage} />
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 

@@ -1750,5 +1750,14 @@
       "Update gameplay world economy tests and UI integration",
       "Update world economy location logic and tests"
     ]
+  },
+  {
+    "version": "v.21.0.2177",
+    "date": "2026-09-05",
+    "commitHash": "ee09e118996539408344665ffa94a752dc368972",
+    "changes": [
+      "Update movement logic and refactor WorldPlay page component",
+      "Refine world play logic and update versioning and changelogs"
+    ]
   }
 ]

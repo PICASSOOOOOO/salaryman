@@ -103,6 +103,7 @@ const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/phone",
   "/pablo",
   "/immigration",
+  "/device-link",
   // Auth routes are deliberately anonymous. Background metadata requests may
   // still return 401 while Clerk is loading; redirecting those responses to
   // Pablo unmounts the Clerk form before a visitor can sign in or sign up.

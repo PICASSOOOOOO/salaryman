@@ -44,6 +44,12 @@
 
 :root {
   color-scheme: dark;
+  --device-link-void: 7 10 12;
+  --device-link-paper: 220 231 232;
+  --device-link-muted: 142 157 159;
+  --device-link-line: 38 52 54;
+  --device-link-signal: 181 230 87;
+  --device-link-warm: 225 169 93;
   /* Fallout-style readable floor: bump root rem so every size unit scales up app-wide.
      Default browser = 16px; we bump to 19px so .5rem → 9.5px, 1rem → 19px, etc. */
   font-size: 19px;
@@ -57,6 +63,15 @@
   --app-viewport-height: 100dvh;
   --app-viewport-top: 0px;
   --app-keyboard-inset: 0px;
+}
+
+.dark {
+  --device-link-void: 7 10 12;
+  --device-link-paper: 220 231 232;
+  --device-link-muted: 142 157 159;
+  --device-link-line: 38 52 54;
+  --device-link-signal: 181 230 87;
+  --device-link-warm: 225 169 93;
 }
 
 /* Game routes retain their comfortable reading scale without imposing a retro display face. */
