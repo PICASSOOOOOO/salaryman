@@ -8,6 +8,7 @@ extends Node2D
 const FRAME_WIDTH := 16
 const FRAME_HEIGHT := 32
 const FRAMES_PER_ROW := 7
+const FLOOR_TILE_SIZE := 16
 const DIRECTIONS := ["down", "up", "right"]
 const WALK_SEQUENCE := [0, 1, 2, 1]
 const TYPE_SEQUENCE := [3, 4]
@@ -26,10 +27,17 @@ var frame_duration := 0.15
 var paused := false
 var sprite_scale := 12
 var sheet_texture: Texture2D
+var floor_texture: Texture2D
+var wall_texture: Texture2D
+var object_texture: Texture2D
 var sheet_status := "loading character sheet…"
+var spatial_status := "loading floor, wall, and object references…"
 var bridge_status := "connecting to render bridge…"
 var last_frame_sent := 0
 var request: HTTPRequest
+var floor_request: HTTPRequest
+var wall_request: HTTPRequest
+var object_request: HTTPRequest
 var bridge := WebSocketPeer.new()
 
 func _ready() -> void:
@@ -39,6 +47,7 @@ func _ready() -> void:
 	add_child(request)
 	request.request_completed.connect(_on_sheet_loaded)
 	_load_character_sheet()
+	_load_spatial_assets()
 	_connect_bridge()
 	queue_redraw()
 
@@ -92,6 +101,61 @@ func _on_sheet_loaded(
 		image.get_width(),
 		image.get_height(),
 	]
+	queue_redraw()
+
+func _load_spatial_assets() -> void:
+	floor_request = HTTPRequest.new()
+	wall_request = HTTPRequest.new()
+	object_request = HTTPRequest.new()
+	add_child(floor_request)
+	add_child(wall_request)
+	add_child(object_request)
+	floor_request.request_completed.connect(_on_floor_loaded)
+	wall_request.request_completed.connect(_on_wall_loaded)
+	object_request.request_completed.connect(_on_object_loaded)
+	floor_request.request("%spixel-agents/assets/floors/floor_0.png" % asset_base)
+	wall_request.request("%spixel-agents/assets/walls/wall_0.png" % asset_base)
+	object_request.request("%spixel-agents/assets/furniture/BIN/BIN.png" % asset_base)
+
+func _decode_png(body: PackedByteArray) -> Texture2D:
+	var image := Image.new()
+	if image.load_png_from_buffer(body) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+func _on_floor_loaded(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+		floor_texture = _decode_png(body)
+	_update_spatial_status()
+
+func _on_wall_loaded(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+		wall_texture = _decode_png(body)
+	_update_spatial_status()
+
+func _on_object_loaded(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+		object_texture = _decode_png(body)
+	_update_spatial_status()
+
+func _update_spatial_status() -> void:
+	var loaded := int(floor_texture != null) + int(wall_texture != null) + int(object_texture != null)
+	spatial_status = "spatial references %d/3 loaded · floor_0 / wall_0 / furniture BIN" % loaded
 	queue_redraw()
 
 func _connect_bridge() -> void:
@@ -233,6 +297,13 @@ func _draw() -> void:
 
 	draw_rect(Rect2(48, 470, 864, 92), Color("#0b1019"), true)
 	draw_rect(Rect2(48, 470, 864, 92), Color("#243044"), false, 1.0)
-	_text("PRODUCTION NOTE", Vector2(68, 496), 10, Color("#22d3ee"))
-	_text("Godot is the art-development renderer. The web game keeps authoritative gameplay, prompts, QA, and catalog state.", Vector2(68, 518), 12, Color("#a6b2c8"))
-	_text("Frames publish as PNG to /ws/godot/render for Art Factory review.", Vector2(68, 540), 12, Color("#a6b2c8"))
+	_text("SPATIAL KIT", Vector2(68, 494), 10, Color("#22d3ee"))
+	if floor_texture:
+		draw_texture_rect(floor_texture, Rect2(68, 506, 42, 42), false)
+	if wall_texture:
+		draw_texture_rect_region(wall_texture, Rect2(124, 506, 24, 48), Rect2(0, 0, 16, 32))
+	if object_texture:
+		draw_texture_rect(object_texture, Rect2(164, 506, 42, 42), false)
+	_text(spatial_status, Vector2(230, 500), 11, Color("#d7deeb"))
+	_text("Godot reviews sprites, tiles, walls, and objects. Unreal handles production spatial/cinematic output.", Vector2(230, 520), 11, Color("#a6b2c8"))
+	_text("Frames publish as PNG to /ws/godot/render for Art Factory review.", Vector2(230, 540), 11, Color("#a6b2c8"))

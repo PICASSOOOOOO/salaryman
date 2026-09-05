@@ -20,9 +20,10 @@ SALARYMAN reads two environment values (requested via the environment-secrets fl
 | `UNREAL_RENDER_URL` | yes      | Base URL of the render node, e.g. `https://render.example.com` |
 | `UNREAL_RENDER_KEY` | no       | Bearer token; sent as `Authorization: Bearer <key>` when set  |
 
-When `UNREAL_RENDER_URL` is unset the `unreal` provider reports **not configured**,
-the registry never routes to it, and the art pipeline falls back to the default
-backend (Nano Banana) with no error.
+When `UNREAL_RENDER_URL` is unset the `unreal` provider reports **not configured**.
+Unpinned assets can continue using the default backend (Nano Banana), but an
+asset explicitly pinned to Unreal fails clearly rather than silently changing
+renderer or visual style.
 
 **Activation is zero-touch:** `isConfigured()` is read live, so the moment a real
 `UNREAL_RENDER_URL` is added (Secrets tab) the `unreal` backend becomes selectable

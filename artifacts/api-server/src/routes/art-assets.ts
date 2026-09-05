@@ -30,6 +30,7 @@ import { isFalOutage } from "../lib/fal";
 import { getArtQaRecipe, validateArtOutput, type ArtQaResult } from "../lib/art-qa";
 import { isOwnerEmail } from "../lib/plan";
 import { generateArtDirectionBrief } from "../lib/art-direction";
+import { listArtFamilies } from "../lib/art-families";
 import {
   deliverIncidentReport,
   incidentChannelsConfigured,
@@ -50,6 +51,11 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+/** GET /api/art/families — owner-only production asset-family matrix. */
+router.get("/art/families", requireAdmin, (_req: Request, res: Response) => {
+  res.json({ families: listArtFamilies() });
+});
 
 // Track in-flight generation per key so we don't double-fire.
 const inflight = new Set<string>();
@@ -192,9 +198,9 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
     // default styled prompt from the subject.
     prompt: entry.fullPrompt ?? composeSalarymanPrompt(entry.subject),
     aspectRatio: entry.aspectRatio,
-    // Honor the kit's preferred backend/job-type when set (e.g. landing-page
-    // life frames route to the Unreal node; kickoff falls back to the default
-    // backend automatically if it isn't configured). Unset = default backend.
+    // Honor the kit's preferred backend/job-type when set. Explicit renderer
+    // selection is preserved and kickoff fails clearly if that backend is not
+    // configured; unset = default backend.
     ...(entry.backend ? { backend: entry.backend } : {}),
     ...(entry.jobType ? { jobType: entry.jobType } : {}),
     status: "pending",
