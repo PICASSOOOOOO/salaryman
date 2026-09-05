@@ -32,7 +32,9 @@ export function getTowerSpaceArtKind(layout: OfficePropertyLayout): TowerSpaceAr
   if (layout.propertyKey.endsWith(":lobby")) return "lobby";
   if (layout.plan.floorType !== "office") return layout.plan.floorType;
   if (layout.plan.floorNumber === 66) return "picasso";
-  if ([40, 52, 65, 67].includes(layout.plan.floorNumber)) return "shadow_corp";
+  // Only the actual Shadow Corp roofline gets Shadow Corp's finished art.
+  // Reserved sealed floors are not occupied corporate space.
+  if (layout.plan.floorNumber === 67) return "shadow_corp";
   if (layout.plan.archetype === "company") return "company";
   return "founder";
 }

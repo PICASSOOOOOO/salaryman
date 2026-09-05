@@ -18,10 +18,8 @@ describe("Shadow Tower physical-space art", () => {
     expect(getTowerSpaceArtKind(company)).toBe("company");
   });
 
-  it("gives the upper and sealed floors their canonical art", () => {
-    for (const floor of [40, 52, 65, 67]) {
-      expect(getTowerSpaceArtKind(getShadowTowerOfficeLayout("minx_city", floor, "company"))).toBe("shadow_corp");
-    }
+  it("reserves Shadow Corp art for the actual roofline", () => {
+    expect(getTowerSpaceArtKind(getShadowTowerOfficeLayout("minx_city", 67, "company"))).toBe("shadow_corp");
     expect(getTowerSpaceArtKind(getShadowTowerOfficeLayout("minx_city", 66, "company"))).toBe("picasso");
   });
 

@@ -263,7 +263,13 @@ export default function TowerFloorScene({
     () => getLayoutForFloor(safeFloor, city, selectedArchetype, upgrades, commercialTenants),
     [city, commercialTenants, safeFloor, selectedArchetype, upgrades],
   );
-  const artKind: TowerSpaceArtKind = useMemo(() => getTowerSpaceArtKind(layout), [layout]);
+  const artKind: TowerSpaceArtKind | null = useMemo(() => {
+    // Available and sealed addresses are real shells, not tenant interiors.
+    // Keep them visually empty until a fit-out is purchased or the floor is
+    // explicitly occupied.
+    if (identity.status === "available" || identity.status === "sealed") return null;
+    return getTowerSpaceArtKind(layout);
+  }, [identity.status, layout]);
   const floorPath = useMemo(() => floorPathFor(location, safeFloor), [location, safeFloor]);
   const ambientOccupants = useMemo(() => {
     return getTowerAmbientOccupants(safeFloor);
@@ -379,7 +385,9 @@ export default function TowerFloorScene({
           </div>
         </div>
         <div className="mx-auto mt-3 flex max-w-[1500px] items-center justify-between gap-3 text-[9px] font-mono tracking-[.12em] text-zinc-500">
-          <span className="truncate">{identity.accessLabel} · SPACE ART {artKind.toUpperCase()}</span>
+           <span className="truncate">
+             {identity.accessLabel} · {artKind ? `SPACE ART ${artKind.toUpperCase()}` : "UNFITTED SHELL"}
+           </span>
           <span className="hidden shrink-0 sm:inline">{feedback}</span>
         </div>
       </header>
@@ -409,7 +417,7 @@ export default function TowerFloorScene({
               : `${occupant.name.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`);
           }}
           towerArt
-           backdropSrc={getTowerSpaceArtUrl(artKind)}
+           backdropSrc={artKind ? getTowerSpaceArtUrl(artKind) : null}
            accentColor={commercialTenants[0]?.business.color ?? null}
           lighting={identity.status === "occupied" ? "warm" : isSealed ? "dim" : "cool"}
           hallwayStyle={identity.status === "occupied" ? "executive" : "central"}
