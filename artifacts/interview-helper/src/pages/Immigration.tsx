@@ -11,7 +11,6 @@ import { setActiveCityId } from '@/lib/city-defs';
 import { markPendingHousingAssessment, settlePendingHousingAssessment } from '@/lib/onboarding-housing';
 import { useArtAsset } from '@/lib/art';
 import { EconomyKey } from '@/components/EconomyKey';
-import { ensureOnboardingScore } from '@/lib/onboarding-score';
 import { sanitizeReturnPath } from '@/lib/safe-path';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
@@ -158,14 +157,6 @@ export default function Immigration() {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, isLoading, onboardingResolved, navigate]);
-
-  // Start onboarding audio only for a genuinely new user. Returning users can
-  // briefly mount this route while the server completion check resolves; they
-  // must leave silently instead of replaying any first-run presentation.
-  useEffect(() => {
-    if (!isAuthenticated || !onboardingResolved || isTutorialDone()) return;
-    ensureOnboardingScore();
-  }, [isAuthenticated, onboardingResolved]);
 
   const charName = useMemo<string>(() => {
     const fromTerminal = (getSalarymanName() ?? '').trim();

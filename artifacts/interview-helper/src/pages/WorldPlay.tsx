@@ -8999,7 +8999,12 @@ export default function WorldPlay() {
   // music source underneath the radio or other page audio.
   useEffect(() => {
     initMusic();
-    const start = () => {
+    const start = (event: Event) => {
+      // Opening voice conversation is not an instruction to start the score.
+      // The first-gesture unlock listener is intentionally broad for game
+      // controls, so conversation controls opt out explicitly.
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-no-auto-music]')) return;
       resumeAudioContext();
       if (getAmbianceEnabled() && !getScoreMuted()) { playMusic(); }
     };
@@ -25055,6 +25060,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <div style={{ borderTop: '1px solid rgba(56,189,248,.15)', padding: '.5rem' }}>
                         <button
                           onClick={() => worldConv.startConversation()}
+                          data-no-auto-music
                           disabled={pabloLoad}
                           style={{
                             ...VT, fontSize: '.8rem', width: '100%',
