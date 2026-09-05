@@ -79,8 +79,14 @@ export function FinanceBalance({ isAuthenticated }: { isAuthenticated: boolean }
 
   const spendable = snapshot?.bank?.earnedFiat;
   const gold = snapshot?.gold;
-  const fiatLabel = loading && !snapshot ? "…" : streamerMode ? STREAMER_MASK : formatFiat(spendable);
-  const goldLabel = loading && !snapshot ? "…" : formatGold(gold);
+  const fiatLabel = loading && !snapshot
+    ? "…"
+    : snapshot?.bank?.earnedFiat == null
+      ? "—"
+      : streamerMode
+        ? STREAMER_MASK
+        : formatFiat(spendable);
+  const goldLabel = loading && !snapshot ? "…" : snapshot?.gold == null ? "—" : formatGold(gold);
 
   return (
     <button
