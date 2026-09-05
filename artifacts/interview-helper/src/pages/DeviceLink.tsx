@@ -341,22 +341,50 @@ function MobileRemotePanel({ link }: { link: DeviceLinkRecord }) {
   const mobileDeviceId = useMemo(() => getDeviceId(MOBILE_DEVICE_KEY), []);
   const [connectionState, setConnectionState] = useState("connecting");
   const socketRef = useRef<WebSocket | null>(null);
+  const pendingControlRef = useRef<object | null>(null);
   useEffect(() => {
     rememberLink(MOBILE_LINK_KEY, link, mobileDeviceId);
     const url = controlSocketUrl(link, "mobile", mobileDeviceId);
     if (!url) return;
-    const socket = new WebSocket(url);
-    socketRef.current = socket;
-    socket.addEventListener("open", () => setConnectionState("connected"));
-    socket.addEventListener("close", () => setConnectionState("offline"));
-    socket.addEventListener("error", () => setConnectionState("offline"));
+    let stopped = false;
+    let reconnectTimer: number | undefined;
+    let attempt = 0;
+    const connect = () => {
+      if (stopped) return;
+      setConnectionState(attempt ? "reconnecting" : "connecting");
+      const socket = new WebSocket(url);
+      socketRef.current = socket;
+      socket.addEventListener("open", () => {
+        attempt = 0;
+        setConnectionState("connected");
+        if (pendingControlRef.current) {
+          socket.send(JSON.stringify({ type: "control", ...pendingControlRef.current }));
+          pendingControlRef.current = null;
+        }
+      });
+      socket.addEventListener("close", () => {
+        if (socketRef.current === socket) socketRef.current = null;
+        if (stopped) return;
+        setConnectionState("offline");
+        const delay = Math.min(15000, 1000 * 2 ** Math.min(attempt++, 4));
+        reconnectTimer = window.setTimeout(connect, delay);
+      });
+      socket.addEventListener("error", () => setConnectionState("offline"));
+    };
+    connect();
     return () => {
-      socket.close();
+      stopped = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      socketRef.current?.close();
       socketRef.current = null;
     };
   }, [link, mobileDeviceId]);
   const sendControl = (message: object) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: "control", ...message }));
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: "control", ...message }));
+    } else {
+      pendingControlRef.current = message;
+    }
   };
   return (
     <div className="device-link-remote" data-testid="panel-mobile-remote">

@@ -25,7 +25,9 @@ type CheckResult = {
   detail: string;
 };
 
-const BASE_URL = (process.env.HEALTH_CHECK_BASE_URL || "https://picassoo.app").replace(/\/+$/, "");
+// Keep the default aligned with the verified published app domain. Scheduled
+// runs can still override this for staging or another production alias.
+const BASE_URL = (process.env.HEALTH_CHECK_BASE_URL || "https://salaryman.io").replace(/\/+$/, "");
 const MIN_BALANCE = Number(process.env.PHONE_HEALTH_MIN_BALANCE ?? "5");
 const FETCH_TIMEOUT_MS = 15000;
 const OP_TIMEOUT_MS = 20000;

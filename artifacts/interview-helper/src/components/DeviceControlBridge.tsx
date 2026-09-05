@@ -22,6 +22,8 @@ export function DeviceControlBridge() {
   useEffect(() => {
     let socket: WebSocket | null = null;
     let stopped = false;
+    let reconnectTimer: number | undefined;
+    let attempt = 0;
     const raw = window.localStorage.getItem(LINK_KEY);
     if (!raw) return;
 
@@ -31,27 +33,37 @@ export function DeviceControlBridge() {
     const deviceId = link.deviceId;
     if (!linkId || !deviceId) return;
 
-    socket = new WebSocket(wsUrl(linkId, deviceId));
-    socket.addEventListener("open", () => {
-      socket?.send(JSON.stringify({ type: "desktop_status", state: "ready" }));
-    });
-    socket.addEventListener("message", (event) => {
-      if (typeof event.data !== "string") return;
-      let message: Record<string, unknown>;
-      try { message = JSON.parse(event.data) as Record<string, unknown>; } catch { return; }
-      if (message.type !== "control") return;
-      if (message.action === "reload") {
-        window.location.reload();
-      } else if (message.action === "navigate" && typeof message.path === "string") {
-        navigate(message.path);
-      }
-    });
-    socket.addEventListener("close", () => {
-      if (!stopped) window.setTimeout(() => {}, 0);
-    });
+    const connect = () => {
+      if (stopped) return;
+      socket = new WebSocket(wsUrl(linkId, deviceId));
+      const activeSocket = socket;
+      activeSocket.addEventListener("open", () => {
+        attempt = 0;
+        activeSocket.send(JSON.stringify({ type: "desktop_status", state: "ready" }));
+      });
+      activeSocket.addEventListener("message", (event) => {
+        if (typeof event.data !== "string") return;
+        let message: Record<string, unknown>;
+        try { message = JSON.parse(event.data) as Record<string, unknown>; } catch { return; }
+        if (message.type !== "control") return;
+        if (message.action === "reload") {
+          window.location.reload();
+        } else if (message.action === "navigate" && typeof message.path === "string") {
+          navigate(message.path);
+        }
+      });
+      activeSocket.addEventListener("close", () => {
+        if (socket === activeSocket) socket = null;
+        if (stopped) return;
+        const delay = Math.min(15000, 1000 * 2 ** Math.min(attempt++, 4));
+        reconnectTimer = window.setTimeout(connect, delay);
+      });
+    };
+    connect();
 
     return () => {
       stopped = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
       socket?.close();
       socket = null;
     };

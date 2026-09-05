@@ -1759,5 +1759,15 @@
       "Update movement logic and refactor WorldPlay page component",
       "Refine world play logic and update versioning and changelogs"
     ]
+  },
+  {
+    "version": "v.21.1.2180",
+    "date": "2026-09-05",
+    "commitHash": "084b41b735edb305871e8407e6928be2173e54c3",
+    "changes": [
+      "Implement device link functionality and add UI screenshots",
+      "Implement device linking functionality and server-side control bridge",
+      "Implement device linking page and update project version"
+    ]
   }
 ]
