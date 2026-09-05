@@ -126,6 +126,7 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
   const dir = prevBtc == null ? 0 : Math.sign(idx.btcUsd - prevBtc);
   const arrow = dir > 0 ? "▴" : dir < 0 ? "▾" : "·";
   const arrowCls = dir > 0 ? "text-emerald-400" : dir < 0 ? "text-red-400" : "text-zinc-600";
+  const status = idx.status ?? "live";
 
   // Reference unit = 1 unit of the selected display currency. USD is the native
   // unit of the market index, so converting to the chosen currency just divides
@@ -133,20 +134,31 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
   // Display-only: in-game ƒ/Gold and Stripe charges are unaffected.
   const ratePerUsd = cur.ratePerUsd;
   const btcInCur = idx.btcUsd * ratePerUsd;
+  const goldInCur = idx.goldUsd == null ? null : idx.goldUsd * ratePerUsd;
   const oneCurInFiat = idx.conversion.usdToFiat / ratePerUsd;
-  const oneCurInGold = idx.conversion.usdToGoldOz / ratePerUsd;
   const sym = cur.symbol;
 
   if (compact) {
     return (
-      <div className={`flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 tracking-wider ${wrap ? "flex-wrap gap-y-0.5" : "whitespace-nowrap"}`}>
+      <div
+        className={`flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 tracking-wider ${wrap ? "flex-wrap gap-y-0.5" : "whitespace-nowrap"}`}
+        title={`Live market reference · BTC ${sym}${fmt(btcInCur, 0)} · spot gold ${goldInCur == null ? "unavailable" : `${sym}${fmt(goldInCur, 0)}/oz`} · conversion ${sym}1 = ƒ${fmt(oneCurInFiat)} · ${status.toUpperCase()} · updated ${new Date(idx.asOf).toLocaleString()}. Wallet FIAT and in-game GOLD are separate holdings.`}
+        aria-label={`Live market reference: Bitcoin ${sym}${fmt(btcInCur, 0)}, spot gold ${goldInCur == null ? "unavailable" : `${sym}${fmt(goldInCur, 0)} per ounce`}, conversion ${sym}1 equals ƒ${fmt(oneCurInFiat)}, ${status}`}
+      >
         <Bitcoin className="w-3 h-3 text-amber-400/80" />
+        <span className="text-zinc-500">BTC</span>
         <span className="text-amber-300">{sym}{fmt(btcInCur, 0)}</span>
         <span className={arrowCls}>{arrow}</span>
         <span className="text-zinc-700">·</span>
         <span className="text-fuchsia-300">ƒ{fmt(oneCurInFiat)}/{curCode}</span>
         <span className="text-zinc-700">·</span>
-        <span className="text-amber-200">{fmt(oneCurInGold, 4)}oz/{curCode}</span>
+        <span className="text-amber-200">
+          <span className="text-zinc-500">Au</span>{" "}
+          {goldInCur == null ? "—" : `${sym}${fmt(goldInCur, 0)}/oz`}
+        </span>
+        <span className={status === "live" ? "text-emerald-300/80" : "text-amber-300/90"}>
+          {status.toUpperCase()}
+        </span>
         {showPlayerFiat && playerFiat != null && (
           <>
             <span className="text-zinc-700">·</span>
@@ -174,11 +186,11 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
       <span className="text-zinc-700">→</span>
       <span className="flex items-center gap-1 text-amber-200">
         <Coins className="w-3 h-3 text-amber-400/80" />
-        {fmt(oneCurInGold, 4)} oz
+        {goldInCur == null ? "—" : `${sym}${fmt(goldInCur, 0)}/oz`}
       </span>
       <span className="text-zinc-700">·</span>
-      <span className={idx.status === "live" ? "text-emerald-300" : "text-amber-300"}>
-        {idx.status.toUpperCase()} · {idx.source.toUpperCase()} · {new Date(idx.asOf).toLocaleTimeString()}
+      <span className={status === "live" ? "text-emerald-300" : "text-amber-300"}>
+        {status.toUpperCase()} · {idx.source.toUpperCase()} · {new Date(idx.asOf).toLocaleTimeString()}
       </span>
       {showPlayerFiat && playerFiat != null && (
         <>

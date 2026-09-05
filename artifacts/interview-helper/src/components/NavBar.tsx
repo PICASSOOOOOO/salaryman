@@ -21,6 +21,7 @@ import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
 import { CurrencyTicker } from './CurrencyTicker';
+import { FinanceBalance } from './FinanceBalance';
 import { TowerLocationBadge } from './TowerLocationBadge';
 import { useTranslation } from 'react-i18next';
 import {
@@ -136,8 +137,8 @@ export function NavBar() {
       {/* Top strip — brand + plan / trial info (hidden on mobile). The brand
           (logo + PABLO TERMINAL subtitle) now lives up here, stacked above the
           ALPHA badge, so the main nav row below stays slim. */}
-      <div className="flex items-start justify-between px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.015]">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.015]">
+        <div className="flex min-w-0 flex-1 basis-[min(100%,32rem)] flex-col gap-1">
           <div
             className="flex items-center gap-2.5 cursor-pointer group/logo"
             onClick={() => navigate(getAppHomePath(isAuthenticated))}
@@ -154,11 +155,14 @@ export function NavBar() {
             <div className="w-7 h-7 rounded-md flex items-center justify-center">
               <PicassoLogo size={22} gap={2} glow />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
                 {config.name}
               </h1>
-              <div className="mt-0.5"><CurrencyTicker compact /></div>
+              <div className="mt-1 flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1">
+                <CurrencyTicker compact wrap />
+                <FinanceBalance isAuthenticated={isAuthenticated} />
+              </div>
             </div>
             <button
               onClick={e => { e.stopPropagation(); toggleMode(); }}
@@ -174,11 +178,8 @@ export function NavBar() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           {isAuthenticated && <TowerLocationBadge />}
-          {/* The live BTC → USD → ƒ → Gold ticker now lives inside the in-game
-              world HUD (WorldPlay), where it also shows the player's spendable
-              ƒ balance. It was removed from the top nav to declutter. */}
           <span className="flex items-center gap-1.5">
             {!isOwner && (isPro || features.size > 0 ? (
               <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
