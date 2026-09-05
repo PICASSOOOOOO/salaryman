@@ -378,8 +378,8 @@ export default function Home() {
   const [trialPopup] = useState(false);
   const dismissTrialPopup = () => {};
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  // Hide the "LATE FOR WORK" intro hook for users who've already done
-  // immigration — they don't need to be invited back through the front door.
+  // Hide the "LATE FOR WORK" intro hook for users who've already completed
+  // onboarding — they don't need to be invited back through the front door.
   const [onboardingDone, setOnboardingDone] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -400,12 +400,10 @@ export default function Home() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
-  // Auto-funnel: the office is the home base. Fresh visitors get pushed into
-  // the immigration desk (Immigration → office); onboarded users land in
-  // their office. The terminal (`/`) is reachable via the PABLO TERMINAL
-  // button on the office, so it's still there for anyone who wants it — we
-  // just don't dump them on it by default. Session flag prevents an infinite
-  // loop if the user back-navigates to `/`.
+  // Auto-funnel: the Tower lobby is the open home for a fresh visitor;
+  // immigration is not part of normal entry. Returning users land in their
+  // office. Session flag prevents an infinite loop if the user back-navigates
+  // to `/`.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     // Home is kept-alive (always mounted, just hidden off-route), so guard the
@@ -416,7 +414,7 @@ export default function Home() {
       if (window.sessionStorage.getItem('sm_intro_redirected') === '1') return;
       window.sessionStorage.setItem('sm_intro_redirected', '1');
     } catch { /* private mode — fall through and redirect once */ }
-    navigate(onboardingDone ? '/office' : '/immigration', { replace: true });
+    navigate(onboardingDone ? '/office' : '/tower', { replace: true });
   }, [onboardingDone, navigate, homeLocation]);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };

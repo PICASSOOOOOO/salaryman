@@ -430,10 +430,10 @@ function AppShell() {
   // /world, /profile, /legal, /alpha, …) silently bounces them back to the
   // queue, so nothing behind the firewall is reachable by guessing a path.
   //
-  // Once authenticated — but not yet cleared through immigration — the
-  // intake desk and legal pages open up too (those are post-sign-in).
+  // Once authenticated, the open Tower lobby and legal pages are available
+  // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/immigration", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -451,7 +451,7 @@ function AppShell() {
   const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
   // Wait for auth to resolve before bouncing: isAuthenticated starts false on
   // cold load, so acting during isLoading would kick a signed-in-but-uncleared
-  // user off /immigration or /legal before we know they're authed.
+  // user off a post-sign-in route before we know they're authed.
   // Also wait for the server onboarding check (authed users only): a returning,
   // already-onboarded user has no local salaryman_tutorial_done flag yet, so
   // bouncing before hydrateOnboardingStatus() resolves would force them back
@@ -474,8 +474,9 @@ function AppShell() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!newUserBlocked) return;
-    // Send authed-but-uncleared users straight to Shadow Tower reception.
-    // City paperwork is intentionally deferred until they choose to exit.
+    // Send authed-but-uncleared users straight to the open Shadow Tower lobby.
+    // Outside-world paperwork is intentionally deferred until they choose to
+    // leave the city.
     navigate("/tower", { replace: true });
   }, [newUserBlocked, isAuthenticated, location, navigate]);
 

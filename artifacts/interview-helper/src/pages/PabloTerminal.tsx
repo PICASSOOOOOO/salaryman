@@ -1087,7 +1087,7 @@ function PabloTerminalAuthed() {
           if (fired) return;
           fired = true;
           ttsRef.current = null;
-          const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+          const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/tower';
           pendingDestinationRef.current = null;
           screenEmailBeforeAdmitRef.current(cachedEmail).then((ok) => {
             if (ok) setAuthChoice({ dest, hint: cachedEmail });
@@ -1260,7 +1260,7 @@ function PabloTerminalAuthed() {
       setReply(closingLine);
       setStatus('speaking');
       ttsRef.current?.cancel();
-      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/tower';
       pendingDestinationRef.current = null;
       ttsRef.current = speakWithTTS(
         closingLine,
@@ -1288,13 +1288,12 @@ function PabloTerminalAuthed() {
       ttsRef.current?.cancel();
       ttsRef.current = null;
       // Honor a destination they asked Pablo for earlier in the same
-      // session — otherwise default to the immigration desk (Pablo's
-      // post-OAuth intake gate, outside GameLock). We deliberately do
-      // NOT default to /world/play here: non-owner accounts can't pass
+      // session — otherwise default to the open Tower lobby. We deliberately
+      // do NOT default to /world/play here: non-owner accounts can't pass
       // the city lock and would bounce back into the loop. Pass through
       // the sanitizer so a tampered or LLM-malformed pendingDestination
       // can never poison the OAuth returnTo.
-      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/tower';
       pendingDestinationRef.current = null;
       // Pre-fill the OAuth login_hint with their cached email when we
       // have one on file — returning players shouldn't retype it.
@@ -1605,7 +1604,7 @@ function PabloTerminalAuthed() {
         // both invocations land in the same microtask. Architect-flagged.
         let fired = false;
         let timerId: number | undefined;
-        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/tower';
         pendingDestinationRef.current = null;
         const goLogin = () => {
           if (fired) return;
@@ -1671,7 +1670,7 @@ function PabloTerminalAuthed() {
       ttsRef.current?.cancel();
       // Capture the destination once and open the modal immediately; speech
       // remains an acknowledgment, not a gate that can strand the visitor.
-      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/tower';
       pendingDestinationRef.current = null;
       setAuthChoice({ dest, hint: email });
       ttsRef.current = speakWithTTS(
@@ -1771,10 +1770,10 @@ function PabloTerminalAuthed() {
           // default (/world/play).
           const safePath = sanitizeReturnPath(action.path);
           if (safePath) pendingDestinationRef.current = safePath;
-          say = `${say.replace(/\s+$/, "")} But immigration first — the city's sealed under gas. Just your name and email, I process your paperwork, then I drop you straight there.`;
+          say = `${say.replace(/\s+$/, "")} I’ll get you signed in, then send you straight there.`;
         } else if (action.kind === "search") {
           pendingDestinationRef.current = `/?q=${encodeURIComponent(action.query)}`;
-          say = `${say.replace(/\s+$/, "")} But immigration first — name and email, I process your paperwork, then I drop you on that search.`;
+          say = `${say.replace(/\s+$/, "")} I’ll get you signed in, then take you to that search.`;
         } else {
           // external / logout — silently drop; Pablo's `say` already
           // reads as a normal reply and the gate is implicit.
