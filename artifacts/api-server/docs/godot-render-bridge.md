@@ -53,7 +53,20 @@ exposing the frame itself.
 
 ## Art-development boundary
 
-Godot is a live preview transport, not the art catalog or prompt authority.
+The checked-in Godot 4 art-dev project lives at `godot/art-dev`. It is the
+animation review/export surface for the shared character sheets and publishes
+its rendered viewport as PNG frames through this bridge. Launch it with:
+
+```bash
+godot --path godot/art-dev
+```
+
+Use `--asset-base` when the Vite asset host is not the local default, and
+`--bridge-url` when the API is not local. The project supports walk, typing, and
+reading cycles, direction/palette review, pause, and scale controls.
+
+Godot is a live preview transport and art-development renderer, not the art
+catalog or prompt authority.
 SALARYMAN continues to own art prompts, asset records, and provider selection.
 That lets a future Blender or Astra adapter render through the same art-dev
 workflow without replacing the game server or mixing renderer-specific style
