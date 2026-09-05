@@ -102,12 +102,12 @@ export default function GameHub() {
   ];
 
   return (
-    <div className="min-h-screen w-full" style={{
-      background: "radial-gradient(circle at 50% 0%, rgba(40,40,60,0.45) 0%, transparent 70%), #050507",
+    <div className="relative min-h-screen w-full overflow-hidden" style={{
+      background: "linear-gradient(180deg, rgba(5,8,15,.8), rgba(5,8,15,.96)), url('/pixel-agents/shadow-tower/spaces/tower_space_company.jpg') center / cover fixed",
       paddingTop: "calc(env(safe-area-inset-top) + 1.5rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6">
         <header className="mb-8 text-center">
           <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500 mb-2">SALARYMAN</p>
           <h1 className="text-3xl sm:text-4xl font-mono tracking-[0.2em] text-zinc-100">TERMINAL</h1>

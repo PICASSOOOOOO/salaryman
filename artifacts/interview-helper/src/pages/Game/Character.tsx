@@ -34,7 +34,7 @@ export default function GameCharacter() {
 
   return (
     <div className="min-h-screen w-full" style={{
-      background: "radial-gradient(circle at 50% 0%, rgba(60,90,120,0.3) 0%, transparent 70%), #060708",
+      background: "linear-gradient(180deg, rgba(6,9,14,.82), rgba(6,9,14,.97)), url('/pixel-agents/shadow-tower/spaces/tower_space_founder.jpg') center / cover fixed",
       paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>

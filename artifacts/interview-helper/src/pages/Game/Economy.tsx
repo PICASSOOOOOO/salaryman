@@ -179,7 +179,7 @@ export default function GameEconomy() {
 
   return (
     <div className="min-h-screen w-full" style={{
-      background: "radial-gradient(circle at 50% 0%, rgba(80,60,20,0.35) 0%, transparent 70%), #060607",
+      background: "linear-gradient(180deg, rgba(11,12,18,.82), rgba(11,12,18,.97)), url('/pixel-agents/shadow-tower/spaces/tower_space_company.jpg') center / cover fixed",
       paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>

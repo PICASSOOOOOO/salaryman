@@ -353,7 +353,7 @@ export default function GameBank() {
 
   return (
     <div className="min-h-screen w-full text-zinc-200" style={{
-      background: "radial-gradient(circle at 50% 0%, rgba(30,40,50,0.5) 0%, transparent 70%), #050507",
+      background: "linear-gradient(180deg, rgba(5,8,15,.84), rgba(5,8,15,.97)), url('/pixel-agents/shadow-tower/spaces/tower_space_lobby.jpg') center / cover fixed",
       paddingTop: "calc(env(safe-area-inset-top) + 1.25rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>

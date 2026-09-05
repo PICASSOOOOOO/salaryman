@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { getRecreationOfficeLayout } from "@/lib/office-property-layouts";
 import ArcadeGame, { GAME_LIST } from "./ArcadeGames";
+import { getTowerSpaceArtUrl } from "@/lib/tower-space-art";
 
 type GameId = "arcade" | "pool" | "air-hockey" | "foosball" | "shuffleboard" | "bowling" | "darts";
 type RecState = {
@@ -177,7 +178,9 @@ export default function RecreationFloor() {
           <IsoOffice layout={layout} viewportWidth={window.innerWidth} viewportHeight={window.innerHeight - 56}
             playable followCam premium stations={stations} rooms={layout.rooms} deskColCount={layout.deskCols}
             deskRowCount={layout.deskRows} capsuleCount={0} suppressLabels={window.innerWidth < 680}
-            frozen={!!panel} playerName="REC GUEST" />
+            frozen={!!panel} playerName="REC GUEST"
+            backdropSrc={getTowerSpaceArtUrl("recreation")}
+            lighting="warm" hallwayStyle="gallery" hallwaySignage="RECREATION · LIVE FLOOR" />
         </div>
       </div>
 

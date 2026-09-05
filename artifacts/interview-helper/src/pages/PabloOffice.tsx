@@ -42,6 +42,7 @@ import {
 } from '@/lib/office-property-layouts';
 import type { ShadowTowerPlan } from '@workspace/api-zod/shadow-tower';
 import { Settings2, Loader2, Bot, Activity, Check, X } from 'lucide-react';
+import { getTowerSpaceArtUrl } from '@/lib/tower-space-art';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
 // only loads when a cabinet is actually used).
@@ -944,6 +945,13 @@ export default function PabloOffice() {
               lighting={towerFloor?.floor?.settings?.hallway?.lighting || officeCustomization?.lighting || 'normal'}
               hallwayStyle={towerFloor?.floor?.settings?.hallway?.style}
               hallwaySignage={officeName}
+              backdropSrc={getTowerSpaceArtUrl(
+                towerFloor?.floor?.floorNumber === 66
+                  ? 'picasso'
+                  : towerFloor?.floor?.floorNumber === 67
+                    ? 'shadow_corp'
+                    : 'company',
+              )}
               doorTopRow={11}
               doorBotRow={floorRows}
               rooms={officeLayout.rooms}

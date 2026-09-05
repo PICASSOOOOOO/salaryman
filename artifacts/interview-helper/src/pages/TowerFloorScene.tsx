@@ -11,7 +11,7 @@ import {
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { CityClock } from "@/components/CityClock";
 import { getTowerAmbientOccupants, getTowerOperatorDialogue, type TowerOperatorDialogue } from "@/lib/tower-life";
-import { getTowerSpaceArtKind, type TowerSpaceArtKind } from "@/lib/tower-space-art";
+import { getTowerSpaceArtKind, getTowerSpaceArtUrl, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 import { useAuth } from "@/hooks/use-auth";
 import {
   getShadowTowerCommercialTenants,
@@ -409,6 +409,7 @@ export default function TowerFloorScene({
               : `${occupant.name.toUpperCase()} · RESIDENT ROUTE · PRESS E TO SPEAK`);
           }}
           towerArt
+           backdropSrc={getTowerSpaceArtUrl(artKind)}
            accentColor={commercialTenants[0]?.business.color ?? null}
           lighting={identity.status === "occupied" ? "warm" : isSealed ? "dim" : "cool"}
           hallwayStyle={identity.status === "occupied" ? "executive" : "central"}

@@ -177,7 +177,7 @@ export default function GameSettings({
 
   return (
     <div className={embedded ? "w-full" : "min-h-screen w-full"} style={embedded ? undefined : {
-      background: "#070809",
+      background: "linear-gradient(180deg, rgba(7,8,12,.86), rgba(7,8,12,.98)), url('/pixel-agents/shadow-tower/spaces/tower_space_security.jpg') center / cover fixed",
       paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>

@@ -183,7 +183,7 @@ export default function GameMap() {
   return (
     <div className="min-h-screen w-full text-slate-100"
       style={{
-        background: 'radial-gradient(circle at 50% -10%, rgba(32,83,112,.35), transparent 52%), #03070d',
+        background: "linear-gradient(180deg, rgba(3,7,13,.82), rgba(3,7,13,.97)), url('/pixel-agents/shadow-tower/spaces/tower_space_lobby.jpg') center / cover fixed",
         paddingTop: 'calc(env(safe-area-inset-top) + 1rem)',
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem)',
       }}>

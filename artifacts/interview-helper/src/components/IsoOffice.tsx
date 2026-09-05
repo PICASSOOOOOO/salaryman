@@ -153,7 +153,7 @@ export interface IsoOfficeProps {
   onPoseChange?: (pose: { x: number; y: number; facing: 'left' | 'right' }) => void;
   /** Use the shipped Shadow Tower wall, floor and terminal artwork. */
   towerArt?: boolean;
-  /** @deprecated Retained for caller compatibility; offices are geometry-first. */
+  /** Optional authored environment plate behind the playable geometry. */
   backdropSrc?: string | null;
   /** Standing scene population that is not part of the player's bot roster. */
   ambientOccupants?: OfficeAmbientOccupant[];
@@ -201,6 +201,7 @@ export function IsoOffice({
   hallwayStyle,
   hallwaySignage,
   towerArt = true,
+  backdropSrc = null,
   ambientOccupants = [],
 }: IsoOfficeProps) {
   const [lowGfx] = useLowGfx();
@@ -791,7 +792,13 @@ export function IsoOffice({
         height: viewportHeight ?? '100%',
         margin: '0 auto',
         overflow: 'hidden',
-        background: 'radial-gradient(130% 110% at 50% 0%, #1a0d3a 0%, #0a0719 52%, #04030d 100%)',
+        backgroundImage: backdropSrc
+          ? 'linear-gradient(180deg, rgba(5,8,15,.32), rgba(5,8,15,.78)), var(--iso-office-backdrop)'
+          : 'radial-gradient(130% 110% at 50% 0%, #1a0d3a 0%, #0a0719 52%, #04030d 100%)',
+        backgroundSize: backdropSrc ? 'cover' : undefined,
+        backgroundPosition: backdropSrc ? 'center' : undefined,
+        backgroundRepeat: 'no-repeat',
+        ['--iso-office-backdrop' as string]: backdropSrc ? `url("${backdropSrc}")` : undefined,
         boxShadow: '0 0 0 1px rgba(150,120,255,.30), inset 0 0 90px rgba(8,4,26,.85)',
         cursor: playable ? 'pointer' : 'default',
         touchAction: playable ? 'none' : 'auto',
@@ -842,10 +849,10 @@ export function IsoOffice({
             minHeight: 44,
             maxWidth: 'calc(100% - 24px)',
             padding: '.65rem 1rem',
-            background: 'linear-gradient(135deg, rgba(236,72,153,.92), rgba(56,189,248,.82))',
+            background: 'linear-gradient(135deg, rgba(196,126,63,.95), rgba(64,199,190,.86))',
             border: '1px solid rgba(244,180,255,.95)', borderRadius: 6, color: '#0a0414',
             font: 'bold .7rem "var(--font-sans)", monospace', letterSpacing: '.16em',
-            cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(236,72,153,.55)',
+            cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(196,126,63,.48)',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}
         >
@@ -921,7 +928,7 @@ function getAmbientPosition(occupant: OfficeAmbientOccupant, now: number): { col
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, heightPx, cols, rows, T } = s;
-  const accent = /^#[0-9a-f]{6}$/i.test(s.accentColor ?? '') ? s.accentColor! : '#ec4899';
+  const accent = /^#[0-9a-f]{6}$/i.test(s.accentColor ?? '') ? s.accentColor! : '#c47e3f';
 
   // ---- Floor ----
   // Solid base quad.
@@ -930,17 +937,17 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   ctx.moveTo(fA.x, fA.y); ctx.lineTo(fB.x, fB.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fD.x, fD.y); ctx.closePath();
   const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
   if (s.lighting === 'warm') {
-    fg.addColorStop(0, '#331920');
-    fg.addColorStop(0.55, '#26141a');
-    fg.addColorStop(1, '#1a0e14');
+    fg.addColorStop(0, '#30221d');
+    fg.addColorStop(0.55, '#21191a');
+    fg.addColorStop(1, '#111218');
   } else if (s.lighting === 'cool') {
-    fg.addColorStop(0, '#111933');
-    fg.addColorStop(0.55, '#0f1426');
-    fg.addColorStop(1, '#0b0e1a');
+    fg.addColorStop(0, '#142a32');
+    fg.addColorStop(0.55, '#0f1b25');
+    fg.addColorStop(1, '#081017');
   } else {
-    fg.addColorStop(0, '#241140');
-    fg.addColorStop(0.55, '#1a0f33');
-    fg.addColorStop(1, '#120b26');
+    fg.addColorStop(0, '#17252b');
+    fg.addColorStop(0.55, '#101b23');
+    fg.addColorStop(1, '#091118');
   }
   ctx.fillStyle = fg;
   ctx.fill();
@@ -973,7 +980,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Grid lines.
   ctx.lineWidth = 1;
-  ctx.strokeStyle = 'rgba(150,110,230,0.13)';
+  ctx.strokeStyle = 'rgba(141,198,191,0.12)';
   for (let c = 0; c <= cols; c++) { const a = P(c, 0), b = P(c, rows); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
   for (let r = 0; r <= rows; r++) { const a = P(0, r), b = P(cols, r); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 
@@ -981,7 +988,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Neon floor rim along the two FRONT edges.
   ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(236,72,153,0.55)';
+  ctx.strokeStyle = 'rgba(196,126,63,0.58)';
   ctx.beginPath(); ctx.moveTo(fD.x, fD.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fB.x, fB.y); ctx.stroke();
 
   // ---- Back walls (glass + city skyline) ----
@@ -1579,8 +1586,8 @@ const ATM_CFG: MachineCfg = {
 const VENDING_CFG: MachineCfg = {
   w: 1.2, h: 20,
   top: '#4a0e2a', topA: '#5e1338', left: '#200512', right: '#360820',
-  rim: 'rgba(236,72,153,0.6)', rimA: 'rgba(255,120,200,0.95)',
-  face: 'rgba(42,10,26,0.9)', faceA: 'rgba(255,150,210,0.92)', glow: 'rgba(236,72,153,0.9)',
+  rim: 'rgba(196,126,63,0.68)', rimA: 'rgba(255,190,112,0.95)',
+  face: 'rgba(35,25,20,0.92)', faceA: 'rgba(255,210,150,0.92)', glow: 'rgba(196,126,63,0.9)',
   label: 'rgba(240,160,200,0.85)',
   artSrc: `${import.meta.env.BASE_URL}pixel-agents/shadow-tower/vending.png`,
 };
@@ -1901,7 +1908,7 @@ function drawHallwayTreatment(ctx: CanvasRenderingContext2D, s: SceneCtx) {
     ctx.strokeStyle = s.lighting === 'dim' ? 'rgba(56,189,248,.42)' : 'rgba(56,189,248,.78)';
     ctx.lineWidth = Math.max(1, u * .7);
     ctx.strokeRect(signBase.x - signW / 2, signY, signW, signH);
-    ctx.fillStyle = 'rgba(236,72,153,.82)';
+    ctx.fillStyle = 'rgba(196,126,63,.82)';
     ctx.fillRect(signBase.x - signW / 2, signY, Math.max(3, 3 * u), signH);
     ctx.font = `700 ${Math.max(8, 6.5 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
@@ -1935,7 +1942,7 @@ function drawOfficeMediaDecor(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const glow = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
   glow.addColorStop(0, hexA(commercial.color, .32));
   glow.addColorStop(.55, 'rgba(8,15,28,.96)');
-  glow.addColorStop(1, 'rgba(236,72,153,.24)');
+  glow.addColorStop(1, 'rgba(196,126,63,.24)');
   ctx.fillStyle = glow;
   ctx.fillRect(tx, ty, tw, th);
   ctx.fillStyle = 'rgba(255,255,255,.11)';
@@ -1964,8 +1971,8 @@ function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' |
   const t1 = { x: e1.x, y: e1.y - h };
   // wall plane
   const wallGrad = ctx.createLinearGradient(0, t0.y, 0, e0.y);
-  wallGrad.addColorStop(0, '#0c0a1f');
-  wallGrad.addColorStop(1, '#070612');
+  wallGrad.addColorStop(0, '#101c24');
+  wallGrad.addColorStop(1, '#080f15');
   quad(ctx, [e0, e1, t1, t0], wallGrad);
   if (s.towerArt) {
     const wallArt = getMachineArt(`${import.meta.env.BASE_URL}pixel-agents/assets/walls/wall_0.png`);
@@ -2027,7 +2034,7 @@ function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' |
     const bw = Math.max(26, s.T * 1.55);
     const by = base.y - h * (.48 + (index % 2) * .12);
     ctx.globalAlpha = .45;
-    ctx.fillStyle = index % 2 ? 'rgba(236,72,153,.22)' : 'rgba(34,211,238,.18)';
+    ctx.fillStyle = index % 2 ? 'rgba(196,126,63,.22)' : 'rgba(64,199,190,.18)';
     ctx.fillRect(base.x - bw / 2, by - 10, bw, 14);
     ctx.strokeStyle = index % 2 ? 'rgba(244,114,182,.45)' : 'rgba(103,232,249,.4)';
     ctx.strokeRect(base.x - bw / 2, by - 10, bw, 14);
@@ -2041,11 +2048,11 @@ function drawCityWall(ctx: CanvasRenderingContext2D, s: SceneCtx, side: 'left' |
   ctx.restore();
 
   // neon top trim
-  ctx.strokeStyle = side === 'right' ? 'rgba(120,230,255,0.7)' : 'rgba(236,72,153,0.7)';
+  ctx.strokeStyle = side === 'right' ? 'rgba(111,224,216,0.74)' : 'rgba(196,126,63,0.72)';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.stroke();
   // vertical neon mullions
-  ctx.strokeStyle = 'rgba(236,72,153,0.4)';
+  ctx.strokeStyle = 'rgba(196,126,63,0.4)';
   ctx.lineWidth = 1.5;
   const MULL = side === 'right' ? cols : rows;
   for (let m = 0; m <= MULL; m += 4) {

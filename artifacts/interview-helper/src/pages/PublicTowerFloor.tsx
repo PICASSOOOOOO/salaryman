@@ -12,6 +12,7 @@ import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getAmbianceEnabled, getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 import { getTowerAmbientOccupants, TOWER_BUSINESSES, TOWER_RESIDENTS } from "@/lib/tower-life";
+import { getTowerSpaceArtUrl, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 
 type FloorNumber = 2 | 3 | 4;
 type PublicPayload = {
@@ -44,6 +45,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     [floor],
   );
   const floorPath = floor === 2 ? "/tower/mezzanine" : floor === 3 ? "/tower/rest" : "/tower/security";
+  const spaceArt: TowerSpaceArtKind = floor === 2 ? "mezzanine" : floor === 3 ? "rest" : "security";
 
   const load = useCallback(async () => {
     const savesResponse = await apiFetch("/api/salaryman/saves", { credentials: "include" });
@@ -237,6 +239,10 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
           layout={layout} viewportWidth={window.innerWidth} viewportHeight={window.innerHeight - 56}
           playable followCam premium scale={4.6} stations={stations} rooms={layout.rooms}
           deskColCount={layout.deskCols} deskRowCount={layout.deskRows} capsuleCount={0}
+           backdropSrc={getTowerSpaceArtUrl(spaceArt)}
+           lighting={floor === 4 ? "dim" : "warm"}
+           hallwayStyle={floor === 2 ? "gallery" : "central"}
+           hallwaySignage={floor === 2 ? "PUBLIC TERMINALS · CLASSIFIEDS" : floor === 3 ? "REST WARD · OBSERVATION" : "SECURITY · CUSTODY"}
           suppressLabels={window.innerWidth < 680} frozen={!!panel}
           playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
            ambientOccupants={getTowerAmbientOccupants(floor)}

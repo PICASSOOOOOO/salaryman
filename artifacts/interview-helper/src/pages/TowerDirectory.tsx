@@ -49,6 +49,7 @@ import {
 import { IsoOffice } from "@/components/IsoOffice";
 import { getLobbyOfficeLayout } from "@/lib/office-property-layouts";
 import { getTowerAmbientOccupants } from "@/lib/tower-life";
+import { getTowerSpaceArtUrl } from "@/lib/tower-space-art";
 
 const occupiedFloors = new Map([
   [
@@ -383,6 +384,7 @@ function TowerReceptionScene({
         scale={viewport.width < 760 ? 4.7 : 4.15}
         stations={stations}
         rooms={layout.rooms}
+        backdropSrc={getTowerSpaceArtUrl("lobby")}
         initialPose={layout.spawn}
         frozen={frozen}
         suppressLabels={viewport.width < 680}
