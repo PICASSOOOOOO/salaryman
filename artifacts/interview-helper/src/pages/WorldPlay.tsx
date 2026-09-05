@@ -2477,6 +2477,7 @@ const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; 
   food_court:     { label: 'SERVE TABLES',      pay: 1800,  seconds: 3, cooldownFrames: 600  },
   nightclub:      { label: 'BOUNCER SHIFT',     pay: 3500,  seconds: 5, cooldownFrames: 1800 },
   pawn_shop:      { label: 'APPRAISE GOODS',    pay: 2800,  seconds: 4, cooldownFrames: 900  },
+  water_plants:   { label: 'WATER PLANTS',      pay: 1,     seconds: 5, cooldownFrames: 600  },
 };
 const PUBLIC_OFFICE_TERMINAL_RATE = 50;
 const PUBLIC_OFFICE_TERMINALS = new Set(['TERMINAL 1','TERMINAL 2','TERMINAL 3','TERMINAL 4','TERMINAL 5','TERMINAL 6']);
@@ -7260,6 +7261,16 @@ export default function WorldPlay() {
     else if (bid === 'arcade')  {
       g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy); sfxHeal();
       setNarr('> ARCADE \'87 — Rows of dead screens. One machine still running: NEON DRIFT. Coin slot taped over. Free play forever. You play until the wasteland feels far away. Energy +20.');
+    }
+    else if (bid === 'water_plants') {
+      const job = QUICK_JOBS.water_plants;
+      if ((g.jobCooldowns.water_plants ?? 0) > 0) {
+        sfxError();
+        setNarr(`> WATER GARDENS — The hose is coiled. Come back in ${Math.ceil((g.jobCooldowns.water_plants ?? 0) / 60)}s.`);
+        return;
+      }
+      setNarr('> WATER GARDENS — The beds are dry, but the plants are still alive. Five seconds of care earns ƒ1. No questions. No lockout.');
+      setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'bunker')  { g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy); sfxHeal(); setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. You rest briefly. Energy +15. The screen reads: GAME OVER.'); }
     else if (bid === 'radio') {

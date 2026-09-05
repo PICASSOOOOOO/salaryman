@@ -47,7 +47,7 @@ export function isQuoteLocationAuthorized(userId: string, quoteLocation: string)
   return locationForLivePlayer(userId) === quoteLocation;
 }
 
-function isNearJobBuilding(userId: string, jobId: keyof typeof QUICK_JOBS): boolean {
+export function isNearJobBuilding(userId: string, jobId: keyof typeof QUICK_JOBS): boolean {
   const position = getPlayerPosition(userId);
   const center = WORLD_BUILDING_CENTERS[QUICK_JOBS[jobId].buildingId as keyof typeof WORLD_BUILDING_CENTERS];
   return Boolean(position && center && Math.hypot(position.x - center.x, position.y - center.y) <= INTERACTION_RADIUS);

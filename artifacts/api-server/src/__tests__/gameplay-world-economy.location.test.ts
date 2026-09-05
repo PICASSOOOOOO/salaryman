@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 const { getPlayerPosition } = vi.hoisted(() => ({ getPlayerPosition: vi.fn() }));
 vi.mock("../worldServer", () => ({ getPlayerPosition }));
 
-import worldEconomyRouter, { isQuoteLocationAuthorized, locationForLivePlayer, QUICK_JOBS } from "../routes/gameplay-world-economy";
+import worldEconomyRouter, { isNearJobBuilding, isQuoteLocationAuthorized, locationForLivePlayer, QUICK_JOBS } from "../routes/gameplay-world-economy";
 
 describe("authoritative world economy location gates", () => {
   const source = readFileSync(new URL("../routes/gameplay-world-economy.ts", import.meta.url), "utf8");
@@ -56,6 +56,19 @@ describe("authoritative world economy location gates", () => {
       durationMs: 5_000,
       cooldownMs: 10_000,
     });
+  });
+
+  it("authorizes watering plants only at the canonical garden location", () => {
+    getPlayerPosition.mockReturnValue({ x: 6120, y: 7450 });
+    expect(isNearJobBuilding("world-economy-test-user", "water_plants")).toBe(true);
+
+    getPlayerPosition.mockReturnValue({ x: 1, y: 1 });
+    expect(isNearJobBuilding("world-economy-test-user", "water_plants")).toBe(false);
+  });
+
+  it("keeps completion settlement idempotent and cooldown-protected", () => {
+    expect(source).toMatch(/if \(run\.completedAt\)[\s\S]{0,500}duplicate: true/);
+    expect(source).toMatch(/cooldownUntil[\s\S]{0,220}cooldown/);
   });
 
   it("detects leaving the quoted exchange and checks it before cargo or wallet work", () => {
