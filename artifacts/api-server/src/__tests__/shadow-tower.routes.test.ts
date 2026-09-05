@@ -120,6 +120,27 @@ describe("Shadow Tower routes", () => {
     expect(snapshot.status).toBe(403);
   });
 
+  it("checks a Tower password server-side without exposing the stored verifier", async () => {
+    const owner = await user(); const visitor = await user();
+    const [floor] = await db.insert(shadowTowerFloorsTable).values({
+      city: "minx_city", floorNumber: 55, ownerUserId: owner, tenure: "own", archetype: "company",
+    }).returning();
+    floors.push(floor.id);
+    actAs(owner);
+    const configured = await request(app).put(`/api/shadow-tower/floors/${floor.id}/access`).send({ password: "tower-secret" });
+    expect(configured.status).toBe(200);
+    expect(configured.body.floor.hasPassword).toBe(true);
+    expect(JSON.stringify(configured.body)).not.toContain("passwordHash");
+
+    actAs(visitor);
+    expect((await request(app).get("/api/shadow-tower/floors/minx_city/55")).status).toBe(403);
+    expect((await request(app).get("/api/shadow-tower/floors/minx_city/55").set("x-shadow-tower-password", "wrong")).status).toBe(403);
+    const opened = await request(app).get("/api/shadow-tower/floors/minx_city/55").set("x-shadow-tower-password", "tower-secret");
+    expect(opened.status).toBe(200);
+    expect(opened.body.plan.objects.find((object: { kind: string }) => object.kind === "office_unit").door).toMatchObject({ access: "password", side: "bottom" });
+    expect(JSON.stringify(opened.body)).not.toContain("passwordHash");
+  });
+
   it("rejects assignment when every workstation is occupied and rejects expired entry", async () => {
     const id = await user(); actAs(id);
     const [floor] = await db.insert(shadowTowerFloorsTable).values({ city: "huda_city", floorNumber: 61, ownerUserId: id, tenure: "own", archetype: "founder_team" }).returning(); floors.push(floor.id);

@@ -78,6 +78,10 @@ export interface OfficeRoom {
   sub?: string;
   /** Accent colour for the nameplate + glass tint. */
   accent?: string;
+  /** Whether the room's entrance is visibly secured. */
+  locked?: boolean;
+  /** Server-backed access intent for this entrance. */
+  access?: 'password' | 'organization';
   /** Hue seed for the occupant sprite. Omit for an empty (vacant) office. */
   occupantSeed?: number;
 }

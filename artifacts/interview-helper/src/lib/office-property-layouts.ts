@@ -67,6 +67,7 @@ export function officePropertyLayoutFromPlan(
   plan: ShadowTowerPlan,
   propertyKey = `${plan.city}:${plan.floorNumber}`,
   tenants: readonly ShadowTowerCommercialTenant[] = [],
+  lockOfficeEntrances = true,
 ): OfficePropertyLayout {
   const projectedPlan = withShadowTowerTenantFitout(plan, tenants.map((tenant) => tenant.businessKey));
   const objects = projectedPlan.objects;
@@ -87,7 +88,12 @@ export function officePropertyLayoutFromPlan(
       ? tenant ? `${tenant.fitout.label} · OCCUPIED` : "FOR SALE · LEASE"
       : undefined,
     x: object.footprint.x, y: object.footprint.y,
-    w: object.footprint.cols, h: object.footprint.rows, doorSide: "bottom", doorSpan: object.footprint.cols,
+     w: object.footprint.cols, h: object.footprint.rows,
+     doorSide: object.door?.side ?? "bottom",
+     doorAt: object.door?.at,
+     doorSpan: object.door?.span ?? 2,
+     locked: lockOfficeEntrances && object.door != null,
+     access: object.door?.access,
     accent: object.kind === "office_unit" ? tenant?.business.color ?? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][unitNumber - 1] : undefined,
   };
   });
@@ -123,7 +129,17 @@ export function officePropertyLayoutFromPlan(
     radius: Math.max(30, Math.hypot(object.footprint.cols * 8, object.footprint.rows * 8) + 22),
     footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
   };
-  });
+   }).concat(
+     rooms.filter((room) => room.locked).map((room) => ({
+       id: `${room.id}-door`,
+       label: `${room.label ?? "OFFICE"} · LOCKED`,
+       col: room.doorSide === "left" ? room.x : room.doorSide === "right" ? room.x + room.w - 1 : room.doorAt ?? room.x + Math.floor(room.w / 2),
+       row: room.doorSide === "top" ? room.y : room.doorSide === "bottom" ? room.y + room.h - 1 : room.doorAt ?? room.y + Math.floor(room.h / 2),
+       radius: 30,
+       footprint: { w: 1, d: 1 },
+       glyph: undefined,
+     })),
+   );
   const archetype = projectedPlan.floorType === "lobby" ? "SHADOW TOWER · RECEPTION"
     : projectedPlan.floorType === "recreation" ? "RECREATION · REC"
     : projectedPlan.floorType === "mezzanine" ? "PUBLIC MEZZANINE · COMPUTER CAFE"
@@ -190,6 +206,23 @@ function addRectTiles(set: Set<string>, rect: OfficeFloorRect) {
 export function getOfficeBlockedTiles(layout: OfficePropertyLayout): Set<string> {
   const blocked = new Set<string>();
   for (const footprint of layout.plan.collisionFootprints) addRectTiles(blocked, { id: "", col: footprint.x, row: footprint.y, w: footprint.cols, d: footprint.rows });
+  // Rooms are structural geometry too. Keep their door gap open, unless the
+  // authoritative access state says the entrance is still locked.
+  for (const room of layout.rooms) {
+    const side = room.doorSide ?? "bottom";
+    const span = Math.max(0, Math.min(room.doorSpan ?? 2, side === "left" || side === "right" ? room.h : room.w));
+    const at = room.doorAt ?? (side === "top" || side === "bottom"
+      ? room.x + Math.floor((room.w - span) / 2)
+      : room.y + Math.floor((room.h - span) / 2));
+    for (let col = room.x; col < room.x + room.w; col += 1) {
+      if (side !== "top" || room.locked || col < at || col >= at + span) blocked.add(`${col},${room.y}`);
+      if (side !== "bottom" || room.locked || col < at || col >= at + span) blocked.add(`${col},${room.y + room.h - 1}`);
+    }
+    for (let row = room.y; row < room.y + room.h; row += 1) {
+      if (side !== "left" || room.locked || row < at || row >= at + span) blocked.add(`${room.x},${row}`);
+      if (side !== "right" || room.locked || row < at || row >= at + span) blocked.add(`${room.x + room.w - 1},${row}`);
+    }
+  }
   return blocked;
 }
 export interface OfficeTile { col: number; row: number; }

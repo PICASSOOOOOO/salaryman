@@ -14,9 +14,13 @@ describe("Shadow Tower office projection", () => {
       expect(layout.cols).toBe(plan.cols);
       expect(layout.rows).toBe(plan.rows);
       expect(layout.teamDesks.map(d => d.id)).toEqual(plan.objects.filter(o => o.kind === "workstation").map(o => o.id));
-      expect(layout.stations.map(s => s.id)).toEqual(plan.objects.filter(o => o.interactive && o.kind !== "workstation" && o.kind !== "executive_desk").map(o => o.id));
+      expect(layout.stations.map(s => s.id)).toEqual([
+        ...plan.objects.filter(o => o.interactive && o.kind !== "workstation" && o.kind !== "executive_desk").map(o => o.id),
+        ...plan.objects.filter(o => o.kind === "office_unit" && o.door).map(o => `${o.id}-door`),
+      ]);
       expect(layout.playerDesk?.id).toBe("executive-desk");
       for (const station of layout.stations) {
+        if (station.id.endsWith("-door")) continue;
         const object = plan.objects.find(candidate => candidate.id === station.id)!;
         expect(station.footprint).toEqual({ w: object.footprint.cols, d: object.footprint.rows });
       }
@@ -28,6 +32,29 @@ describe("Shadow Tower office projection", () => {
       expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "office_unit")).toHaveLength(1);
       expect(getShadowTowerPlan("huda_city", 44, archetype).objects.filter(o => o.kind === "executive_desk")).toHaveLength(1);
     }
+  });
+
+  it("keeps the elevator in a dedicated perimeter hall and gives suites password doors", () => {
+    const plan = getShadowTowerPlan("minx_city", 17, "company", [], 4);
+    const hall = plan.objects.find((object) => object.kind === "elevator_hall")!;
+    const elevator = plan.objects.find((object) => object.kind === "elevator")!;
+    const suites = plan.objects.filter((object) => object.kind === "office_unit");
+    expect(hall.footprint).toMatchObject({ x: 0, y: 0, cols: 4 });
+    expect(elevator.footprint.x).toBe(0);
+    expect(suites).toHaveLength(4);
+    expect(suites.every((suite) => suite.footprint.y === 0 && suite.door?.access === "password")).toBe(true);
+    expect(suites.every((suite) => suite.door?.side === "bottom")).toBe(true);
+    expect(new Set(suites.map((suite) => suite.footprint.x))).toHaveProperty("size", 4);
+  });
+
+  it("blocks a locked suite doorway until the server-backed room access is granted", () => {
+    const plan = getShadowTowerPlan("minx_city", 17, "founder_team");
+    const locked = officePropertyLayoutFromPlan(plan, "minx_city:17", [], true);
+    const open = officePropertyLayoutFromPlan(plan, "minx_city:17", [], false);
+    const suite = plan.objects.find((object) => object.kind === "office_unit")!;
+    const door = suite.door!;
+    expect(getOfficeBlockedTiles(locked).has(`${door.at},${suite.footprint.y + suite.footprint.rows - 1}`)).toBe(true);
+    expect(getOfficeBlockedTiles(open).has(`${door.at},${suite.footprint.y + suite.footprint.rows - 1}`)).toBe(false);
   });
 
   it("keeps exact collisions and all interactive objects reachable", () => {

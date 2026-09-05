@@ -28,6 +28,12 @@ const footprintSchema = z.object({
   x: z.number().int().nonnegative(), y: z.number().int().nonnegative(),
   cols: z.number().int().positive(), rows: z.number().int().positive(),
 }).strict();
+const shadowTowerDoorSchema = z.object({
+  side: z.enum(["top", "bottom", "left", "right"]),
+  at: z.number().int().nonnegative(),
+  span: z.number().int().positive(),
+  access: z.enum(["password", "organization"]),
+}).strict();
 export const shadowTowerObjectSchema = z.object({
   id: z.string().min(1),
   kind: z.enum(["elevator_hall", "stairs", "executive_room", "office_unit", "executive_desk", "workstation", "terminal", "tenant_station", "atm", "vending_machine", "elevator", "radio", "payphone", "rec_station", "sponsor", "bar", "bed", "nurse_station", "doctor_station", "work_board", "guard_station", "holding_cell", "evidence_lockup", "black_market", "secret_door"]),
@@ -35,6 +41,7 @@ export const shadowTowerObjectSchema = z.object({
   zoneId: z.string().min(1).optional(),
   label: z.string().min(1).optional(),
   footprint: footprintSchema,
+  door: shadowTowerDoorSchema.optional(),
   interactive: z.boolean(),
 }).strict();
 
@@ -136,10 +143,10 @@ export function quoteShadowTowerOfficeUnit(archetype: ShadowTowerArchetype, floo
 }
 
 function rect(x: number, y: number, cols: number, rows: number) { return { x, y, cols, rows }; }
-function workstationObjects(count: number) {
+function workstationObjects(count: number, startX = 5, startY = 5) {
   return Array.from({ length: count }, (_, index) => ({
     id: `workstation-${index + 1}`, kind: "workstation" as const,
-    footprint: rect(5 + (index % 5) * 3, 5 + Math.floor(index / 5) * 2, 2, 1), interactive: true,
+    footprint: rect(startX + (index % 5) * 4, startY + Math.floor(index / 5) * 2, 2, 1), interactive: true,
   }));
 }
 
@@ -150,19 +157,28 @@ function terminalObjects(upgrades: readonly string[]) {
     ...extraTerminalUpgrades.map((_, index) => ({
       id: `terminal-${index + 2}`,
       kind: "terminal" as const,
-      footprint: rect(2 + index * 2, 10, 1, 1),
+      footprint: rect(5 + index * 2, 14, 1, 1),
       interactive: true,
     })),
-    ...(legacyTerminal ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(10, 10, 1, 1), interactive: true }] : []),
+    ...(legacyTerminal ? [{ id: "operations-terminal", kind: "terminal" as const, footprint: rect(13, 14, 1, 1), interactive: true }] : []),
   ];
 }
 
 function officeUnitObjects(count: number, floorNumber: number) {
-  const suiteWidth = Math.floor(24 / count);
+  // The elevator hall occupies the west-side circulation core. Suites run
+  // continuously along the north perimeter instead of floating in the room.
+  const suiteStart = 4;
+  const suiteWidth = Math.floor(26 / count);
   return Array.from({ length: count }, (_, index) => ({
     id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
     kind: "office_unit" as const,
-    footprint: rect(5 + index * suiteWidth, 1, suiteWidth - 1, 8),
+    footprint: rect(suiteStart + index * suiteWidth, 0, suiteWidth, 7),
+    door: {
+      side: "bottom" as const,
+      at: suiteStart + index * suiteWidth + Math.max(0, Math.floor((suiteWidth - 2) / 2)),
+      span: 2,
+      access: "password" as const,
+    },
     interactive: true,
   }));
 }
@@ -174,18 +190,18 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
   const suites = officeUnitObjects(suiteCount, floorNumber);
   const executiveSuite = suites[0];
   const plan: ShadowTowerPlan = {
-    floorType: "office", city, floorNumber, archetype, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 8 },
+    floorType: "office", city, floorNumber, archetype, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 10 },
     objects: [
       { id: "elevator", kind: "elevator", footprint: rect(0, 1, 2, 2), interactive: true },
-      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 0, 4, 5), interactive: false },
+      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 0, 4, 8), interactive: false },
       ...suites,
       // Suite 1 is the furnished executive office assigned to the founder.
-      { id: "executive-desk", kind: "executive_desk" as const, footprint: rect(executiveSuite.footprint.x + 2, 6, 2, 1), interactive: false },
-      { id: "executive-terminal", kind: "terminal" as const, footprint: rect(executiveSuite.footprint.x + 5, 6, 1, 1), interactive: true },
+      { id: "executive-desk", kind: "executive_desk" as const, footprint: rect(executiveSuite.footprint.x + 2, 5, 2, 1), interactive: false },
+      { id: "executive-terminal", kind: "terminal" as const, footprint: rect(executiveSuite.footprint.x + 5, 5, 1, 1), interactive: true },
       // Additional desks and terminals are separate vending-machine fit-outs.
       ...(enabledUpgrades.includes("extra_workstations")
-        ? workstationObjects(4)
-        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length)),
+        ? workstationObjects(4, 6, 9)
+        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length, 6, 9)),
       ...terminalObjects(enabledUpgrades),
       { id: "atm", kind: "atm", footprint: rect(2, 13, 1, 1), interactive: true },
       { id: "vending", kind: "vending_machine", footprint: rect(27, 11, 1, 1), interactive: true },

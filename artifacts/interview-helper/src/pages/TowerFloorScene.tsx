@@ -13,6 +13,7 @@ import { CityClock } from "@/components/CityClock";
 import { getTowerAmbientOccupants, getTowerOperatorDialogue, type TowerOperatorDialogue } from "@/lib/tower-life";
 import { getTowerSpaceArtKind, getTowerSpaceArtUrl, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 import { useAuth } from "@/hooks/use-auth";
+import { apiFetch } from "@/lib/api-client";
 import {
   getShadowTowerCommercialTenants,
   getShadowTowerPlan,
@@ -221,6 +222,7 @@ function getLayoutForFloor(
   archetype: ShadowTowerArchetype,
   upgrades: readonly string[],
   tenants: readonly ShadowTowerCommercialTenant[],
+  lockOfficeEntrances = true,
 ): OfficePropertyLayout {
   if (floor === 1) return getRecreationOfficeLayout(city);
   if (floor === 2 || floor === 3 || floor === 4) return getPublicFloorOfficeLayout(city, floor);
@@ -229,7 +231,7 @@ function getLayoutForFloor(
   // a service level, with a distinct property key and identity in the chrome.
   const planFloor = floor === -1 ? 1 : Math.max(1, floor);
   const plan = getShadowTowerPlan(city, planFloor, archetype, upgrades, Math.max(1, tenants.length));
-  return officePropertyLayoutFromPlan(plan, `${city}:${floor === -1 ? "b1" : floor}`, tenants);
+  return officePropertyLayoutFromPlan(plan, `${city}:${floor === -1 ? "b1" : floor}`, tenants, lockOfficeEntrances);
 }
 
 function floorPathFor(location: string, floor: number): string {
@@ -253,15 +255,37 @@ export default function TowerFloorScene({
   const [feedback, setFeedback] = useState("WALK THE FLOOR · APPROACH A STATION · PRESS E");
   const [lastInteraction, setLastInteraction] = useState<string | null>(null);
   const [activeConversation, setActiveConversation] = useState<TowerOperatorDialogue | null>(null);
+  const [floorRecordState, setFloorRecordState] = useState<"unknown" | "exists" | "missing">("unknown");
+  const [unlockedRooms, setUnlockedRooms] = useState<string[]>([]);
+  const [doorPrompt, setDoorPrompt] = useState<{ roomId: string; label: string } | null>(null);
+  const [doorPassword, setDoorPassword] = useState("");
+  const [doorError, setDoorError] = useState("");
 
   const safeFloor = Number.isFinite(floor) ? Math.trunc(floor) : 1;
   const city = useMemo(() => resolveCity(cityProp), [cityProp]);
   const commercialTenants = useMemo(() => getShadowTowerCommercialTenants(safeFloor), [safeFloor]);
   const identity = useMemo(() => getTowerFloorIdentity(safeFloor, commercialTenants[0]), [commercialTenants, safeFloor]);
   const selectedArchetype: ShadowTowerArchetype = archetype ?? (identity.status === "available" ? "founder_team" : "company");
+  const baseLayout = useMemo(
+    () => getLayoutForFloor(
+      safeFloor,
+      city,
+      selectedArchetype,
+      upgrades,
+      commercialTenants,
+      identity.status === "occupied" && floorRecordState !== "missing",
+    ),
+    [city, commercialTenants, floorRecordState, identity.status, safeFloor, selectedArchetype, upgrades],
+  );
   const layout = useMemo(
-    () => getLayoutForFloor(safeFloor, city, selectedArchetype, upgrades, commercialTenants),
-    [city, commercialTenants, safeFloor, selectedArchetype, upgrades],
+    () => unlockedRooms.length
+      ? {
+        ...baseLayout,
+        rooms: baseLayout.rooms.map((room) => unlockedRooms.includes(room.id) ? { ...room, locked: false } : room),
+        stations: baseLayout.stations.filter((station) => !station.id.endsWith("-door") || !unlockedRooms.includes(station.id.slice(0, -"-door".length))),
+      }
+      : baseLayout,
+    [baseLayout, unlockedRooms],
   );
   const artKind: TowerSpaceArtKind | null = useMemo(() => {
     // Available and sealed addresses are real shells, not tenant interiors.
@@ -290,6 +314,27 @@ export default function TowerFloorScene({
     setActiveConversation(null);
   }, [safeFloor]);
 
+  useEffect(() => {
+    setUnlockedRooms([]);
+    setDoorPrompt(null);
+    setDoorPassword("");
+    setDoorError("");
+    if (!isAuthenticated || identity.status !== "occupied" || safeFloor < 1) {
+      setFloorRecordState("missing");
+      return;
+    }
+    let cancelled = false;
+    setFloorRecordState("unknown");
+    void apiFetch(`/api/shadow-tower/floors/${city}/${safeFloor}`, { credentials: "include" })
+      .then((response) => {
+        if (!cancelled) setFloorRecordState(response.status === 404 ? "missing" : "exists");
+      })
+      .catch(() => {
+        if (!cancelled) setFloorRecordState("unknown");
+      });
+    return () => { cancelled = true; };
+  }, [city, identity.status, isAuthenticated, safeFloor]);
+
   const elevatorDestination = useMemo(
     () => `/tower/elevator?from=${encodeURIComponent(floorPath)}&floor=${safeFloor}`,
     [floorPath, safeFloor],
@@ -298,6 +343,24 @@ export default function TowerFloorScene({
   const interact = useCallback((station: { id: string; label: string; glyph?: string }) => {
     const id = station.id.toLowerCase();
     const label = station.label.toUpperCase();
+    if (id.endsWith("-door")) {
+      const roomId = station.id.slice(0, -"-door".length);
+      if (unlockedRooms.includes(roomId)) {
+        setFeedback(`${label} · ACCESS GRANTED`);
+        return;
+      }
+      if (floorRecordState !== "exists") {
+        setFeedback(floorRecordState === "missing"
+          ? `${label} · NO PRIVATE FLOOR RECORD · ACCESS IS NOT CONFIGURED`
+          : `${label} · CHECKING FLOOR ACCESS`);
+        return;
+      }
+      setDoorPrompt({ roomId, label: station.label.replace(/ · LOCKED$/i, "") });
+      setDoorPassword("");
+      setDoorError("");
+      setFeedback(`${label} · PASSWORD REQUIRED`);
+      return;
+    }
     const tenant = commercialTenants.find((candidate) => id === `tenant-service-${candidate.businessKey}`);
     if (tenant) {
       setFeedback(`${tenant.business.name.toUpperCase()} · ${tenant.service.label.toUpperCase()} · OPENING SERVER SERVICES BOARD`);
@@ -323,7 +386,29 @@ export default function TowerFloorScene({
       setFeedback(`${label} · INTERACTION LOGGED · ${identity.label}`);
     }
     setLastInteraction(label);
-  }, [commercialTenants, elevatorDestination, identity, navigate, safeFloor]);
+  }, [commercialTenants, elevatorDestination, floorRecordState, identity, navigate, safeFloor, unlockedRooms]);
+
+  const verifyDoorPassword = useCallback(async () => {
+    if (!doorPrompt || floorRecordState !== "exists") return;
+    setDoorError("");
+    const response = await apiFetch(`/api/shadow-tower/floors/${city}/${safeFloor}`, {
+      credentials: "include",
+      headers: doorPassword.trim() ? { "x-shadow-tower-password": doorPassword } : undefined,
+    });
+    if (response.ok) {
+      setUnlockedRooms((current) => current.includes(doorPrompt.roomId) ? current : [...current, doorPrompt.roomId]);
+      setFeedback(`${doorPrompt.label.toUpperCase()} · ACCESS GRANTED`);
+      setDoorPrompt(null);
+      setDoorPassword("");
+      return;
+    }
+    if (response.status === 404) {
+      setFloorRecordState("missing");
+      setDoorError("PRIVATE FLOOR RECORD NOT FOUND");
+      return;
+    }
+    setDoorError(response.status === 403 ? "ACCESS DENIED · CHECK THE PASSWORD" : "ACCESS CHECK FAILED");
+  }, [city, doorPassword, doorPrompt, floorRecordState, safeFloor]);
 
   const stations = useMemo(
     () => layout.stations.map((station) => ({
@@ -428,6 +513,38 @@ export default function TowerFloorScene({
           deskRowCount={layout.deskRows}
           capsuleCount={layout.capsules}
         />
+
+        {doorPrompt && (
+          <section
+            className="absolute bottom-20 right-3 z-40 w-[min(24rem,calc(100%-1.5rem))] border border-amber-300/35 bg-[#17120b]/95 p-4 shadow-2xl backdrop-blur-md sm:bottom-24 sm:right-6"
+            data-testid="tower-door-password"
+            role="dialog"
+            aria-label={`Password for ${doorPrompt.label}`}
+          >
+            <div className="flex items-start gap-3">
+              <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black tracking-[.2em] text-amber-200">LOCKED ENTRANCE</p>
+                <h2 className="mt-1 truncate text-sm font-black tracking-[.1em] text-white">{doorPrompt.label}</h2>
+                <p className="mt-1 text-[10px] text-zinc-400">This executive or business entrance is checked by the Tower access server.</p>
+                <input
+                  autoFocus
+                  type="password"
+                  value={doorPassword}
+                  onChange={(event) => setDoorPassword(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === "Enter") void verifyDoorPassword(); }}
+                  placeholder="TOWER PASSWORD"
+                  className="mt-3 w-full border border-amber-200/30 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-amber-200/70"
+                />
+                {doorError && <p className="mt-2 text-[10px] font-bold tracking-[.08em] text-red-200">{doorError}</p>}
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={() => void verifyDoorPassword()} className="flex-1 border border-amber-200/50 bg-amber-200/10 px-3 py-2 text-[10px] font-black tracking-[.16em] text-amber-100">UNLOCK</button>
+                  <button type="button" onClick={() => setDoorPrompt(null)} className="border border-white/15 px-3 py-2 text-[10px] font-black tracking-[.16em] text-zinc-400">CANCEL</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex items-end justify-between gap-3 sm:inset-x-6">
           <div className="max-w-xl border border-cyan-200/20 bg-[#07101b]/90 px-3 py-2 text-[10px] font-bold tracking-[.12em] text-cyan-100 shadow-xl backdrop-blur-sm">

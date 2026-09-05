@@ -26,6 +26,18 @@ describe("Shadow Tower contract", () => {
     expect(plan.objects.filter((item) => item.kind === "vending_machine")).toHaveLength(1);
     expect(validateShadowTowerPlan(plan).ok).toBe(true);
   });
+
+  it("serializes the elevator circulation core and password-protected suite doors", () => {
+    const plan = getShadowTowerPlan("huda_city", 44, "company", [], 4);
+    const hall = plan.objects.find((item) => item.kind === "elevator_hall");
+    const elevator = plan.objects.find((item) => item.kind === "elevator");
+    const suites = plan.objects.filter((item) => item.kind === "office_unit");
+    expect(hall?.footprint).toMatchObject({ x: 0, y: 0, cols: 4, rows: 8 });
+    expect(elevator?.footprint.x).toBe(0);
+    expect(suites).toHaveLength(4);
+    expect(suites.every((item) => item.footprint.y === 0 && item.door?.access === "password")).toBe(true);
+    expect(validateShadowTowerPlan(plan)).toMatchObject({ ok: true });
+  });
   it("makes settled workstation upgrades visible", () => {
     const base = getShadowTowerPlan("huda_city", 2, "company");
     const upgraded = getShadowTowerPlan("huda_city", 2, "company", ["extra_workstations", "operations_terminal", "secure_access"]);

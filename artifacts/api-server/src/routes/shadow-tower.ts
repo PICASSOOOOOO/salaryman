@@ -61,7 +61,7 @@ async function canAccess(userIdValue: string, floor: typeof shadowTowerFloorsTab
 }
 function safeFloor(floor: typeof shadowTowerFloorsTable.$inferSelect) {
   const { passwordHash: _passwordHash, ...safe } = floor;
-  return safe;
+  return { ...safe, hasPassword: Boolean(floor.passwordHash) };
 }
 
 router.get("/shadow-tower/catalog", (_req, res) => res.json({ listings: Object.values(SHADOW_TOWER_LISTINGS) }));

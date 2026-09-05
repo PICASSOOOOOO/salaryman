@@ -1604,6 +1604,7 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   // furniture pass. Their station records exist only for proximity/action
   // handling; drawing another marker here would stack a fake prop on the desk.
   if (st.id.startsWith('cafe-computer-')) return;
+  if (st.id.endsWith('-door')) { drawLockedDoorMarker(ctx, s, st, tx, ty); return; }
   const w = st.footprint?.w ?? 1;
   const d = st.footprint?.d ?? 1;
   // Each object gets a distinct, recognisable render so it reads as part of the
@@ -1632,6 +1633,35 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
     ctx.textAlign = 'center';
     ctx.fillText((active ? '▸ ' : '') + st.label, top.x, top.y - s.heightPx(15) - 8 * (s.T / TILE) * 0.5);
     ctx.textAlign = 'left';
+  }
+}
+
+function drawLockedDoorMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  const { P } = s;
+  const p = P(tx, ty);
+  const u = Math.max(0.75, s.T / TILE);
+  const active = s.playable && s.activeStationId === st.id;
+  ctx.save();
+  ctx.fillStyle = active ? "rgba(248, 216, 120, .96)" : "rgba(231, 181, 79, .9)";
+  ctx.strokeStyle = active ? "#fff1a8" : "#9d6b25";
+  ctx.lineWidth = Math.max(1, u);
+  ctx.shadowColor = active ? "rgba(255, 221, 120, .9)" : "rgba(212, 157, 45, .5)";
+  ctx.shadowBlur = active ? 14 * u : 7 * u;
+  ctx.fillRect(p.x - 4 * u, p.y - 10 * u, 8 * u, 8 * u);
+  ctx.strokeRect(p.x - 4 * u, p.y - 10 * u, 8 * u, 8 * u);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y - 11 * u, 3 * u, Math.PI, 0);
+  ctx.stroke();
+  ctx.fillStyle = "#17131a";
+  ctx.fillRect(p.x - 1 * u, p.y - 7 * u, 2 * u, 3 * u);
+  ctx.restore();
+  if (!s.suppressLabels || active) {
+    ctx.save();
+    ctx.fillStyle = active ? "#fff1a8" : "rgba(245, 210, 130, .86)";
+    ctx.font = `${Math.max(8, 4.2 * u * 0.5)}px "Fira Code", monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText(active ? `▸ ${st.label}` : "LOCKED DOOR", p.x, p.y - 18 * u);
+    ctx.restore();
   }
 }
 
@@ -1812,6 +1842,23 @@ function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRo
     ctx.lineTo(doorway.x + 4 * (s.T / TILE), doorway.y);
     ctx.stroke();
     ctx.restore();
+    if (room.locked) {
+      const u = Math.max(0.7, s.T / TILE);
+      ctx.save();
+      ctx.fillStyle = "rgba(30, 22, 18, .94)";
+      ctx.strokeStyle = room.accent ?? "#e8bb63";
+      ctx.lineWidth = Math.max(1, u);
+      ctx.shadowColor = "rgba(235, 187, 94, .7)";
+      ctx.shadowBlur = 8 * u;
+      ctx.fillRect(doorway.x - 5 * u, doorway.y - 9 * u, 10 * u, 9 * u);
+      ctx.strokeRect(doorway.x - 5 * u, doorway.y - 9 * u, 10 * u, 9 * u);
+      ctx.beginPath();
+      ctx.arc(doorway.x, doorway.y - 10 * u, 3.5 * u, Math.PI, 0);
+      ctx.stroke();
+      ctx.fillStyle = "#f6d78c";
+      ctx.fillRect(doorway.x - 1 * u, doorway.y - 6 * u, 2 * u, 3 * u);
+      ctx.restore();
+    }
   }
   // nameplate — suppressed on mobile/touch
   const top = P(room.x + room.w / 2, room.y);
