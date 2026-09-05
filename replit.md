@@ -91,6 +91,8 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - Use **Godot** for sprite sheets, animation cycles, 2D spatial blocking, and art review.
 - Use **Unreal Engine** for production-quality 3D characters, spatial environments, and cinematic assets.
 - Route both through the API-owned art catalog, explicit renderer selection, and QA/promotion flow. Never silently swap an explicitly selected renderer.
+- The physical visual direction is **1970s–1980s solar-punk retrofuture**: warm daylight, abundant plants, repaired materials, amber glass, brushed metal, painted steel, modular civic architecture, and optimistic analog technology. The story itself remains dark noir; express that through weather, framing, lighting, wear, and events rather than making every physical asset cyberpunk-dark.
+- Every asset must be animation-worthy: clear gameplay-scale silhouettes, separable layers/materials, clean joints and pivots, stable camera/light, tileable or modular construction where applicable, and no baked text/UI.
 
 ## External Dependencies
 

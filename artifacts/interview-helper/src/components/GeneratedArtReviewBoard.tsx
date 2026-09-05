@@ -3,26 +3,32 @@ import { ArrowUpRight, Compass, Image as ImageIcon, Sparkles } from 'lucide-reac
 const REFERENCES = [
   {
     label: 'Character design',
-    description: 'Unreal-ready hero character direction',
-    file: 'salaryman-character-pablo-review.png',
+    description: 'Solar-punk physical design · dark-noir story ready',
+    file: 'salaryman-solarpunk-character-v2.png',
     ratio: 'aspect-[3/4]',
   },
   {
+    label: 'Animation poses',
+    description: 'Godot motion reference with readable key poses',
+    file: 'salaryman-solarpunk-animation-v2.png',
+    ratio: 'aspect-[16/9]',
+  },
+  {
     label: 'Landscape',
-    description: 'Shadow Tower spatial environment direction',
-    file: 'salaryman-shadow-tower-landscape-review.png',
+    description: 'Solar-punk physical world · noir lighting ready',
+    file: 'salaryman-solarpunk-landscape-v2.png',
     ratio: 'aspect-[16/9]',
   },
   {
     label: 'Object kit',
-    description: 'Production prop and interactable direction',
-    file: 'salaryman-office-object-kit-review.png',
+    description: 'Modular props with animation-friendly silhouettes',
+    file: 'salaryman-solarpunk-object-kit-v2.png',
     ratio: 'aspect-[16/9]',
   },
   {
     label: 'Tile materials',
-    description: 'Godot blocking and environment material direction',
-    file: 'salaryman-tile-material-review.png',
+    description: 'Godot-ready seamless physical materials',
+    file: 'salaryman-solarpunk-tiles-v2.png',
     ratio: 'aspect-[16/9]',
   },
 ];
@@ -34,7 +40,7 @@ export default function GeneratedArtReviewBoard() {
         <Compass className="w-4 h-4 text-sky-300" />
         <div>
           <div className="font-mono text-[12px] tracking-widest uppercase text-zinc-200">Replacement direction board</div>
-          <div className="font-mono text-[9px] tracking-widest uppercase text-zinc-600">generated references · not promoted to runtime</div>
+          <div className="font-mono text-[9px] tracking-widest uppercase text-zinc-600">solar-punk physical world · dark-noir narrative · not promoted</div>
         </div>
         <span className="ml-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-sky-300">
           <ImageIcon className="w-3 h-3" /> compare before bake
@@ -64,7 +70,7 @@ export default function GeneratedArtReviewBoard() {
         ))}
       </div>
       <div className="border-t border-white/[0.06] px-4 py-2 font-mono text-[9px] text-zinc-600">
-        These references establish the direction for the Godot sprite/material pass and the Unreal production pass. They remain review-only until contracts and QA are satisfied.
+        These references establish the physical direction for the Godot sprite/material pass and the Unreal production pass. The story can stay dark noir through lighting, weather, framing, and events. They remain review-only until contracts and QA are satisfied.
       </div>
     </section>
   );

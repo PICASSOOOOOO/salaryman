@@ -1,6 +1,6 @@
 ---
 name: Godot and Unreal art development
-description: Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
+description: Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline, with solar-punk physical art and dark-noir narrative treatment.
 ---
 
 Godot 4 art-dev consumes the existing 16×32 character-sheet contract and
@@ -17,4 +17,7 @@ splitting gameplay state or duplicating the art pipeline across another server.
 renderer-side animation and blocking. Keep Unreal jobs explicitly pinned for
 production 3D/cinematic work and never silently fall back to another renderer.
 Promote reviewed outputs through the existing art catalog and QA flow rather
-than making either project a second source of truth.
+than making either project a second source of truth. The physical world should
+feel like a 1970s–1980s solar-punk retrofuture even when the story is dark noir.
+All new assets must be animation-worthy: readable silhouettes, separable layers,
+clean pivots and contacts, stable lighting, and no baked text or UI.
