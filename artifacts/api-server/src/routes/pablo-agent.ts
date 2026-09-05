@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, dealsTable, pabloMemoriesTable, pabloAgentRunsTable, type PabloAgentStep } from "@workspace/db";
 import { and, eq, ilike, sql } from "drizzle-orm";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 const router: IRouter = Router();
 
@@ -180,7 +181,7 @@ router.post("/pablo/agent/run", async (req, res) => {
   try {
     for (let i = 0; i < MAX_STEPS; i++) {
       const completion = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         messages: messages as any,
         tools: TOOLS,
         tool_choice: "auto",
@@ -309,7 +310,7 @@ router.post("/pablo/orchestrate", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       messages: [
         { role: "system", content: ORCHESTRATOR_SYSTEM_PROMPT },
         { role: "user", content: `GOAL: ${goal.slice(0, 1000)}\n\nROSTER:\n${rosterText}` },

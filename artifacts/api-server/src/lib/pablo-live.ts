@@ -1,4 +1,5 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "./openai-models";
 
 /**
  * Live-data grounding for Pablo / Mila.
@@ -58,7 +59,7 @@ export async function pabloWebSearch(
   try {
     const r = await openai.responses.create(
       {
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         tools: [{ type: "web_search" }] as any,
         input:
           `Search the web for current information and return a concise, factual brief ` +

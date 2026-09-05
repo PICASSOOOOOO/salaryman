@@ -28,6 +28,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { completeInternalText, selectClaudeTools } from "../lib/internal-ai";
 import { isPabloNavPath } from "../lib/pablo-navigation";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 const router = Router();
 const objectStorage = new ObjectStorageService();
@@ -1302,7 +1303,7 @@ async function runPabloCompletion(
   let firstProvider: "gpt" | "claude" = "gpt";
   try {
     first = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       messages,
       max_completion_tokens: 600,
       reasoning_effort: "minimal",
@@ -1422,7 +1423,7 @@ async function runPabloCompletion(
   try {
     if (firstProvider === "claude") throw new Error("continue tool-selected response with Claude");
     const second = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       messages: followMessages,
       max_completion_tokens: 400,
       reasoning_effort: "minimal",
@@ -2128,7 +2129,7 @@ router.post("/chat/prompt-sensei", async (req: Request, res: Response): Promise<
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       messages: llmMessages,
       max_completion_tokens: 1200,
     });

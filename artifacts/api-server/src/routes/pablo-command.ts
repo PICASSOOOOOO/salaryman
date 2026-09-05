@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { screenEmail, logLoginAttempt } from "../lib/email-security";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 // ─── IP rate limiter for the anonymously-callable public endpoint ────────────
 // In-memory window per IP: max 30 requests per 60-second rolling window.
@@ -239,7 +240,7 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
     messages.push({ role: "user", content: transcript.slice(0, 1500) });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: getOpenAiTextModel(),
       messages,
       max_completion_tokens: 200,
       tools: [

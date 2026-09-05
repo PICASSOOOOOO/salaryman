@@ -1,6 +1,7 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import WebSocket from "ws";
+import { getOpenAiTextModel, OPENAI_FALLBACK_TEXT_MODEL } from "./openai-models";
 
 export type RequestType = "code" | "chat" | "analysis" | "creative" | "general";
 export type ModelProvider = "claude" | "gpt" | "openclaw";
@@ -127,7 +128,7 @@ function selectModel(type: RequestType): RouterResult {
     default:
       return {
         provider: "gpt",
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         agentName: "SWIFT-3",
         agentShort: "SWIFT-3",
         requestType: type,
@@ -135,7 +136,7 @@ function selectModel(type: RequestType): RouterResult {
     case "creative":
       return {
         provider: "gpt",
-        model: "gpt-5",
+        model: getOpenAiTextModel(),
         agentName: "SWIFT-3",
         agentShort: "SWIFT-3",
         requestType: type,
@@ -257,7 +258,7 @@ export async function streamWithRouter(
       route.agentName = "CLAW-7";
       route.agentShort = "CLAW-7";
     } else {
-      route.model = "gpt-5";
+      route.model = getOpenAiTextModel();
       route.agentName = "SWIFT-3";
       route.agentShort = "SWIFT-3";
     }
@@ -304,12 +305,27 @@ export async function streamWithRouter(
       })),
     ];
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5",
+    const createStream = (model: string) => openai.chat.completions.create({
+      model,
       max_completion_tokens: maxTokens,
       messages: gptMessages,
       stream: true,
     });
+
+    let model = getOpenAiTextModel();
+    let stream;
+    try {
+      stream = await createStream(model);
+    } catch (error) {
+      if (model === OPENAI_FALLBACK_TEXT_MODEL) throw error;
+      console.warn(`[ai-router] ${model} unavailable; falling back to ${OPENAI_FALLBACK_TEXT_MODEL}`);
+      model = OPENAI_FALLBACK_TEXT_MODEL;
+      route.model = model;
+      route.agentName = "SWIFT-3";
+      route.agentShort = "SWIFT-3";
+      onChunk({ agent: route });
+      stream = await createStream(model);
+    }
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content;
@@ -341,7 +357,7 @@ export async function streamWithRouter(
       } catch (claudeErr) {
         console.error("Claude also failed (after retry), falling back to GPT:", claudeErr);
         route.provider = "gpt";
-        route.model = "gpt-5";
+        route.model = getOpenAiTextModel();
         route.agentName = "SWIFT-3";
         route.agentShort = "SWIFT-3";
         onChunk({ agent: route });
@@ -359,7 +375,7 @@ export async function streamWithRouter(
     } catch (err) {
       console.error("Claude failed (after retry), falling back to GPT:", err);
       route.provider = "gpt";
-      route.model = "gpt-5";
+      route.model = getOpenAiTextModel();
       route.agentName = "SWIFT-3";
       route.agentShort = "SWIFT-3";
       onChunk({ agent: route });
@@ -413,7 +429,7 @@ export async function checkProviderHealth(): Promise<{
     (async () => {
       try {
         const completion = await openai.chat.completions.create({
-          model: "gpt-5",
+          model: getOpenAiTextModel(),
           max_completion_tokens: 64,
           messages: [{ role: "user", content: "ping" }],
           stream: false,

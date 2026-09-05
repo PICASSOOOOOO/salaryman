@@ -156,3 +156,4 @@
 - [Tower physical floor shells](tower-floor-physical-shells.md) — every elevator stop renders a physical shell; vacant/sealed/restricted addresses hold access at the boundary instead of disappearing.
 - [Tower service scopes](tower-service-scopes.md) — only fixed-suite tenants have service counters; lobby/every-floor businesses resolve empty instead of falling back to shared listings.
 - [Retail-grade asset pipeline](asset-pipeline-quality.md) — provider completion is not game readiness; validate outputs and require explicit review for questionable cutouts.
+- [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.

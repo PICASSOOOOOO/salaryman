@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAiTextModel } from "./openai-models";
 
 interface ConversationTurn {
   role: "caller" | "pablo" | "mila";
@@ -330,7 +331,7 @@ export async function processPabloTurn(
   }
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-5",
+    model: getOpenAiTextModel(),
     max_completion_tokens: 300,
     messages,
   });

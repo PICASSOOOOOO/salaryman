@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { checkProviderHealth } from "../lib/ai-router";
+import { getOpenAiTextModel } from "../lib/openai-models";
 
 const router: IRouter = Router();
 
@@ -26,7 +27,7 @@ const AGENT_DEFINITIONS = [
     description: "Optimized for speed and general intelligence. Handles conversational queries, translations, quick Q&A, and creative writing at maximum velocity.",
     plainDescription: "Fast answers for general questions, chat, and creative tasks.",
     provider: "gpt" as const,
-    model: "gpt-5",
+    model: getOpenAiTextModel(),
     status: "unknown" as "online" | "offline" | "unknown",
     requestTypes: ["chat", "general", "creative"],
   },
