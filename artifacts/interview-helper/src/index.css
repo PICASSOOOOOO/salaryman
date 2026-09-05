@@ -1,40 +1,44 @@
-@layer theme, base, clerk, components, utilities;
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans:wght@400;500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
 @import "tailwindcss";
+@layer theme, base, clerk, components, utilities;
 
 @theme inline {
-  --font-sans: 'Inter', 'Noto Sans JP', 'Noto Sans KR', 'Noto Sans SC', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Fira Code', 'Noto Sans JP', 'Noto Sans KR', 'Noto Sans SC', monospace;
-  --font-display: 'Inter', 'Noto Sans', sans-serif;
+  --font-sans:
+    "DM Sans", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC", "Noto Sans",
+    sans-serif;
+  --font-mono:
+    "Space Mono", "Fira Code", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC",
+    monospace;
+  --font-display: "Syne", "DM Sans", "Noto Sans", sans-serif;
 
-  /* Office sim — warm dark slate, practical but textured */
-  --color-background: hsl(225 12% 7%);
-  --color-foreground: hsl(210 15% 90%);
+  /* SALARYMAN — ink, oxidized copper, and signal cyan. */
+  --color-background: hsl(216 28% 7%);
+  --color-foreground: hsl(40 22% 91%);
 
-  --color-card: hsl(225 11% 9%);
-  --color-card-foreground: hsl(210 15% 90%);
+  --color-card: hsl(216 24% 10%);
+  --color-card-foreground: hsl(40 22% 91%);
 
-  --color-popover: hsl(225 11% 10%);
-  --color-popover-foreground: hsl(210 15% 90%);
+  --color-popover: hsl(216 24% 11%);
+  --color-popover-foreground: hsl(40 22% 91%);
 
-  --color-border: hsl(220 10% 17%);
-  --color-input: hsl(225 11% 11%);
-  --color-ring: hsl(200 75% 52%);
+  --color-border: hsl(210 17% 22%);
+  --color-input: hsl(216 23% 12%);
+  --color-ring: hsl(186 75% 54%);
 
-  --color-primary: hsl(200 75% 52%);
-  --color-primary-foreground: hsl(225 12% 7%);
+  --color-primary: hsl(186 75% 54%);
+  --color-primary-foreground: hsl(216 28% 7%);
 
-  --color-secondary: hsl(220 10% 14%);
-  --color-secondary-foreground: hsl(210 12% 70%);
+  --color-secondary: hsl(216 18% 17%);
+  --color-secondary-foreground: hsl(210 14% 73%);
 
-  --color-muted: hsl(220 10% 12%);
-  --color-muted-foreground: hsl(220 8% 52%);
+  --color-muted: hsl(216 18% 14%);
+  --color-muted-foreground: hsl(212 12% 56%);
 
-  --color-accent: hsl(185 65% 48%);
-  --color-accent-foreground: hsl(225 12% 7%);
+  --color-accent: hsl(35 77% 63%);
+  --color-accent-foreground: hsl(216 28% 7%);
 
-  --color-destructive: hsl(0 72% 51%);
-  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(2 61% 56%);
+  --color-destructive-foreground: hsl(40 22% 91%);
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -44,6 +48,11 @@
 
 :root {
   color-scheme: dark;
+  --salary-ink: 8 15 22;
+  --salary-panel: 13 24 32;
+  --salary-paper: 229 220 198;
+  --salary-copper: 196 126 63;
+  --salary-signal: 92 213 208;
   --device-link-void: 7 10 12;
   --device-link-paper: 220 231 232;
   --device-link-muted: 142 157 159;
@@ -66,6 +75,11 @@
 }
 
 .dark {
+  --salary-ink: 8 15 22;
+  --salary-panel: 13 24 32;
+  --salary-paper: 229 220 198;
+  --salary-copper: 196 126 63;
+  --salary-signal: 92 213 208;
   --device-link-void: 7 10 12;
   --device-link-paper: 220 231 232;
   --device-link-muted: 142 157 159;
@@ -90,15 +104,29 @@ body.game-route textarea {
 /* ─── Office Sim Font Floor ───
    Bump all micro-text to readable sizes.
    Game routes (.game-route) can override these. */
-body:not(.game-route) .text-\[8px\]  { font-size: 0.6875rem !important; line-height: 1.3 !important; }
-body:not(.game-route) .text-\[9px\]  { font-size: 0.75rem !important;   line-height: 1.3 !important; }
-body:not(.game-route) .text-\[10px\] { font-size: 0.8125rem !important; line-height: 1.35 !important; }
-body:not(.game-route) .text-\[11px\] { font-size: 0.8125rem !important; line-height: 1.4 !important; }
+body:not(.game-route) .text-\[8px\] {
+  font-size: 0.6875rem !important;
+  line-height: 1.3 !important;
+}
+body:not(.game-route) .text-\[9px\] {
+  font-size: 0.75rem !important;
+  line-height: 1.3 !important;
+}
+body:not(.game-route) .text-\[10px\] {
+  font-size: 0.8125rem !important;
+  line-height: 1.35 !important;
+}
+body:not(.game-route) .text-\[11px\] {
+  font-size: 0.8125rem !important;
+  line-height: 1.4 !important;
+}
 
 /* ─── Subtle Worn Border Treatment ─── */
 body:not(.game-route) .rounded-xl,
 body:not(.game-route) .rounded-lg {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 1px 2px rgba(0,0,0,0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 @layer base {
@@ -121,8 +149,16 @@ body:not(.game-route) .rounded-lg {
     -moz-osx-font-smoothing: grayscale;
     background-color: hsl(225 12% 7%);
     background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.03) 0%, transparent 55%),
-      radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.015) 0%, transparent 45%);
+      radial-gradient(
+        ellipse at 50% 0%,
+        rgba(56, 189, 248, 0.03) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse at 80% 100%,
+        rgba(139, 92, 246, 0.015) 0%,
+        transparent 45%
+      );
     /* App-like feel on mobile: kill rubber-band, suppress tap highlight,
        and stop iOS Safari from auto-zooming form inputs <16px. */
     overscroll-behavior-y: none;
@@ -137,7 +173,8 @@ body:not(.game-route) .rounded-lg {
      Buttons are NOT included here because they often wrap selectable
      content (notification bodies, chat snippets, message rows). Use the
      .select-none utility on individual buttons that should suppress it. */
-  .app-header, nav {
+  .app-header,
+  nav {
     -webkit-user-select: none;
     user-select: none;
   }
@@ -147,7 +184,12 @@ body:not(.game-route) .rounded-lg {
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.04);
     color: rgb(212 212 216);
-    transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, opacity 150ms ease, transform 150ms ease;
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      opacity 150ms ease,
+      transform 150ms ease;
   }
   .app-control:hover {
     border-color: rgba(125, 211, 252, 0.35);
@@ -171,7 +213,9 @@ body:not(.game-route) .rounded-lg {
     gap: 0.375rem;
     padding-inline: 0.75rem;
     border-radius: 0.5rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      monospace;
     font-size: 10px;
     font-weight: 500;
     letter-spacing: 0.14em;
@@ -180,7 +224,9 @@ body:not(.game-route) .rounded-lg {
   }
   /* iOS auto-zooms <input> when font-size <16px. Force 16px on mobile. */
   @media (max-width: 640px) {
-    input, select, textarea {
+    input,
+    select,
+    textarea {
       font-size: 16px !important;
     }
     .mobile-tap-target {
@@ -205,36 +251,81 @@ body:not(.game-route) .rounded-lg {
   }
 
   /* ─── Scrollbar ─── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 
-  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 
   /* ─── Selection ─── */
-  ::selection { background: rgba(56, 189, 248, 0.22); color: hsl(210 20% 92%); }
+  ::selection {
+    background: rgba(56, 189, 248, 0.22);
+    color: hsl(210 20% 92%);
+  }
 
   /* ─── Markdown prose ─── */
-  .prose { @apply text-foreground max-w-none; }
-  .prose p { @apply leading-relaxed mb-4 text-sm; color: rgba(210, 220, 230, 0.8); }
-  .prose strong { @apply font-bold; color: hsl(210 20% 92%); }
-  .prose em { color: rgba(210, 220, 230, 0.7); font-style: italic; }
-  .prose ul, .prose ol { @apply mb-4 pl-5; color: rgba(210, 220, 230, 0.8); }
-  .prose li { @apply mb-1 text-sm; }
-  .prose li::marker { color: hsl(200 80% 55%); }
-  .prose h1, .prose h2, .prose h3 {
+  .prose {
+    @apply text-foreground max-w-none;
+  }
+  .prose p {
+    @apply leading-relaxed mb-4 text-sm;
+    color: rgba(210, 220, 230, 0.8);
+  }
+  .prose strong {
+    @apply font-bold;
+    color: hsl(210 20% 92%);
+  }
+  .prose em {
+    color: rgba(210, 220, 230, 0.7);
+    font-style: italic;
+  }
+  .prose ul,
+  .prose ol {
+    @apply mb-4 pl-5;
+    color: rgba(210, 220, 230, 0.8);
+  }
+  .prose li {
+    @apply mb-1 text-sm;
+  }
+  .prose li::marker {
+    color: hsl(200 80% 55%);
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3 {
     color: hsl(210 20% 92%);
     font-family: var(--font-sans);
     letter-spacing: 0.03em;
     @apply font-bold mb-3 mt-5;
   }
-  .prose h1 { font-size: 1.5rem; }
-  .prose h2 { font-size: 1.25rem; }
-  .prose h3 { font-size: 1.1rem; }
+  .prose h1 {
+    font-size: 1.5rem;
+  }
+  .prose h2 {
+    font-size: 1.25rem;
+  }
+  .prose h3 {
+    font-size: 1.1rem;
+  }
   .prose code {
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     background: rgba(56, 189, 248, 0.08);
     border: 1px solid rgba(56, 189, 248, 0.2);
     padding: 0.1em 0.4em;
@@ -243,7 +334,7 @@ body:not(.game-route) .rounded-lg {
   }
   .prose pre {
     background: rgba(0, 0, 0, 0.3) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 6px !important;
   }
   .prose pre code {
@@ -251,7 +342,11 @@ body:not(.game-route) .rounded-lg {
     border: none !important;
     padding: 0 !important;
   }
-  .prose a { color: hsl(200 80% 65%); text-decoration: underline; text-underline-offset: 3px; }
+  .prose a {
+    color: hsl(200 80% 65%);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
   .prose blockquote {
     border-left: 2px solid rgba(56, 189, 248, 0.35);
     padding-left: 1rem;
@@ -259,27 +354,52 @@ body:not(.game-route) .rounded-lg {
     margin-left: 0;
     font-style: italic;
   }
-  .prose hr { border-color: rgba(255,255,255,0.08); }
-  .prose table { width: 100%; }
-  .prose th { color: hsl(210 20% 92%); border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; padding: 0.5rem; }
-  .prose td { border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0.5rem; color: rgba(210, 220, 230, 0.7); }
+  .prose hr {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .prose table {
+    width: 100%;
+  }
+  .prose th {
+    color: hsl(210 20% 92%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+    padding: 0.5rem;
+  }
+  .prose td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.5rem;
+    color: rgba(210, 220, 230, 0.7);
+  }
 
   /* Syntax highlighter override */
-  .shiki, .shiki span { background: transparent !important; }
+  .shiki,
+  .shiki span {
+    background: transparent !important;
+  }
 }
 
 @keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 @keyframes smfade {
-  from { opacity: 1; }
-  to   { opacity: 0.5; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
 }
 
 .cursor-blink::after {
-  content: '_';
+  content: "_";
   animation: cursor-blink 1s step-end infinite;
   color: #38bdf8;
 }
@@ -295,7 +415,7 @@ body:not(.game-route) .rounded-lg {
 }
 
 .status-dot.offline {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   box-shadow: none;
   animation: none;
 }
@@ -312,9 +432,8 @@ body:not(.game-route) .rounded-lg {
 
 /* ─── Neon glow helper for flat vector icons (Hummingbird etc) ─── */
 .neon-glow {
-  filter:
-    drop-shadow(0 0 3px rgba(56,189,248,0.55))
-    drop-shadow(0 0 7px rgba(56,189,248,0.25));
+  filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.55))
+    drop-shadow(0 0 7px rgba(56, 189, 248, 0.25));
 }
 
 /* ─── App Header — NavBar cut-off prevention ─── */
@@ -337,14 +456,22 @@ header {
   overflow-x: clip;
 }
 
-.desktop-app-nav { display: none; }
-.mobile-app-nav { display: block; }
+.desktop-app-nav {
+  display: none;
+}
+.mobile-app-nav {
+  display: block;
+}
 
 /* Short landscape phone/PWA viewports need the icon-first chrome even when
    their CSS width crosses Tailwind's tablet breakpoint. */
 @media (min-width: 640px) and (min-height: 501px) {
-  .desktop-app-nav { display: block; }
-  .mobile-app-nav { display: none; }
+  .desktop-app-nav {
+    display: block;
+  }
+  .mobile-app-nav {
+    display: none;
+  }
 }
 
 /* Keep compact landscape phones on the same readable, single-column canvas.
@@ -379,15 +506,31 @@ header {
    bumped to 20px at sm: breakpoint to match `top-5 / left-5` etc).
    Use *positioning* utilities (top/right/bottom/left), not padding,
    because the affected elements are usually `position: fixed`. */
-.edge-safe-top    { top:    calc(0.75rem + env(safe-area-inset-top, 0px)); }
-.edge-safe-bottom { bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
-.edge-safe-left   { left:   calc(0.75rem + env(safe-area-inset-left, 0px)); }
-.edge-safe-right  { right:  calc(0.75rem + env(safe-area-inset-right, 0px)); }
+.edge-safe-top {
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+}
+.edge-safe-bottom {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+.edge-safe-left {
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+}
+.edge-safe-right {
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
+}
 @media (min-width: 640px) {
-  .sm\:edge-safe-top    { top:    calc(1.25rem + env(safe-area-inset-top, 0px)); }
-  .sm\:edge-safe-bottom { bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
-  .sm\:edge-safe-left   { left:   calc(1.25rem + env(safe-area-inset-left, 0px)); }
-  .sm\:edge-safe-right  { right:  calc(1.25rem + env(safe-area-inset-right, 0px)); }
+  .sm\:edge-safe-top {
+    top: calc(1.25rem + env(safe-area-inset-top, 0px));
+  }
+  .sm\:edge-safe-bottom {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  .sm\:edge-safe-left {
+    left: calc(1.25rem + env(safe-area-inset-left, 0px));
+  }
+  .sm\:edge-safe-right {
+    right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  }
 }
 
 /* ─── Override Radix / shadcn components ─── */
@@ -398,13 +541,13 @@ header {
 /* ─── Code block override ─── */
 pre {
   background: rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 6px !important;
   padding: 1rem !important;
 }
 
 code {
-  font-family: 'Fira Code', monospace !important;
+  font-family: "Fira Code", monospace !important;
   color: hsl(200 80% 68%) !important;
 }
 
@@ -444,7 +587,9 @@ html.low-gfx .bg-gradient-to-bl {
 /* WebGL canvases inside the nebula stack short-circuit in JS already, but
    any stray <canvas> with the data-gfx="heavy" tag is hidden as a belt-
    and-braces measure. */
-html.low-gfx canvas[data-gfx="heavy"] { display: none !important; }
+html.low-gfx canvas[data-gfx="heavy"] {
+  display: none !important;
+}
 /* ── Large-text terminal mode ─────────────────────────────────────────────── */
 .boomer-terminal {
   font-family: var(--font-sans) !important;

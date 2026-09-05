@@ -71,14 +71,14 @@ export default function OfficeStage({
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-lg select-none"
+      className="relative w-full overflow-hidden rounded-none border border-[#5cd5d0]/20 bg-[#081017] select-none sm:rounded-sm"
       style={{
         height,
         background:
-          "radial-gradient(120% 90% at 50% 0%, #11141b 0%, #06070b 70%)",
+          "radial-gradient(100% 80% at 50% 0%, #1a2a2d 0%, #0a1117 54%, #060a0e 100%)",
         boxShadow: cctv
-          ? "inset 0 0 0 1px rgba(16,185,129,.25)"
-          : "inset 0 0 0 1px rgba(56,189,248,.18)",
+          ? "inset 0 0 0 1px rgba(92,213,208,.28)"
+          : "inset 0 0 0 1px rgba(196,126,63,.24)",
       }}
       data-testid={cctv ? "office-stage-cctv" : "office-stage"}
     >
@@ -92,12 +92,17 @@ export default function OfficeStage({
           animate={{ opacity: cctv ? 0.92 : 1, scale: 1.14 }}
           transition={{
             opacity: { duration: 1 },
-            scale: { duration: 26, ease: "linear", repeat: Infinity, repeatType: "mirror" },
+            scale: {
+              duration: 26,
+              ease: "linear",
+              repeat: Infinity,
+              repeatType: "mirror",
+            },
           }}
           style={{
             filter: cctv
               ? "saturate(0.45) hue-rotate(75deg) brightness(0.9) contrast(1.05)"
-              : "saturate(1.05) contrast(1.05)",
+              : "saturate(0.92) contrast(1.08)",
           }}
         />
       )}
@@ -107,11 +112,16 @@ export default function OfficeStage({
         <>
           <div
             className="absolute inset-x-0 top-0 h-3/5"
-            style={{ background: "linear-gradient(180deg,#1a1f2c 0%,#11141b 100%)" }}
+            style={{
+              background: "linear-gradient(180deg,#1a1f2c 0%,#11141b 100%)",
+            }}
           />
           <div
             className="absolute inset-x-0 bottom-0 h-2/5"
-            style={{ background: "repeating-linear-gradient(0deg,#14171f 0 34px,#11141b 34px 68px)" }}
+            style={{
+              background:
+                "repeating-linear-gradient(0deg,#14171f 0 34px,#11141b 34px 68px)",
+            }}
           />
           <div className="absolute inset-0 flex items-center justify-center text-[10px] tracking-[0.45em] text-pink-300/40">
             COMPOSING OFFICE…
@@ -119,13 +129,13 @@ export default function OfficeStage({
         </>
       )}
 
-      {/* Neon-noir lighting wash. */}
+      {/* Warm practical light keeps the office authored rather than dashboard-flat. */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: cctv
-            ? "radial-gradient(ellipse at 50% 40%, rgba(16,185,129,.12), transparent 60%)"
-            : "radial-gradient(ellipse at 18% 20%, rgba(34,211,238,.16), transparent 55%), radial-gradient(ellipse at 84% 30%, rgba(236,72,153,.18), transparent 55%)",
+            ? "radial-gradient(ellipse at 50% 40%, rgba(92,213,208,.15), transparent 62%)"
+            : "radial-gradient(ellipse at 16% 16%, rgba(92,213,208,.14), transparent 48%), radial-gradient(ellipse at 84% 28%, rgba(196,126,63,.18), transparent 52%)",
         }}
       />
       {/* Cinematic vignette + floor haze so portraits feel grounded. */}
@@ -138,8 +148,28 @@ export default function OfficeStage({
       />
       {cctv && <CctvHud />}
 
+      {/* Editorial scene marker: a small authored frame around the still. */}
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-3 sm:inset-x-5 sm:top-4">
+        <div>
+          <div
+            className={`font-mono text-[9px] uppercase tracking-[.22em] ${cctv ? "text-[#8de1dc]/80" : "text-[#f0c18e]/80"}`}
+          >
+            PICASSO ORG · {cctv ? "SECURITY FEED" : "FLOOR 66"}
+          </div>
+          <div className="mt-1 font-mono text-[8px] uppercase tracking-[.18em] text-white/40">
+            {cctv ? "CAMERA 01 / CONTINUOUS" : "THE ROOM IS OPEN"}
+          </div>
+        </div>
+        <div className="hidden border-l border-white/20 pl-3 text-right font-mono text-[8px] uppercase tracking-[.16em] text-white/40 sm:block">
+          <div>{String(ordered.length).padStart(2, "0")} ON FLOOR</div>
+          <div className="mt-1 text-[#c47e3f]/80">
+            {cctv ? "ARCHIVE / LIVE" : "LOCAL / LIVE"}
+          </div>
+        </div>
+      </div>
+
       {/* Crew band — the floor of portraits. */}
-      <div className="absolute inset-x-0 bottom-0 px-3 sm:px-5 pb-4 pt-10">
+      <div className="absolute inset-x-0 bottom-0 border-t border-white/[.08] bg-[linear-gradient(180deg,rgba(4,9,13,.02),rgba(4,9,13,.92)_35%,rgba(4,9,13,.98))] px-3 pb-4 pt-12 sm:px-5">
         <div className="flex items-end gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar pb-1">
           {ordered.map((m, i) => (
             <CrewPortrait key={m.id} member={m} index={i} cctv={cctv} />
@@ -179,13 +209,16 @@ function CrewPortrait({
 
   // Featured principals stand a little taller than the rank-and-file.
   const w = principal ? 116 : 96;
-  const accent = member.kind === "pablo"
-    ? "#f472b6"
-    : member.kind === "jean"
-      ? "#22d3ee"
-      : active
-        ? (cctv ? "#34d399" : "#a3e635")
-        : "#3f3f46";
+  const accent =
+    member.kind === "pablo"
+      ? "#e0a36b"
+      : member.kind === "jean"
+        ? "#8de1dc"
+        : active
+          ? cctv
+            ? "#8de1dc"
+            : "#d7ba83"
+          : "#526268";
 
   return (
     <motion.div
@@ -229,7 +262,9 @@ function CrewPortrait({
         {/* Bottom scrim for the nameplate. */}
         <div
           className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none"
-          style={{ background: "linear-gradient(180deg, transparent, rgba(3,4,8,.95))" }}
+          style={{
+            background: "linear-gradient(180deg, transparent, rgba(3,4,8,.95))",
+          }}
         />
         {/* Status pip. */}
         <span
@@ -245,7 +280,10 @@ function CrewPortrait({
       <div className="absolute inset-x-0 bottom-0 px-1.5 pb-1.5 text-center">
         <div
           className="text-[9px] sm:text-[10px] tracking-[0.12em] truncate"
-          style={{ color: principal ? accent : "#e4e4e7", fontFamily: "var(--font-sans)" }}
+          style={{
+            color: principal ? accent : "#e4e4e7",
+            fontFamily: "var(--font-sans)",
+          }}
         >
           {member.label.toUpperCase()}
         </div>
