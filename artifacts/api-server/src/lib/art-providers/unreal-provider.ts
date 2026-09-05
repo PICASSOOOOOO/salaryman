@@ -11,8 +11,8 @@
  * Config (requested via the environment-secrets flow):
  *   UNREAL_RENDER_URL  — base URL of the render node (required to be "configured")
  *   UNREAL_RENDER_KEY  — optional bearer token
- * When UNREAL_RENDER_URL is unset, isConfigured() is false → the registry never
- * routes here and the pipeline falls back cleanly to the default backend.
+ * When UNREAL_RENDER_URL is unset, isConfigured() is false → explicit Unreal
+ * jobs fail clearly instead of silently changing renderer.
  *
  * JOB TYPES: object / landscape / cinematic (req.jobType). object & landscape
  * yield a single still; cinematic yields a video (or an encoded frame sequence),

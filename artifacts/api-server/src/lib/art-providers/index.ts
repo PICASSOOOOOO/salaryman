@@ -13,16 +13,17 @@ import type { ArtProvider } from "./types";
 import { nanoBananaProvider, NANO_BANANA_PROVIDER_ID } from "./nano-banana-provider";
 import { falProvider, FAL_PROVIDER_ID } from "./fal-provider";
 import { unrealProvider, UNREAL_PROVIDER_ID } from "./unreal-provider";
+import { blenderProvider, BLENDER_PROVIDER_ID } from "./blender-provider";
 import { db, providerHealthTransitionsTable } from "@workspace/db";
 import { and, desc, eq, notInArray } from "drizzle-orm";
 
 export * from "./types";
-export { NANO_BANANA_PROVIDER_ID, FAL_PROVIDER_ID, UNREAL_PROVIDER_ID };
+export { NANO_BANANA_PROVIDER_ID, FAL_PROVIDER_ID, UNREAL_PROVIDER_ID, BLENDER_PROVIDER_ID };
 
 /** The backend every asset uses unless told otherwise. */
 export const DEFAULT_PROVIDER_ID = NANO_BANANA_PROVIDER_ID;
 
-const REGISTRY: ArtProvider[] = [nanoBananaProvider, falProvider, unrealProvider];
+const REGISTRY: ArtProvider[] = [nanoBananaProvider, falProvider, unrealProvider, blenderProvider];
 const BY_ID = new Map<string, ArtProvider>(REGISTRY.map((p) => [p.id, p]));
 
 /** Look up a provider by id, falling back to the default for unknown ids. */

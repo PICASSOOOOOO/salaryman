@@ -31,6 +31,16 @@ interface ArtAsset {
   jobType: string | null;
   mediaType: string | null;
   failMsg: string | null;
+  qa?: {
+    state: 'technical_pass' | 'needs_review' | 'failed';
+    mimeType: string | null;
+    width: number | null;
+    height: number | null;
+    byteLength: number | null;
+    hasAlpha: boolean | null;
+    failures: string[];
+    reviewReasons: string[];
+  } | null;
   // In-flight (or just-failed) async video-enhancement job, polled by the UI.
   polish?: PolishView | null;
 }
@@ -241,6 +251,7 @@ interface LibraryResponse {
   ready: number;
   pending: number;
   failed: number;
+  needsReview?: number;
   testRenderCount?: number;
   assets: ArtAsset[];
 }
@@ -260,6 +271,7 @@ interface TestRenderResponse {
 const STATUS_STYLES: Record<string, string> = {
   ready: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+  needs_review: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
   failed: 'bg-red-500/15 text-red-400 border-red-500/25',
 };
 
@@ -267,6 +279,7 @@ const BACKEND_STYLES: Record<string, string> = {
   'nano-banana': 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20',
   fal: 'bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/20',
   unreal: 'bg-sky-500/10 text-sky-300 border-sky-500/20',
+  blender: 'bg-orange-500/10 text-orange-300 border-orange-500/20',
 };
 
 export default function ArtLibrary() {
@@ -321,7 +334,7 @@ export default function ArtLibrary() {
   // Per-provider flash-clear timers.
   const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [polishConfigured, setPolishConfigured] = useState(false);
-  const [stats, setStats] = useState({ total: 0, ready: 0, pending: 0, failed: 0 });
+  const [stats, setStats] = useState({ total: 0, ready: 0, pending: 0, failed: 0, needsReview: 0 });
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
@@ -620,7 +633,13 @@ export default function ArtLibrary() {
           return next;
         });
       }
-      setStats({ total: data.total ?? 0, ready: data.ready ?? 0, pending: data.pending ?? 0, failed: data.failed ?? 0 });
+      setStats({
+        total: data.total ?? 0,
+        ready: data.ready ?? 0,
+        pending: data.pending ?? 0,
+        failed: data.failed ?? 0,
+        needsReview: data.needsReview ?? 0,
+      });
       setTestRenderCount(data.testRenderCount ?? 0);
     } catch (e) {
       console.error(e);
@@ -748,6 +767,23 @@ export default function ArtLibrary() {
     }
   };
 
+  const approve = async (key: string) => {
+    setBusyKey(key);
+    try {
+      const res = await apiFetch(`/api/art/asset/${encodeURIComponent(key)}/approve`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || 'approval failed');
+      if (body.asset) setAssets(prev => prev.map(a => (a.key === key ? { ...a, ...body.asset } : a)));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   const polish = async (key: string, op: 'upscale' | 'remove_bg' | 'enhance') => {
     setBusyKey(key);
     try {
@@ -849,7 +885,13 @@ export default function ArtLibrary() {
       if (libRes.ok) {
         const libData = await libRes.json();
         if (Array.isArray(libData?.assets)) setAssets(libData.assets);
-        setStats({ total: libData.total ?? 0, ready: libData.ready ?? 0, pending: libData.pending ?? 0, failed: libData.failed ?? 0 });
+        setStats({
+          total: libData.total ?? 0,
+          ready: libData.ready ?? 0,
+          pending: libData.pending ?? 0,
+          failed: libData.failed ?? 0,
+          needsReview: libData.needsReview ?? 0,
+        });
       }
     } catch (e) {
       setBakePortraitsError((e as Error).message);
@@ -983,7 +1025,7 @@ export default function ArtLibrary() {
             <div>
               <h1 className="font-mono text-lg text-zinc-100 tracking-widest uppercase">Art Factory</h1>
               <p className="font-mono text-[10px] text-zinc-600 tracking-wide">
-                {stats.total} assets · {stats.ready} ready · {stats.pending} pending · {stats.failed} failed
+                {stats.total} assets · {stats.ready} ready · {stats.needsReview ?? 0} review · {stats.pending} pending · {stats.failed} failed
               </p>
             </div>
           </div>
@@ -1684,6 +1726,18 @@ export default function ArtLibrary() {
                     {a.failMsg && (
                       <p className="font-mono text-[9px] text-red-400/80 line-clamp-2" title={a.failMsg}>{a.failMsg}</p>
                     )}
+                    {a.qa && (
+                      <div className="rounded border border-white/[0.06] bg-black/20 px-2 py-1.5 space-y-0.5">
+                        <p className="font-mono text-[9px] text-zinc-400">
+                          QA: {a.qa.width && a.qa.height ? `${a.qa.width}×${a.qa.height}` : 'unknown'} · {a.qa.mimeType ?? 'unknown'} · {a.qa.hasAlpha === null ? 'alpha unknown' : a.qa.hasAlpha ? 'alpha' : 'opaque'}
+                        </p>
+                        {[...a.qa.failures, ...a.qa.reviewReasons].slice(0, 2).map(reason => (
+                          <p key={reason} className={`font-mono text-[9px] line-clamp-2 ${a.qa?.failures.includes(reason) ? 'text-red-400/80' : 'text-orange-300/80'}`}>
+                            {reason}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <select
                         value={chosen}
@@ -1705,8 +1759,8 @@ export default function ArtLibrary() {
                         Bake
                       </button>
                     </div>
-                    {/* Render job type — only meaningful for the Unreal node. */}
-                    {chosen === 'unreal' && (
+                    {/* Render job type — used by remote 3D render nodes. */}
+                    {(chosen === 'unreal' || chosen === 'blender') && (
                       <select
                         value={pickJobType[a.key] ?? a.jobType ?? 'object'}
                         onChange={e => setPickJobType(prev => ({ ...prev, [a.key]: e.target.value }))}
@@ -1724,6 +1778,17 @@ export default function ArtLibrary() {
                       <p className="font-mono text-[9px] text-red-400/80 line-clamp-2" title={a.polish.error}>
                         {a.polish.error}
                       </p>
+                    )}
+                    {a.status === 'needs_review' && (
+                      <button
+                        onClick={() => approve(a.key)}
+                        disabled={isBusy}
+                        className="w-full flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-orange-200 border border-orange-500/30 hover:bg-orange-500/10 disabled:opacity-40 transition-colors"
+                        title="Approve this technically valid result for game use after visual review"
+                      >
+                        {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                        Approve for game
+                      </button>
                     )}
                     <div className="flex items-center gap-1.5">
                       {a.mediaType === 'video' ? (

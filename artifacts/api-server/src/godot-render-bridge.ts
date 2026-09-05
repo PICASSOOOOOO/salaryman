@@ -127,6 +127,12 @@ export function setupGodotRenderBridge(server: Server): void {
       }
 
       publisherCount += 1;
+      let countedPublisher = true;
+      const releasePublisher = () => {
+        if (!countedPublisher) return;
+        countedPublisher = false;
+        publisherCount = Math.max(0, publisherCount - 1);
+      };
       sendJson(ws, {
         type: "ready",
         role,
@@ -146,8 +152,8 @@ export function setupGodotRenderBridge(server: Server): void {
           // Ignore non-JSON control noise from a publisher.
         }
       });
-      ws.on("close", () => { publisherCount = Math.max(0, publisherCount - 1); });
-      ws.on("error", () => { publisherCount = Math.max(0, publisherCount - 1); });
+      ws.on("close", releasePublisher);
+      ws.on("error", releasePublisher);
       return;
     }
 

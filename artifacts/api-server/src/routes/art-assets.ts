@@ -27,6 +27,7 @@ import {
   type VideoPolishOp,
 } from "../lib/art-polish";
 import { isFalOutage } from "../lib/fal";
+import { getArtQaRecipe, validateArtOutput, type ArtQaResult } from "../lib/art-qa";
 import { isOwnerEmail } from "../lib/plan";
 import {
   deliverIncidentReport,
@@ -61,6 +62,22 @@ function readHandleMeta(asset: ArtAsset): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function readQa(asset: ArtAsset): ArtQaResult | null {
+  const meta = readHandleMeta(asset);
+  const qa = meta?.qa;
+  return qa && typeof qa === "object" ? qa as ArtQaResult : null;
+}
+
+async function writeQa(asset: ArtAsset, qa: ArtQaResult): Promise<ArtAsset> {
+  const meta = readHandleMeta(asset) || {};
+  meta.qa = qa;
+  const [updated] = await db.update(artAssetsTable)
+    .set({ backendMeta: JSON.stringify(meta), updatedAt: new Date() })
+    .where(eq(artAssetsTable.id, asset.id))
+    .returning();
+  return updated || asset;
 }
 
 /**
@@ -117,8 +134,11 @@ function polishView(asset: ArtAsset): {
 }
 
 /** Attach the derived `polish` view to a row for the JSON response. */
-function withPolishView(asset: ArtAsset): ArtAsset & { polish: ReturnType<typeof polishView> } {
-  return { ...asset, polish: polishView(asset) };
+function withPolishView(asset: ArtAsset): ArtAsset & {
+  polish: ReturnType<typeof polishView>;
+  qa: ArtQaResult | null;
+} {
+  return { ...asset, polish: polishView(asset), qa: readQa(asset) };
 }
 
 /**
@@ -203,26 +223,15 @@ export function shouldRetryFailedAsset(asset: ArtAsset): boolean {
  * Updates the row with the provider's job handle (taskId + backendMeta).
  */
 async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
-  let provider = getProvider(asset.backend);
-  // If the row's chosen backend isn't configured (e.g. "unreal" requested but
-  // UNREAL_RENDER_URL is unset), transparently fall back to the default backend
-  // so the asset still renders instead of getting stuck pending forever. Persist
-  // the effective backend so polling and the admin UI stay consistent.
-  if (!provider.isConfigured() && asset.backend !== DEFAULT_PROVIDER_ID) {
-    const fallback = getProvider(DEFAULT_PROVIDER_ID);
-    if (fallback.isConfigured()) {
-      const [reassigned] = await db.update(artAssetsTable)
-        .set({ backend: DEFAULT_PROVIDER_ID, updatedAt: new Date() })
-        .where(eq(artAssetsTable.id, asset.id))
-        .returning();
-      asset = reassigned || { ...asset, backend: DEFAULT_PROVIDER_ID };
-      provider = fallback;
-    }
+  const provider = getProvider(asset.backend);
+  if (!provider.isConfigured()) {
+    const msg = `${provider.label} is not configured; refusing to silently switch renderers`;
+    const [updated] = await db.update(artAssetsTable)
+      .set({ status: "failed", failMsg: msg, updatedAt: new Date() })
+      .where(eq(artAssetsTable.id, asset.id))
+      .returning();
+    return updated || asset;
   }
-  // No configured backend for this row — leave it untouched (the client renders
-  // a placeholder). This keeps the pipeline from hard-failing when neither key
-  // is set, matching the original Nano-Banana-not-configured behavior.
-  if (!provider.isConfigured()) return asset;
   if (inflight.has(asset.key)) return asset;
   inflight.add(asset.key);
   try {
@@ -303,17 +312,20 @@ async function refreshIfPending(asset: ArtAsset): Promise<ArtAsset> {
   const provider = getProvider(asset.backend);
   const status = await provider.poll({ taskId: asset.taskId, meta: readHandleMeta(asset) });
   if (status.state === "ready" && status.url) {
+    const recipe = getArtQaRecipe(asset.category, asset.aspectRatio, status.mediaType === "video" ? "video" : "image");
+    const qa = await validateArtOutput(status.url, recipe, status.mediaType === "video" ? "video" : "image");
+    const qaStatus = qa.state === "failed" ? "failed" : qa.state === "needs_review" ? "needs_review" : "ready";
     const [updated] = await db.update(artAssetsTable)
       .set({
         url: status.url,
         mediaType: status.mediaType === "video" ? "video" : "image",
-        status: "ready",
-        failMsg: null,
+        status: qaStatus,
+        failMsg: qa.failures.length ? qa.failures.join("; ").slice(0, 1000) : null,
         updatedAt: new Date(),
       })
       .where(eq(artAssetsTable.id, asset.id))
       .returning();
-    return updated || asset;
+    return writeQa(updated || asset, qa);
   }
   if (status.state === "failed") {
     const [updated] = await db.update(artAssetsTable)
@@ -418,6 +430,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
       ready: out.filter(a => a.status === "ready").length,
       pending: out.filter(a => a.status === "pending").length,
       failed: out.filter(a => a.status === "failed").length,
+      needsReview: out.filter(a => a.status === "needs_review").length,
       testRenderCount,
       assets: out.map(withPolishView),
     });
@@ -425,6 +438,23 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     console.error("[art] library error", e);
     res.status(500).json({ error: e?.message || "Failed to load library" });
   }
+});
+
+/** POST /api/art/asset/:key/approve — admin-only human acceptance after QA. */
+router.post("/art/asset/:key/approve", requireAdmin, async (req: Request, res: Response) => {
+  const key = String(req.params.key || "").slice(0, 80);
+  const [asset] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, key));
+  if (!asset) { res.status(404).json({ error: "unknown asset key" }); return; }
+  if (!asset.url) { res.status(409).json({ error: "asset has no rendered output" }); return; }
+  if (readQa(asset)?.state === "failed") {
+    res.status(409).json({ error: "asset failed technical QA and must be regenerated" });
+    return;
+  }
+  const [updated] = await db.update(artAssetsTable)
+    .set({ status: "ready", failMsg: null, updatedAt: new Date() })
+    .where(eq(artAssetsTable.id, asset.id))
+    .returning();
+  res.json({ asset: withPolishView(updated || asset) });
 });
 
 /**
@@ -781,8 +811,29 @@ router.post("/art/asset/:key/polish", requireAdmin, async (req: Request, res: Re
       return;
     }
     const newUrl = await runPolish(op, asset.url);
+    const meta = readHandleMeta(asset) || {};
+    const sourceUrl = typeof meta.sourceUrl === "string" ? meta.sourceUrl : asset.url;
+    const history = Array.isArray(meta.polishHistory) ? meta.polishHistory : [];
+    meta.sourceUrl = sourceUrl;
+    meta.polishHistory = [
+      { op, fromUrl: asset.url, toUrl: newUrl, appliedAt: new Date().toISOString() },
+      ...history,
+    ].slice(0, 8);
+    const qa = await validateArtOutput(
+      newUrl,
+      getArtQaRecipe(asset.category, asset.aspectRatio, asset.mediaType || "image"),
+      asset.mediaType || "image",
+    );
+    meta.qa = qa;
+    const qaStatus = qa.state === "failed" ? "failed" : qa.state === "needs_review" ? "needs_review" : "ready";
     const [updated] = await db.update(artAssetsTable)
-      .set({ url: newUrl, updatedAt: new Date() })
+      .set({
+        url: newUrl,
+        status: qaStatus,
+        failMsg: qa.failures.length ? qa.failures.join("; ").slice(0, 1000) : null,
+        backendMeta: JSON.stringify(meta),
+        updatedAt: new Date(),
+      })
       .where(eq(artAssetsTable.id, asset.id))
       .returning();
     res.json({ asset: withPolishView(updated || asset), op });
@@ -929,13 +980,16 @@ export async function bakeCharacterPortraits(force = false): Promise<{
   ready: number;
   results: { key: string; status: string }[];
 }> {
-  if (!isNanoBananaConfigured()) {
-    console.log("[art] NANO_BANANA_API_KEY not set — skipping portrait bake");
-    return { kicked: 0, ready: 0, results: [] };
-  }
   const charTemplateEntries = SALARYMAN_ART_KIT.filter(e =>
     e.key.startsWith("char_template_"),
   );
+  const portraitProviderConfigured = charTemplateEntries.some((entry) =>
+    getProvider(entry.backend ?? DEFAULT_PROVIDER_ID).isConfigured(),
+  );
+  if (!portraitProviderConfigured) {
+    console.log("[art] No configured portrait renderer — skipping portrait bake");
+    return { kicked: 0, ready: 0, results: [] };
+  }
   let kicked = 0;
   let ready = 0;
   const results: { key: string; status: string }[] = [];

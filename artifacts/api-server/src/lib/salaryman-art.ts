@@ -37,7 +37,7 @@ export function composeSalarymanPrompt(subject: string, extras?: string): string
 // exception to the single pixel SALARYMAN_STYLE: character templates are meant
 // to read as real people / lifelike androids. The style is still 100% backend
 // AGNOSTIC — the composed prompt is stored verbatim and handed to whichever
-// backend runs (Unreal, Nano Banana fallback, …) with NO per-backend styling,
+// backend runs (Unreal, Blender, or a hosted image backend) with NO per-backend styling,
 // preserving the "every backend renders the same prompt" invariant.
 export const REALISTIC_CHARACTER_STYLE = [
   "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, ultra-detailed.",
@@ -240,8 +240,9 @@ export interface ArtKitEntry {
   /**
    * Optional preferred render backend (provider id, e.g. "unreal"). When set,
    * the pipeline routes this asset to that backend if it's configured, and
-   * transparently falls back to the default (Nano Banana) when it isn't. Left
-   * unset, the asset uses the default backend exactly as the rest of the kit.
+   * If set, the asset is pinned to this renderer. An unavailable explicit
+   * backend is a hard failure; it must never silently change the asset's look.
+   * Left unset, the asset uses the default backend.
    */
   backend?: string;
   /**
@@ -940,7 +941,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
   // ── Realistic character templates (intake gallery) ────────────────────────
   // Generated from CHARACTER_TEMPLATE_CATALOG so the catalog stays the single
   // source of truth. Realistic style via `fullPrompt`; Unreal-routed with a
-  // transparent Nano Banana fallback (kickoff handles unconfigured backends).
+  // explicit renderer selection; kickoff fails clearly when that renderer is absent.
   ...characterTemplateKitEntries(),
 ];
 
