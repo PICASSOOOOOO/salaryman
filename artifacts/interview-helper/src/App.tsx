@@ -12,7 +12,7 @@ import AlphaWipeBanner from "@/components/AlphaWipeBanner";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
-import { getPabloHref, installAppHistoryTracking } from "@/lib/app-navigation";
+import { installAppHistoryTracking } from "@/lib/app-navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
@@ -34,7 +34,6 @@ import {
   clearStoryBeginIntent,
   fetchServerStoryActive,
 } from "@/lib/story-gate";
-import { MessageCircle } from "lucide-react";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -241,25 +240,6 @@ function LoadingFallback() {
   );
 }
 
-function FullscreenPabloAccess({ inGame }: { inGame: boolean }) {
-  const [location] = useLocation();
-  return (
-    <Link
-      href={getPabloHref(location)}
-      className="app-action app-control mobile-tap-target fixed z-[260] h-8 w-8 rounded-lg bg-black/55 backdrop-blur-md"
-      style={{
-        top: inGame ? "calc(env(safe-area-inset-top, 0px) + 8px)" : "calc(env(safe-area-inset-top, 0px) + 12px)",
-        right: inGame ? "calc(env(safe-area-inset-right, 0px) + 80px)" : "calc(env(safe-area-inset-right, 0px) + 12px)",
-      }}
-      aria-label="Open Pablo"
-      title="Open Pablo"
-      data-testid="fullscreen-pablo-access"
-    >
-      <MessageCircle className="app-control-icon text-violet-300" aria-hidden />
-    </Link>
-  );
-}
-
 const MemoHome = memo(Home as React.ComponentType);
 const MemoConsole = memo(Console as React.ComponentType);
 
@@ -442,13 +422,6 @@ function AppShell() {
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  const showFullscreenPabloAccess =
-    isAuthenticated &&
-    isFullscreenRoute &&
-    !isEmbed &&
-    !pathname.startsWith("/pablo") &&
-    !pathname.startsWith("/immigration");
-
   // GLOBAL GATE. Before a visitor passes security (signs in), the visible
   // surface is Pablo's homepage, plus the /auth + /api machinery that performs
   // the sign-in. Pablo remains the homepage after sign-in too; Tower entry is
@@ -579,7 +552,6 @@ function AppShell() {
           Immersive gameplay intentionally keeps this surface out of the
           viewport; ordinary fullscreen routes still receive it. */}
         {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
-        {showFullscreenPabloAccess && !isGameRoute && !isDeviceLinkRoute && <FullscreenPabloAccess inGame={isGameRoute} />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
