@@ -5,6 +5,7 @@ import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlaye
 import * as geoip from "geoip-lite";
 import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 import { isOwnerEmail } from "../lib/plan";
+import { deriveConditionProfile, repairConditionScore } from "../lib/world-condition";
 
 const router = Router();
 const LIVE_CITY_IDS = new Set(["minx_city", "huda_city"]);
@@ -995,7 +996,12 @@ router.get("/world/buildings", async (req, res) => {
       .select()
       .from(cityBuildingsTable)
       .where(and(eq(cityBuildingsTable.serverId, serverId), eq(cityBuildingsTable.demolished, false)));
-    res.json({ buildings: rows });
+    res.json({
+      buildings: rows.map((building) => ({
+        ...building,
+        condition: deriveConditionProfile(building.conditionScore, building.conditionLastMaintainedAt),
+      })),
+    });
   } catch (err: any) {
     console.error("[World] buildings list error:", err.message);
     res.status(500).json({ error: "Server error" });
@@ -1135,6 +1141,47 @@ router.post("/world/buildings/:id/rent", async (req, res) => {
   } catch (err: any) {
     console.error("[World] rent error:", err.message);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/world/buildings/:id/repair", async (req, res) => {
+  const user = req.user;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const buildingId = Number(req.params.id as string);
+    const [building] = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, buildingId));
+    if (!building || building.demolished) { res.status(404).json({ error: "Building not found" }); return; }
+    const userId = String(user.id);
+    const canRepair = building.isPublic || building.ownerId === userId || building.tenantId === userId;
+    if (!canRepair) { res.status(403).json({ error: "You need a public, owned, or rented building to repair it" }); return; }
+
+    const now = new Date();
+    const workUnits = Math.max(1, Math.min(8, Math.floor(Number(req.body?.workUnits) || 1)));
+    const repaired = repairConditionScore(
+      building.conditionScore,
+      building.conditionLastMaintainedAt,
+      workUnits,
+      now.getTime(),
+    );
+    const [updated] = await db.update(cityBuildingsTable)
+      .set({
+        conditionScore: repaired.repairedScore,
+        conditionLastMaintainedAt: now,
+        conditionRepairCount: sql`${cityBuildingsTable.conditionRepairCount} + ${workUnits}`,
+        updatedAt: now,
+      })
+      .where(eq(cityBuildingsTable.id, buildingId))
+      .returning();
+    res.json({
+      building: updated ? {
+        ...updated,
+        condition: deriveConditionProfile(updated.conditionScore, updated.conditionLastMaintainedAt, now.getTime()),
+      } : null,
+      repair: { workUnits, condition: repaired.profile },
+    });
+  } catch (err: any) {
+    console.error("[World] building repair error:", err.message);
+    res.status(500).json({ error: "Repair failed" });
   }
 });
 

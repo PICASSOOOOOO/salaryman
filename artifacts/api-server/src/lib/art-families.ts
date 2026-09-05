@@ -34,6 +34,14 @@ export const ANIMATION_READY_RULES = [
   "clean joints, pivots, and contact points",
 ];
 
+export const CONDITION_REVIEW_RULES = [
+  "condition is localized to material wear, plants, clutter, stains, and ordinary repairs",
+  "same silhouette, footprint, collision, anchor, camera, and interaction target in every state",
+  "no global grayscale wash and no condition label encoded only by hue",
+  "no holograms, glowing circuitry, drones, neon sludge, or impossible architecture",
+  "rotting may cordon unsafe non-interactive detail but must preserve required gameplay access",
+];
+
 export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = {
   character_template: {
     id: "character_template",
@@ -44,7 +52,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "unreal",
     jobType: "object",
     sourceContract: "3:4 portrait; realistic character prompt; natural anatomy and materials",
-    reviewChecklist: ["face and hands", "silhouette", "wardrobe continuity", "transparent/cutout readiness", ...ANIMATION_READY_RULES],
+    reviewChecklist: ["face and hands", "silhouette", "wardrobe continuity", "transparent/cutout readiness", ...ANIMATION_READY_RULES, ...CONDITION_REVIEW_RULES],
   },
   pixel_character: {
     id: "pixel_character",
@@ -55,7 +63,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "web-png",
     jobType: "object",
     sourceContract: "112×96 PNG; 7 columns × 3 directions; each frame 16×32",
-    reviewChecklist: ["frame alignment", "readable silhouette", "walk loop", "palette separation", ...ANIMATION_READY_RULES],
+    reviewChecklist: ["frame alignment", "readable silhouette", "walk loop", "palette separation", ...ANIMATION_READY_RULES, ...CONDITION_REVIEW_RULES],
   },
   floor_tile: {
     id: "floor_tile",
@@ -66,7 +74,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "web-png",
     jobType: "object",
     sourceContract: "16×16 PNG tile; seamless repetition; pixel-perfect edges",
-    reviewChecklist: ["seamless repeat", "value contrast", "walkable readability", "no filtering", "material continuity"],
+    reviewChecklist: ["seamless repeat", "value contrast", "walkable readability", "no filtering", "material continuity", ...CONDITION_REVIEW_RULES],
   },
   wall_atlas: {
     id: "wall_atlas",
@@ -77,7 +85,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "web-png",
     jobType: "object",
     sourceContract: "64×128 PNG atlas; 16 pieces; each piece 16×32",
-    reviewChecklist: ["all 16 masks", "corner continuity", "occlusion edge", "palette consistency", "modular variation"],
+    reviewChecklist: ["all 16 masks", "corner continuity", "occlusion edge", "palette consistency", "modular variation", ...CONDITION_REVIEW_RULES],
   },
   spatial_object: {
     id: "spatial_object",
@@ -88,7 +96,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "unreal",
     jobType: "object",
     sourceContract: "catalog dimensions/footprint; pixel office sprite or Unreal production render",
-    reviewChecklist: ["footprint", "interaction silhouette", "occlusion", "material readability", ...ANIMATION_READY_RULES],
+    reviewChecklist: ["footprint", "interaction silhouette", "occlusion", "material readability", ...ANIMATION_READY_RULES, ...CONDITION_REVIEW_RULES],
   },
   spatial_landscape: {
     id: "spatial_landscape",
@@ -99,7 +107,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "unreal",
     jobType: "landscape",
     sourceContract: "isometric/building contract or Unreal landscape/camera composition",
-    reviewChecklist: ["scale language", "camera composition", "landmark silhouette", "lighting continuity", "parallax layers"],
+    reviewChecklist: ["scale language", "camera composition", "landmark silhouette", "lighting continuity", "parallax layers", ...CONDITION_REVIEW_RULES],
   },
   cinematic: {
     id: "cinematic",
@@ -110,7 +118,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "unreal",
     jobType: "cinematic",
     sourceContract: "sequence timing, camera, media type, and public review URL",
-    reviewChecklist: ["composition", "motion continuity", "character consistency", "encode/playback", "rig/contact continuity"],
+    reviewChecklist: ["composition", "motion continuity", "character consistency", "encode/playback", "rig/contact continuity", ...CONDITION_REVIEW_RULES],
   },
   ui_illustration: {
     id: "ui_illustration",
@@ -121,7 +129,7 @@ export const SALARYMAN_ART_FAMILIES: Record<ArtFamilyId, ArtFamilyDefinition> = 
     productionRenderer: "nano-banana",
     jobType: "object",
     sourceContract: "card aspect ratio; no UI text baked into the image",
-    reviewChecklist: ["small-size legibility", "safe crop", "no text artifacts", "palette fit", "layerable composition"],
+    reviewChecklist: ["small-size legibility", "safe crop", "no text artifacts", "palette fit", "layerable composition", ...CONDITION_REVIEW_RULES],
   },
 };
 

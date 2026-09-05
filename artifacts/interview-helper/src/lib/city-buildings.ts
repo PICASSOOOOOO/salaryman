@@ -1,5 +1,21 @@
 import { apiFetch } from './api-client';
 
+export type BuildingConditionState = 'flourishing' | 'maintained' | 'weathered' | 'neglected' | 'rotting';
+
+export interface BuildingCondition {
+  score: number;
+  state: BuildingConditionState;
+  daysSinceMaintenance: number;
+  cues: {
+    surface: string;
+    structure: string;
+    vegetation: string;
+    occupancy: string;
+    moisture: string;
+    repairAction: string;
+  };
+}
+
 export interface CityBuilding {
   id: number;
   ownerId: string | null;
@@ -19,6 +35,10 @@ export interface CityBuilding {
   tenantName: string | null;
   isPublic: boolean;
   serverId: string;
+  conditionScore?: number;
+  conditionLastMaintainedAt?: string | null;
+  conditionRepairCount?: number;
+  condition?: BuildingCondition;
 }
 
 export interface BuildingTypeSpec {
@@ -147,6 +167,26 @@ export async function demolishBuilding(id: number): Promise<{ ok?: boolean; refu
   }
 }
 
+export async function repairBuilding(
+  id: number,
+  workUnits = 1,
+): Promise<{ building?: CityBuilding; repair?: { workUnits: number; condition: BuildingCondition }; error?: string }> {
+  try {
+    const r = await apiFetch(`/api/world/buildings/${id}/repair`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workUnits: Math.max(1, Math.min(8, Math.floor(workUnits))) }),
+      credentials: 'include',
+    });
+    const data = await r.json();
+    if (!r.ok) return { error: data.error ?? 'Repair failed' };
+    _lastFetch = 0;
+    return data;
+  } catch {
+    return { error: 'Network error' };
+  }
+}
+
 export function drawPlayerBuilding(
   ctx: CanvasRenderingContext2D,
   b: CityBuilding,
@@ -256,6 +296,43 @@ export function drawPlayerBuilding(
       ctx.fillStyle = lit ? `rgba(${cr},${cg},${cb},0.25)` : `rgba(${cr},${cg},${cb},0.06)`;
       ctx.fillRect(wx, wy, winW, winH);
     }
+  }
+
+  // Condition is communicated through ordinary material evidence, not a global
+  // color wash. The building footprint, interaction target, and collision stay
+  // unchanged across every state.
+  const conditionState = b.condition?.state;
+  if (conditionState === 'weathered' || conditionState === 'neglected' || conditionState === 'rotting') {
+    ctx.save();
+    ctx.globalAlpha = conditionState === 'weathered' ? 0.24 : conditionState === 'neglected' ? 0.34 : 0.44;
+    ctx.strokeStyle = '#8b6f54';
+    ctx.lineWidth = 1;
+    const streaks = Math.max(2, Math.floor(b.w / 28));
+    for (let i = 0; i < streaks; i++) {
+      const sx = bx + 9 + ((i * 19) % Math.max(12, b.w - 14));
+      const sy = by + 8 + ((i * 13) % Math.max(12, b.h - 18));
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + (i % 2 ? 2 : -1), sy + 7 + (i % 3) * 3);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#5e4939';
+    const dust = conditionState === 'rotting' ? 5 : 3;
+    for (let i = 0; i < dust; i++) {
+      const dx = bx + 6 + ((i * 23) % Math.max(12, b.w - 12));
+      const dy = by + b.h - 8 - ((i * 11) % Math.max(8, b.h - 12));
+      ctx.fillRect(dx, dy, 2 + (i % 2), 1 + (i % 2));
+    }
+    if (conditionState === 'rotting') {
+      ctx.strokeStyle = '#765747';
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(bx + b.w * 0.22, by + 3);
+      ctx.lineTo(bx + b.w * 0.26, by + b.h * 0.35);
+      ctx.lineTo(bx + b.w * 0.2, by + b.h * 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // Building name + owner name are intentionally omitted — player properties are

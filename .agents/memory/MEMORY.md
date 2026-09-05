@@ -156,3 +156,4 @@
 - [Retail-grade asset pipeline](asset-pipeline-quality.md) — provider completion is not game readiness; validate outputs and require explicit review for questionable cutouts.
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
 - [Godot and Unreal art development](godot-art-dev.md) — Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
+- [World condition system](world-condition-system.md) — places degrade over months from flourishing to rotting through ordinary wear, then recover through bounded repair work.

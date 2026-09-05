@@ -22,6 +22,9 @@ export const cityBuildingsTable = pgTable("city_buildings", {
   isPublic: boolean("is_public").notNull().default(false),
   serverId: varchar("server_id", { length: 32 }).notNull().default("minx_prime"),
   demolished: boolean("demolished").notNull().default(false),
+  conditionScore: integer("condition_score").notNull().default(100),
+  conditionLastMaintainedAt: timestamp("condition_last_maintained_at", { withTimezone: true }).notNull().defaultNow(),
+  conditionRepairCount: integer("condition_repair_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

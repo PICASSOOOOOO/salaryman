@@ -1,6 +1,7 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { SALARYMAN_STYLE } from "./salaryman-art";
 import { getOpenAiTextModel } from "./openai-models";
+import type { ConditionState } from "./world-condition";
 
 export interface ArtDirectionAssetSpec {
   name: string;
@@ -12,6 +13,7 @@ export interface ArtDirectionAssetSpec {
   silhouette: string;
   palette: string[];
   reviewChecks: string[];
+  conditionState?: ConditionState;
 }
 
 export interface ArtDirectionBrief {
@@ -24,6 +26,7 @@ export interface ArtDirectionBrief {
   silhouetteRules: string[];
   avoid: string[];
   assets: ArtDirectionAssetSpec[];
+  conditionSystem: string;
   model: string;
 }
 
@@ -61,6 +64,9 @@ function normalizeAsset(value: unknown, index: number): ArtDirectionAssetSpec {
   const jobTypes = new Set<ArtDirectionAssetSpec["jobType"]>([
     "object", "landscape", "cinematic",
   ]);
+  const conditionStates = new Set<ConditionState>([
+    "flourishing", "maintained", "weathered", "neglected", "rotting",
+  ]);
   const category = categories.has(item.category as ArtDirectionAssetSpec["category"])
     ? item.category as ArtDirectionAssetSpec["category"]
     : "prop";
@@ -81,6 +87,9 @@ function normalizeAsset(value: unknown, index: number): ArtDirectionAssetSpec {
     silhouette: text(item.silhouette, "Readable at gameplay scale with a clear outer contour.", 300),
     palette: list(item.palette, 8, 80),
     reviewChecks: list(item.reviewChecks, 8, 180),
+    conditionState: conditionStates.has(item.conditionState as ConditionState)
+      ? item.conditionState as ConditionState
+      : undefined,
   };
 }
 
@@ -92,7 +101,11 @@ export async function generateArtDirectionBrief(input: {
 }): Promise<ArtDirectionBrief> {
   const count = Math.max(1, Math.min(24, Math.floor(input.count ?? 8)));
   const prompt = `You are SALARYMAN's senior art director and production asset planner.
-Create a practical, reusable art-direction brief for a persistent cyberpunk office-sim game.
+Create a practical, reusable art-direction brief for a persistent 1970s–1980s
+physical solar-punk world whose story is dark noir because Pablo Corp and Mr Shadow
+consolidate power and neglect ordinary people. The world is not futuristic: use
+human-scale civic architecture, analog technology, painted steel, wood, amber glass,
+hand tools, paper, plants, and repairable real-world materials.
 The output is handed to render providers and human reviewers; do not generate image URLs,
 do not invent a new visual style, and do not use generic fantasy or glossy mobile-game language.
 
@@ -103,6 +116,15 @@ Current focus: ${input.focus}
 Requested asset types: ${input.assetTypes.join(", ") || "props, environments, and building modules"}
 Additional production notes: ${input.notes || "none"}
 Plan exactly ${count} candidate assets.
+
+Every physical asset belongs to a slow condition system:
+flourishing, maintained, weathered, neglected, or rotting. Neglect accumulates over
+months when nobody attends to a place. Player, business, and NPC repair work moves
+the same place back toward care. Condition changes must be localized to material wear,
+plant health, clutter, stains, lighting, and ordinary repairs; preserve silhouette,
+footprint, collision, animation timing, and interaction readability. Never introduce
+holograms, glowing circuitry, drones, impossible architecture, neon sludge, or graphic
+biological horror.
 
 Return strict JSON only with this shape:
 {
@@ -123,7 +145,8 @@ Return strict JSON only with this shape:
     "prompt":"A provider-ready prompt that preserves the canonical style.",
     "silhouette":"...",
     "palette":["#hex ..."],
-    "reviewChecks":["..."]
+     "reviewChecks":["..."],
+     "conditionState":"flourishing|maintained|weathered|neglected|rotting"
   }]
 }
 
@@ -159,7 +182,7 @@ Keep the set visually coherent, production-sized, and useful for a first playabl
 
   return {
     title: text(parsed.title, "Salaryman art-direction brief", 160),
-    creativeThesis: text(parsed.creativeThesis, "A coherent neon-noir production set.", 500),
+    creativeThesis: text(parsed.creativeThesis, "A coherent physical solar-punk production set whose noir comes from neglect and power.", 500),
     palette,
     lighting: text(parsed.lighting, "Controlled cyan and hot-pink rim light over deep navy ambient fill.", 400),
     materials: text(parsed.materials, "Readable industrial materials with restrained surface variation.", 400),
@@ -167,6 +190,7 @@ Keep the set visually coherent, production-sized, and useful for a first playabl
     silhouetteRules: list(parsed.silhouetteRules, 12),
     avoid: list(parsed.avoid, 16),
     assets,
+    conditionSystem: "Five bounded states: flourishing, maintained, weathered, neglected, rotting. Months of neglect lower condition; player, business, and NPC care restores it. Preserve physical readability and gameplay access.",
     model: getOpenAiTextModel(),
   };
 }

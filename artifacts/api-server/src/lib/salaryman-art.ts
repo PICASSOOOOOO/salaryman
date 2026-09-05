@@ -6,23 +6,19 @@
  * through the helpers in this file. There is intentionally ONE style
  * description — change it here and the entire game's look re-bakes.
  *
- * Style: Minx City — neon-noir cyberpunk, low-saturation, isometric
- * pixel-art office aesthetic. Chunky 8-bit colour blocking, soft pink
- * (#f472b6) and cyan (#22d3ee) rim light, deep navy/black ambient
- * (#06070b → #1a1f2c), fluorescent overhead fill, subtle dithering.
- * fluorescent overhead fill, subtle dithering. Think: PS1-era office
- * sim meets BLAME!.
+ * Style: a physical 1970s–1980s solar-punk world whose dark noir comes from
+ * power, weather, wear, and neglect. Human-scale civic materials, plants,
+ * repaired surfaces, analog machinery, and readable isometric silhouettes.
  */
 
 import { generateImage, type AspectRatio, type GenerateImageResult, type Resolution } from "./nano-banana";
 
 export const SALARYMAN_STYLE = [
-  "Salaryman game art style: isometric pixel-art, neon-noir cyberpunk corporate aesthetic.",
-  "Low-saturation palette of deep navy (#06070b, #11141b, #1a1f2c) with hot pink (#f472b6) and cyan (#22d3ee) rim lights and signage glow.",
-  "Chunky 8-bit colour blocking, crisp pixel edges, subtle dithering, no anti-aliasing on hard edges.",
-  "Fluorescent overhead fill light from above, soft volumetric haze.",
-  "Clean composition, generous negative space, single subject centred on a flat dark background unless otherwise specified.",
-  "PS1-era office sim meets BLAME!. No text, no watermarks, no UI overlays.",
+  "Salaryman game art style: physical 1970s–1980s solar-punk retrofuture with human-scale civic architecture and repairable analog technology.",
+  "Warm daylight, abundant plants, amber glass, painted steel, wood, brushed metal, paper, wired phones, switches, hand tools, and modular construction.",
+  "Chunky readable pixel silhouettes or grounded production forms, crisp edges, restrained texture, no disposable detail.",
+  "Dark noir comes from weather, framing, selective shadow, faded maintenance, and political pressure — not from changing every material to cyberpunk.",
+  "No holograms, glowing circuitry, drones, neon sludge, impossible architecture, baked text, watermarks, or UI overlays.",
 ].join(" ");
 
 /** Compose the final Nano Banana prompt for a Salaryman asset. */
@@ -41,9 +37,9 @@ export function composeSalarymanPrompt(subject: string, extras?: string): string
 // preserving the "every backend renders the same prompt" invariant.
 export const REALISTIC_CHARACTER_STYLE = [
   "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, ultra-detailed.",
-  "Set in a neon-noir cyberpunk corporate world (Minx City): a real person — or a lifelike android — posing for an identity portrait.",
+  "Set in a physical solar-punk civic world under dark noir pressure: a real human posing for an identity portrait.",
   "Three-quarter upper-body framing, eye-level, sharp focus on the face, shallow depth of field, subtle film grain.",
-  "Dramatic hot-pink (#f472b6) and cyan (#22d3ee) rim lighting against a deep navy (#06070b) studio backdrop with soft volumetric haze.",
+  "Warm amber daylight with selective deep shadow and muted civic colors; noir comes from framing and weather rather than neon technology.",
   "Realistic skin texture, realistic fabric and materials, natural anatomy, filmic colour grade.",
   "Single subject centred, no text, no watermark, no UI overlays, no border.",
 ].join(" ");

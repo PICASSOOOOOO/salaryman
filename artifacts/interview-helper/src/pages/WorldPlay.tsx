@@ -97,7 +97,7 @@ import { computeBoWarning } from '@/lib/bo-collector-warning';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
-  buildBuilding, customizeBuilding, rentBuilding, demolishBuilding,
+  buildBuilding, customizeBuilding, rentBuilding, demolishBuilding, repairBuilding,
   drawPlayerBuilding, findNearPlayerBuilding, isInsidePlayerBuilding, PLAYER_BUILDING_RANGE,
 } from '../lib/city-buildings';
 import {
@@ -5199,6 +5199,8 @@ export default function WorldPlay() {
   const [showDmPicker, setShowDmPicker] = useState(false);
   const playerBuildingsRef = useRef<CityBuilding[]>([]);
   const [nearPlayerBuilding, setNearPlayerBuilding] = useState<CityBuilding | null>(null);
+  const [repairingBuilding, setRepairingBuilding] = useState(false);
+  const [repairMessage, setRepairMessage] = useState<string | null>(null);
   const [showBuildPanel, setShowBuildPanel] = useState(false);
   const [showBuildingManage, setShowBuildingManage] = useState<CityBuilding | null>(null);
   const [buildingTypes, setBuildingTypes] = useState<BuildingTypeSpec[]>([]);
@@ -22351,6 +22353,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   const hpGlow = hpRatio > 0.6 ? 'rgba(74,222,128,.5)' : hpRatio > 0.3 ? 'rgba(255,204,0,.5)' : hpRatio > 0.15 ? 'rgba(255,136,0,.5)' : 'rgba(255,0,0,.6)';
   const nearB = near ? BUILDINGS.find(b => b.id === near) : null;
   const hudSuppressed = isPeacefulInterior();
+  const handleRepairBuilding = useCallback(async () => {
+    if (!nearPlayerBuilding || repairingBuilding || nearPlayerBuilding.condition?.state === 'flourishing') return;
+    setRepairingBuilding(true);
+    setRepairMessage(null);
+    const result = await repairBuilding(nearPlayerBuilding.id, 1);
+    if (result.building) {
+      playerBuildingsRef.current = playerBuildingsRef.current.map((building) =>
+        building.id === result.building!.id ? result.building! : building,
+      );
+      setNearPlayerBuilding(result.building);
+      setRepairMessage(`CARE COMPLETE · ${result.building.condition?.state?.toUpperCase() ?? 'UPDATED'}`);
+    } else {
+      setRepairMessage(result.error ?? 'CARE UNAVAILABLE');
+    }
+    setRepairingBuilding(false);
+    window.setTimeout(() => setRepairMessage(null), 2600);
+  }, [nearPlayerBuilding, repairingBuilding]);
 
   return (
     <div
@@ -22372,6 +22391,62 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           scales. Net zoom is 1, so pointer math (getBoundingClientRect) and the
           backing-buffer sizing are unaffected. */}
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none', ...(uiScale !== 1 ? { zoom: 1 / uiScale } : {}) }} />
+
+      {nearPlayerBuilding?.condition && !hudSuppressed && !gamePaused && !isDead && (
+        <div
+          data-testid="building-condition-panel"
+          style={{
+            position: 'absolute',
+            right: 'max(14px, env(safe-area-inset-right, 0px))',
+            bottom: 'max(92px, calc(18px + env(safe-area-inset-bottom, 0px)))',
+            zIndex: 180,
+            width: 'min(280px, calc(100vw - 28px))',
+            padding: '10px 12px',
+            border: `1px solid ${nearPlayerBuilding.condition.state === 'rotting' ? 'rgba(190,120,80,.62)' : 'rgba(120,170,130,.42)'}`,
+            background: 'rgba(12,14,16,.9)',
+            boxShadow: '0 8px 28px rgba(0,0,0,.28)',
+            color: 'rgba(235,230,215,.86)',
+            fontFamily: 'var(--font-sans)',
+            pointerEvents: 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+            <div style={{ fontSize: '.58rem', letterSpacing: '.16em', color: '#d7b98e' }}>PLACE CONDITION</div>
+            <div style={{ fontSize: '.58rem', letterSpacing: '.12em', color: 'rgba(235,230,215,.55)' }}>
+              {nearPlayerBuilding.condition.state.toUpperCase()} · {nearPlayerBuilding.condition.score}/100
+            </div>
+          </div>
+          <div style={{ marginTop: 6, fontSize: '.62rem', lineHeight: 1.45, color: 'rgba(235,230,215,.7)' }}>
+            {nearPlayerBuilding.condition.cues.repairAction}.
+          </div>
+          {repairMessage && (
+            <div style={{ marginTop: 7, fontSize: '.56rem', letterSpacing: '.08em', color: '#a7d7a2' }}>
+              {repairMessage}
+            </div>
+          )}
+          {nearPlayerBuilding.condition.state !== 'flourishing' && (
+            <button
+              type="button"
+              onClick={handleRepairBuilding}
+              disabled={repairingBuilding}
+              style={{
+                marginTop: 9,
+                width: '100%',
+                padding: '7px 9px',
+                border: '1px solid rgba(167,215,162,.5)',
+                background: repairingBuilding ? 'rgba(167,215,162,.08)' : 'rgba(167,215,162,.14)',
+                color: '#b8e0b1',
+                fontSize: '.58rem',
+                letterSpacing: '.13em',
+                cursor: repairingBuilding ? 'wait' : 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              {repairingBuilding ? 'WORKING…' : 'DO ONE CARE JOB'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Adaptive performance prompt ─────────────────────────────────────
           Surfaced by the render-loop FPS watchdog when the frame rate stays
