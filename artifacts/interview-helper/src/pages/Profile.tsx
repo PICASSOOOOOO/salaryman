@@ -847,7 +847,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
   const [, navigate] = useLocation();
   const [data, setData] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [boomerMode, setBoomerMode] = useBoomerMode();
+  const [boomerMode] = useBoomerMode();
   const { isPro, isOwner, features } = usePlan();
   const { t } = useTranslation();
   const [showFeedback, setShowFeedback] = useState(false);
@@ -1295,27 +1295,6 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                 </div>
                 <CurrencySelector />
               </div>
-
-              {/* Boomer mode toggle */}
-              <button
-                onClick={() => setBoomerMode(!boomerMode)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-amber-500/30 transition-colors"
-              >
-                <div className="flex items-center gap-2 min-w-0 text-left">
-                  <Zap className={`w-3.5 h-3.5 shrink-0 ${boomerMode ? 'text-amber-400' : 'text-muted-foreground'}`} />
-                  <div className="min-w-0">
-                    <div className="text-xs text-foreground tracking-wide">
-                      {boomerMode ? 'Plain English Labels' : 'CODENAME LABELS'}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {boomerMode ? 'Switch to codename style' : 'Switch to plain English'}
-                    </div>
-                  </div>
-                </div>
-                <div className={`w-9 h-5 rounded-full relative transition-colors ${boomerMode ? 'bg-amber-500/40' : 'bg-zinc-700'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${boomerMode ? 'left-[18px]' : 'left-0.5'}`} />
-                </div>
-              </button>
 
               {/* Bug report */}
               <button
