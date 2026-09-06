@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import hypot
 
 from .objects import InteractionResult, OfficeObject, OfficeObjectRegistry, build_tower_object_registry
 
@@ -37,6 +38,13 @@ class TowerScene:
         )
     )
     objects: OfficeObjectRegistry = field(default_factory=build_tower_object_registry)
+    input_vector: tuple[float, float] = (0.0, 0.0)
+    velocity: tuple[float, float] = (0.0, 0.0)
+    motion_remainder: tuple[float, float] = (0.0, 0.0)
+
+    MAX_SPEED: float = 300.0
+    ACCELERATION: float = 1_500.0
+    FRICTION: float = 2_000.0
 
     @property
     def room(self) -> Room:
@@ -70,6 +78,49 @@ class TowerScene:
                 self.current_room = candidate.id
                 break
 
+    def set_motion_input(self, x: float, y: float) -> None:
+        """Set a bounded input vector received from the Godot renderer."""
+        self.input_vector = (
+            max(-1.0, min(1.0, float(x))),
+            max(-1.0, min(1.0, float(y))),
+        )
+
+    def update_motion(self, delta_seconds: float) -> None:
+        """Apply normalized acceleration/friction without duplicating authority."""
+        if delta_seconds <= 0:
+            return
+        input_x, input_y = self.input_vector
+        input_length = hypot(input_x, input_y)
+        if input_length > 0:
+            direction_x = input_x / input_length
+            direction_y = input_y / input_length
+            target_x = direction_x * self.MAX_SPEED
+            target_y = direction_y * self.MAX_SPEED
+            rate = self.ACCELERATION * delta_seconds
+        else:
+            target_x = 0.0
+            target_y = 0.0
+            rate = self.FRICTION * delta_seconds
+
+        velocity_x, velocity_y = self.velocity
+        velocity_x = self._move_toward(velocity_x, target_x, rate)
+        velocity_y = self._move_toward(velocity_y, target_y, rate)
+        remainder_x, remainder_y = self.motion_remainder
+        travel_x = velocity_x * delta_seconds + remainder_x
+        travel_y = velocity_y * delta_seconds + remainder_y
+        step_x = int(travel_x)
+        step_y = int(travel_y)
+        self.motion_remainder = (travel_x - step_x, travel_y - step_y)
+        self.velocity = (velocity_x, velocity_y)
+        if step_x or step_y:
+            self.move(step_x, step_y)
+
+    @staticmethod
+    def _move_toward(current: float, target: float, amount: float) -> float:
+        if abs(target - current) <= amount:
+            return target
+        return current + amount if target > current else current - amount
+
     def interact(self, state: "OfficeState", object_id: str | None = None, *, vending_item: str = "coffee") -> InteractionResult:
         target = object_id or (self.nearby_object.id if self.nearby_object else None)
         if target is None:
@@ -83,6 +134,9 @@ class TowerScene:
             return False
         self.current_room = room_id
         self.player_position = self.room_spawn(room_id)
+        self.input_vector = (0.0, 0.0)
+        self.velocity = (0.0, 0.0)
+        self.motion_remainder = (0.0, 0.0)
         return True
 
 

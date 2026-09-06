@@ -8,6 +8,7 @@ import sys
 
 import pygame
 
+from .bridge import OfficeBridge, apply_command
 from .state import OfficeState
 from .scene import build_tower_scene
 from .ui import SolarPunkRenderer
@@ -25,6 +26,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="~/.salaryman/office.json",
         help="Persistent office record path.",
     )
+    parser.add_argument("--bridge-host", default="127.0.0.1", help="Godot bridge bind address.")
+    parser.add_argument("--bridge-port", type=int, default=4242, help="Godot bridge TCP port.")
+    parser.add_argument("--no-bridge", action="store_true", help="Disable the optional Godot bridge.")
     return parser.parse_args(argv)
 
 
@@ -44,6 +48,10 @@ def run(argv: list[str] | None = None) -> int:
     coffee_rects: dict[int, pygame.Rect] = {}
     spatial_mode = False
     previous_day = state.day
+    bridge = OfficeBridge(args.bridge_host, args.bridge_port)
+    if not args.no_bridge:
+        bridge.start()
+    bridge_elapsed = 0.0
 
     running = True
     frame_count = 0
@@ -122,6 +130,18 @@ def run(argv: list[str] | None = None) -> int:
                                 break
 
         state.update(delta_seconds)
+        if not args.no_bridge:
+            if not bridge.connected:
+                scene.set_motion_input(0.0, 0.0)
+            scene.update_motion(delta_seconds)
+            for command in bridge.poll_commands():
+                result = apply_command(command, state, scene)
+                bridge.send_result(command, result)
+            bridge_elapsed += delta_seconds
+            if bridge.connected and bridge_elapsed >= 0.1:
+                bridge_elapsed = 0.0
+                bridge.send_snapshot(state, scene)
+            bridge.flush()
         if state.day != previous_day:
             state.save_to_file(args.save_file)
             previous_day = state.day
@@ -135,6 +155,7 @@ def run(argv: list[str] | None = None) -> int:
             running = False
 
     state.save_to_file(args.save_file)
+    bridge.close()
     pygame.quit()
     return 0
 
