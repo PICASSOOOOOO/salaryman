@@ -129,14 +129,15 @@ def run(argv: list[str] | None = None) -> int:
                                 state.select_worker(index)
                                 break
 
-        state.update(delta_seconds)
         if not args.no_bridge:
-            if not bridge.connected:
-                scene.set_motion_input(0.0, 0.0)
-            scene.update_motion(delta_seconds)
             for command in bridge.poll_commands():
                 result = apply_command(command, state, scene)
                 bridge.send_result(command, result)
+            if not bridge.connected:
+                scene.set_motion_input(0.0, 0.0)
+            scene.update_motion(delta_seconds)
+        state.update(delta_seconds)
+        if not args.no_bridge:
             bridge_elapsed += delta_seconds
             if bridge.connected and bridge_elapsed >= 0.1:
                 bridge_elapsed = 0.0

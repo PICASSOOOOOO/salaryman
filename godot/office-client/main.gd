@@ -34,6 +34,7 @@ func _process(_delta: float) -> void:
 	match connection.get_status():
 		StreamPeerTCP.STATUS_CONNECTED:
 			connection_status = "bridge live · Pygame authoritative"
+			_send_current_input()
 			_read_messages()
 		StreamPeerTCP.STATUS_CONNECTING:
 			connection_status = "connecting to Pygame…"
@@ -87,14 +88,6 @@ func _input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	match event.keycode:
-		KEY_W, KEY_UP:
-			_send_command("move", {"dx": 0, "dy": -350})
-		KEY_S, KEY_DOWN:
-			_send_command("move", {"dx": 0, "dy": 350})
-		KEY_A, KEY_LEFT:
-			_send_command("move", {"dx": -350, "dy": 0})
-		KEY_D, KEY_RIGHT:
-			_send_command("move", {"dx": 350, "dy": 0})
 		KEY_E:
 			_send_command("interact")
 		KEY_1:
@@ -115,6 +108,11 @@ func _input(event: InputEvent) -> void:
 			connection.disconnect_from_host()
 			connection = StreamPeerTCP.new()
 			_connect_to_pygame()
+
+func _send_current_input() -> void:
+	var x := int(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
+	var y := int(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
+	_send_command("set_input", {"x": x, "y": y})
 
 func _world_to_screen(x: float, y: float, world_rect: Rect2) -> Vector2:
 	return Vector2(
