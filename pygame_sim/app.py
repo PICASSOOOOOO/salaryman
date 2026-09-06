@@ -63,6 +63,8 @@ def run(argv: list[str] | None = None) -> int:
                     state.toggle_drawer()
                 elif renderer.run_rect.collidepoint(event.pos):
                     state.toggle_running()
+                elif renderer.reset_rect.collidepoint(event.pos):
+                    state.reset()
                 else:
                     for index, rect in coffee_rects.items():
                         if rect.collidepoint(event.pos) and index < len(state.roster.workers):

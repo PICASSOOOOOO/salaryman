@@ -60,6 +60,13 @@ class Worker:
         self.status_note = "COFFEE BREAK / RECOVERING"
         return True
 
+    def rest_overnight(self) -> None:
+        """Recover between shifts so a good run never becomes a soft lock."""
+        self.stamina = min(self.max_stamina, self.stamina + 52.0)
+        self.is_resting = False
+        self.last_output = 0.0
+        self.status_note = "READY FOR SHIFT"
+
     @property
     def stamina_ratio(self) -> float:
         return max(0.0, min(1.0, self.stamina / self.max_stamina))

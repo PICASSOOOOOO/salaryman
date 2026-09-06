@@ -132,8 +132,8 @@ class SolarPunkRenderer:
         )
 
     def draw_worker_grid(self, state: OfficeState, coffee_rects: dict[int, pygame.Rect]) -> None:
-        self.text("ACTIVE PERSONNEL", (36, 218), self.font_lg, Palette.GLASS_BRIGHT)
-        self.text("PRODUCTIVITY IS A SHARED GARDEN — MAINTAIN THE PEOPLE WHO GROW IT", (36, 245), self.font_sm, (176, 219, 192))
+        self.text("WORKFLOOR", (36, 218), self.font_lg, Palette.GLASS_BRIGHT)
+        self.text("SELECT A WORKER TO DIRECT THEIR NEXT BREAK", (36, 245), self.font_sm, (176, 219, 192))
 
         card_width = (self.width - 92) // 3
         self.worker_rects.clear()
@@ -157,6 +157,7 @@ class SolarPunkRenderer:
         pygame.draw.circle(self.screen, Palette.GLASS_BRIGHT, (inner.x + 27, inner.y + 30), 6)
         self.text(worker.name, (inner.x + 51, inner.y + 18), self.font_lg, Palette.INK)
         self.text(worker.role, (inner.x + 51, inner.y + 43), self.font_mono, Palette.MUTED)
+        self.text(str(state.roster.workers.index(worker) + 1), (inner.right - 28, inner.y + 18), self.font_md, worker.accent)
 
         status_color = Palette.SEAFOAM
         if worker.stamina_state == "warning":
@@ -191,7 +192,7 @@ class SolarPunkRenderer:
     def draw_activity_panel(self, state: OfficeState) -> None:
         panel = pygame.Rect(28, 558, self.width - 56, 128)
         self.panel(panel, (8, 66, 70), (52, 144, 127), radius=16, width=2)
-        self.text("ECOSYSTEM SIGNALS", (50, 580), self.font_md, Palette.GLASS_BRIGHT)
+        self.text("OFFICE STATUS", (50, 580), self.font_md, Palette.GLASS_BRIGHT)
         self.text(
             f"FOCUS HOURS {state.hours_completed_today}/8  ·  "
             f"ROSTER {len(state.roster.workers)}  ·  "
@@ -201,17 +202,15 @@ class SolarPunkRenderer:
             (176, 219, 192),
         )
         self.text(
-            "SUNLIGHT IN THE ATRIUM / WATER LOOP NOMINAL / PEOPLE ARE THE INFRASTRUCTURE",
+            "ATRIUM LIGHT  /  WATER LOOP  /  PEOPLE ON SHIFT",
             (50, 635),
             self.font_sm,
             Palette.SUN,
         )
-        self.text(
-            f"{state.notice}     SPACE  PAUSE / RESUME     R  RESET DAY",
-            (50, 660),
-            self.font_mono,
-            Palette.GLASS,
-        )
+        self.text(f"{state.notice}", (50, 660), self.font_mono, Palette.GLASS)
+        self.reset_rect = pygame.Rect(self.width - 454, 648, 116, 26)
+        self.panel(self.reset_rect, (18, 92, 88), (52, 144, 127), radius=7)
+        self.text("RESET DAY  R", (self.reset_rect.x + 12, self.reset_rect.y + 7), self.font_mono, Palette.GLASS)
 
         self.drawer_rect = pygame.Rect(self.width - 276, 580, 224, 78)
         self.panel(self.drawer_rect, (232, 245, 224), (184, 216, 184), radius=11, width=2)

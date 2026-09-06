@@ -178,4 +178,4 @@ class OfficeState:
         self.selected_worker = None
         self.notice = f"DAY {self.day:02d} STARTED"
         for worker in self.roster.workers:
-            worker.status_note = "READY FOR SHIFT"
+            worker.rest_overnight()

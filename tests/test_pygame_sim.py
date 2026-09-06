@@ -83,6 +83,18 @@ class PygameSimulationTests(unittest.TestCase):
         state.update(SECONDS_PER_WORKSPACE_HOUR)
         self.assertEqual(state.hour, 10)
 
+    def test_workers_recover_between_days_so_stamina_cannot_soft_lock_the_run(self):
+        state = OfficeState.with_default_roster()
+        worker = state.roster.workers[0]
+        worker.stamina = 8.0
+        for _ in range(8):
+            state.advance_workspace_hour()
+        self.assertEqual(state.hour, 17)
+        state.advance_workspace_hour()
+        self.assertEqual(state.day, 2)
+        self.assertEqual(worker.status_note, "READY FOR SHIFT")
+        self.assertGreater(worker.stamina, 8.0)
+
 
 if __name__ == "__main__":
     unittest.main()
