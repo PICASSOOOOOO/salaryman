@@ -154,3 +154,4 @@
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
 - [Pygame real-time wage floor](pygame-real-time-wages.md) — production clock follows local wall time; $3/hour is ƒ300/hour minimum, with employer rates allowed above the floor.
 - [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
+- [Pygame one-building scope](pygame-one-building-scope.md) — deepen one complete building before expanding to city travel or multiple buildings.
