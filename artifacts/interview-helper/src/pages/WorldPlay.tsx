@@ -19787,9 +19787,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const nLLeg = isMoving ? Math.sin(walkPhase) * 3 : 0;
         const nRLeg = -nLLeg;
         const nBob = isMoving ? Math.abs(Math.sin(walkPhase)) * 1 : Math.sin(g.frame * 0.05 + ni) * 0.5;
-        // Body proportions variation
-        const bodyW = 7 + Math.floor(nv.s2 * 3);
-        const headR = 2.5 + nv.s3 * 0.8;
+        // Human characters use one shared paper-doll frame. Previously each
+        // resident got a hand-built body/head size from the variety seed, which
+        // made a crowd read as a pile of unrelated scales. Variety now lives in
+        // the identity details (hair, face, clothing, accessories), not in the
+        // character's physical footprint.
+        const NPC_CHARACTER_SCALE = 0.92;
         // Soft contact shadow at the feet — two stacked ellipses fake a soft
         // penumbra so NPCs sit on the ground. Opacity scales with time of day
         // and the throw is nudged down-right to match the upper-left key light;
@@ -19812,69 +19815,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const npcIsOutlawType = n.role === 'gang_patrol' || n.role === 'homeless' || npcNType === 'mutant';
         const npcBodyCol = npcIsCorpType ? '#1e1e2e' : npcIsOutlawType ? (nv.s2 > 0.5 ? '#6b4a28' : '#5a3d22') : (nv.s3 > 0.5 ? '#3a4a5a' : (nv.s3 > 0.25 ? '#4a3a55' : '#2e3a2e'));
         const npcLegCol = npcIsCorpType ? '#111111' : npcIsOutlawType ? '#3d2010' : (nv.s2 > 0.6 ? '#2a3d6b' : '#334466');
-        if (idle === 'SITTING' && !isFleeing) {
-          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 4, headR, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 3, ny2 - 1, 6, 4);
-          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 3, 8, 3);
-          ctx.fillStyle = npcIsCorpType ? '#888877' : '#443322'; ctx.fillRect(nx2 - 6, ny2 + 2, 12, 3);
-          if (npcIsCorpType) { ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 3); }
-        } else if (idle === 'EATING' && !isFleeing) {
-          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
-          if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
-          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
-          ctx.fillStyle = '#ffcc88'; ctx.fillRect(nx2 + 4, ny2 - 4, 4, 3);
-        } else if (idle === 'BROWSING' && !isFleeing) {
-          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
-          if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
-          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
-          const browseBob = Math.sin(g.frame * 0.05 + ni) * 2;
-          ctx.fillStyle = skinTone; ctx.fillRect(nx2 + 5, ny2 - 3 + browseBob, 2, 4);
-        } else if (idle === 'TALKING' && !isFleeing) {
-          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
-          if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
-          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
-          if (g.frame % 60 < 30) {
-            ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
-            ctx.fillText('...', nx2 + 8, ny2 - 12);
-          }
-        } else {
-          // Walking or default — faction-aware clothing (android/replicant NPCs look civilian)
-          if (npcIsCorpType) {
-            // Corporate suit — dark jacket, dress trousers — same for all genders
-            ctx.fillStyle = '#111111'; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
-            ctx.fillStyle = '#1e1e2e'; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
-            ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3 + nBob, 2, 2);
-            ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1 + nBob, 2, 4);
-            ctx.fillStyle = '#1e1e2e'; ctx.fillRect(nx2 - bodyW / 2 - 2, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
-          } else if (npcIsOutlawType) {
-            // Wasteland rags — dusty canvas/leather, same for all genders
-            const ragCol = nv.s2 > 0.5 ? '#6b4a28' : '#5a3d22';
-            ctx.fillStyle = '#3d2010'; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
-            ctx.fillStyle = ragCol; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
-            ctx.fillStyle = '#4a3020'; ctx.fillRect(nx2 - bodyW / 2 - 2, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
-          } else {
-            // Civilian clothes — hoodie/top + jeans — same for all genders (humans and replicant NPCs)
-            const civJeans = nv.s2 > 0.6 ? '#2a3d6b' : (nv.s2 > 0.3 ? '#334466' : '#3a3a4a');
-            const civTop = nv.s3 > 0.5 ? '#3a4a5a' : (nv.s3 > 0.25 ? '#4a3a55' : '#2e3a2e');
-            ctx.fillStyle = civJeans; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
-            ctx.fillStyle = civTop; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
-            ctx.fillStyle = civTop; ctx.fillRect(nx2 - bodyW / 2 - 2, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
-          }
-          // Head
-          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7 + nBob, headR, 0, Math.PI * 2); ctx.fill();
-          // Hair styles — variety based on NPC seed
-          const hairStyle = Math.floor(nv.s2 * 5);
-          const hairCols = ['#1a0800', '#5a3010', '#c09050', '#ee2222', '#aaaaaa'];
-          const hairCol = hairCols[Math.floor(nv.s3 * hairCols.length)];
-          ctx.fillStyle = hairCol;
-          if (hairStyle === 0) { ctx.fillRect(nx2 - 3, ny2 - 12 + nBob, 6, 3); ctx.beginPath(); ctx.arc(nx2, ny2 - 12 + nBob, 2, 0, Math.PI * 2); ctx.fill(); }
-          else if (hairStyle === 1) { ctx.fillRect(nx2 - 4, ny2 - 13 + nBob, 8, 4); }
-          else if (hairStyle === 2) { ctx.fillRect(nx2 - 3, ny2 - 10 + nBob, 6, 2); }
-          else if (hairStyle === 3) { ctx.beginPath(); ctx.arc(nx2 - 1, ny2 - 11 + nBob, 2, 0, Math.PI * 2); ctx.arc(nx2 + 2, ny2 - 11 + nBob, 1.5, 0, Math.PI * 2); ctx.fill(); }
-          // else 4 = bald/shaved (no hair drawn)
+        // Every resident uses the same upgraded paper-doll object as the player
+        // and office occupants. The fixed transform keeps feet, head, and arms
+        // aligned even when a resident is eating, browsing, talking, or fleeing.
+        const npcPCls = npcIsCorpType ? 'corporate' : npcIsOutlawType ? 'outlaw' : n.type === 'android' ? 'replicant' : '';
+        const npcHairStyles = ['short', 'long', 'buzz', 'spiky', 'bowl'] as const;
+        const npcHairColors = ['#1a0800', '#5a3010', '#c09050', '#ee2222', '#aaaaaa'];
+        const npcFaceStyles = ['plain', 'shades', 'beard', 'visor'] as const;
+        const npcAppearance: Appearance = {
+          ...defaultAppearance(npcPCls),
+          gender: isFemale ? 'f' : 'm',
+          skinTone,
+          hairColor: npcHairColors[Math.floor(nv.s3 * npcHairColors.length)],
+          hairStyle: npcHairStyles[Math.floor(nv.s2 * npcHairStyles.length)],
+          faceStyle: npcFaceStyles[Math.floor(nv.s1 * npcFaceStyles.length)],
+          outfitStyle: npcIsCorpType ? 'suit' : npcIsOutlawType ? 'duster' : isFemale ? 'dress' : 'casual',
+          outfitColor: npcBodyCol,
+        };
+        ctx.save();
+        ctx.translate(nx2, ny2 + 8);
+        ctx.scale(NPC_CHARACTER_SCALE, NPC_CHARACTER_SCALE);
+        ctx.translate(-nx2, -(ny2 + 8));
+        drawPlayerSprite(ctx, npcAppearance, {
+          px: nx2,
+          py: ny2 - 3 + nBob,
+          pCls: npcPCls,
+        });
+        ctx.restore();
+
+        // Small activity marker keeps the survival simulation readable without
+        // changing the character's body size.
+        if (!isFleeing && idle !== 'WALKING' && idle !== 'SITTING') {
+          ctx.fillStyle = idle === 'EATING' ? '#ffcc88' : 'rgba(255,255,255,.5)';
+          ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
+          ctx.fillText(idle === 'EATING' ? '•' : idle === 'TALKING' ? '...' : '⌁', nx2 + 9, ny2 - 14);
         }
 
         // Faction accessories & detail
@@ -19979,10 +19953,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isNearEmp = eDist < 40;
         if (isNearEmp) g.nearEmployee = ei;
         ctx.save();
-        ctx.fillStyle = '#00ccff';
-        ctx.fillRect(ex - 5, ey - 14, 10, 14);
-        ctx.fillStyle = '#00ccff';
-        ctx.fillRect(ex - 3, ey - 18, 6, 4);
+        ctx.shadowColor = '#00ccff';
+        ctx.shadowBlur = isNearEmp ? 7 : 3;
+        ctx.translate(ex, ey + 8);
+        ctx.scale(0.92, 0.92);
+        ctx.translate(-ex, -(ey + 8));
+        drawPlayerSprite(ctx, {
+          ...defaultAppearance('corporate'),
+          gender: 'nb',
+          hairColor: '#d4b070',
+          hairStyle: 'short',
+          faceStyle: 'plain',
+          outfitColor: '#16738a',
+        }, { px: ex, py: ey - 3, pCls: 'corporate' });
         ctx.restore();
         ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         const empLabel = `${emp.name} [${emp.role}]`;
@@ -20014,24 +19997,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
         if (opSleeping) {
           drawSleepingPeer(ctx, px2, py2, g.blink ? 1 : 0, 1);
-        } else if (opCls === 'corporate') {
-          ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
-          ctx.fillStyle = '#333333'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
-          ctx.fillStyle = '#cc0000'; ctx.fillRect(px2 - 1, py2 - 5, 2, 4);
-          ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
-        } else if (opCls === 'outlaw') {
-          ctx.fillStyle = '#5a4433'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
-          ctx.fillStyle = '#6b5533'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
-          ctx.fillStyle = '#8a7744'; ctx.fillRect(px2 - 7, py2 - 8, 14, 3);
-          ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
-        } else if (opCls === 'replicant') {
-          ctx.fillStyle = '#2a3d6b'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
-          ctx.fillStyle = '#3a4a5a'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
-          ctx.fillStyle = '#2e3d4a'; ctx.fillRect(px2 - 3, py2 - 7, 6, 3);
-          ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
         } else {
-          ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
-          ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
+          const peerAppearance: Appearance = {
+            ...defaultAppearance(opCls),
+            gender: 'nb',
+            skinTone: '#d4906a',
+            hairColor: opCls === 'replicant' ? '#2acccc' : opCls === 'outlaw' ? '#7a3a18' : '#1a1a1a',
+            hairStyle: opCls === 'outlaw' ? 'bowl' : opCls === 'replicant' ? 'buzz' : 'short',
+            faceStyle: opCls === 'replicant' ? 'visor' : 'plain',
+            outfitColor: spk ? '#00aa88' : opCls === 'corporate' ? '#333333' : opCls === 'outlaw' ? '#6b5533' : opCls === 'replicant' ? '#3a4a5a' : '#335577',
+          };
+          ctx.save();
+          ctx.translate(px2, py2 + 7);
+          ctx.scale(0.92, 0.92);
+          ctx.translate(-px2, -(py2 + 7));
+          drawPlayerSprite(ctx, peerAppearance, {
+            px: px2,
+            py: py2 - 3,
+            pCls: opCls,
+          });
+          ctx.restore();
         }
         if (spk) {
           const t = g.frame * 0.1;
@@ -21470,13 +21455,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Ground shadow
         ctx.fillStyle = 'rgba(0,0,0,.2)';
         ctx.beginPath(); ctx.ellipse(gx2, gy2+9, 6, 2, 0, 0, Math.PI*2); ctx.fill();
-        // Armor body — PABLO CORP corp blue
-        ctx.fillStyle = '#1a3388'; ctx.fillRect(gx2-5,gy2-8,10,9);
-        ctx.fillStyle = '#2255cc'; ctx.beginPath(); ctx.arc(gx2,gy2-12,4,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#88aaff'; ctx.fillRect(gx2-3,gy2-13,6,2); // visor glow
-        ctx.fillStyle = '#1a3388'; ctx.fillRect(gx2-7,gy2-7,2,6); ctx.fillRect(gx2+5,gy2-7,2,6); // arms
-        ctx.fillRect(gx2-4,gy2+1,3,5); ctx.fillRect(gx2+1,gy2+1,3,5); // legs
+        // Security still has its own blue armor, but uses the same character
+        // frame as residents and employees instead of a smaller bespoke body.
+        ctx.save();
+        ctx.translate(gx2, gy2 + 8);
+        ctx.scale(0.92, 0.92);
+        ctx.translate(-gx2, -(gy2 + 8));
+        drawPlayerSprite(ctx, {
+          ...defaultAppearance('replicant'),
+          gender: 'nb',
+          skinTone: '#7fafff',
+          hairColor: '#2255cc',
+          hairStyle: 'buzz',
+          faceStyle: 'visor',
+          outfitStyle: 'suit',
+          outfitColor: '#1a3388',
+        }, { px: gx2, py: gy2 - 3, pCls: 'replicant' });
+        ctx.restore();
         // Corp logo (small P on chest)
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#88aaff'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('P', gx2, gy2-2);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
