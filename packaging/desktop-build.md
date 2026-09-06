@@ -12,6 +12,11 @@ python -m pip install -e '.[desktop-build]'
 python scripts/build_desktop.py
 ```
 
+The build creates both a runnable folder under `dist/salaryman-office/` and a
+downloadable archive under `dist/releases/`. The archive includes the Pygame
+desktop client, its runtime libraries, and the optional Godot office-client
+project.
+
 The command is platform-neutral and produces a windowed build for the operating
 system where it runs:
 
