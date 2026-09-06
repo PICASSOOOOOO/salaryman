@@ -388,10 +388,18 @@ function AppShell() {
   }, [pathname]);
 
   // The public Pablo nebula is a deliberately silent front door. Stop any
-  // library track left playing from an authenticated route before rendering it;
-  // Pablo's spoken replies use the separate voice bus and remain available.
+  // library/procedural track left playing from an authenticated route before
+  // rendering it. Pablo's spoken replies use the separate voice bus and remain
+  // available. This is intentionally stronger than the route backstop: the
+  // front door must be silent even when a prior route left an audio tier alive,
+  // and it must stay silent when the user unlocks audio by tapping the nebula.
   useEffect(() => {
-    if (pathname === "/" || pathname === "/pablo" || pathname.startsWith("/pablo/")) stopHummingbird();
+    if (pathname === "/" || pathname === "/pablo" || pathname.startsWith("/pablo/")) {
+      stopHummingbird();
+      void import("@/soundEngine").then(({ stopAllBackgroundAudio }) => {
+        stopAllBackgroundAudio();
+      });
+    }
   }, [pathname, stopHummingbird]);
 
   const isRootRoute = pathname === "/";

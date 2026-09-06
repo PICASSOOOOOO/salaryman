@@ -260,10 +260,11 @@ export function VisionIntake() {
         title="Show Pablo something"
         aria-label="Show Pablo something"
         data-testid="vision-intake-open"
-        // Mobile: sit BELOW the top header (top-14, right-3) so we never
-        // overlap the bottom-anchored idle bubble or the text-input form.
-        // Desktop: keep it bottom-right where it doesn't crowd anything.
-        className="fixed top-14 right-3 sm:top-auto sm:bottom-6 sm:right-6 z-30 inline-flex items-center gap-2 px-3 py-2 rounded-full border border-pink-400/45 bg-black/70 backdrop-blur text-pink-100 text-[10px] sm:text-[11px] font-mono tracking-[0.25em] hover:bg-pink-500/15 transition-colors shadow-[0_0_20px_rgba(236,72,153,0.25)]"
+        // Keep the control in a dedicated top-right lane on every viewport.
+        // The bottom lane belongs to Pablo's message board and text/voice
+        // controls; desktop used to place SHOW PABLO directly on top of it.
+        className="fixed right-3 z-30 inline-flex items-center gap-2 px-3 py-2 rounded-full border border-pink-400/45 bg-black/70 backdrop-blur text-pink-100 text-[10px] sm:right-6 sm:text-[11px] font-mono tracking-[0.25em] hover:bg-pink-500/15 transition-colors shadow-[0_0_20px_rgba(236,72,153,0.25)]"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 64px)" }}
       >
         <Camera size={14} />
         SHOW PABLO
@@ -273,10 +274,10 @@ export function VisionIntake() {
 
   return (
     <div
-      // Mobile: pin to the top under the header (top-14) and inset-x-3
-      // so the panel has air on both sides AND can't shove the text-input
-      // form off the bottom of the viewport. Desktop: bottom-right card.
-      className="fixed top-14 inset-x-3 sm:top-auto sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[380px] z-30 rounded-xl border border-pink-400/40 bg-black/90 backdrop-blur-xl text-zinc-100 overflow-hidden shadow-[0_0_40px_rgba(236,72,153,0.35)]"
+      // Keep the panel in the same dedicated top-right lane as its opener so
+      // it never covers the bottom message board or text-input form.
+      className="fixed inset-x-3 right-3 z-30 rounded-xl border border-pink-400/40 bg-black/90 backdrop-blur-xl text-zinc-100 overflow-hidden shadow-[0_0_40px_rgba(236,72,153,0.35)] sm:inset-x-auto sm:right-6 sm:w-[380px]"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 64px)" }}
       data-testid="vision-intake-panel"
     >
       {/* Header */}
