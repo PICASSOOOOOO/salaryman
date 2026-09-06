@@ -9,6 +9,7 @@ import sys
 import pygame
 
 from .state import OfficeState
+from .scene import build_tower_scene
 from .ui import SolarPunkRenderer
 
 
@@ -34,7 +35,9 @@ def run(argv: list[str] | None = None) -> int:
     clock = pygame.time.Clock()
     state = OfficeState.with_default_roster(real_time=True)
     renderer = SolarPunkRenderer(screen)
+    scene = build_tower_scene()
     coffee_rects: dict[int, pygame.Rect] = {}
+    spatial_mode = False
 
     running = True
     frame_count = 0
@@ -44,7 +47,28 @@ def run(argv: list[str] | None = None) -> int:
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_TAB:
+                    spatial_mode = not spatial_mode
+                elif spatial_mode and event.key in (pygame.K_w, pygame.K_UP):
+                    scene.move(0, -350)
+                elif spatial_mode and event.key in (pygame.K_s, pygame.K_DOWN):
+                    scene.move(0, 350)
+                elif spatial_mode and event.key in (pygame.K_a, pygame.K_LEFT):
+                    scene.move(-350, 0)
+                elif spatial_mode and event.key in (pygame.K_d, pygame.K_RIGHT):
+                    scene.move(350, 0)
+                elif spatial_mode and event.key == pygame.K_e:
+                    scene.interact(state)
+                elif spatial_mode and event.key == pygame.K_1:
+                    scene.select_room("lobby")
+                    state.notice = "ROOM / TOWER LOBBY"
+                elif spatial_mode and event.key == pygame.K_2:
+                    scene.select_room("recreation")
+                    state.notice = "ROOM / RECREATION ARCADE"
+                elif spatial_mode and event.key == pygame.K_3:
+                    scene.select_room("executive")
+                    state.notice = "ROOM / EXECUTIVE OFFICE"
+                elif event.key == pygame.K_SPACE:
                     state.toggle_running()
                 elif event.key == pygame.K_r:
                     state.reset()
@@ -81,7 +105,10 @@ def run(argv: list[str] | None = None) -> int:
                                 break
 
         state.update(delta_seconds)
-        renderer.draw(state, coffee_rects)
+        if spatial_mode:
+            renderer.draw_tower(state, scene)
+        else:
+            renderer.draw(state, coffee_rects)
         pygame.display.flip()
         frame_count += 1
         if args.frames and frame_count >= args.frames:

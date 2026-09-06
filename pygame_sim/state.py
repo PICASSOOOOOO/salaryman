@@ -70,6 +70,8 @@ class OfficeState:
     break_minutes_remaining: int = 0
     breaks_taken_today: int = 0
     lunch_taken_today: bool = False
+    office_inventory: dict[str, int] = field(default_factory=dict)
+    last_arcade_game: str | None = None
 
     @classmethod
     def with_default_roster(cls, *, real_time: bool = False) -> OfficeState:
@@ -159,6 +161,13 @@ class OfficeState:
         self.policy.auto_breaks = not self.policy.auto_breaks
         self.notice = "AUTO BREAKS ON" if self.policy.auto_breaks else "BREAKS MANUAL"
 
+    def purchase_office_item(self, item_id: str, cost: float, label: str) -> bool:
+        """Purchase a local office item through the same ledger boundary as coffee."""
+        if cost < 0 or not self.remove_funds(cost, label):
+            return False
+        self.office_inventory[item_id] = self.office_inventory.get(item_id, 0) + 1
+        return True
+
     def start_break(self, kind: BreakKind = "short") -> bool:
         """Start a purposeful break without making it a dead-end action."""
         if self.break_kind is not None or not self._within_work_window():
@@ -245,6 +254,8 @@ class OfficeState:
         self.break_minutes_remaining = 0
         self.breaks_taken_today = 0
         self.lunch_taken_today = False
+        self.office_inventory = {}
+        self.last_arcade_game = None
         self.real_date = fresh.real_date
         self.real_date_label = fresh.real_date_label
         self.last_real_hour = fresh.last_real_hour

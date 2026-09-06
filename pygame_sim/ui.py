@@ -5,6 +5,7 @@ from __future__ import annotations
 import pygame
 
 from .models import Worker
+from .scene import TowerScene
 from .state import OfficeState
 
 
@@ -70,6 +71,74 @@ class SolarPunkRenderer:
         self.draw_activity_panel(state)
         if state.drawer_open:
             self.draw_office_record(state)
+
+    def draw_tower(self, state: OfficeState, scene: TowerScene) -> None:
+        """Render the first physical tower slice without owning simulation state."""
+        self.screen.fill((6, 23, 34))
+        self.draw_tower_header(state, scene)
+        map_rect = pygame.Rect(28, 104, self.width - 56, 488)
+        self.panel(map_rect, (11, 44, 57), (48, 122, 132), radius=18, width=2)
+        self.text("SHADOW TOWER / WALKABLE PROTOTYPE", (52, 124), self.font_lg, Palette.GLASS_BRIGHT)
+        self.text("WASD / ARROWS MOVE   E INTERACT   1/2/3 ROOMS   TAB DASHBOARD   SPACE PAUSE", (54, 152), self.font_mono, (160, 202, 194))
+
+        world = pygame.Rect(70, 182, self.width - 140, 370)
+        self.panel(world, (8, 31, 46), (40, 87, 101), radius=12)
+        scale_x = world.width / scene.width
+        scale_y = world.height / scene.height
+
+        for room in scene.rooms:
+            x, y, width, height = room.bounds
+            rect = pygame.Rect(
+                world.x + int(x * scale_x),
+                world.y + int(y * scale_y),
+                max(20, int(width * scale_x)),
+                max(20, int(height * scale_y)),
+            )
+            fill = room.accent if room.id == scene.current_room else tuple(max(8, color // 2) for color in room.accent)
+            self.panel(rect, fill, (90, 155, 151), radius=7)
+            self.text(room.label, (rect.x + 8, rect.y + 7), self.font_sm, Palette.GLASS_BRIGHT)
+
+        for item in scene.objects.objects:
+            if item.room not in {scene.current_room, "public"}:
+                continue
+            ix = world.x + int(item.position[0] * scale_x)
+            iy = world.y + int(item.position[1] * scale_y)
+            color = Palette.SUN if item == scene.nearby_object else Palette.SEAFOAM
+            if item.kind == "window":
+                pygame.draw.rect(self.screen, (104, 179, 201), (ix - 7, iy - 3, 14, 6), border_radius=2)
+            elif item.kind == "arcade":
+                pygame.draw.rect(self.screen, color, (ix - 8, iy - 10, 16, 20), border_radius=3)
+                pygame.draw.rect(self.screen, (19, 52, 66), (ix - 5, iy - 6, 10, 7))
+            else:
+                pygame.draw.circle(self.screen, color, (ix, iy), 8)
+            if item == scene.nearby_object:
+                self.text(item.label, (ix + 12, iy - 8), self.font_sm, Palette.SUN)
+
+        px = world.x + int(scene.player_position[0] * scale_x)
+        py = world.y + int(scene.player_position[1] * scale_y)
+        pygame.draw.circle(self.screen, Palette.CORAL, (px, py), 11)
+        pygame.draw.circle(self.screen, Palette.GLASS_BRIGHT, (px, py), 4)
+
+        self.draw_tower_footer(state, scene)
+
+    def draw_tower_header(self, state: OfficeState, scene: TowerScene) -> None:
+        self.text("SALARYMAN", (34, 24), self.font_xl, Palette.GLASS_BRIGHT)
+        self.text("PHYSICAL OFFICE SIMULATION", (36, 63), self.font_mono, (151, 190, 184))
+        self.text(f"FLOOR {scene.current_floor:02d}", (540, 34), self.font_lg, Palette.SUN)
+        self.text(f"ƒ{state.funds:,.2f}", (760, 28), self.font_lg, Palette.SEAFOAM)
+        self.text(state.time_label, (940, 33), self.font_sm, Palette.GLASS)
+
+    def draw_tower_footer(self, state: OfficeState, scene: TowerScene) -> None:
+        footer = pygame.Rect(28, 610, self.width - 56, 78)
+        self.panel(footer, (10, 49, 58), (48, 122, 132), radius=14, width=2)
+        nearby = scene.nearby_object
+        if nearby:
+            self.text(f"[E] {nearby.prompt}", (52, 628), self.font_md, Palette.SUN)
+            self.text(f"ROOM  {scene.room.label}  ·  OBJECT  {nearby.label}", (52, 656), self.font_mono, Palette.GLASS)
+        else:
+            self.text("WALK CLOSER TO A PHYSICAL OBJECT", (52, 628), self.font_md, Palette.GLASS_BRIGHT)
+            self.text(f"ROOM  {scene.room.label}", (52, 656), self.font_mono, Palette.GLASS)
+        self.text(state.notice, (760, 644), self.font_mono, Palette.SEAFOAM)
 
     def draw_ecosystem_backdrop(self) -> None:
         # Layered ocean glass, sun disk, canopy shapes, and waterline geometry
