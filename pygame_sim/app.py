@@ -32,7 +32,7 @@ def run(argv: list[str] | None = None) -> int:
     screen = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption("SALARYMAN · Office Ecology")
     clock = pygame.time.Clock()
-    state = OfficeState.with_default_roster()
+    state = OfficeState.with_default_roster(real_time=True)
     renderer = SolarPunkRenderer(screen)
     coffee_rects: dict[int, pygame.Rect] = {}
 
@@ -54,6 +54,10 @@ def run(argv: list[str] | None = None) -> int:
                     state.select_worker(event.key - pygame.K_1)
                 elif event.key == pygame.K_c and state.selected_worker is not None:
                     state.buy_coffee(state.selected_worker)
+                elif event.key == pygame.K_b and not state.drawer_open:
+                    state.start_break()
+                elif event.key == pygame.K_t:
+                    state.toggle_auto_breaks()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if state.drawer_open:
                     if renderer.record_close_rect.collidepoint(event.pos) or not renderer.record_rect.collidepoint(event.pos):

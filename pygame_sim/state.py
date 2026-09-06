@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Literal
 
 from .models import ActionKind, LedgerEntry, OfficeRoster, Worker
@@ -58,6 +59,11 @@ class OfficeState:
     selected_worker: int | None = None
     notice: str = "SHIFT READY"
     policy: BreakPolicy = field(default_factory=BreakPolicy)
+    real_time: bool = False
+    real_date: str | None = None
+    real_date_label: str | None = None
+    last_real_hour: int | None = None
+    manual_break_end_minute: int | None = None
     work_minutes_today: int = 0
     work_minutes_since_break: int = 0
     break_kind: BreakKind | None = None
@@ -66,8 +72,8 @@ class OfficeState:
     lunch_taken_today: bool = False
 
     @classmethod
-    def with_default_roster(cls) -> OfficeState:
-        state = cls()
+    def with_default_roster(cls, *, real_time: bool = False) -> OfficeState:
+        state = cls(real_time=real_time)
         state.roster.workers.extend(
             [
                 Worker(
@@ -99,6 +105,8 @@ class OfficeState:
             ]
         )
         state.ledger.append(LedgerEntry("OPENING CAPITAL", state.funds, state.funds))
+        if state.real_time:
+            state.sync_real_time()
         return state
 
     @property
@@ -107,6 +115,8 @@ class OfficeState:
 
     @property
     def time_label(self) -> str:
+        if self.real_time and self.real_date_label:
+            return f"{self.real_date_label}  /  {self.hour:02d}:{self.minute:02d}"
         return f"DAY {self.day:02d}  /  {self.hour:02d}:{self.minute:02d}"
 
     @property
@@ -162,6 +172,8 @@ class OfficeState:
         self.breaks_taken_today += 1
         if kind == "lunch":
             self.lunch_taken_today = True
+        if self.real_time:
+            self.manual_break_end_minute = self.hour * 60 + self.minute + self.break_minutes_remaining
         self.notice = "LUNCH STARTED" if kind == "lunch" else "BREAK STARTED"
         return True
 
@@ -211,7 +223,7 @@ class OfficeState:
         return True
 
     def reset(self) -> None:
-        fresh = OfficeState.with_default_roster()
+        fresh = OfficeState.with_default_roster(real_time=self.real_time)
         self.funds = fresh.funds
         self.day = fresh.day
         self.hour = fresh.hour
@@ -232,9 +244,17 @@ class OfficeState:
         self.break_minutes_remaining = 0
         self.breaks_taken_today = 0
         self.lunch_taken_today = False
+        self.real_date = fresh.real_date
+        self.real_date_label = fresh.real_date_label
+        self.last_real_hour = fresh.last_real_hour
+        self.manual_break_end_minute = fresh.manual_break_end_minute
 
     def update(self, delta_seconds: float) -> int:
         """Advance using precise frame delta; return completed workspace hours."""
+        if self.real_time:
+            if self.running:
+                self.sync_real_time()
+            return 0
         if not self.running or delta_seconds <= 0:
             return 0
 
@@ -245,9 +265,94 @@ class OfficeState:
         hours_advanced = 0
         while self.elapsed_seconds >= SECONDS_PER_WORKSPACE_QUARTER_HOUR:
             self.elapsed_seconds -= SECONDS_PER_WORKSPACE_QUARTER_HOUR
-            self.advance_workspace_minutes(15)
-            hours_advanced += 1
+            hours_advanced += self.advance_workspace_minutes(15)
         return hours_advanced
+
+    def sync_real_time(self, now: datetime | None = None) -> None:
+        """Follow the local wall clock for the production desktop client."""
+        if not self.real_time:
+            return
+        current = (now or datetime.now().astimezone()).astimezone()
+        current_date = current.date().isoformat()
+        if self.real_date != current_date:
+            if self.real_date is not None:
+                self._reset_daily_counters()
+                for worker in self.roster.workers:
+                    worker.rest_overnight()
+            self.real_date = current_date
+            self.real_date_label = current.strftime("%a %d %b").upper()
+            self.day = current.timetuple().tm_yday
+            self.last_real_hour = current.hour
+        elif self.last_real_hour is not None and current.hour > self.last_real_hour:
+            for work_hour in range(self.last_real_hour, current.hour):
+                if self._real_hour_is_working(work_hour):
+                    self.total_output += self.roster.work_hour(self, work_hour)
+                    self.hours_completed_today += 1
+            self.last_real_hour = current.hour
+
+        self.hour = current.hour
+        self.minute = current.minute
+        self._sync_real_break(current.hour * 60 + current.minute)
+
+    def _real_hour_is_working(self, work_hour: int) -> bool:
+        end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+        return SHIFT_START <= work_hour < end_hour
+
+    def _real_break_windows(self) -> list[tuple[int, int, BreakKind]]:
+        if not self.policy.auto_breaks or self.policy.eat_at_desk:
+            return []
+        windows: list[tuple[int, int, BreakKind]] = []
+        work_minutes = 0
+        since_break = 0
+        clock_minute = SHIFT_START * 60
+        lunch_taken = False
+        end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+        total_work_minutes = (end_hour - SHIFT_START) * 60
+        while work_minutes < total_work_minutes:
+            if not lunch_taken and work_minutes >= self.policy.meal_after_work_minutes:
+                end = clock_minute + self.policy.meal_break_minutes
+                windows.append((clock_minute, end, "lunch"))
+                clock_minute = end
+                lunch_taken = True
+                since_break = 0
+                continue
+            if since_break >= self.policy.short_break_every_minutes:
+                end = clock_minute + self.policy.short_break_minutes
+                windows.append((clock_minute, end, "short"))
+                clock_minute = end
+                since_break = 0
+                continue
+            work_minutes += 15
+            since_break += 15
+            clock_minute += 15
+        return windows
+
+    def _sync_real_break(self, current_minute: int) -> None:
+        if self.manual_break_end_minute is not None:
+            if current_minute < self.manual_break_end_minute:
+                self.break_minutes_remaining = self.manual_break_end_minute - current_minute
+                return
+            self.manual_break_end_minute = None
+            self.break_kind = None
+            self.break_minutes_remaining = 0
+        for start, end, kind in self._real_break_windows():
+            if start <= current_minute < end:
+                self.break_kind = kind
+                self.break_minutes_remaining = end - current_minute
+                return
+        self.break_kind = None
+        self.break_minutes_remaining = 0
+
+    def _reset_daily_counters(self) -> None:
+        self.hours_completed_today = 0
+        self.total_output = 0.0
+        self.total_wages_paid = 0.0
+        self.work_minutes_today = 0
+        self.work_minutes_since_break = 0
+        self.break_kind = None
+        self.break_minutes_remaining = 0
+        self.breaks_taken_today = 0
+        self.lunch_taken_today = False
 
     def advance_workspace_hour(self) -> None:
         """Process one wall-clock hour, including any scheduled break."""
@@ -257,12 +362,14 @@ class OfficeState:
         for _ in range(4):
             self.advance_workspace_minutes(15)
 
-    def advance_workspace_minutes(self, minutes: int) -> None:
+    def advance_workspace_minutes(self, minutes: int) -> int:
         """Advance in quarter-hour slices so 2.5-hour breaks stay precise."""
         if minutes <= 0:
-            return
+            return 0
+        hours_advanced = 0
         for _ in range(max(1, minutes // 15)):
-            self._advance_quarter_hour()
+            hours_advanced += int(self._advance_quarter_hour())
+        return hours_advanced
 
     def _within_work_window(self) -> bool:
         end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
@@ -282,10 +389,10 @@ class OfficeState:
         self.hour = total // 60
         self.minute = total % 60
 
-    def _advance_quarter_hour(self) -> None:
+    def _advance_quarter_hour(self) -> bool:
         if self.hour >= SHIFT_END and not self.policy.overtime_allowed:
             self._begin_next_day()
-            return
+            return False
 
         if self.break_kind is not None:
             self.break_minutes_remaining -= 15
@@ -295,11 +402,11 @@ class OfficeState:
                 self.break_minutes_remaining = 0
                 self.work_minutes_since_break = 0
                 self.notice = "BACK TO WORK"
-            return
+            return False
 
         if not self._within_work_window():
             self._begin_next_day()
-            return
+            return False
 
         if self._maybe_start_scheduled_break():
             self.break_minutes_remaining -= 15
@@ -309,7 +416,7 @@ class OfficeState:
                 self.break_minutes_remaining = 0
                 self.work_minutes_since_break = 0
                 self.notice = "BACK TO WORK"
-            return
+            return False
 
         previous_hour = self.hour
         self.work_minutes_today += 15
@@ -321,6 +428,8 @@ class OfficeState:
             end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
             if self.hour == end_hour:
                 self.total_wages_paid += self.roster.settle_daily_wages(self)
+            return True
+        return False
 
     def _begin_next_day(self) -> None:
         self.day += 1

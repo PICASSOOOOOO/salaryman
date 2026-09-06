@@ -19,6 +19,7 @@ class PygameSimulationTests(unittest.TestCase):
 
     def test_end_of_shift_pays_wages_once_then_next_tick_starts_next_day(self):
         state = OfficeState.with_default_roster()
+        state.policy.auto_breaks = False
         opening = state.funds
 
         for _ in range(8):
@@ -110,6 +111,24 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertEqual(worker.status_note, "DEFENDING TEAM")
         self.assertTrue(state.apply_action(0, "offense"))
         self.assertLessEqual(worker.stamina, worker.max_stamina)
+
+    def test_automatic_breaks_follow_the_local_policy_without_stopping_the_day(self):
+        state = OfficeState.with_default_roster()
+        for _ in range(3):
+            state.advance_workspace_hour()
+        self.assertEqual(state.hour, 12)
+        self.assertGreaterEqual(state.breaks_taken_today, 1)
+        self.assertIsNone(state.break_kind)
+        self.assertGreater(state.work_minutes_today, 0)
+
+    def test_manual_break_setting_allows_work_without_automatic_breaks(self):
+        state = OfficeState.with_default_roster()
+        state.toggle_auto_breaks()
+        for _ in range(3):
+            state.advance_workspace_hour()
+        self.assertEqual(state.breaks_taken_today, 0)
+        self.assertTrue(state.start_break())
+        self.assertEqual(state.break_kind, "short")
 
 
 if __name__ == "__main__":

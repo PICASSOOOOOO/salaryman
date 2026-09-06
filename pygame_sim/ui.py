@@ -100,13 +100,24 @@ class SolarPunkRenderer:
         self.text(f"{'+' if state.net_today >= 0 else ''}ƒ{state.net_today:,.2f}", (540, 61), self.font_lg, Palette.SUN)
 
         self.text(state.time_label, (760, 44), self.font_lg, Palette.INK)
-        state_label = "ACTIVE SHIFT" if state.is_working else "OFF-CYCLE / RESETTING"
-        self.text(state_label, (762, 77), self.font_sm, Palette.SEAFOAM if state.is_working else Palette.CORAL)
+        if state.break_kind:
+            state_label = state.break_label
+            state_color = Palette.SUN
+        elif state.is_working:
+            state_label = "ACTIVE SHIFT"
+            state_color = Palette.SEAFOAM
+        elif not state.running:
+            state_label = "SHIFT PAUSED"
+            state_color = Palette.SUN
+        else:
+            state_label = "NEXT SHIFT"
+            state_color = Palette.CORAL
+        self.text(state_label, (762, 77), self.font_sm, state_color)
 
     def draw_shift_rail(self, state: OfficeState) -> None:
         rail = pygame.Rect(28, 142, self.width - 56, 54)
         self.panel(rail, (18, 92, 88), (52, 144, 127), radius=16)
-        self.text("WORK CYCLE", (48, 161), self.font_sm, Palette.GLASS)
+        self.text(f"WORK CYCLE  ·  {state.break_label}", (48, 161), self.font_sm, Palette.GLASS)
         track = pygame.Rect(160, 164, self.width - 345, 12)
         pygame.draw.rect(self.screen, (6, 55, 62), track, border_radius=6)
         pygame.draw.rect(
@@ -116,7 +127,8 @@ class SolarPunkRenderer:
             border_radius=6,
         )
         self.text("09:00", (160, 178), self.font_mono, Palette.GLASS)
-        self.text("17:00", (track.right - 36, 178), self.font_mono, Palette.GLASS)
+        end_hour = state.policy.overtime_end_hour if state.policy.overtime_allowed else 17
+        self.text(f"{end_hour:02d}:00", (track.right - 36, 178), self.font_mono, Palette.GLASS)
         self.run_rect = pygame.Rect(self.width - 178, 153, 140, 31)
         self.panel(
             self.run_rect,
@@ -196,7 +208,7 @@ class SolarPunkRenderer:
         self.text(
             f"FOCUS HOURS {state.hours_completed_today}/8  ·  "
             f"ROSTER {len(state.roster.workers)}  ·  "
-            f"ACCUMULATED OUTPUT ƒ{state.total_output:,.2f}",
+            f"BREAKS {state.breaks_taken_today}  ·  ƒ{state.total_output:,.2f}",
             (50, 607),
             self.font_mono,
             (176, 219, 192),
@@ -207,7 +219,7 @@ class SolarPunkRenderer:
             self.font_sm,
             Palette.SUN,
         )
-        self.text(f"{state.notice}", (50, 660), self.font_mono, Palette.GLASS)
+        self.text(f"{state.notice}     B BREAK  T AUTO BREAKS", (50, 660), self.font_mono, Palette.GLASS)
         self.reset_rect = pygame.Rect(self.width - 454, 648, 116, 26)
         self.panel(self.reset_rect, (18, 92, 88), (52, 144, 127), radius=7)
         self.text("RESET DAY  R", (self.reset_rect.x + 12, self.reset_rect.y + 7), self.font_mono, Palette.GLASS)
@@ -256,11 +268,12 @@ class SolarPunkRenderer:
         self.text(f"ROSTER  {len(state.roster.workers)} WORKERS", (middle.x + 18, middle.y + 116), self.font_mono, Palette.INK)
         self.text("2 REAL SEC = 1 WORK HOUR", (middle.x + 18, middle.y + 142), self.font_mono, Palette.MUTED)
 
-        self.text("WEB TOOLS", (right.x + 18, right.y + 17), self.font_md, Palette.INK)
-        self.text("BANKING  /  COMMS", (right.x + 18, right.y + 53), self.font_lg, Palette.SEAFOAM)
-        self.text("PHONE SYSTEM  /  DOCUMENTS", (right.x + 18, right.y + 91), self.font_mono, Palette.INK)
-        self.text("OPEN IN AUTHENTICATED WEB", (right.x + 18, right.y + 119), self.font_mono, Palette.MUTED)
-        self.text("SERVER-OWNED / NEVER LOCAL-ONLY", (right.x + 18, right.y + 142), self.font_mono, Palette.CORAL)
+        self.text("WORK POLICY", (right.x + 18, right.y + 17), self.font_md, Palette.INK)
+        self.text(state.policy.jurisdiction, (right.x + 18, right.y + 53), self.font_lg, Palette.SEAFOAM)
+        auto_label = "AUTO BREAKS ON" if state.policy.auto_breaks else "BREAKS MANUAL"
+        self.text(auto_label, (right.x + 18, right.y + 91), self.font_mono, Palette.INK)
+        self.text("2.5H / 15M  ·  MEAL 60M", (right.x + 18, right.y + 119), self.font_mono, Palette.MUTED)
+        self.text("T TOGGLE POLICY  ·  SET LOCALLY", (right.x + 18, right.y + 142), self.font_mono, Palette.CORAL)
 
         ledger = pygame.Rect(104, 364, self.width - 208, 126)
         self.panel(ledger, (8, 66, 70), (52, 144, 127), radius=12)
