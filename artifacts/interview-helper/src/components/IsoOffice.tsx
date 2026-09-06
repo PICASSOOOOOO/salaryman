@@ -157,6 +157,13 @@ export interface IsoOfficeProps {
   backdropSrc?: string | null;
   /** Standing scene population that is not part of the player's bot roster. */
   ambientOccupants?: OfficeAmbientOccupant[];
+  /** In-world speech bubble and compact response choices for an ambient NPC. */
+  dialogue?: {
+    occupantId: number;
+    text: string;
+    options: readonly { id: string; label: string }[];
+    onOption: (id: string) => void;
+  } | null;
 }
 
 interface Vec2 { x: number; y: number }
@@ -203,6 +210,7 @@ export function IsoOffice({
   towerArt = true,
   backdropSrc = null,
   ambientOccupants = [],
+  dialogue = null,
 }: IsoOfficeProps) {
   const [lowGfx] = useLowGfx();
   const isTouch =
@@ -368,6 +376,7 @@ export function IsoOffice({
   const hallwayStyleRef = useRef(hallwayStyle);
   const hallwaySignageRef = useRef(hallwaySignage);
   const ambientOccupantsRef = useRef(ambientOccupants);
+  const dialogueRef = useRef(dialogue);
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -392,6 +401,7 @@ export function IsoOffice({
   useEffect(() => { hallwayStyleRef.current = hallwayStyle; }, [hallwayStyle]);
   useEffect(() => { hallwaySignageRef.current = hallwaySignage; }, [hallwaySignage]);
   useEffect(() => { ambientOccupantsRef.current = collisionSafeAmbientOccupants; }, [collisionSafeAmbientOccupants]);
+  useEffect(() => { dialogueRef.current = dialogue; }, [dialogue]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onPoseChangeRef.current = onPoseChange; }, [onPoseChange]);
@@ -690,6 +700,7 @@ export function IsoOffice({
         hallwaySignage: hallwaySignageRef.current,
         towerArt,
         ambientOccupants: ambientOccupantsRef.current,
+        dialogue: dialogueRef.current,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -806,6 +817,25 @@ export function IsoOffice({
       }}
     >
       <canvas ref={canvasRef} style={{ display: 'block', imageRendering: 'pixelated' }} />
+      {dialogue?.options?.length ? (
+        <div
+          className="pointer-events-auto absolute bottom-3 left-1/2 z-40 flex w-[min(92%,34rem)] -translate-x-1/2 flex-wrap justify-center gap-2"
+          data-testid="office-dialogue-options"
+          role="group"
+          aria-label="Dialogue responses"
+        >
+          {dialogue.options.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => dialogue.onOption(option.id)}
+              className="border border-emerald-200/65 bg-[#10271f]/95 px-3 py-2 text-[10px] font-bold tracking-[.12em] text-emerald-50 shadow-[0_8px_24px_rgba(0,0,0,.35)] transition hover:border-amber-200 hover:bg-[#214936]"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Corner vignette + scene tint (screen-space). */}
       <div style={{

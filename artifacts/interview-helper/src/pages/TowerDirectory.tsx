@@ -46,6 +46,7 @@ import {
   type TowerOnboardingState,
 } from "@/lib/tower-onboarding";
 import { IsoOffice } from "@/components/IsoOffice";
+import type { IsoOfficeProps } from "@/components/IsoOffice";
 import { getLobbyOfficeLayout } from "@/lib/office-property-layouts";
 import { getTowerAmbientOccupants } from "@/lib/tower-life";
 import { getTowerSpaceArtUrl } from "@/lib/tower-space-art";
@@ -203,6 +204,7 @@ function TowerReceptionScene({
   onElevator,
   onDirectory,
   onLockedExit,
+  dialogue,
 }: {
   locked: boolean;
   frozen: boolean;
@@ -211,6 +213,7 @@ function TowerReceptionScene({
   onElevator: () => void;
   onDirectory: () => void;
   onLockedExit: (label: string) => void;
+  dialogue: NonNullable<IsoOfficeProps["dialogue"]> | null;
 }) {
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 1100 : window.innerWidth,
@@ -303,6 +306,7 @@ function TowerReceptionScene({
         hallwaySignage="MAIN LOBBY · ELEVATOR CORE"
         ambientOccupants={getTowerAmbientOccupants("lobby")}
         onAmbientInteract={onResidentInteract}
+        dialogue={dialogue}
         lighting="cool"
       />
     </section>
@@ -353,7 +357,6 @@ export default function TowerDirectory() {
     getBuildingOnboardingStage(),
   );
   const [now, setNow] = useState(() => new Date());
-  const [talking, setTalking] = useState(false);
   const [notice, setNotice] = useState("");
   const [filing, setFiling] = useState(false);
   const [filingResult, setFilingResult] = useState("");
@@ -365,13 +368,14 @@ export default function TowerDirectory() {
   const [reconcilingServerState, setReconcilingServerState] =
     useState(isAuthenticated);
   const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [dialogueStep, setDialogueStep] = useState("name");
+  const [dialogueValue, setDialogueValue] = useState("");
+  const [playerNameInput, setPlayerNameInput] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [dialogue, setDialogue] =
+    useState<NonNullable<IsoOfficeProps["dialogue"]> | null>(null);
   const onboardingLocked = reconcilingServerState;
   const workTaskActive = stage === "work";
-  const receptionDialogue = [
-    "Good. You found the desk.",
-    "Name for the register. Company, or looking for work?",
-    "Stay here. I will finish your intake, then the building will open.",
-  ];
 
   useEffect(() => {
     startTowerAmbient("lobby");
@@ -414,8 +418,16 @@ export default function TowerDirectory() {
   };
 
   const finishReception = () => {
-    setTalking(false);
     setOnboardingStep("questions");
+    setDialogue(null);
+  };
+
+  const setReceptionDialogue = (
+    text: string,
+    options: readonly { id: string; label: string }[],
+    input?: NonNullable<IsoOfficeProps["dialogue"]>["input"],
+  ) => {
+    setDialogue({ occupantId: 501, text, options, input, onOption: handleDialogueOption });
   };
 
   const beginReception = () => {
@@ -423,16 +435,109 @@ export default function TowerDirectory() {
       startBuildingOnboarding();
       setStage("reception");
     }
-    setReceptionDialogueStep(0);
-    setTalking(true);
+    setDialogueStep("name");
+    setDialogueValue("");
+    setReceptionDialogue("What's your name?", [{ id: "name", label: "CONTINUE" }], {
+      type: "text",
+      placeholder: "Your name",
+      value: playerNameInput,
+      onChange: setPlayerNameInput,
+    });
   };
 
-  const advanceReceptionDialogue = () => {
-    if (receptionDialogueStep < receptionDialogue.length - 1) {
-      setReceptionDialogueStep((step) => step + 1);
+  const handleDialogueOption = (option: string) => {
+    if (dialogueStep === "name") {
+      const name = playerNameInput.trim();
+      if (!name) return;
+      setSalarymanName(name);
+      setDialogueStep("email");
+      setReceptionDialogue("What email should we use to log you in?", [{ id: "email", label: "CONTINUE" }], {
+        type: "email",
+        placeholder: "you@example.com",
+        value: emailInput,
+        onChange: setEmailInput,
+      });
       return;
     }
-    finishReception();
+    if (dialogueStep === "email") {
+      const email = emailInput.trim();
+      if (!email || !email.includes("@")) return;
+      setSalarymanEmail(email);
+      setDialogueStep("work");
+      setReceptionDialogue("Are you here for work?", [
+        { id: "work-yes", label: "YES" },
+        { id: "work-no", label: "NO" },
+      ]);
+      return;
+    }
+    if (dialogueStep === "work") {
+      if (option === "work-no") {
+        setDialogueStep("unemployed");
+        setReceptionDialogue("Then you're unemployed?", [
+          { id: "unemployed-yes", label: "YES" },
+          { id: "unemployed-no", label: "NO" },
+        ]);
+      } else {
+        setDialogueStep("path");
+        setReceptionDialogue("Do you have a business or do you need a job?", [
+          { id: "business", label: "I HAVE A BUSINESS" },
+          { id: "job", label: "I NEED A JOB" },
+        ]);
+      }
+      return;
+    }
+    if (dialogueStep === "unemployed") {
+      setDialogueStep("path");
+      setReceptionDialogue("Do you have a business or do you need a job?", [
+        { id: "business", label: "I HAVE A BUSINESS" },
+        { id: "job", label: "I NEED A JOB" },
+      ]);
+      return;
+    }
+    if (dialogueStep === "path") {
+      if (option === "business") {
+        setDialogueStep("business-name");
+        setReceptionDialogue("State your business.", [{ id: "business-name", label: "CONTINUE" }], {
+          type: "text",
+          placeholder: "Business name",
+          value: dialogueValue,
+          onChange: setDialogueValue,
+        });
+      } else {
+        setDialogueStep("property");
+        setReceptionDialogue("Interested in buying property or renting?", [
+          { id: "property-yes", label: "SHOW ME" },
+          { id: "property-no", label: "NOT YET" },
+        ]);
+      }
+      return;
+    }
+    if (dialogueStep === "business-name") {
+      if (!dialogueValue.trim()) return;
+      setDialogueStep("property");
+      setReceptionDialogue("Interested in buying property or renting?", [
+        { id: "property-yes", label: "SHOW ME" },
+        { id: "property-no", label: "NOT YET" },
+      ]);
+      return;
+    }
+    if (dialogueStep === "property") {
+      if (option === "property-yes") setDirectoryOpen(true);
+      finishReception();
+    }
+  };
+
+  const handleResidentInteract = (occupant: { id: number; name: string }) => {
+    if (occupant.id === 501) {
+      beginReception();
+      return;
+    }
+    setDialogue({
+      occupantId: occupant.id,
+      text: `${occupant.name} is working.`,
+      options: [{ id: "close", label: "LEAVE THEM TO IT" }],
+      onOption: () => setDialogue(null),
+    });
   };
 
   const finishQuestions = async (answers: OnboardingAnswers) => {
