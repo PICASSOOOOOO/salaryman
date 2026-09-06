@@ -162,6 +162,12 @@ export interface IsoOfficeProps {
     occupantId: number;
     text: string;
     options: readonly { id: string; label: string }[];
+    input?: {
+      type: "text" | "email";
+      placeholder: string;
+      value: string;
+      onChange: (value: string) => void;
+    };
     onOption: (id: string) => void;
   } | null;
 }
@@ -817,13 +823,29 @@ export function IsoOffice({
       }}
     >
       <canvas ref={canvasRef} style={{ display: 'block', imageRendering: 'pixelated' }} />
+      {playable && !dialogue && !activeAmbient ? (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 border border-white/20 bg-[#10271f]/85 px-3 py-2 text-[10px] font-bold tracking-[.14em] text-emerald-50 shadow-lg">
+          CLICK A TILE TO WALK · WALK TO A PERSON TO TALK
+        </div>
+      ) : null}
       {dialogue?.options?.length ? (
         <div
-          className="pointer-events-auto absolute bottom-3 left-1/2 z-40 flex w-[min(92%,34rem)] -translate-x-1/2 flex-wrap justify-center gap-2"
+          className="pointer-events-auto absolute bottom-3 left-1/2 z-40 flex w-[min(92%,34rem)] -translate-x-1/2 flex-col items-stretch gap-2 border border-emerald-200/35 bg-[#0a1712]/95 p-2 shadow-[0_8px_28px_rgba(0,0,0,.4)]"
           data-testid="office-dialogue-options"
           role="group"
           aria-label="Dialogue responses"
         >
+          {dialogue.input ? (
+            <input
+              type={dialogue.input.type}
+              value={dialogue.input.value}
+              onChange={(event) => dialogue.input?.onChange(event.target.value)}
+              placeholder={dialogue.input.placeholder}
+              className="min-h-10 border border-white/20 bg-black/25 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-amber-200"
+              autoFocus
+            />
+          ) : null}
+          <div className="flex flex-wrap justify-center gap-2">
           {dialogue.options.map((option) => (
             <button
               key={option.id}
@@ -834,6 +856,7 @@ export function IsoOffice({
               {option.label}
             </button>
           ))}
+          </div>
         </div>
       ) : null}
 

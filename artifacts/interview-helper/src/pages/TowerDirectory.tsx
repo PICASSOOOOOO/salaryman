@@ -674,15 +674,15 @@ export default function TowerDirectory() {
 
         <TowerReceptionScene
           locked={onboardingLocked}
-          frozen={talking}
+          frozen={Boolean(dialogue)}
           onReception={beginReception}
           onResidentInteract={(occupant) => {
-            if (occupant.id === 501) beginReception();
-            else setNotice(`${occupant.name} IS BUSY`);
+            handleResidentInteract(occupant);
           }}
           onElevator={() => setNotice("ELEVATOR DIRECTORY OPEN")}
           onDirectory={() => setDirectoryOpen((open) => !open)}
           onLockedExit={explainLock}
+          dialogue={dialogue}
         />
         {directoryOpen && !onboardingLocked && (
           <section
@@ -1201,84 +1201,6 @@ export default function TowerDirectory() {
         />
       )}
 
-      {talking && (
-        <div
-          className="fixed inset-0 z-[950] grid place-items-center bg-black/55 p-4 backdrop-blur-[1px]"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Conversation with Claw Prime"
-        >
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-cyan-200/45 bg-[#07111b]/[.98] p-5 shadow-[0_30px_100px_rgba(0,0,0,.7)] sm:max-h-[calc(100dvh-3rem)]">
-            <div className="flex items-center gap-3 border-b border-cyan-300/20 pb-4">
-              <span className="flex h-14 w-14 items-end justify-center overflow-hidden rounded-full border border-cyan-300/35 bg-cyan-300/10">
-                <img
-                  src={`${import.meta.env.BASE_URL}tower-art/character-claw-prime.png`}
-                  alt="Claw Prime"
-                  className="h-16 w-16 object-contain object-bottom"
-                />
-              </span>
-              <div>
-                <p className="text-[9px] font-bold tracking-[.24em] text-cyan-300">
-                  CLAW PRIME
-                </p>
-                <h2 className="text-lg font-black tracking-[.08em] text-white">
-                  RECEPTION
-                </h2>
-              </div>
-            </div>
-            {stage === "reception" ? (
-              <>
-                <p className="mt-5 min-h-16 text-sm leading-7 text-zinc-200">
-                  {receptionDialogue[receptionDialogueStep]}
-                </p>
-                <button
-                  type="button"
-                  onClick={advanceReceptionDialogue}
-                  className="mt-6 flex w-full items-center justify-center gap-2 border border-amber-200/55 bg-amber-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-amber-100 hover:bg-amber-300/15"
-                  data-testid="finish-reception-onboarding"
-                >
-                  {receptionDialogueStep < receptionDialogue.length - 1
-                    ? "NEXT"
-                    : "CONTINUE"}{" "}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="mt-5 text-sm leading-6 text-zinc-300">
-                  Use the building.
-                </p>
-                <div className="mt-4 grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void fileUnemployment()}
-                    disabled={filing}
-                    className="flex items-center justify-between border border-amber-300/30 bg-amber-300/5 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-amber-100 disabled:opacity-50"
-                  >
-                    {filing ? "SAVING..." : "FILE UNEMPLOYMENT"}{" "}
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-                {filingResult && (
-                  <p
-                    className="mt-3 border border-white/10 bg-black/20 px-3 py-2 text-[10px] leading-5 text-zinc-300"
-                    role="status"
-                  >
-                    {filingResult}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setTalking(false)}
-                  className="mt-4 w-full border border-white/15 px-4 py-2.5 text-[10px] font-bold tracking-[.16em] text-zinc-400"
-                >
-                  CLOSE DESK
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </main>
   );
 }
