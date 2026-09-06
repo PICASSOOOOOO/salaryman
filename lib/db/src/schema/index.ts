@@ -130,3 +130,4 @@ export * from "./phone-number-purchases";
 export * from "./property-contracts";
 export * from "./device-links";
 export * from "./legacy-recovery";
+export * from "./desktop-work";

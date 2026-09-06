@@ -456,6 +456,13 @@
       "when": 1788692547903,
       "tag": "0064_legacy_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1788693000000,
+      "tag": "0065_desktop_work_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,10 @@ function hashPairingCode(code: string): string {
   return createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
 }
 
+function hashDesktopToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 function publicLink(link: typeof deviceLinksTable.$inferSelect, pairingCode?: string) {
   return {
     id: link.id,
@@ -33,6 +37,7 @@ function publicLink(link: typeof deviceLinksTable.$inferSelect, pairingCode?: st
     revokedAt: link.revokedAt,
     lastDesktopSeenAt: link.lastDesktopSeenAt,
     lastMobileSeenAt: link.lastMobileSeenAt,
+    hasDesktopCredential: Boolean(link.desktopAccessTokenHash),
     createdAt: link.createdAt,
   };
 }
@@ -219,6 +224,43 @@ router.post("/device-links/:id/approve", async (req, res) => {
   }
 });
 
+router.post("/device-links/:id/desktop-credential", async (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  try {
+    const token = `sm_desktop_${randomBytes(32).toString("base64url")}`;
+    const now = new Date();
+    const [link] = await db.update(deviceLinksTable).set({
+      desktopAccessTokenHash: hashDesktopToken(token),
+      desktopAccessTokenIssuedAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(deviceLinksTable.id, req.params.id),
+      eq(deviceLinksTable.userId, userId),
+      eq(deviceLinksTable.status, "linked"),
+    )).returning();
+    if (!link) {
+      res.status(404).json({ error: "A linked desktop is required" });
+      return;
+    }
+    await db.insert(deviceLinkEventsTable).values({
+      linkId: link.id,
+      userId,
+      actor: "user",
+      eventType: "desktop_credential_issued",
+      metadata: { desktopDeviceId: link.desktopDeviceId },
+    });
+    res.json({
+      credential: token,
+      link: publicLink(link),
+      warning: "This credential is shown once. Store it in the desktop client and revoke the device if it is lost.",
+    });
+  } catch (error) {
+    console.error("[device-links] desktop credential failed", error);
+    res.status(500).json({ error: "Could not issue desktop credential" });
+  }
+});
+
 router.delete("/device-links/:id", async (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
@@ -228,6 +270,8 @@ router.delete("/device-links/:id", async (req, res) => {
       revokedAt: new Date(),
       pairingCodeHash: null,
       pairingCodeExpiresAt: null,
+    desktopAccessTokenHash: null,
+    desktopAccessTokenIssuedAt: null,
       updatedAt: new Date(),
     }).where(and(
       eq(deviceLinksTable.id, req.params.id),

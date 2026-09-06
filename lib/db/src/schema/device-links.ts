@@ -32,6 +32,8 @@ export const deviceLinksTable = pgTable(
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     lastDesktopSeenAt: timestamp("last_desktop_seen_at", { withTimezone: true }),
     lastMobileSeenAt: timestamp("last_mobile_seen_at", { withTimezone: true }),
+    desktopAccessTokenHash: varchar("desktop_access_token_hash", { length: 128 }),
+    desktopAccessTokenIssuedAt: timestamp("desktop_access_token_issued_at", { withTimezone: true }),
     scopes: jsonb("scopes").$type<DeviceLinkScope[]>().notNull().default(["salaryman_app"]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

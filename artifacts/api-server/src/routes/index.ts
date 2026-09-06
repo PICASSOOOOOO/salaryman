@@ -112,6 +112,7 @@ import towerMarketRouter from "./tower-market";
 import towerLifeRouter from "./tower-life";
 import godotRenderRouter from "./godot-render";
 import deviceLinksRouter from "./device-links";
+import desktopWorkRouter from "./desktop-work";
 
 const router: IRouter = Router();
 
@@ -228,6 +229,7 @@ router.use(towerMarketRouter);
 router.use(towerLifeRouter);
 router.use(godotRenderRouter);
   router.use(deviceLinksRouter);
+  router.use(desktopWorkRouter);
   router.use(marketplaceRouter);
 
 export default router;
