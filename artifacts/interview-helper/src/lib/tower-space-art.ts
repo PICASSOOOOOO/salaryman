@@ -24,6 +24,9 @@ const SPACE_FILES: Record<TowerSpaceArtKind, string> = {
 };
 
 export function getTowerSpaceArtUrl(kind: TowerSpaceArtKind): string {
+  if (kind === "lobby") {
+    return `${import.meta.env.BASE_URL}game-art-review/salaryman-solarpunk-landscape-v2.png`;
+  }
   return `${import.meta.env.BASE_URL}pixel-agents/shadow-tower/spaces/${SPACE_FILES[kind]}`;
 }
 

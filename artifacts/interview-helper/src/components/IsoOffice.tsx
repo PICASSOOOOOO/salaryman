@@ -162,12 +162,6 @@ export interface IsoOfficeProps {
     occupantId: number;
     text: string;
     options: readonly { id: string; label: string }[];
-    input?: {
-      type: "text" | "email";
-      placeholder: string;
-      value: string;
-      onChange: (value: string) => void;
-    };
     onOption: (id: string) => void;
   } | null;
 }
@@ -608,6 +602,12 @@ export function IsoOffice({
         if (bestAmbient?.id !== activeAmbientRef.current?.id) {
           activeAmbientRef.current = bestAmbient;
           setActiveAmbient(bestAmbient);
+          // The lobby is a first-person tutorial, not a keyboard puzzle. When
+          // the player walks close enough to someone, begin their conversation
+          // automatically. The response buttons remain the only interaction.
+          if (bestAmbient && !dialogueRef.current) {
+            onAmbientInteractRef.current?.(bestAmbient);
+          }
         }
         let bestId: string | null = null;
         let bestDist = Infinity;
@@ -835,16 +835,6 @@ export function IsoOffice({
           role="group"
           aria-label="Dialogue responses"
         >
-          {dialogue.input ? (
-            <input
-              type={dialogue.input.type}
-              value={dialogue.input.value}
-              onChange={(event) => dialogue.input?.onChange(event.target.value)}
-              placeholder={dialogue.input.placeholder}
-              className="min-h-10 border border-white/20 bg-black/25 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-amber-200"
-              autoFocus
-            />
-          ) : null}
           <div className="flex flex-wrap justify-center gap-2">
           {dialogue.options.map((option) => (
             <button

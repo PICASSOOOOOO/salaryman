@@ -36,7 +36,12 @@ import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
-import { getSalarymanName, markTutorialDone } from "@/lib/tutorial-progress";
+import {
+  getSalarymanName,
+  markTutorialDone,
+  setSalarymanEmail,
+  setSalarymanName,
+} from "@/lib/tutorial-progress";
 import {
   PabloOnboarding,
   type OnboardingAnswers,
@@ -170,9 +175,9 @@ function TowerEntry() {
       data-testid="tower-entry"
     >
       <img
-        src={`${import.meta.env.BASE_URL}tower-art/lobby-reception.png`}
+        src={`${import.meta.env.BASE_URL}game-art-review/salaryman-solarpunk-landscape-v2.png`}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover object-[58%_42%] opacity-45"
+        className="absolute inset-0 h-full w-full object-cover object-center opacity-60"
       />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,12,18,.96),rgba(5,12,18,.7)_55%,rgba(5,12,18,.4)),linear-gradient(0deg,rgba(5,12,18,.82),transparent)]" />
       <section className="relative w-full max-w-xl border border-[#c47e3f]/45 bg-[#09141b]/90 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] backdrop-blur-[2px] sm:p-8">
@@ -363,15 +368,11 @@ export default function TowerDirectory() {
   const [onboardingStep, setOnboardingStep] = useState<
     "arrival" | "reception" | "questions" | "complete"
   >("arrival");
-  const [receptionDialogueStep, setReceptionDialogueStep] = useState(0);
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [reconcilingServerState, setReconcilingServerState] =
     useState(isAuthenticated);
   const [directoryOpen, setDirectoryOpen] = useState(false);
   const [dialogueStep, setDialogueStep] = useState("name");
-  const [dialogueValue, setDialogueValue] = useState("");
-  const [playerNameInput, setPlayerNameInput] = useState("");
-  const [emailInput, setEmailInput] = useState("");
   const [dialogue, setDialogue] =
     useState<NonNullable<IsoOfficeProps["dialogue"]> | null>(null);
   const onboardingLocked = reconcilingServerState;
@@ -425,9 +426,8 @@ export default function TowerDirectory() {
   const setReceptionDialogue = (
     text: string,
     options: readonly { id: string; label: string }[],
-    input?: NonNullable<IsoOfficeProps["dialogue"]>["input"],
   ) => {
-    setDialogue({ occupantId: 501, text, options, input, onOption: handleDialogueOption });
+    setDialogue({ occupantId: 501, text, options, onOption: handleDialogueOption });
   };
 
   const beginReception = () => {
@@ -435,34 +435,64 @@ export default function TowerDirectory() {
       startBuildingOnboarding();
       setStage("reception");
     }
+    const authProfile = user as
+      | {
+          fullName?: string | null;
+          username?: string | null;
+          primaryEmailAddress?: { emailAddress?: string | null } | null;
+        }
+      | null;
+    const knownName =
+      getSalarymanName() ||
+      authProfile?.fullName ||
+      authProfile?.username ||
+      "new arrival";
+    const knownEmail = authProfile?.primaryEmailAddress?.emailAddress || "";
     setDialogueStep("name");
-    setDialogueValue("");
-    setReceptionDialogue("What's your name?", [{ id: "name", label: "CONTINUE" }], {
-      type: "text",
-      placeholder: "Your name",
-      value: playerNameInput,
-      onChange: setPlayerNameInput,
-    });
+    setReceptionDialogue(`What's your name? Is it ${knownName}?`, [
+      { id: "name-confirm", label: "YES, THAT'S ME" },
+      { id: "name-new", label: "I'M NEW HERE" },
+    ]);
+    if (knownEmail) setSalarymanEmail(knownEmail);
   };
 
   const handleDialogueOption = (option: string) => {
     if (dialogueStep === "name") {
-      const name = playerNameInput.trim();
-      if (!name) return;
+      if (option === "name-new") {
+        setDialogueStep("profile");
+        setReceptionDialogue("Pablo will learn your name when you check in.", [
+          { id: "profile", label: "CHECK IN WITH PABLO" },
+        ]);
+        return;
+      }
+      const authProfile = user as
+        | { fullName?: string | null; username?: string | null }
+        | null;
+      const name =
+        getSalarymanName() ||
+        authProfile?.fullName ||
+        authProfile?.username ||
+        "new arrival";
       setSalarymanName(name);
       setDialogueStep("email");
-      setReceptionDialogue("What email should we use to log you in?", [{ id: "email", label: "CONTINUE" }], {
-        type: "email",
-        placeholder: "you@example.com",
-        value: emailInput,
-        onChange: setEmailInput,
-      });
+      setReceptionDialogue("What contact should we use to log you in?", [
+        { id: "email-confirm", label: "USE MY SIGN-IN EMAIL" },
+        { id: "email-later", label: "I'LL DO THAT LATER" },
+      ]);
+      return;
+    }
+    if (dialogueStep === "profile") {
+      finishReception();
       return;
     }
     if (dialogueStep === "email") {
-      const email = emailInput.trim();
-      if (!email || !email.includes("@")) return;
-      setSalarymanEmail(email);
+      if (option === "email-confirm") {
+        const authProfile = user as
+          | { primaryEmailAddress?: { emailAddress?: string | null } | null }
+          | null;
+        const email = authProfile?.primaryEmailAddress?.emailAddress;
+        if (email) setSalarymanEmail(email);
+      }
       setDialogueStep("work");
       setReceptionDialogue("Are you here for work?", [
         { id: "work-yes", label: "YES" },
@@ -497,12 +527,9 @@ export default function TowerDirectory() {
     if (dialogueStep === "path") {
       if (option === "business") {
         setDialogueStep("business-name");
-        setReceptionDialogue("State your business.", [{ id: "business-name", label: "CONTINUE" }], {
-          type: "text",
-          placeholder: "Business name",
-          value: dialogueValue,
-          onChange: setDialogueValue,
-        });
+        setReceptionDialogue("Tell me about the business when you check in with Pablo.", [
+          { id: "business-name", label: "CONTINUE TO CHECK-IN" },
+        ]);
       } else {
         setDialogueStep("property");
         setReceptionDialogue("Interested in buying property or renting?", [
@@ -513,7 +540,6 @@ export default function TowerDirectory() {
       return;
     }
     if (dialogueStep === "business-name") {
-      if (!dialogueValue.trim()) return;
       setDialogueStep("property");
       setReceptionDialogue("Interested in buying property or renting?", [
         { id: "property-yes", label: "SHOW ME" },
@@ -532,10 +558,18 @@ export default function TowerDirectory() {
       beginReception();
       return;
     }
+    const lines: Record<string, string> = {
+      "FINANCE TRACKER":
+        "I track balances and payments. Banco Ombra is where money starts.",
+      "ADA BLOM":
+        "I help businesses find a floor, a lease, and their first useful tools.",
+      "RIO LIFT":
+        "The elevator reaches the public floors. Reception can open the directory.",
+    };
     setDialogue({
       occupantId: occupant.id,
-      text: `${occupant.name} is working.`,
-      options: [{ id: "close", label: "LEAVE THEM TO IT" }],
+      text: lines[occupant.name] ?? "I can point you to someone who can help.",
+      options: [{ id: "close", label: "THANKS" }],
       onOption: () => setDialogue(null),
     });
   };
@@ -570,7 +604,7 @@ export default function TowerDirectory() {
       markTutorialDone();
       completeReceptionTask();
       setOnboardingStep("complete");
-      setTalking(false);
+      setDialogue(null);
       setNotice("TOWER OPEN · USE THE ELEVATOR OR STAIRS");
     } catch (error) {
       setNotice(
@@ -607,12 +641,12 @@ export default function TowerDirectory() {
 
   return (
     <main
-      className={`min-h-screen overflow-x-hidden bg-[#050711] text-zinc-100 ${onboardingLocked ? "p-0" : "px-3 py-5 sm:px-8"}`}
+      className={`min-h-screen overflow-x-hidden bg-[#0d1d17] text-zinc-100 ${onboardingLocked ? "p-0" : "px-3 py-5 sm:px-8"}`}
     >
       <style>{`@keyframes lobbyLight{0%,100%{opacity:.48;filter:brightness(.9)}50%{opacity:.9;filter:brightness(1.2)}}@keyframes lobbyPlant{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(3deg)}}@keyframes lobbyStatus{0%,100%{box-shadow:0 0 0 rgba(34,211,238,0)}50%{box-shadow:0 0 14px rgba(34,211,238,.2)}}`}</style>
       <div className={onboardingLocked ? "w-full" : "mx-auto max-w-6xl"}>
         {!onboardingLocked && (
-          <header className="mb-4 flex items-end justify-between gap-4 border-b border-[#5cd5d0]/20 pb-4">
+          <header className="hidden">
             <div>
               <p className="font-mono text-[10px] font-bold tracking-[.35em] text-[#8de1dc]">
                 SHADOW TOWER · {getActiveCityName().toUpperCase()} · LOBBY FLOOR
@@ -638,7 +672,7 @@ export default function TowerDirectory() {
         )}
 
         <section
-          className="relative mb-4 min-h-[190px] overflow-hidden border border-[#c47e3f]/30 bg-[#081017] sm:min-h-[250px]"
+          className="hidden"
           data-testid="tower-art-plate"
         >
           <img
@@ -921,7 +955,7 @@ export default function TowerDirectory() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setTalking(true)}
+                   onClick={beginReception}
                   className="group relative flex w-full max-w-sm flex-col items-center overflow-hidden border border-cyan-200/35 bg-[#081722] p-4 text-center transition hover:-translate-y-0.5 hover:border-cyan-100"
                   data-testid="speak-receptionist"
                 >
@@ -1007,7 +1041,7 @@ export default function TowerDirectory() {
         </section>
 
         <section
-          className={`mb-5 border border-cyan-300/35 bg-[radial-gradient(circle_at_85%,#12364a,#08111b)] p-5 shadow-[0_0_40px_rgba(34,211,238,.08)] ${onboardingLocked ? "hidden" : ""}`}
+          className="hidden"
           data-testid="reception-desk"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1031,7 +1065,7 @@ export default function TowerDirectory() {
           {onboardingLocked ? (
             <button
               type="button"
-              onClick={() => setTalking(true)}
+               onClick={beginReception}
               className="mt-4 flex w-full items-center justify-center gap-2 border border-cyan-200/50 bg-cyan-300/10 px-4 py-3 text-xs font-black tracking-[.16em] text-cyan-100 transition hover:bg-cyan-300/15"
             >
               <UserRound className="h-4 w-4" /> SPEAK WITH RECEPTIONIST
@@ -1066,7 +1100,7 @@ export default function TowerDirectory() {
           )}
         </section>
 
-        <div className={onboardingLocked ? "hidden" : "mb-5"}>
+        <div className="hidden">
           <TowerLifeHub
             compact
             cityLabel={getActiveCityName().toUpperCase()}
