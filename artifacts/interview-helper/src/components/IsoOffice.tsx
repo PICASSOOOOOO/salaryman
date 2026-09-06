@@ -910,6 +910,10 @@ interface SceneCtx {
   hallwaySignage?: string;
   towerArt: boolean;
   ambientOccupants: OfficeAmbientOccupant[];
+  dialogue?: {
+    occupantId: number;
+    text: string;
+  } | null;
 }
 
 function getAmbientPosition(occupant: OfficeAmbientOccupant, now: number): { col: number; row: number } {
@@ -1039,6 +1043,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
       workLabel: occupant.workLabel,
       role: occupant.role,
       artSrc: occupant.artSrc,
+      dialogueText: occupant.id === s.dialogue?.occupantId ? s.dialogue.text : undefined,
     }));
   }
 
@@ -1157,7 +1162,7 @@ function drawBot(
   s: SceneCtx,
   tx: number,
   ty: number,
-  bot: PixelOfficeBot & { workLabel?: string; role?: string; artSrc?: string },
+  bot: PixelOfficeBot & { workLabel?: string; role?: string; artSrc?: string; dialogueText?: string },
 ) {
   const { P } = s;
   const p = P(tx, ty);
@@ -1203,6 +1208,7 @@ function drawBot(
     ctx.drawImage(namedArt, p.x - artW / 2, baseY - artH, artW, artH);
     ctx.restore();
     drawAmbientWorkBadge(ctx, s, p.x, baseY - artH, u, bot.workLabel);
+    drawSpeechBubble(ctx, p.x, baseY - artH - 8 * u, u, bot.dialogueText);
     ctx.fillStyle = active ? '#b9f5ff' : bot.teamColor ?? 'rgba(180,255,220,0.85)';
     ctx.font = `700 ${Math.max(7, 4 * u)}px "Fira Code", monospace`;
     ctx.textAlign = 'center';
@@ -1263,6 +1269,51 @@ function drawBot(
   ctx.fillText(bot.name.slice(0, 8).toUpperCase(), p.x, baseY + 7 * u);
   ctx.textAlign = 'left';
   drawAmbientWorkBadge(ctx, s, p.x, headY, u, bot.workLabel);
+  drawSpeechBubble(ctx, p.x, headY - 8 * u, u, bot.dialogueText);
+}
+
+function drawSpeechBubble(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  u: number,
+  text?: string,
+) {
+  if (!text) return;
+  const words = text.trim().split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  ctx.save();
+  ctx.font = `600 ${Math.max(8, 3.6 * u)}px "Fira Code", monospace`;
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (ctx.measureText(next).width > 150 * u && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  const shown = lines.slice(0, 3);
+  const width = Math.min(176 * u, Math.max(72 * u, ...shown.map((item) => ctx.measureText(item).width + 14 * u)));
+  const lineHeight = Math.max(10, 7 * u);
+  const height = shown.length * lineHeight + 12 * u;
+  const left = x - width / 2;
+  const top = y - height;
+  ctx.fillStyle = "rgba(248, 252, 235, .96)";
+  rrect(ctx, left, top, width, height, 4 * u);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 4 * u, top + height);
+  ctx.lineTo(x + 1 * u, top + height + 7 * u);
+  ctx.lineTo(x + 7 * u, top + height);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#173b2c";
+  ctx.textAlign = "center";
+  shown.forEach((item, index) => ctx.fillText(item, x, top + (index + 1) * lineHeight + 2 * u));
+  ctx.restore();
 }
 
 function drawAmbientWorkBadge(
