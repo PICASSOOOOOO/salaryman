@@ -34,7 +34,9 @@ class SolarPunkRenderer:
         self.font_lg = pygame.font.SysFont("DejaVu Sans", 19, bold=True)
         self.font_md = pygame.font.SysFont("DejaVu Sans", 14, bold=True)
         self.font_sm = pygame.font.SysFont("DejaVu Sans", 11)
-        self.font_mono = pygame.font.SysFont("DejaVu Sans Mono", 11)
+        # Keep the compact label sizing without the terminal-like typeface.
+        # The office UI is a modern business surface, not a CRT interface.
+        self.font_mono = pygame.font.SysFont("DejaVu Sans", 11)
         self.drawer_rect = pygame.Rect(0, 0, 0, 0)
         self.run_rect = pygame.Rect(0, 0, 0, 0)
         self.reset_rect = pygame.Rect(0, 0, 0, 0)

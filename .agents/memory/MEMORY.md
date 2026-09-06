@@ -152,3 +152,4 @@
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
 - [Pablo desktop header layering](pablo-desktop-header-layering.md) — fullscreen controls must reserve the desktop alpha-warning strip or they render behind its higher z-index.
 - [Desktop release packaging](desktop-release-packaging.md) — exclude unused setuptools hooks; Linux ships the icon separately and needs a clean-extraction launcher smoke test.
+- [Desktop download route](desktop-download-route.md) — package workflows may run below repo root; fixed release downloads need root/package path resolution.

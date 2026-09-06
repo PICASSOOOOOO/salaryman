@@ -92,9 +92,9 @@
 .desktop-download-connection h2 {
   margin: 0;
   color: #f1ffe4;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-weight: 800;
-  letter-spacing: -.055em;
+  letter-spacing: -.045em;
   line-height: .95;
 }
 
@@ -249,7 +249,7 @@
 .desktop-download-metric { position: relative; z-index: 2; display: grid; gap: 5px; width: max-content; }
 .desktop-download-metric small,
 .desktop-download-metric span { color: rgba(234, 245, 230, .55); font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; }
-.desktop-download-metric strong { color: #f1ffe4; font-family: var(--font-display); font-size: 47px; line-height: .9; }
+.desktop-download-metric strong { color: #f1ffe4; font-family: var(--font-sans); font-size: 47px; font-weight: 700; line-height: .9; }
 .desktop-download-people { position: absolute; right: 14%; bottom: 39px; display: flex; align-items: end; gap: 11px; }
 .person { display: block; width: 25px; border-radius: 14px 14px 5px 5px; background: #d6ee9a; box-shadow: 0 -14px 0 -6px #efb078; }
 .person-one { height: 84px; background: #65d5cc; }
@@ -282,7 +282,7 @@
 .desktop-download-platform-icon { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 30px; border-radius: 10px; color: #0b1919; background: #b8e66c; }
 .desktop-download-platform.aqua .desktop-download-platform-icon { background: #64d6d0; }
 .desktop-download-platform.sun .desktop-download-platform-icon { background: #f1d477; }
-.desktop-download-platform h3 { margin: 0; color: #f1ffe4; font-family: var(--font-display); font-size: 26px; }
+.desktop-download-platform h3 { margin: 0; color: #f1ffe4; font-family: var(--font-sans); font-size: 26px; font-weight: 700; }
 .desktop-download-platform p { margin: 7px 0 22px; color: rgba(234, 245, 230, .52); font-size: 13px; }
 .desktop-download-platform code { display: block; overflow: auto; padding: 11px; color: #c8eeee; border-radius: 7px; background: rgba(0, 0, 0, .22); font-family: var(--font-mono); font-size: 10px; }
 .desktop-download-platform a { display: inline-flex; align-items: center; gap: 7px; margin-top: 24px; color: #b8e66c; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }

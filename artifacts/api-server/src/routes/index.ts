@@ -114,6 +114,7 @@ import godotRenderRouter from "./godot-render";
 import deviceLinksRouter from "./device-links";
 import desktopWorkRouter from "./desktop-work";
 import businessDataRouter from "./business-data";
+import desktopDownloadRouter from "./desktop-download";
 
 const router: IRouter = Router();
 
@@ -233,5 +234,6 @@ router.use(godotRenderRouter);
   router.use(desktopWorkRouter);
   router.use(businessDataRouter);
   router.use(marketplaceRouter);
+  router.use(desktopDownloadRouter);
 
 export default router;

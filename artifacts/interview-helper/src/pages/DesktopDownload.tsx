@@ -49,8 +49,12 @@ export default function DesktopDownload() {
             at its own pace.
           </p>
           <div className="desktop-download-actions">
-            <a className="desktop-download-primary" href="#install">
-              <Download size={16} aria-hidden /> Get the free client <ArrowRight size={15} aria-hidden />
+            <a
+              className="desktop-download-primary"
+              href="/api/desktop/download"
+              download="salaryman-office-linux-x86_64.tar.gz"
+            >
+              <Download size={16} aria-hidden /> Download Linux client <ArrowRight size={15} aria-hidden />
             </a>
             <Link className="desktop-download-secondary" href="/device-link?mode=desktop">
               <ShieldCheck size={15} aria-hidden /> Connect a desktop
