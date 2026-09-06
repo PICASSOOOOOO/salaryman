@@ -79,7 +79,7 @@ class OfficeState:
                 Worker(
                     "Mara Voss",
                     "CIRCULARITY LEAD",
-                    42.0,
+                    300.0,
                     165.0,
                     (71, 190, 154),
                     stamina_gain_per_hour=2.5,
@@ -87,7 +87,7 @@ class OfficeState:
                 Worker(
                     "Ivo Chen",
                     "SYSTEMS GROWER",
-                    56.0,
+                    420.0,
                     230.0,
                     (248, 185, 87),
                     stamina_gain_per_hour=2.0,
@@ -96,7 +96,7 @@ class OfficeState:
                 Worker(
                     "Nia Okafor",
                     "COMMUNITY OPS",
-                    35.0,
+                    350.0,
                     140.0,
                     (240, 119, 103),
                     stamina_gain_per_hour=3.0,
@@ -144,8 +144,8 @@ class OfficeState:
         self.funds = round(self.funds + amount, 2)
         self.ledger.append(LedgerEntry(label, amount, self.funds))
 
-    def remove_funds(self, amount: float, label: str) -> bool:
-        if amount < 0 or self.funds < amount:
+    def remove_funds(self, amount: float, label: str, *, allow_debt: bool = False) -> bool:
+        if amount < 0 or (not allow_debt and self.funds < amount):
             return False
         self.funds = round(self.funds - amount, 2)
         self.ledger.append(LedgerEntry(label, -amount, self.funds))

@@ -179,7 +179,7 @@ class SolarPunkRenderer:
         self.text(worker.status_note, (inner.x + 18, inner.y + 72), self.font_sm, status_color)
 
         self.text(f"OUTPUT  +ƒ{worker.productivity_per_hour:,.0f}/HR", (inner.x + 18, inner.y + 104), self.font_mono, Palette.INK)
-        self.text(f"WAGE  -ƒ{worker.daily_wage:,.0f}/DAY", (inner.x + 18, inner.y + 124), self.font_mono, Palette.INK)
+        self.text(f"WAGE  ƒ{worker.hourly_wage_fiat:,.0f}/HR", (inner.x + 18, inner.y + 124), self.font_mono, Palette.INK)
         self.text(f"LAST YIELD  +ƒ{worker.last_output:,.2f}", (inner.x + 18, inner.y + 144), self.font_mono, Palette.MUTED)
 
         bar = pygame.Rect(inner.x + 18, inner.y + 180, inner.width - 36, 16)

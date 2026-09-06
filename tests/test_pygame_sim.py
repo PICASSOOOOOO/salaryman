@@ -1,6 +1,6 @@
 import unittest
 
-from pygame_sim.models import Worker
+from pygame_sim.models import MINIMUM_HOURLY_FIAT, Worker
 from pygame_sim.state import OfficeState, SECONDS_PER_WORKSPACE_HOUR
 
 
@@ -111,6 +111,20 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertEqual(worker.status_note, "DEFENDING TEAM")
         self.assertTrue(state.apply_action(0, "offense"))
         self.assertLessEqual(worker.stamina, worker.max_stamina)
+
+    def test_wages_respect_the_fiat_minimum_and_employer_rates_can_be_higher(self):
+        minimum = Worker("Minimum", "ROLE", 10, 1, (1, 2, 3))
+        higher = Worker("Higher", "ROLE", 10, 450, (1, 2, 3))
+        self.assertEqual(minimum.hourly_wage_fiat, MINIMUM_HOURLY_FIAT)
+        self.assertEqual(higher.hourly_wage_fiat, 450)
+
+        state = OfficeState.with_default_roster()
+        state.policy.auto_breaks = False
+        opening = state.funds
+        for _ in range(8):
+            state.advance_workspace_hour()
+        self.assertLess(state.funds, opening + state.total_output)
+        self.assertGreater(state.total_wages_paid, 0)
 
     def test_automatic_breaks_follow_the_local_policy_without_stopping_the_day(self):
         state = OfficeState.with_default_roster()

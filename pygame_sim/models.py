@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 ActionKind = Literal["work", "coworker_support", "boss_review", "robbery", "defense", "offense"]
+MINIMUM_HOURLY_FIAT = 300.0
+DEFAULT_SHIFT_HOURS = 8.0
 
 
 ACTION_STAMINA_GAIN: dict[ActionKind, float] = {
@@ -31,7 +33,7 @@ class Worker:
     name: str
     role: str
     productivity_per_hour: float
-    daily_wage: float
+    hourly_wage_fiat: float
     accent: tuple[int, int, int]
     stamina: float = 70.0
     max_stamina: float = 100.0
@@ -41,6 +43,14 @@ class Worker:
     is_resting: bool = False
     last_output: float = 0.0
     status_note: str = "READY FOR SHIFT"
+
+    def __post_init__(self) -> None:
+        self.hourly_wage_fiat = max(MINIMUM_HOURLY_FIAT, float(self.hourly_wage_fiat))
+
+    @property
+    def daily_wage(self) -> float:
+        """Estimated full-shift pay kept for compact office-record displays."""
+        return round(self.hourly_wage_fiat * DEFAULT_SHIFT_HOURS, 2)
 
     def work_hour(self, state: OfficeState, hour: int) -> float:
         """Produce one workspace hour and record work as a stamina action."""
@@ -70,7 +80,9 @@ class Worker:
 
     def settle_daily_wage(self, state: OfficeState) -> None:
         """Debit the contracted wage at the end of the work cycle."""
-        state.remove_funds(self.daily_wage, f"{self.name} daily wage")
+        worked_hours = max(0.0, state.work_minutes_today / 60)
+        wage = round(self.hourly_wage_fiat * worked_hours, 2)
+        state.remove_funds(wage, f"{self.name} wage", allow_debt=True)
         self.status_note = "WAGE SETTLED / OFF-DUTY"
 
     def buy_coffee(self, state: OfficeState) -> bool:
