@@ -1,4 +1,14 @@
 export type ConditionState = "flourishing" | "maintained" | "weathered" | "neglected" | "rotting";
+export type ConditionMaterialStyle = "solar" | "patina" | "crt";
+
+export interface ConditionVisuals {
+  materialStyle: ConditionMaterialStyle;
+  solarPlantHealth: number;
+  surfaceWear: number;
+  circuitExposure: number;
+  lightFlicker: number;
+  crtObjectDensity: number;
+}
 
 export interface ConditionCues {
   surface: string;
@@ -14,6 +24,7 @@ export interface ConditionProfile {
   state: ConditionState;
   daysSinceMaintenance: number;
   cues: ConditionCues;
+  visuals: ConditionVisuals;
 }
 
 export const CONDITION_STATES: readonly ConditionState[] = [
@@ -70,6 +81,8 @@ export const CONDITION_CUES: Record<ConditionState, ConditionCues> = {
 const CONDITION_DRIFT_GRACE_DAYS = 14;
 const CONDITION_DRIFT_PER_DAY = 0.25;
 const CONDITION_REPAIR_POINTS_PER_UNIT = 8;
+export const WORLD_DAYS_PER_MONTH = 28;
+export const MONTHLY_CONDITION_LOSS = 4;
 
 function toTimestamp(value: Date | string | number | null | undefined): number | null {
   if (value == null) return null;
@@ -83,6 +96,37 @@ export function conditionStateFromScore(score: number): ConditionState {
   if (score >= 50) return "weathered";
   if (score >= 25) return "neglected";
   return "rotting";
+}
+
+export function conditionVisualsFromScore(score: number): ConditionVisuals {
+  const normalized = Math.max(0, Math.min(100, Number(score) || 0));
+  const decay = 1 - normalized / 100;
+  return {
+    materialStyle: normalized >= 75 ? "solar" : normalized >= 40 ? "patina" : "crt",
+    solarPlantHealth: Math.round((1 - decay) * 100) / 100,
+    surfaceWear: Math.round(decay * 100) / 100,
+    circuitExposure: Math.round(Math.max(0, (40 - normalized) / 40) * 100) / 100,
+    lightFlicker: Math.round(Math.max(0, (55 - normalized) / 55) * 100) / 100,
+    crtObjectDensity: Math.round(Math.max(0, (65 - normalized) / 65) * 100) / 100,
+  };
+}
+
+export function advanceConditionByMonths(
+  storedScore: number,
+  lastMaintainedAt: Date | string | number | null | undefined,
+  monthsElapsed: number,
+  nowMs = Date.now(),
+): ConditionProfile {
+  const months = Math.max(0, Math.floor(Number(monthsElapsed) || 0));
+  const score = Math.max(0, Number(storedScore) - months * MONTHLY_CONDITION_LOSS);
+  const profile = deriveConditionProfile(score, lastMaintainedAt, nowMs);
+  return {
+    ...profile,
+    score: Math.min(profile.score, Math.max(0, Math.floor(score))),
+    state: conditionStateFromScore(Math.min(profile.score, Math.max(0, Math.floor(score)))),
+    cues: CONDITION_CUES[conditionStateFromScore(Math.min(profile.score, Math.max(0, Math.floor(score))))],
+    visuals: conditionVisualsFromScore(Math.min(profile.score, Math.max(0, Math.floor(score)))),
+  };
 }
 
 export function deriveConditionProfile(
@@ -102,6 +146,7 @@ export function deriveConditionProfile(
     state,
     daysSinceMaintenance,
     cues: CONDITION_CUES[state],
+    visuals: conditionVisualsFromScore(score),
   };
 }
 

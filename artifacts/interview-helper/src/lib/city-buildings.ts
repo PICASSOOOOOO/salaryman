@@ -6,6 +6,14 @@ export interface BuildingCondition {
   score: number;
   state: BuildingConditionState;
   daysSinceMaintenance: number;
+  visuals?: {
+    materialStyle: 'solar' | 'patina' | 'crt';
+    solarPlantHealth: number;
+    surfaceWear: number;
+    circuitExposure: number;
+    lightFlicker: number;
+    crtObjectDensity: number;
+  };
   cues: {
     surface: string;
     structure: string;
@@ -208,6 +216,18 @@ export function drawPlayerBuilding(
   };
   const [cr, cg, cb] = hexToRgb(c);
   const br = 0.85;
+  const condition = b.condition;
+  const materialStyle = condition?.visuals?.materialStyle ?? 'solar';
+  const wear = condition?.visuals?.surfaceWear ?? 0;
+  const circuitExposure = condition?.visuals?.circuitExposure ?? 0;
+  const flicker = condition?.visuals?.lightFlicker ?? 0;
+  const crtObjectDensity = condition?.visuals?.crtObjectDensity ?? 0;
+  const material = materialStyle === 'solar'
+    ? [cr, cg, cb]
+    : materialStyle === 'patina'
+      ? [Math.round(cr * 0.72 + 94 * 0.28), Math.round(cg * 0.72 + 106 * 0.28), Math.round(cb * 0.72 + 74 * 0.28)]
+      : [Math.round(cr * 0.38 + 68 * 0.62), Math.round(cg * 0.38 + 47 * 0.62), Math.round(cb * 0.38 + 74 * 0.62)];
+  const [mr, mg, mb] = material;
 
   const depthX = 4;
   const depthY = 2.5;
@@ -245,7 +265,7 @@ export function drawPlayerBuilding(
     ctx.restore();
   }
 
-  ctx.fillStyle = `rgb(${Math.floor(cr * 0.7 * br)},${Math.floor(cg * 0.7 * br)},${Math.floor(cb * 0.7 * br)})`;
+  ctx.fillStyle = `rgb(${Math.floor(mr * 0.7 * br)},${Math.floor(mg * 0.7 * br)},${Math.floor(mb * 0.7 * br)})`;
   ctx.beginPath();
   ctx.moveTo(bx, by - 3);
   ctx.lineTo(bx + b.w, by - 3);
@@ -254,16 +274,18 @@ export function drawPlayerBuilding(
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = `rgb(${Math.floor(cr * br)},${Math.floor(cg * br)},${Math.floor(cb * br)})`;
+  ctx.fillStyle = `rgb(${Math.floor(mr * br)},${Math.floor(mg * br)},${Math.floor(mb * br)})`;
   ctx.globalAlpha = 0.12;
   ctx.fillRect(bx, by, b.w, b.h);
   ctx.globalAlpha = 1;
 
-  ctx.strokeStyle = isNear ? `${c}dd` : `${c}55`;
+  ctx.strokeStyle = materialStyle === 'crt'
+    ? `rgba(171,102,211,${isNear ? 0.9 : 0.42})`
+    : isNear ? `${c}dd` : `${c}55`;
   ctx.lineWidth = isNear ? 2 : 1;
   ctx.strokeRect(bx, by, b.w, b.h);
 
-  ctx.fillStyle = `rgb(${Math.floor(cr * 0.5 * br)},${Math.floor(cg * 0.5 * br)},${Math.floor(cb * 0.5 * br)})`;
+  ctx.fillStyle = `rgb(${Math.floor(mr * 0.5 * br)},${Math.floor(mg * 0.5 * br)},${Math.floor(mb * 0.5 * br)})`;
   ctx.globalAlpha = 0.3;
   ctx.beginPath();
   ctx.moveTo(bx + b.w, by);
@@ -293,9 +315,51 @@ export function drawPlayerBuilding(
       const wx = bx + 5 + wc * (winW + winGapX);
       const wy = by + 5 + wr * (winH + winGapY);
       const lit = ((wr * 7 + wc * 3 + Math.floor(frame * 0.01)) % 5) > 2;
-      ctx.fillStyle = lit ? `rgba(${cr},${cg},${cb},0.25)` : `rgba(${cr},${cg},${cb},0.06)`;
+      const unstable = flicker > 0 && ((frame + wr * 7 + wc * 3) % 18) < flicker * 18;
+      const windowAlpha = lit ? 0.25 - wear * 0.1 : 0.06;
+      ctx.fillStyle = unstable
+        ? `rgba(197,105,221,${0.28 + flicker * 0.35})`
+        : `rgba(${mr},${mg},${mb},${Math.max(0.02, windowAlpha)})`;
       ctx.fillRect(wx, wy, winW, winH);
     }
+  }
+
+  // A neglected building acquires physical CRT-era salvage: antennae,
+  // monitor blocks, cable runs, and small magenta/amber service lights.
+  // These cues stay local to the structure; the world never becomes a
+  // full-screen cyberpunk filter.
+  if (crtObjectDensity > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.35 + crtObjectDensity * 0.55;
+    ctx.fillStyle = '#2a1e32';
+    ctx.strokeStyle = '#b46fc7';
+    ctx.lineWidth = 1;
+    const monitorCount = Math.max(1, Math.floor(crtObjectDensity * 4));
+    for (let i = 0; i < monitorCount; i++) {
+      const mx = bx + 7 + ((i * 31) % Math.max(14, b.w - 20));
+      const my = by + b.h - 13 - ((i * 11) % Math.max(8, b.h - 18));
+      ctx.fillRect(mx, my, 8, 5);
+      ctx.strokeRect(mx, my, 8, 5);
+      ctx.fillStyle = i % 2 ? '#d59a5c' : '#b46fc7';
+      ctx.fillRect(mx + 2, my + 2, 2, 1);
+      ctx.fillStyle = '#2a1e32';
+    }
+    ctx.beginPath();
+    ctx.moveTo(bx + b.w * 0.78, by + 3);
+    ctx.lineTo(bx + b.w * 0.8, by - 8 - crtObjectDensity * 5);
+    ctx.stroke();
+    ctx.fillStyle = '#d59a5c';
+    ctx.fillRect(bx + b.w * 0.79, by - 10 - crtObjectDensity * 5, 2, 2);
+    if (circuitExposure > 0.25) {
+      ctx.strokeStyle = '#b46fc7';
+      ctx.globalAlpha *= 0.7;
+      ctx.beginPath();
+      ctx.moveTo(bx + b.w * 0.35, by + 5);
+      ctx.lineTo(bx + b.w * 0.36, by + b.h * 0.4);
+      ctx.lineTo(bx + b.w * 0.43, by + b.h * 0.55);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // Condition is communicated through ordinary material evidence, not a global
@@ -339,17 +403,6 @@ export function drawPlayerBuilding(
   // recognised by their art, not floating text labels. Rent/tenant status below
   // is kept because it is functional information, not an identity label.
   ctx.textAlign = 'center';
-
-  if (b.rentPrice > 0 && !b.tenantId) {
-    ctx.fillStyle = '#f59e0b99';
-    ctx.font = '6px "Fira Code"';
-    ctx.fillText(`ƒ${b.rentPrice} RENT`, bx + b.w / 2, by - 5);
-  }
-  if (b.tenantName) {
-    ctx.fillStyle = '#10b98188';
-    ctx.font = '5px "Fira Code"';
-    ctx.fillText(`TENANT: ${b.tenantName}`, bx + b.w / 2, by - 5);
-  }
 
   if (isNear) {
     ctx.strokeStyle = c;

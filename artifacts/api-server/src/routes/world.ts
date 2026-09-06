@@ -1149,41 +1149,100 @@ router.post("/world/buildings/:id/repair", async (req, res) => {
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   try {
     const buildingId = Number(req.params.id as string);
-    const [building] = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, buildingId));
-    if (!building || building.demolished) { res.status(404).json({ error: "Building not found" }); return; }
-    const userId = String(user.id);
-    const canRepair = building.isPublic || building.ownerId === userId || building.tenantId === userId;
-    if (!canRepair) { res.status(403).json({ error: "You need a public, owned, or rented building to repair it" }); return; }
-
-    const now = new Date();
-    const workUnits = Math.max(1, Math.min(8, Math.floor(Number(req.body?.workUnits) || 1)));
-    const repaired = repairConditionScore(
-      building.conditionScore,
-      building.conditionLastMaintainedAt,
-      workUnits,
-      now.getTime(),
-    );
-    const [updated] = await db.update(cityBuildingsTable)
-      .set({
-        conditionScore: repaired.repairedScore,
-        conditionLastMaintainedAt: now,
-        conditionRepairCount: sql`${cityBuildingsTable.conditionRepairCount} + ${workUnits}`,
-        updatedAt: now,
-      })
-      .where(eq(cityBuildingsTable.id, buildingId))
-      .returning();
-    res.json({
-      building: updated ? {
-        ...updated,
-        condition: deriveConditionProfile(updated.conditionScore, updated.conditionLastMaintainedAt, now.getTime()),
-      } : null,
-      repair: { workUnits, condition: repaired.profile },
+    const service = await serviceBuildingCondition({
+      buildingId,
+      providerKind: req.body?.providerKind === "company" ? "company" : "player",
+      providerId: typeof req.body?.providerId === "string" ? req.body.providerId : String(user.id),
+      workUnits: req.body?.workUnits,
+      actorUserId: String(user.id),
     });
+    res.json(service);
   } catch (err: any) {
     console.error("[World] building repair error:", err.message);
-    res.status(500).json({ error: "Repair failed" });
+    const status = err?.statusCode ?? 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : "Repair failed" });
   }
 });
+
+type BuildingServiceProvider = "player" | "company" | "npc";
+
+export async function serviceBuildingCondition(input: {
+  buildingId: number;
+  providerKind: BuildingServiceProvider;
+  providerId: string;
+  workUnits?: number;
+  actorUserId?: string;
+}) {
+  const [building] = await db
+    .select()
+    .from(cityBuildingsTable)
+    .where(eq(cityBuildingsTable.id, input.buildingId));
+  if (!building || building.demolished) {
+    const error = new Error("Building not found");
+    (error as Error & { statusCode?: number }).statusCode = 404;
+    throw error;
+  }
+
+  if (input.providerKind === "npc") {
+    if (input.actorUserId || !input.providerId.startsWith("npc:")) {
+      const error = new Error("NPC service is server-only");
+      (error as Error & { statusCode?: number }).statusCode = 403;
+      throw error;
+    }
+  } else {
+    if (!input.actorUserId || input.providerId !== input.actorUserId) {
+      const error = new Error("Service provider identity did not resolve");
+      (error as Error & { statusCode?: number }).statusCode = 403;
+      throw error;
+    }
+    const canService =
+      building.isPublic ||
+      building.ownerId === input.actorUserId ||
+      building.tenantId === input.actorUserId;
+    if (!canService) {
+      const error = new Error("You need a public, owned, or rented building to service it");
+      (error as Error & { statusCode?: number }).statusCode = 403;
+      throw error;
+    }
+  }
+
+  const now = new Date();
+  const workUnits = Math.max(1, Math.min(8, Math.floor(Number(input.workUnits) || 1)));
+  const repaired = repairConditionScore(
+    building.conditionScore,
+    building.conditionLastMaintainedAt,
+    workUnits,
+    now.getTime(),
+  );
+  const [updated] = await db
+    .update(cityBuildingsTable)
+    .set({
+      conditionScore: repaired.repairedScore,
+      conditionLastMaintainedAt: now,
+      conditionRepairCount: sql`${cityBuildingsTable.conditionRepairCount} + ${workUnits}`,
+      updatedAt: now,
+    })
+    .where(eq(cityBuildingsTable.id, input.buildingId))
+    .returning();
+  return {
+    building: updated
+      ? {
+          ...updated,
+          condition: deriveConditionProfile(
+            updated.conditionScore,
+            updated.conditionLastMaintainedAt,
+            now.getTime(),
+          ),
+        }
+      : null,
+    repair: {
+      workUnits,
+      providerKind: input.providerKind,
+      providerId: input.providerId,
+      condition: repaired.profile,
+    },
+  };
+}
 
 router.delete("/world/buildings/:id", async (req, res) => {
   const user = req.user;
