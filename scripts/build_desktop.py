@@ -32,7 +32,7 @@ def write_release_launchers(staging: Path) -> None:
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$ROOT/pygame/SALARYMAN Office/SALARYMAN Office" "$@"
+exec "$ROOT/pygame/SALARYMAN Office" "$@"
 """,
         encoding="utf-8",
     )
@@ -62,7 +62,7 @@ Icon=$ICON_PATH
 Terminal=false
 Categories=Office;Business;Finance;
 EOF
-chmod 0o644 "$DESKTOP_PATH"
+chmod 644 "$DESKTOP_PATH"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$APPLICATION_DIR" >/dev/null 2>&1 || true

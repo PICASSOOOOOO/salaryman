@@ -151,3 +151,4 @@
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
 - [Pablo desktop header layering](pablo-desktop-header-layering.md) — fullscreen controls must reserve the desktop alpha-warning strip or they render behind its higher z-index.
+- [Desktop release packaging](desktop-release-packaging.md) — exclude unused setuptools hooks; Linux ships the icon separately and needs a clean-extraction launcher smoke test.

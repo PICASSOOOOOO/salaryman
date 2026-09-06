@@ -1305,3 +1305,17 @@ mtime_ms = 1788591386530
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/76a8a569-67c6-4753-aadf-d5e532a8260a/a3c583d6-0c80-4b5f-888f-e4c8cd9cf400"
 storage_version_token = "1788591527225850"
 content_type = "text/plain"
+
+[[outputs]]
+id = "wCu9YmU5bWSP_9NuhWuqU"
+uri = "file://dist/releases/salaryman-office-linux-x86_64.tar.gz"
+type = "unspecified"
+title = "SALARYMAN Office — Linux desktop release"
+description = "Verified Linux x86_64 desktop bundle with the Pygame office client, branded SALARYMAN icon, portable launcher, Linux desktop installer, and optional Godot office client. Extract it, run ./launch-salaryman-office.sh, or run ./install-desktop.sh for the branded menu icon."
+logical_id = "7c094129-e1d2-454a-afd7-5066af2bd757"
+content_hash = "sha256:25e312ea59487ab9c4a7c1f83729fbef70e5334ecaf747b2afd46223cd630039"
+size = 21459124
+mtime_ms = 1788714608034
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7c094129-e1d2-454a-afd7-5066af2bd757/d7a68048-9455-4779-9507-c1306f675d81"
+storage_version_token = "1788714745978522"
+content_type = "application/octet-stream"

@@ -442,6 +442,11 @@ class OfficeState:
                     if work_hour + 1 == end_hour:
                         self.total_wages_paid += self.roster.settle_daily_wages(self)
             self.last_real_hour = current.hour
+        elif self.last_real_hour is not None and current.hour < self.last_real_hour:
+            # Re-anchor after a same-day clock correction. This also keeps
+            # deterministic callers that sample an earlier wall-clock time
+            # from silently skipping the rest of that workday.
+            self.last_real_hour = current.hour
 
         self.hour = current.hour
         self.minute = current.minute
