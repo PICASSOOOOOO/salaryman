@@ -121,7 +121,10 @@ class OfficeState:
         if not self.running or delta_seconds <= 0:
             return 0
 
-        self.elapsed_seconds += min(delta_seconds, 0.25)
+        # Preserve the calibrated contract even when a test or a background
+        # tab supplies a larger frame delta: two real seconds must equal one
+        # workspace hour.
+        self.elapsed_seconds += delta_seconds
         hours_advanced = 0
         while self.elapsed_seconds >= SECONDS_PER_WORKSPACE_HOUR:
             self.elapsed_seconds -= SECONDS_PER_WORKSPACE_HOUR

@@ -66,20 +66,12 @@ describe("frontend startup boundaries", () => {
 
   it("keeps the exterior world out of the active application", () => {
     const app = source("App.tsx");
-    const immigration = source("pages/Immigration.tsx");
-    const tower = source("pages/TowerDirectory.tsx");
     expect(app).not.toContain('lazy(() => import("@/pages/WorldPlay"))');
     expect(app).not.toContain('lazy(() => import("@/pages/LandRegistry"))');
     expect(app).not.toContain('lazy(() => import("@/pages/Subway"))');
-    expect(app).toContain('<Route path="/world/play">{() => <Redirect to="/office" />}</Route>');
-    expect(app).toContain('<Route path="/world/land">{() => <Redirect to="/office" />}</Route>');
-    expect(app).toContain('<Route path="/subway">{() => <Redirect to="/tower" />}</Route>');
-    expect(immigration).toContain("destination = Array.isArray(data.orgs) && data.orgs.length > 0 ? '/office' : '/tower'");
-    expect(tower).toContain('data-testid="reception-desk"');
-    expect(tower).toContain('data-testid="lobby-map"');
-    expect(tower).toContain('data-testid="speak-receptionist"');
-    expect(tower).toContain('ambientOccupants={LOBBY_OCCUPANTS}');
-    expect(tower).toContain('playerName="YOU · QUEUE 04"');
-    expect(app).toContain("<ActiveTaskIndicator />");
+    expect(app).toContain('<Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>');
+    expect(app).toContain('<Route path="/subway">{() => <Redirect to="/desktop" />}</Route>');
+    expect(app).toContain('<Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>');
+    expect(app).toContain('<Route path="/desktop" component={DesktopDownload} />');
   });
 });

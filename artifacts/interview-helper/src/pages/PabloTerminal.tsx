@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn, ShieldCheck, X } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn, ShieldCheck, X, Download } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
@@ -998,14 +998,14 @@ function PabloTerminalAuthed() {
   // immigration desk has completed.
   const hasFinishedOnboarding = isAuthenticated && isTutorialDone();
   const enterFromHomepage = useCallback(() => {
-    navigate("/tower");
+    navigate("/console");
   }, [navigate]);
   const startWorkFromHomepage = useCallback(() => {
     if (isAuthenticated) {
       enterFromHomepage();
       return;
     }
-    navigate(`/sign-in?returnTo=${encodeURIComponent("/tower")}`);
+    navigate(`/sign-in?returnTo=${encodeURIComponent("/console")}`);
   }, [enterFromHomepage, isAuthenticated, navigate]);
 
   // Keep the existing global audio unlock path alive for reply speech and
@@ -2049,8 +2049,9 @@ function PabloTerminalAuthed() {
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
         }}
       >
-        {/* Pablo is the homepage. Starting work always enters the physical
-            Tower; feature access begins with objects and floor interactions. */}
+         {/* Pablo is the homepage. The three explicit choices are the only
+             front-door destinations: download the native world, enter the
+             practical terminal, or stay with Pablo AI. */}
         {hasFinishedOnboarding ? (
           <Link
             href={pendingDestinationRef.current ?? "/"}
@@ -2078,15 +2079,22 @@ function PabloTerminalAuthed() {
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-           {/* One primary entry action. Keep the front door physical: sign-in
-               and returning users both enter through the Tower lobby. */}
+           <Link
+             href="/desktop"
+             data-testid="pablo-download-salaryman"
+             className="app-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
+             title="Download SALARYMAN"
+           >
+             <Download className="w-3 h-3" />
+             DOWNLOAD
+           </Link>
           {!isLoading && !isAuthenticated && (
             <button
               type="button"
                onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-sign-in"
                className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-               title="Start work"
+               title="Start work in the terminal"
             >
               <LogIn className="w-3 h-3" />
                START WORK
@@ -2098,12 +2106,22 @@ function PabloTerminalAuthed() {
               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-enter-tower"
               className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-              title="Start work in Shadow Tower"
+               title="Start work in the terminal"
             >
               <LogIn className="w-3 h-3" />
               START WORK
             </button>
           )}
+           <button
+             type="button"
+             onClick={(e) => { e.stopPropagation(); if (mode === "text") setMode("text"); else onOrbClick(); }}
+             data-testid="pablo-ai-choice"
+             className="app-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+             title="Open Pablo AI"
+           >
+             <Sparkles className="w-3 h-3" />
+             PABLO AI
+           </button>
           {/* TEXT/VOICE toggle is now visible during the intro too. The
               session defaults to voice (autoListen on), but a user who
               prefers typing — or whose mic is dead — needs the button up
