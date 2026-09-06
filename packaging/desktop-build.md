@@ -29,6 +29,11 @@ system where it runs:
 Build each target on that target operating system. PyInstaller does not produce
 portable Windows/macOS/Linux binaries from one host.
 
+The macOS build is packaged as a `.app` inside a `.zip` archive. Run
+`./launch-salaryman-office.sh` after extraction; it opens the app bundle with
+macOS's native launcher. The Pygame UI selects Inter, Helvetica Neue, Arial, or
+DejaVu Sans in that order, so it does not depend on a Linux-only font.
+
 On Linux, run `./install-desktop.sh` from the extracted release to install the
 desktop menu entry and icon. Keep the extracted release directory in place
 after installation because the shortcut launches the app from that directory.

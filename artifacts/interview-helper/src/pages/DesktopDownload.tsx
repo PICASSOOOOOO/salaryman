@@ -89,7 +89,7 @@ export default function DesktopDownload() {
             <p className="desktop-download-eyebrow">ONE CLIENT / THREE PLATFORMS</p>
             <h2>Choose your station.</h2>
           </div>
-          <p>Native packaging follows the same Python client and simulation contract on every operating system.</p>
+          <p>The client and simulation contract stay the same on every operating system. Native packages are built on their target OS.</p>
         </div>
         <div className="desktop-download-platform-grid">
           {platforms.map((platform) => (
@@ -98,13 +98,18 @@ export default function DesktopDownload() {
               <h3>{platform.name}</h3>
               <p>{platform.detail}</p>
               <code>{platform.command}</code>
-              <a href="#builds">Build package <ArrowRight size={14} aria-hidden /></a>
+              <a
+                href={platform.name === "Linux" ? "/api/desktop/download" : "#builds"}
+                download={platform.name === "Linux" ? "salaryman-office-linux-x86_64.tar.gz" : undefined}
+              >
+                {platform.name === "Linux" ? "Download package" : "Build on " + platform.name} <ArrowRight size={14} aria-hidden />
+              </a>
             </article>
           ))}
         </div>
         <p className="desktop-download-build-note" id="builds">
-          Release packages are built from the checked-in client with the same command on each platform.
-          Until a signed binary is published, the source launcher is the portable download path.
+          Linux is currently available as a downloadable bundle. macOS and Windows packages
+          must be built on their target operating systems because PyInstaller does not cross-compile.
         </p>
       </section>
 

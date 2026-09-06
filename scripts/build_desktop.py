@@ -23,20 +23,28 @@ ICON_SOURCE = ROOT / "artifacts" / "interview-helper" / "public" / "icon-512.png
 EXECUTABLE_NAME = "SALARYMAN Office"
 
 
-def write_release_launchers(staging: Path) -> None:
+def write_release_launchers(staging: Path, system_name: str) -> None:
     """Add portable launch/install helpers to the extracted release."""
 
     launcher = staging / "launch-salaryman-office.sh"
+    launch_command = (
+        'open "$ROOT/pygame/SALARYMAN Office.app" --args "$@"'
+        if system_name == "Darwin"
+        else 'exec "$ROOT/pygame/SALARYMAN Office" "$@"'
+    )
     launcher.write_text(
-        """#!/usr/bin/env sh
+        f"""#!/usr/bin/env sh
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$ROOT/pygame/SALARYMAN Office" "$@"
+{launch_command}
 """,
         encoding="utf-8",
     )
     launcher.chmod(0o755)
+
+    if system_name != "Linux":
+        return
 
     installer = staging / "install-desktop.sh"
     installer.write_text(
@@ -86,6 +94,7 @@ def main() -> int:
         print(f"Branding icon was not found: {ICON_SOURCE}", file=sys.stderr)
         return 2
 
+    system_name = platform.system()
     name = EXECUTABLE_NAME
     command = [
         pyinstaller,
@@ -98,46 +107,40 @@ def main() -> int:
         str(DIST),
         "--workpath",
         str(ROOT / "build" / "pyinstaller"),
-        "--icon",
-        str(ICON_SOURCE),
         "--exclude-module",
         "pkg_resources",
         "--exclude-module",
         "setuptools",
         str(ROOT / "main.py"),
     ]
-    print(f"Building {name} for {platform.system()}...")
+    print(f"Building {name} for {system_name}...")
+    # Linux uses the separate branded PNG installer. macOS and Windows need
+    # platform-native icon formats, which are not checked into this repo yet.
     subprocess.run(command, cwd=ROOT, check=True)
-    executable = DIST / name / name
-    if not executable.exists():
-        print(f"Expected executable was not created: {executable}", file=sys.stderr)
+    bundle_source = DIST / (f"{name}.app" if system_name == "Darwin" else name)
+    if not bundle_source.exists():
+        print(f"Expected application bundle was not created: {bundle_source}", file=sys.stderr)
         return 3
 
-    bundle_name = f"salaryman-office-{platform.system().lower()}-{platform.machine()}"
+    bundle_name = f"salaryman-office-{system_name.lower()}-{platform.machine()}"
     staging_root = ROOT / "build" / "release"
     staging = staging_root / bundle_name
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(DIST / name, staging / "pygame")
+    shutil.copytree(bundle_source, staging / "pygame" / bundle_source.name)
     shutil.copytree(ROOT / "godot" / "office-client", staging / "godot-office-client")
     branding = staging / "branding"
     branding.mkdir()
     shutil.copy2(ICON_SOURCE, branding / "salaryman-office.png")
-    write_release_launchers(staging)
-    (staging / "README.md").write_text(
-        f"""# SALARYMAN Office ({platform.system()} / {platform.machine()})
-
-## Run the desktop app
-
-From this directory:
-
-```bash
-./launch-salaryman-office.sh
-```
-
-The Pygame office simulation is authoritative and works without Godot.
-
+    write_release_launchers(staging, system_name)
+    run_command = (
+        "./launch-salaryman-office.sh"
+        if system_name != "Windows"
+        else r".\pygame\SALARYMAN Office\SALARYMAN Office.exe"
+    )
+    optional_installer = (
+        """
 ## Add a branded desktop launcher (Linux)
 
 From this directory:
@@ -149,6 +152,23 @@ From this directory:
 This installs a SALARYMAN Office application shortcut and icon into your
 user-local desktop applications folder. Keep this extracted directory in place
 after installing the shortcut.
+"""
+        if system_name == "Linux"
+        else ""
+    )
+    (staging / "README.md").write_text(
+        f"""# SALARYMAN Office ({system_name} / {platform.machine()})
+
+## Run the desktop app
+
+From this directory:
+
+```bash
+{run_command}
+```
+
+The Pygame office simulation is authoritative and works without Godot.
+{optional_installer}
 
 ## Optional Godot renderer
 
@@ -156,7 +176,7 @@ Start the Pygame app with its bridge enabled, then open
 `godot-office-client` in Godot 4:
 
 ```bash
-./pygame/{name} --bridge-port 4242
+{run_command} --bridge-port 4242
 godot --path godot-office-client
 ```
 
@@ -167,8 +187,9 @@ FIAT, workers, persistence, or office rules.
     )
     RELEASES.mkdir(parents=True, exist_ok=True)
     archive_base = RELEASES / bundle_name
-    archive = Path(shutil.make_archive(str(archive_base), "gztar", staging_root, bundle_name))
-    print(f"Build complete: {executable}")
+    archive_format = "zip" if system_name in {"Darwin", "Windows"} else "gztar"
+    archive = Path(shutil.make_archive(str(archive_base), archive_format, staging_root, bundle_name))
+    print(f"Build complete: {bundle_source}")
     print(f"Download archive: {archive}")
     return 0
 

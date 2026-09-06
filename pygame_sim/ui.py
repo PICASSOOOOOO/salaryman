@@ -24,19 +24,28 @@ class Palette:
     WHITE = (248, 250, 232)
 
 
+def _ui_font(size: int, *, bold: bool = False) -> pygame.font.Font:
+    """Choose a readable native UI font without depending on one OS."""
+    for family in ("Inter", "Segoe UI", "Helvetica Neue", "Arial", "DejaVu Sans"):
+        font_path = pygame.font.match_font(family, bold=bold)
+        if font_path:
+            return pygame.font.Font(font_path, size)
+    return pygame.font.Font(None, size)
+
+
 class SolarPunkRenderer:
     """Owns only presentation; state transitions remain in OfficeState."""
 
     def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
         self.width, self.height = screen.get_size()
-        self.font_xl = pygame.font.SysFont("DejaVu Sans", 28, bold=True)
-        self.font_lg = pygame.font.SysFont("DejaVu Sans", 19, bold=True)
-        self.font_md = pygame.font.SysFont("DejaVu Sans", 14, bold=True)
-        self.font_sm = pygame.font.SysFont("DejaVu Sans", 11)
+        self.font_xl = _ui_font(28, bold=True)
+        self.font_lg = _ui_font(19, bold=True)
+        self.font_md = _ui_font(14, bold=True)
+        self.font_sm = _ui_font(11)
         # Keep the compact label sizing without the terminal-like typeface.
         # The office UI is a modern business surface, not a CRT interface.
-        self.font_mono = pygame.font.SysFont("DejaVu Sans", 11)
+        self.font_mono = _ui_font(11)
         self.drawer_rect = pygame.Rect(0, 0, 0, 0)
         self.run_rect = pygame.Rect(0, 0, 0, 0)
         self.reset_rect = pygame.Rect(0, 0, 0, 0)
