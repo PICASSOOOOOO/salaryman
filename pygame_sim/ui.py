@@ -35,6 +35,11 @@ class SolarPunkRenderer:
         self.font_sm = pygame.font.SysFont("DejaVu Sans", 11)
         self.font_mono = pygame.font.SysFont("DejaVu Sans Mono", 11)
         self.drawer_rect = pygame.Rect(0, 0, 0, 0)
+        self.run_rect = pygame.Rect(0, 0, 0, 0)
+        self.reset_rect = pygame.Rect(0, 0, 0, 0)
+        self.record_rect = pygame.Rect(0, 0, 0, 0)
+        self.record_close_rect = pygame.Rect(0, 0, 0, 0)
+        self.worker_rects: dict[int, pygame.Rect] = {}
 
     def text(
         self,
@@ -112,19 +117,40 @@ class SolarPunkRenderer:
         )
         self.text("09:00", (160, 178), self.font_mono, Palette.GLASS)
         self.text("17:00", (track.right - 36, 178), self.font_mono, Palette.GLASS)
-        self.text("SPACE = PAUSE", (self.width - 154, 161), self.font_mono, Palette.SUN)
+        self.run_rect = pygame.Rect(self.width - 178, 153, 140, 31)
+        self.panel(
+            self.run_rect,
+            (203, 229, 190) if state.running else (245, 224, 171),
+            Palette.SEAFOAM if state.running else Palette.SUN,
+            radius=8,
+        )
+        self.text(
+            "PAUSE SHIFT" if state.running else "RESUME SHIFT",
+            (self.run_rect.x + 12, self.run_rect.y + 9),
+            self.font_mono,
+            Palette.INK,
+        )
 
     def draw_worker_grid(self, state: OfficeState, coffee_rects: dict[int, pygame.Rect]) -> None:
         self.text("ACTIVE PERSONNEL", (36, 218), self.font_lg, Palette.GLASS_BRIGHT)
         self.text("PRODUCTIVITY IS A SHARED GARDEN — MAINTAIN THE PEOPLE WHO GROW IT", (36, 245), self.font_sm, (176, 219, 192))
 
         card_width = (self.width - 92) // 3
+        self.worker_rects.clear()
         for index, worker in enumerate(state.roster.workers):
             rect = pygame.Rect(28 + index * (card_width + 18), 272, card_width, 264)
+            self.worker_rects[index] = rect
             coffee_rects[index] = self.draw_worker_card(state, worker, rect)
 
     def draw_worker_card(self, state: OfficeState, worker: Worker, rect: pygame.Rect) -> pygame.Rect:
-        self.panel(rect, Palette.GLASS, (153, 207, 173), radius=16, width=2)
+        selected = state.selected_worker == state.roster.workers.index(worker)
+        self.panel(
+            rect,
+            Palette.GLASS_BRIGHT if selected else Palette.GLASS,
+            Palette.SUN if selected else (153, 207, 173),
+            radius=16,
+            width=3 if selected else 2,
+        )
         inner = rect.inflate(-18, -18)
         self.panel(inner, (232, 245, 224), (184, 216, 184), radius=11)
         pygame.draw.circle(self.screen, worker.accent, (inner.x + 27, inner.y + 30), 14)
@@ -180,7 +206,12 @@ class SolarPunkRenderer:
             self.font_sm,
             Palette.SUN,
         )
-        self.text("SPACE  PAUSE / RESUME     R  RESET DAY", (50, 660), self.font_mono, Palette.GLASS)
+        self.text(
+            f"{state.notice}     SPACE  PAUSE / RESUME     R  RESET DAY",
+            (50, 660),
+            self.font_mono,
+            Palette.GLASS,
+        )
 
         self.drawer_rect = pygame.Rect(self.width - 276, 580, 224, 78)
         self.panel(self.drawer_rect, (232, 245, 224), (184, 216, 184), radius=11, width=2)
@@ -200,10 +231,13 @@ class SolarPunkRenderer:
         self.screen.blit(overlay, (0, 0))
 
         record = pygame.Rect(76, 72, self.width - 152, self.height - 112)
+        self.record_rect = record
+        self.record_close_rect = pygame.Rect(record.right - 132, record.y + 20, 100, 28)
         self.panel(record, Palette.GLASS_BRIGHT, (153, 207, 173), radius=18, width=2)
         self.text("OFFICE RECORD", (104, 100), self.font_xl, Palette.INK)
         self.text("THE DESK DRAWER / FINANCE + SIMULATION MEMORY", (106, 137), self.font_mono, Palette.MUTED)
-        self.text("ESC  CLOSE", (record.right - 112, 106), self.font_mono, Palette.MUTED)
+        self.panel(self.record_close_rect, (226, 239, 218), (184, 216, 184), radius=7)
+        self.text("CLOSE", (self.record_close_rect.x + 26, self.record_close_rect.y + 8), self.font_mono, Palette.INK)
 
         left = pygame.Rect(104, 172, 296, 168)
         middle = pygame.Rect(420, 172, 296, 168)

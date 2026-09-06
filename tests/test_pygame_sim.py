@@ -66,6 +66,23 @@ class PygameSimulationTests(unittest.TestCase):
         state.reset()
         self.assertFalse(state.drawer_open)
 
+    def test_worker_selection_and_coffee_action_are_state_managed(self):
+        state = OfficeState.with_default_roster()
+        self.assertTrue(state.select_worker(1))
+        self.assertEqual(state.selected_worker, 1)
+        self.assertTrue(state.buy_coffee(1))
+        self.assertIn("BREAK", state.notice)
+        self.assertFalse(state.select_worker(99))
+
+    def test_pause_resume_preserves_time_until_resumed(self):
+        state = OfficeState.with_default_roster()
+        state.toggle_running()
+        state.update(SECONDS_PER_WORKSPACE_HOUR * 2)
+        self.assertEqual(state.hour, 9)
+        state.toggle_running()
+        state.update(SECONDS_PER_WORKSPACE_HOUR)
+        self.assertEqual(state.hour, 10)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -50,15 +50,29 @@ def run(argv: list[str] | None = None) -> int:
                     state.reset()
                 elif event.key == pygame.K_ESCAPE and state.drawer_open:
                     state.toggle_drawer()
+                elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
+                    state.select_worker(event.key - pygame.K_1)
+                elif event.key == pygame.K_c and state.selected_worker is not None:
+                    state.buy_coffee(state.selected_worker)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if state.drawer_open:
+                    if renderer.record_close_rect.collidepoint(event.pos) or not renderer.record_rect.collidepoint(event.pos):
+                        state.toggle_drawer()
+                    continue
                 if renderer.drawer_rect.collidepoint(event.pos):
                     state.toggle_drawer()
-                elif state.drawer_open:
-                    pass
+                elif renderer.run_rect.collidepoint(event.pos):
+                    state.toggle_running()
                 else:
                     for index, rect in coffee_rects.items():
                         if rect.collidepoint(event.pos) and index < len(state.roster.workers):
-                            state.roster.workers[index].buy_coffee(state)
+                            state.buy_coffee(index)
+                            break
+                    else:
+                        for index, rect in renderer.worker_rects.items():
+                            if rect.collidepoint(event.pos):
+                                state.select_worker(index)
+                                break
 
         state.update(delta_seconds)
         renderer.draw(state, coffee_rects)

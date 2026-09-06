@@ -5,6 +5,13 @@ description: Environment quirks and workarounds for baking the ScrollLanding tra
 
 # Landing Trailer Pipeline
 
+## Product gate
+The public SALARYMAN homepage must not explain gameplay systems or use synthetic/mock gameplay art. Build and validate the native Pygame loop first, then source homepage visuals from a real captured gameplay session. Keep the Pablo Nebula and Mila experience as a separate `/pablo` destination.
+
+**Why:** The homepage is a visual front door, not a manual; invented gameplay visuals create dead-end expectations and obscure the real game.
+
+**How to apply:** Do not route a new landing component into `/` until a real Pygame capture exists and its three homepage destinations have been verified.
+
 ## Baked assets live at
 `artifacts/interview-helper/public/brand/landing/`:
 - `trailer.mp4` — scroll-scrubbed video (currently lavfi dark bg placeholder)

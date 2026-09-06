@@ -31,6 +31,8 @@ class OfficeState:
     total_output: float = 0.0
     total_wages_paid: float = 0.0
     drawer_open: bool = False
+    selected_worker: int | None = None
+    notice: str = "SHIFT READY"
 
     @classmethod
     def with_default_roster(cls) -> OfficeState:
@@ -97,10 +99,34 @@ class OfficeState:
 
     def toggle_running(self) -> None:
         self.running = not self.running
+        self.notice = "SHIFT RUNNING" if self.running else "SHIFT PAUSED"
 
     def toggle_drawer(self) -> None:
         """Open the physical desk drawer that contains the office record."""
         self.drawer_open = not self.drawer_open
+        self.notice = "OFFICE RECORD OPEN" if self.drawer_open else "OFFICE RECORD CLOSED"
+
+    def select_worker(self, index: int) -> bool:
+        """Select a worker for direct keyboard or card actions."""
+        if not 0 <= index < len(self.roster.workers):
+            return False
+        self.selected_worker = index
+        self.notice = f"{self.roster.workers[index].name.upper()} SELECTED"
+        return True
+
+    def buy_coffee(self, index: int) -> bool:
+        """Run a worker action through the state manager, not the renderer."""
+        if not 0 <= index < len(self.roster.workers):
+            return False
+        worker = self.roster.workers[index]
+        bought = worker.buy_coffee(self)
+        self.selected_worker = index
+        self.notice = (
+            f"{worker.name.upper()} TAKING A BREAK"
+            if bought
+            else f"{worker.name.upper()} NEEDS ƒ{worker.coffee_cost:.0f}"
+        )
+        return bought
 
     def reset(self) -> None:
         fresh = OfficeState.with_default_roster()
@@ -115,6 +141,8 @@ class OfficeState:
         self.total_output = fresh.total_output
         self.total_wages_paid = fresh.total_wages_paid
         self.drawer_open = False
+        self.selected_worker = None
+        self.notice = "SHIFT READY"
 
     def update(self, delta_seconds: float) -> int:
         """Advance using precise frame delta; return completed workspace hours."""
@@ -147,5 +175,7 @@ class OfficeState:
         self.hours_completed_today = 0
         self.total_output = 0.0
         self.total_wages_paid = 0.0
+        self.selected_worker = None
+        self.notice = f"DAY {self.day:02d} STARTED"
         for worker in self.roster.workers:
             worker.status_note = "READY FOR SHIFT"
