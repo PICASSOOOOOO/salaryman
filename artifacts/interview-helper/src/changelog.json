@@ -1781,5 +1781,22 @@
       "Update API connection health monitoring and documentation",
       "Add business data route and update memory and database schema"
     ]
+  },
+  {
+    "version": "v.21.3.2243",
+    "date": "2026-09-06",
+    "commitHash": "6882084fb0261e6a76a3f794af2220946a458ce9",
+    "changes": [
+      "Add new asset image",
+      "Update version and changelog with console improvements"
+    ]
+  },
+  {
+    "version": "v.21.4.2243",
+    "date": "2026-09-06",
+    "commitHash": "6882084fb0261e6a76a3f794af2220946a458ce9",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

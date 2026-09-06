@@ -2039,10 +2039,12 @@ function PabloTerminalAuthed() {
           gets extra horizontal padding on mobile so the logo + buttons clear
           the curved corners + camera bumps of modern phones, and the
           GFX/status pills (which are fixed) get their own safe-area padding
-          above. We also push the whole header down so it sits BELOW the
-          GFX/status pills row instead of fighting them for the top edge. */}
+           above. We also push the whole header down so it sits BELOW the
+           GFX/status pills row instead of fighting them for the top edge.
+           On desktop, the global alpha warning occupies the top strip, so
+           reserve that strip here rather than hiding the controls behind it. */}
       <header
-        className="relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
+        className="relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:mt-12 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
           // header below that so its logo + buttons don't collide with them.
@@ -2061,7 +2063,7 @@ function PabloTerminalAuthed() {
             title="Return to Tower"
           >
             <PicassoLogo size={20} gap={2} glow />
-            <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+            <span className="pablo-brand-wordmark font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
           </Link>
@@ -2072,22 +2074,31 @@ function PabloTerminalAuthed() {
             data-testid="link-logo-loop"
           >
             <PicassoLogo size={20} gap={2} glow />
-            <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+            <span className="pablo-brand-wordmark font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
           </Link>
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-             <Link
-             href="/desktop"
-             data-testid="pablo-download-salaryman"
-              className="pablo-mobile-secondary app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
-             title="Download SALARYMAN"
-           >
-             <Download className="w-3 h-3" />
-             DOWNLOAD
-           </Link>
+           <button
+              type="button"
+              data-testid="pablo-download-salaryman"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.matchMedia("(max-width: 640px)").matches) {
+                  window.alert("DOWNLOAD is available on desktop only. Open SALARYMAN on a desktop browser to continue.");
+                  return;
+                }
+                navigate("/desktop");
+              }}
+              className="pablo-download-control app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
+              title="Download SALARYMAN desktop client"
+              aria-label="Download SALARYMAN desktop client"
+            >
+              <Download className="w-3 h-3" />
+              <span className="pablo-download-label">DOWNLOAD</span>
+            </button>
           {!isLoading && !isAuthenticated && (
             <button
               type="button"

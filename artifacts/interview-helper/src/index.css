@@ -262,6 +262,14 @@ body:not(.game-route) .rounded-lg {
     .pablo-mobile-secondary {
       display: none !important;
     }
+    .pablo-download-label {
+      display: none;
+    }
+    .pablo-download-control {
+      min-width: 36px !important;
+      width: 36px;
+      padding-inline: 0.4rem;
+    }
     .pablo-vision-trigger {
       display: none !important;
     }
@@ -271,6 +279,12 @@ body:not(.game-route) .rounded-lg {
       scrollbar-width: none;
     }
     .mobile-scroll-region::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .pablo-brand-wordmark {
       display: none;
     }
   }

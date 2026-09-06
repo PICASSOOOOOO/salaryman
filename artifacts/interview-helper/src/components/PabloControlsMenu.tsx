@@ -14,6 +14,8 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
   const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 8, width: 288 });
   const { settings, set, toggleMuted } = useAudioSettings();
   const [lowGfx, setLowGfx] = useLowGfx();
 
@@ -33,15 +35,48 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const positionPopover = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const viewportPadding = 8;
+      const width = Math.min(288, Math.max(0, window.innerWidth - viewportPadding * 2));
+      const left = Math.min(
+        Math.max(viewportPadding, rect.right - width),
+        Math.max(viewportPadding, window.innerWidth - width - viewportPadding),
+      );
+      const estimatedHeight = Math.min(window.innerHeight * 0.7, 480);
+      const top = Math.min(
+        rect.bottom + 8,
+        Math.max(viewportPadding, window.innerHeight - estimatedHeight - viewportPadding),
+      );
+
+      setPopoverPosition({ top, left, width });
+    };
+
+    positionPopover();
+    window.addEventListener('resize', positionPopover);
+    window.addEventListener('scroll', positionPopover, true);
+    return () => {
+      window.removeEventListener('resize', positionPopover);
+      window.removeEventListener('scroll', positionPopover, true);
+    };
+  }, [open]);
+
   return (
     <div ref={rootRef} className="relative" data-testid="pablo-controls-menu">
       <button
         type="button"
+        ref={triggerRef}
         aria-label="Open settings"
-          aria-haspopup="dialog"
+        aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-          className="app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
+        className="app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
       >
         <SlidersHorizontal className="app-control-icon" aria-hidden />
         <span className="hidden min-[520px]:inline">SETTINGS</span>
@@ -52,7 +87,13 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
         <div
           role="dialog"
           aria-label="Pablo settings"
-          className="absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[min(18rem,calc(100vw-1rem))] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
+          data-testid="pablo-controls-popover"
+          className="fixed z-[80] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
+          style={{
+            top: popoverPosition.top,
+            left: popoverPosition.left,
+            width: popoverPosition.width,
+          }}
         >
           <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] p-2.5">
             <div>
