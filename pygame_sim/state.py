@@ -30,6 +30,7 @@ class OfficeState:
     hours_completed_today: int = 0
     total_output: float = 0.0
     total_wages_paid: float = 0.0
+    drawer_open: bool = False
 
     @classmethod
     def with_default_roster(cls) -> OfficeState:
@@ -97,6 +98,10 @@ class OfficeState:
     def toggle_running(self) -> None:
         self.running = not self.running
 
+    def toggle_drawer(self) -> None:
+        """Open the physical desk drawer that contains the office record."""
+        self.drawer_open = not self.drawer_open
+
     def reset(self) -> None:
         fresh = OfficeState.with_default_roster()
         self.funds = fresh.funds
@@ -109,6 +114,7 @@ class OfficeState:
         self.hours_completed_today = fresh.hours_completed_today
         self.total_output = fresh.total_output
         self.total_wages_paid = fresh.total_wages_paid
+        self.drawer_open = False
 
     def update(self, delta_seconds: float) -> int:
         """Advance using precise frame delta; return completed workspace hours."""

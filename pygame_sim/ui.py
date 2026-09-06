@@ -34,6 +34,7 @@ class SolarPunkRenderer:
         self.font_md = pygame.font.SysFont("DejaVu Sans", 14, bold=True)
         self.font_sm = pygame.font.SysFont("DejaVu Sans", 11)
         self.font_mono = pygame.font.SysFont("DejaVu Sans Mono", 11)
+        self.drawer_rect = pygame.Rect(0, 0, 0, 0)
 
     def text(
         self,
@@ -62,6 +63,8 @@ class SolarPunkRenderer:
         self.draw_shift_rail(state)
         self.draw_worker_grid(state, coffee_rects)
         self.draw_activity_panel(state)
+        if state.drawer_open:
+            self.draw_office_record(state)
 
     def draw_ecosystem_backdrop(self) -> None:
         # Layered ocean glass, sun disk, canopy shapes, and waterline geometry
@@ -178,3 +181,68 @@ class SolarPunkRenderer:
             Palette.SUN,
         )
         self.text("SPACE  PAUSE / RESUME     R  RESET DAY", (50, 660), self.font_mono, Palette.GLASS)
+
+        self.drawer_rect = pygame.Rect(self.width - 276, 580, 224, 78)
+        self.panel(self.drawer_rect, (232, 245, 224), (184, 216, 184), radius=11, width=2)
+        pygame.draw.rect(
+            self.screen,
+            Palette.SUN,
+            pygame.Rect(self.drawer_rect.x + 84, self.drawer_rect.y + 9, 56, 5),
+            border_radius=3,
+        )
+        self.text("DESK DRAWER", (self.drawer_rect.x + 16, self.drawer_rect.y + 28), self.font_md, Palette.INK)
+        self.text("OFFICE RECORD  ›", (self.drawer_rect.x + 16, self.drawer_rect.y + 50), self.font_mono, Palette.MUTED)
+
+    def draw_office_record(self, state: OfficeState) -> None:
+        """Render the migrated finance/game information as a physical drawer."""
+        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        overlay.fill((3, 27, 30, 178))
+        self.screen.blit(overlay, (0, 0))
+
+        record = pygame.Rect(76, 72, self.width - 152, self.height - 112)
+        self.panel(record, Palette.GLASS_BRIGHT, (153, 207, 173), radius=18, width=2)
+        self.text("OFFICE RECORD", (104, 100), self.font_xl, Palette.INK)
+        self.text("THE DESK DRAWER / FINANCE + SIMULATION MEMORY", (106, 137), self.font_mono, Palette.MUTED)
+        self.text("ESC  CLOSE", (record.right - 112, 106), self.font_mono, Palette.MUTED)
+
+        left = pygame.Rect(104, 172, 296, 168)
+        middle = pygame.Rect(420, 172, 296, 168)
+        right = pygame.Rect(736, 172, 296, 168)
+        for card in (left, middle, right):
+            self.panel(card, (232, 245, 224), (184, 216, 184), radius=12)
+
+        self.text("FINANCE", (left.x + 18, left.y + 17), self.font_md, Palette.INK)
+        self.text(f"AVAILABLE  ƒ{state.funds:,.2f}", (left.x + 18, left.y + 52), self.font_lg, Palette.SEAFOAM)
+        self.text(f"OUTPUT TODAY  +ƒ{state.total_output:,.2f}", (left.x + 18, left.y + 90), self.font_mono, Palette.INK)
+        self.text(f"WAGES PAID  -ƒ{state.total_wages_paid:,.2f}", (left.x + 18, left.y + 116), self.font_mono, Palette.CORAL)
+        self.text(f"NET TODAY  ƒ{state.net_today:,.2f}", (left.x + 18, left.y + 142), self.font_mono, Palette.MUTED)
+
+        self.text("SIMULATION", (middle.x + 18, middle.y + 17), self.font_md, Palette.INK)
+        self.text(state.time_label, (middle.x + 18, middle.y + 52), self.font_lg, Palette.SUN)
+        self.text(f"SHIFT  {state.hours_completed_today}/8 HOURS", (middle.x + 18, middle.y + 90), self.font_mono, Palette.INK)
+        self.text(f"ROSTER  {len(state.roster.workers)} WORKERS", (middle.x + 18, middle.y + 116), self.font_mono, Palette.INK)
+        self.text("2 REAL SEC = 1 WORK HOUR", (middle.x + 18, middle.y + 142), self.font_mono, Palette.MUTED)
+
+        self.text("WEB TOOLS", (right.x + 18, right.y + 17), self.font_md, Palette.INK)
+        self.text("BANKING  /  COMMS", (right.x + 18, right.y + 53), self.font_lg, Palette.SEAFOAM)
+        self.text("PHONE SYSTEM  /  DOCUMENTS", (right.x + 18, right.y + 91), self.font_mono, Palette.INK)
+        self.text("OPEN IN AUTHENTICATED WEB", (right.x + 18, right.y + 119), self.font_mono, Palette.MUTED)
+        self.text("SERVER-OWNED / NEVER LOCAL-ONLY", (right.x + 18, right.y + 142), self.font_mono, Palette.CORAL)
+
+        ledger = pygame.Rect(104, 364, self.width - 208, 126)
+        self.panel(ledger, (8, 66, 70), (52, 144, 127), radius=12)
+        self.text("RECENT LEDGER", (124, 382), self.font_md, Palette.GLASS_BRIGHT)
+        entries = state.ledger[-4:]
+        for index, entry in enumerate(reversed(entries)):
+            sign = "+" if entry.amount >= 0 else ""
+            color = Palette.SEAFOAM if entry.amount >= 0 else Palette.CORAL
+            self.text(entry.label.upper()[:42], (124, 410 + index * 18), self.font_mono, Palette.GLASS)
+            self.text(f"{sign}ƒ{entry.amount:,.2f}", (720, 410 + index * 18), self.font_mono, color)
+            self.text(f"ƒ{entry.balance:,.2f}", (900, 410 + index * 18), self.font_mono, Palette.GLASS)
+
+        self.text(
+            "THE DESKTOP CLIENT OWNS THE OFFICE SIMULATION. THE WEB APP REMAINS THE PRACTICAL CONTROL PLANE.",
+            (104, 522),
+            self.font_mono,
+            Palette.INK,
+        )

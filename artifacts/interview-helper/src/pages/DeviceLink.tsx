@@ -27,10 +27,10 @@ const DESKTOP_LINK_KEY = "salaryman_desktop_link";
 const MOBILE_LINK_KEY = "salaryman_mobile_link";
 
 const remoteRoutes = [
-  { path: "/office", name: "Office", detail: "the work floor" },
-  { path: "/tower", name: "Tower", detail: "the public levels" },
+  { path: "/desktop", name: "Desktop", detail: "the office client" },
   { path: "/business", name: "Business", detail: "the operating desk" },
-  { path: "/world/play", name: "World", detail: "the city map" },
+  { path: "/phone", name: "Phone", detail: "calls and SMS" },
+  { path: "/settings", name: "Settings", detail: "account controls" },
 ];
 
 function getDeviceId(storageKey: string): string {

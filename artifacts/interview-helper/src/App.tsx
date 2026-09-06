@@ -25,8 +25,8 @@ import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync
 import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
-import { MusicPlayerProvider, useMusicPlayer } from "@/contexts/MusicPlayerContext";
-import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
+import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
+import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 
@@ -36,6 +36,7 @@ const Immigration = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const Console = lazy(() => import("@/pages/Console"));
+const DesktopDownload = lazy(() => import("@/pages/DesktopDownload"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
 const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
@@ -44,22 +45,12 @@ const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
-const RecreationFloor = lazy(() => import("@/pages/RecreationFloor"));
-const PublicTowerFloor = lazy(() => import("@/pages/PublicTowerFloor"));
-const TowerFloorScene = lazy(() => import("@/pages/TowerFloorScene"));
-const ElevatorCabin = lazy(() => import("@/pages/ElevatorCabin"));
-const GameIntro = lazy(() => import("@/pages/GameIntro"));
-const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const SeoModule = lazy(() => import("@/pages/SeoModule"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const GlobalErrorReporter = lazy(() => import("@/components/GlobalErrorReporter").then((m) => ({ default: m.GlobalErrorReporter })));
-const GlobalMusicMiniIndicator = lazy(() => import("@/components/GlobalMusicMiniIndicator").then((m) => ({ default: m.GlobalMusicMiniIndicator })));
-const OfficeRadio = lazy(() => import("@/components/OfficeRadio").then((m) => ({ default: m.OfficeRadio })));
-const AudioControl = lazy(() => import("@/components/AudioControl").then((m) => ({ default: m.AudioControl })));
-const TowerDirectory = lazy(() => import("@/pages/TowerDirectory"));
 const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
 const NotificationToaster = lazy(() => import("@/components/NotificationToaster").then((m) => ({ default: m.NotificationToaster })));
 const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
@@ -85,13 +76,6 @@ const SchematicDecoder = lazy(() => import("@/pages/SchematicDecoder"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
 const TerrenceStudio = lazy(() => import("@/pages/TerrenceStudio"));
 const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
-const GameHub = lazy(() => import("@/pages/Game/Hub"));
-const PabloOffice = lazy(() => import("@/pages/PabloOffice"));
-const GameSettings = lazy(() => import("@/pages/Game/Settings"));
-const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
-const GameCharacter = lazy(() => import("@/pages/Game/Character"));
-const GameBank = lazy(() => import("@/pages/Game/Bank"));
-const SkillTree = lazy(() => import("@/pages/SkillTree"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Marketing = lazy(() => import("@/pages/Marketing"));
 const Autopilot = lazy(() => import("@/pages/Autopilot"));
@@ -205,8 +189,8 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
-const GAME_ROUTES = ["/mobile", "/game", "/office"];
+const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
+const GAME_ROUTES = ["/mobile"];
 
 function LoadingFallback() {
   return (
@@ -230,12 +214,6 @@ function LoadingFallback() {
 
 const MemoHome = memo(Home as React.ComponentType);
 const MemoConsole = memo(Console as React.ComponentType);
-
-function GameLock({ children }: { children: React.ReactNode }) {
-  // The city is now open to all users. (Previously gated to the Picasso org +
-  // approved alpha testers/devs during the art/OFFICE MODE rework.)
-  return <>{children}</>;
-}
 
 function HomeOrCover() {
   const { isLoading } = useAuth();
@@ -266,7 +244,6 @@ function AppShell() {
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated, isLoading } = useAuth();
   const onboardingResolved = useOnboardingResolved();
-  const { stop: stopHummingbird } = useMusicPlayer();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -306,31 +283,12 @@ function AppShell() {
   // they are handled by the coordinator's claim/release, not stopped here.
   useEffect(() => {
     let cancelled = false;
-    const allowsOfficeAmbient =
-      pathname === "/office" || pathname.startsWith("/office/");
-    if (!allowsOfficeAmbient) {
-      void import("@/soundEngine").then(({ stopAllBackgroundAudio }) => {
-        if (cancelled) return;
-        stopAllBackgroundAudio();
-      });
-    }
+    void import("@/soundEngine").then(({ stopAllBackgroundAudio }) => {
+      if (cancelled) return;
+      stopAllBackgroundAudio();
+    });
     return () => { cancelled = true; };
   }, [pathname]);
-
-  // The public Pablo nebula is a deliberately silent front door. Stop any
-  // library/procedural track left playing from an authenticated route before
-  // rendering it. Pablo's spoken replies use the separate voice bus and remain
-  // available. This is intentionally stronger than the route backstop: the
-  // front door must be silent even when a prior route left an audio tier alive,
-  // and it must stay silent when the user unlocks audio by tapping the nebula.
-  useEffect(() => {
-    if (pathname === "/" || pathname === "/pablo" || pathname.startsWith("/pablo/")) {
-      stopHummingbird();
-      void import("@/soundEngine").then(({ stopAllBackgroundAudio }) => {
-        stopAllBackgroundAudio();
-      });
-    }
-  }, [pathname, stopHummingbird]);
 
   const isRootRoute = pathname === "/";
   const isDeviceLinkRoute = pathname === "/device-link";
@@ -370,8 +328,8 @@ function AppShell() {
   //
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/tower", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/tower", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/desktop", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -412,10 +370,10 @@ function AppShell() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!newUserBlocked) return;
-    // Send authed-but-uncleared users straight to the open Shadow Tower lobby.
-    // Outside-world paperwork is intentionally deferred until they choose to
-    // leave the city.
-    navigate("/tower", { replace: true });
+    // Send authed-but-uncleared users to the desktop client handoff. The
+    // browser now contains practical tools only; office simulation lives in
+    // the native client.
+    navigate("/desktop", { replace: true });
   }, [newUserBlocked, isAuthenticated, location, navigate]);
 
   // Cross-device settings sync: once signed in, pull the player's saved display
@@ -427,7 +385,8 @@ function AppShell() {
     // Server-authoritative onboarding skip: if the server says this user already
     // onboarded (has a world business row) but the local flag is missing (fresh
     // device / cleared browser), flip salaryman_tutorial_done so every gate
-    // treats them as cleared and they land on /office instead of re-running
+    // treats them as cleared and they land on the practical tools instead of
+    // re-running
     // intake. Resolves instantly when the local flag is already set.
     void hydrateOnboardingStatus();
     void hydrateSettingsFromServer();
@@ -463,7 +422,7 @@ function AppShell() {
   // updates browser history. Mounting it can start authenticated API requests;
   // their expected 401 would otherwise win the race and send the visitor to
   // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked) return <Redirect to="/tower" />;
+  if (newUserBlocked) return <Redirect to="/desktop" />;
 
   return (
     <>
@@ -491,25 +450,6 @@ function AppShell() {
           Immersive gameplay intentionally keeps this surface out of the
           viewport; ordinary fullscreen routes still receive it. */}
         {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
-      {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
-          world, mobile, meet, pablo, game, billboard admin). The
-          immigration desk and the Pablo terminal are the only doors into
-          the app for new arrivals — leaking the music indicator there
-          breaks the "you haven't been admitted yet" fiction. */}
-        {!isFullscreenRoute && !isRootRoute && <GlobalMusicMiniIndicator />}
-      {/* Shadow Radio — one headless station for every non-phone route. */}
-        {!isEmbed && !isRootRoute && !pathname.startsWith("/pablo") && !isDeviceLinkRoute && <OfficeRadio />}
-      {/* Always-available music/sound control — an obvious way to mute or turn
-          down the audio from anywhere (full mixer still on /game/settings).
-          Hidden on /immigration because PabloOnboarding is full-screen there
-          and the FAB would overlap the "ASK ►" / NEXT ► buttons at the bottom
-          of the screen on mobile. The subtle onboarding score still plays;
-          users can adjust audio once they reach the main game. */}
-        {!isEmbed && !isRootRoute && !isDeviceLinkRoute && !pathname.startsWith('/immigration') && !pathname.startsWith('/pablo') && (
-          <div className="hidden sm:contents">
-            <AudioControl chatFabPresent={false} inGame={isGameRoute} />
-          </div>
-        )}
       </Suspense>
       {/* Primary surfaces are mounted only while active. Keeping both large
           trees hidden behind every office/paid-feature route retained their
@@ -540,7 +480,7 @@ function AppShell() {
             <Route path="/sign-up/*?" component={ClerkSignUpPage} />
             {/* Standalone routes */}
             <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>
-            <Route path="/pablo/deck">{() => <GameLock><PabloDeck /></GameLock>}</Route>
+            <Route path="/pablo/deck" component={PabloDeck} />
             <Route path="/pablo" component={PabloTerminal} />
             <Route path="/sms-opt-in" component={SmsOptIn} />
             <Route path="/immigration" component={Immigration} />
@@ -552,11 +492,13 @@ function AppShell() {
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/profile/admin/art" component={ArtLibrary} />
             <Route path="/alpha" component={AlphaApply} />
-            <Route path="/subway">{() => <Redirect to="/office" />}</Route>
-            <Route path="/travel">{() => <Redirect to="/office" />}</Route>
+            <Route path="/desktop" component={DesktopDownload} />
+            <Route path="/download">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/subway">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/travel">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/profile/admin" component={AdminHub} />
             <Route path="/profile/moderator" component={ModeratorPanel} />
-            <Route path="/profile/world-map">{() => <Redirect to="/office" />}</Route>
+            <Route path="/profile/world-map">{() => <Redirect to="/desktop" />}</Route>
             {/* Platform API + the legacy APIs tab now live inside the unified
                 /settings page (General group). Preserve old deep links. */}
             <Route path="/profile/platform">{() => <Redirect to={`/settings${window.location.search}`} />}</Route>
@@ -568,40 +510,23 @@ function AppShell() {
             <Route path="/upgrade" component={LegacyUpgradeRedirect} />
             <Route path="/pricing" component={Pricing} />
             <Route path="/wallet" component={Wallet} />
-            <Route path="/world">{() => <Redirect to="/office" />}</Route>
-            <Route path="/world/play">{() => <Redirect to="/office" />}</Route>
-            <Route path="/world/land">{() => <Redirect to="/office" />}</Route>
-            <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
-            <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
-            <Route path="/recreation">{() => <GameLock><RecreationFloor /></GameLock>}</Route>
-            <Route path="/tower/mezzanine">{() => <GameLock><PublicTowerFloor floor={2} /></GameLock>}</Route>
-            <Route path="/tower/rest">{() => <GameLock><PublicTowerFloor floor={3} /></GameLock>}</Route>
-            <Route path="/tower/security">{() => <GameLock><PublicTowerFloor floor={4} /></GameLock>}</Route>
-            <Route path="/tower/elevator">{() => <GameLock><ElevatorCabin /></GameLock>}</Route>
-            <Route path="/tower/floor/b1">{() => <GameLock><TowerFloorScene floor={-1} /></GameLock>}</Route>
-            <Route path="/tower/floor/:floor">{(params) => {
-              const parsedFloor = Number(params.floor);
-              const floor = Number.isInteger(parsedFloor) && parsedFloor >= 1 && parsedFloor <= 67 ? parsedFloor : 1;
-              return <GameLock><TowerFloorScene floor={floor} /></GameLock>;
-            }}</Route>
-            <Route path="/tower">{() => <GameLock><TowerDirectory /></GameLock>}</Route>
-            {/* CCTV "watching the office" view is now a MODE of the single
-                office surface (same artwork, passive feed). Any lingering deep
-                link drops you into the office with surveillance pre-selected. */}
-            <Route path="/office/surveillance">{() => <Redirect to="/office?mode=surveillance" />}</Route>
+            {/* Playable React gameplay retired. Keep old bookmarks useful by
+                sending them to the native desktop client landing page. */}
+            <Route path="/world">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/game">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/game/*">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/office">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/office/*">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/recreation">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/tower">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/my-office" component={MyOffice} />
-            <Route path="/game/settings">{() => <Redirect to="/settings?section=game" />}</Route>
-            <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
-            <Route path="/game/map">{() => <Redirect to="/office" />}</Route>
-            <Route path="/game/directory">{() => <Redirect to="/office" />}</Route>
-            <Route path="/game/character">{() => <GameLock><GameCharacter /></GameLock>}</Route>
-            <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
-            <Route path="/skills" component={SkillTree} />
-            <Route path="/game/intro">{() => <GameLock><GameIntro /></GameLock>}</Route>
-            <Route path="/game/bathroom">{() => <GameLock><BathroomScene /></GameLock>}</Route>
+            <Route path="/game/settings">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/skills">{() => <Redirect to="/desktop" />}</Route>
             {/* The legacy bathroom->office cutscene now folds into the single
                 walkable office (no separate tutorial-office surface). */}
-            <Route path="/game/office">{() => <Redirect to="/office" />}</Route>
+            <Route path="/game/office">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
@@ -665,8 +590,8 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
-            <Route path="/comms">{() => <Redirect to="/tower/mezzanine?focus=phone" />}</Route>
-            <Route path="/social/colleagues">{() => <Redirect to="/tower/mezzanine?focus=phone" />}</Route>
+            <Route path="/comms">{() => <Redirect to="/phone?tab=sms" />}</Route>
+            <Route path="/social/colleagues">{() => <Redirect to="/phone?tab=sms" />}</Route>
             <Route path="/creative/stems" component={StemStudio} />
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />

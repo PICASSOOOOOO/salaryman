@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Palette } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -21,7 +21,6 @@ import DiscordLinkSection from '@/components/DiscordLinkSection';
 import { ReferralPanel } from '@/components/ReferralPanel';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
-import GameSettings from '@/pages/Game/Settings';
 import { useAuth } from '@/hooks/use-auth';
 import { AppInstallCard } from '@/components/AppInstallCard';
 
@@ -1084,24 +1083,6 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
               </div>
             </motion.section>
 
-            {/* CHARACTER & APPEARANCE — jump to the full character editor. */}
-              <motion.section
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
-                className="bg-card border border-border rounded-2xl p-2"
-              >
-                <Link href="/game/character"
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
-                  <div className="w-8 h-8 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/25 flex items-center justify-center shrink-0">
-                    <Palette className="w-4 h-4 text-fuchsia-300" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground">{boomerMode ? 'My Character' : 'CHARACTER'}</p>
-                    <p className="text-[11px] text-muted-foreground">Appearance, look &amp; portrait.</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                </Link>
-              </motion.section>
-
               <ProfileSwitcherCard boomerMode={boomerMode} />
 
             <ReferralPanel boomerMode={boomerMode} />
@@ -1228,11 +1209,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                 className="bg-card border border-border rounded-2xl p-2"
               >
                 {([
-                  { href: '/tower', icon: Map, label: boomerMode ? 'Tower Directory' : 'TOWER', desc: 'Browse active floors.' },
-                  { href: '/game/economy', icon: TrendingUp, label: boomerMode ? 'Economy' : 'ECONOMY', desc: 'Markets &amp; prices.' },
-                  { href: '/game/bank', icon: CreditCard, label: boomerMode ? 'Bank' : 'BANK', desc: 'Accounts &amp; transfers.' },
-                  { href: '/game/character', icon: Palette, label: boomerMode ? 'Character' : 'CHARACTER', desc: 'Your appearance.' },
-                  { href: '/game/settings', icon: SlidersHorizontal, label: boomerMode ? 'Game Settings' : 'GAME SETTINGS', desc: 'Display, sound, controls.' },
+                  { href: '/desktop', icon: Laptop, label: boomerMode ? 'Desktop Office' : 'DESKTOP OFFICE', desc: 'Open the finance and office client.' },
                 ] as { href: string; icon: React.ComponentType<{className?: string}>; label: string; desc: string }[]).map(({ href, icon: Icon, label, desc }) => (
                   <Link key={href} href={href}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
@@ -1723,14 +1700,6 @@ export default function Profile() {
 export function SettingsPage() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
-  const requestedSection = typeof window === 'undefined'
-    ? 'game'
-    : new URLSearchParams(window.location.search).get('section');
-  const gameTab = requestedSection === 'display' ||
-    requestedSection === 'terminal' || requestedSection === 'streaming' ||
-    requestedSection === 'data'
-    ? requestedSection
-    : 'game';
 
   if (!isAuthenticated) {
     return <SignInPage context="Sign in to manage your settings." />;
@@ -1748,13 +1717,9 @@ export function SettingsPage() {
           />
           <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto pb-1">
             <a href="#account-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">ACCOUNT &amp; BUILDING</a>
-            <a href="#game-settings" className="shrink-0 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/[0.05]">GAME &amp; AUDIO</a>
           </nav>
           <section id="account-settings" className="scroll-mt-24">
             <AccountTab view="settings" />
-          </section>
-          <section id="game-settings" className="scroll-mt-24 border-t border-white/[0.06] pt-10">
-            <GameSettings embedded initialTab={gameTab} />
           </section>
         </Suspense>
       </main>
