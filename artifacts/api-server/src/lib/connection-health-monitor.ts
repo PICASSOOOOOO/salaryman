@@ -60,7 +60,7 @@ export const CONN_HEALTH_POLL_INTERVAL_MS =
   Number(process.env.CONN_HEALTH_POLL_INTERVAL_MS) || 3 * 60_000;
 
 /** Base URL for the internal-API probes (mirrors the health:all script). */
-const BASE_URL = (process.env.HEALTH_CHECK_BASE_URL || "https://picassoo.app").replace(/\/+$/, "");
+const BASE_URL = (process.env.HEALTH_CHECK_BASE_URL || "https://salaryman.io").replace(/\/+$/, "");
 
 interface ConnAlertState {
   /** Last settled state we've alerted from (null until baseline is set). */

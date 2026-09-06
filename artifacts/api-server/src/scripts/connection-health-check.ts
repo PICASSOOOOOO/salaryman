@@ -22,7 +22,7 @@
  *
  * Optional env overrides:
  *   HEALTH_CHECK_BASE_URL    - base URL for the internal /api/healthz probe
- *                              (default: https://picassoo.app)
+ *                              (default: https://salaryman.io)
  *   CONN_HEALTH_ALERT_EMAIL  - override recipient email
  *                              (default: first OWNER_EMAILS entry)
  *   CONN_HEALTH_WARN_EMAIL   - set to "1" to email on WARN too
@@ -54,7 +54,7 @@
 import { runAllProbes, type ProbeResult, type ProbeStatus } from "../lib/connection-probes";
 import { getUncachableResendClient } from "../lib/resend";
 
-const BASE_URL = (process.env.HEALTH_CHECK_BASE_URL || "https://picassoo.app").replace(/\/+$/, "");
+const BASE_URL = (process.env.HEALTH_CHECK_BASE_URL || "https://salaryman.io").replace(/\/+$/, "");
 const OP_TIMEOUT_MS = 20_000;
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {

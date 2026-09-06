@@ -15,7 +15,7 @@ report a fully-down server.
   minutes while the server is up, debounces transitions, persists flips, emails on
   confirmed up/down. Wired in `index.ts` (delayed startup probe + interval).
 - **External script** (`scripts/connection-health-check.ts`, `health:all`): hits
-  the LIVE server from outside (default base URL = prod custom domain). Run as a
+  the LIVE server from outside (default base URL = `https://salaryman.io`). Run as a
   Replit Scheduled Deployment (agent cannot create the cron — owner does it).
 
 ## Probes
@@ -44,6 +44,9 @@ resets the clock. Recovery (broken→healthy) also alerts. Mirrors
 (2min), `CONN_HEALTH_POLL_INTERVAL_MS` (3min), `CONN_HEALTH_ALERT_EMAIL` (else
 `ownerEmails()`). External script adds `HEALTH_CHECK_BASE_URL`, `CONN_HEALTH_WARN_EMAIL`,
 `CONN_HEALTH_ALWAYS_EMAIL`.
+
+Optional public enrichment integrations such as MusicBrainz must degrade to WARN on
+timeouts; they should not make the core CRM, phone, or automation platform fail.
 
 ## Structure contract test
 `__tests__/api-structure.test.ts` mounts the REAL aggregate router (routes/index.ts)

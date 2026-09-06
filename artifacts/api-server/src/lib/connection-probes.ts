@@ -389,7 +389,10 @@ export async function probeMusicBrainz(): Promise<ProbeResult> {
     }
     return makeResult("MusicBrainz", "WARN", `HTTP ${res.status}`, latencyMs);
   } catch (e: any) {
-    return makeResult("MusicBrainz", "FAIL", e?.message || "Unknown error", Date.now() - start);
+    // MusicBrainz is an optional public enrichment service. A timeout must not
+    // mark the whole platform unhealthy or page the owner when CRM, phone, and
+    // automation services are otherwise available.
+    return makeResult("MusicBrainz", "WARN", `Public API unavailable: ${e?.message || "Unknown error"}`, Date.now() - start);
   }
 }
 
@@ -447,7 +450,7 @@ export async function probeInternalApiAuth(baseUrl: string): Promise<ProbeResult
 
 // ── Run all probes ────────────────────────────────────────────────────────────
 
-export async function runAllProbes(baseUrl = "https://picassoo.app"): Promise<AllProbeResults> {
+export async function runAllProbes(baseUrl = "https://salaryman.io"): Promise<AllProbeResults> {
   const results = await Promise.all([
     probeOpenAI(),
     probeAnthropic(),
