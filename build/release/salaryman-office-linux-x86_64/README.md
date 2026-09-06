@@ -5,10 +5,22 @@
 From this directory:
 
 ```bash
-./pygame/SALARYMAN Office
+./launch-salaryman-office.sh
 ```
 
 The Pygame office simulation is authoritative and works without Godot.
+
+## Add a branded desktop launcher (Linux)
+
+From this directory:
+
+```bash
+./install-desktop.sh
+```
+
+This installs a SALARYMAN Office application shortcut and icon into your
+user-local desktop applications folder. Keep this extracted directory in place
+after installing the shortcut.
 
 ## Optional Godot renderer
 

@@ -10,7 +10,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['pkg_resources', 'setuptools'],
     noarchive=False,
     optimize=0,
 )
@@ -32,6 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['/home/runner/workspace/artifacts/interview-helper/public/icon-512.png'],
 )
 coll = COLLECT(
     exe,

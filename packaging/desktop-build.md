@@ -15,7 +15,9 @@ python scripts/build_desktop.py
 The build creates both a runnable folder under `dist/salaryman-office/` and a
 downloadable archive under `dist/releases/`. The archive includes the Pygame
 desktop client, its runtime libraries, and the optional Godot office-client
-project.
+project. It also includes the SALARYMAN icon, a portable
+`launch-salaryman-office.sh` entrypoint, and a Linux
+`install-desktop.sh` helper for installing a branded application shortcut.
 
 The command is platform-neutral and produces a windowed build for the operating
 system where it runs:
@@ -26,6 +28,10 @@ system where it runs:
 
 Build each target on that target operating system. PyInstaller does not produce
 portable Windows/macOS/Linux binaries from one host.
+
+On Linux, run `./install-desktop.sh` from the extracted release to install the
+desktop menu entry and icon. Keep the extracted release directory in place
+after installation because the shortcut launches the app from that directory.
 
 ## Runtime boundary
 
