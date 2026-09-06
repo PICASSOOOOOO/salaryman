@@ -41,6 +41,9 @@ class SolarPunkRenderer:
         self.record_rect = pygame.Rect(0, 0, 0, 0)
         self.record_close_rect = pygame.Rect(0, 0, 0, 0)
         self.worker_rects: dict[int, pygame.Rect] = {}
+        self.recruitment_rect = pygame.Rect(0, 0, 0, 0)
+        self.refresh_rect = pygame.Rect(0, 0, 0, 0)
+        self.candidate_rects: dict[int, pygame.Rect] = {}
 
     def text(
         self,
@@ -67,7 +70,10 @@ class SolarPunkRenderer:
         self.draw_ecosystem_backdrop()
         self.draw_header(state)
         self.draw_shift_rail(state)
-        self.draw_worker_grid(state, coffee_rects)
+        if state.recruitment_open:
+            self.draw_recruitment_desk(state)
+        else:
+            self.draw_worker_grid(state, coffee_rects)
         self.draw_activity_panel(state)
         if state.drawer_open:
             self.draw_office_record(state)
@@ -216,12 +222,74 @@ class SolarPunkRenderer:
         self.text("WORKFLOOR", (36, 218), self.font_lg, Palette.GLASS_BRIGHT)
         self.text("SELECT A WORKER TO DIRECT THEIR NEXT BREAK", (36, 245), self.font_sm, (176, 219, 192))
 
-        card_width = (self.width - 92) // 3
+        columns = 4 if len(state.roster.workers) > 3 else 3
+        card_width = (self.width - 92 - (columns - 3) * 18) // columns
         self.worker_rects.clear()
-        for index, worker in enumerate(state.roster.workers):
+        for index, worker in enumerate(state.roster.workers[:columns]):
             rect = pygame.Rect(28 + index * (card_width + 18), 272, card_width, 264)
             self.worker_rects[index] = rect
             coffee_rects[index] = self.draw_worker_card(state, worker, rect)
+        if len(state.roster.workers) > columns:
+            self.text(
+                f"+{len(state.roster.workers) - columns} MORE IN OFFICE RECORD",
+                (36, 540),
+                self.font_mono,
+                Palette.SUN,
+            )
+
+    def draw_recruitment_desk(self, state: OfficeState) -> None:
+        self.text("RECRUITMENT DESK", (36, 218), self.font_lg, Palette.GLASS_BRIGHT)
+        self.text(
+            "REVIEW CANDIDATES BEFORE ADDING THEM TO THE ACTIVE TEAM",
+            (36, 245),
+            self.font_sm,
+            (176, 219, 192),
+        )
+        self.refresh_rect = pygame.Rect(self.width - 222, 214, 174, 30)
+        self.panel(self.refresh_rect, (203, 229, 190), Palette.SEAFOAM, radius=8)
+        self.text("REFRESH POOL  ƒ50", (self.refresh_rect.x + 18, self.refresh_rect.y + 8), self.font_mono, Palette.INK)
+
+        self.candidate_rects.clear()
+        card_width = (self.width - 92) // 3
+        for index, candidate in enumerate(state.recruitment_candidates[:3]):
+            rect = pygame.Rect(28 + index * (card_width + 18), 272, card_width, 264)
+            self.candidate_rects[index] = rect
+            self.panel(rect, Palette.GLASS_BRIGHT, candidate.accent, radius=16, width=2)
+            inner = rect.inflate(-18, -18)
+            pygame.draw.circle(self.screen, candidate.accent, (inner.x + 27, inner.y + 30), 14)
+            pygame.draw.circle(self.screen, Palette.GLASS_BRIGHT, (inner.x + 27, inner.y + 30), 6)
+            self.text(candidate.name, (inner.x + 51, inner.y + 18), self.font_lg, Palette.INK)
+            self.text(candidate.role, (inner.x + 18, inner.y + 57), self.font_mono, Palette.MUTED)
+            self.text(
+                f"OUTPUT  +ƒ{candidate.productivity_per_hour:,.0f}/HR",
+                (inner.x + 18, inner.y + 104),
+                self.font_mono,
+                Palette.INK,
+            )
+            self.text(
+                f"WAGE  ƒ{candidate.hourly_wage_fiat:,.0f}/HR",
+                (inner.x + 18, inner.y + 128),
+                self.font_mono,
+                Palette.INK,
+            )
+            self.text(
+                f"ONBOARDING  ƒ{candidate.hiring_cost_fiat:,.0f}",
+                (inner.x + 18, inner.y + 152),
+                self.font_mono,
+                Palette.MUTED,
+            )
+            hire_rect = pygame.Rect(inner.x + 18, inner.bottom - 42, inner.width - 36, 30)
+            affordable = state.funds >= candidate.hiring_cost_fiat
+            self.panel(
+                hire_rect,
+                (203, 229, 190) if affordable else (218, 220, 201),
+                candidate.accent,
+                radius=8,
+            )
+            self.text("HIRE CANDIDATE", (hire_rect.x + 16, hire_rect.y + 8), self.font_sm, Palette.INK)
+
+        if not state.recruitment_candidates:
+            self.text("NO CANDIDATES AVAILABLE", (42, 330), self.font_md, Palette.SUN)
 
     def draw_worker_card(self, state: OfficeState, worker: Worker, rect: pygame.Rect) -> pygame.Rect:
         selected = state.selected_worker == state.roster.workers.index(worker)
@@ -293,6 +361,14 @@ class SolarPunkRenderer:
         self.reset_rect = pygame.Rect(self.width - 454, 648, 116, 26)
         self.panel(self.reset_rect, (18, 92, 88), (52, 144, 127), radius=7)
         self.text("RESET DAY  R", (self.reset_rect.x + 12, self.reset_rect.y + 7), self.font_mono, Palette.GLASS)
+        self.recruitment_rect = pygame.Rect(self.width - 590, 648, 126, 26)
+        self.panel(self.recruitment_rect, (232, 245, 224), (184, 216, 184), radius=7)
+        self.text(
+            "TEAM  N" if state.recruitment_open else "HIRE  N",
+            (self.recruitment_rect.x + 26, self.recruitment_rect.y + 7),
+            self.font_mono,
+            Palette.INK,
+        )
 
         self.drawer_rect = pygame.Rect(self.width - 276, 580, 224, 78)
         self.panel(self.drawer_rect, (232, 245, 224), (184, 216, 184), radius=11, width=2)

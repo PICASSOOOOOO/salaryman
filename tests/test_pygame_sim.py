@@ -1,5 +1,7 @@
 import unittest
 from datetime import datetime, timezone
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from pygame_sim.models import MINIMUM_HOURLY_FIAT, Worker
 from pygame_sim.state import OfficeState, SECONDS_PER_WORKSPACE_HOUR
@@ -183,6 +185,45 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertEqual(state.breaks_taken_today, 0)
         self.assertTrue(state.start_break())
         self.assertEqual(state.break_kind, "short")
+
+    def test_recruitment_refresh_and_hire_use_the_office_ledger(self):
+        state = OfficeState.with_default_roster()
+        state.funds = 5_000
+        self.assertTrue(state.refresh_recruitment_candidates())
+        self.assertEqual(len(state.recruitment_candidates), 3)
+
+        candidate = state.recruitment_candidates[0]
+        before_workers = len(state.roster.workers)
+        before_funds = state.funds
+        self.assertTrue(state.hire_candidate(0))
+        self.assertEqual(len(state.roster.workers), before_workers + 1)
+        self.assertEqual(state.roster.workers[-1].name, candidate.name)
+        self.assertEqual(state.funds, before_funds - candidate.hiring_cost_fiat)
+
+    def test_recruitment_rejects_unaffordable_hire_without_mutating_the_team(self):
+        state = OfficeState.with_default_roster()
+        state.funds = 0
+        workers_before = len(state.roster.workers)
+        self.assertFalse(state.hire_candidate(0))
+        self.assertEqual(len(state.roster.workers), workers_before)
+        self.assertIn("HIRE DENIED", state.notice)
+
+    def test_office_record_round_trips_workers_and_ledger(self):
+        state = OfficeState.with_default_roster()
+        state.funds = 4_321
+        state.select_worker(1)
+        state.buy_coffee(1)
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "office.json"
+            state.save_to_file(path)
+            restored = OfficeState.load_from_file(path)
+
+        self.assertEqual(restored.funds, state.funds)
+        self.assertEqual(restored.selected_worker, state.selected_worker)
+        self.assertEqual(len(restored.roster.workers), len(state.roster.workers))
+        self.assertEqual(restored.roster.workers[1].name, state.roster.workers[1].name)
+        self.assertEqual(restored.ledger[-1].label, state.ledger[-1].label)
 
 
 if __name__ == "__main__":

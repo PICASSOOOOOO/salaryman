@@ -20,6 +20,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="SALARYMAN solar-punk office simulation")
     parser.add_argument("--headless", action="store_true", help="Use SDL's dummy video driver.")
     parser.add_argument("--frames", type=int, default=0, help="Exit after N frames; useful for smoke tests.")
+    parser.add_argument(
+        "--save-file",
+        default="~/.salaryman/office.json",
+        help="Persistent office record path.",
+    )
     return parser.parse_args(argv)
 
 
@@ -33,11 +38,12 @@ def run(argv: list[str] | None = None) -> int:
     screen = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption("SALARYMAN · Office Ecology")
     clock = pygame.time.Clock()
-    state = OfficeState.with_default_roster(real_time=True)
+    state = OfficeState.load_from_file(args.save_file, real_time=True)
     renderer = SolarPunkRenderer(screen)
     scene = build_tower_scene()
     coffee_rects: dict[int, pygame.Rect] = {}
     spatial_mode = False
+    previous_day = state.day
 
     running = True
     frame_count = 0
@@ -72,6 +78,8 @@ def run(argv: list[str] | None = None) -> int:
                     state.toggle_running()
                 elif event.key == pygame.K_r:
                     state.reset()
+                elif event.key == pygame.K_n and not spatial_mode:
+                    state.toggle_recruitment()
                 elif event.key == pygame.K_ESCAPE and state.drawer_open:
                     state.toggle_drawer()
                 elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
@@ -93,6 +101,15 @@ def run(argv: list[str] | None = None) -> int:
                     state.toggle_running()
                 elif renderer.reset_rect.collidepoint(event.pos):
                     state.reset()
+                elif renderer.recruitment_rect.collidepoint(event.pos):
+                    state.toggle_recruitment()
+                elif state.recruitment_open and renderer.refresh_rect.collidepoint(event.pos):
+                    state.refresh_recruitment_candidates()
+                elif state.recruitment_open:
+                    for index, rect in renderer.candidate_rects.items():
+                        if rect.collidepoint(event.pos):
+                            state.hire_candidate(index)
+                            break
                 else:
                     for index, rect in coffee_rects.items():
                         if rect.collidepoint(event.pos) and index < len(state.roster.workers):
@@ -105,6 +122,9 @@ def run(argv: list[str] | None = None) -> int:
                                 break
 
         state.update(delta_seconds)
+        if state.day != previous_day:
+            state.save_to_file(args.save_file)
+            previous_day = state.day
         if spatial_mode:
             renderer.draw_tower(state, scene)
         else:
@@ -114,6 +134,7 @@ def run(argv: list[str] | None = None) -> int:
         if args.frames and frame_count >= args.frames:
             running = False
 
+    state.save_to_file(args.save_file)
     pygame.quit()
     return 0
 
