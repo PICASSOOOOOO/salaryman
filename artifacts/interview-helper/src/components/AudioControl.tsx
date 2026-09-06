@@ -6,11 +6,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Global audio control ─────────────────────────────────────────────────────
 // An always-available, obvious way to STOP or TURN DOWN the audio from anywhere
-// in the app (the full mixer still lives on /game/settings). A small speaker
+// in the app (the full mixer lives on the settings page). A small speaker
 // button parks in the bottom-right corner; clicking it opens a compact panel
 // with a master mute, two on/off toggles, and the sliders people reach for.
 //   • SHADOW RADIO = the live Call Home station. Default ON at low volume, app-wide.
-//   • AMBIANCE = the low ambient bed. Plays during the game, toggleable off.
+//   • AMBIANCE = the low ambient bed, toggleable off.
 // Reads/writes the central audio-settings store, so it stays in lockstep with
 // the settings page, the office radio and every other audio consumer.
 
@@ -182,7 +182,7 @@ export function AudioControl({
           </div>
 
           <Link
-            href="/settings?section=game"
+            href="/settings"
             onClick={() => setOpen(false)}
             className="mt-3 flex items-center gap-1.5 text-[9px] tracking-[0.2em] text-zinc-500 hover:text-cyan-300"
           >

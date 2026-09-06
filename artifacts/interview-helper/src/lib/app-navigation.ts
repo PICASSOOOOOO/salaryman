@@ -50,8 +50,7 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
       return pathname === "/terminal";
     case "office":
       return pathname === "/office" || pathname === "/my-office" ||
-        pathname.startsWith("/office/") ||
-        ["/game/economy", "/game/bank", "/game/character", "/game/settings"].includes(pathname);
+        pathname.startsWith("/office/");
     case "bots":
       return pathname.startsWith("/bots");
     case "org":

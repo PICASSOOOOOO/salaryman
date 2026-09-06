@@ -154,12 +154,12 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
 
           {isAuthenticated && (
             <Link
-              href="/settings?section=game"
+              href="/settings"
               onClick={() => setOpen(false)}
               className="app-action app-control mt-3 w-full border-white/10 bg-white/[0.035] text-white/70 hover:bg-white/[0.08] hover:text-white"
             >
               <SlidersHorizontal className="app-control-icon" aria-hidden />
-              OPEN FULL SETTINGS
+              OPEN SETTINGS
             </Link>
           )}
         </div>
