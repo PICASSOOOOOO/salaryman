@@ -6,8 +6,8 @@ import { IsoOffice, type OfficeOccupant } from '@/components/IsoOffice';
 import { OfficeMinimap } from '@/components/OfficeMinimap';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
-import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
-import { getAmbianceEnabled, getAudioSettings, getMusicEnabled, setAudioSettings, subscribeAudioSettings } from '@/lib/audio-settings';
+import { stopOfficeAmbient } from '@/soundEngine';
+import { getAudioSettings, getMusicEnabled, setAudioSettings } from '@/lib/audio-settings';
 import { floorPlacementForAssignments, type MonitorBot } from '@/lib/office-monitor';
 import { apiFetch } from '@/lib/api-client';
 import { NetWorthHUD } from '@/components/NetWorthHUD';
@@ -507,30 +507,12 @@ export default function PabloOffice() {
     return () => ro.disconnect();
   }, [rosterReady]);
 
-  // ── Quiet meditative office ambient ─────────────────────────────────────────
-  // A calm pad bed (NOT the city's synthwave score) plays while you're in the
-  // office. It auto-starts on the first user gesture (WebAudio needs one) when
-  // AMBIANCE is enabled, and stops on leave. Loudness is gated centrally by the
-  // same AMBIANCE toggle / master mute / voice-ducking, so nothing else to wire.
+  // The office never starts a background bed on its own. Audio is a physical
+  // radio interaction only; this cleanup protects the office from a bed left
+  // alive by a previous route or an older hot-reloaded module.
   useEffect(() => {
-    if (embed) return; // embedded monitor stays silent — the host page owns audio
-    const start = () => {
-      resumeAudioContext();
-      if (getAmbianceEnabled() && !getMusicEnabled()) startOfficeAmbient();
-    };
-    window.addEventListener('pointerdown', start, { once: true });
-    window.addEventListener('keydown', start, { once: true });
-    // Honor the AMBIANCE toggle mid-session (e.g. from the global audio panel).
-    const unsub = subscribeAudioSettings(() => {
-      if (getAmbianceEnabled() && !getMusicEnabled()) startOfficeAmbient();
-      else stopOfficeAmbient();
-    });
-    return () => {
-      window.removeEventListener('pointerdown', start);
-      window.removeEventListener('keydown', start);
-      unsub();
-      stopOfficeAmbient();
-    };
+    if (!embed) stopOfficeAmbient();
+    return () => stopOfficeAmbient();
   }, [embed]);
 
   // Fetch real team. We ignore failures and fall back to Pablo + a few
@@ -900,7 +882,6 @@ export default function PabloOffice() {
           </div>
           {!compactHud && hkBtn(() => { playClick(); setShowMissions(true); }, '◇ MISSIONS', showMissions)}
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, compactHud ? '?' : '? HELP · H', showHelp)}
-          {!compactHud && <Link href="/game/map" data-testid="link-office-map" onClick={() => playNav()} style={{ color: '#c7f36b', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>MAP »</Link>}
           {!compactHud && <Link href="/recreation" data-testid="link-office-rec" onClick={() => playNav()} style={{ color: '#fbbf24', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>REC »</Link>}
           {!compactHud && <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>}
         </div>

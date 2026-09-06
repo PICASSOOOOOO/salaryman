@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon, Bot, ShoppingBag, Phone, Store } from "lucide-react";
+import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Bot, ShoppingBag, Phone, Store } from "lucide-react";
 
 /**
  * The TERMINAL — the office computer's operating system. Players reach it by
@@ -26,14 +26,6 @@ export default function GameHub() {
       title: "GO TO WORK",
       sub: "Today is the same as yesterday. Clock in.",
       tone: "from-zinc-700 to-zinc-900 border-zinc-600 text-zinc-200",
-    },
-    {
-      to: "/game/map",
-      icon: MapIcon,
-      kicker: "CHART",
-      title: "MAP",
-      sub: "Surveyor's chart. Burned-paper. Mark waypoints. See what you've explored.",
-      tone: "from-amber-950/40 to-zinc-950 border-amber-800/40 text-amber-200",
     },
     {
       to: "/game/economy",

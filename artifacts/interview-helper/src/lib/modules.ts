@@ -267,7 +267,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/pablo/deck') return MODULES[0];
   // Office module: floor, my-office, game sub-pages
   if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return MODULES[1];
-  if (pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
+  if (pathname === '/game/economy' || pathname === '/game/bank' ||
       pathname === '/game/character' || pathname === '/game/settings') return MODULES[1];
   if (pathname.startsWith('/phone')) return MODULES[2];
   if (pathname.startsWith('/bots') || pathname === '/agents' || pathname === '/console/agents') return MODULES[3];

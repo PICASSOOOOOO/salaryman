@@ -22,15 +22,19 @@ vi.mock("@/lib/tutorial-progress", () => ({
   setSalarymanOfficeTier: vi.fn(),
 }));
 vi.mock("@/lib/onboarding-sync", () => ({ useOnboardingResolved: () => true }));
-vi.mock("@/lib/onboarding-score", () => ({ ensureOnboardingScore: vi.fn() }));
-vi.mock("@/components/PabloOnboarding", () => ({
-  PabloOnboarding: () => <div data-testid="immigration-intake" />,
+vi.mock("@/components/QuickOnboarding", () => ({
+  QuickOnboarding: () => <div data-testid="immigration-intake" />,
 }));
 vi.mock("@/components/PostOnboardingIntro", () => ({ PostOnboardingIntro: () => null }));
 vi.mock("@/components/PabloNebula3D", () => ({ PabloNebula3D: () => null }));
 vi.mock("@/components/EconomyKey", () => ({ EconomyKey: () => null }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
-vi.mock("@/lib/world-servers", () => ({ getCityById: () => null }));
+vi.mock("@/lib/world-servers", () => ({
+  getCityById: () => null,
+  getOperationalCities: () => [],
+  getLocalTimezone: () => "Asia/Saigon",
+  resolveHomeCity: () => null,
+}));
 vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));
 
 import Immigration, { getPostOnboardingDestination } from "./Immigration";

@@ -51,7 +51,7 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
     case "office":
       return pathname === "/office" || pathname === "/my-office" ||
         pathname.startsWith("/office/") ||
-        ["/game/map", "/game/economy", "/game/bank", "/game/character", "/game/settings"].includes(pathname);
+        ["/game/economy", "/game/bank", "/game/character", "/game/settings"].includes(pathname);
     case "bots":
       return pathname.startsWith("/bots");
     case "org":
@@ -63,13 +63,11 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
       return pathname.startsWith("/settings");
     case "admin":
       return pathname.startsWith("/profile/admin") ||
-        pathname.startsWith("/profile/moderator") ||
-        pathname.startsWith("/profile/world-map");
+        pathname.startsWith("/profile/moderator");
     case "profile":
       return (pathname === "/profile" || pathname.startsWith("/profile/")) &&
         !pathname.startsWith("/profile/admin") &&
-        !pathname.startsWith("/profile/moderator") &&
-        !pathname.startsWith("/profile/world-map");
+        !pathname.startsWith("/profile/moderator");
     default:
       return pathname === `/${item.id}` || pathname.startsWith(`/${item.id}/`);
   }

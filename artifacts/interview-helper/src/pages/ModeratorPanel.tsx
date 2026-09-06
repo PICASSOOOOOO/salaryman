@@ -184,7 +184,6 @@ export default function ModeratorPanel() {
           </div>
           <div className="p-4 space-y-3">
             {[
-              { label: 'VIEW WORLD MAP', desc: 'Real-time overview of all player positions and actions', icon: Gamepad2, path: '/profile/world-map', color: 'emerald' },
               { label: 'MANAGE BANS', desc: 'Issue warnings, temporary bans, and permanent bans', icon: Ban, path: '/profile/admin?tab=bans', color: 'red' },
               { label: 'CHAT MONITOR', desc: 'Review public and private chat messages for violations', icon: MessageSquare, path: '#', color: 'sky' },
               { label: 'FLAGGED CONTENT', desc: 'User-reported content awaiting moderator review', icon: AlertTriangle, path: '#', color: 'amber' },

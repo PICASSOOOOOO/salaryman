@@ -151,3 +151,4 @@
 - [Godot and Unreal art development](godot-art-dev.md) — Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
 - [World condition system](world-condition-system.md) — places degrade over months from flourishing to rotting through ordinary wear, then recover through bounded repair work.
 - [Tower office access](tower-office-access.md) — suite doors use the existing floor-level server access authority; vacant/sealed shells must not invent locks.
+- [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.

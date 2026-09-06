@@ -31,13 +31,13 @@ describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
     expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "bots", "office", "org"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "console", "business", "creative", "marketing", "settings", "profile", "admin",
+      "console", "business", "creative", "marketing", "pledge", "feedback",
+      "settings", "profile", "admin",
     ]);
   });
 
   it("shares active matching across desktop and mobile renderers", () => {
     const office = PRIMARY_NAV_ITEMS.find(item => item.id === "office")!;
-    expect(isAppNavItemActive(office, "/game/map")).toBe(true);
     expect(isAppNavItemActive(office, "/phone")).toBe(false);
   });
 

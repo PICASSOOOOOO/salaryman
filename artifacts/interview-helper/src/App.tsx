@@ -28,12 +28,6 @@ import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider, useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
-import {
-  readLocalStoryActive,
-  readStoryBeginIntent,
-  clearStoryBeginIntent,
-  fetchServerStoryActive,
-} from "@/lib/story-gate";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -46,17 +40,14 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
 const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
 const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
-const WorldMapPanel = lazy(() => import("@/pages/WorldMapPanel"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
-const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const RecreationFloor = lazy(() => import("@/pages/RecreationFloor"));
 const PublicTowerFloor = lazy(() => import("@/pages/PublicTowerFloor"));
 const TowerFloorScene = lazy(() => import("@/pages/TowerFloorScene"));
 const ElevatorCabin = lazy(() => import("@/pages/ElevatorCabin"));
-const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
@@ -98,8 +89,6 @@ const GameHub = lazy(() => import("@/pages/Game/Hub"));
 const PabloOffice = lazy(() => import("@/pages/PabloOffice"));
 const GameSettings = lazy(() => import("@/pages/Game/Settings"));
 const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
-const GameMap = lazy(() => import("@/pages/Game/Map"));
-const CityDirectory = lazy(() => import("@/pages/CityDirectory"));
 const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const SkillTree = lazy(() => import("@/pages/SkillTree"));
@@ -186,7 +175,6 @@ const BusinessServices = lazy(() => import("@/pages/BusinessServices"));
 const VendingMachine = lazy(() => import("@/pages/VendingMachine"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 const AlphaApply = lazy(() => import("@/pages/AlphaApply"));
-const Subway = lazy(() => import("@/pages/Subway"));
 const AlphaAdmin = lazy(() => import("@/pages/AlphaAdmin"));
 
 const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
@@ -217,8 +205,8 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
-const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
+const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
+const GAME_ROUTES = ["/mobile", "/game", "/office"];
 
 function LoadingFallback() {
   return (
@@ -246,61 +234,6 @@ const MemoConsole = memo(Console as React.ComponentType);
 function GameLock({ children }: { children: React.ReactNode }) {
   // The city is now open to all users. (Previously gated to the Picasso org +
   // approved alpha testers/devs during the art/OFFICE MODE rework.)
-  return <>{children}</>;
-}
-
-/**
- * Confines the player to the office until the story begins. The city
- * (/world/play, /world/land) is open only once server-authoritative
- * `story.active` is true; until then a city visit bounces to /office, which
- * carries the "BEGIN STORY" path that flips story.active before sending the
- * player out into the city (so they're never soft-locked).
- *
- * Authority: optimistic-open on the local flag / begin-intent so the
- * begin-story → city hop never flashes a lock, then the server result is the
- * final word — a locked server response downgrades to the office, and an
- * unknown (offline / unauthenticated) result falls back to the local flag.
- */
-function StoryCityLock({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
-  // Optimistic open: local save says active, or we just pressed BEGIN STORY.
-  const [open, setOpen] = useState<boolean>(
-    () => readLocalStoryActive() || readStoryBeginIntent(),
-  );
-  // null = still resolving the server truth; false = server says locked.
-  const [serverActive, setServerActive] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!isAuthenticated) {
-      // Logged-out players never have a server story; fall back to local only.
-      setServerActive(null);
-      return;
-    }
-    let cancelled = false;
-    fetchServerStoryActive().then((active) => {
-      if (cancelled) return;
-      setServerActive(active);
-      if (active === true) {
-        setOpen(true);
-        clearStoryBeginIntent();
-      } else if (active === false) {
-        // Server is authoritative: a locked result closes the optimistic open
-        // UNLESS the player is mid begin-story (intent set), to avoid a race
-        // where the city loads before the begin PUT has landed.
-        if (!readStoryBeginIntent()) setOpen(false);
-      }
-      // active === null → leave the optimistic/local decision in place.
-    });
-    return () => { cancelled = true; };
-  }, [isAuthenticated, isLoading]);
-
-  // Embedded surveillance/preview never participates in the gate.
-  if (isEmbedMode()) return <>{children}</>;
-  if (isLoading) return null;
-
-  const allowed = open || serverActive === true;
-  if (!allowed) return <Redirect to="/office" />;
   return <>{children}</>;
 }
 
@@ -373,15 +306,12 @@ function AppShell() {
   // they are handled by the coordinator's claim/release, not stopped here.
   useEffect(() => {
     let cancelled = false;
-    const allowsWorldScore = pathname === "/world/play" || pathname.startsWith("/world/play/");
     const allowsOfficeAmbient =
-      pathname === "/office" || pathname.startsWith("/office/") ||
-      pathname === "/immigration" || pathname.startsWith("/immigration/");
-    if (!allowsWorldScore || !allowsOfficeAmbient) {
-      void import("@/soundEngine").then(({ pauseMusic, stopCrowdMurmur, stopOfficeAmbient }) => {
+      pathname === "/office" || pathname.startsWith("/office/");
+    if (!allowsOfficeAmbient) {
+      void import("@/soundEngine").then(({ stopAllBackgroundAudio }) => {
         if (cancelled) return;
-        if (!allowsWorldScore) { pauseMusic(); stopCrowdMurmur(); }
-        if (!allowsOfficeAmbient) { stopOfficeAmbient(); }
+        stopAllBackgroundAudio();
       });
     }
     return () => { cancelled = true; };
@@ -622,11 +552,11 @@ function AppShell() {
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/profile/admin/art" component={ArtLibrary} />
             <Route path="/alpha" component={AlphaApply} />
-            <Route path="/subway" component={Subway} />
-            <Route path="/travel" component={Subway} />
+            <Route path="/subway">{() => <Redirect to="/office" />}</Route>
+            <Route path="/travel">{() => <Redirect to="/office" />}</Route>
             <Route path="/profile/admin" component={AdminHub} />
             <Route path="/profile/moderator" component={ModeratorPanel} />
-            <Route path="/profile/world-map" component={WorldMapPanel} />
+            <Route path="/profile/world-map">{() => <Redirect to="/office" />}</Route>
             {/* Platform API + the legacy APIs tab now live inside the unified
                 /settings page (General group). Preserve old deep links. */}
             <Route path="/profile/platform">{() => <Redirect to={`/settings${window.location.search}`} />}</Route>
@@ -639,8 +569,8 @@ function AppShell() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/wallet" component={Wallet} />
             <Route path="/world">{() => <Redirect to="/office" />}</Route>
-            <Route path="/world/play">{() => <GameLock><StoryCityLock><WorldPlay /></StoryCityLock></GameLock>}</Route>
-            <Route path="/world/land">{() => <GameLock><StoryCityLock><LandRegistry /></StoryCityLock></GameLock>}</Route>
+            <Route path="/world/play">{() => <Redirect to="/office" />}</Route>
+            <Route path="/world/land">{() => <Redirect to="/office" />}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
             <Route path="/recreation">{() => <GameLock><RecreationFloor /></GameLock>}</Route>
@@ -662,8 +592,8 @@ function AppShell() {
             <Route path="/my-office" component={MyOffice} />
             <Route path="/game/settings">{() => <Redirect to="/settings?section=game" />}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
-            <Route path="/game/map">{() => <GameLock><GameMap /></GameLock>}</Route>
-            <Route path="/game/directory">{() => <GameLock><CityDirectory /></GameLock>}</Route>
+            <Route path="/game/map">{() => <Redirect to="/office" />}</Route>
+            <Route path="/game/directory">{() => <Redirect to="/office" />}</Route>
             <Route path="/game/character">{() => <GameLock><GameCharacter /></GameLock>}</Route>
             <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
             <Route path="/skills" component={SkillTree} />

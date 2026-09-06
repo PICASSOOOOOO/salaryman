@@ -17,7 +17,6 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
     "/office",
     "/my-office",
     "/office/some-sub",
-    "/game/map",
     "/game/economy",
     "/game/bank",
     "/game/character",
@@ -42,9 +41,8 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
     expect(mod?.id ?? null).not.toBe("office");
   });
 
-  it("all five sub-nav pages are present as sub entries in the office module", () => {
+  it("all remaining game sub-nav pages are present as sub entries in the office module", () => {
     const subPaths = OFFICE_MODULE.subs.map((s) => s.path);
-    expect(subPaths).toContain("/game/map");
     expect(subPaths).toContain("/game/economy");
     expect(subPaths).toContain("/game/bank");
     expect(subPaths).toContain("/game/character");
