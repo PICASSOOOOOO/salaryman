@@ -1,5 +1,4 @@
-def main():
-    print("Hello from repl-nix-workspace!")
+from pygame_sim.app import main
 
 
 if __name__ == "__main__":

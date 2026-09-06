@@ -1,0 +1,180 @@
+"""Solar-punk Pygame renderer and vector UI primitives."""
+
+from __future__ import annotations
+
+import pygame
+
+from .models import Worker
+from .state import OfficeState
+
+
+class Palette:
+    OCEAN = (9, 57, 65)
+    OCEAN_DEEP = (5, 40, 48)
+    OBSIDIAN = (12, 31, 34)
+    GLASS = (224, 241, 220)
+    GLASS_BRIGHT = (241, 248, 228)
+    INK = (17, 45, 46)
+    MUTED = (93, 131, 125)
+    SEAFOAM = (71, 190, 154)
+    SUN = (248, 185, 87)
+    CORAL = (240, 119, 103)
+    LEAF = (125, 181, 84)
+    WHITE = (248, 250, 232)
+
+
+class SolarPunkRenderer:
+    """Owns only presentation; state transitions remain in OfficeState."""
+
+    def __init__(self, screen: pygame.Surface) -> None:
+        self.screen = screen
+        self.width, self.height = screen.get_size()
+        self.font_xl = pygame.font.SysFont("DejaVu Sans", 28, bold=True)
+        self.font_lg = pygame.font.SysFont("DejaVu Sans", 19, bold=True)
+        self.font_md = pygame.font.SysFont("DejaVu Sans", 14, bold=True)
+        self.font_sm = pygame.font.SysFont("DejaVu Sans", 11)
+        self.font_mono = pygame.font.SysFont("DejaVu Sans Mono", 11)
+
+    def text(
+        self,
+        value: str,
+        position: tuple[int, int],
+        font: pygame.font.Font,
+        color: tuple[int, int, int] = Palette.INK,
+    ) -> None:
+        self.screen.blit(font.render(value, True, color), position)
+
+    def panel(
+        self,
+        rect: pygame.Rect,
+        fill: tuple[int, int, int],
+        stroke: tuple[int, int, int] = Palette.MUTED,
+        radius: int = 14,
+        width: int = 1,
+    ) -> None:
+        pygame.draw.rect(self.screen, fill, rect, border_radius=radius)
+        pygame.draw.rect(self.screen, stroke, rect, width=width, border_radius=radius)
+
+    def draw(self, state: OfficeState, coffee_rects: dict[int, pygame.Rect]) -> None:
+        self.screen.fill(Palette.OCEAN_DEEP)
+        self.draw_ecosystem_backdrop()
+        self.draw_header(state)
+        self.draw_shift_rail(state)
+        self.draw_worker_grid(state, coffee_rects)
+        self.draw_activity_panel(state)
+
+    def draw_ecosystem_backdrop(self) -> None:
+        # Layered ocean glass, sun disk, canopy shapes, and waterline geometry
+        # keep the screen alive without relying on external image assets.
+        pygame.draw.circle(self.screen, (244, 199, 104), (self.width - 100, 88), 44)
+        pygame.draw.circle(self.screen, (251, 218, 133), (self.width - 100, 88), 32)
+        pygame.draw.rect(self.screen, (7, 72, 76), (0, 132, self.width, self.height - 132))
+        pygame.draw.rect(self.screen, (13, 90, 84), (0, self.height - 118, self.width, 118))
+
+        for x in range(-20, self.width + 80, 88):
+            pygame.draw.line(self.screen, (22, 111, 98), (x, self.height - 96), (x + 50, self.height - 56), 2)
+            pygame.draw.line(self.screen, (22, 111, 98), (x + 50, self.height - 56), (x + 120, self.height - 82), 2)
+        for x in range(30, self.width, 150):
+            pygame.draw.line(self.screen, (39, 132, 111), (x, 168), (x - 18, 220), 3)
+            pygame.draw.circle(self.screen, Palette.LEAF, (x - 18, 220), 6)
+            pygame.draw.circle(self.screen, Palette.LEAF, (x + 2, 198), 5)
+
+    def draw_header(self, state: OfficeState) -> None:
+        header = pygame.Rect(28, 24, self.width - 56, 98)
+        self.panel(header, Palette.GLASS_BRIGHT, (153, 207, 173), radius=18, width=2)
+        self.text("SALARYMAN", (50, 42), self.font_xl, Palette.INK)
+        self.text("OFFICE ECOLOGY / LIVE LEDGER", (52, 78), self.font_mono, Palette.MUTED)
+
+        self.text("AVAILABLE CAPITAL", (330, 42), self.font_sm, Palette.MUTED)
+        funds_color = Palette.CORAL if state.funds < 0 else Palette.SEAFOAM
+        self.text(f"ƒ{state.funds:,.2f}", (330, 61), self.font_lg, funds_color)
+        self.text("TODAY NET", (540, 42), self.font_sm, Palette.MUTED)
+        self.text(f"{'+' if state.net_today >= 0 else ''}ƒ{state.net_today:,.2f}", (540, 61), self.font_lg, Palette.SUN)
+
+        self.text(state.time_label, (760, 44), self.font_lg, Palette.INK)
+        state_label = "ACTIVE SHIFT" if state.is_working else "OFF-CYCLE / RESETTING"
+        self.text(state_label, (762, 77), self.font_sm, Palette.SEAFOAM if state.is_working else Palette.CORAL)
+
+    def draw_shift_rail(self, state: OfficeState) -> None:
+        rail = pygame.Rect(28, 142, self.width - 56, 54)
+        self.panel(rail, (18, 92, 88), (52, 144, 127), radius=16)
+        self.text("WORK CYCLE", (48, 161), self.font_sm, Palette.GLASS)
+        track = pygame.Rect(160, 164, self.width - 345, 12)
+        pygame.draw.rect(self.screen, (6, 55, 62), track, border_radius=6)
+        pygame.draw.rect(
+            self.screen,
+            Palette.SEAFOAM if state.is_working else Palette.SUN,
+            pygame.Rect(track.x, track.y, max(12, int(track.width * state.shift_progress)), track.height),
+            border_radius=6,
+        )
+        self.text("09:00", (160, 178), self.font_mono, Palette.GLASS)
+        self.text("17:00", (track.right - 36, 178), self.font_mono, Palette.GLASS)
+        self.text("SPACE = PAUSE", (self.width - 154, 161), self.font_mono, Palette.SUN)
+
+    def draw_worker_grid(self, state: OfficeState, coffee_rects: dict[int, pygame.Rect]) -> None:
+        self.text("ACTIVE PERSONNEL", (36, 218), self.font_lg, Palette.GLASS_BRIGHT)
+        self.text("PRODUCTIVITY IS A SHARED GARDEN — MAINTAIN THE PEOPLE WHO GROW IT", (36, 245), self.font_sm, (176, 219, 192))
+
+        card_width = (self.width - 92) // 3
+        for index, worker in enumerate(state.roster.workers):
+            rect = pygame.Rect(28 + index * (card_width + 18), 272, card_width, 264)
+            coffee_rects[index] = self.draw_worker_card(state, worker, rect)
+
+    def draw_worker_card(self, state: OfficeState, worker: Worker, rect: pygame.Rect) -> pygame.Rect:
+        self.panel(rect, Palette.GLASS, (153, 207, 173), radius=16, width=2)
+        inner = rect.inflate(-18, -18)
+        self.panel(inner, (232, 245, 224), (184, 216, 184), radius=11)
+        pygame.draw.circle(self.screen, worker.accent, (inner.x + 27, inner.y + 30), 14)
+        pygame.draw.circle(self.screen, Palette.GLASS_BRIGHT, (inner.x + 27, inner.y + 30), 6)
+        self.text(worker.name, (inner.x + 51, inner.y + 18), self.font_lg, Palette.INK)
+        self.text(worker.role, (inner.x + 51, inner.y + 43), self.font_mono, Palette.MUTED)
+
+        status_color = Palette.SEAFOAM
+        if worker.stamina_state == "warning":
+            status_color = Palette.SUN
+        elif worker.stamina_state == "depletion":
+            status_color = Palette.CORAL
+        self.text(worker.status_note, (inner.x + 18, inner.y + 72), self.font_sm, status_color)
+
+        self.text(f"OUTPUT  +ƒ{worker.productivity_per_hour:,.0f}/HR", (inner.x + 18, inner.y + 104), self.font_mono, Palette.INK)
+        self.text(f"WAGE  -ƒ{worker.daily_wage:,.0f}/DAY", (inner.x + 18, inner.y + 124), self.font_mono, Palette.INK)
+        self.text(f"LAST YIELD  +ƒ{worker.last_output:,.2f}", (inner.x + 18, inner.y + 144), self.font_mono, Palette.MUTED)
+
+        bar = pygame.Rect(inner.x + 18, inner.y + 180, inner.width - 36, 16)
+        pygame.draw.rect(self.screen, (191, 213, 190), bar, border_radius=8)
+        gauge_color = {
+            "emerald": Palette.SEAFOAM,
+            "warning": Palette.SUN,
+            "depletion": Palette.CORAL,
+        }[worker.stamina_state]
+        fill = pygame.Rect(bar.x, bar.y, max(3, int(bar.width * worker.stamina_ratio)), bar.height)
+        pygame.draw.rect(self.screen, gauge_color, fill, border_radius=8)
+        self.text(f"STAMINA {worker.stamina:02.0f}%", (bar.x, bar.bottom + 5), self.font_mono, gauge_color)
+
+        coffee_rect = pygame.Rect(inner.right - 116, inner.bottom - 35, 98, 27)
+        affordable = state.funds >= worker.coffee_cost
+        button_fill = (203, 229, 190) if affordable else (218, 220, 201)
+        self.panel(coffee_rect, button_fill, worker.accent, radius=8, width=1)
+        self.text("BUY COFFEE", (coffee_rect.x + 9, coffee_rect.y + 7), self.font_sm, Palette.INK)
+        self.text(f"ƒ{worker.coffee_cost:.0f}", (coffee_rect.right - 27, coffee_rect.y + 7), self.font_sm, Palette.MUTED)
+        return coffee_rect
+
+    def draw_activity_panel(self, state: OfficeState) -> None:
+        panel = pygame.Rect(28, 558, self.width - 56, 128)
+        self.panel(panel, (8, 66, 70), (52, 144, 127), radius=16, width=2)
+        self.text("ECOSYSTEM SIGNALS", (50, 580), self.font_md, Palette.GLASS_BRIGHT)
+        self.text(
+            f"FOCUS HOURS {state.hours_completed_today}/8  ·  "
+            f"ROSTER {len(state.roster.workers)}  ·  "
+            f"ACCUMULATED OUTPUT ƒ{state.total_output:,.2f}",
+            (50, 607),
+            self.font_mono,
+            (176, 219, 192),
+        )
+        self.text(
+            "SUNLIGHT IN THE ATRIUM / WATER LOOP NOMINAL / PEOPLE ARE THE INFRASTRUCTURE",
+            (50, 635),
+            self.font_sm,
+            Palette.SUN,
+        )
+        self.text("SPACE  PAUSE / RESUME     R  RESET DAY", (50, 660), self.font_mono, Palette.GLASS)
