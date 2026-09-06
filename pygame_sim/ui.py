@@ -180,9 +180,10 @@ class SolarPunkRenderer:
 
         self.text(f"OUTPUT  +ƒ{worker.productivity_per_hour:,.0f}/HR", (inner.x + 18, inner.y + 104), self.font_mono, Palette.INK)
         self.text(f"WAGE  ƒ{worker.hourly_wage_fiat:,.0f}/HR", (inner.x + 18, inner.y + 124), self.font_mono, Palette.INK)
-        self.text(f"LAST YIELD  +ƒ{worker.last_output:,.2f}", (inner.x + 18, inner.y + 144), self.font_mono, Palette.MUTED)
+        self.text(f"HUNGER  {worker.hunger:02.0f}%  ·  MEALS {worker.meals_eaten_today}", (inner.x + 18, inner.y + 144), self.font_mono, Palette.MUTED)
+        self.text(f"NPC WEALTH  ƒ{worker.wealth_fiat:,.0f}", (inner.x + 18, inner.y + 164), self.font_mono, Palette.SEAFOAM)
 
-        bar = pygame.Rect(inner.x + 18, inner.y + 180, inner.width - 36, 16)
+        bar = pygame.Rect(inner.x + 18, inner.y + 188, inner.width - 36, 16)
         pygame.draw.rect(self.screen, (191, 213, 190), bar, border_radius=8)
         gauge_color = {
             "steady": Palette.SEAFOAM,

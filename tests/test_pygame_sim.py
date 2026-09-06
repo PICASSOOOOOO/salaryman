@@ -125,6 +125,28 @@ class PygameSimulationTests(unittest.TestCase):
             state.advance_workspace_hour()
         self.assertLess(state.funds, opening + state.total_output)
         self.assertGreater(state.total_wages_paid, 0)
+        self.assertGreater(state.roster.workers[0].wealth_fiat, 300)
+
+    def test_npcs_get_hungry_and_eat_from_personal_wealth(self):
+        state = OfficeState.with_default_roster()
+        worker = state.roster.workers[0]
+        worker.hunger = 88
+        wealth_before = worker.wealth_fiat
+        state.roster.work_hour(state, 9)
+        self.assertEqual(worker.hunger, 100)
+        state.start_break("lunch")
+        self.assertLess(worker.hunger, 100)
+        self.assertLess(worker.wealth_fiat, wealth_before)
+        self.assertEqual(worker.meals_eaten_today, 1)
+
+    def test_low_wealth_npcs_still_eat_without_stalling_the_shift(self):
+        state = OfficeState.with_default_roster()
+        worker = state.roster.workers[0]
+        worker.wealth_fiat = 0
+        worker.hunger = 95
+        state.start_break("lunch")
+        self.assertLess(worker.hunger, 95)
+        self.assertLess(worker.wealth_fiat, 0)
 
     def test_automatic_breaks_follow_the_local_policy_without_stopping_the_day(self):
         state = OfficeState.with_default_roster()

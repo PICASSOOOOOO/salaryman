@@ -35,6 +35,10 @@ class Worker:
     productivity_per_hour: float
     hourly_wage_fiat: float
     accent: tuple[int, int, int]
+    wealth_fiat: float = 300.0
+    hunger: float = 18.0
+    meal_cost: float = 24.0
+    meal_recovery: float = 58.0
     stamina: float = 70.0
     max_stamina: float = 100.0
     stamina_gain_per_hour: float = ACTION_STAMINA_GAIN["work"]
@@ -43,6 +47,7 @@ class Worker:
     is_resting: bool = False
     last_output: float = 0.0
     status_note: str = "READY FOR SHIFT"
+    meals_eaten_today: int = 0
 
     def __post_init__(self) -> None:
         self.hourly_wage_fiat = max(MINIMUM_HOURLY_FIAT, float(self.hourly_wage_fiat))
@@ -57,10 +62,11 @@ class Worker:
         self.last_output = 0.0
         self.is_resting = False
 
-        if not 9 <= hour < 17:
+        if not state._real_hour_is_working(hour):
             self.status_note = "OFF-DUTY / RECHARGING"
             return 0.0
 
+        self.hunger = min(100.0, self.hunger + 12.0)
         self.perform_action("work")
         efficiency = 0.35 + (self.stamina / self.max_stamina) * 0.65
         self.last_output = round(self.productivity_per_hour * efficiency, 2)
@@ -83,7 +89,15 @@ class Worker:
         worked_hours = max(0.0, state.work_minutes_today / 60)
         wage = round(self.hourly_wage_fiat * worked_hours, 2)
         state.remove_funds(wage, f"{self.name} wage", allow_debt=True)
+        self.wealth_fiat = round(self.wealth_fiat + wage, 2)
         self.status_note = "WAGE SETTLED / OFF-DUTY"
+
+    def eat_meal(self) -> None:
+        """Meet a basic NPC need while keeping food spending visible."""
+        self.wealth_fiat = round(self.wealth_fiat - self.meal_cost, 2)
+        self.hunger = max(0.0, self.hunger - self.meal_recovery)
+        self.meals_eaten_today += 1
+        self.status_note = "EATING / RESETTING"
 
     def buy_coffee(self, state: OfficeState) -> bool:
         """Use the card's action boundary to purchase a stamina recovery."""
@@ -100,6 +114,8 @@ class Worker:
     def rest_overnight(self) -> None:
         """Keep readiness gently moving between shifts without a hard reset."""
         self.stamina = min(self.max_stamina, self.stamina + 8.0)
+        self.hunger = max(0.0, self.hunger - 30.0)
+        self.meals_eaten_today = 0
         self.is_resting = False
         self.last_output = 0.0
         self.status_note = "READY FOR SHIFT"
