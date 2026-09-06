@@ -155,3 +155,4 @@
 - [Pygame real-time wage floor](pygame-real-time-wages.md) — production clock follows local wall time; $3/hour is ƒ300/hour minimum, with employer rates allowed above the floor.
 - [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
 - [Pygame one-building scope](pygame-one-building-scope.md) — deepen one complete building before expanding to city travel or multiple buildings.
+- [One-building mini-city milestone](one-building-mini-city.md) — make one building a polished story-driven vertical slice with lockdown, onboarding, NPC life, systems, and real art before expanding.
