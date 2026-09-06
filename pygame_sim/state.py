@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import random
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
-from .models import ActionKind, LedgerEntry, OfficeRoster, Worker
+from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Worker
 
 
 SECONDS_PER_WORKSPACE_HOUR = 2.0
@@ -14,6 +17,15 @@ SECONDS_PER_WORKSPACE_QUARTER_HOUR = SECONDS_PER_WORKSPACE_HOUR / 4
 SHIFT_START = 9
 SHIFT_END = 17
 BreakKind = Literal["short", "lunch"]
+RECRUITMENT_REFRESH_COST = 50.0
+RECRUITMENT_POOL: tuple[RecruitCandidate, ...] = (
+    RecruitCandidate("Devin Wright", "OPERATIONS ASSOCIATE", 330.0, 300.0, 400.0, (96, 165, 250)),
+    RecruitCandidate("Clara Oswald", "CLIENT SUCCESS LEAD", 410.0, 360.0, 750.0, (244, 114, 182)),
+    RecruitCandidate("Marcus Vance", "SYSTEMS ANALYST", 520.0, 460.0, 1200.0, (167, 139, 250)),
+    RecruitCandidate("Sarah Connor", "REVENUE DIRECTOR", 680.0, 600.0, 2200.0, (251, 146, 60)),
+    RecruitCandidate("Ada Lovelace", "AUTOMATION ARCHITECT", 860.0, 760.0, 5000.0, (45, 212, 191)),
+    RecruitCandidate("Alan Turing", "RESEARCH DIRECTOR", 1100.0, 980.0, 12000.0, (74, 222, 128)),
+)
 
 
 @dataclass
@@ -72,6 +84,8 @@ class OfficeState:
     lunch_taken_today: bool = False
     office_inventory: dict[str, int] = field(default_factory=dict)
     last_arcade_game: str | None = None
+    recruitment_candidates: list[RecruitCandidate] = field(default_factory=list)
+    recruitment_open: bool = False
 
     @classmethod
     def with_default_roster(cls, *, real_time: bool = False) -> OfficeState:
@@ -107,6 +121,7 @@ class OfficeState:
             ]
         )
         state.ledger.append(LedgerEntry("OPENING CAPITAL", state.funds, state.funds))
+        state.refresh_recruitment_candidates(charge=False)
         if state.real_time:
             state.sync_real_time()
         return state
@@ -167,6 +182,124 @@ class OfficeState:
             return False
         self.office_inventory[item_id] = self.office_inventory.get(item_id, 0) + 1
         return True
+
+    def toggle_recruitment(self) -> None:
+        self.recruitment_open = not self.recruitment_open
+        self.notice = "RECRUITMENT DESK OPEN" if self.recruitment_open else "WORKFLOOR OPEN"
+
+    def refresh_recruitment_candidates(self, *, charge: bool = True) -> bool:
+        """Refresh the hiring desk through the same ledger boundary as office spend."""
+        if charge and not self.remove_funds(
+            RECRUITMENT_REFRESH_COST,
+            "RECRUITMENT DESK REFRESH",
+        ):
+            self.notice = f"REFRESH DENIED / ƒ{RECRUITMENT_REFRESH_COST:.0f} REQUIRED"
+            return False
+        self.recruitment_candidates = list(random.sample(RECRUITMENT_POOL, k=3))
+        self.notice = "RECRUITMENT POOL REFRESHED"
+        return True
+
+    def hire_candidate(self, index: int) -> bool:
+        """Hire a candidate and convert it into the existing Worker model."""
+        if not 0 <= index < len(self.recruitment_candidates):
+            return False
+        candidate = self.recruitment_candidates[index]
+        if not self.remove_funds(candidate.hiring_cost_fiat, f"HIRE / {candidate.name}"):
+            self.notice = f"HIRE DENIED / ƒ{candidate.hiring_cost_fiat:,.0f} REQUIRED"
+            return False
+
+        self.roster.workers.append(
+            Worker(
+                candidate.name,
+                candidate.role,
+                candidate.productivity_per_hour,
+                candidate.hourly_wage_fiat,
+                candidate.accent,
+            )
+        )
+        self.recruitment_candidates.pop(index)
+        self.selected_worker = len(self.roster.workers) - 1
+        self.notice = f"{candidate.name.upper()} JOINED THE TEAM"
+        return True
+
+    def save_to_file(self, path: str | Path) -> None:
+        """Persist the office state without exposing persistence to the renderer."""
+        destination = Path(path).expanduser()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": 1,
+            "funds": self.funds,
+            "day": self.day,
+            "hour": self.hour,
+            "minute": self.minute,
+            "selected_worker": self.selected_worker,
+            "office_inventory": self.office_inventory,
+            "workers": [
+                {
+                    "name": worker.name,
+                    "role": worker.role,
+                    "productivity_per_hour": worker.productivity_per_hour,
+                    "hourly_wage_fiat": worker.hourly_wage_fiat,
+                    "accent": list(worker.accent),
+                    "wealth_fiat": worker.wealth_fiat,
+                    "hunger": worker.hunger,
+                    "stamina": worker.stamina,
+                    "meals_eaten_today": worker.meals_eaten_today,
+                }
+                for worker in self.roster.workers
+            ],
+            "ledger": [
+                {"label": entry.label, "amount": entry.amount, "balance": entry.balance}
+                for entry in self.ledger[-100:]
+            ],
+        }
+        destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    @classmethod
+    def load_from_file(cls, path: str | Path, *, real_time: bool = False) -> OfficeState:
+        """Load a compatible save, falling back to a clean office on bad input."""
+        destination = Path(path).expanduser()
+        state = cls.with_default_roster(real_time=real_time)
+        if not destination.exists():
+            return state
+        try:
+            payload = json.loads(destination.read_text(encoding="utf-8"))
+            workers = [
+                Worker(
+                    str(item["name"]),
+                    str(item.get("role", "TEAM MEMBER")),
+                    float(item["productivity_per_hour"]),
+                    float(item["hourly_wage_fiat"]),
+                    tuple(item.get("accent", [71, 190, 154])),
+                    wealth_fiat=float(item.get("wealth_fiat", 300.0)),
+                    hunger=float(item.get("hunger", 18.0)),
+                    stamina=float(item.get("stamina", 70.0)),
+                    meals_eaten_today=int(item.get("meals_eaten_today", 0)),
+                )
+                for item in payload.get("workers", [])
+            ]
+            if workers:
+                state.roster.workers = workers
+            state.funds = float(payload.get("funds", state.funds))
+            state.day = max(1, int(payload.get("day", state.day)))
+            state.hour = max(0, min(23, int(payload.get("hour", state.hour))))
+            state.minute = max(0, min(59, int(payload.get("minute", state.minute))))
+            state.selected_worker = payload.get("selected_worker")
+            state.office_inventory = {
+                str(key): max(0, int(value))
+                for key, value in payload.get("office_inventory", {}).items()
+            }
+            entries = payload.get("ledger", [])
+            if entries:
+                state.ledger = [
+                    LedgerEntry(str(item["label"]), float(item["amount"]), float(item["balance"]))
+                    for item in entries
+                ]
+            state.notice = "OFFICE RECORD RESTORED"
+            state.refresh_recruitment_candidates(charge=False)
+        except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
+            state.notice = "NEW OFFICE RECORD"
+        return state
 
     def start_break(self, kind: BreakKind = "short") -> bool:
         """Start a purposeful break without making it a dead-end action."""
@@ -256,6 +389,10 @@ class OfficeState:
         self.lunch_taken_today = False
         self.office_inventory = {}
         self.last_arcade_game = None
+        self.recruitment_candidates = []
+        self.recruitment_open = False
+        fresh.refresh_recruitment_candidates(charge=False)
+        self.recruitment_candidates = fresh.recruitment_candidates
         self.real_date = fresh.real_date
         self.real_date_label = fresh.real_date_label
         self.last_real_hour = fresh.last_real_hour
