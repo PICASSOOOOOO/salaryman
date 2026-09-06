@@ -80,7 +80,7 @@ class OfficeState:
                     "Mara Voss",
                     "CIRCULARITY LEAD",
                     300.0,
-                    165.0,
+                    300.0,
                     (71, 190, 154),
                     stamina_gain_per_hour=2.5,
                 ),
@@ -88,7 +88,7 @@ class OfficeState:
                     "Ivo Chen",
                     "SYSTEMS GROWER",
                     420.0,
-                    230.0,
+                    420.0,
                     (248, 185, 87),
                     stamina_gain_per_hour=2.0,
                     coffee_cost=22.0,
@@ -97,7 +97,7 @@ class OfficeState:
                     "Nia Okafor",
                     "COMMUNITY OPS",
                     350.0,
-                    140.0,
+                    350.0,
                     (240, 119, 103),
                     stamina_gain_per_hour=3.0,
                     coffee_cost=16.0,
@@ -172,6 +172,7 @@ class OfficeState:
         self.breaks_taken_today += 1
         if kind == "lunch":
             self.lunch_taken_today = True
+            self.roster.eat_meals()
         if self.real_time:
             self.manual_break_end_minute = self.hour * 60 + self.minute + self.break_minutes_remaining
         self.notice = "LUNCH STARTED" if kind == "lunch" else "BREAK STARTED"
@@ -284,14 +285,27 @@ class OfficeState:
             self.day = current.timetuple().tm_yday
             self.last_real_hour = current.hour
         elif self.last_real_hour is not None and current.hour > self.last_real_hour:
+            self.work_minutes_today = self._real_work_minutes_until(current.hour * 60 + current.minute)
             for work_hour in range(self.last_real_hour, current.hour):
                 if self._real_hour_is_working(work_hour):
                     self.total_output += self.roster.work_hour(self, work_hour)
                     self.hours_completed_today += 1
+                    end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+                    if work_hour + 1 == end_hour:
+                        self.total_wages_paid += self.roster.settle_daily_wages(self)
             self.last_real_hour = current.hour
 
         self.hour = current.hour
         self.minute = current.minute
+        self.work_minutes_today = self._real_work_minutes_until(current.hour * 60 + current.minute)
+        if (
+            self.policy.eat_at_desk
+            and not self.lunch_taken_today
+            and self.work_minutes_today >= self.policy.meal_after_work_minutes
+        ):
+            self.roster.eat_meals()
+            self.lunch_taken_today = True
+            self.notice = "MEAL AT DESK"
         self._sync_real_break(current.hour * 60 + current.minute)
 
     def _real_hour_is_working(self, work_hour: int) -> bool:
@@ -327,6 +341,15 @@ class OfficeState:
             clock_minute += 15
         return windows
 
+    def _real_work_minutes_until(self, current_minute: int) -> int:
+        start = SHIFT_START * 60
+        end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+        end = end_hour * 60
+        elapsed = max(0, min(current_minute, end) - start)
+        for break_start, break_end, _ in self._real_break_windows():
+            elapsed -= max(0, min(current_minute, break_end) - break_start)
+        return max(0, elapsed)
+
     def _sync_real_break(self, current_minute: int) -> None:
         if self.manual_break_end_minute is not None:
             if current_minute < self.manual_break_end_minute:
@@ -337,6 +360,11 @@ class OfficeState:
             self.break_minutes_remaining = 0
         for start, end, kind in self._real_break_windows():
             if start <= current_minute < end:
+                if self.break_kind != kind:
+                    self.breaks_taken_today += 1
+                    if kind == "lunch":
+                        self.lunch_taken_today = True
+                        self.roster.eat_meals()
                 self.break_kind = kind
                 self.break_minutes_remaining = end - current_minute
                 return
@@ -417,6 +445,15 @@ class OfficeState:
                 self.work_minutes_since_break = 0
                 self.notice = "BACK TO WORK"
             return False
+
+        if (
+            self.policy.eat_at_desk
+            and not self.lunch_taken_today
+            and self.work_minutes_today >= self.policy.meal_after_work_minutes
+        ):
+            self.roster.eat_meals()
+            self.lunch_taken_today = True
+            self.notice = "MEAL AT DESK"
 
         previous_hour = self.hour
         self.work_minutes_today += 15

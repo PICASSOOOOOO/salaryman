@@ -154,3 +154,8 @@ class OfficeRoster:
         for worker in self.workers:
             worker.settle_daily_wage(state)
         return round(before - state.funds, 2)
+
+    def eat_meals(self) -> None:
+        """Let every NPC meet the same meal need at the same break."""
+        for worker in self.workers:
+            worker.eat_meal()

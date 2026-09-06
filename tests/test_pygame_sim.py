@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 
 from pygame_sim.models import MINIMUM_HOURLY_FIAT, Worker
 from pygame_sim.state import OfficeState, SECONDS_PER_WORKSPACE_HOUR
@@ -147,6 +148,23 @@ class PygameSimulationTests(unittest.TestCase):
         state.start_break("lunch")
         self.assertLess(worker.hunger, 95)
         self.assertLess(worker.wealth_fiat, 0)
+
+    def test_real_clock_runs_npc_meals_and_wage_growth(self):
+        state = OfficeState.with_default_roster(real_time=True)
+        first_worker = state.roster.workers[0]
+        initial_wealth = first_worker.wealth_fiat
+        day = datetime(2026, 9, 6, tzinfo=timezone.utc)
+
+        state.sync_real_time(day.replace(hour=9, minute=0))
+        state.sync_real_time(day.replace(hour=13, minute=45))
+        self.assertEqual(state.time_label, "SUN 06 SEP  /  13:45")
+        self.assertEqual(state.break_kind, "lunch")
+        self.assertEqual(first_worker.meals_eaten_today, 1)
+        self.assertLess(first_worker.wealth_fiat, initial_wealth)
+
+        state.sync_real_time(day.replace(hour=17, minute=0))
+        self.assertIsNone(state.break_kind)
+        self.assertGreater(first_worker.wealth_fiat, initial_wealth)
 
     def test_automatic_breaks_follow_the_local_policy_without_stopping_the_day(self):
         state = OfficeState.with_default_roster()

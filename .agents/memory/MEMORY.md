@@ -153,3 +153,4 @@
 - [Tower office access](tower-office-access.md) — suite doors use the existing floor-level server access authority; vacant/sealed shells must not invent locks.
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
 - [Pygame real-time wage floor](pygame-real-time-wages.md) — production clock follows local wall time; $3/hour is ƒ300/hour minimum, with employer rates allowed above the floor.
+- [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
