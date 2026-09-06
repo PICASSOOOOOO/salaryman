@@ -190,7 +190,6 @@ const clerkPubKey = publishableKeyFromHost(
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
-const GAME_ROUTES = ["/mobile"];
 
 function LoadingFallback() {
   return (
@@ -307,7 +306,8 @@ function AppShell() {
   const isConsole = isConsoleTerminal || pathname.startsWith("/console/");
   const isPrimarySurfaceActive = isHome || (isConsole && !isConsoleSubRoute);
 
-  const isGameRoute = GAME_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+  // /mobile is the business workspace, not a gameplay surface.
+  const isGameRoute = false;
 
   // Edge-swipe back/forward navigation. Disabled on game/canvas routes that
   // already own touch gestures. Swipe right from the left edge → previous

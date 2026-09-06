@@ -530,22 +530,20 @@ async function transcribe(blob: Blob): Promise<string> {
   return (data.text ?? "").trim();
 }
 
-// The nebula is no longer a centered orb — it's a full-bleed living
-// background. We size the canvas to the viewport DIAGONAL so its particle
-// field actually overflows the corners and feels free-flowing instead of
-// boxed-in. Resize updates as the user rotates / changes window size.
+// Keep the nebula present but pulled back from the camera so the terminal
+// controls and practical workspace remain readable around it. Resize updates
+// as the user rotates / changes window size.
 function useNebulaSize() {
   const compute = () => {
     if (typeof window === "undefined") return 1200;
     const w = window.innerWidth;
     const h = window.innerHeight;
     const d = Math.hypot(w, h);
-    // Mobile: keep the nebula tighter to the viewport so we don't shade a
-    // 1500-px canvas at dpr 2.5 on a phone GPU. Desktop: keep the generous
-    // 1.2× overflow so the field bleeds past every edge.
+    // A smaller field gives the visual room around the controls and reads as
+    // a zoomed-out camera instead of a full-screen wash.
     const isMobile = w < 640;
-    const mult = isMobile ? 1.0 : 1.2;
-    const min = isMobile ? 480 : 640;
+    const mult = isMobile ? 0.78 : 0.9;
+    const min = isMobile ? 360 : 520;
     return Math.max(min, Math.floor(d * mult));
   };
   const [size, setSize] = useState(compute);

@@ -1798,5 +1798,14 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.21.5.2247",
+    "date": "2026-09-06",
+    "commitHash": "26ca0732f2c0def00f96cdd868d814aff63e0c0d",
+    "changes": [
+      "Add new asset image",
+      "Update version and implement Pablo terminal interface enhancements"
+    ]
   }
 ]

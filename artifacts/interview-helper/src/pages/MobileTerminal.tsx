@@ -9,6 +9,7 @@ import {
   Home,
   Menu,
   MessageSquare,
+  Orbit,
   Phone,
   Settings,
   UserRound,
@@ -19,6 +20,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useAuth } from '@/hooks/use-auth';
 import { useAlpha } from '@/hooks/use-alpha';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
+import HummingBirdAttachStrip from '@/components/HummingBirdAttachStrip';
 
 type MobileTerminalProps = {
   physicalTerminal?: boolean;
@@ -40,10 +42,13 @@ const WORKSPACE_ITEMS: MenuItem[] = [
 ];
 
 const ACCOUNT_ITEMS: MenuItem[] = [
-  { label: 'Pablo', detail: 'Ask the assistant', path: '/pablo', icon: MessageSquare },
   { label: 'Profile', detail: 'Account details', path: '/profile', icon: UserRound },
   { label: 'Settings', detail: 'Preferences and access', path: '/settings', icon: Settings },
   { label: 'Home', detail: 'Return to the workspace', path: '/', icon: Home },
+];
+
+const PABLO_ITEMS: MenuItem[] = [
+  { label: 'Pablo nebula', detail: 'Open the assistant surface', path: '/pablo', icon: Orbit },
 ];
 
 function MobileMenu({
@@ -87,6 +92,29 @@ function MobileMenu({
         Account
       </div>
       {ACCOUNT_ITEMS.map(renderItem)}
+      <div className="my-2 border-t border-white/[0.08]" />
+      <div className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        Pablo tools
+      </div>
+      {PABLO_ITEMS.map(renderItem)}
+      <div className="mt-1 rounded-xl px-3 py-2.5">
+        <div className="mb-2 flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-fuchsia-300/20 bg-fuchsia-300/10 text-fuchsia-200">
+            <Orbit className="h-4 w-4" aria-hidden />
+          </span>
+          <span>
+            <span className="block text-sm font-medium text-slate-100">Hummingbird</span>
+            <span className="mt-0.5 block text-[11px] text-slate-500">Choose a backing track</span>
+          </span>
+        </div>
+        <HummingBirdAttachStrip
+          toolKey="mobile-terminal"
+          buttonStyle="ghost"
+          buttonLabel="CHOOSE TRACK"
+          pickerTitle="CHOOSE HUMMINGBIRD TRACK"
+          compact
+        />
+      </div>
     </div>
   );
 }
@@ -98,14 +126,14 @@ function AccessMessage({ onBack }: { onBack: () => void }) {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Workspace access</p>
         <h1 className="mt-3 text-xl font-semibold text-white">Mobile access is not enabled</h1>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          This workspace is available to approved staff accounts. You can continue from the public terminal.
+          This workspace is available to approved staff accounts. You can continue from the public workspace.
         </p>
         <button
           type="button"
           onClick={onBack}
           className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-medium text-sky-200 transition-colors active:bg-sky-400/20"
         >
-          Open public terminal
+          Open public workspace
           <ArrowRight className="h-4 w-4" aria-hidden />
         </button>
       </section>
@@ -181,7 +209,7 @@ export default function MobileTerminal({ physicalTerminal = false }: MobileTermi
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Start here</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">Stay connected to work.</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              Open conversations or manage calls without the extra game screens.
+              Open conversations or manage calls without extra screens.
             </p>
           </div>
 
