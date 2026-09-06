@@ -189,37 +189,32 @@ export default function Console() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden font-sans">
+    <div className="min-h-screen flex flex-col bg-background relative overflow-x-hidden font-sans">
       {/* Restrained depth accents keep the workspace legible without terminal effects. */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full pointer-events-none" style={{ background: 'rgba(52,211,153,0.10)' }} />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] blur-[120px] rounded-full pointer-events-none" style={{ background: 'rgba(255,176,0,0.07)' }} />
 
       {/* TERMINAL WINDOW TITLEBAR */}
-      <div className="relative z-40 px-4 py-2 flex items-center gap-3"
+      <div className="relative z-40 flex flex-wrap items-center gap-2 px-3 py-2 md:flex-nowrap md:gap-3 md:px-4"
         style={{ background: 'rgba(8,12,10,0.65)', borderBottom: '1px solid rgba(52,211,153,0.18)' }}>
-        {/* window traffic-light dots */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56', boxShadow: '0 0 6px rgba(255,95,86,0.55)' }} />
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e', boxShadow: '0 0 6px rgba(255,189,46,0.55)' }} />
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f', boxShadow: '0 0 6px rgba(39,201,63,0.55)' }} />
-        </div>
-        {/* monospace shell prompt path */}
-        <div className="flex items-center gap-1.5 min-w-0" style={{ fontSize: '0.62rem', letterSpacing: '0.05em', textShadow: '0 0 6px rgba(52,211,153,0.35)' }}>
+        {/* Compact workspace identity. Decorative window chrome is intentionally
+            omitted so the action row never competes with the app navigation. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5" style={{ fontSize: '0.62rem', letterSpacing: '0.05em', textShadow: '0 0 6px rgba(52,211,153,0.35)' }}>
           <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(52,211,153,0.85)' }} />
-          <span style={{ color: 'rgba(52,211,153,0.6)' }}>pablo@cipher-x</span>
-          <span style={{ color: 'rgba(120,160,140,0.5)' }}>:</span>
-          <span style={{ color: 'rgba(255,176,0,0.75)' }}>~</span>
-          <span style={{ color: 'rgba(120,160,140,0.5)' }}>$</span>
+          <span className="hidden sm:inline" style={{ color: 'rgba(52,211,153,0.6)' }}>pablo@cipher-x</span>
+          <span className="hidden sm:inline" style={{ color: 'rgba(120,160,140,0.5)' }}>:</span>
+          <span className="hidden sm:inline" style={{ color: 'rgba(255,176,0,0.75)' }}>~</span>
+          <span className="hidden sm:inline" style={{ color: 'rgba(120,160,140,0.5)' }}>$</span>
           <span className="truncate" style={{ color: 'rgba(190,235,210,0.9)' }}>
             ./{(boomerMode ? t('console.terminal') : PABLO_PRODUCTS.CONSOLE.short).toLowerCase()} --all-modules
           </span>
-          <span className="inline-block w-[7px] h-[13px] ml-0.5 align-middle animate-pulse" style={{ background: 'rgba(52,211,153,0.8)' }} />
+          <span className="hidden sm:inline-block w-[7px] h-[13px] ml-0.5 align-middle animate-pulse" style={{ background: 'rgba(52,211,153,0.8)' }} />
         </div>
-        <div className="flex-1" />
+        <div className="console-titlebar-actions flex shrink-0 items-center gap-1.5">
         <Link
           href="/pablo"
           data-testid="console-open-pablo"
-          className="inline-flex items-center gap-1.5 shrink-0 rounded px-2 py-1"
+          className="hidden items-center gap-1.5 rounded px-2 py-1 md:inline-flex"
           style={{
             fontSize: '0.55rem',
             letterSpacing: '0.1em',
@@ -235,7 +230,7 @@ export default function Console() {
           <Link
             href="/phone?from=terminal"
             data-testid="console-open-phone"
-            className="inline-flex items-center gap-1.5 shrink-0 rounded px-2 py-1"
+            className="hidden items-center gap-1.5 rounded px-2 py-1 md:inline-flex"
             style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(110,231,183,0.95)', border: '1px solid rgba(110,231,183,0.32)', background: 'rgba(110,231,183,0.06)' }}
             title="Open Phone System"
           >
@@ -245,16 +240,17 @@ export default function Console() {
         <button
           type="button"
           onClick={() => setShowTowerLife(true)}
-          className="inline-flex items-center gap-1.5 shrink-0 rounded px-2 py-1"
+          className="hidden items-center gap-1.5 rounded px-2 py-1 md:inline-flex"
           style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(196,181,253,0.95)', border: '1px solid rgba(196,181,253,0.32)', background: 'rgba(196,181,253,0.06)' }}
           data-testid="console-open-tower-life"
         >
           TOWER CLASSIFIEDS
         </button>
-        <span className="hidden md:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
+        <span className="hidden xl:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>
         <button
+          className="hidden md:inline-flex"
           onClick={() => {
             const nb = !boomerMode;
             setBoomerMode(nb);
@@ -277,12 +273,13 @@ export default function Console() {
         >
           {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
         </button>
+        </div>
       </div>
 
-      <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10 min-h-0">
+      <main className="flex-1 min-w-0 p-3 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 relative z-10">
 
         {/* LEFT PANEL */}
-        <section className="flex flex-col h-full space-y-3">
+        <section className="min-w-0 flex flex-col space-y-3 lg:h-full">
 
           {/* AUTOPILOT BANNER */}
           <AnimatePresence>
@@ -317,12 +314,12 @@ export default function Console() {
           {/* LIVE LISTEN */}
           <ProGate inline featureKey="live_listen" feature={boomerMode ? 'Live Listener' : PABLO_PRODUCTS.LIVE_LISTEN.short}>
           <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
               <div className="flex items-center gap-2">
                 <Mic className="w-3.5 h-3.5 text-green-400" />
                 <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-400`} style={{ fontFamily: "'Fira Code', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'LIVE LISTEN' : PABLO_PRODUCTS.LIVE_LISTEN.short}</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {consoleConv.isSupported && (
                   <button
                     onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : consoleConv.startConversation()}
@@ -401,7 +398,7 @@ export default function Console() {
                 💬 {t('console.chatReply')}
               </button>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button onClick={handleAutoPilot} disabled={isAnyBusy}
                 className={`flex-1 py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-green-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
                 <Bot className="w-3 h-3" /> {boomerMode ? t('console.autoScan') : t('console.auto')}
@@ -427,14 +424,14 @@ export default function Console() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
               <div className="flex items-center gap-2">
                 <Upload className="w-3.5 h-3.5 text-purple-400" />
                 <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-purple-400`} style={{ fontFamily: "'Fira Code', monospace", letterSpacing: '0.08em' }}>
                   {boomerMode ? 'MEDIA ANALYZER' : PABLO_PRODUCTS.MEDIA_LAB.short}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {media.isAnalyzing && (
                   <div className="flex items-center gap-2">
                     <span className="flex items-center gap-1 text-[10px] text-purple-300 font-mono">
@@ -495,11 +492,11 @@ export default function Console() {
 
           {/* PROBLEM DESCRIPTION — free tier (CIPHER-X code understanding) */}
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden relative group transition-colors focus-within:border-primary/50">
-            <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <div className="min-h-12 h-auto border-b border-border flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4 bg-muted/30">
+              <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Code className="w-4 h-4" />{boomerMode ? 'PROBLEM INPUT' : `${PABLO_PRODUCTS.PROBLEM_DESC.short} TERMINAL`}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Settings2 className="w-4 h-4 text-muted-foreground" />
                 <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={isAnyBusy}
                   className="bg-transparent text-sm text-foreground font-medium outline-none border-none cursor-pointer focus:ring-0 disabled:opacity-50">
@@ -546,14 +543,14 @@ export default function Console() {
         </section>
 
         {/* RIGHT PANEL — OUTPUT */}
-        <section className="flex flex-col h-full max-h-[60vh] lg:max-h-[calc(100vh-120px)]">
+        <section className="min-w-0 flex flex-col lg:h-full lg:max-h-[calc(100vh-120px)]">
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden">
 
-            <div className="h-12 border-b flex items-center justify-between px-4 shrink-0" style={{ borderColor: 'rgba(52,211,153,0.18)', background: 'rgba(8,12,10,0.45)' }}>
+            <div className="min-h-12 h-auto border-b flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4 shrink-0" style={{ borderColor: 'rgba(52,211,153,0.18)', background: 'rgba(8,12,10,0.45)' }}>
               <div className="flex items-center gap-2 text-xs font-medium" style={{ fontFamily: "'Fira Code', monospace", color: 'rgba(56,189,248,0.85)', letterSpacing: '0.06em' }}>
                 <Terminal className="w-3.5 h-3.5" /> stdout
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {canTypeMode && !isStreaming && (
                   <button onClick={handleToggleTypeMode}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md border transition-colors
