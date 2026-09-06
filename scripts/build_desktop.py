@@ -128,7 +128,12 @@ def main() -> int:
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(bundle_source, staging / "pygame" / bundle_source.name)
+    pygame_target = (
+        staging / "pygame" / bundle_source.name
+        if system_name == "Darwin"
+        else staging / "pygame"
+    )
+    shutil.copytree(bundle_source, pygame_target)
     shutil.copytree(ROOT / "godot" / "office-client", staging / "godot-office-client")
     branding = staging / "branding"
     branding.mkdir()
