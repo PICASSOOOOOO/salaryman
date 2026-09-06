@@ -15,6 +15,7 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertEqual(state.day, 1)
         self.assertGreater(state.funds, opening)
         self.assertEqual(state.hours_completed_today, 1)
+        self.assertGreater(state.roster.workers[0].stamina, 70.0)
 
     def test_end_of_shift_pays_wages_once_then_next_tick_starts_next_day(self):
         state = OfficeState.with_default_roster()
@@ -94,6 +95,19 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertEqual(state.day, 2)
         self.assertEqual(worker.status_note, "READY FOR SHIFT")
         self.assertGreater(worker.stamina, 8.0)
+
+    def test_work_and_world_actions_gently_increase_stamina(self):
+        state = OfficeState.with_default_roster()
+        worker = state.roster.workers[0]
+        worker.stamina = 40.0
+        before = worker.stamina
+        self.assertTrue(state.apply_action(0, "coworker_support"))
+        self.assertGreater(worker.stamina, before)
+        after_support = worker.stamina
+        self.assertTrue(state.apply_action(0, "defense"))
+        self.assertGreater(worker.stamina, after_support)
+        self.assertTrue(state.apply_action(0, "offense"))
+        self.assertLessEqual(worker.stamina, worker.max_stamina)
 
 
 if __name__ == "__main__":

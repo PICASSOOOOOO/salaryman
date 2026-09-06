@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .models import LedgerEntry, OfficeRoster, Worker
+from .models import ActionKind, LedgerEntry, OfficeRoster, Worker
 
 
 SECONDS_PER_WORKSPACE_HOUR = 2.0
@@ -45,7 +45,7 @@ class OfficeState:
                     42.0,
                     165.0,
                     (71, 190, 154),
-                    stamina_drain_per_hour=7.0,
+                    stamina_gain_per_hour=2.5,
                 ),
                 Worker(
                     "Ivo Chen",
@@ -53,7 +53,7 @@ class OfficeState:
                     56.0,
                     230.0,
                     (248, 185, 87),
-                    stamina_drain_per_hour=9.5,
+                    stamina_gain_per_hour=2.0,
                     coffee_cost=22.0,
                 ),
                 Worker(
@@ -62,7 +62,7 @@ class OfficeState:
                     35.0,
                     140.0,
                     (240, 119, 103),
-                    stamina_drain_per_hour=6.0,
+                    stamina_gain_per_hour=3.0,
                     coffee_cost=16.0,
                 ),
             ]
@@ -127,6 +127,16 @@ class OfficeState:
             else f"{worker.name.upper()} NEEDS ƒ{worker.coffee_cost:.0f}"
         )
         return bought
+
+    def apply_action(self, index: int, action: ActionKind) -> bool:
+        """Expose one shared action boundary for office and world activity."""
+        if not 0 <= index < len(self.roster.workers):
+            return False
+        worker = self.roster.workers[index]
+        gain = worker.perform_action(action)
+        self.selected_worker = index
+        self.notice = f"{worker.name.upper()} +{gain:.1f} STAMINA"
+        return True
 
     def reset(self) -> None:
         fresh = OfficeState.with_default_roster()

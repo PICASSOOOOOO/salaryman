@@ -3,24 +3,39 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from .state import OfficeState
 
 
+ActionKind = Literal["work", "coworker_support", "boss_review", "robbery", "defense", "offense"]
+
+
+ACTION_STAMINA_GAIN: dict[ActionKind, float] = {
+    "work": 2.5,
+    "coworker_support": 3.5,
+    "boss_review": 2.5,
+    # These are intentionally small, uncommon boosts. They are hooks for the
+    # wider world, not a second combat system inside the office client.
+    "robbery": 8.0,
+    "defense": 6.0,
+    "offense": 5.0,
+}
+
+
 @dataclass
 class Worker:
-    """An independent worker component represented by one visual card."""
+    """A remote worker whose readiness grows through meaningful activity."""
 
     name: str
     role: str
     productivity_per_hour: float
     daily_wage: float
     accent: tuple[int, int, int]
-    stamina: float = 100.0
+    stamina: float = 70.0
     max_stamina: float = 100.0
-    stamina_drain_per_hour: float = 8.0
+    stamina_gain_per_hour: float = ACTION_STAMINA_GAIN["work"]
     coffee_cost: float = 18.0
     coffee_recovery: float = 28.0
     is_resting: bool = False
@@ -28,7 +43,7 @@ class Worker:
     status_note: str = "READY FOR SHIFT"
 
     def work_hour(self, state: OfficeState, hour: int) -> float:
-        """Produce one workspace hour of value and drain stamina."""
+        """Produce one workspace hour and record work as a stamina action."""
         self.last_output = 0.0
         self.is_resting = False
 
@@ -36,12 +51,22 @@ class Worker:
             self.status_note = "OFF-DUTY / RECHARGING"
             return 0.0
 
-        self.stamina = max(0.0, self.stamina - self.stamina_drain_per_hour)
+        self.perform_action("work")
         efficiency = 0.35 + (self.stamina / self.max_stamina) * 0.65
         self.last_output = round(self.productivity_per_hour * efficiency, 2)
         state.add_funds(self.last_output, f"{self.name} output")
         self.status_note = "PRODUCING VALUE"
         return self.last_output
+
+    def perform_action(self, action: ActionKind) -> float:
+        """Increase readiness for any meaningful work-world action."""
+        if action == "work":
+            gain = self.stamina_gain_per_hour
+        else:
+            gain = ACTION_STAMINA_GAIN[action]
+        before = self.stamina
+        self.stamina = min(self.max_stamina, self.stamina + gain)
+        return round(self.stamina - before, 2)
 
     def settle_daily_wage(self, state: OfficeState) -> None:
         """Debit the contracted wage at the end of the work cycle."""
@@ -61,8 +86,8 @@ class Worker:
         return True
 
     def rest_overnight(self) -> None:
-        """Recover between shifts so a good run never becomes a soft lock."""
-        self.stamina = min(self.max_stamina, self.stamina + 52.0)
+        """Keep readiness gently moving between shifts without a hard reset."""
+        self.stamina = min(self.max_stamina, self.stamina + 8.0)
         self.is_resting = False
         self.last_output = 0.0
         self.status_note = "READY FOR SHIFT"
