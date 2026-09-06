@@ -1,0 +1,205 @@
+import sys
+import pygame
+
+# Initialize Pygame systems
+pygame.init()
+pygame.font.init()
+
+# --- 1. DESIGN SYSTEM & COHESIVE PALETTE ---
+WIDTH, HEIGHT = 900, 650
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Office Executive Tycoon — Framework Engine")
+clock = pygame.time.Clock()
+
+# Strict UI Color Package
+COLOR_BG       = (20, 24, 33)    # Deep Obsidian Slate
+COLOR_SURFACE  = (28, 34, 46)    # Container background
+COLOR_PANEL    = (38, 46, 62)    # Border, dividers, and active cards
+COLOR_TEXT_MAIN= (240, 244, 248) # Clean high-contrast white
+COLOR_TEXT_MUTED= (148, 163, 184)# Desaturated blueprint text
+COLOR_GREEN    = (52, 211, 153)  # Fluid emerald (Revenue/Stamina High)
+COLOR_ORANGE   = (251, 146, 60)  # Warning Alert (Stamina Low)
+COLOR_RED      = (248, 113, 113) # Financial debit/Depleted alert
+
+# Vector Fonts
+FONT_UI_LARGE  = pygame.font.SysFont("Segoe UI, Arial", 28, bold=True)
+FONT_UI_MEDIUM = pygame.font.SysFont("Segoe UI, Arial", 18, bold=True)
+FONT_UI_REG    = pygame.font.SysFont("Segoe UI, Arial", 14, bold=False)
+
+
+# --- 2. LOGIC ENGINE MANAGER ---
+class OfficeManager:
+    def __init__(self):
+        self.money = 1200.0
+        self.current_hour = 9
+        self.current_day = 1
+        self.tick_timer = 0.0
+        self.seconds_per_hour = 2.0  # Time calibration scaling
+        self.employees = []
+
+    def update(self, delta_time):
+        self.tick_timer += delta_time
+        if self.tick_timer >= self.seconds_per_hour:
+            self.tick_timer = 0.0
+            self.advance_time()
+
+    def advance_time(self):
+        self.current_hour += 1
+        is_shift_active = 9 <= self.current_hour <= 17
+
+        # Batch iteration through active worker classes
+        for emp in self.employees:
+            emp.hourly_update(self.current_hour, is_shift_active)
+
+        # Workday transition calculations
+        if self.current_hour > 17:
+            self.current_hour = 9
+            self.current_day += 1
+
+    def add_money(self, amount):
+        self.money += amount
+
+    def pay_wages(self, amount):
+        self.money -= amount
+
+
+# --- 3. MODULAR WORKER COMPONENT (STAMINA & INTERACTIVE UI) ---
+class EmployeeCard:
+    def __init__(self, name, productivity, salary, x, y):
+        self.name = name
+        self.base_productivity = productivity
+        self.salary_per_day = salary
+        
+        # Dimensions matching the structural UI grid boundaries
+        self.rect = pygame.Rect(x, y, 250, 180)
+        self.coffee_btn = pygame.Rect(x + 140, y + 130, 95, 32)
+        
+        # Core Stamina Archetype Engine
+        self.max_stamina = 100.0
+        self.stamina = 100.0
+        self.drain_rate = 8.5     # Stamina burnt per working hour
+        self.coffee_cost = 15.0   # Operational cost to purchase coffee
+        self.is_resting = False
+
+    def hourly_update(self, hour, is_shift_active):
+        if is_shift_active:
+            if self.is_resting:
+                # Recovering state
+                self.stamina = min(self.max_stamina, self.stamina + 25.0)
+                if self.stamina >= self.max_stamina:
+                    self.is_resting = False
+            else:
+                # Working state draining energy
+                if self.stamina > 0:
+                    self.stamina = max(0.0, self.stamina - self.drain_rate)
+                    # Efficiency scalar scales linearly down with tiredness
+                    efficiency = self.stamina / self.max_stamina
+                    manager.add_money(self.base_productivity * efficiency)
+        
+        # Pay Day logic trigger
+        if hour == 17:
+            manager.pay_wages(self.salary_per_day)
+            if self.stamina < 30: # Multi-day exhaustion penalty
+                self.drain_rate += 1.0
+
+    def handle_input(self, event):
+        # Click detection inside the component boundaries
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.coffee_btn.collidepoint(event.pos) and manager.money >= self.coffee_cost:
+                manager.pay_wages(self.coffee_cost)
+                self.is_resting = True
+
+    def draw(self, surface, current_hour):
+        is_working = (9 <= current_hour < 17) and not self.is_resting
+        
+        # Card Surface Panel
+        pygame.draw.rect(surface, COLOR_SURFACE, self.rect, border_radius=12)
+        pygame.draw.rect(surface, COLOR_PANEL, self.rect, width=2, border_radius=12)
+        
+        # Core Descriptive Text Rendering
+        lbl_name = FONT_UI_LARGE.render(self.name, True, COLOR_TEXT_MAIN)
+        lbl_prod = FONT_UI_REG.render(f"Productivity: +${self.base_productivity}/hr", True, COLOR_TEXT_MUTED)
+        lbl_wage = FONT_UI_REG.render(f"Contract Wage: -${self.salary_per_day}/day", True, COLOR_TEXT_MUTED)
+        surface.blit(lbl_name, (self.rect.x + 16, self.rect.y + 14))
+        surface.blit(lbl_prod, (self.rect.x + 16, self.rect.y + 50))
+        surface.blit(lbl_wage, (self.rect.x + 16, self.rect.y + 70))
+
+        # Status Tag Element
+        if self.is_resting:
+            status_txt, status_col = "BREAK", COLOR_ORANGE
+        elif is_working:
+            status_txt, status_col = "PRODUCING", COLOR_GREEN
+        else:
+            status_txt, status_col = "OFF-DUTY", COLOR_TEXT_MUTED
+            
+        lbl_status = FONT_UI_MEDIUM.render(status_txt, True, status_col)
+        surface.blit(lbl_status, (self.rect.x + 16, self.rect.y + 100))
+
+        # --- Dynamic Stamina Bar Visual Anchor ---
+        bar_x, bar_y, bar_w, bar_h = self.rect.x + 16, self.rect.y + 140, 110, 14
+        pygame.draw.rect(surface, COLOR_PANEL, (bar_x, bar_y, bar_w, bar_h), border_radius=4)
+        
+        stamina_pct = self.stamina / self.max_stamina
+        if stamina_pct > 0:
+            bar_color = COLOR_GREEN if stamina_pct > 0.4 else (COLOR_ORANGE if stamina_pct > 0.15 else COLOR_RED)
+            pygame.draw.rect(surface, bar_color, (bar_x, bar_y, int(bar_w * stamina_pct), bar_h), border_radius=4)
+
+        # --- Interactive Buy Coffee Button ---
+        btn_hover = self.coffee_btn.collidepoint(pygame.mouse.get_pos())
+        btn_color = COLOR_PANEL if not btn_hover else (55, 65, 87)
+        pygame.draw.rect(surface, btn_color, self.coffee_btn, border_radius=6)
+        
+        lbl_btn = FONT_UI_REG.render(f"Coffee (${int(self.coffee_cost)})", True, COLOR_TEXT_MAIN)
+        surface.blit(lbl_btn, (self.coffee_btn.x + 12, self.coffee_btn.y + 7))
+
+
+# --- 4. GRAPHICAL SYSTEM INITIALIZATION ---
+manager = OfficeManager()
+manager.employees.extend([
+    EmployeeCard("Alice Vance", productivity=24.0, salary=140.0, x=60, y=200),
+    EmployeeCard("Bob Wright", productivity=38.0, salary=220.0, x=340, y=200),
+    EmployeeCard("Charlie Fox", productivity=55.0, salary=350.0, x=620, y=200)
+])
+
+# Main Application Frame Loop
+running = True
+while running:
+    dt = clock.tick(60) / 1000.0  # Hardware decoupled timeline
+    
+    # Event Pipeline Polling
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        for employee in manager.employees:
+            employee.handle_input(event)
+
+    # Core Calculations Updates
+    manager.update(dt)
+
+    # Rendering Pass Execution
+    screen.fill(COLOR_BG)
+
+    # Top Control Dashboard (HUD Viewport)
+    pygame.draw.rect(screen, COLOR_SURFACE, (0, 0, WIDTH, 130))
+    pygame.draw.rect(screen, COLOR_PANEL, (0, 128, WIDTH, 2)) # Bottom accent outline
+
+    # Money Output Display Elements
+    lbl_money_header = FONT_UI_REG.render("TOTAL CAPITAL", True, COLOR_TEXT_MUTED)
+    lbl_money_val    = FONT_UI_LARGE.render(f"${manager.money:,.2f}", True, COLOR_GREEN if manager.money >= 0 else COLOR_RED)
+    screen.blit(lbl_money_header, (60, 28))
+    screen.blit(lbl_money_val, (60, 52))
+
+    # Realtime Matrix Time Display
+    lbl_time_header = FONT_UI_REG.render("SHIFT TIMELINE", True, COLOR_TEXT_MUTED)
+    lbl_time_val    = FONT_UI_LARGE.render(f"DAY {manager.current_day}  •  {manager.current_hour:02d}:00", True, COLOR_TEXT_MAIN)
+    screen.blit(lbl_time_header, (480, 28))
+    screen.blit(lbl_time_val, (480, 52))
+
+    # Grid Render Pipeline for Employee UI cards
+    for employee in manager.employees:
+        employee.draw(screen, manager.current_hour)
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()

@@ -1,0 +1,135 @@
+import sys
+import pygame
+
+# Initialize Pygame
+pygame.init()
+pygame.font.init()
+
+# --- WINDOW CONFIGURATION ---
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Office Simulator Template")
+clock = pygame.time.Clock()
+FONT = pygame.font.SysFont("Arial", 24)
+
+# --- COLORS ---
+BG_COLOR = (30, 30, 40)
+CARD_COLOR = (45, 45, 60)
+TEXT_COLOR = (240, 240, 240)
+GREEN = (76, 175, 80)
+RED = (244, 67, 54)
+
+# --- 1. CORE MANAGER (Equivalent to Godot's Autoload) ---
+class OfficeManager:
+    def __init__(self):
+        self.money = 1000.0
+        self.current_hour = 9
+        self.current_day = 1
+        self.tick_timer = 0.0
+        self.seconds_per_hour = 2.0  # Real seconds per in-game hour
+        self.employees = []
+
+    def update(self, delta_time):
+        self.tick_timer += delta_time
+        if self.tick_timer >= self.seconds_per_hour:
+            self.tick_timer = 0.0
+            self.advance_time()
+
+    def advance_time(self):
+        self.current_hour += 1
+        
+        # Working hours check (9 AM to 5 PM)
+        if 9 <= self.current_hour <= 17:
+            for emp in self.employees:
+                emp.work_hour_passed(self.current_hour)
+
+        # 5 PM end of workday triggers daily expenses
+        if self.current_hour > 17:
+            self.current_hour = 9
+            self.current_day += 1
+
+    def add_money(self, amount):
+        self.money += amount
+
+    def pay_wages(self, amount):
+        self.money -= amount
+
+
+# --- 2. EMPLOYEE COMPONENT (Equivalent to Godot Node2D) ---
+class Employee:
+    def __init__(self, name, productivity, salary, x, y):
+        self.name = name
+        self.productivity = productivity  # Money generated per hour
+        self.salary_per_day = salary      # Daily wage deducted at 5 PM
+        self.rect = pygame.Rect(x, y, 220, 120)  # Visual layout box
+
+    def work_hour_passed(self, hour):
+        # Generate value during shift
+        if 9 <= hour < 17:
+            manager.add_money(self.productivity)
+        
+        # Collect salary at the end of the shift (5 PM)
+        if hour == 17:
+            manager.pay_wages(self.salary_per_day)
+
+    def draw(self, surface, current_hour):
+        # Check if currently within working hours
+        is_working = 9 <= current_hour < 17
+        
+        # Draw background card
+        pygame.draw.rect(surface, CARD_COLOR, self.rect, border_radius=8)
+        
+        # Text details
+        name_text = FONT.render(self.name, True, TEXT_COLOR)
+        prod_text = FONT.render(f"Prod: +${self.productivity}/hr", True, GREEN)
+        wage_text = FONT.render(f"Wage: -${self.salary_per_day}/day", True, RED)
+        status_text = FONT.render("Working" if is_working else "Off-hours", True, GREEN if is_working else TEXT_COLOR)
+
+        surface.blit(name_text, (self.rect.x + 15, self.rect.y + 15))
+        surface.blit(prod_text, (self.rect.x + 15, self.rect.y + 45))
+        surface.blit(wage_text, (self.rect.x + 15, self.rect.y + 70))
+        surface.blit(status_text, (self.rect.x + 120, self.rect.y + 15))
+
+
+# --- GAME INITIALIZATION ---
+manager = OfficeManager()
+
+# Add starting employees (Simulating instance placement in Godot)
+manager.employees.append(Employee("John Doe", productivity=15.0, salary=100.0, x=50, y=180))
+manager.employees.append(Employee("Jane Smith", productivity=25.0, salary=180.0, x=300, y=180))
+
+
+# --- Main Engine Loop ---
+running = True
+while running:
+    # Compute precise elapsed time (Delta Time)
+    delta_time = clock.tick(60) / 1000.0  
+
+    # Handle OS inputs
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Update logic systems
+    manager.update(delta_time)
+
+    # Rendering (Draw Cycle)
+    screen.fill(BG_COLOR)
+
+    # 3. DRAW HUD ELEMENTS
+    money_surface = FONT.render(f"Funds: ${int(manager.money)}", True, TEXT_COLOR)
+    time_surface = FONT.render(f"Day {manager.current_day} — {manager.current_hour:02d}:00", True, TEXT_COLOR)
+    
+    screen.blit(money_surface, (50, 40))
+    screen.blit(time_surface, (50, 80))
+    
+    pygame.draw.line(screen, CARD_COLOR, (50, 140), (750, 140), 2)
+
+    # Draw all interactive employee modules
+    for employee in manager.employees:
+        employee.draw(screen, manager.current_hour)
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
