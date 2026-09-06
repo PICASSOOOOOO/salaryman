@@ -2042,7 +2042,7 @@ function PabloTerminalAuthed() {
           above. We also push the whole header down so it sits BELOW the
           GFX/status pills row instead of fighting them for the top edge. */}
       <header
-        className="relative z-10 w-full flex items-center justify-between gap-2 px-4 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
+        className="relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
           // header below that so its logo + buttons don't collide with them.
@@ -2079,10 +2079,10 @@ function PabloTerminalAuthed() {
         )}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-           <Link
+             <Link
              href="/desktop"
              data-testid="pablo-download-salaryman"
-              className="app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
+              className="pablo-mobile-secondary app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
              title="Download SALARYMAN"
            >
              <Download className="w-3 h-3" />
@@ -2116,7 +2116,7 @@ function PabloTerminalAuthed() {
              type="button"
              onClick={(e) => { e.stopPropagation(); if (mode === "text") setMode("text"); else onOrbClick(); }}
              data-testid="pablo-ai-choice"
-              className="app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+              className="pablo-mobile-secondary app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
              title="Open Pablo AI"
            >
              <Sparkles className="w-3 h-3" />

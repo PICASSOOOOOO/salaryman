@@ -263,7 +263,7 @@ export function VisionIntake() {
         // Keep the control in a dedicated top-right lane on every viewport.
         // The bottom lane belongs to Pablo's message board and text/voice
         // controls; desktop used to place SHOW PABLO directly on top of it.
-        className="fixed right-3 z-30 inline-flex items-center gap-2 px-3 py-2 rounded-full border border-pink-400/45 bg-black/70 backdrop-blur text-pink-100 text-[10px] sm:right-6 sm:text-[11px] font-mono tracking-[0.25em] hover:bg-pink-500/15 transition-colors shadow-[0_0_20px_rgba(236,72,153,0.25)]"
+         className="pablo-vision-trigger fixed right-3 z-30 inline-flex items-center gap-2 px-3 py-2 rounded-full border border-pink-400/45 bg-black/70 backdrop-blur text-pink-100 text-[10px] sm:right-6 sm:text-[11px] font-mono tracking-[0.25em] hover:bg-pink-500/15 transition-colors shadow-[0_0_20px_rgba(236,72,153,0.25)]"
         style={{ top: "calc(env(safe-area-inset-top, 0px) + 64px)" }}
       >
         <Camera size={14} />
