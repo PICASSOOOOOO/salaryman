@@ -34,7 +34,6 @@ import {
 } from "@/lib/building-onboarding";
 import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
-import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import {
   getSalarymanName,
@@ -42,14 +41,6 @@ import {
   setSalarymanEmail,
   setSalarymanName,
 } from "@/lib/tutorial-progress";
-import {
-  PabloOnboarding,
-  type OnboardingAnswers,
-} from "@/components/PabloOnboarding";
-import {
-  persistTowerOnboardingState,
-  type TowerOnboardingState,
-} from "@/lib/tower-onboarding";
 import { IsoOffice } from "@/components/IsoOffice";
 import type { IsoOfficeProps } from "@/components/IsoOffice";
 import { getLobbyOfficeLayout } from "@/lib/office-property-layouts";
@@ -180,22 +171,31 @@ function TowerEntry() {
         className="absolute inset-0 h-full w-full object-cover object-center opacity-60"
       />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,12,18,.96),rgba(5,12,18,.7)_55%,rgba(5,12,18,.4)),linear-gradient(0deg,rgba(5,12,18,.82),transparent)]" />
-      <section className="relative w-full max-w-xl border border-[#c47e3f]/45 bg-[#09141b]/90 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] backdrop-blur-[2px] sm:p-8">
-        <p className="font-mono text-[10px] font-bold tracking-[.35em] text-[#8de1dc]">
-          SHADOW TOWER · MAIN ENTRY
-        </p>
-        <h1 className="mt-3 font-display text-3xl font-extrabold uppercase tracking-[.08em] text-[#eee4d0] sm:text-4xl">
-          Enter the tower<span className="text-[#c47e3f]">.</span>
-        </h1>
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[.18em] text-[#789091]">
-          Lobby · elevator · offices
-        </p>
-        <Link
-          href="/sign-in?returnTo=%2Ftower"
-          className="mt-6 flex min-h-12 items-center justify-center border border-[#8de1dc]/60 bg-[#5cd5d0]/10 px-5 py-3 text-center font-mono text-xs font-bold tracking-[.16em] text-[#d8f3e7] transition hover:border-[#8de1dc] hover:bg-[#5cd5d0]/20"
-        >
-          CHECK IN AT THE LOBBY
-        </Link>
+      <section className="relative w-full max-w-3xl overflow-hidden border border-[#d9b77a]/55 bg-[#13231d]/95 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] backdrop-blur-[2px] sm:p-8">
+        <div className="pointer-events-none absolute -right-8 -top-8 hidden h-[calc(100%+2rem)] w-64 overflow-hidden border-l border-[#d9b77a]/35 bg-[#d9ccb5] md:block">
+          <img
+            src={`${import.meta.env.BASE_URL}game-art-review/salaryman-solarpunk-character-v2.png`}
+            alt=""
+            className="h-full w-full object-cover object-[52%_42%] opacity-95"
+          />
+        </div>
+        <div className="relative z-10 max-w-lg">
+          <p className="font-mono text-[10px] font-bold tracking-[.35em] text-[#d9b77a]">
+            SHADOW TOWER · MAIN ENTRY
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-extrabold uppercase tracking-[.08em] text-[#f1ead7] sm:text-4xl">
+            Enter the tower<span className="text-[#d9b77a]">.</span>
+          </h1>
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[.18em] text-[#b8c9b7]">
+            Lobby · elevator · offices
+          </p>
+          <Link
+            href="/sign-in?returnTo=%2Ftower"
+            className="mt-6 flex min-h-12 items-center justify-center border border-[#d9b77a]/70 bg-[#d9b77a]/10 px-5 py-3 text-center font-mono text-xs font-bold tracking-[.16em] text-[#fff5dc] transition hover:border-[#fff0bd] hover:bg-[#d9b77a]/20"
+          >
+            CHECK IN AT THE LOBBY
+          </Link>
+        </div>
       </section>
     </main>
   );
@@ -363,12 +363,6 @@ export default function TowerDirectory() {
   );
   const [now, setNow] = useState(() => new Date());
   const [notice, setNotice] = useState("");
-  const [filing, setFiling] = useState(false);
-  const [filingResult, setFilingResult] = useState("");
-  const [onboardingStep, setOnboardingStep] = useState<
-    "arrival" | "reception" | "questions" | "complete"
-  >("arrival");
-  const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [reconcilingServerState, setReconcilingServerState] =
     useState(isAuthenticated);
   const [directoryOpen, setDirectoryOpen] = useState(false);
@@ -419,8 +413,11 @@ export default function TowerDirectory() {
   };
 
   const finishReception = () => {
-    setOnboardingStep("questions");
+    completeReceptionTask();
+    markTutorialDone();
+    setStage((current) => (current === "reception" ? "work" : current));
     setDialogue(null);
+    setNotice("RECEPTION COMPLETE · WALK TO THE ELEVATOR OR DIRECTORY");
   };
 
   const setReceptionDialogue = (
@@ -572,69 +569,6 @@ export default function TowerDirectory() {
       options: [{ id: "close", label: "THANKS" }],
       onOption: () => setDialogue(null),
     });
-  };
-
-  const finishQuestions = async (answers: OnboardingAnswers) => {
-    try {
-      const raw = window.localStorage.getItem("sm_save");
-      const prior = raw ? JSON.parse(raw) : {};
-      window.localStorage.setItem(
-        "sm_save",
-        JSON.stringify({
-          ...(prior && typeof prior === "object" ? prior : {}),
-          name: answers.playerName,
-          pabloOnboardingDone: true,
-          appearance: answers.appearance,
-          hasBusiness: answers.bizPath === "business",
-          bizType: answers.businessType,
-          company: answers.bizPath === "business" ? answers.companyName : null,
-          industry: answers.bizPath === "business" ? answers.industry : null,
-          officeTier: answers.officeTier,
-          homeCityId: answers.homeCityId,
-          cityId: answers.homeCityId,
-        }),
-      );
-    } catch {}
-    setSavingOnboarding(true);
-    try {
-      await persistTowerOnboardingState({
-        status: "complete",
-        completedAt: new Date().toISOString(),
-      });
-      markTutorialDone();
-      completeReceptionTask();
-      setOnboardingStep("complete");
-      setDialogue(null);
-      setNotice("TOWER OPEN · USE THE ELEVATOR OR STAIRS");
-    } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message.toUpperCase()
-          : "TOWER RECORD SYNC FAILED",
-      );
-    } finally {
-      setSavingOnboarding(false);
-    }
-  };
-
-  const fileUnemployment = async () => {
-    setFiling(true);
-    setFilingResult("");
-    try {
-      const response = await apiFetch("/api/world/employment/unemployment", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error ?? "Filing rejected");
-      setFilingResult("UNEMPLOYMENT STATUS SAVED");
-    } catch (error) {
-      setFilingResult(
-        error instanceof Error ? error.message.toUpperCase() : "FILING FAILED",
-      );
-    } finally {
-      setFiling(false);
-    }
   };
 
   if (!isAuthenticated) return <TowerEntry />;
@@ -1076,15 +1010,6 @@ export default function TowerDirectory() {
                 FRONT DESK ACTIVE
               </p>
               <p className="mt-2">Use the building.</p>
-              <button
-                type="button"
-                onClick={() => void fileUnemployment()}
-                disabled={filing}
-                className="mt-3 flex w-full items-center justify-between border border-amber-300/30 bg-amber-300/5 px-3 py-3 text-left text-xs font-bold tracking-[.12em] text-amber-100 disabled:opacity-50"
-              >
-                {filing ? "SAVING..." : "FILE UNEMPLOYMENT"}{" "}
-                <ArrowRight className="h-4 w-4" />
-              </button>
             </div>
           )}
           {!onboardingLocked && (
@@ -1099,14 +1024,6 @@ export default function TowerDirectory() {
             </div>
           )}
         </section>
-
-        <div className="hidden">
-          <TowerLifeHub
-            compact
-            cityLabel={getActiveCityName().toUpperCase()}
-            floorLabel="RECEPTION · CLASSIFIEDS · ALL TENANTS"
-          />
-        </div>
 
         <details
           className={`border border-white/10 bg-white/[.015] ${onboardingLocked ? "hidden" : ""}`}
@@ -1221,19 +1138,6 @@ export default function TowerDirectory() {
           DECIDED AT THE DOOR · PIN OR ROLE REQUIRED FOR PRIVATE SPACE
         </footer>
       </div>
-
-      {stage === "reception" && onboardingStep === "questions" && (
-        <PabloOnboarding
-          charName={(
-            getSalarymanName() ||
-            user?.firstName ||
-            "SALARYMAN"
-          ).trim()}
-          charClass="salaryman"
-          venue="lobby"
-          onComplete={finishQuestions}
-        />
-      )}
 
     </main>
   );
