@@ -18,6 +18,7 @@ import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
 import { ITEM_CATALOG, type ItemStats } from "../lib/item-catalog";
+import { recordLegacyRecoveryEvent, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 
 const router: IRouter = Router();
 
@@ -573,6 +574,7 @@ router.get("/pledge/owned", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
+    await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
     const rows = await db
       .select()
       .from(pledgePurchasesTable)
@@ -656,6 +658,13 @@ router.post("/pledge/checkout", async (req, res) => {
       });
       // Grant bundle members + gear for free grants too.
       await fulfillEntitlements(userId, item);
+      await recordLegacyRecoveryEvent({
+        userId,
+        eventKey: `pledge:item:${userId}:${item.id}`,
+        kind: "pledge_entitlement",
+        itemId: item.id,
+        payload: { category: item.category, name: item.name, amountCents: 0 },
+      });
     } catch (err) {
       if (itemIsLimited(item.id)) await releaseStock(item.id);
       throw err;
@@ -818,6 +827,20 @@ export async function handlePledgeWebhookEvent(event: Stripe.Event): Promise<voi
       const userId = session.metadata?.userId ?? session.client_reference_id ?? undefined;
       const item = itemId ? findItem(itemId) : undefined;
       if (userId && item) await fulfillEntitlements(userId, item);
+      if (userId && item) {
+        await recordLegacyRecoveryEvent({
+          userId,
+          eventKey: `pledge:session:${session.id}`,
+          kind: "pledge_entitlement",
+          itemId: item.id,
+          payload: {
+            category: item.category,
+            name: item.name,
+            amountCents: session.amount_total ?? 0,
+            stripeSessionId: session.id,
+          },
+        });
+      }
     }
     console.log(`[Pledge] Purchase completed — session ${session.id}, item ${session.metadata?.itemId}${completed.length > 0 ? "" : " (duplicate, no-op)"}`);
   }

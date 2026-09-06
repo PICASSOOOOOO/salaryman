@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db, salarymanSavesTable } from "@workspace/db";
 import { spendFiat } from "../lib/fiat-wallet";
 import { findVendingFood } from "../lib/vending-food";
+import { recordLegacyRecoveryEventTx, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 
 const router: IRouter = Router();
 
@@ -43,6 +44,7 @@ export function applyFoodEffect(
 router.post("/vending/food/purchase", async (req, res): Promise<void> => {
   const userId = requireAuth(req, res);
   if (!userId) return;
+  await restoreLegacyRecoveryForUser(userId, (req.user as { email?: string | null }).email);
   const item = findVendingFood(String(req.body?.itemId ?? ""));
   const slotIndex = Number(req.body?.slotIndex ?? 0);
   const requestId = String(req.body?.requestId ?? "");
@@ -76,6 +78,17 @@ router.post("/vending/food/purchase", async (req, res): Promise<void> => {
         .update(salarymanSavesTable)
         .set({ data, lastSavedAt: new Date() })
         .where(eq(salarymanSavesTable.id, save.id));
+      if (!paid.duplicate) {
+        await recordLegacyRecoveryEventTx(tx, {
+          userId,
+          eventKey: `vending-food:${userId}:${requestId}`,
+          kind: "vending_food",
+          itemId: item.id,
+          slotIndex,
+          amountFiat: item.price,
+          payload: { name: item.name, effect: item.effect },
+        });
+      }
       return { type: "ok" as const, paid, data };
     });
 

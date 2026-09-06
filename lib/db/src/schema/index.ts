@@ -129,3 +129,4 @@ export * from "./tower-market";
 export * from "./phone-number-purchases";
 export * from "./property-contracts";
 export * from "./device-links";
+export * from "./legacy-recovery";

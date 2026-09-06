@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { randomUUID } from "node:crypto";
 import {
   db,
   usersTable,
@@ -33,6 +34,7 @@ import { eq, and, desc, sql, ilike, or, count, gte, gt, inArray } from "drizzle-
 import twilio from "twilio";
 import { isOwnerEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
+import { captureLegacyRecoverySnapshots } from "../lib/legacy-recovery";
 import { SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getOnlinePlayers } from "../worldServer";
 
 // Estimated USD unit cost of each metered, money-costing action. These are
@@ -389,7 +391,10 @@ router.post("/admin/users/:userId/reset", async (req: Request, res: Response) =>
   const { resetType } = req.body;
 
   if (resetType === 'save') {
-    await db.delete(salarymanSavesTable).where(eq(salarymanSavesTable.userId, userId as string));
+    await db.transaction(async (tx) => {
+      await captureLegacyRecoverySnapshots(tx, `user-save:${userId}:${randomUUID()}`, [userId]);
+      await tx.delete(salarymanSavesTable).where(eq(salarymanSavesTable.userId, userId as string));
+    });
     await logAudit(req.user!.id, "reset_save", "user", userId as string, "Deleted all Salaryman save data");
   } else if (resetType === 'features') {
     await db.delete(userFeaturesTable).where(eq(userFeaturesTable.userId, userId as string));
@@ -460,6 +465,7 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
     ] as const;
     const counts: Record<string, number> = {};
     await db.transaction(async (tx) => {
+      await captureLegacyRecoverySnapshots(tx, `world:${randomUUID()}`);
       for (const t of FRESH_START_TABLES) {
         const r = await tx.execute(sql.raw(`DELETE FROM "${t}"`));
         counts[t] = (r as { rowCount?: number }).rowCount ?? 0;
@@ -506,10 +512,15 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
     if (toDelete.length > 0) {
       // Delete in batches — IN-list size limit safety.
       const BATCH = 500;
-      for (let i = 0; i < toDelete.length; i += BATCH) {
-        const slice = toDelete.slice(i, i + BATCH);
-        await db.delete(salarymanSavesTable).where(sql`${salarymanSavesTable.id} = ANY(${sql.raw(`ARRAY[${slice.join(",")}]`)})`);
-      }
+      await db.transaction(async (tx) => {
+        const userIds = [...new Set(allSaves.filter((save) => toDelete.includes(save.id)).map((save) => save.userId))];
+        await captureLegacyRecoverySnapshots(tx, `bulk-saves:${randomUUID()}`, userIds);
+        for (let i = 0; i < toDelete.length; i += BATCH) {
+          const slice = toDelete.slice(i, i + BATCH);
+          await tx.delete(salarymanSavesTable)
+            .where(sql`${salarymanSavesTable.id} = ANY(${sql.raw(`ARRAY[${slice.join(",")}]`)})`);
+        }
+      });
       savesDeleted = toDelete.length;
     }
   }

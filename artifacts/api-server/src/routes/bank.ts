@@ -3,6 +3,7 @@ import { db, bankAccountsTable, bankTransactionsTable, type BankAccount } from "
 import { eq, and, desc, sql, inArray, asc } from "drizzle-orm";
 import { randomInt } from "node:crypto";
 import { ensureFiatAccounts, getSpendableFiat, STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
+import { restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 export { STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
 
 const router: IRouter = Router();
@@ -34,7 +35,7 @@ function emailOf(req: Request): string | null {
 // allow-list OR a DB-backed owner/dev-org lookup) get the staff seed; everyone
 // else gets the lean starter grant.
 async function ensureSeeded(userId: string, email?: string | null): Promise<BankAccount[]> {
-  void email;
+  await restoreLegacyRecoveryForUser(userId, email);
   return db.transaction((tx) => ensureFiatAccounts(tx, userId));
 }
 

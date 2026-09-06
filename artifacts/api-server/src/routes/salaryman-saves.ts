@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { randomUUID } from "node:crypto";
 import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable, playerLedgerTable, playerCityVisasTable, playerGoldAccountsTable } from "@workspace/db";
 import { CHARACTER_TEMPLATE_CATALOG } from "../lib/salaryman-art";
 import { eq, ne, and, or, inArray, sql } from "drizzle-orm";
@@ -12,6 +13,7 @@ import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
 import { getSpendableFiat } from "../lib/fiat-wallet";
 import { defaultT1ForClass } from "../lib/skill-catalog";
+import { captureLegacyRecoverySnapshots, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 
 const router: IRouter = Router();
 
@@ -266,6 +268,7 @@ router.post("/salaryman/saves/ensure", async (req, res) => {
     return;
   }
   try {
+    const recovery = await restoreLegacyRecoveryForUser(req.user.id, req.user.email);
     const [existing] = await db
       .select()
       .from(salarymanSavesTable)
@@ -301,7 +304,9 @@ router.post("/salaryman/saves/ensure", async (req, res) => {
       charName: registry.playerName.slice(0, 64),
       charClass,
       lastZone: "SHADOW TOWER",
-      data: {},
+      data: recovery.properties.find((property) => property.slotIndex === 0)
+        ? { propertyDeeds: recovery.properties.find((property) => property.slotIndex === 0)?.propertyDeeds }
+        : {},
     }).onConflictDoNothing();
 
     const [save] = await db
@@ -329,6 +334,7 @@ router.get("/salaryman/saves", async (req, res) => {
     return;
   }
   try {
+    await restoreLegacyRecoveryForUser(req.user.id, req.user.email);
     const tier = await getUserTier(req.user.id, req.user.email);
     const enterprise = await hasActiveEnterprise(req.user.id);
     const maxSlots = enterprise ? ENTERPRISE_MAX_SLOTS : tier === "pro" ? PRO_MAX_SLOTS : FREE_MAX_SLOTS;
@@ -362,6 +368,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     return;
   }
   try {
+    const recovery = await restoreLegacyRecoveryForUser(req.user.id, req.user.email);
     let dogNameRejected = false;
     let catNameRejected = false;
     // One-way story guard: the story is a server-authoritative commitment. Once
@@ -376,6 +383,10 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
       .where(and(eq(salarymanSavesTable.userId, req.user.id), eq(salarymanSavesTable.slotIndex, slot)))
       .limit(1);
     const priorData = prior?.data as Record<string, unknown> | undefined;
+    const protectedProperties = recovery.properties.find((property) => property.slotIndex === slot);
+    if (protectedProperties && incoming.propertyDeeds === undefined) {
+      incoming.propertyDeeds = protectedProperties.propertyDeeds;
+    }
     const priorStory = (priorData?.story) as StoryState | undefined;
     if (priorStory?.active) {
       incoming.story = mergeStoryOnSave(priorStory, incoming.story as StoryState | undefined);
@@ -671,14 +682,17 @@ router.delete("/salaryman/saves/:slot", async (req, res) => {
     return;
   }
   try {
-    await db
-      .delete(salarymanSavesTable)
-      .where(
-        and(
-          eq(salarymanSavesTable.userId, req.user.id),
-          eq(salarymanSavesTable.slotIndex, slot)
-        )
-      );
+    await db.transaction(async (tx) => {
+      await captureLegacyRecoverySnapshots(tx, `manual-save-delete:${randomUUID()}`, [req.user.id]);
+      await tx
+        .delete(salarymanSavesTable)
+        .where(
+          and(
+            eq(salarymanSavesTable.userId, req.user.id),
+            eq(salarymanSavesTable.slotIndex, slot)
+          )
+        );
+    });
     res.json({ ok: true });
   } catch (err: any) {
     console.error("[saves] delete error:", err.message);

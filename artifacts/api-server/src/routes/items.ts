@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
+import { randomUUID } from "node:crypto";
 import {
   db,
   playerInventoryTable,
@@ -19,6 +20,7 @@ import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
 import { spendFiat } from "../lib/fiat-wallet";
+import { recordLegacyRecoveryEventTx, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 import {
   ITEM_CATALOG,
   ITEM_TYPES,
@@ -141,6 +143,7 @@ router.get("/items/inventory", async (req, res) => {
   if (!userId) return;
   const slot = parseSlot(req.query.slot);
   try {
+    await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
     const rows = await db
       .select()
       .from(playerInventoryTable)
@@ -194,6 +197,7 @@ router.get("/items/loadout", async (req, res) => {
 router.post("/items/buy", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
+  await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
   const slot = parseSlot(req.body?.slot);
   const item = findCatalogItem(String(req.body?.itemId ?? ""));
   if (!item) {
@@ -234,6 +238,17 @@ router.post("/items/buy", async (req, res) => {
         });
         if (!result.ok) return result;
         await addConsumable(tx, userId, slot, item.id, qty, "fiat");
+        if (source === "tower_vending") {
+          await recordLegacyRecoveryEventTx(tx, {
+            userId,
+            eventKey: `tower-vending:${randomUUID()}`,
+            kind: "tower_vending_item",
+            itemId: item.id,
+            slotIndex: slot,
+            quantity: qty,
+            amountFiat: totalPrice,
+          });
+        }
         return result;
       });
       if (!paid.ok) {
@@ -319,6 +334,17 @@ router.post("/items/buy", async (req, res) => {
         .onConflictDoNothing()
         .returning({ id: playerInventoryTable.id });
       if (inserted.length === 0) throw new Error("ITEM_ALREADY_OWNED");
+      if (source === "tower_vending") {
+        await recordLegacyRecoveryEventTx(tx, {
+          userId,
+          eventKey: `tower-vending:${randomUUID()}`,
+          kind: "tower_vending_item",
+          itemId: item.id,
+          slotIndex: slot,
+          quantity: 1,
+          amountFiat: effectivePrice,
+        });
+      }
       return result;
     });
     if (!paid.ok) {
