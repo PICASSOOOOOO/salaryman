@@ -26,6 +26,18 @@ ACTION_STAMINA_GAIN: dict[ActionKind, float] = {
 }
 
 
+@dataclass(frozen=True)
+class RecruitCandidate:
+    """A candidate offered by the hiring desk."""
+
+    name: str
+    role: str
+    productivity_per_hour: float
+    hourly_wage_fiat: float
+    hiring_cost_fiat: float
+    accent: tuple[int, int, int]
+
+
 @dataclass
 class Worker:
     """A remote worker whose readiness grows through meaningful activity."""
