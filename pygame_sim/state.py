@@ -3,13 +3,36 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from .models import ActionKind, LedgerEntry, OfficeRoster, Worker
 
 
 SECONDS_PER_WORKSPACE_HOUR = 2.0
+SECONDS_PER_WORKSPACE_QUARTER_HOUR = SECONDS_PER_WORKSPACE_HOUR / 4
 SHIFT_START = 9
 SHIFT_END = 17
+BreakKind = Literal["short", "lunch"]
+
+
+@dataclass
+class BreakPolicy:
+    """Employer-controlled, local-policy-aware work rhythm settings.
+
+    The client does not claim to determine labor law. It gives the employer a
+    visible local policy to configure, then automatically keeps the workday
+    inside that policy.
+    """
+
+    jurisdiction: str = "LOCAL POLICY"
+    auto_breaks: bool = True
+    short_break_every_minutes: int = 150
+    short_break_minutes: int = 15
+    meal_after_work_minutes: int = 240
+    meal_break_minutes: int = 60
+    eat_at_desk: bool = False
+    overtime_allowed: bool = False
+    overtime_end_hour: int = 20
 
 
 @dataclass
@@ -23,6 +46,7 @@ class OfficeState:
     funds: float = 1200.0
     day: int = 1
     hour: int = SHIFT_START
+    minute: int = 0
     elapsed_seconds: float = 0.0
     running: bool = True
     roster: OfficeRoster = field(default_factory=OfficeRoster)
@@ -33,6 +57,13 @@ class OfficeState:
     drawer_open: bool = False
     selected_worker: int | None = None
     notice: str = "SHIFT READY"
+    policy: BreakPolicy = field(default_factory=BreakPolicy)
+    work_minutes_today: int = 0
+    work_minutes_since_break: int = 0
+    break_kind: BreakKind | None = None
+    break_minutes_remaining: int = 0
+    breaks_taken_today: int = 0
+    lunch_taken_today: bool = False
 
     @classmethod
     def with_default_roster(cls) -> OfficeState:
@@ -72,15 +103,28 @@ class OfficeState:
 
     @property
     def is_working(self) -> bool:
-        return SHIFT_START <= self.hour < SHIFT_END and self.running
+        return self.running and self._within_work_window() and self.break_kind is None
 
     @property
     def time_label(self) -> str:
-        return f"DAY {self.day:02d}  /  {self.hour:02d}:00"
+        return f"DAY {self.day:02d}  /  {self.hour:02d}:{self.minute:02d}"
 
     @property
     def shift_progress(self) -> float:
-        return max(0.0, min(1.0, (self.hour - SHIFT_START) / (SHIFT_END - SHIFT_START)))
+        end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+        total_minutes = max(1, (end_hour - SHIFT_START) * 60)
+        current_minutes = (self.hour - SHIFT_START) * 60 + self.minute
+        return max(0.0, min(1.0, current_minutes / total_minutes))
+
+    @property
+    def break_label(self) -> str:
+        if self.break_kind == "lunch":
+            return f"LUNCH {self.break_minutes_remaining}M LEFT"
+        if self.break_kind == "short":
+            return f"BREAK {self.break_minutes_remaining}M LEFT"
+        if self.policy.auto_breaks:
+            return "AUTO BREAKS ON"
+        return "BREAKS MANUAL"
 
     @property
     def net_today(self) -> float:
@@ -100,6 +144,26 @@ class OfficeState:
     def toggle_running(self) -> None:
         self.running = not self.running
         self.notice = "SHIFT RUNNING" if self.running else "SHIFT PAUSED"
+
+    def toggle_auto_breaks(self) -> None:
+        self.policy.auto_breaks = not self.policy.auto_breaks
+        self.notice = "AUTO BREAKS ON" if self.policy.auto_breaks else "BREAKS MANUAL"
+
+    def start_break(self, kind: BreakKind = "short") -> bool:
+        """Start a purposeful break without making it a dead-end action."""
+        if self.break_kind is not None or not self._within_work_window():
+            return False
+        if kind == "lunch" and self.policy.eat_at_desk:
+            return False
+        self.break_kind = kind
+        self.break_minutes_remaining = (
+            self.policy.meal_break_minutes if kind == "lunch" else self.policy.short_break_minutes
+        )
+        self.breaks_taken_today += 1
+        if kind == "lunch":
+            self.lunch_taken_today = True
+        self.notice = "LUNCH STARTED" if kind == "lunch" else "BREAK STARTED"
+        return True
 
     def toggle_drawer(self) -> None:
         """Open the physical desk drawer that contains the office record."""
@@ -135,6 +199,14 @@ class OfficeState:
         worker = self.roster.workers[index]
         gain = worker.perform_action(action)
         self.selected_worker = index
+        worker.status_note = {
+            "coworker_support": "SUPPORTING COWORKER",
+            "boss_review": "IN BOSS REVIEW",
+            "robbery": "FIELD EVENT",
+            "defense": "DEFENDING TEAM",
+            "offense": "FIELD EVENT",
+            "work": "PRODUCING VALUE",
+        }[action]
         self.notice = f"{worker.name.upper()} +{gain:.1f} STAMINA"
         return True
 
@@ -143,6 +215,7 @@ class OfficeState:
         self.funds = fresh.funds
         self.day = fresh.day
         self.hour = fresh.hour
+        self.minute = fresh.minute
         self.elapsed_seconds = fresh.elapsed_seconds
         self.running = fresh.running
         self.roster = fresh.roster
@@ -153,6 +226,12 @@ class OfficeState:
         self.drawer_open = False
         self.selected_worker = None
         self.notice = "SHIFT READY"
+        self.work_minutes_today = 0
+        self.work_minutes_since_break = 0
+        self.break_kind = None
+        self.break_minutes_remaining = 0
+        self.breaks_taken_today = 0
+        self.lunch_taken_today = False
 
     def update(self, delta_seconds: float) -> int:
         """Advance using precise frame delta; return completed workspace hours."""
@@ -164,28 +243,99 @@ class OfficeState:
         # workspace hour.
         self.elapsed_seconds += delta_seconds
         hours_advanced = 0
-        while self.elapsed_seconds >= SECONDS_PER_WORKSPACE_HOUR:
-            self.elapsed_seconds -= SECONDS_PER_WORKSPACE_HOUR
-            self.advance_workspace_hour()
+        while self.elapsed_seconds >= SECONDS_PER_WORKSPACE_QUARTER_HOUR:
+            self.elapsed_seconds -= SECONDS_PER_WORKSPACE_QUARTER_HOUR
+            self.advance_workspace_minutes(15)
             hours_advanced += 1
         return hours_advanced
 
     def advance_workspace_hour(self) -> None:
-        """Process the current hour, settle at 17:00, then loop the day."""
-        if self.hour < SHIFT_END:
-            self.total_output += self.roster.work_hour(self, self.hour)
-            self.hours_completed_today += 1
-            self.hour += 1
-            if self.hour == SHIFT_END:
-                self.total_wages_paid += self.roster.settle_daily_wages(self)
+        """Process one wall-clock hour, including any scheduled break."""
+        if self.hour >= SHIFT_END and not self.policy.overtime_allowed:
+            self._begin_next_day()
+            return
+        for _ in range(4):
+            self.advance_workspace_minutes(15)
+
+    def advance_workspace_minutes(self, minutes: int) -> None:
+        """Advance in quarter-hour slices so 2.5-hour breaks stay precise."""
+        if minutes <= 0:
+            return
+        for _ in range(max(1, minutes // 15)):
+            self._advance_quarter_hour()
+
+    def _within_work_window(self) -> bool:
+        end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+        return SHIFT_START <= self.hour < end_hour
+
+    def _maybe_start_scheduled_break(self) -> bool:
+        if not self.policy.auto_breaks or self.policy.eat_at_desk:
+            return False
+        if not self.lunch_taken_today and self.work_minutes_today >= self.policy.meal_after_work_minutes:
+            return self.start_break("lunch")
+        if self.work_minutes_since_break >= self.policy.short_break_every_minutes:
+            return self.start_break("short")
+        return False
+
+    def _advance_clock(self, minutes: int) -> None:
+        total = self.hour * 60 + self.minute + minutes
+        self.hour = total // 60
+        self.minute = total % 60
+
+    def _advance_quarter_hour(self) -> None:
+        if self.hour >= SHIFT_END and not self.policy.overtime_allowed:
+            self._begin_next_day()
             return
 
+        if self.break_kind is not None:
+            self.break_minutes_remaining -= 15
+            self._advance_clock(15)
+            if self.break_minutes_remaining <= 0:
+                self.break_kind = None
+                self.break_minutes_remaining = 0
+                self.work_minutes_since_break = 0
+                self.notice = "BACK TO WORK"
+            return
+
+        if not self._within_work_window():
+            self._begin_next_day()
+            return
+
+        if self._maybe_start_scheduled_break():
+            self.break_minutes_remaining -= 15
+            self._advance_clock(15)
+            if self.break_minutes_remaining <= 0:
+                self.break_kind = None
+                self.break_minutes_remaining = 0
+                self.work_minutes_since_break = 0
+                self.notice = "BACK TO WORK"
+            return
+
+        previous_hour = self.hour
+        self.work_minutes_today += 15
+        self.work_minutes_since_break += 15
+        self._advance_clock(15)
+        if self.minute == 0 and self.hour > previous_hour:
+            self.total_output += self.roster.work_hour(self, previous_hour)
+            self.hours_completed_today += 1
+            end_hour = self.policy.overtime_end_hour if self.policy.overtime_allowed else SHIFT_END
+            if self.hour == end_hour:
+                self.total_wages_paid += self.roster.settle_daily_wages(self)
+
+    def _begin_next_day(self) -> None:
         self.day += 1
         self.hour = SHIFT_START
+        self.minute = 0
         self.hours_completed_today = 0
         self.total_output = 0.0
         self.total_wages_paid = 0.0
         self.selected_worker = None
+        self.work_minutes_today = 0
+        self.work_minutes_since_break = 0
+        self.break_kind = None
+        self.break_minutes_remaining = 0
+        self.breaks_taken_today = 0
+        self.lunch_taken_today = False
         self.notice = f"DAY {self.day:02d} STARTED"
         for worker in self.roster.workers:
             worker.rest_overnight()

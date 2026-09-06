@@ -160,9 +160,9 @@ class SolarPunkRenderer:
         self.text(str(state.roster.workers.index(worker) + 1), (inner.right - 28, inner.y + 18), self.font_md, worker.accent)
 
         status_color = Palette.SEAFOAM
-        if worker.stamina_state == "warning":
+        if worker.stamina_state == "warming":
             status_color = Palette.SUN
-        elif worker.stamina_state == "depletion":
+        elif worker.stamina_state == "starting":
             status_color = Palette.CORAL
         self.text(worker.status_note, (inner.x + 18, inner.y + 72), self.font_sm, status_color)
 
@@ -173,9 +173,9 @@ class SolarPunkRenderer:
         bar = pygame.Rect(inner.x + 18, inner.y + 180, inner.width - 36, 16)
         pygame.draw.rect(self.screen, (191, 213, 190), bar, border_radius=8)
         gauge_color = {
-            "emerald": Palette.SEAFOAM,
-            "warning": Palette.SUN,
-            "depletion": Palette.CORAL,
+            "steady": Palette.SEAFOAM,
+            "warming": Palette.SUN,
+            "starting": Palette.CORAL,
         }[worker.stamina_state]
         fill = pygame.Rect(bar.x, bar.y, max(3, int(bar.width * worker.stamina_ratio)), bar.height)
         pygame.draw.rect(self.screen, gauge_color, fill, border_radius=8)

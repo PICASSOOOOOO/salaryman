@@ -51,11 +51,11 @@ class PygameSimulationTests(unittest.TestCase):
     def test_stamina_gauge_thresholds_are_contextual(self):
         worker = Worker("Test", "ROLE", 10, 5, (1, 2, 3))
         worker.stamina = 80
-        self.assertEqual(worker.stamina_state, "emerald")
+        self.assertEqual(worker.stamina_state, "steady")
         worker.stamina = 45
-        self.assertEqual(worker.stamina_state, "warning")
+        self.assertEqual(worker.stamina_state, "warming")
         worker.stamina = 10
-        self.assertEqual(worker.stamina_state, "depletion")
+        self.assertEqual(worker.stamina_state, "starting")
 
     def test_desk_drawer_is_clickable_state_not_simulation_time(self):
         state = OfficeState.with_default_roster()
@@ -103,9 +103,11 @@ class PygameSimulationTests(unittest.TestCase):
         before = worker.stamina
         self.assertTrue(state.apply_action(0, "coworker_support"))
         self.assertGreater(worker.stamina, before)
+        self.assertEqual(worker.status_note, "SUPPORTING COWORKER")
         after_support = worker.stamina
         self.assertTrue(state.apply_action(0, "defense"))
         self.assertGreater(worker.stamina, after_support)
+        self.assertEqual(worker.status_note, "DEFENDING TEAM")
         self.assertTrue(state.apply_action(0, "offense"))
         self.assertLessEqual(worker.stamina, worker.max_stamina)
 

@@ -99,10 +99,10 @@ class Worker:
     @property
     def stamina_state(self) -> str:
         if self.stamina_ratio > 0.55:
-            return "emerald"
+            return "steady"
         if self.stamina_ratio > 0.2:
-            return "warning"
-        return "depletion"
+            return "warming"
+        return "starting"
 
 
 @dataclass
