@@ -2082,7 +2082,7 @@ function PabloTerminalAuthed() {
            <Link
              href="/desktop"
              data-testid="pablo-download-salaryman"
-             className="app-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
+              className="app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
              title="Download SALARYMAN"
            >
              <Download className="w-3 h-3" />
@@ -2093,7 +2093,7 @@ function PabloTerminalAuthed() {
               type="button"
                onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-sign-in"
-               className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work in the terminal"
             >
               <LogIn className="w-3 h-3" />
@@ -2105,7 +2105,7 @@ function PabloTerminalAuthed() {
               type="button"
               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-enter-tower"
-              className="app-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+              className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work in the terminal"
             >
               <LogIn className="w-3 h-3" />
@@ -2116,7 +2116,7 @@ function PabloTerminalAuthed() {
              type="button"
              onClick={(e) => { e.stopPropagation(); if (mode === "text") setMode("text"); else onOrbClick(); }}
              data-testid="pablo-ai-choice"
-             className="app-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+              className="app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
              title="Open Pablo AI"
            >
              <Sparkles className="w-3 h-3" />
@@ -2133,7 +2133,7 @@ function PabloTerminalAuthed() {
             type="button"
             onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
             data-testid="pablo-mode-toggle"
-             className="app-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
+              className="app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
             title={mode === "text" ? "Switch to voice" : "Switch to text"}
           >
             {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
@@ -2256,26 +2256,26 @@ function PabloTerminalAuthed() {
       {/* Voice control is available from the first frame. */}
       {mode !== "text" && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 px-4 w-full pointer-events-none z-20"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full pointer-events-none z-20"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)" }}
         >
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onOrbClick(); }}
             data-testid="pablo-talk-button-main"
             aria-label="Tap to talk to Pablo"
-            className="pointer-events-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full border-2 bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-base sm:text-lg font-semibold transition-colors"
+            className="pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-sm sm:text-base font-semibold transition-colors"
             style={{
               borderColor: status === "listening" ? "rgba(103,232,249,0.85)" : "rgba(236,72,153,0.75)",
               boxShadow: status === "listening" ? "0 0 26px rgba(103,232,249,0.40)" : "0 0 18px rgba(236,72,153,0.25)",
             }}
           >
-            <Mic className={`w-5 h-5 ${status === "listening" ? "animate-pulse" : ""}`} />
+            <Mic className={`w-4 h-4 ${status === "listening" ? "animate-pulse" : ""}`} />
             {status === "listening" ? "Listening — tap to stop"
               : status === "thinking" ? "One moment…"
               : "Tap to talk"}
           </button>
-          <div className="pointer-events-none text-pink-100/75 text-sm text-center leading-snug">
+          <div className="pointer-events-none text-pink-100/75 text-xs text-center leading-snug">
             Tap the button and talk, or switch to typing up top.
           </div>
         </div>
