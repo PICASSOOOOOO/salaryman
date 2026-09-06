@@ -1,6 +1,6 @@
 import twilio from "twilio";
 import { createHash } from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db, phoneNumbersTable, phoneNumberPurchasesTable } from "@workspace/db";
 
 function getTwilioClient() {
@@ -24,6 +24,32 @@ export async function getUserOutboundNumber(userId: string): Promise<string> {
   const fallback = process.env.TWILIO_PHONE_NUMBER;
   if (!active?.number && !fallback) throw new Error("TWILIO_PHONE_NUMBER not configured");
   return active?.number || fallback!;
+}
+
+/**
+ * Resolve a CRM-selected sender. Org pool numbers may be used by any active
+ * org member; personal numbers remain restricted to their owner.
+ */
+export async function getOutboundNumberForRouting(input: {
+  userId: string;
+  orgId?: number | null;
+  phoneNumberId?: number | null;
+}): Promise<string> {
+  if (!input.phoneNumberId) return getUserOutboundNumber(input.userId);
+  const conditions = [
+    eq(phoneNumbersTable.id, input.phoneNumberId),
+    eq(phoneNumbersTable.isActive, true),
+    input.orgId
+      ? or(eq(phoneNumbersTable.userId, input.userId), eq(phoneNumbersTable.orgId, input.orgId))
+      : eq(phoneNumbersTable.userId, input.userId),
+  ];
+  const [selected] = await db
+    .select({ number: phoneNumbersTable.number })
+    .from(phoneNumbersTable)
+    .where(and(...conditions))
+    .limit(1);
+  if (!selected?.number) throw new Error("Selected phone number is not available to this organization");
+  return selected.number;
 }
 
 export async function assertPhoneNumberAvailable(phoneNumber: string, countryCode: string): Promise<void> {

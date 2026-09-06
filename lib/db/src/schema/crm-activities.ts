@@ -9,7 +9,7 @@ import { sql } from "drizzle-orm";
 //
 // Plain integer org_id / lead_id (no hard FK) mirrors call_history/phone_numbers
 // to avoid the circular import with organizations.ts.
-export const CRM_ACTIVITY_CHANNELS = ["call", "voicemail", "sms"] as const;
+export const CRM_ACTIVITY_CHANNELS = ["call", "voicemail", "sms", "comms"] as const;
 export type CrmActivityChannel = (typeof CRM_ACTIVITY_CHANNELS)[number];
 
 export const crmActivitiesTable = pgTable("crm_activities", {

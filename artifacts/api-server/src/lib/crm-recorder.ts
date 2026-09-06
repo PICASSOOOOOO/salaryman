@@ -114,7 +114,7 @@ export interface RecordTelephonyOpts {
   userId: string;
   /** Pass when already known (e.g. from call_history.orgId) to skip a lookup. */
   orgId?: number | null;
-  channel: CrmActivityChannel;
+  channel: Exclude<CrmActivityChannel, "comms">;
   direction?: "inbound" | "outbound";
   /** The OTHER party's number (the contact), not the org's Twilio line. */
   phone: string;
@@ -156,7 +156,7 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
     }
 
     const direction = opts.direction ?? "outbound";
-    const sourceMap: Record<CrmActivityChannel, string> = {
+    const sourceMap: Record<Exclude<CrmActivityChannel, "comms">, string> = {
       call: direction === "inbound" ? "inbound_call" : "outbound_call",
       voicemail: "voicemail",
       sms: direction === "inbound" ? "inbound_sms" : "outbound_sms",
@@ -297,6 +297,41 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
     return activityId;
   } catch (e: unknown) {
     console.error("[CRM] recordTelephonyActivity error:", e instanceof Error ? e.message : "Unknown");
+    return null;
+  }
+}
+
+/** Add an internal COMMS handoff to the same lead timeline as telephony. */
+export async function recordCommsActivity(opts: {
+  userId: string;
+  orgId: number;
+  leadId: number;
+  body: string;
+  summary?: string;
+  status?: string;
+}): Promise<number | null> {
+  try {
+    const [created] = await db
+      .insert(crmActivitiesTable)
+      .values({
+        orgId: opts.orgId,
+        userId: opts.userId,
+        leadId: opts.leadId,
+        channel: "comms",
+        direction: "outbound",
+        body: opts.body,
+        summary: opts.summary || "Internal COMMS handoff",
+        status: opts.status || "sent",
+      })
+      .returning({ id: crmActivitiesTable.id });
+    await db.insert(leadNotesTable).values({
+      leadId: opts.leadId,
+      userId: opts.userId,
+      note: `[COMMS handoff] ${(opts.summary || opts.body).slice(0, 1000)}`,
+    });
+    return created?.id ?? null;
+  } catch (e: unknown) {
+    console.error("[CRM] recordCommsActivity error:", e instanceof Error ? e.message : "Unknown");
     return null;
   }
 }

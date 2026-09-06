@@ -10,7 +10,7 @@ import { and, eq } from "drizzle-orm";
 import twilio from "twilio";
 import { recordTelephonyActivity } from "./crm-recorder";
 import { toE164 } from "./phone";
-import { getUserOutboundNumber } from "./phone-number-service";
+import { getOutboundNumberForRouting } from "./phone-number-service";
 import { canUsePlatformTwilio } from "./platform-twilio-access";
 
 // Re-export the shared, country-aware normalizer so existing importers
@@ -45,6 +45,8 @@ export interface SendSmsInput {
    * are unchanged; country-aware callers pass the sender's home-city country.
    */
   defaultCountry?: string;
+  /** Optional CRM-selected sender from the user's personal/org phone pool. */
+  phoneNumberId?: number | null;
 }
 
 export interface SendSmsResult {
@@ -68,7 +70,7 @@ export async function sendSmsMessage(input: SendSmsInput): Promise<SendSmsResult
   if (!(await canUsePlatformTwilio(userId, userEmail))) throw new Error("Platform Twilio access denied");
 
   const client = getTwilioClient();
-  const fromNumber = await getUserOutboundNumber(userId);
+  const fromNumber = await getOutboundNumberForRouting({ userId, orgId, phoneNumberId: input.phoneNumberId });
 
   const msg = await client.messages.create({ from: fromNumber, to: e164, body: trimmed });
 

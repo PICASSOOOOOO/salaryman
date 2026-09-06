@@ -2155,4 +2155,30 @@ export async function postBotMessageToCompanyChannel(orgId: number, orgName: str
   return channelId;
 }
 
+export async function postBotMessageToPrivateChannel(
+  userId: string,
+  targetUserId: string,
+  content: string,
+) {
+  const [user1Id, user2Id] = [userId, targetUserId].sort();
+  let [channel] = await db
+    .select()
+    .from(chatChannelsTable)
+    .where(and(
+      eq(chatChannelsTable.type, "private"),
+      eq(chatChannelsTable.user1Id, user1Id),
+      eq(chatChannelsTable.user2Id, user2Id),
+    ))
+    .limit(1);
+  if (!channel) {
+    [channel] = await db.insert(chatChannelsTable).values({
+      type: "private",
+      user1Id,
+      user2Id,
+    }).returning();
+  }
+  await postSystemMessage(channel.id, content);
+  return channel.id;
+}
+
 export default router;

@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useBoomerMode } from '@/hooks/use-mobile';
+import CrmRoutingPanel from '@/components/CrmRoutingPanel';
 
 interface LeadRecord {
   id: number;
@@ -57,7 +58,7 @@ interface CallRecord {
 interface CrmActivity {
   id: number;
   userId: string;
-  channel: 'call' | 'voicemail' | 'sms';
+  channel: 'call' | 'voicemail' | 'sms' | 'comms';
   direction: string;
   phone: string;
   contactName: string | null;
@@ -69,11 +70,12 @@ interface CrmActivity {
   occurredAt: string;
 }
 
-const CHANNEL_LABEL: Record<string, string> = { call: 'CALL', voicemail: 'VOICEMAIL', sms: 'SMS' };
+const CHANNEL_LABEL: Record<string, string> = { call: 'CALL', voicemail: 'VOICEMAIL', sms: 'SMS', comms: 'COMMS' };
 const CHANNEL_COLOR: Record<string, string> = {
   call: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   voicemail: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   sms: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  comms: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
 };
 
 const STATUSES = [
@@ -597,6 +599,15 @@ export default function LeadsPage() {
                       </div>
                     </div>
                   )}
+
+                  <CrmRoutingPanel
+                    leadId={selectedLead.id}
+                    leadName={selectedLead.name}
+                    leadPhone={selectedLead.phone}
+                    assignedUserId={selectedLead.assignedUserId}
+                    canEdit={admin}
+                    onUpdated={() => { void openDetail(selectedLead); }}
+                  />
 
                   <div>
                     <span className="text-[10px] uppercase text-muted-foreground block mb-2">NOTES ({leadNotes.length})</span>
