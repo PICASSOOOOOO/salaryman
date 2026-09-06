@@ -10,7 +10,8 @@
 // Contract:
 //   1. A 401 on a genuinely protected page (e.g. /office, /business) →
 //      redirect to /pablo?returnTo=<encoded path+search>.
-//   2. A 401 on a public route ("/", "/pablo", "/immigration", auth pages and their
+//   2. A 401 on a public route ("/", "/pablo", "/immigration", "/sms-opt-in",
+//      auth pages and their
 //      subpaths) → NO redirect.
 //   3. A 401 on the auth-polling skip paths (/auth/user, /auth/providers) →
 //      NO redirect (regardless of current page).
@@ -88,6 +89,8 @@ describe("apiFetch session-expiry redirect", () => {
       "/pablo",
       "/immigration",
       "/immigration/legal",
+      "/sms-opt-in",
+      "/sms-opt-in/consent",
       "/sign-in",
       "/sign-in/factor-one",
       "/sign-up",

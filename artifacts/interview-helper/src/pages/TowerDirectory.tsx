@@ -17,7 +17,6 @@ import {
   Shield,
   Sparkles,
   UserRound,
-  WalletCards,
 } from "lucide-react";
 import { startTowerAmbient, stopTowerAmbient } from "@/soundEngine";
 import {
@@ -163,109 +162,6 @@ for (const floorNumber of Array.from({ length: 60 }, (_, index) => index + 5)) {
   });
 }
 
-type LobbyFinancialSnapshot = {
-  bank?: { earnedFiat?: number; fiatTotal?: number; quarantineFiat?: number };
-  gold?: number;
-  debt?: number;
-  property?: { netWorth?: number };
-};
-
-function formatFiat(value: unknown): string {
-  const amount = Number(value);
-  return `ƒ${(Number.isFinite(amount) ? Math.round(amount) : 0).toLocaleString()}`;
-}
-
-function LobbyFinancials({
-  snapshot,
-  loading,
-}: {
-  snapshot: LobbyFinancialSnapshot | null;
-  loading: boolean;
-}) {
-  const spendable = snapshot?.bank?.earnedFiat ?? 0;
-  const total = snapshot?.bank?.fiatTotal ?? spendable;
-  const gold = snapshot?.gold ?? 0;
-  const debt = snapshot?.debt ?? 0;
-  const netWorth = snapshot?.property?.netWorth ?? 0;
-  const metrics = [
-    {
-      label: "SPENDABLE FIAT",
-      value: loading ? "LOADING…" : formatFiat(spendable),
-      tone: "text-emerald-100",
-    },
-    {
-      label: "TOTAL FIAT",
-      value: loading ? "—" : formatFiat(total),
-      tone: "text-cyan-100",
-    },
-    {
-      label: "GOLD",
-      value: loading ? "—" : `${gold.toFixed(gold < 10 ? 1 : 0)} oz`,
-      tone: "text-amber-100",
-    },
-    {
-      label: "DEBT",
-      value: loading ? "—" : formatFiat(debt),
-      tone: debt > 0 ? "text-rose-200" : "text-zinc-200",
-    },
-    {
-      label: "NET WORTH",
-      value: loading ? "—" : formatFiat(netWorth),
-      tone: "text-violet-100",
-    },
-  ];
-  return (
-    <section
-      className="relative overflow-hidden border border-[#5cd5d0]/25 bg-[#0b1a20] p-4 shadow-[0_18px_60px_rgba(0,0,0,.22)] sm:p-5"
-      data-testid="lobby-financials"
-      aria-label="Live personal finances"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <WalletCards className="h-5 w-5 text-[#8de1dc]" />
-          <div>
-            <p className="font-mono text-[10px] font-bold tracking-[.25em] text-[#8de1dc]">
-              PERSONAL FINANCES · LIVE
-            </p>
-            <p className="mt-1 text-xs text-[#c3d4d0]/65">
-              Your spendable FIAT, before you leave reception.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/game/bank"
-          className="border border-[#8de1dc]/35 bg-[#5cd5d0]/[.08] px-3 py-2 font-mono text-[10px] font-bold tracking-[.16em] text-[#d8f3e7] transition hover:border-[#8de1dc]/70 hover:bg-[#5cd5d0]/[.14]"
-        >
-          OPEN BANCO OMBRA
-        </Link>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {metrics.map((metric) => (
-          <div
-            key={metric.label}
-            className="border border-white/10 bg-black/20 px-3 py-2"
-          >
-            <p className="font-mono text-[8px] font-bold tracking-[.16em] text-[#789091]">
-              {metric.label}
-            </p>
-            <p
-              className={`mt-1 break-words font-mono text-base font-bold ${metric.tone}`}
-            >
-              {metric.value}
-            </p>
-          </div>
-        ))}
-      </div>
-      {snapshot?.bank?.quarantineFiat ? (
-        <p className="mt-3 text-[10px] tracking-[.12em] text-amber-200/75">
-          {formatFiat(snapshot.bank.quarantineFiat)} is quarantined and not
-          spendable.
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
 function TowerEntry() {
   return (
     <main
@@ -305,6 +201,7 @@ function TowerReceptionScene({
   onReception,
   onResidentInteract,
   onElevator,
+  onDirectory,
   onLockedExit,
 }: {
   locked: boolean;
@@ -312,6 +209,7 @@ function TowerReceptionScene({
   onReception: () => void;
   onResidentInteract: (occupant: { id: number; name: string }) => void;
   onElevator: () => void;
+  onDirectory: () => void;
   onLockedExit: (label: string) => void;
 }) {
   const [viewport, setViewport] = useState(() => ({
@@ -356,8 +254,21 @@ function TowerReceptionScene({
         glyph: "elevator" as const,
         onInteract: () => (locked ? onLockedExit("ELEVATOR") : onElevator()),
       },
+      {
+        ...(layout.stations.find((station) => station.id === "lobby-directory") ?? {
+          id: "lobby-directory",
+          label: "BUSINESS DIRECTORY",
+          col: 5,
+          row: 4,
+          radius: 42,
+          footprint: { w: 4, d: 1 },
+          glyph: "comms" as const,
+        }),
+        label: locked ? "DIRECTORY · RECEPTION REQUIRED" : "BUSINESS DIRECTORY",
+        onInteract: () => (locked ? onLockedExit("DIRECTORY") : onDirectory()),
+      },
     ],
-    [locked, onLockedExit, onReception],
+    [layout.stations, locked, onDirectory, onElevator, onLockedExit],
   );
   return (
     <section
@@ -453,9 +364,7 @@ export default function TowerDirectory() {
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [reconcilingServerState, setReconcilingServerState] =
     useState(isAuthenticated);
-  const [financialSnapshot, setFinancialSnapshot] =
-    useState<LobbyFinancialSnapshot | null>(null);
-  const [financialsLoading, setFinancialsLoading] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const onboardingLocked = reconcilingServerState;
   const workTaskActive = stage === "work";
   const receptionDialogue = [
@@ -492,31 +401,6 @@ export default function TowerDirectory() {
       .catch(() => {});
     return () => {
       cancelled = true;
-    };
-  }, [isAuthenticated]);
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let alive = true;
-    const loadFinancials = async () => {
-      setFinancialsLoading(true);
-      try {
-        const response = await apiFetch("/api/wallet/snapshot", {
-          credentials: "include",
-        });
-        if (!response.ok) return;
-        const data = (await response.json()) as LobbyFinancialSnapshot;
-        if (alive) setFinancialSnapshot(data);
-      } catch {
-        // The lobby remains usable when the wallet service is temporarily unavailable.
-      } finally {
-        if (alive) setFinancialsLoading(false);
-      }
-    };
-    void loadFinancials();
-    const interval = window.setInterval(loadFinancials, 30_000);
-    return () => {
-      alive = false;
-      window.clearInterval(interval);
     };
   }, [isAuthenticated]);
   useEffect(() => {
@@ -683,10 +567,6 @@ export default function TowerDirectory() {
           </div>
         )}
 
-        <LobbyFinancials
-          snapshot={financialSnapshot}
-          loading={financialsLoading}
-        />
         <TowerReceptionScene
           locked={onboardingLocked}
           frozen={talking}
@@ -696,8 +576,61 @@ export default function TowerDirectory() {
             else setNotice(`${occupant.name} IS BUSY`);
           }}
           onElevator={() => setNotice("ELEVATOR DIRECTORY OPEN")}
+          onDirectory={() => setDirectoryOpen((open) => !open)}
           onLockedExit={explainLock}
         />
+        {directoryOpen && !onboardingLocked && (
+          <section
+            className="mt-4 border border-cyan-300/30 bg-[#07131a]/95 p-4 shadow-[0_18px_60px_rgba(0,0,0,.3)] sm:p-5"
+            data-testid="lobby-business-directory"
+            aria-label="Business directory"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] font-bold tracking-[.25em] text-cyan-200">
+                  LOBBY OBJECT · BUSINESS DIRECTORY
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Select a floor from the directory kiosk.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDirectoryOpen(false)}
+                className="border border-white/15 px-3 py-2 font-mono text-[10px] font-bold tracking-[.16em] text-zinc-400 hover:border-cyan-200/60 hover:text-cyan-100"
+              >
+                CLOSE
+              </button>
+            </div>
+            <div className="grid gap-2">
+              {floors.map(({ floor, name, detail, href, kind }) => (
+                href ? (
+                  <Link
+                    key={floor}
+                    href={href}
+                    className="flex items-center gap-3 border border-white/10 bg-white/[.025] px-3 py-3 transition hover:border-cyan-300/50 hover:bg-cyan-300/[.06]"
+                  >
+                    <span className="w-8 font-mono text-sm text-zinc-500">{String(floor).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate text-xs tracking-[.12em] text-zinc-100">{name}</strong>
+                      <span className="mt-1 block truncate text-[10px] text-zinc-500">{detail}</span>
+                    </span>
+                    <span className="font-mono text-[9px] tracking-[.12em] text-cyan-200">{kind}</span>
+                  </Link>
+                ) : (
+                  <div key={floor} className="flex items-center gap-3 border border-white/5 px-3 py-3 opacity-60">
+                    <span className="w-8 font-mono text-sm text-zinc-600">{String(floor).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate text-xs tracking-[.12em] text-zinc-400">{name}</strong>
+                      <span className="mt-1 block truncate text-[10px] text-zinc-600">{detail}</span>
+                    </span>
+                    <span className="font-mono text-[9px] tracking-[.12em] text-zinc-600">{kind}</span>
+                  </div>
+                )
+              ))}
+            </div>
+          </section>
+        )}
         <section
           className="hidden"
           aria-hidden="true"
