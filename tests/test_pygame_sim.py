@@ -188,7 +188,7 @@ class PygameSimulationTests(unittest.TestCase):
 
     def test_recruitment_refresh_and_hire_use_the_office_ledger(self):
         state = OfficeState.with_default_roster()
-        state.funds = 5_000
+        state.funds = 20_000
         self.assertTrue(state.refresh_recruitment_candidates())
         self.assertEqual(len(state.recruitment_candidates), 3)
 
