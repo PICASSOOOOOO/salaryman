@@ -1851,5 +1851,21 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.22.0.2313",
+    "date": "2026-09-07",
+    "commitHash": "1f315978bc13b2d378d590e3b17995a5a671eadb",
+    "changes": [
+      "Add configuration for publish fix"
+    ]
+  },
+  {
+    "version": "v.22.1.2313",
+    "date": "2026-09-07",
+    "commitHash": "1f315978bc13b2d378d590e3b17995a5a671eadb",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

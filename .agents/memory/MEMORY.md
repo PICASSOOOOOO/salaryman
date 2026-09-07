@@ -4,7 +4,7 @@
 - [Phone-system daily testing](phone-system-daily-test.md) — mocked `test:phone` + LIVE `health:phone` (real Twilio probe+email, DB-free, timeouts); daily = user-published Scheduled Deployment running health:phone (agent can't set cron).
 - [Browser phone bridge invariant](browser-phone-bridge.md) — outbound PSTN calls are transactional: Voice ready first, every conference joined before active UI, all legs rolled back on any join failure.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
-- [DB migration mechanism](db-migration-mechanism.md) — schema applied via push-force, not SQL migrations; drizzle-kit generate is broken. Still hand-write a 00NN_*.sql + journal entry per change or review rejects it.
+- [DB migration mechanism](db-migration-mechanism.md) — dev schema uses push-force; production schema is applied by Publish, never a deployment post-build hook. Drizzle generate is broken.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
 - [Pablo persona prompts](pablo-persona-prompts.md) — which Pablo system-prompt is LIVE per /chat/pablo/* route; PABLO_TERMINAL_PROMPT is dead, edit PABLO_SYSTEM_PROMPT (chat.ts) / PABLO_GATEKEEPER_PROMPT. Persona: PABLO CORP CEO + Mayor, Pixel Agents = prized replicants. Privacy/memory model.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().

@@ -14,3 +14,9 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). It is synced to ev
 2. Rebuild the composite db types so consumers see the field: `pnpm run typecheck:libs` (or `tsc --build lib/db/tsconfig.json`); verify `lib/db/dist/schema/<table>.d.ts` contains the new field.
 3. For a tracked record, hand-write a small SQL file `lib/db/drizzle/00NN_<name>.sql` using `ADD COLUMN IF NOT EXISTS ...` (match 0030/0023 style) and append a matching entry to `drizzle/meta/_journal.json`. Do NOT attempt to also write a meta snapshot — snapshots are not consistently maintained here and code review still expects the SQL+journal record.
 4. Code review WILL reject a schema change that has no migration SQL file, even though push-force is the real apply path — so always add the SQL + journal entry.
+
+**Production boundary:** Never put `drizzle-kit push` or `push-force` in `.replit` deployment hooks. Replit's Publish flow diffs the development and production schemas and applies the production change; a deploy-time push can prompt for destructive or unique-constraint decisions and block promotion.
+
+**Why:** A publish attempt stalled after the image was built because the post-build schema push opened an interactive constraint prompt while the VM waited to become ready.
+
+**How to apply:** Use push-force only for the development/post-merge path. Remove any deployment `postBuild` database push before asking the user to publish.
