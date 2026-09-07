@@ -15,7 +15,7 @@ export default function ProfessionalHome() {
   const closeFeatures = () => setFeaturesOpen(false);
   return <main className="sm-home">
     <header className="sm-nav">
-      <a className="sm-brand" href="#top" aria-label="SALARYMAN home"><span className="sm-mark">S</span><span><strong>SALARYMAN</strong><small>by Picasso AI · business OS</small></span></a>
+      <a className="sm-brand" href="#top" aria-label="SALARYMAN home"><img className="sm-mark" src="/__mockup/images/salaryman-home/icon-192.png" alt="" /><span><strong>SALARYMAN</strong><small>by Picasso AI · business OS</small></span></a>
       <nav className="sm-navlinks" aria-label="Main navigation">
         <div className="sm-feature-wrap"><button className="sm-feature-btn" onClick={() => setFeaturesOpen(v => !v)} aria-expanded={featuresOpen}>Features <ChevronDown size={14} /></button>{featuresOpen && <FeatureMenu onSelect={closeFeatures} />}</div>
         <a href="#workspace">Web workspace</a><a className="sm-pablo" href="#pablo">Meet Pablo ↗</a>
