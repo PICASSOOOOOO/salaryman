@@ -260,6 +260,100 @@
 .leaf-one { bottom: 20%; left: 7%; transform: rotate(-30deg); }
 .leaf-two { top: 25%; right: 6%; transform: rotate(35deg); }
 
+.desktop-download-stage {
+  min-height: 0;
+  padding: 12px;
+  border-color: rgba(211, 249, 177, .28);
+  background: #071312;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .28);
+}
+
+.desktop-game-capture {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(211, 249, 177, .32);
+  border-radius: 18px;
+  background: #0b1919;
+}
+
+.desktop-game-capture-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1180 / 720;
+  object-fit: cover;
+}
+
+.desktop-game-capture-label {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  padding: 7px 9px;
+  color: #d8f4b2;
+  background: rgba(7, 19, 18, .82);
+  border: 1px solid rgba(211, 249, 177, .28);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .1em;
+}
+
+.desktop-game-capture-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.desktop-game-capture-strip figure {
+  min-width: 0;
+  margin: 0;
+  padding: 7px;
+  border: 1px solid rgba(211, 249, 177, .2);
+  border-radius: 10px;
+  background: rgba(234, 245, 230, .06);
+}
+
+.desktop-game-capture-strip img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1180 / 720;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.desktop-game-capture-strip figcaption {
+  padding: 8px 2px 1px;
+  color: rgba(234, 245, 230, .58);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .04em;
+}
+
+.desktop-download-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 17px;
+  color: rgba(234, 245, 230, .5);
+  border: 1px solid rgba(234, 245, 230, .16);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.desktop-download-platform-locked {
+  display: inline-flex;
+  margin-top: 24px;
+  color: rgba(234, 245, 230, .35);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
 .desktop-download-platforms {
   padding: 76px clamp(20px, 7vw, 110px) 92px;
   background: rgba(3, 22, 22, .55);
@@ -302,6 +396,8 @@
   .desktop-download-hero,
   .desktop-download-connection { grid-template-columns: 1fr; }
   .desktop-download-stage { min-height: 350px; }
+  .desktop-download-stage { padding: 8px; }
+  .desktop-game-capture-strip { gap: 7px; }
   .desktop-download-section-heading { align-items: flex-start; flex-direction: column; }
   .desktop-download-platform-grid { grid-template-columns: 1fr; }
   .desktop-download-footer { align-items: flex-start; flex-direction: column; }

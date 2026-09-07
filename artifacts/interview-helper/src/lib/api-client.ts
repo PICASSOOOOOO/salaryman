@@ -100,6 +100,7 @@ const SESSION_EXPIRY_SKIP_PATHS =
 // (genuinely protected) page still triggers the return-to-sign-in bounce.
 const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/tower",
+  "/desktop",
   "/phone",
   "/pablo",
   "/immigration",
