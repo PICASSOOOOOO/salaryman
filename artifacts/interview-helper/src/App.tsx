@@ -292,6 +292,10 @@ function AppShell() {
   const isRootRoute = pathname === "/";
   const isDeviceLinkRoute = pathname === "/device-link";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+  const isPabloSurface = isRootRoute || pathname === "/pablo" || pathname.startsWith("/pablo/");
+  const isSpecialDarkSurface = ["/theater", "/meet", "/immigration", "/device-link", "/sms-opt-in", "/profile/admin/billboards"]
+    .some(r => pathname === r || pathname.startsWith(r + "/"));
+  const isLightWorkspace = !isPabloSurface && !isSpecialDarkSurface;
   const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
@@ -414,6 +418,13 @@ function AppShell() {
       document.body.classList.remove("game-route");
     };
   }, [isGameRoute]);
+
+  useEffect(() => {
+    document.body.classList.toggle("workspace-light", isLightWorkspace);
+    return () => {
+      document.body.classList.remove("workspace-light");
+    };
+  }, [isLightWorkspace]);
 
   // Hold protected paths behind a loading screen until auth resolves (see
   // holdForAuth above) so a logged-out deep link can never flash the page.

@@ -906,6 +906,242 @@ header {
   }
 }
 
+/* ─── Light control-plane surfaces ──────────────────────────────────────────
+   The browser is the practical workspace: white on both phone and desktop.
+   The native/game client owns the black/green world aesthetic, so it stays
+   isolated from this rule set instead of making every business page feel like
+   a game screen. Pablo and the deliberately immersive routes keep their own
+   surfaces through AppShell's route class. */
+body.workspace-light {
+  color-scheme: light;
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(151 29% 16%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(151 29% 16%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(151 29% 16%);
+  --color-border: hsl(148 28% 85%);
+  --color-input: hsl(0 0% 100%);
+  --color-ring: hsl(151 61% 39%);
+  --color-primary: hsl(151 61% 39%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(145 43% 95%);
+  --color-secondary-foreground: hsl(151 22% 34%);
+  --color-muted: hsl(145 26% 96%);
+  --color-muted-foreground: hsl(151 13% 46%);
+  --color-accent: hsl(151 61% 39%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(2 61% 56%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --salary-ink: 16 43 32;
+  --salary-panel: 247 251 248;
+  --salary-paper: 255 255 255;
+  --salary-copper: 29 143 88;
+  --salary-signal: 69 220 139;
+  background: #fff;
+  color: #102b20;
+  background-image: none;
+}
+
+body.workspace-light #root {
+  background: #fff;
+  color: #102b20;
+}
+
+body.workspace-light main,
+body.workspace-light [class~="min-h-screen"],
+body.workspace-light [class~="min-h-\[100dvh\]"] {
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+body.workspace-light .desktop-download {
+  background: #fff;
+}
+
+body.workspace-light .app-chrome {
+  background: #fff;
+}
+
+body.workspace-light .app-control {
+  color: #49675a;
+  background: #fff;
+  border-color: #c7e1d0;
+}
+
+body.workspace-light .app-control:hover {
+  color: #187c4e;
+  background: #effaf3;
+  border-color: #8cc9a5;
+}
+
+body.workspace-light .bg-background {
+  background-color: #fff !important;
+}
+
+body.workspace-light .text-foreground {
+  color: #102b20 !important;
+}
+
+body.workspace-light .text-muted-foreground {
+  color: #648073 !important;
+}
+
+body.workspace-light .border-border {
+  border-color: #cfe4d6 !important;
+}
+
+body.workspace-light .bg-\[\#09090b\],
+body.workspace-light .bg-\[\#0a0a0b\],
+body.workspace-light .bg-\[\#0a0a0c\],
+body.workspace-light .bg-\[\#0d0e12\] {
+  background-color: #fff !important;
+}
+
+body.workspace-light .text-zinc-100,
+body.workspace-light .text-zinc-200,
+body.workspace-light .text-zinc-300 {
+  color: #102b20 !important;
+}
+
+body.workspace-light .text-zinc-400,
+body.workspace-light .text-zinc-500,
+body.workspace-light .text-zinc-600,
+body.workspace-light .text-zinc-700 {
+  color: #648073 !important;
+}
+
+body.workspace-light .border-white\/\[0\.04\],
+body.workspace-light .border-white\/\[0\.05\],
+body.workspace-light .border-white\/\[0\.06\],
+body.workspace-light .border-white\/\[0\.08\],
+body.workspace-light .border-white\/\[0\.1\] {
+  border-color: #cfe4d6 !important;
+}
+
+body.workspace-light .bg-white\/5,
+body.workspace-light .bg-white\/\[0\.04\],
+body.workspace-light .bg-white\/\[0\.05\],
+body.workspace-light .bg-white\/\[0\.07\] {
+  background-color: #f2faf5 !important;
+}
+
+body.workspace-light .hover\:bg-white\/5:hover,
+body.workspace-light .hover\:bg-white\/\[0\.05\]:hover,
+body.workspace-light .hover\:bg-white\/\[0\.07\]:hover {
+  background-color: #edf9f1 !important;
+}
+
+/* Shared chrome and the two browser handoff surfaces use the same green
+   signal as the native game without turning the workspace into a dark theme. */
+body.workspace-light .mobile-app-nav,
+body.workspace-light .mobile-app-subnav,
+body.workspace-light .desktop-app-nav {
+  color: #102b20 !important;
+  border-color: #cfe4d6 !important;
+}
+
+body.workspace-light .mobile-primary-item.is-active,
+body.workspace-light .mobile-subnav-item.is-active,
+body.workspace-light .mobile-more-item.is-active {
+  color: #187c4e !important;
+  background: #eaf8ef !important;
+  border-color: #bde0c9 !important;
+}
+
+body.workspace-light .mobile-account-button:active,
+body.workspace-light .mobile-back-button:active,
+body.workspace-light .mobile-more-item:active {
+  color: #187c4e !important;
+  background: #edf9f1 !important;
+}
+
+body.workspace-light .desktop-app-nav .text-zinc-100,
+body.workspace-light .desktop-app-nav .text-zinc-300 {
+  color: #102b20 !important;
+}
+
+body.workspace-light .desktop-app-nav .text-zinc-400,
+body.workspace-light .desktop-app-nav .text-zinc-500,
+body.workspace-light .desktop-app-nav .text-zinc-600,
+body.workspace-light .desktop-app-nav .text-zinc-700 {
+  color: #648073 !important;
+}
+
+body.workspace-light .mobile-terminal-brand,
+body.workspace-light .mobile-terminal-menu-button,
+body.workspace-light .mobile-terminal-content h2,
+body.workspace-light .mobile-terminal-business-link {
+  color: #102b20;
+}
+
+body.workspace-light .mobile-terminal-header,
+body.workspace-light .mobile-terminal-menu-button,
+body.workspace-light .mobile-terminal-business-link {
+  border-color: #cfe4d6;
+}
+
+body.workspace-light .mobile-terminal-menu-button svg,
+body.workspace-light .mobile-terminal-eyebrow,
+body.workspace-light .mobile-terminal-feature-label svg,
+body.workspace-light .mobile-terminal-business-link > svg {
+  color: #187c4e;
+}
+
+body.workspace-light .mobile-terminal-menu-button:hover,
+body.workspace-light .mobile-terminal-menu-item:hover {
+  background: #edf9f1;
+  color: #187c4e;
+}
+
+body.workspace-light .mobile-terminal-menu-icon,
+body.workspace-light .mobile-terminal-business-icon {
+  color: #187c4e;
+  background: #eaf8ef;
+}
+
+body.workspace-light .mobile-terminal-feature-comms,
+body.workspace-light .mobile-terminal-feature-phone {
+  background: #effaf3;
+  border-color: #bde0c9;
+}
+
+body.workspace-light .mobile-terminal-feature-phone .mobile-terminal-feature-icon,
+body.workspace-light .mobile-terminal-feature-icon {
+  color: #187c4e;
+}
+
+body.workspace-light .desktop-download-mark {
+  color: #187c4e;
+  background: #eaf8ef;
+}
+
+body.workspace-light .desktop-download-eyebrow,
+body.workspace-light .desktop-download-hero h1 em,
+body.workspace-light .desktop-download-nav a:hover,
+body.workspace-light .desktop-download-footer a:hover {
+  color: #187c4e;
+}
+
+body.workspace-light .desktop-download-primary {
+  background: #187c4e;
+  box-shadow: 0 12px 30px rgba(24, 124, 78, .16);
+}
+
+body.workspace-light .desktop-download-primary:hover {
+  background: #12623d;
+}
+
+body.workspace-light .desktop-download-secondary {
+  color: #187c4e;
+  border-color: #a8d6b8;
+}
+
+body.workspace-light .desktop-download-secondary:hover {
+  border-color: #75bd91;
+  background: #edf9f1;
+}
+
 .app-bottom-safe {
   padding-bottom: var(--app-safe-bottom);
 }

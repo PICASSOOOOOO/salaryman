@@ -1883,5 +1883,14 @@
     "changes": [
       "Update version and refactor professional home styles"
     ]
+  },
+  {
+    "version": "v.22.4.2319",
+    "date": "2026-09-07",
+    "commitHash": "d1a7866415da6cab268298648fdfc5b2b60f9338",
+    "changes": [
+      "Update Godot office client logic and documentation",
+      "Update version number and changelog for release"
+    ]
   }
 ]
