@@ -83,26 +83,42 @@ export default function ProfessionalHome() {
 }
 
 function DownloadPanel({ onClose }: { onClose: () => void }) {
+  const gameplayViews = [
+    { label: "WORKFLOOR", src: "/__mockup/images/salaryman-home/pygame/operations.png", alt: "Bright operations workfloor from the Pygame desktop client" },
+    { label: "TOWER LOBBY", src: "/__mockup/images/salaryman-home/pygame/lobby.png", alt: "Pygame tower lobby" },
+    { label: "RECREATION", src: "/__mockup/images/salaryman-home/pygame/recreation.png", alt: "Pygame recreation room" },
+    { label: "EXECUTIVE", src: "/__mockup/images/salaryman-home/pygame/executive.png", alt: "Pygame executive office" },
+  ];
+  const [activeView, setActiveView] = useState(0);
+  const activeGameplay = gameplayViews[activeView];
   return <div className="sm-download-backdrop" role="presentation" onMouseDown={onClose}>
     <section className="sm-download-panel" role="dialog" aria-modal="true" aria-labelledby="download-title" onMouseDown={event => event.stopPropagation()}>
       <button className="sm-download-close" type="button" onClick={onClose} aria-label="Close download panel"><X size={18} /></button>
       <div className="sm-download-copy">
-        <div className="sm-kicker"><span className="sm-status" /> A brighter way to work</div>
-        <h2 id="download-title">Bring the living office to your desktop.</h2>
-        <p>Start in the bright solar-punk workday. Move between rooms, direct your team, and watch the office respond over time.</p>
+        <div className="sm-kicker"><span className="sm-status" /> A brighter way to play</div>
+        <h2 id="download-title">Start inside the living office.</h2>
+        <p>Walk the tower, direct the shift, and watch a bright solar-punk workplace change around you. This is the game—not another web dashboard.</p>
+        <div className="sm-game-loop">
+          <span><b>01</b> Walk the tower</span>
+          <span><b>02</b> Direct the shift</span>
+          <span><b>03</b> Watch it evolve</span>
+        </div>
+        <div className="sm-download-label">Choose your desktop download</div>
         <div className="sm-download-actions">
           <a className="sm-download-choice" href="#download-windows"><strong>Windows</strong><span>Desktop client · x64</span><ArrowRight size={16} /></a>
           <a className="sm-download-choice" href="#download-macos"><strong>macOS</strong><span>Apple Silicon / Intel</span><ArrowRight size={16} /></a>
           <a className="sm-download-choice sm-download-choice-active" href="#download-linux"><strong>Linux</strong><span>Download the available bundle</span><ArrowRight size={16} /></a>
         </div>
-        <small className="sm-download-note">Pair once in the browser. Your office state stays server-owned and secure.</small>
+        <small className="sm-download-note">The browser stays the control plane. The downloaded client is where the office comes alive.</small>
       </div>
       <div className="sm-download-gallery" aria-label="Pygame desktop gameplay previews">
-        <figure className="sm-download-featured"><img src="/__mockup/images/salaryman-home/pygame/operations.png" alt="Bright operations workfloor from the Pygame desktop client" /><figcaption><b>DAY 01 · WORKFLOOR</b><span>Start bright. Build something that lasts.</span></figcaption></figure>
+        <figure className="sm-download-featured"><img src={activeGameplay.src} alt={activeGameplay.alt} /><figcaption><b>DAY 01 · {activeGameplay.label}</b><span>Start bright. Build something that lasts.</span></figcaption></figure>
         <div className="sm-download-thumbs">
-          <img src="/__mockup/images/salaryman-home/pygame/lobby.png" alt="Pygame tower lobby" />
-          <img src="/__mockup/images/salaryman-home/pygame/recreation.png" alt="Pygame recreation room" />
-          <img src="/__mockup/images/salaryman-home/pygame/executive.png" alt="Pygame executive office" />
+          {gameplayViews.map((view, index) => (
+            <button className={`sm-download-thumb ${index === activeView ? "is-active" : ""}`} type="button" key={view.label} onClick={() => setActiveView(index)} aria-label={`Show ${view.label.toLowerCase()} gameplay`}>
+              <img src={view.src} alt="" />
+            </button>
+          ))}
         </div>
       </div>
     </section>

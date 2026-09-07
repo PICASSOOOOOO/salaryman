@@ -11,4 +11,4 @@ Homepage product imagery must be captured directly from the current downloadable
 
 The user confirmed the clean, Pygame-led responsive homepage structure and specifically approved its white daylight base, but rejected green as the dominant homepage accent. Use ocean blue/blue-teal with restrained saffron and coral.
 
-Every download-related surface must bridge into the bright, gamified solar-punk Pygame experience using current runtime captures. Never switch download CTAs or panels into the old dark CCTV/browser-game visual language.
+Every download-related surface must bridge into the bright, gamified solar-punk Pygame experience using current runtime captures. It should sell the game—walking the tower, directing shifts, and watching the workplace evolve—not advertise the online business-tool modes. Never switch download CTAs or panels into the old dark CCTV/browser-game visual language.
