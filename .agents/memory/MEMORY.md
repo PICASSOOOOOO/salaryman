@@ -16,6 +16,7 @@
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Poison gas + escort](poison-gas-escort.md) — fog drains STAMINA (g.energy), not HP; energy=0 → blackout→hospital (loop-local lastPassedOut); own state not shared `poisoned`; gasmask/escort to roam; damage gated on `!frozenRef`.
 - [Twilio phone tests](twilio-phone-tests.md) — vitest+supertest in api-server; async vi.mock factory + shared mockState; twilio mocked (no real calls); real dev DB scoped by synthetic userId, serial files.
+- [Telephony callback owner resolution](telephony-owner-resolution.md) — active persisted destination-number ownership outranks legacy Twilio user hints; ambiguous/inactive mappings fail closed.
 - [Office player avatar](office-player-avatar.md) — avatar must be OUT of NPC FSM (isPlayer short-circuit) or it auto-wanders; roster polls must NOT be init-effect deps (rebuild teleports player); removeAgent is deferred despawn, use cancelDespawn on re-add.
 - [Global UI sound coalescing](global-ui-sound-coalescing.md) — app-wide capture-phase click sound must DEFER (setTimeout 0 + sound-epoch check), not play immediately, or it double-beeps with handlers that play their own sound.
 - [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.
@@ -151,9 +152,6 @@
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
-- [Pablo desktop header layering](pablo-desktop-header-layering.md) — fullscreen controls must reserve the desktop alpha-warning strip or they render behind its higher z-index.
-- [Desktop release packaging](desktop-release-packaging.md) — exclude unused setuptools hooks; Linux ships the icon separately and needs a clean-extraction launcher smoke test.
-- [Desktop download route](desktop-download-route.md) — package workflows may run below repo root; fixed release downloads need root/package path resolution.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Pygame solar-punk decay arc](pygame-solarpunk-decay.md) — desktop gameplay starts bright, lively, and gamified; darkness and deterioration emerge only as the office/world decays.
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
