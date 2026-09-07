@@ -59,7 +59,6 @@ export const MODULES: Module[] = [
       { id: 'office-property', path: '/store/realty?from=office', label: 'PROPERTY', boomerLabel: 'PROPERTY', codename: 'PROPERTY', icon: Landmark },
       { id: 'office-agents', path: '/bots', label: 'AGENTS', boomerLabel: 'AGENTS', codename: 'AGENTS', icon: Bot },
       { id: 'office-business', path: '/business', label: 'BUSINESS OPS', boomerLabel: 'BUSINESS OPS', codename: 'BUSINESS OPS', icon: Briefcase },
-      { id: 'office-character', path: '/game/character', label: 'SALARYMAN', boomerLabel: 'CHARACTER', codename: 'IDENTITY', icon: User },
       { id: 'office-settings', path: '/game/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'OPTIONS', icon: Settings },
     ],
   },
