@@ -34,7 +34,7 @@ describe("frontend startup boundaries", () => {
     const landing = source("pages/ProfessionalHome.tsx");
     expect(app).toContain('lazy(() => import("@/pages/ProfessionalHome"))');
     expect(landing).not.toContain("<video");
-    expect(landing).not.toContain("salaryman-trailer");
+    expect(landing).not.toContain(".mp4");
     expect(landing).toContain("Three paths.");
   });
 
