@@ -91,19 +91,31 @@ class SolarPunkRenderer:
 
     def draw_tower(self, state: OfficeState, scene: TowerScene) -> None:
         """Render the first physical tower slice without owning simulation state."""
-        self.screen.fill((6, 23, 34))
+        # This is deliberately a bright, legible "dollhouse" plan rather than a
+        # second simulation.  World positions and interaction ownership remain in
+        # TowerScene; this method only turns those coordinates into a place.
+        self.screen.fill((218, 238, 229))
         self.draw_tower_header(state, scene)
         map_rect = pygame.Rect(28, 104, self.width - 56, 488)
-        self.panel(map_rect, (11, 44, 57), (48, 122, 132), radius=18, width=2)
-        self.text("SHADOW TOWER / WALKABLE PROTOTYPE", (52, 124), self.font_lg, Palette.GLASS_BRIGHT)
-        self.text("WASD / ARROWS MOVE   E INTERACT   1/2/3 ROOMS   TAB DASHBOARD   SPACE PAUSE", (54, 152), self.font_mono, (160, 202, 194))
+        self.panel(map_rect, (249, 246, 226), (124, 181, 169), radius=18, width=2)
+        self.text("SUNLIT TOWER / FLOOR 01", (52, 122), self.font_lg, Palette.INK)
+        self.text("WASD / ARROWS MOVE   E INTERACT   1/2/3 ROOMS   TAB DASHBOARD   SPACE PAUSE", (54, 148), self.font_mono, Palette.MUTED)
 
-        world = pygame.Rect(70, 182, self.width - 140, 370)
-        self.panel(world, (8, 31, 46), (40, 87, 101), radius=12)
+        world = pygame.Rect(70, 174, self.width - 140, 378)
+        self.panel(world, (224, 232, 216), (151, 188, 169), radius=12, width=2)
         scale_x = world.width / scene.width
         scale_y = world.height / scene.height
 
-        for room in scene.rooms:
+        # A soft water court and perimeter planting establish an optimistic,
+        # inhabited building before furnishing the actual room bounds.
+        court = pygame.Rect(world.x + world.width // 2 - 105, world.y + 92, 210, 148)
+        pygame.draw.ellipse(self.screen, (140, 209, 224), court)
+        pygame.draw.ellipse(self.screen, (202, 241, 238), court.inflate(-16, -18))
+        for x in range(world.x + 30, world.right - 20, 74):
+            self._draw_planter(x, world.y + 24)
+            self._draw_planter(x, world.bottom - 24)
+
+        for room in (room for room in scene.rooms if room.id != "public"):
             x, y, width, height = room.bounds
             rect = pygame.Rect(
                 world.x + int(x * scale_x),
@@ -111,50 +123,123 @@ class SolarPunkRenderer:
                 max(20, int(width * scale_x)),
                 max(20, int(height * scale_y)),
             )
-            fill = room.accent if room.id == scene.current_room else tuple(max(8, color // 2) for color in room.accent)
-            self.panel(rect, fill, (90, 155, 151), radius=7)
-            self.text(room.label, (rect.x + 8, rect.y + 7), self.font_sm, Palette.GLASS_BRIGHT)
+            active = room.id == scene.current_room
+            self._draw_room_shell(rect, room.id, room.label, room.accent, active)
 
         for item in scene.objects.objects:
             if item.room not in {scene.current_room, "public"}:
                 continue
             ix = world.x + int(item.position[0] * scale_x)
             iy = world.y + int(item.position[1] * scale_y)
-            color = Palette.SUN if item == scene.nearby_object else Palette.SEAFOAM
-            if item.kind == "window":
-                pygame.draw.rect(self.screen, (104, 179, 201), (ix - 7, iy - 3, 14, 6), border_radius=2)
-            elif item.kind == "arcade":
-                pygame.draw.rect(self.screen, color, (ix - 8, iy - 10, 16, 20), border_radius=3)
-                pygame.draw.rect(self.screen, (19, 52, 66), (ix - 5, iy - 6, 10, 7))
-            else:
-                pygame.draw.circle(self.screen, color, (ix, iy), 8)
+            self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object)
             if item == scene.nearby_object:
-                self.text(item.label, (ix + 12, iy - 8), self.font_sm, Palette.SUN)
+                label = self.font_sm.render(item.label, True, Palette.INK)
+                badge = label.get_rect(midleft=(ix + 17, iy - 15))
+                badge.inflate_ip(10, 6)
+                self.panel(badge, (255, 246, 194), Palette.SUN, radius=5, width=2)
+                self.screen.blit(label, (badge.x + 5, badge.y + 3))
 
         px = world.x + int(scene.player_position[0] * scale_x)
         py = world.y + int(scene.player_position[1] * scale_y)
-        pygame.draw.circle(self.screen, Palette.CORAL, (px, py), 11)
-        pygame.draw.circle(self.screen, Palette.GLASS_BRIGHT, (px, py), 4)
+        self._draw_player(px, py)
 
         self.draw_tower_footer(state, scene)
 
+    def _draw_room_shell(
+        self, rect: pygame.Rect, room_id: str, label: str, accent: tuple[int, int, int], active: bool
+    ) -> None:
+        """Draw architectural surfaces for a room without changing its bounds."""
+        fill = (255, 252, 235) if active else (240, 240, 224)
+        self.panel(rect, fill, Palette.SUN if active else (157, 183, 167), radius=8, width=3 if active else 1)
+        # Pale floor boards make the plan read as architecture, not a wireframe.
+        for y in range(rect.y + 25, rect.bottom - 5, 14):
+            pygame.draw.line(self.screen, (226, 224, 204), (rect.x + 7, y), (rect.right - 7, y), 1)
+        self.text(label, (rect.x + 9, rect.y + 7), self.font_sm, Palette.INK)
+        if room_id == "lobby":
+            pygame.draw.rect(self.screen, (132, 204, 215), (rect.x + 14, rect.bottom - 25, rect.width - 28, 10), border_radius=5)
+            self._draw_planter(rect.x + 24, rect.y + 35)
+            self._draw_planter(rect.right - 24, rect.y + 35)
+        elif room_id == "recreation":
+            for x in range(rect.x + 30, rect.right - 15, 55):
+                pygame.draw.circle(self.screen, (226, 170, 91), (x, rect.y + 28), 8)
+                pygame.draw.circle(self.screen, (255, 239, 181), (x - 2, rect.y + 26), 3)
+        elif room_id == "executive":
+            pygame.draw.rect(self.screen, (150, 207, 220), (rect.x + 12, rect.y + 29, rect.width - 24, 12), border_radius=4)
+            self._draw_planter(rect.x + 25, rect.bottom - 25)
+            self._draw_planter(rect.right - 25, rect.bottom - 25)
+
+    def _draw_planter(self, x: int, y: int) -> None:
+        pygame.draw.ellipse(self.screen, (185, 154, 104), (x - 10, y - 4, 20, 9))
+        pygame.draw.circle(self.screen, (84, 157, 87), (x - 5, y - 9), 6)
+        pygame.draw.circle(self.screen, (109, 184, 92), (x + 3, y - 11), 6)
+        pygame.draw.circle(self.screen, (67, 137, 82), (x + 7, y - 6), 5)
+
+    def _draw_tower_object(self, kind: str, x: int, y: int, nearby: bool) -> None:
+        """Small but recognizable procedural silhouettes for every ObjectKind."""
+        outline = Palette.SUN if nearby else (47, 96, 91)
+        if nearby:
+            pygame.draw.circle(self.screen, (255, 229, 132), (x, y), 17)
+        if kind == "window":
+            pygame.draw.rect(self.screen, (91, 181, 209), (x - 12, y - 6, 24, 12), border_radius=2)
+            pygame.draw.line(self.screen, (230, 249, 244), (x, y - 5), (x, y + 5), 1)
+        elif kind in ("elevator", "stairs"):
+            pygame.draw.rect(self.screen, (121, 150, 151), (x - 10, y - 12, 20, 24), border_radius=2)
+            if kind == "elevator":
+                pygame.draw.line(self.screen, (236, 239, 220), (x, y - 10), (x, y + 10), 2)
+            else:
+                for dy in range(-7, 9, 5):
+                    pygame.draw.line(self.screen, (239, 236, 214), (x - 6, y + dy), (x + 6, y + dy), 1)
+        elif kind in ("arcade", "vending_machine", "atm", "crt_terminal"):
+            pygame.draw.rect(self.screen, (57, 101, 105), (x - 9, y - 13, 18, 25), border_radius=3)
+            pygame.draw.rect(self.screen, (117, 205, 210) if kind != "vending_machine" else (238, 185, 89), (x - 6, y - 9, 12, 8), border_radius=1)
+            pygame.draw.circle(self.screen, (238, 244, 215), (x, y + 6), 2)
+        elif kind in ("desk", "chair"):
+            if kind == "desk":
+                pygame.draw.rect(self.screen, (172, 119, 74), (x - 13, y - 6, 26, 12), border_radius=3)
+                pygame.draw.line(self.screen, (108, 77, 56), (x - 8, y + 6), (x - 8, y + 11), 2)
+                pygame.draw.line(self.screen, (108, 77, 56), (x + 8, y + 6), (x + 8, y + 11), 2)
+            else:
+                pygame.draw.circle(self.screen, (83, 136, 146), (x, y - 3), 8)
+                pygame.draw.line(self.screen, (52, 89, 91), (x, y + 4), (x, y + 11), 3)
+        elif kind in ("telephone", "pay_phone"):
+            pygame.draw.rect(self.screen, (224, 117, 87) if kind == "pay_phone" else (67, 126, 113), (x - 9, y - 7, 18, 14), border_radius=4)
+            pygame.draw.arc(self.screen, (246, 239, 207), (x - 7, y - 10, 14, 10), 3.3, 6.1, 2)
+        elif kind == "tv":
+            pygame.draw.rect(self.screen, (60, 88, 86), (x - 12, y - 8, 24, 16), border_radius=3)
+            pygame.draw.rect(self.screen, (125, 205, 213), (x - 9, y - 5, 18, 10))
+            pygame.draw.line(self.screen, (60, 88, 86), (x - 4, y + 8), (x - 7, y + 12), 2)
+        pygame.draw.circle(self.screen, outline, (x, y), 15, 2 if nearby else 1)
+
+    def _draw_player(self, x: int, y: int) -> None:
+        """A friendly procedural character, with a clear footprint and facing."""
+        pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
+        pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)  # hair
+        pygame.draw.circle(self.screen, (216, 151, 107), (x, y - 2), 7)  # face
+        pygame.draw.rect(self.screen, Palette.CORAL, (x - 7, y + 5, 14, 12), border_radius=5)
+        pygame.draw.line(self.screen, (45, 75, 76), (x - 4, y + 15), (x - 5, y + 20), 3)
+        pygame.draw.line(self.screen, (45, 75, 76), (x + 4, y + 15), (x + 5, y + 20), 3)
+
     def draw_tower_header(self, state: OfficeState, scene: TowerScene) -> None:
-        self.text("SALARYMAN", (34, 24), self.font_xl, Palette.GLASS_BRIGHT)
-        self.text("PHYSICAL OFFICE SIMULATION", (36, 63), self.font_mono, (151, 190, 184))
-        self.text(f"FLOOR {scene.current_floor:02d}", (540, 34), self.font_lg, Palette.SUN)
-        self.text(f"ƒ{state.funds:,.2f}", (760, 28), self.font_lg, Palette.SEAFOAM)
-        self.text(state.time_label, (940, 33), self.font_sm, Palette.GLASS)
+        header = pygame.Rect(28, 18, self.width - 56, 72)
+        self.panel(header, (255, 252, 235), (140, 190, 168), radius=16, width=2)
+        self.text("SALARYMAN", (48, 30), self.font_xl, Palette.INK)
+        self.text("PHYSICAL OFFICE SIMULATION", (50, 64), self.font_mono, Palette.MUTED)
+        self.text(f"FLOOR {scene.current_floor:02d}", (540, 37), self.font_lg, Palette.SUN)
+        self.text(f"ƒ{state.funds:,.2f}", (760, 33), self.font_lg, Palette.SEAFOAM)
+        self.text(state.time_label, (940, 39), self.font_sm, Palette.MUTED)
 
     def draw_tower_footer(self, state: OfficeState, scene: TowerScene) -> None:
         footer = pygame.Rect(28, 610, self.width - 56, 78)
-        self.panel(footer, (10, 49, 58), (48, 122, 132), radius=14, width=2)
+        self.panel(footer, (255, 252, 235), (140, 190, 168), radius=14, width=2)
         nearby = scene.nearby_object
         if nearby:
-            self.text(f"[E] {nearby.prompt}", (52, 628), self.font_md, Palette.SUN)
-            self.text(f"ROOM  {scene.room.label}  ·  OBJECT  {nearby.label}", (52, 656), self.font_mono, Palette.GLASS)
+            prompt = pygame.Rect(46, 622, min(430, self.width - 550), 28)
+            self.panel(prompt, (255, 242, 190), Palette.SUN, radius=8, width=2)
+            self.text(f"[E] {nearby.prompt}", (58, 630), self.font_md, Palette.INK)
+            self.text(f"ROOM  {scene.room.label}  ·  OBJECT  {nearby.label}", (52, 658), self.font_mono, Palette.MUTED)
         else:
-            self.text("WALK CLOSER TO A PHYSICAL OBJECT", (52, 628), self.font_md, Palette.GLASS_BRIGHT)
-            self.text(f"ROOM  {scene.room.label}", (52, 656), self.font_mono, Palette.GLASS)
+            self.text("WALK CLOSER TO A PHYSICAL OBJECT", (52, 628), self.font_md, Palette.INK)
+            self.text(f"ROOM  {scene.room.label}", (52, 656), self.font_mono, Palette.MUTED)
         self.text(state.notice, (760, 644), self.font_mono, Palette.SEAFOAM)
 
     def draw_ecosystem_backdrop(self) -> None:

@@ -46,7 +46,9 @@ def run(argv: list[str] | None = None) -> int:
     renderer = SolarPunkRenderer(screen)
     scene = build_tower_scene()
     coffee_rects: dict[int, pygame.Rect] = {}
-    spatial_mode = False
+    # The packaged client opens directly into the playable office. The business
+    # dashboard remains one Tab press away.
+    spatial_mode = True
     previous_day = state.day
     bridge = OfficeBridge(args.bridge_host, args.bridge_port)
     if not args.no_bridge:
@@ -63,14 +65,6 @@ def run(argv: list[str] | None = None) -> int:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_TAB:
                     spatial_mode = not spatial_mode
-                elif spatial_mode and event.key in (pygame.K_w, pygame.K_UP):
-                    scene.move(0, -350)
-                elif spatial_mode and event.key in (pygame.K_s, pygame.K_DOWN):
-                    scene.move(0, 350)
-                elif spatial_mode and event.key in (pygame.K_a, pygame.K_LEFT):
-                    scene.move(-350, 0)
-                elif spatial_mode and event.key in (pygame.K_d, pygame.K_RIGHT):
-                    scene.move(350, 0)
                 elif spatial_mode and event.key == pygame.K_e:
                     scene.interact(state)
                 elif spatial_mode and event.key == pygame.K_1:
@@ -135,7 +129,22 @@ def run(argv: list[str] | None = None) -> int:
                 bridge.send_result(command, result)
             if not bridge.connected:
                 scene.set_motion_input(0.0, 0.0)
-            scene.update_motion(delta_seconds)
+
+        # Pygame uses the same continuous movement path as the Godot client.
+        # Only the focused Pygame window writes keyboard input, so a connected
+        # Godot renderer remains free to drive the authoritative scene.
+        if spatial_mode and pygame.key.get_focused():
+            pressed = pygame.key.get_pressed()
+            move_x = int(pressed[pygame.K_d] or pressed[pygame.K_RIGHT]) - int(
+                pressed[pygame.K_a] or pressed[pygame.K_LEFT]
+            )
+            move_y = int(pressed[pygame.K_s] or pressed[pygame.K_DOWN]) - int(
+                pressed[pygame.K_w] or pressed[pygame.K_UP]
+            )
+            scene.set_motion_input(move_x, move_y)
+        elif args.no_bridge or not bridge.connected:
+            scene.set_motion_input(0.0, 0.0)
+        scene.update_motion(delta_seconds)
         state.update(delta_seconds)
         if not args.no_bridge:
             bridge_elapsed += delta_seconds

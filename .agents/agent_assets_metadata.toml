@@ -1319,3 +1319,17 @@ mtime_ms = 1788716857754
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7c094129-e1d2-454a-afd7-5066af2bd757/a2d79a4e-6671-44aa-b096-83d39418bb7b"
 storage_version_token = "1788716893142748"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Nb0S3YMmW0V8HqDNeCshX"
+uri = "file://screenshots/salaryman-pygame-gameplay.mp4"
+type = "video"
+title = "SALARYMAN Pygame Gameplay — Review Build"
+description = "Eight-second authentic capture from the real Pygame simulation and renderer. Review this visual direction before it is approved for promotion."
+logical_id = "daafc029-bf74-478f-b468-d4bcc975b5aa"
+content_hash = "sha256:d12e4e0c4243528c27d63d390c903195307940d1910022861fdc51f253e004f1"
+size = 58103
+mtime_ms = 1788756845179
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/daafc029-bf74-478f-b468-d4bcc975b5aa/7fa8eb65-8d1e-4601-9f16-a3c3744a302e"
+storage_version_token = "1788756871659769"
+content_type = "video/mp4"
