@@ -113,6 +113,7 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
 
   const led = ledger[0];
   const fiatTotal = accounts.filter((a) => a.currency === "FIAT").reduce((s, a) => s + (a.balance || 0), 0);
+  const activeUsd = accounts.filter((a) => a.currency === "USD").reduce((s, a) => s + (a.balance || 0), 0);
   const quarantineFiat = led?.quarantineFiat ?? 0;
   const earnedFiat = Math.max(0, fiatTotal - quarantineFiat);
 
@@ -248,6 +249,7 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
     },
     bank: {
       accounts: accounts.map((a) => ({ id: a.id, kind: a.kind, label: a.label, balance: a.balance, currency: a.currency })),
+      activeUsd,
       fiatTotal,
       quarantineFiat,
       earnedFiat,

@@ -73,11 +73,27 @@ class SolarPunkRenderer:
         self.refresh_rect = pygame.Rect(0, 0, 0, 0)
         self.candidate_rects: dict[int, pygame.Rect] = {}
         self._pixel_assets: dict[str, pygame.Surface] = {}
+        self.pablo_status = "PABLO CORE / OFFLINE"
+        self.pablo_status_color = Palette.MATRIX_DIM
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
         self._motion_clock = 0.0
         self._asset_root = self._find_pixel_assets()
+
+    def set_pablo_status(self, status: dict[str, object]) -> None:
+        model = str(status.get("model") or "offline").upper()
+        active = status.get("active") is True
+        verified = isinstance(status.get("astra"), dict) and status["astra"].get("verified") is True
+        if active and verified:
+            self.pablo_status = f"PABLO CORE / {model} VERIFIED"
+            self.pablo_status_color = Palette.MATRIX_GREEN
+        elif model != "OFFLINE":
+            self.pablo_status = f"PABLO CORE / {model} FALLBACK-READY"
+            self.pablo_status_color = Palette.MATRIX_AMBER
+        else:
+            self.pablo_status = "PABLO CORE / OFFLINE"
+            self.pablo_status_color = Palette.MATRIX_DIM
 
     @staticmethod
     def _find_pixel_assets() -> Path | None:
@@ -447,6 +463,7 @@ class SolarPunkRenderer:
         pygame.draw.line(self.screen, Palette.MATRIX_GREEN, (0, header.bottom - 1), (self.width, header.bottom - 1), 2)
         self.text("SALARYMAN", (18, 10), self.font_lg, Palette.MATRIX_BRIGHT)
         self.text(f"FLOOR {scene.current_floor:02d}", (19, 35), self.font_mono, Palette.MATRIX_DIM)
+        self.text(self.pablo_status, (805, 35), self.font_mono, self.pablo_status_color)
 
         self.text("CAPITAL", (180, 9), self.font_mono, Palette.MATRIX_DIM)
         self.text(f"ƒ{state.funds:,.2f}", (180, 25), self.font_md, Palette.MATRIX_BRIGHT)

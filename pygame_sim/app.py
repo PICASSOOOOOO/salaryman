@@ -9,6 +9,7 @@ import sys
 import pygame
 
 from .bridge import OfficeBridge, apply_command
+from .pablo import fetch_pablo_status
 from .state import OfficeState
 from .scene import build_tower_scene
 from .ui import SolarPunkRenderer
@@ -30,6 +31,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bridge-port", type=int, default=4242, help="Godot bridge TCP port.")
     parser.add_argument("--no-bridge", action="store_true", help="Disable the optional Godot bridge.")
     parser.add_argument(
+        "--server-url",
+        default=os.environ.get("SALARYMAN_SERVER_URL", ""),
+        help="Optional SALARYMAN API URL for the shared Pablo capability check.",
+    )
+    parser.add_argument(
         "--role",
         choices=("player", "moderator", "admin"),
         default=os.environ.get("SALARYMAN_OPERATOR_ROLE", "player"),
@@ -50,6 +56,7 @@ def run(argv: list[str] | None = None) -> int:
     clock = pygame.time.Clock()
     state = OfficeState.load_from_file(args.save_file, real_time=True, role=args.role)
     renderer = SolarPunkRenderer(screen)
+    renderer.set_pablo_status(fetch_pablo_status(args.server_url))
     scene = build_tower_scene()
     coffee_rects: dict[int, pygame.Rect] = {}
     # The packaged client opens directly into the playable office. The business

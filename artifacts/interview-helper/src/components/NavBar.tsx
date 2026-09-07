@@ -20,8 +20,6 @@ import { isTutorialDone } from '@/lib/tutorial-progress';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
-import { CurrencyTicker } from './CurrencyTicker';
-import { FinanceBalance } from './FinanceBalance';
 import { EconomyToggle } from './EconomyToggle';
 import { TowerLocationBadge } from './TowerLocationBadge';
 import { useTranslation } from 'react-i18next';
@@ -160,11 +158,6 @@ export function NavBar() {
               <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
                 {config.name}
               </h1>
-              <div className="mt-1 flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1">
-                <EconomyToggle />
-                <CurrencyTicker compact wrap />
-                <FinanceBalance isAuthenticated={isAuthenticated} />
-              </div>
             </div>
             <button
               onClick={e => { e.stopPropagation(); toggleMode(); }}
@@ -174,10 +167,11 @@ export function NavBar() {
               {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="ml-auto flex items-center gap-2.5">
             <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
               ALPHA {__BUILD_VERSION__}
             </span>
+            <EconomyToggle isAuthenticated={isAuthenticated} />
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-3">

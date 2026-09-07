@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Activity, Bitcoin, ChevronDown, Coins, RefreshCw } from "lucide-react";
+import { Activity, Bitcoin, Building2, ChevronDown, Coins, RefreshCw, WalletCards } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { STREAMER_MASK } from "@/lib/streamer-mode";
+import { useStreamerMode } from "@/hooks/use-streamer-mode";
 
 type MarketIndex = {
   btcUsd: number;
@@ -17,6 +19,12 @@ type MarketIndex = {
   };
 };
 
+type WalletSnapshot = {
+  bank?: { activeUsd?: number; fiatTotal?: number };
+  gold?: number;
+  property?: { netWorth?: number; businesses?: unknown[] };
+};
+
 function money(value: number | null | undefined, maximumFractionDigits = 0): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return value.toLocaleString(undefined, { maximumFractionDigits });
@@ -27,10 +35,12 @@ function money(value: number | null | undefined, maximumFractionDigits = 0): str
  * USD is the fixed reference; the live BTC multiplier changes the FIAT and
  * in-game GOLD amounts required for one USD. This is not a wallet or portfolio.
  */
-export function EconomyToggle() {
+export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   const [market, setMarket] = useState<MarketIndex | null>(null);
+  const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const streamerMode = useStreamerMode();
 
   const load = async () => {
     setLoading(true);
@@ -53,6 +63,30 @@ export function EconomyToggle() {
     const interval = window.setInterval(() => void load(), 60_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWallet(null);
+      return;
+    }
+    let alive = true;
+    const loadWallet = async () => {
+      try {
+        const response = await apiFetch("/api/wallet/snapshot", { credentials: "include" });
+        if (!response.ok) return;
+        const next = (await response.json()) as WalletSnapshot;
+        if (alive) setWallet(next);
+      } catch {
+        if (alive) setWallet(null);
+      }
+    };
+    void loadWallet();
+    const interval = window.setInterval(() => void loadWallet(), 30_000);
+    return () => {
+      alive = false;
+      window.clearInterval(interval);
+    };
+  }, [isAuthenticated]);
 
   const status = market?.status ?? (loading ? "syncing" : "offline");
   const isLive = status === "live";
@@ -105,7 +139,36 @@ export function EconomyToggle() {
             <span className={`economy-live-label ${statusClass}`}>{statusLabel}</span>
           </div>
 
-          <div className="economy-rail-grid">
+           <div className="economy-account-grid">
+             <div className="economy-account-card economy-account-usd">
+               <WalletCards />
+               <span>ACTIVE USD</span>
+               <strong>{streamerMode ? STREAMER_MASK : `$${money(wallet?.bank?.activeUsd, 2)}`}</strong>
+               <small>Stripe-withdrawable balance</small>
+             </div>
+             <div className="economy-account-card">
+               <Coins />
+               <span>FIAT</span>
+               <strong>ƒ{money(wallet?.bank?.fiatTotal, 0)}</strong>
+               <small>In-game currency</small>
+             </div>
+             <div className="economy-account-card">
+               <Coins />
+               <span>GOLD</span>
+               <strong>{money(wallet?.gold, 1)}</strong>
+               <small>In-game wealth</small>
+             </div>
+             {wallet?.property?.netWorth != null && wallet.property.netWorth > 0 && (
+               <div className="economy-account-card economy-account-property">
+                 <Building2 />
+                 <span>NET WORTH</span>
+                 <strong>ƒ{money(wallet.property.netWorth, 0)}</strong>
+                 <small>Property-backed</small>
+               </div>
+             )}
+           </div>
+
+           <div className="economy-rail-grid">
             <div>
               <span>1 USD</span>
               <strong>ƒ{money(market?.conversion?.usdToFiat, 2)}</strong>

@@ -175,6 +175,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
         "type": "snapshot",
         "version": PROTOCOL_VERSION,
         "sequence": sequence,
+        "pablo": {
+            "upgrade": "pablo-core-2026",
+            "authority": "shared-api",
+            "credentialsInClient": False,
+        },
         "scene": {
             "floor": scene.current_floor,
             "room": scene.current_room,

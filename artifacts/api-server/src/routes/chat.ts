@@ -26,12 +26,29 @@ import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
-import { completeInternalText, selectClaudeTools } from "../lib/internal-ai";
+import { completeInternalText, getInternalOpenAiModel, selectClaudeTools } from "../lib/internal-ai";
 import { isPabloNavPath } from "../lib/pablo-navigation";
-import { getOpenAiTextModel } from "../lib/openai-models";
+import { getOpenAiTextModel, isAstraRequested, isAstraVerified } from "../lib/openai-models";
 
 const router = Router();
 const objectStorage = new ObjectStorageService();
+
+// Safe, credential-free capability surface shared by browser and desktop
+// clients. It reports the active policy, never provider errors or secrets.
+router.get("/chat/pablo/status", (_req, res) => {
+  res.json({
+    upgrade: "pablo-core-2026",
+    provider: "internal",
+    model: getOpenAiTextModel(),
+    fallbackModel: "gpt-5",
+    astra: {
+      requested: isAstraRequested(),
+      verified: isAstraVerified(),
+      active: getOpenAiTextModel() === "gpt-6-astra",
+    },
+    clientSafe: true,
+  });
+});
 
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
@@ -1303,7 +1320,7 @@ async function runPabloCompletion(
   let firstProvider: "gpt" | "claude" = "gpt";
   try {
     first = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
+      model: await getInternalOpenAiModel(),
       messages,
       max_completion_tokens: 600,
       tools: tools as any,
@@ -1422,7 +1439,7 @@ async function runPabloCompletion(
   try {
     if (firstProvider === "claude") throw new Error("continue tool-selected response with Claude");
     const second = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
+      model: await getInternalOpenAiModel(),
       messages: followMessages,
       max_completion_tokens: 400,
     });
@@ -2127,7 +2144,7 @@ router.post("/chat/prompt-sensei", async (req: Request, res: Response): Promise<
     }
 
     const completion = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
+      model: await getInternalOpenAiModel(),
       messages: llmMessages,
       max_completion_tokens: 1200,
     });

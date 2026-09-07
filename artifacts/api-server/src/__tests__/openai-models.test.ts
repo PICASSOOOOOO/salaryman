@@ -20,6 +20,12 @@ describe("OpenAI text model selection", () => {
 
   it("supports a controlled Astra rollout override", () => {
     process.env.OPENAI_TEXT_MODEL = OPENAI_ASTRA_MODEL;
-    expect(getOpenAiTextModel()).toBe(OPENAI_ASTRA_MODEL);
+    expect(getOpenAiTextModel()).toBe(OPENAI_FALLBACK_TEXT_MODEL);
+  });
+
+  it("does not activate Astra from a model-name override alone", () => {
+    process.env.OPENAI_TEXT_MODEL = OPENAI_ASTRA_MODEL;
+    process.env.PABLO_ASTRA_ENABLED = "1";
+    expect(getOpenAiTextModel()).toBe(OPENAI_FALLBACK_TEXT_MODEL);
   });
 });

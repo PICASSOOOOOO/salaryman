@@ -190,7 +190,7 @@ export function MobileModuleNav() {
           <span>SALARYMAN</span>
         </button>
         <div className="mobile-account-actions">
-          <EconomyToggle />
+            <EconomyToggle isAuthenticated={isAuthenticated} />
           {isAuthenticated && (
               <>
                 <NotificationBell

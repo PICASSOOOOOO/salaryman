@@ -1090,7 +1090,7 @@ body.workspace-light .desktop-app-nav .text-zinc-400,
 body.workspace-light .desktop-app-nav .text-zinc-500,
 body.workspace-light .desktop-app-nav .text-zinc-600,
 body.workspace-light .desktop-app-nav .text-zinc-700 {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 body.workspace-light .mobile-terminal-brand,
@@ -1260,6 +1260,61 @@ body.workspace-light .desktop-download-secondary:hover {
   align-items: center;
 }
 
+.economy-account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  margin-top: .55rem;
+}
+
+.economy-account-card {
+  min-width: 0;
+  padding: .65rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  background: #fbfdff;
+}
+
+.economy-account-card > svg {
+  width: .9rem;
+  height: .9rem;
+  margin-bottom: .35rem;
+  color: #187c4e;
+}
+
+.economy-account-card span,
+.economy-account-card small {
+  display: block;
+  font: 700 .55rem/1.3 "Fira Code", monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.economy-account-card span {
+  color: #64748b;
+}
+
+.economy-account-card strong {
+  display: block;
+  margin: .18rem 0;
+  color: #102b45;
+  font: 800 .82rem/1.15 "Fira Code", monospace;
+}
+
+.economy-account-card small {
+  color: #94a3b8;
+  font-size: .48rem;
+  letter-spacing: .02em;
+}
+
+.economy-account-usd > svg {
+  color: #187c4e;
+}
+
+.economy-account-property > svg {
+  color: #2563eb;
+}
+
 .economy-popover-heading,
 .economy-popover-footer {
   justify-content: space-between;
@@ -1421,6 +1476,10 @@ body.workspace-light .desktop-download-secondary:hover {
   .economy-toggle-button {
     min-height: 1.9rem;
     padding-inline: .45rem;
+  }
+
+  .economy-account-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

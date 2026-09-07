@@ -1,5 +1,12 @@
 export type InternalAiProvider = "gpt" | "claude";
 import { getOpenAiTextModel } from "./openai-models";
+import {
+  isAstraRequested,
+  isAstraVerified,
+  markAstraUnverified,
+  markAstraVerified,
+  OPENAI_ASTRA_MODEL,
+} from "./openai-models";
 export type InternalMessage = { role: "system" | "user" | "assistant"; content: string };
 export type InternalToolDefinition = {
   name: string;
@@ -30,6 +37,40 @@ function safeError(err: unknown): string {
     .slice(0, 240);
 }
 
+async function verifyAstra(): Promise<boolean> {
+  if (!isAstraRequested()) return false;
+  if (isAstraVerified()) return true;
+
+  const { openai } = await import("@workspace/integrations-openai-ai-server");
+  try {
+    const result = await Promise.race([
+      openai.chat.completions.create({
+        model: OPENAI_ASTRA_MODEL,
+        max_completion_tokens: 8,
+        messages: [
+          { role: "system", content: "Provider readiness probe. Reply with OK only." },
+          { role: "user", content: "ping" },
+        ],
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Astra readiness timeout")), 5_000)),
+    ]);
+    const content = result.choices[0]?.message?.content?.trim();
+    if (!content) throw new Error("Astra readiness returned no content");
+    markAstraVerified();
+    return true;
+  } catch (error) {
+    markAstraUnverified();
+    console.warn("[internal-ai] Astra readiness failed; using verified GPT fallback:", safeError(error));
+    return false;
+  }
+}
+
+/** Returns Astra only after the provider-only probe has passed. */
+export async function getInternalOpenAiModel(): Promise<string> {
+  await verifyAstra();
+  return getOpenAiTextModel();
+}
+
 export async function completeInternalText(
   messages: InternalMessage[],
   options: { maxTokens?: number; json?: boolean; prefer?: InternalAiProvider; fallback?: boolean } = {},
@@ -46,7 +87,7 @@ export async function completeInternalText(
       if (provider === "gpt") {
         const { openai } = await import("@workspace/integrations-openai-ai-server");
         const result = await openai.chat.completions.create({
-          model: getOpenAiTextModel(),
+          model: await getInternalOpenAiModel(),
           messages,
           max_completion_tokens: maxTokens,
           ...(options.json ? { response_format: { type: "json_object" as const } } : {}),
