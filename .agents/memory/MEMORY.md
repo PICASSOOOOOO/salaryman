@@ -154,3 +154,4 @@
 - [Desktop release packaging](desktop-release-packaging.md) — exclude unused setuptools hooks; Linux ships the icon separately and needs a clean-extraction launcher smoke test.
 - [Desktop download route](desktop-download-route.md) — package workflows may run below repo root; fixed release downloads need root/package path resolution.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
+- [Pygame solar-punk decay arc](pygame-solarpunk-decay.md) — desktop gameplay starts bright, lively, and gamified; darkness and deterioration emerge only as the office/world decays.
