@@ -25,7 +25,7 @@ export default function ProfessionalHome() {
     <section className="sm-hero" id="top">
       <div className="sm-hero-copy">
         <div className="sm-kicker"><span className="sm-status" /> The business operating system</div>
-        <h1>Business tools that<br /><span>work together.</span></h1>
+        <h1>Business tools that <span>work together.</span></h1>
         <p className="sm-lede">SALARYMAN brings calls, customers, files, and daily operations into one clear workspace so your team can keep moving.</p>
         <div className="sm-actions">
           <a className="sm-primary" href="#workspace">Open web workspace <ArrowRight size={15} /></a>
@@ -33,7 +33,6 @@ export default function ProfessionalHome() {
         </div>
         <p className="sm-note">Preview and downloads unlock when the visual game build is ready.</p>
       </div>
-      <CommandCenter />
     </section>
     <div className="sm-strip"><div className="sm-strip-inner"><span><strong>One connected workspace</strong> for the whole company</span><span>Phone · CRM · Agents · Files · Operations</span><span>Built by Picasso AI</span></div></div>
     <section className="sm-section" id="workspace">
@@ -44,13 +43,6 @@ export default function ProfessionalHome() {
     <section className="sm-cta" id="pablo"><div className="sm-cta-card"><div><div className="sm-kicker" style={{ color: "#f1c476" }}>Start with the workspace</div><h2>Make room for better work.</h2><p>Open the web workspace now. The visual desktop game is still in development.</p></div><a className="sm-primary sm-cta-active" href="#workspace">Open web workspace <ExternalLink size={15} /></a></div></section>
     <footer className="sm-footer"><span>SALARYMAN / PICASSO AI</span><span>Meet Pablo · Privacy · Status</span></footer>
   </main>;
-}
-
-function CommandCenter() {
-  return <div className="sm-command" aria-label="Business command center preview">
-    <div className="sm-command-top"><span><i /><i /><i /></span><b>WORKSPACE / TODAY</b><small>LIVE</small></div>
-    <div className="sm-command-body"><div className="sm-command-side"><strong>SALARYMAN</strong><span className="is-active">Overview</span><span>Phone system</span><span>CRM & Sales</span><span>Operations</span><span>Knowledge</span></div><div className="sm-command-main"><div className="sm-command-heading"><span>Good morning, team</span><b>Tuesday · 09:42</b></div><div className="sm-command-stats"><div><small>OPEN FOLLOW-UPS</small><strong>18</strong><em>↓ 4 this week</em></div><div><small>TEAM ONLINE</small><strong>12</strong><em>Across 3 teams</em></div><div><small>CALLS TODAY</small><strong>27</strong><em>6 scheduled</em></div></div><div className="sm-command-grid"><div><b>Next up</b><span>Review Northstar renewal</span><span>Call Maya at 11:30</span></div><div><b>Team pulse</b><span className="sm-pulse"><i /> Sales is active</span><span className="sm-pulse"><i /> Ops is on track</span></div></div></div></div>
-  </div>;
 }
 
 function FeatureMenu({ onSelect }: { onSelect: () => void }) {
