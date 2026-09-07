@@ -89,7 +89,6 @@ export default function DesktopDownload() {
             <video
               className="desktop-game-capture-video"
               src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.mp4`}
-              poster={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.png`}
               autoPlay
               muted
               loop
@@ -97,16 +96,6 @@ export default function DesktopDownload() {
               preload="metadata"
             />
             <div className="desktop-game-capture-label">DIRECT CAPTURE / PYGAME CLIENT / FLOOR 01</div>
-          </div>
-          <div className="desktop-game-capture-strip">
-            <figure>
-              <img src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-office-01.png`} alt="Pygame office interior with character and furniture" />
-              <figcaption>Office 01 · interior movement</figcaption>
-            </figure>
-            <figure>
-              <img src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-2p5d.png`} alt="Pygame tower lobby with elevator and office objects" />
-              <figcaption>Tower lobby · elevator interaction</figcaption>
-            </figure>
           </div>
         </div>
       </section>

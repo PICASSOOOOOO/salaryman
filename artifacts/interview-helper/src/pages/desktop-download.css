@@ -297,38 +297,6 @@
   letter-spacing: .1em;
 }
 
-.desktop-game-capture-strip {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.desktop-game-capture-strip figure {
-  min-width: 0;
-  margin: 0;
-  padding: 7px;
-  border: 1px solid rgba(211, 249, 177, .2);
-  border-radius: 10px;
-  background: rgba(234, 245, 230, .06);
-}
-
-.desktop-game-capture-strip img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1180 / 720;
-  object-fit: cover;
-  border-radius: 5px;
-}
-
-.desktop-game-capture-strip figcaption {
-  padding: 8px 2px 1px;
-  color: rgba(234, 245, 230, .58);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: .04em;
-}
-
 .desktop-download-locked {
   display: inline-flex;
   align-items: center;
@@ -397,7 +365,6 @@
   .desktop-download-connection { grid-template-columns: 1fr; }
   .desktop-download-stage { min-height: 350px; }
   .desktop-download-stage { padding: 8px; }
-  .desktop-game-capture-strip { gap: 7px; }
   .desktop-download-section-heading { align-items: flex-start; flex-direction: column; }
   .desktop-download-platform-grid { grid-template-columns: 1fr; }
   .desktop-download-footer { align-items: flex-start; flex-direction: column; }
