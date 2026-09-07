@@ -26,6 +26,9 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(decoded["version"], PROTOCOL_VERSION)
         self.assertEqual(decoded["sequence"], 7)
         self.assertEqual(len(decoded["scene"]["objects"]), len(self.scene.objects.objects))
+        self.assertEqual(decoded["scene"]["navigation"]["room"], "lobby")
+        self.assertIn("mission", decoded["scene"]["navigation"])
+        self.assertIsInstance(decoded["scene"]["navigation"]["exits"], list)
 
     def test_validated_move_routes_through_tower_scene(self):
         before = self.scene.player_position

@@ -156,6 +156,21 @@ def apply_command(command: object, state: OfficeState, scene: TowerScene) -> Com
 
 def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict[str, Any]:
     """Build a versioned, JSON-safe snapshot for Godot rendering."""
+    current_room = scene.room
+    grid_cell_size = 500
+    grid_origin_x, grid_origin_y = current_room.bounds[0], current_room.bounds[1]
+    player_x, player_y = scene.player_position
+    exits = [
+        {
+            "id": item.id,
+            "label": item.label,
+            "kind": item.kind,
+            "destination_room": item.destination_room,
+            "destination_floor": item.destination_floor,
+        }
+        for item in scene.objects.objects
+        if item.room == scene.current_room and item.kind in {"door", "elevator", "stairs"}
+    ]
     return {
         "type": "snapshot",
         "version": PROTOCOL_VERSION,
@@ -189,6 +204,20 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                 }
                 for item in scene.objects.objects
             ],
+            # MiniGrid-inspired observation data: the client can render and
+            # navigate a room graph without becoming the simulation authority.
+            # Coordinates remain in Pygame's world space so no second movement
+            # model is created in Godot.
+            "navigation": {
+                "cell_size": grid_cell_size,
+                "cell": [
+                    max(0, (player_x - grid_origin_x) // grid_cell_size),
+                    max(0, (player_y - grid_origin_y) // grid_cell_size),
+                ],
+                "room": scene.current_room,
+                "mission": f"Reach an interactive object in {current_room.label}",
+                "exits": exits,
+            },
         },
         "office": {
             "funds": round(state.funds, 2),
