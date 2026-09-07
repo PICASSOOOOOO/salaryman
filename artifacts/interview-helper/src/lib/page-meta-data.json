@@ -3,7 +3,7 @@
   "defaultOgImage": "https://salaryman.replit.app/og-salaryman.png",
   "routes": {
     "/": {
-      "title": "SALARYMAN by Picasso AI — AI-Powered Business Operating System",
+      "title": "Salaryman by Picasso AI - AI Business Operating System",
       "description": "SALARYMAN is the AI-powered business operating system by Picasso AI. AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams — all in one platform.",
       "ogTitle": "SALARYMAN — AI-Powered Business Operating System",
       "ogDescription": "AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams — unified into one platform. Built for professionals who refuse to settle."
