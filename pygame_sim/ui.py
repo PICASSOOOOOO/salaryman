@@ -170,20 +170,28 @@ class SolarPunkRenderer:
         # interaction registry remains the sole authority for object behavior.
         placements = {
             "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (900, 1250)),
-                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2200, 1250)),
-                      ("furniture/SOFA/SOFA_FRONT.png", (1600, 2850)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2100, 1500))],
-            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (3100, 2850)),
-                           ("furniture/PLANT/PLANT.png", (4300, 1250)),
-                           ("furniture/BOOKSHELF/BOOKSHELF.png", (3000, 1250))],
-            "executive": [("furniture/DESK/DESK_FRONT.png", (5600, 1800)),
-                          ("furniture/BOOKSHELF/BOOKSHELF.png", (6250, 1250)),
-                          ("furniture/PLANT/PLANT.png", (6250, 2850)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5250, 1350))],
-            "public": [("furniture/DESK/DESK_FRONT.png", (7800, 1800)),
-                       ("furniture/BOOKSHELF/BOOKSHELF.png", (8450, 1250)),
-                       ("furniture/PLANT/PLANT.png", (8450, 2850)),
-                       ("furniture/WHITEBOARD/WHITEBOARD.png", (7450, 1350))],
+                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2500, 1250)),
+                      ("furniture/SOFA/SOFA_FRONT.png", (1500, 2500)),
+                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2200, 1500))],
+            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 3950)),
+                           ("furniture/PLANT/PLANT.png", (8500, 3950)),
+                           ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 3600))],
+            "executive": [("furniture/DESK/DESK_FRONT.png", (1700, 5800)),
+                          ("furniture/BOOKSHELF/BOOKSHELF.png", (2450, 5450)),
+                          ("furniture/PLANT/PLANT.png", (2450, 7100)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (1100, 5500))],
+            "public": [("furniture/DESK/DESK_FRONT.png", (3800, 5800)),
+                       ("furniture/BOOKSHELF/BOOKSHELF.png", (4550, 5450)),
+                       ("furniture/PLANT/PLANT.png", (4550, 7100)),
+                       ("furniture/WHITEBOARD/WHITEBOARD.png", (3200, 5500))],
+            "office_03": [("furniture/DESK/DESK_FRONT.png", (5900, 5800)),
+                          ("furniture/BOOKSHELF/BOOKSHELF.png", (6650, 5450)),
+                          ("furniture/PLANT/PLANT.png", (6650, 7100)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5300, 5500))],
+            "office_04": [("furniture/DESK/DESK_FRONT.png", (8000, 5800)),
+                          ("furniture/BOOKSHELF/BOOKSHELF.png", (8750, 5450)),
+                          ("furniture/PLANT/PLANT.png", (8750, 7100)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (7400, 5500))],
         }
         for asset, position in placements.get(scene.current_room, []):
             screen_position = point(position)
@@ -358,6 +366,10 @@ class SolarPunkRenderer:
             pygame.draw.rect(self.screen, (57, 101, 105), (x - 9, y - 13, 18, 25), border_radius=3)
             pygame.draw.rect(self.screen, (117, 205, 210) if kind != "vending_machine" else (238, 185, 89), (x - 6, y - 9, 12, 8), border_radius=1)
             pygame.draw.circle(self.screen, (238, 244, 215), (x, y + 6), 2)
+        elif kind == "door":
+            pygame.draw.rect(self.screen, (111, 77, 60), (x - 18, y - 24, 36, 48), border_radius=3)
+            pygame.draw.rect(self.screen, (217, 177, 112), (x - 13, y - 19, 26, 43), width=2)
+            pygame.draw.circle(self.screen, Palette.SUN, (x + 7, y + 3), 2)
         elif kind in ("desk", "chair"):
             if kind == "desk":
                 pygame.draw.rect(self.screen, (172, 119, 74), (x - 13, y - 6, 26, 12), border_radius=3)

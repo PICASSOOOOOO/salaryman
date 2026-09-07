@@ -79,6 +79,12 @@ def run(argv: list[str] | None = None) -> int:
                 elif spatial_mode and event.key == pygame.K_4:
                     scene.select_room("public")
                     state.notice = "ROOM / OFFICE 04"
+                elif spatial_mode and event.key == pygame.K_5:
+                    scene.select_room("office_03")
+                    state.notice = "ROOM / OFFICE 03"
+                elif spatial_mode and event.key == pygame.K_6:
+                    scene.select_room("office_04")
+                    state.notice = "ROOM / OFFICE 04"
                 elif event.key == pygame.K_SPACE:
                     state.toggle_running()
                 elif event.key == pygame.K_r:
