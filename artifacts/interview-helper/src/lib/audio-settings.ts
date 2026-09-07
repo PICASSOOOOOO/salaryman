@@ -37,10 +37,10 @@ export const AUDIO_DEFAULTS: AudioSettings = {
   music: 0.14,       // AMBIANCE is intentionally EXTREMELY LOW
   sfx: 0.9,
   voice: 1.0,
-  soundtrack: 0.16,  // Shadow Radio stays silent until explicitly enabled
+  soundtrack: 0.22,  // Shadow Radio stays silent until explicitly enabled
   muted: false,
   musicEnabled: false,
-  ambianceEnabled: false,
+  ambianceEnabled: true,
 };
 
 // The settings page uses verbose key names; map between the two shapes so the

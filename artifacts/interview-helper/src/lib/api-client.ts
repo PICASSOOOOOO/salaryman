@@ -46,7 +46,7 @@ export const FIAT_CHANGED_EVENT = 'salaryman:fiat-changed';
 // stale until the next poll. The src/lib/api-client.fiat-affecting.test.ts guard
 // enumerates the real spend endpoints and fails if one isn't covered.
 export const FIAT_AFFECTING =
-  /(economy|bank|transfer|deposit|withdraw|salary|credit\/plan|gameplay\/fiat\/action|armory|gear|construction\/.+\/work|real-estate|business-market|marketplace|pledge\/(buy|checkout|purchase|vend)|items\/buy|cosmetics\/buy|vending\/food\/purchase|subway\/travel|pablo\/command|wallet|payroll|recreation\/arcade\/charge)/i;
+  /(economy|bank|transfer|deposit|withdraw|salary|credit\/plan|gameplay\/fiat\/action|armory|gear|construction\/.+\/work|real-estate|business-market|marketplace|shadow-tower\/floors\/.+\/acquire|pledge\/(buy|checkout|purchase|vend)|items\/buy|cosmetics\/buy|vending\/food\/purchase|subway\/travel|pablo\/command|wallet|payroll|recreation\/arcade\/charge)/i;
 
 // Paths for the AI features (Pablo chat, image generation, character portraits)
 // whose cost is billed through the Pablo-Tax meter. Unlike the FIAT_AFFECTING

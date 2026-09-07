@@ -13,8 +13,8 @@ const swipe = readFileSync(
 );
 
 describe("Pablo terminal physical-world navigation", () => {
-  it("sends every authenticated START WORK handoff through the Tower", () => {
-    expect(terminal).toContain('navigate("/tower")');
+  it("sends every authenticated START WORK handoff through the console sign-in surface", () => {
+    expect(terminal).toContain('navigate("/console")');
     expect(terminal).toContain("START WORK");
     expect(terminal).not.toContain('navigate(hasFinishedOnboarding ? "/office" : "/tower")');
     expect(terminal).not.toContain('{hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}');
@@ -30,8 +30,8 @@ describe("Pablo terminal physical-world navigation", () => {
     expect(swipe).toContain("window.history.back()");
   });
 
-  it("limits office-first routing to the actual root route", () => {
+  it("keeps the public home surface separate from protected routes", () => {
     expect(app).toContain('if (location.split("?")[0] !== "/") return null;');
-    expect(app).toContain('return <Redirect to="/office" />');
+    expect(app).toContain('return <ProfessionalHome />');
   });
 });

@@ -9,8 +9,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 // in the app (the full mixer lives on the settings page). A small speaker
 // button parks in the bottom-right corner; clicking it opens a compact panel
 // with a master mute, two on/off toggles, and the sliders people reach for.
-//   • SHADOW RADIO = the live Call Home station. Default ON at low volume, app-wide.
-//   • AMBIANCE = the low ambient bed, toggleable off.
+//   • SHADOW RADIO = the live Call Home station. Opt-in, app-wide.
+//   • AMBIANCE = the low ambient bed. On by default, toggleable off.
 // Reads/writes the central audio-settings store, so it stays in lockstep with
 // the settings page, the office radio and every other audio consumer.
 

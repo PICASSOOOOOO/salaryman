@@ -58,7 +58,7 @@ describe('PostOnboardingIntro speech names', () => {
       vi.advanceTimersByTime(650);
     });
 
-    expect(spokenTts[0]).toBe('Ah. Alex. You came.');
+    expect(spokenTts[0]).toBe('Ah. Alex. You made it to Shadow Tower.');
     expect(spokenTts[0]).not.toContain('ALEX');
   });
 });

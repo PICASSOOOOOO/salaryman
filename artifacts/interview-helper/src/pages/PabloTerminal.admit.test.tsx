@@ -220,6 +220,6 @@ describe("Pablo front-door admittance flow", () => {
 
     expect(qs("pablo-auth-choice"), "header entry should not add an intermediate modal").toBeNull();
     expect(window.location.pathname).toBe("/sign-in");
-    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe("/tower");
+    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe("/console");
   });
 });

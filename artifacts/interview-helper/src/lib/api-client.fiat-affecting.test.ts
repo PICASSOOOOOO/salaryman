@@ -53,6 +53,7 @@ const BANK_MUTATING_ENDPOINTS = [
   "/api/subway/travel-intercity", // Subway cross-city toll — debits bank
   "/api/chat/pablo/command", // Pablo command — can spendEarnedFiat
   "/api/construction/123/work", // LandRegistry — creditFiat construction wage
+  "/api/shadow-tower/floors/66/units/1/acquire", // RealtyStore — acquires a paid Tower unit
 ];
 
 // ---------------------------------------------------------------------------
@@ -73,10 +74,8 @@ const EXCUSED_NON_BANK_SPENDS = new Set([
   "/api/cosmetics/checkout", // Stripe card checkout (real money, not bank ƒ)
   "/api/stripe/create-checkout-session", // PABLO PRIME Stripe subscription checkout
   "/api/stripe/create-bot-checkout-session", // Stripe checkout session
-  "/api/billboards/*/purchase", // deducts client-save g.salary, not the bank
   "/api/services/*/claim", // grants a service listing, no player-bank mutation
   "/api/twilio/purchase-number", // Stripe/Twilio purchase path, not in-game FIAT
-  "/api/orgs/*/stripe-checkout", // Stripe subscription checkout, not in-game FIAT
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {

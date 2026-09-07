@@ -54,22 +54,22 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
   });
 });
 
-// ─── 2. Source-scan: /game redirects to /pablo in App.tsx ────────────────────
+// ─── 2. Source-scan: retired browser gameplay routes land on the desktop client
 
 const APP_SRC = readFileSync(
   path.resolve(import.meta.dirname, "../App.tsx"),
   "utf8",
 );
 
-describe("/game route in App.tsx", () => {
-  it('contains an authenticated <Route path="/game"> for GameHub', () => {
+describe("retired gameplay routes in App.tsx", () => {
+  it('keeps a /game route that lands on the desktop client', () => {
     const hasGameRoute = /path=["']\/game["']/.test(APP_SRC);
-    const hasGameHub = /path=["']\/game["'][^>]*>[\s\S]{0,120}<GameLock><GameHub/.test(APP_SRC);
+    const redirectsToDesktop = /path=["']\/game["'][^>]*>[\s\S]{0,100}<Redirect to=["']\/desktop["']/.test(APP_SRC);
     expect(
       hasGameRoute,
       'App.tsx must contain a Route for "/game"',
     ).toBe(true);
-    expect(hasGameHub, 'The /game route must keep rendering GameHub behind GameLock').toBe(true);
+    expect(redirectsToDesktop, 'The retired browser game must land on the desktop client').toBe(true);
   });
 
   it("the /game route appears before office handling", () => {
