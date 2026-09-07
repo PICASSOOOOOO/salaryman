@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { ArrowRight, Download, ExternalLink, Headphones, Laptop, MessageSquare, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
+import { apiFetch, apiUrl } from "@/lib/api-client";
 import "./desktop-download.css";
 
 const platforms = [
@@ -24,6 +26,24 @@ const platforms = [
 ];
 
 export default function DesktopDownload() {
+  const [downloadAllowed, setDownloadAllowed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch("/api/desktop/access")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = await response.json() as { allowed?: boolean };
+        if (!cancelled) setDownloadAllowed(result.allowed === true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const downloadHref = apiUrl("/api/desktop/download");
+
   return (
     <main className="desktop-download">
       <header className="desktop-download-topbar">
@@ -49,37 +69,45 @@ export default function DesktopDownload() {
             at its own pace.
           </p>
           <div className="desktop-download-actions">
-            <a
-              className="desktop-download-primary"
-              href="/api/desktop/download"
-              download="salaryman-office-linux-x86_64.tar.gz"
-            >
-              <Download size={16} aria-hidden /> Download Linux client <ArrowRight size={15} aria-hidden />
-            </a>
+            {downloadAllowed ? (
+              <a className="desktop-download-primary" href={downloadHref} download="salaryman-office-linux-x86_64.tar.gz">
+                <Download size={16} aria-hidden /> Download Linux client <ArrowRight size={15} aria-hidden />
+              </a>
+            ) : (
+              <span className="desktop-download-locked"><ShieldCheck size={15} aria-hidden /> Admin / moderator test access</span>
+            )}
             <Link className="desktop-download-secondary" href="/device-link?mode=desktop">
               <ShieldCheck size={15} aria-hidden /> Connect a desktop
             </Link>
           </div>
           <p className="desktop-download-note">
-            Free to download. The desktop client never connects directly to the database.
+            Current gameplay captures are from the downloadable Pygame client. The browser remains the secure control plane.
           </p>
         </div>
         <div className="desktop-download-stage" aria-label="Desktop office preview">
-          <div className="desktop-download-sun" />
-          <div className="desktop-download-canopy canopy-left" />
-          <div className="desktop-download-canopy canopy-right" />
-          <div className="desktop-download-window">
-            <div className="desktop-download-window-bar"><span /><span /><span /><strong>OFFICE ECOLOGY</strong></div>
-            <div className="desktop-download-window-body">
-              <div className="desktop-download-metric"><small>WORKDAY</small><strong>10:00</strong><span>DAY 14 · ACTIVE</span></div>
-              <div className="desktop-download-people">
-                <i className="person person-one" /><i className="person person-two" /><i className="person person-three" />
-              </div>
-              <div className="desktop-download-window-floor" />
-            </div>
+          <div className="desktop-game-capture">
+            <video
+              className="desktop-game-capture-video"
+              src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.mp4`}
+              poster={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.png`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+            <div className="desktop-game-capture-label">DIRECT CAPTURE / PYGAME CLIENT / FLOOR 01</div>
           </div>
-          <div className="desktop-download-leaf leaf-one">✦</div>
-          <div className="desktop-download-leaf leaf-two">✦</div>
+          <div className="desktop-game-capture-strip">
+            <figure>
+              <img src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-office-01.png`} alt="Pygame office interior with character and furniture" />
+              <figcaption>Office 01 · interior movement</figcaption>
+            </figure>
+            <figure>
+              <img src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-2p5d.png`} alt="Pygame tower lobby with elevator and office objects" />
+              <figcaption>Tower lobby · elevator interaction</figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
@@ -98,12 +126,15 @@ export default function DesktopDownload() {
               <h3>{platform.name}</h3>
               <p>{platform.detail}</p>
               <code>{platform.command}</code>
-              <a
-                href={platform.name === "Linux" ? "/api/desktop/download" : "#builds"}
-                download={platform.name === "Linux" ? "salaryman-office-linux-x86_64.tar.gz" : undefined}
-              >
-                {platform.name === "Linux" ? "Download package" : "Build on " + platform.name} <ArrowRight size={14} aria-hidden />
-              </a>
+              {platform.name === "Linux" && downloadAllowed ? (
+                <a href={downloadHref} download="salaryman-office-linux-x86_64.tar.gz">
+                  Download package <ArrowRight size={14} aria-hidden />
+                </a>
+              ) : (
+                <span className="desktop-download-platform-locked">
+                  {platform.name === "Linux" ? "Admin / moderator access required" : "Build on " + platform.name}
+                </span>
+              )}
             </article>
           ))}
         </div>

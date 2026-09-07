@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Bot,
   BriefcaseBusiness,
   CalendarDays,
   ChevronDown,
+  Download,
   ExternalLink,
   FileText,
   FolderKanban,
@@ -17,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "wouter";
+import { apiFetch, apiUrl } from "@/lib/api-client";
 import "./ProfessionalHome.css";
 
 const paths = [
@@ -59,6 +61,23 @@ const features = [
 
 export default function ProfessionalHome() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [desktopDownloadAllowed, setDesktopDownloadAllowed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch("/api/desktop/access")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = await response.json() as { allowed?: boolean };
+        if (!cancelled) setDesktopDownloadAllowed(result.allowed === true);
+      })
+      .catch(() => {
+        // Anonymous visitors and non-staff users simply do not see the test build.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="sm-home" id="top">
@@ -117,6 +136,15 @@ export default function ProfessionalHome() {
             </Link>
           </div>
           <p className="sm-note">The visual desktop game is in development and is intentionally not shown here yet.</p>
+          {desktopDownloadAllowed && (
+            <a
+              className="sm-desktop-download"
+              href={apiUrl("/api/desktop/download")}
+              download="salaryman-office-linux-x86_64.tar.gz"
+            >
+              <Download size={14} /> Download desktop test build <ArrowRight size={14} />
+            </a>
+          )}
         </div>
 
         <div className="sm-workspace-card" aria-label="SALARYMAN workspace preview">
