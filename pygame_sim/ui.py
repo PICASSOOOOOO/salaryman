@@ -169,17 +169,21 @@ class SolarPunkRenderer:
         # Decorative room composition uses real furniture sprites, while the
         # interaction registry remains the sole authority for object behavior.
         placements = {
-            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (1050, 1250)),
-                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (3500, 1250)),
-                      ("furniture/SOFA/SOFA_FRONT.png", (2400, 3500)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (3050, 1400))],
-            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (2500, 5550)),
-                           ("furniture/PLANT/PLANT.png", (7300, 5550)),
-                           ("furniture/BOOKSHELF/BOOKSHELF.png", (8200, 5550))],
-            "executive": [("furniture/DESK/DESK_FRONT.png", (6200, 1800)),
-                          ("furniture/BOOKSHELF/BOOKSHELF.png", (7600, 1450)),
-                          ("furniture/PLANT/PLANT.png", (8200, 3300)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5700, 1350))],
+            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (900, 1250)),
+                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2200, 1250)),
+                      ("furniture/SOFA/SOFA_FRONT.png", (1600, 2850)),
+                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2100, 1500))],
+            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (3100, 2850)),
+                           ("furniture/PLANT/PLANT.png", (4300, 1250)),
+                           ("furniture/BOOKSHELF/BOOKSHELF.png", (3000, 1250))],
+            "executive": [("furniture/DESK/DESK_FRONT.png", (5600, 1800)),
+                          ("furniture/BOOKSHELF/BOOKSHELF.png", (6250, 1250)),
+                          ("furniture/PLANT/PLANT.png", (6250, 2850)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5250, 1350))],
+            "public": [("furniture/DESK/DESK_FRONT.png", (7800, 1800)),
+                       ("furniture/BOOKSHELF/BOOKSHELF.png", (8450, 1250)),
+                       ("furniture/PLANT/PLANT.png", (8450, 2850)),
+                       ("furniture/WHITEBOARD/WHITEBOARD.png", (7450, 1350))],
         }
         for asset, position in placements.get(scene.current_room, []):
             screen_position = point(position)

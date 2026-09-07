@@ -31,13 +31,14 @@ class TowerScene:
     player_position: tuple[int, int] = (1_700, 2_400)
     rooms: tuple[Room, ...] = field(
         default_factory=lambda: (
-            # A floor is four private office suites. The legacy room IDs are
-            # retained as stable bridge/API identifiers while their physical
-            # meaning is now OFFICE 01–04.
-            Room("lobby", "OFFICE 01", (700, 1_000, 1_800, 2_200), (27, 112, 110)),
-            Room("recreation", "OFFICE 02", (2_900, 1_000, 1_800, 2_200), (72, 94, 130)),
-            Room("executive", "OFFICE 03", (5_100, 1_000, 1_800, 2_200), (112, 83, 115)),
-            Room("public", "OFFICE 04", (7_300, 1_000, 1_800, 2_200), (38, 87, 94)),
+            # The building is organized as lobby -> circulation hall -> four
+            # private office suites. Legacy IDs remain stable for the bridge.
+            Room("lobby", "TOWER LOBBY", (700, 1_000, 2_200, 1_800), (27, 112, 110)),
+            Room("recreation", "FLOOR 01 HALLWAY", (700, 3_400, 8_200, 1_400), (72, 94, 130)),
+            Room("executive", "OFFICE 01", (900, 5_200, 1_800, 2_200), (112, 83, 115)),
+            Room("public", "OFFICE 02", (3_000, 5_200, 1_800, 2_200), (38, 87, 94)),
+            Room("office_03", "OFFICE 03", (5_100, 5_200, 1_800, 2_200), (86, 98, 133)),
+            Room("office_04", "OFFICE 04", (7_200, 5_200, 1_800, 2_200), (122, 88, 106)),
         )
     )
     objects: OfficeObjectRegistry = field(default_factory=build_tower_object_registry)
@@ -59,10 +60,12 @@ class TowerScene:
 
     def room_spawn(self, room_id: str) -> tuple[int, int]:
         spawn_points = {
-            "lobby": (1_700, 2_400),
-            "recreation": (3_900, 2_400),
-            "executive": (6_100, 2_400),
-            "public": (8_300, 2_400),
+            "lobby": (1_800, 2_100),
+            "recreation": (4_800, 4_100),
+            "executive": (1_800, 6_400),
+            "public": (3_900, 6_400),
+            "office_03": (6_000, 6_400),
+            "office_04": (8_100, 6_400),
         }
         if room_id in spawn_points:
             return spawn_points[room_id]
