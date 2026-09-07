@@ -113,11 +113,11 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
       </button>
 
       {open && (
-        <section id="salaryman-economy-disclosure" className="economy-popover" aria-label="Live economy reference">
+        <section id="salaryman-economy-disclosure" className="economy-popover" aria-label="Finances and live economy reference">
           <div className="economy-popover-heading">
             <div>
-              <p className="economy-popover-kicker">LIVE ECONOMY REFERENCE</p>
-              <p className="economy-popover-note">USD fixed · BTC moves the in-game rails</p>
+              <p className="economy-popover-kicker">FINANCES + ECONOMY</p>
+              <p className="economy-popover-note">Your balances are separate from market facts.</p>
             </div>
             <button
               type="button"
@@ -130,6 +130,46 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
             </button>
           </div>
 
+          <div className="economy-section">
+            <div className="economy-section-heading">
+              <span>FINANCES</span>
+              <small>YOUR BALANCES</small>
+            </div>
+            <div className="economy-account-grid">
+              <div className="economy-account-card economy-account-usd">
+                <WalletCards />
+                <span>ACTIVE USD</span>
+                <strong>{streamerMode ? STREAMER_MASK : `$${money(wallet?.bank?.activeUsd, 2)}`}</strong>
+                <small>Stripe-withdrawable balance</small>
+              </div>
+              <div className="economy-account-card">
+                <Coins />
+                <span>FIAT</span>
+                <strong>ƒ{money(wallet?.bank?.fiatTotal, 0)}</strong>
+                <small>Your in-game currency</small>
+              </div>
+              <div className="economy-account-card">
+                <Coins />
+                <span>YOUR GOLD</span>
+                <strong>{money(wallet?.gold, 1)}</strong>
+                <small>Your in-game wealth</small>
+              </div>
+              {wallet?.property?.netWorth != null && wallet.property.netWorth > 0 && (
+                <div className="economy-account-card economy-account-property">
+                  <Building2 />
+                  <span>NET WORTH</span>
+                  <strong>ƒ{money(wallet.property.netWorth, 0)}</strong>
+                  <small>Property-backed</small>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="economy-section economy-reference-section">
+            <div className="economy-section-heading">
+              <span>ECONOMY</span>
+              <small>LIVE REFERENCE</small>
+            </div>
           <div className="economy-btc-card">
             <Bitcoin />
             <div>
@@ -176,8 +216,8 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
             </div>
             <div>
               <span>1 USD</span>
-              <strong>{money(market?.conversion?.usdToGoldOz, 4)} GOLD</strong>
-              <small>in-game only</small>
+               <strong>{money(market?.conversion?.usdToGoldOz, 4)} GOLD</strong>
+               <small>GOLD reference rate</small>
             </div>
           </div>
 
@@ -186,6 +226,7 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
               <Coins /> BTC multiplier {market?.multiplier ? `${market.multiplier.toFixed(2)}×` : "—"}
             </span>
             <span>{market?.asOf ? `Updated ${new Date(market.asOf).toLocaleTimeString()}` : "Waiting for sync"}</span>
+          </div>
           </div>
         </section>
       )}

@@ -522,7 +522,7 @@ header {
 
 .mobile-brand-row {
   min-height: 48px;
-  justify-content: space-between;
+  justify-content: flex-end;
   border-bottom: 1px solid #edf2f5;
 }
 
@@ -1241,8 +1241,8 @@ body.workspace-light .desktop-download-secondary:hover {
 
 .economy-popover {
   position: absolute;
-  top: calc(100% + .6rem);
-  right: 0;
+  top: 0;
+  right: calc(100% + .6rem);
   width: min(21rem, calc(100vw - 1.5rem));
   padding: .85rem;
   border: 1px solid #b7cadc;
@@ -1340,6 +1340,32 @@ body.workspace-light .desktop-download-secondary:hover {
   margin: .22rem 0 0;
   color: #64748b;
   font-size: .7rem;
+}
+
+.economy-section {
+  margin-top: .85rem;
+}
+
+.economy-reference-section {
+  padding-top: .85rem;
+  border-top: 1px solid #d7e2ec;
+}
+
+.economy-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .45rem;
+  color: #102b45;
+  font: 800 .62rem/1.2 "Fira Code", monospace;
+  letter-spacing: .1em;
+}
+
+.economy-section-heading small {
+  color: #94a3b8;
+  font: 700 .5rem/1.2 "Fira Code", monospace;
+  letter-spacing: .06em;
 }
 
 .economy-refresh-button {

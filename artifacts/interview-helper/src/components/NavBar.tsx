@@ -167,7 +167,7 @@ export function NavBar() {
               {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
           </div>
-          <div className="ml-auto flex items-center gap-2.5">
+           <div className="mr-auto flex items-center gap-2.5">
             <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
               ALPHA {__BUILD_VERSION__}
             </span>
