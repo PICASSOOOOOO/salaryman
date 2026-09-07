@@ -219,6 +219,7 @@ export function OfficeRadio() {
       proximityGainRef.current = Number.isFinite(next) ? next : 0;
       const audio = audioRef.current;
       if (audio) audio.volume = channelGain("soundtrack") * proximityGainRef.current;
+      reconcile();
     };
     window.addEventListener("salaryman:radio-proximity", onProximity);
     return () => window.removeEventListener("salaryman:radio-proximity", onProximity);

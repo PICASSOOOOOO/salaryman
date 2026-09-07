@@ -72,7 +72,7 @@ export function PhonePageLayout({
       <div className="phone-page-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto' }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '6px 0', borderBottom: `1px solid ${slate(0.06)}`,
+          padding: 'max(6px, env(safe-area-inset-top, 0px)) 0 6px', borderBottom: `1px solid ${slate(0.06)}`,
           fontSize: '0.45rem', color: slate(0.55), letterSpacing: '0.2em' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <img src={`${BASE}brand/callhome/calll-home-brush.png`} alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />

@@ -628,7 +628,17 @@
   grid-template-columns: repeat(5, minmax(170px, 1fr));
   gap: 12px;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: #b9d9e8 transparent;
+  scrollbar-width: thin;
   padding: 17px;
+}
+
+.crm-pipeline-board::after {
+  content: "";
+  display: block;
+  width: 1px;
+  min-width: 1px;
 }
 
 .crm-pipeline-column {

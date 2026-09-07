@@ -83,6 +83,11 @@ describe("OfficeRadio", () => {
     await act(async () => { root.render(<OfficeRadio />); });
     const player = players[0];
     expect(players).toHaveLength(1);
+    // Shadow Radio is positional: it only plays after WorldPlay reports that
+    // the player is near a physical radio source.
+    act(() => {
+      window.dispatchEvent(new CustomEvent("salaryman:radio-proximity", { detail: { gain: 1 } }));
+    });
     expect(player.play).toHaveBeenCalled();
 
     act(() => { setAudioSettings({ musicEnabled: false }); });

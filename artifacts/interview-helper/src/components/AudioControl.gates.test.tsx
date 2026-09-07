@@ -104,7 +104,7 @@ afterEach(() => {
 });
 
 describe("AudioControl gate defaults round-trip", () => {
-  it("persists musicEnabled=true and ambianceEnabled=true at defaults", async () => {
+  it("persists musicEnabled=false and ambianceEnabled=true at defaults", async () => {
     await mount();
     const b = blob();
     expect(b.musicEnabled).toBe(false);
@@ -148,7 +148,7 @@ describe("AudioControl MUSIC gate toggle", () => {
     expect(b.musicEnabled).toBe(false);
     expect(b.ambianceEnabled).toBe(true);
     expect(b.controlScheme).toBe("arrows");
-    expect(byTestId("audio-control-music-toggle").textContent).toContain("ON");
+    expect(byTestId("audio-control-music-toggle").textContent).toContain("OFF");
   });
 });
 
@@ -163,7 +163,7 @@ describe("AudioControl AMBIANCE gate toggle", () => {
     let b = blob();
     expect(b.ambianceEnabled).toBe(false);
     // music gate untouched.
-    expect(b.musicEnabled).toBe(true);
+    expect(b.musicEnabled).toBe(false);
     // Volume keys preserved.
     expect(b.masterVolume).toBe(AUDIO_DEFAULTS.master);
     expect(b.musicVolume).toBe(AUDIO_DEFAULTS.music);
@@ -176,7 +176,7 @@ describe("AudioControl AMBIANCE gate toggle", () => {
     click(byTestId("audio-control-ambiance-toggle"));
     b = blob();
     expect(b.ambianceEnabled).toBe(true);
-    expect(b.musicEnabled).toBe(true);
+    expect(b.musicEnabled).toBe(false);
     expect(b.invertY).toBe(true);
     expect(byTestId("audio-control-ambiance-toggle").textContent).toContain("ON");
   });

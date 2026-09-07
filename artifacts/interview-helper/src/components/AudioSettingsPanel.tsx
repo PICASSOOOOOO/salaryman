@@ -80,7 +80,7 @@ export function AudioSettingsPanel() {
         </button>
       </div>
 
-      <p className="mt-2 text-[9px] font-mono text-zinc-600">Radio and ambiance are off until enabled.</p>
+      <p className="mt-2 text-[9px] font-mono text-zinc-600">Radio is off until enabled; ambiance starts on.</p>
     </section>
   );
 }

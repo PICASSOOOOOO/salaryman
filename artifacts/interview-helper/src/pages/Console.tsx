@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Radio, Upload, FileImage, FileAudio, FileVideo, X } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Radio, Upload, FileImage, FileAudio, FileVideo, X, MoreHorizontal } from 'lucide-react';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { useMediaAnalyzer, detectMediaFileType, validateMediaFile } from '@/hooks/use-media-analyzer';
@@ -29,6 +29,7 @@ export default function Console() {
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
   const [typeMode, setTypeMode] = useState(false);
   const [showTowerLife, setShowTowerLife] = useState(false);
+  const [showMobileActions, setShowMobileActions] = useState(false);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const { t } = useTranslation();
 
@@ -210,7 +211,24 @@ export default function Console() {
           </span>
           <span className="hidden sm:inline-block w-[7px] h-[13px] ml-0.5 align-middle animate-pulse" style={{ background: 'rgba(52,211,153,0.8)' }} />
         </div>
-        <div className="console-titlebar-actions flex shrink-0 items-center gap-1.5">
+        <div className="console-titlebar-actions relative flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded px-2 py-1 md:hidden"
+          aria-label="Open console navigation"
+          aria-expanded={showMobileActions}
+          onClick={() => setShowMobileActions((open) => !open)}
+          style={{
+            fontSize: '0.55rem',
+            letterSpacing: '0.1em',
+            color: 'rgba(190,235,210,0.9)',
+            border: '1px solid rgba(52,211,153,0.28)',
+            background: showMobileActions ? 'rgba(52,211,153,0.12)' : 'transparent',
+          }}
+        >
+          {showMobileActions ? <X className="h-3 w-3" /> : <MoreHorizontal className="h-3 w-3" />}
+          MORE
+        </button>
         <Link
           href="/pablo"
           data-testid="console-open-pablo"
@@ -274,6 +292,50 @@ export default function Console() {
           {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
         </button>
         </div>
+        {showMobileActions && (
+          <div
+            className="absolute right-3 top-full z-50 mt-2 grid min-w-44 gap-1 rounded-lg border p-2 shadow-xl md:hidden"
+            style={{
+              borderColor: 'rgba(52,211,153,0.24)',
+              background: 'rgba(8,12,10,0.97)',
+              boxShadow: '0 14px 32px rgba(0,0,0,0.35)',
+            }}
+          >
+            <Link
+              href="/pablo"
+              onClick={() => setShowMobileActions(false)}
+              className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-pink-300 hover:bg-pink-500/10"
+            >
+              <Radio className="h-3 w-3" /> PABLO
+            </Link>
+            <Link
+              href="/phone?from=terminal"
+              onClick={() => setShowMobileActions(false)}
+              className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-emerald-300 hover:bg-emerald-500/10"
+            >
+              <Radio className="h-3 w-3" /> PHONE SYSTEM
+            </Link>
+            <button
+              type="button"
+              onClick={() => { setShowTowerLife(false); setShowTowerLife(true); setShowMobileActions(false); }}
+              className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-violet-300 hover:bg-violet-500/10"
+            >
+              TOWER CLASSIFIEDS
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nb = !boomerMode;
+                setBoomerMode(nb);
+                setShowMobileActions(false);
+                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
+              }}
+              className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-amber-300 hover:bg-amber-500/10"
+            >
+              <Settings2 className="h-3 w-3" /> {boomerMode ? 'MODERN MODE' : 'BOOMER MODE'}
+            </button>
+          </div>
+        )}
       </div>
 
       <main className="flex-1 min-w-0 p-3 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 relative z-10">
