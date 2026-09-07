@@ -1819,5 +1819,17 @@
       "Implement SalarymanGameplayTour component in mockup sandbox",
       "Update professional home mockup component and memory notes"
     ]
+  },
+  {
+    "version": "v.21.7.2303",
+    "date": "2026-09-07",
+    "commitHash": "048a39c81f4c744a6164efe0a2218fe9f1727d11",
+    "changes": [
+      "Add new images to attached assets",
+      "Update ProfessionalHome styles and add assets.",
+      "Update desktop download branding assets and remove unused styles.",
+      "Add Pygame assets and update desktop download styling and documentation",
+      "Implement desktop download route and page UI updates"
+    ]
   }
 ]
