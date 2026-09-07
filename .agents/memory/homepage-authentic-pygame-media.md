@@ -9,6 +9,6 @@ Homepage product imagery must be captured directly from the current downloadable
 
 **How to apply:** When creating or refreshing homepage media, render the current Pygame client and use those captures. Re-capture after material desktop-runtime visual changes instead of substituting archived promotional footage.
 
-The user confirmed the clean, Pygame-led responsive homepage structure and specifically approved its white daylight base, but rejected green as the dominant homepage accent. Use ocean blue/blue-teal with restrained saffron and coral.
+The user confirmed the clean, responsive white homepage foundation but later removed gameplay promotion until the visual game is ready. The public homepage should be feature-first, with ocean/navy blue plus restrained saffron and coral—not dominant green.
 
-Every download-related surface must bridge into the bright, gamified solar-punk Pygame experience using current runtime captures. It should sell the game—walking the tower, directing shifts, and watching the workplace evolve—not advertise the online business-tool modes. Never switch download CTAs or panels into the old dark CCTV/browser-game visual language.
+Until the bright solar-punk visual game build is presentation-ready, every desktop download control stays visibly disabled and no gameplay preview is marketed. The web workspace and its high-return business features lead the homepage.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, ChevronRight, Download, Headphones, Map, Pause, Play, Volume2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Headphones, LockKeyhole, Map, Pause, Play, Volume2 } from "lucide-react";
 import "./SalarymanGameplayTour.css";
 
 const rooms = [
@@ -13,7 +13,6 @@ export default function SalarymanGameplayTour() {
   const [room, setRoom] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [sound, setSound] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
   const active = rooms[room];
 
   useEffect(() => {
@@ -30,7 +29,7 @@ export default function SalarymanGameplayTour() {
           <span><b>SALARYMAN</b><small>PLAYABLE WORKDAY / TOUR 01</small></span>
         </a>
         <div className="sgt-topmeta"><span className="sgt-live-dot" /> LIVE CLIENT CAPTURE <i /> 04 ROOMS</div>
-        <button className="sgt-download" type="button" onClick={() => setDownloaded(true)}><Download size={14} /> Get the desktop client</button>
+        <button className="sgt-download sgt-download-locked" type="button" disabled><LockKeyhole size={14} /> Desktop game in development</button>
       </header>
 
       <section className="sgt-layout" id="tour">
@@ -66,6 +65,7 @@ export default function SalarymanGameplayTour() {
             <div className="sgt-progress">{rooms.map((item, index) => <button key={item.name} aria-label={`Go to ${item.name}`} className={index === room ? "is-active" : ""} onClick={() => { setRoom(index); setPlaying(false); }} />)}</div>
             <button type="button" onClick={() => { setRoom((room + 1) % rooms.length); setPlaying(false); }}>Next room <ArrowRight size={16} /></button>
           </div>
+          <p className="sgt-lock-notice"><LockKeyhole size={13} /><span><b>Preview locked.</b> Download access opens when the bright solar-punk visual game build is ready.</span></p>
         </div>
       </section>
 
@@ -75,7 +75,6 @@ export default function SalarymanGameplayTour() {
         <span className="sgt-footer-credit">PICASSO AI / SALARYMAN</span>
       </footer>
 
-      {downloaded && <div className="sgt-toast" role="status"><span><Download size={15} /><b>Desktop client queued</b><small>Your secure download will begin in a moment.</small></span><button onClick={() => setDownloaded(false)} aria-label="Dismiss"><X size={15} /></button></div>}
     </main>
   );
 }
