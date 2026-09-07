@@ -1243,7 +1243,7 @@ body.workspace-light .desktop-download-secondary:hover {
   position: absolute;
   top: 0;
   right: calc(100% + .6rem);
-  width: min(21rem, calc(100vw - 1.5rem));
+  width: min(23.5rem, calc(100vw - 1.5rem));
   padding: .85rem;
   border: 1px solid #b7cadc;
   border-radius: .65rem;
@@ -1313,6 +1313,58 @@ body.workspace-light .desktop-download-secondary:hover {
 
 .economy-account-property > svg {
   color: #2563eb;
+}
+
+.economy-org-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .45rem;
+}
+
+.economy-org-grid > div {
+  min-width: 0;
+  padding: .6rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  background: #f7fbff;
+}
+
+.economy-org-grid svg {
+  width: .82rem;
+  height: .82rem;
+  margin-bottom: .35rem;
+  color: #2563eb;
+}
+
+.economy-org-grid span,
+.economy-org-grid strong {
+  display: block;
+  font-family: "Fira Code", monospace;
+}
+
+.economy-org-grid span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: .48rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.economy-org-grid strong {
+  margin-top: .2rem;
+  color: #102b45;
+  font-size: .72rem;
+}
+
+.economy-org-restricted {
+  padding: .65rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: .68rem;
 }
 
 .economy-popover-heading,
@@ -1461,6 +1513,34 @@ body.workspace-light .desktop-download-secondary:hover {
   color: #94a3b8;
   font-size: .52rem;
   letter-spacing: .04em;
+}
+
+.economy-transfer-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: .45rem;
+  margin-top: .6rem;
+  padding: .58rem .7rem;
+  border: 1px solid #c69a28;
+  border-radius: .45rem;
+  color: #805b08;
+  background: #fff9e8;
+  font: 800 .58rem/1 "Fira Code", monospace;
+  letter-spacing: .08em;
+}
+
+.economy-transfer-button:hover,
+.economy-transfer-button:focus-visible {
+  border-color: #a8770c;
+  background: #fff3c4;
+  outline: none;
+}
+
+.economy-transfer-button svg {
+  width: .8rem;
+  height: .8rem;
 }
 
 .economy-popover-footer {

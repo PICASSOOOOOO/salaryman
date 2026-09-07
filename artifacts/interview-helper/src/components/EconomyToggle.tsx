@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Activity, Bitcoin, Building2, ChevronDown, Coins, RefreshCw, WalletCards } from "lucide-react";
+import { Activity, ArrowRightLeft, Bitcoin, Building2, ChevronLeft, Coins, Landmark, RefreshCw, WalletCards } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { STREAMER_MASK } from "@/lib/streamer-mode";
 import { useStreamerMode } from "@/hooks/use-streamer-mode";
+import { useOrg } from "@/hooks/use-org";
+import { useLocation } from "wouter";
 
 type MarketIndex = {
   btcUsd: number;
@@ -20,9 +22,20 @@ type MarketIndex = {
 };
 
 type WalletSnapshot = {
-  bank?: { activeUsd?: number; fiatTotal?: number };
+  bank?: {
+    accounts?: Array<{ kind?: string; label?: string; balance?: number; currency?: string }>;
+    activeUsd?: number;
+    fiatTotal?: number;
+    earnedFiat?: number;
+  };
   gold?: number;
-  property?: { netWorth?: number; businesses?: unknown[] };
+  property?: { businesses?: unknown[] };
+};
+
+type OrgAccountsSnapshot = {
+  orgId: number;
+  orgName: string;
+  accounts: Array<{ type: string; label: string; balanceFiat: number }>;
 };
 
 function money(value: number | null | undefined, maximumFractionDigits = 0): string {
@@ -38,9 +51,13 @@ function money(value: number | null | undefined, maximumFractionDigits = 0): str
 export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   const [market, setMarket] = useState<MarketIndex | null>(null);
   const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
+  const [orgAccounts, setOrgAccounts] = useState<OrgAccountsSnapshot | null>(null);
+  const [orgFinanceRestricted, setOrgFinanceRestricted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const streamerMode = useStreamerMode();
+  const { org } = useOrg();
+  const [, navigate] = useLocation();
 
   const load = async () => {
     setLoading(true);
@@ -88,10 +105,49 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !org?.id) {
+      setOrgAccounts(null);
+      setOrgFinanceRestricted(false);
+      return;
+    }
+    let alive = true;
+    const loadOrgAccounts = async () => {
+      try {
+        const response = await apiFetch(`/api/orgs/${org.id}/accounts`, { credentials: "include" });
+        if (!response.ok) {
+          if (alive) {
+            setOrgAccounts(null);
+            setOrgFinanceRestricted(response.status === 403);
+          }
+          return;
+        }
+        const next = (await response.json()) as OrgAccountsSnapshot;
+        if (alive) {
+          setOrgAccounts(next);
+          setOrgFinanceRestricted(false);
+        }
+      } catch {
+        if (alive) setOrgAccounts(null);
+      }
+    };
+    void loadOrgAccounts();
+    const interval = window.setInterval(() => void loadOrgAccounts(), 30_000);
+    return () => {
+      alive = false;
+      window.clearInterval(interval);
+    };
+  }, [isAuthenticated, org?.id]);
+
   const status = market?.status ?? (loading ? "syncing" : "offline");
   const isLive = status === "live";
   const statusLabel = status.toUpperCase();
   const statusClass = isLive ? "is-live" : status === "stale" ? "is-stale" : "is-offline";
+  const personalNetWorthFiat = wallet?.bank?.fiatTotal;
+  const availableFiat = wallet?.bank?.earnedFiat ?? wallet?.bank?.fiatTotal;
+  const orgChecking = orgAccounts?.accounts.find((account) => account.type === "checking")?.balanceFiat;
+  const orgSavings = orgAccounts?.accounts.find((account) => account.type === "savings")?.balanceFiat;
+  const orgNetWorthFiat = orgAccounts?.accounts.reduce((total, account) => total + (account.balanceFiat || 0), 0);
 
   return (
     <div className={`economy-toggle ${open ? "is-open" : ""}`}>
@@ -104,12 +160,12 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
         }}
         aria-expanded={open}
         aria-controls="salaryman-economy-disclosure"
-        title="Show the live BTC-linked economy reference"
+        title="Show finances and live economy reference"
       >
         <span className={`economy-status-dot ${statusClass}`} />
         <Activity className="economy-toggle-icon" />
         <span>ECONOMY</span>
-        <ChevronDown className={`economy-toggle-chevron ${open ? "is-open" : ""}`} />
+        <ChevronLeft className={`economy-toggle-chevron ${open ? "is-open" : ""}`} />
       </button>
 
       {open && (
@@ -144,26 +200,54 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
               </div>
               <div className="economy-account-card">
                 <Coins />
-                <span>FIAT</span>
-                <strong>ƒ{money(wallet?.bank?.fiatTotal, 0)}</strong>
-                <small>Your in-game currency</small>
+                <span>AVAILABLE FIAT</span>
+                <strong>ƒ{money(availableFiat, 0)}</strong>
+                <small>Spendable personal funds</small>
               </div>
               <div className="economy-account-card">
                 <Coins />
-                <span>YOUR GOLD</span>
+                <span>GOLD SAVINGS</span>
                 <strong>{money(wallet?.gold, 1)}</strong>
-                <small>Your in-game wealth</small>
+                <small>Property and major purchases</small>
               </div>
-              {wallet?.property?.netWorth != null && wallet.property.netWorth > 0 && (
-                <div className="economy-account-card economy-account-property">
-                  <Building2 />
-                  <span>NET WORTH</span>
-                  <strong>ƒ{money(wallet.property.netWorth, 0)}</strong>
-                  <small>Property-backed</small>
+              <div className="economy-account-card economy-account-property">
+                <Building2 />
+                <span>NET WORTH</span>
+                <strong>ƒ{money(personalNetWorthFiat, 0)}</strong>
+                <small>All personal FIAT accounts</small>
+              </div>
+            </div>
+          </div>
+
+          {org && (
+            <div className="economy-section economy-reference-section">
+              <div className="economy-section-heading">
+                <span>ORGANIZATION</span>
+                <small>{orgAccounts?.orgName || org.name}</small>
+              </div>
+              {orgFinanceRestricted ? (
+                <div className="economy-org-restricted">Organization balances require finance access.</div>
+              ) : (
+                <div className="economy-org-grid">
+                  <div>
+                    <Landmark />
+                    <span>CHECKING</span>
+                    <strong>ƒ{money(orgChecking, 0)}</strong>
+                  </div>
+                  <div>
+                    <Coins />
+                    <span>SAVINGS</span>
+                    <strong>ƒ{money(orgSavings, 0)}</strong>
+                  </div>
+                  <div>
+                    <Building2 />
+                    <span>ORG NET WORTH</span>
+                    <strong>ƒ{money(orgNetWorthFiat, 0)}</strong>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          )}
 
           <div className="economy-section economy-reference-section">
             <div className="economy-section-heading">
@@ -179,35 +263,6 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
             <span className={`economy-live-label ${statusClass}`}>{statusLabel}</span>
           </div>
 
-           <div className="economy-account-grid">
-             <div className="economy-account-card economy-account-usd">
-               <WalletCards />
-               <span>ACTIVE USD</span>
-               <strong>{streamerMode ? STREAMER_MASK : `$${money(wallet?.bank?.activeUsd, 2)}`}</strong>
-               <small>Stripe-withdrawable balance</small>
-             </div>
-             <div className="economy-account-card">
-               <Coins />
-               <span>FIAT</span>
-               <strong>ƒ{money(wallet?.bank?.fiatTotal, 0)}</strong>
-               <small>In-game currency</small>
-             </div>
-             <div className="economy-account-card">
-               <Coins />
-               <span>GOLD</span>
-               <strong>{money(wallet?.gold, 1)}</strong>
-               <small>In-game wealth</small>
-             </div>
-             {wallet?.property?.netWorth != null && wallet.property.netWorth > 0 && (
-               <div className="economy-account-card economy-account-property">
-                 <Building2 />
-                 <span>NET WORTH</span>
-                 <strong>ƒ{money(wallet.property.netWorth, 0)}</strong>
-                 <small>Property-backed</small>
-               </div>
-             )}
-           </div>
-
            <div className="economy-rail-grid">
             <div>
               <span>1 USD</span>
@@ -220,6 +275,20 @@ export function EconomyToggle({ isAuthenticated = false }: { isAuthenticated?: b
                <small>GOLD reference rate</small>
             </div>
           </div>
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              className="economy-transfer-button"
+              onClick={() => {
+                setOpen(false);
+                navigate("/game/economy");
+              }}
+            >
+              <ArrowRightLeft />
+              TRANSFER FIAT ↔ GOLD
+            </button>
+          )}
 
           <div className="economy-popover-footer">
             <span>
