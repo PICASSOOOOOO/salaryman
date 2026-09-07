@@ -141,7 +141,29 @@ def main() -> int:
         else staging / "pygame"
     )
     shutil.copytree(bundle_source, pygame_target)
-    shutil.copytree(ROOT / "godot" / "office-client", staging / "godot-office-client")
+    godot_bundle = staging / "godot-office-client"
+    shutil.copytree(
+        ROOT / "godot" / "office-client",
+        godot_bundle,
+        ignore=shutil.ignore_patterns(".godot", "*.uid"),
+    )
+    required_godot_files = (
+        "project.godot",
+        "Main.tscn",
+        "main.gd",
+        "floor_plan.json",
+        "agentshire-assets/characters/character-male-a.glb",
+        "agentshire-assets/furniture/couch.gltf",
+        "pixel-agents/assets/characters/char_0.png",
+    )
+    missing_godot_files = [
+        path for path in required_godot_files if not (godot_bundle / path).exists()
+    ]
+    if missing_godot_files:
+        raise RuntimeError(
+            "Godot bundle is missing required runtime assets: "
+            + ", ".join(missing_godot_files)
+        )
     branding = staging / "branding"
     branding.mkdir()
     shutil.copy2(ICON_SOURCE, branding / "salaryman-office.png")

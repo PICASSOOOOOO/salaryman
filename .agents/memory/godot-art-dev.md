@@ -21,3 +21,17 @@ than making either project a second source of truth. The physical world should
 feel like a 1970s–1980s solar-punk retrofuture even when the story is dark noir.
 All new assets must be animation-worthy: readable silhouettes, separable layers,
 clean pivots and contacts, stable lighting, and no baked text or UI.
+
+Portable Godot bundles should ship source GLTF/GLB assets and floor-plan data,
+but not the generated `.godot` import cache. A cache-free smoke test must run
+one editor import pass before launching the runtime; otherwise first-load
+resource errors are a test-order artifact, not necessarily a package defect.
+
+**Why:** Godot can import assets on first launch, while copying editor caches
+makes releases stale and platform-specific. The previous cache-free runtime
+check launched before import completed and reported misleading missing-resource
+errors.
+
+**How to apply:** Validate the bundle's required source assets in the desktop
+build script, run `godot --headless --editor --quit` once in a clean copy, then
+run the headless runtime smoke test.

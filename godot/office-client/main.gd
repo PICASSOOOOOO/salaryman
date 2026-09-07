@@ -14,6 +14,9 @@ const FLOOR_HEIGHT := 0.08
 const WALL_HEIGHT := 1.65
 const CAMERA_DISTANCE_MIN := 8.0
 const CAMERA_DISTANCE_MAX := 22.0
+const CAMERA_ORTHO_SIZE_MIN := 9.0
+const CAMERA_ORTHO_SIZE_MAX := 18.0
+const CAMERA_ORTHO_SIZE_BASE := 13.0
 
 var connection := StreamPeerTCP.new()
 var receive_buffer := ""
@@ -27,6 +30,9 @@ var animation_clock := 0.0
 var camera_distance := 14.0
 var last_room_id := ""
 var last_sequence := -1
+var lobby_light: OmniLight3D
+var rim_light: OmniLight3D
+var interaction_rings: Array[MeshInstance3D] = []
 
 var world_root: Node3D
 var dynamic_root: Node3D
@@ -65,14 +71,26 @@ func _build_materials() -> void:
 	materials["door"] = _material(Color("#e8b45d"), 0.66)
 	materials["glass"] = _material(Color("#8ed6d2"), 0.18, true)
 	materials["metal"] = _material(Color("#52676d"), 0.36, false, 0.28)
-	materials["marker"] = _material(Color("#f8b957"), 0.34, true)
+	materials["marker"] = _material(Color("#f8b957"), 0.34, true, 0.0, Color("#f8b957"))
+	materials["signal"] = _material(Color("#71e0c0"), 0.3, true, 0.0, Color("#71e0c0"))
 
 
-func _material(color: Color, roughness: float, transparent := false, metallic := 0.0) -> StandardMaterial3D:
+func _material(
+	color: Color,
+	roughness: float,
+	transparent := false,
+	metallic := 0.0,
+	emission := Color(0.0, 0.0, 0.0, 0.0),
+) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = roughness
 	material.metallic = metallic
+	material.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+	if emission.a > 0.0:
+		material.emission_enabled = true
+		material.emission = emission
+		material.emission_energy_multiplier = 1.8
 	if transparent:
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
@@ -99,12 +117,21 @@ func _build_lighting() -> void:
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
 
-	var lobby_light := OmniLight3D.new()
+	lobby_light = OmniLight3D.new()
 	lobby_light.position = Vector3(10.0, 4.5, 15.0)
 	lobby_light.light_color = Color("#7ee0c5")
 	lobby_light.light_energy = 2.2
 	lobby_light.omni_range = 13.0
+	lobby_light.shadow_enabled = true
 	add_child(lobby_light)
+
+	rim_light = OmniLight3D.new()
+	rim_light.position = Vector3(-7.0, 5.5, -5.0)
+	rim_light.light_color = Color("#68b8ff")
+	rim_light.light_energy = 1.35
+	rim_light.omni_range = 19.0
+	rim_light.shadow_enabled = true
+	add_child(rim_light)
 
 
 func _build_building_shell() -> void:
@@ -219,6 +246,7 @@ func _add_box(node_name: String, position: Vector3, size: Vector3, material: Mat
 	instance.name = node_name
 	instance.mesh = mesh
 	instance.position = position
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	world_root.add_child(instance)
 	return instance
 
@@ -332,6 +360,7 @@ func _process(delta: float) -> void:
 	_update_camera(delta)
 	_update_hud()
 	_update_player_animation()
+	_update_art_motion(delta)
 
 
 func _read_messages() -> void:
@@ -395,6 +424,7 @@ func _smooth_visual_player(delta: float) -> void:
 func _rebuild_bridge_objects(objects: Array) -> void:
 	for child in dynamic_root.get_children():
 		child.queue_free()
+	interaction_rings.clear()
 	for item in objects:
 		var object: Dictionary = item
 		var position := _pygame_to_world(float(object.get("x", 0)), float(object.get("y", 0)))
@@ -437,6 +467,7 @@ func _add_box_to_dynamic(node_name: String, position: Vector3, size: Vector3, ma
 	instance.name = node_name
 	instance.mesh = mesh
 	instance.position = position
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	dynamic_root.add_child(instance)
 	return instance
 
@@ -452,13 +483,17 @@ func _add_interaction_ring(position: Vector3) -> void:
 	instance.mesh = ring
 	instance.position = position + Vector3(0, 0.03, 0)
 	dynamic_root.add_child(instance)
+	interaction_rings.append(instance)
 
 
 func _update_camera(delta: float) -> void:
 	if camera == null:
 		camera = Camera3D.new()
 		camera.name = "FollowCamera"
-		camera.fov = 48.0
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = CAMERA_ORTHO_SIZE_BASE
+		camera.near = 0.05
+		camera.far = 120.0
 		add_child(camera)
 		camera.current = true
 	var desired_target := visual_player_world + Vector3(0.0, 0.2, 0.0)
@@ -466,7 +501,30 @@ func _update_camera(delta: float) -> void:
 	var offset := Vector3(camera_distance * 0.78, camera_distance * 0.82, camera_distance * 0.78)
 	var desired_position := camera_target + offset
 	camera.position = camera.position.lerp(desired_position, min(1.0, delta * 5.0))
+	var desired_size: float = clampf(
+		CAMERA_ORTHO_SIZE_BASE + (camera_distance - 14.0) * 0.55,
+		CAMERA_ORTHO_SIZE_MIN,
+		CAMERA_ORTHO_SIZE_MAX,
+	)
+	camera.size = lerp(camera.size, desired_size, min(1.0, delta * 6.0))
 	camera.look_at(camera_target, Vector3.UP)
+
+
+func _update_art_motion(delta: float) -> void:
+	# These accents are renderer-only. Pygame remains the authority for all
+	# positions and interactions; this layer adds a tactile 2.5D presentation.
+	if lobby_light:
+		lobby_light.light_energy = 2.15 + sin(animation_clock * 1.7) * 0.12
+	if rim_light:
+		rim_light.light_energy = 1.3 + sin(animation_clock * 1.1 + 0.8) * 0.1
+	for index in range(interaction_rings.size()):
+		var ring := interaction_rings[index]
+		if not is_instance_valid(ring):
+			continue
+		var pulse := (sin(animation_clock * 3.4 + float(index) * 0.7) + 1.0) * 0.5
+		var scale_value := 0.82 + pulse * 0.2
+		ring.scale = Vector3(scale_value, 1.0, scale_value)
+		ring.rotation.y += delta * (0.55 + pulse * 0.25)
 
 
 func _update_player_animation() -> void:

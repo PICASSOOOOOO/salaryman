@@ -1,7 +1,9 @@
 # SALARYMAN Godot office client
 
-This is the optional perspective 3D renderer for the standalone Pygame office
-simulation. It is intentionally separate from `godot/art-dev`.
+This is the optional high-resolution 2.5D isometric renderer for the standalone
+Pygame office simulation. It keeps the pixel-art silhouette language while
+using real 3D depth, shadows, and animation. It is intentionally separate from
+`godot/art-dev`.
 
 ## Runtime boundary
 
@@ -35,7 +37,7 @@ The existing Pygame dashboard continues to work if Godot is closed. Use
 - `WASD` / arrows: move
 - `E`: interact with the nearby physical object
 - `1`–`6`: move to the lobby, hallway, or one of the four offices
-- `+` / `-` or mouse wheel: zoom the perspective camera
+- `+` / `-` or mouse wheel: zoom the orthographic isometric camera
 - `Space`: pause/resume the shift
 - `N`: open/close the hiring desk
 - `B`: start a short break
