@@ -31,6 +31,7 @@ import { isEmbedMode } from "@/lib/embed-mode";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 
 const Home = lazy(() => import("@/pages/Home"));
+const ScrollLanding = lazy(() => import("@/pages/ScrollLanding"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
@@ -215,17 +216,14 @@ const MemoHome = memo(Home as React.ComponentType);
 const MemoConsole = memo(Console as React.ComponentType);
 
 function HomeOrCover() {
-  const { isLoading } = useAuth();
   const [location] = useLocation();
   // This component is kept-alive (always mounted, just hidden via display:none
   // on non-home routes). Guard on the actual path so the homepage terminal does
   // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
-  if (isLoading) return <LoadingFallback />;
-  // Pablo is the homepage for both guests and signed-in players. Entering the
-  // Tower is an explicit choice in the terminal, never an automatic redirect
-  // caused by an auth cookie or a missing local onboarding flag.
-  return <PabloTerminal />;
+  // The public door is a gameplay-led preview. Pablo remains an explicit
+  // destination at /pablo rather than taking over the product homepage.
+  return <ScrollLanding />;
 }
 
 const FLOATING_BAR_ROUTES = [
@@ -329,7 +327,7 @@ function AppShell() {
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/desktop", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -479,7 +477,7 @@ function AppShell() {
             <Route path="/sign-in/*?" component={ClerkSignInPage} />
             <Route path="/sign-up/*?" component={ClerkSignUpPage} />
             {/* Standalone routes */}
-            <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>
+            <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/pablo/deck" component={PabloDeck} />
             <Route path="/pablo" component={PabloTerminal} />
             <Route path="/sms-opt-in" component={SmsOptIn} />
@@ -552,6 +550,7 @@ function AppShell() {
             <Route path="/business/job-command" component={JobCommandCenter} />
             <Route path="/job-offers" component={JobOffers} />
             <Route path="/business/interview" component={Console} />
+             <Route path="/calendar">{() => <Redirect to="/business/calendar" />}</Route>
             <Route path="/business/calendar" component={Calendar} />
             <Route path="/business/documents" component={Documents} />
             <Route path="/business/resume" component={ResumeBuilder} />
@@ -617,6 +616,9 @@ function AppShell() {
             {/* Legacy agent status page now belongs to the Agent Command Center. */}
             <Route path="/console/agents">{() => <Redirect to="/bots" />}</Route>
             <Route path="/console/video" component={VideoAnalyzer} />
+             <Route path="/knowledge">{() => <Redirect to="/console/vault" />}</Route>
+             <Route path="/knowledge-hub">{() => <Redirect to="/console/vault" />}</Route>
+             <Route path="/vault">{() => <Redirect to="/console/vault" />}</Route>
             <Route path="/console/vault" component={KnowledgeVault} />
             <Route path="/console/scraper" component={WebScraper} />
 

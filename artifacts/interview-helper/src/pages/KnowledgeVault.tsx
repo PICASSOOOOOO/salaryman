@@ -166,6 +166,7 @@ export default function KnowledgeVault() {
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [folders, setFolders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [linkingFrom, setLinkingFrom] = useState<number | null>(null);
   const [graphExpanded, setGraphExpanded] = useState(false);
@@ -199,37 +200,48 @@ export default function KnowledgeVault() {
       const qs = params.toString();
       const url = `/api/vault/entries${qs ? `?${qs}` : ''}`;
       const resp = await apiFetch(url);
-      if (resp.ok) {
-        const data = await resp.json();
-        setEntries(data.entries ?? []);
-      }
-    } catch { /* network error */ }
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || `Entries request failed (${resp.status})`);
+      setEntries(Array.isArray(data.entries) ? data.entries : []);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Knowledge entries could not be loaded.');
+      throw error;
+    }
   }, [searchQuery, currentFolder]);
 
   const loadFolders = useCallback(async () => {
     try {
       const resp = await apiFetch('/api/vault/folders');
-      if (resp.ok) {
-        const data = await resp.json();
-        setFolders(data.folders ?? []);
-      }
-    } catch {}
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || `Folders request failed (${resp.status})`);
+      setFolders(Array.isArray(data.folders) ? data.folders : []);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Knowledge folders could not be loaded.');
+      throw error;
+    }
   }, []);
 
   const loadGraph = useCallback(async () => {
     try {
       const resp = await apiFetch('/api/vault/graph');
-      if (resp.ok) {
-        const data = await resp.json();
-        setGraphNodes(data.nodes ?? []);
-        setGraphEdges(data.edges ?? []);
-      }
-    } catch { /* network error */ }
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || `Knowledge graph request failed (${resp.status})`);
+      setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
+      setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Knowledge graph could not be loaded.');
+      throw error;
+    }
   }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadEntries(), loadGraph(), loadFolders()]);
+    setLoadError(null);
+    const results = await Promise.allSettled([loadEntries(), loadGraph(), loadFolders()]);
+    const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (failed) {
+      setLoadError(failed.reason instanceof Error ? failed.reason.message : 'Knowledge Hub could not be loaded.');
+    }
     setLoading(false);
   }, [loadEntries, loadGraph, loadFolders]);
 
@@ -691,7 +703,7 @@ export default function KnowledgeVault() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden">
+    <div className="flex min-h-[calc(100dvh-80px)] flex-col overflow-auto md:h-[calc(100vh-80px)] md:flex-row md:overflow-hidden">
       <input
         ref={fileInputRef}
         type="file"
@@ -701,7 +713,16 @@ export default function KnowledgeVault() {
         onChange={handleImportFiles}
       />
 
-      <div className="w-72 border-r border-border bg-card/50 flex flex-col shrink-0">
+      <div className="flex max-h-[48vh] w-full shrink-0 flex-col border-b border-border bg-card/50 md:h-full md:max-h-none md:w-72 md:border-b-0 md:border-r">
+        {loadError && (
+          <div role="alert" className="m-3 rounded border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+            <p className="font-medium">Knowledge Hub could not load completely.</p>
+            <p className="mt-1 text-red-200/70">{loadError}</p>
+            <button type="button" onClick={() => void loadAll()} className="mt-2 rounded border border-red-300/30 px-2 py-1 text-[10px] uppercase tracking-wider hover:bg-red-400/10">
+              Retry
+            </button>
+          </div>
+        )}
         <div className="p-3 border-b border-border space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">

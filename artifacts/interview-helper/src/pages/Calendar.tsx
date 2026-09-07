@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, apiUrl } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, FileText,
@@ -12,11 +12,6 @@ import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
-
-const API = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
-function apiUrl(path: string) {
-  return `/${API ? API + "/" : ""}api/${path}`.replace(/\/+/g, "/");
-}
 
 type ViewMode = "month" | "week" | "day";
 
@@ -907,6 +902,7 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState(new Date(today));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Appointment | null>(null);
   const [saving, setSaving] = useState(false);
@@ -926,14 +922,16 @@ export default function Calendar() {
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const resp = await apiFetch(apiUrl("calendar/appointments"), { credentials: "include" });
-      if (resp.ok) {
-        const data = await resp.json();
-        setAppointments(data.appointments ?? []);
-      }
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || `Calendar request failed (${resp.status})`);
+      setAppointments(Array.isArray(data.appointments) ? data.appointments : []);
     } catch (e) {
       console.error("fetch appointments error:", e);
+      setLoadError(e instanceof Error ? e.message : "Calendar data could not be loaded.");
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -1254,7 +1252,7 @@ export default function Calendar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+           <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:overflow-visible sm:pb-0">
             {/* View toggle */}
             <div className="flex" style={{ border: "1px solid rgba(56,189,248,0.25)" }}>
               {(["month", "week", "day"] as ViewMode[]).map(v => (
@@ -1403,7 +1401,31 @@ export default function Calendar() {
               LOADING TEMPORAL DATA...
             </div>
           </div>
-        ) : (
+         ) : loadError ? (
+           <div className="flex flex-1 items-center justify-center px-6 py-16">
+             <div
+               role="alert"
+               className="max-w-md border px-5 py-4 text-center"
+               style={{
+                 borderColor: "rgba(248,113,113,0.35)",
+                 background: "rgba(127,29,29,0.12)",
+               }}
+             >
+               <p className="display-text text-xs" style={{ color: "#fca5a5", letterSpacing: "0.08em" }}>
+                 CALENDAR DATA UNAVAILABLE
+               </p>
+               <p className="mt-2 text-sm text-zinc-400">{loadError}</p>
+               <button
+                 type="button"
+                 onClick={() => void fetchAppointments()}
+                 className="mt-4 border px-3 py-1.5 display-text text-xs"
+                 style={{ color: "#67e8f9", borderColor: "rgba(103,232,249,0.35)" }}
+               >
+                 RETRY
+               </button>
+             </div>
+           </div>
+         ) : (
           <div className="flex-1 flex flex-col overflow-hidden">
             {view === "month" && (
               <MonthView
@@ -1438,7 +1460,7 @@ export default function Calendar() {
         )}
 
         {/* Empty state */}
-        {!loading && appointments.length === 0 && (
+         {!loading && !loadError && appointments.length === 0 && (
           <div
             className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none"
           >
