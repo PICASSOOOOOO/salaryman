@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pygame
 
 from .models import Worker
@@ -55,6 +58,38 @@ class SolarPunkRenderer:
         self.recruitment_rect = pygame.Rect(0, 0, 0, 0)
         self.refresh_rect = pygame.Rect(0, 0, 0, 0)
         self.candidate_rects: dict[int, pygame.Rect] = {}
+        self._pixel_assets: dict[str, pygame.Surface] = {}
+        self._facing = "down"
+        self._anim_tick = 0
+        self._asset_root = self._find_pixel_assets()
+
+    @staticmethod
+    def _find_pixel_assets() -> Path | None:
+        """Locate bundled pixel-agents in both source and frozen clients."""
+        candidates = [
+            Path(getattr(__import__("sys"), "_MEIPASS", "")) / "pixel-agents",
+            Path(__file__).resolve().parents[1] / "artifacts" / "interview-helper" / "public" / "pixel-agents",
+            Path.cwd() / "artifacts" / "interview-helper" / "public" / "pixel-agents",
+        ]
+        for root in candidates:
+            if (root / "assets" / "floors" / "floor_0.png").exists():
+                return root / "assets"
+            if (root / "floors" / "floor_0.png").exists():
+                return root
+        return None
+
+    def _asset(self, relative: str) -> pygame.Surface | None:
+        if relative in self._pixel_assets:
+            return self._pixel_assets[relative]
+        if self._asset_root is None:
+            return None
+        path = self._asset_root / relative
+        try:
+            image = pygame.image.load(str(path)).convert_alpha()
+        except (pygame.error, OSError):
+            return None
+        self._pixel_assets[relative] = image
+        return image
 
     def text(
         self,
@@ -90,60 +125,85 @@ class SolarPunkRenderer:
             self.draw_office_record(state)
 
     def draw_tower(self, state: OfficeState, scene: TowerScene) -> None:
-        """Render the first physical tower slice without owning simulation state."""
-        # This is deliberately a bright, legible "dollhouse" plan rather than a
-        # second simulation.  World positions and interaction ownership remain in
-        # TowerScene; this method only turns those coordinates into a place.
-        self.screen.fill((218, 238, 229))
+        """Render the authoritative scene as a camera-following pixel-art room."""
+        self.screen.fill((8, 43, 49))
         self.draw_tower_header(state, scene)
-        map_rect = pygame.Rect(28, 104, self.width - 56, 488)
-        self.panel(map_rect, (249, 246, 226), (124, 181, 169), radius=18, width=2)
-        self.text("SUNLIT TOWER / FLOOR 01", (52, 122), self.font_lg, Palette.INK)
-        self.text("WASD / ARROWS MOVE   E INTERACT   1/2/3 ROOMS   TAB DASHBOARD   SPACE PAUSE", (54, 148), self.font_mono, Palette.MUTED)
-
-        world = pygame.Rect(70, 174, self.width - 140, 378)
-        self.panel(world, (224, 232, 216), (151, 188, 169), radius=12, width=2)
-        scale_x = world.width / scene.width
-        scale_y = world.height / scene.height
-
-        # A soft water court and perimeter planting establish an optimistic,
-        # inhabited building before furnishing the actual room bounds.
-        court = pygame.Rect(world.x + world.width // 2 - 105, world.y + 92, 210, 148)
-        pygame.draw.ellipse(self.screen, (140, 209, 224), court)
-        pygame.draw.ellipse(self.screen, (202, 241, 238), court.inflate(-16, -18))
-        for x in range(world.x + 30, world.right - 20, 74):
-            self._draw_planter(x, world.y + 24)
-            self._draw_planter(x, world.bottom - 24)
-
-        for room in (room for room in scene.rooms if room.id != "public"):
-            x, y, width, height = room.bounds
-            rect = pygame.Rect(
-                world.x + int(x * scale_x),
-                world.y + int(y * scale_y),
-                max(20, int(width * scale_x)),
-                max(20, int(height * scale_y)),
-            )
-            active = room.id == scene.current_room
-            self._draw_room_shell(rect, room.id, room.label, room.accent, active)
-
-        for item in scene.objects.objects:
-            if item.room not in {scene.current_room, "public"}:
-                continue
-            ix = world.x + int(item.position[0] * scale_x)
-            iy = world.y + int(item.position[1] * scale_y)
-            self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object)
-            if item == scene.nearby_object:
-                label = self.font_sm.render(item.label, True, Palette.INK)
-                badge = label.get_rect(midleft=(ix + 17, iy - 15))
-                badge.inflate_ip(10, 6)
-                self.panel(badge, (255, 246, 194), Palette.SUN, radius=5, width=2)
-                self.screen.blit(label, (badge.x + 5, badge.y + 3))
-
-        px = world.x + int(scene.player_position[0] * scale_x)
-        py = world.y + int(scene.player_position[1] * scale_y)
-        self._draw_player(px, py)
+        viewport = pygame.Rect(24, 104, self.width - 48, 488)
+        self._draw_pixel_room(viewport, scene)
 
         self.draw_tower_footer(state, scene)
+
+    def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene) -> None:
+        room_x, room_y, room_w, room_h = scene.room.bounds
+        scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
+        scale = max(0.16, min(0.34, scale))
+        view_w, view_h = viewport.width / scale, viewport.height / scale
+        camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
+        camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
+        floor = self._asset("floors/floor_0.png")
+        wall = self._asset("walls/wall_0.png")
+        pygame.draw.rect(self.screen, (23, 31, 35), viewport)
+        if floor:
+            tile = pygame.transform.scale(floor, (max(2, int(16 * scale)), max(2, int(16 * scale))))
+            for sy in range(viewport.top, viewport.bottom, tile.get_height()):
+                for sx in range(viewport.left, viewport.right, tile.get_width()):
+                    self.screen.blit(tile, (sx, sy))
+        def point(position: tuple[int, int]) -> tuple[int, int]:
+            return (viewport.x + int((position[0] - camera_x) * scale),
+                    viewport.y + int((position[1] - camera_y) * scale))
+        # A chunky wall boundary, shadowed on the inside like a classic SNES room.
+        wall_color = (54, 71, 66)
+        pygame.draw.rect(self.screen, wall_color, viewport, width=max(8, int(28 * scale)))
+        pygame.draw.rect(self.screen, (151, 194, 143), viewport.inflate(-max(8, int(28 * scale)), -max(8, int(28 * scale))), width=2)
+        if wall:
+            wall_w = max(12, int(64 * scale))
+            wall_h = max(18, int(128 * scale))
+            wall_tile = pygame.transform.scale(wall, (wall_w, wall_h))
+            for x in range(viewport.left, viewport.right, wall_w):
+                self.screen.blit(wall_tile, (x, viewport.top - wall_h // 2))
+                self.screen.blit(wall_tile, (x, viewport.bottom - wall_h // 2))
+        self.text(scene.room.label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
+        self.text("WASD / ARROWS  MOVE   E  INTERACT", (viewport.right - 290, viewport.y + 19), self.font_mono, (180, 220, 178))
+
+        # Decorative room composition uses real furniture sprites, while the
+        # interaction registry remains the sole authority for object behavior.
+        placements = {
+            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (1050, 1250)),
+                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (3500, 1250)),
+                      ("furniture/SOFA/SOFA_FRONT.png", (2400, 3500)),
+                      ("furniture/WHITEBOARD/WHITEBOARD.png", (3050, 1400))],
+            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (2500, 5550)),
+                           ("furniture/PLANT/PLANT.png", (7300, 5550)),
+                           ("furniture/BOOKSHELF/BOOKSHELF.png", (8200, 5550))],
+            "executive": [("furniture/DESK/DESK_FRONT.png", (6200, 1800)),
+                          ("furniture/BOOKSHELF/BOOKSHELF.png", (7600, 1450)),
+                          ("furniture/PLANT/PLANT.png", (8200, 3300)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5700, 1350))],
+        }
+        for asset, position in placements.get(scene.current_room, []):
+            self._blit_furniture(asset, point(position), scale)
+        for item in scene.objects.objects:
+            if item.room != scene.current_room:
+                continue
+            ix, iy = point(item.position)
+            self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale)
+            if item == scene.nearby_object:
+                pygame.draw.circle(self.screen, (255, 224, 112), (ix, iy), 20, 2)
+                self.text("[E] " + item.label, (ix + 18, iy - 24), self.font_sm, Palette.SUN)
+        if scene.velocity != (0.0, 0.0):
+            vx, vy = scene.velocity
+            self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
+            self._anim_tick += 1
+        self._draw_player(*point(scene.player_position), scale=scale)
+
+    def _blit_furniture(self, name: str, position: tuple[int, int], scale: float) -> None:
+        image = self._asset(name)
+        if image:
+            pixel_scale = min(2.0, max(0.7, scale * 5))
+            source_width, source_height = image.get_size()
+            size = (max(8, int(source_width * pixel_scale)),
+                    max(8, int(source_height * pixel_scale)))
+            self.screen.blit(pygame.transform.scale(image, size), (position[0] - size[0] // 2, position[1] - size[1] // 2))
 
     def _draw_room_shell(
         self, rect: pygame.Rect, room_id: str, label: str, accent: tuple[int, int, int], active: bool
@@ -174,8 +234,23 @@ class SolarPunkRenderer:
         pygame.draw.circle(self.screen, (109, 184, 92), (x + 3, y - 11), 6)
         pygame.draw.circle(self.screen, (67, 137, 82), (x + 7, y - 6), 5)
 
-    def _draw_tower_object(self, kind: str, x: int, y: int, nearby: bool) -> None:
-        """Small but recognizable procedural silhouettes for every ObjectKind."""
+    def _draw_tower_object(self, kind: str, x: int, y: int, nearby: bool, scale: float = 1.0) -> None:
+        """Draw a registry object with a matching pixel-art prop where available."""
+        sprite_names = {
+            "desk": "furniture/DESK/DESK_FRONT.png",
+            "chair": "furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png",
+            "tv": "furniture/PC/PC_FRONT_ON_1.png",
+            "window": "furniture/WHITEBOARD/WHITEBOARD.png",
+            "arcade": "furniture/PC/PC_FRONT_ON_2.png",
+            "vending_machine": "furniture/PC/PC_FRONT_ON_3.png",
+            "crt_terminal": "furniture/PC/PC_FRONT_ON_1.png",
+            "telephone": "furniture/COFFEE/COFFEE.png",
+        }
+        if kind in sprite_names and self._asset(sprite_names[kind]):
+            self._blit_furniture(sprite_names[kind], (x, y), scale)
+            if nearby:
+                pygame.draw.circle(self.screen, Palette.SUN, (x, y), 17, 2)
+            return
         outline = Palette.SUN if nearby else (47, 96, 91)
         if nearby:
             pygame.draw.circle(self.screen, (255, 229, 132), (x, y), 17)
@@ -210,14 +285,23 @@ class SolarPunkRenderer:
             pygame.draw.line(self.screen, (60, 88, 86), (x - 4, y + 8), (x - 7, y + 12), 2)
         pygame.draw.circle(self.screen, outline, (x, y), 15, 2 if nearby else 1)
 
-    def _draw_player(self, x: int, y: int) -> None:
-        """A friendly procedural character, with a clear footprint and facing."""
+    def _draw_player(self, x: int, y: int, scale: float = 1.0) -> None:
+        """Draw a real 16-bit character frame, facing the scene's movement."""
+        sheet = self._asset("characters/char_0.png")
+        if sheet:
+            # Character sheets are 7 columns x 4 cardinal rows, 16x24 each.
+            rows = {"down": 0, "left": 1, "right": 2, "up": 3}
+            frame = (self._anim_tick // 8) % 4
+            crop = sheet.subsurface(pygame.Rect(frame * 16, rows[self._facing] * 24, 16, 24))
+            size = (max(16, int(16 * min(3.0, max(1.5, scale * 7)))),
+                    max(24, int(24 * min(3.0, max(1.5, scale * 7)))))
+            pygame.draw.ellipse(self.screen, (21, 46, 44), (x - size[0] // 2, y + size[1] // 3, size[0], max(4, size[1] // 5)))
+            self.screen.blit(pygame.transform.scale(crop, size), (x - size[0] // 2, y - size[1] + 7))
+            return
         pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
-        pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)  # hair
-        pygame.draw.circle(self.screen, (216, 151, 107), (x, y - 2), 7)  # face
+        pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)
+        pygame.draw.circle(self.screen, (216, 151, 107), (x, y - 2), 7)
         pygame.draw.rect(self.screen, Palette.CORAL, (x - 7, y + 5, 14, 12), border_radius=5)
-        pygame.draw.line(self.screen, (45, 75, 76), (x - 4, y + 15), (x - 5, y + 20), 3)
-        pygame.draw.line(self.screen, (45, 75, 76), (x + 4, y + 15), (x + 5, y + 20), 3)
 
     def draw_tower_header(self, state: OfficeState, scene: TowerScene) -> None:
         header = pygame.Rect(28, 18, self.width - 56, 72)
