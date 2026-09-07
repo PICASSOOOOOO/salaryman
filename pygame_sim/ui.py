@@ -142,27 +142,27 @@ class SolarPunkRenderer:
         # The room is still larger than the viewport, but the desktop capture
         # must make the avatar readable.  Keep the camera close enough to show
         # the character's walk cycle instead of presenting an editor overview.
-        scale = max(0.24, min(0.48, scale * 1.42))
+        scale = max(0.36, min(0.62, scale * 2.8))
         view_w, view_h = viewport.width / scale, viewport.height / scale
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
-        wall = self._asset("walls/wall_0.png")
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
         self._draw_perspective_floor(viewport)
         def point(position: tuple[int, int]) -> tuple[int, int]:
             return (viewport.x + int((position[0] - camera_x) * scale),
                     viewport.y + int((position[1] - camera_y) * scale))
-        # A chunky wall boundary, shadowed on the inside like a classic SNES room.
-        wall_color = (54, 71, 66)
-        pygame.draw.rect(self.screen, wall_color, viewport, width=max(8, int(28 * scale)))
-        pygame.draw.rect(self.screen, (151, 194, 143), viewport.inflate(-max(8, int(28 * scale)), -max(8, int(28 * scale))), width=2)
-        if wall:
-            wall_w = max(12, int(64 * scale))
-            wall_h = max(18, int(128 * scale))
-            wall_tile = pygame.transform.scale(wall, (wall_w, wall_h))
-            for x in range(viewport.left, viewport.right, wall_w):
-                self.screen.blit(wall_tile, (x, viewport.top - wall_h // 2))
-                self.screen.blit(wall_tile, (x, viewport.bottom - wall_h // 2))
+        # Keep the architecture legible at close camera distances. Repeating
+        # the tiny source wall tile becomes visual noise and collides with the
+        # room label, so use a clean structural beam instead.
+        beam = pygame.Rect(viewport.x + 8, viewport.y, viewport.width - 16, 42)
+        pygame.draw.rect(self.screen, (29, 52, 54), beam)
+        pygame.draw.line(self.screen, (164, 201, 158), beam.topleft, beam.topright, 2)
+        pygame.draw.line(self.screen, (74, 112, 100), beam.bottomleft, beam.bottomright, 2)
+        for x in range(beam.left + 10, beam.right, 34):
+            pygame.draw.line(self.screen, (55, 87, 82), (x, beam.top + 6), (x, beam.bottom - 5), 1)
+        lower_beam = pygame.Rect(viewport.x + 8, viewport.bottom - 13, viewport.width - 16, 13)
+        pygame.draw.rect(self.screen, (48, 67, 62), lower_beam)
+        pygame.draw.line(self.screen, (164, 201, 158), lower_beam.topleft, lower_beam.topright, 2)
         self.text(scene.room.label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
         self.text("WASD / ARROWS  MOVE   E  INTERACT", (viewport.right - 290, viewport.y + 19), self.font_mono, (180, 220, 178))
 

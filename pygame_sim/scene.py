@@ -31,10 +31,13 @@ class TowerScene:
     player_position: tuple[int, int] = (1_700, 2_400)
     rooms: tuple[Room, ...] = field(
         default_factory=lambda: (
-            Room("lobby", "TOWER LOBBY", (700, 1_000, 3_200, 3_200), (27, 112, 110)),
-            Room("recreation", "RECREATION / ARCADE", (1_000, 5_200, 8_000, 2_200), (72, 94, 130)),
-            Room("executive", "EXECUTIVE CORNER OFFICE", (5_100, 1_000, 3_800, 3_200), (112, 83, 115)),
-            Room("public", "FLOOR HALLWAY", (700, 1_000, 8_200, 6_800), (38, 87, 94)),
+            # A floor is four private office suites. The legacy room IDs are
+            # retained as stable bridge/API identifiers while their physical
+            # meaning is now OFFICE 01–04.
+            Room("lobby", "OFFICE 01", (700, 1_000, 1_800, 2_200), (27, 112, 110)),
+            Room("recreation", "OFFICE 02", (2_900, 1_000, 1_800, 2_200), (72, 94, 130)),
+            Room("executive", "OFFICE 03", (5_100, 1_000, 1_800, 2_200), (112, 83, 115)),
+            Room("public", "OFFICE 04", (7_300, 1_000, 1_800, 2_200), (38, 87, 94)),
         )
     )
     objects: OfficeObjectRegistry = field(default_factory=build_tower_object_registry)
@@ -57,9 +60,9 @@ class TowerScene:
     def room_spawn(self, room_id: str) -> tuple[int, int]:
         spawn_points = {
             "lobby": (1_700, 2_400),
-            "recreation": (1_500, 5_900),
-            "executive": (5_700, 2_000),
-            "public": (4_900, 4_900),
+            "recreation": (3_900, 2_400),
+            "executive": (6_100, 2_400),
+            "public": (8_300, 2_400),
         }
         if room_id in spawn_points:
             return spawn_points[room_id]
@@ -74,7 +77,7 @@ class TowerScene:
         py = min(max(self.player_position[1] + dy, y + 250), y + height - 250)
         self.player_position = (px, py)
         for candidate in self.rooms:
-            if candidate.id != "public" and candidate.contains(self.player_position):
+            if candidate.contains(self.player_position):
                 self.current_room = candidate.id
                 break
 

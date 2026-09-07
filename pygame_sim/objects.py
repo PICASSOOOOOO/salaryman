@@ -116,7 +116,8 @@ class OfficeObjectRegistry:
                 next_room = {
                     "lobby": "recreation",
                     "recreation": "executive",
-                    "executive": "lobby",
+                    "executive": "public",
+                    "public": "lobby",
                 }.get(scene.current_room, "lobby")
                 scene.select_room(next_room)
             else:
@@ -133,7 +134,8 @@ class OfficeObjectRegistry:
                 next_room = {
                     "lobby": "recreation",
                     "recreation": "executive",
-                    "executive": "lobby",
+                    "executive": "public",
+                    "public": "lobby",
                 }.get(scene.current_room, "lobby")
                 scene.select_room(next_room)
             message = f"STAIRS / {scene.room.label} / FLOOR {scene.current_floor:02d}"
@@ -189,27 +191,33 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     registry = OfficeObjectRegistry()
     entries = [
         OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (1_700, 2_400), "RIDE TO FLOOR 01", destination_floor=1),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (3_000, 2_400), "CLIMB / CHANGE FLOOR"),
-        OfficeObject("lobby-atm", "atm", "ATM", "lobby", (4_200, 2_500), "CHECK BANCO OMBRA"),
-        OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (5_300, 2_400), "CALL PHONE CENTER"),
-        OfficeObject("lobby-tv", "tv", "TV", "lobby", (6_700, 1_700), "WATCH SHADOW RADIO"),
-        OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (1_500, 5_900), "RETURN TO FLOOR 01", destination_floor=1),
-        OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (8_400, 5_900), "CLIMB / CHANGE FLOOR"),
-        OfficeObject("arcade-cyber-serpent", "arcade", "CYBER SERPENT", "recreation", (2_900, 6_200), "PLAY CYBER SERPENT", arcade_game_id="cyber_serpent"),
-        OfficeObject("arcade-void-invaders", "arcade", "VOID INVADERS", "recreation", (4_500, 6_200), "PLAY VOID INVADERS", arcade_game_id="void_invaders"),
-        OfficeObject("arcade-barrel-runner", "arcade", "BARREL RUNNER", "recreation", (6_100, 6_200), "PLAY BARREL RUNNER", arcade_game_id="barrel_runner"),
-        OfficeObject("arcade-neon-breaker", "arcade", "NEON BREAKER", "recreation", (7_700, 6_200), "PLAY NEON BREAKER", arcade_game_id="neon_breaker"),
-        OfficeObject("executive-elevator", "elevator", "ELEVATOR", "executive", (5_700, 2_000), "RETURN TO FLOOR 01", destination_floor=1),
-        OfficeObject("executive-stairs", "stairs", "STAIRS", "executive", (8_600, 2_000), "CLIMB / CHANGE FLOOR"),
-        OfficeObject("executive-desk", "desk", "CORNER DESK", "executive", (4_700, 4_300), "USE EXECUTIVE DESK"),
-        OfficeObject("executive-chair", "chair", "CHAIR", "executive", (4_700, 5_100), "SIT / REST"),
-        OfficeObject("executive-crt", "crt_terminal", "CRT TERMINAL", "executive", (5_400, 4_300), "OPEN OFFICE RECORD"),
-        OfficeObject("executive-telephone", "telephone", "TELEPHONE", "executive", (3_500, 4_400), "OPEN PHONE CENTER"),
-        OfficeObject("executive-atm", "atm", "ATM", "executive", (7_200, 4_300), "CHECK BANCO OMBRA"),
-        OfficeObject("executive-vending", "vending_machine", "VENDING", "executive", (7_200, 5_500), "BUY OFFICE SUPPLIES"),
-        OfficeObject("executive-window-west", "window", "WEST WINDOW", "executive", (2_700, 3_400), "LOOK OUT"),
-        OfficeObject("executive-window-east", "window", "EAST WINDOW", "executive", (8_000, 3_400), "LOOK OUT"),
-        OfficeObject("executive-desk-lamp", "desk", "DESK LAMP", "executive", (5_800, 4_600), "USE DESK LAMP", interactive=False),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (2_200, 2_400), "CLIMB / CHANGE FLOOR"),
+        OfficeObject("lobby-atm", "atm", "ATM", "lobby", (2_150, 1_500), "CHECK BANCO OMBRA"),
+        OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (950, 1_800), "CALL PHONE CENTER"),
+        OfficeObject("lobby-tv", "tv", "TV", "lobby", (1_050, 1_300), "WATCH SHADOW RADIO"),
+        OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (3_900, 2_400), "RETURN TO FLOOR 01", destination_floor=1),
+        OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (4_400, 2_400), "CLIMB / CHANGE FLOOR"),
+        OfficeObject("arcade-cyber-serpent", "arcade", "CYBER SERPENT", "recreation", (3_100, 1_800), "PLAY CYBER SERPENT", arcade_game_id="cyber_serpent"),
+        OfficeObject("arcade-void-invaders", "arcade", "VOID INVADERS", "recreation", (3_500, 1_800), "PLAY VOID INVADERS", arcade_game_id="void_invaders"),
+        OfficeObject("arcade-barrel-runner", "arcade", "BARREL RUNNER", "recreation", (3_900, 1_800), "PLAY BARREL RUNNER", arcade_game_id="barrel_runner"),
+        OfficeObject("arcade-neon-breaker", "arcade", "NEON BREAKER", "recreation", (4_300, 1_800), "PLAY NEON BREAKER", arcade_game_id="neon_breaker"),
+        OfficeObject("executive-elevator", "elevator", "ELEVATOR", "executive", (5_700, 2_400), "RETURN TO FLOOR 01", destination_floor=1),
+        OfficeObject("executive-stairs", "stairs", "STAIRS", "executive", (6_200, 2_400), "CLIMB / CHANGE FLOOR"),
+        OfficeObject("executive-desk", "desk", "CORNER DESK", "executive", (5_700, 1_900), "USE EXECUTIVE DESK"),
+        OfficeObject("executive-chair", "chair", "CHAIR", "executive", (5_700, 2_600), "SIT / REST"),
+        OfficeObject("executive-crt", "crt_terminal", "CRT TERMINAL", "executive", (6_000, 1_900), "OPEN OFFICE RECORD"),
+        OfficeObject("executive-telephone", "telephone", "TELEPHONE", "executive", (5_300, 1_900), "OPEN PHONE CENTER"),
+        OfficeObject("executive-atm", "atm", "ATM", "executive", (6_600, 1_800), "CHECK BANCO OMBRA"),
+        OfficeObject("executive-vending", "vending_machine", "VENDING", "executive", (6_600, 2_700), "BUY OFFICE SUPPLIES"),
+        OfficeObject("executive-window-west", "window", "WEST WINDOW", "executive", (5_300, 1_300), "LOOK OUT"),
+        OfficeObject("executive-window-east", "window", "EAST WINDOW", "executive", (6_700, 1_300), "LOOK OUT"),
+        OfficeObject("executive-desk-lamp", "desk", "DESK LAMP", "executive", (5_800, 2_100), "USE DESK LAMP", interactive=False),
+        OfficeObject("office4-elevator", "elevator", "ELEVATOR", "public", (7_900, 2_400), "RETURN TO FLOOR 01", destination_floor=1),
+        OfficeObject("office4-stairs", "stairs", "STAIRS", "public", (8_400, 2_400), "CLIMB / CHANGE FLOOR"),
+        OfficeObject("office4-desk", "desk", "WORK DESK", "public", (7_900, 1_900), "USE WORK DESK"),
+        OfficeObject("office4-chair", "chair", "CHAIR", "public", (7_900, 2_600), "SIT / REST"),
+        OfficeObject("office4-telephone", "telephone", "TELEPHONE", "public", (7_500, 1_900), "OPEN PHONE CENTER"),
+        OfficeObject("office4-vending", "vending_machine", "VENDING", "public", (8_600, 2_700), "BUY OFFICE SUPPLIES"),
     ]
     for entry in entries:
         registry.add(entry)
