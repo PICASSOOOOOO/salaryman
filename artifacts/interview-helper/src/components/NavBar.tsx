@@ -261,7 +261,7 @@ export function NavBar() {
               <ChevronDown className={`w-2.5 h-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
             </button>
             {moreOpen && createPortal(
-              <div ref={morePanelRef} className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
+              <div ref={morePanelRef} className="desktop-more-panel fixed w-52 rounded-lg py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
                 {/* Ordered by label length — most letters at top, fewest at bottom. */}
                 {moreItems.filter(it => !(it as { authOnly?: boolean }).authOnly || isAuthenticated).sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isAppNavItemActive(item, pathname);
@@ -381,7 +381,7 @@ export function NavBar() {
           dim, horizontally-scrolling strip. Keep the main chrome quiet; the
           feature menu opens only when the user asks for it. */}
       {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length) && (
-        <div className="relative border-t border-white/[0.05] bg-[#0d0e12] px-4 py-1.5">
+        <div className="desktop-subnav relative px-4 py-1.5">
           <button
             type="button"
             onClick={() => setSubnavOpen(open => !open)}
@@ -402,7 +402,7 @@ export function NavBar() {
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${subnavOpen ? 'rotate-180 text-sky-200' : ''}`} />
           </button>
           {subnavOpen && (
-            <div className="absolute left-4 right-4 top-full z-[200] mt-1 grid max-h-[min(60vh,420px)] gap-1 overflow-y-auto rounded-lg border border-white/15 bg-[#111318] p-2 shadow-2xl shadow-black/70 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="desktop-subnav-panel absolute left-4 right-4 top-full z-[200] mt-1 grid max-h-[min(60vh,420px)] gap-1 overflow-y-auto rounded-lg p-2 sm:grid-cols-2 lg:grid-cols-3">
               {currentModule.subs.map(sub => {
                 const isSubActive = pathname === sub.path;
                 const Icon = sub.icon;

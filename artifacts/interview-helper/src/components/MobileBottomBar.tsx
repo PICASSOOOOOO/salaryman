@@ -38,10 +38,10 @@ export function MobileSubNav() {
   if (!currentModule || !shouldShowModuleSubnav(currentModule.id, currentModule.subs.length)) return null;
 
   return (
-    <div className="mobile-app-nav bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.04] overflow-hidden relative" style={{ zIndex: 40 }}>
+    <div className="mobile-app-subnav" style={{ zIndex: 40 }}>
       <div
         ref={scrollRef}
-        className="mobile-scroll-region flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-hide"
+        className="mobile-scroll-region mobile-subnav-scroll"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {currentModule.subs.map(sub => {
@@ -54,13 +54,9 @@ export function MobileSubNav() {
             <button
               key={sub.id}
               onClick={() => navigate(sub.path)}
-              className={`mobile-tap-target flex items-center gap-1 px-3 py-2 rounded-full text-[10px] font-mono tracking-wider uppercase transition-colors shrink-0 touch-manipulation ${
-                isActive
-                  ? 'bg-sky-500/15 text-sky-400'
-                  : 'text-zinc-500 active:text-zinc-300'
-              }`}
+              className={`mobile-subnav-item mobile-tap-target ${isActive ? 'is-active' : ''}`}
             >
-              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <Icon className="mobile-subnav-icon" />
               {label}
             </button>
           );
@@ -178,73 +174,86 @@ export function MobileModuleNav() {
     .filter(tab => !tab.authOnly || isAuthenticated);
 
   return (
-    <div className="mobile-app-nav bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08] relative" style={{ zIndex: 60 }}>
-      <div className="flex min-h-14 items-center px-[max(.25rem,var(--app-safe-left))] pr-[max(.25rem,var(--app-safe-right))]">
+    <div className="mobile-app-nav" style={{ zIndex: 60 }}>
+      <div className="mobile-brand-row">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="mobile-brand-button"
+          aria-label="SALARYMAN home"
+        >
+          <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" className="mobile-brand-mark" />
+          <span>SALARYMAN</span>
+        </button>
+        {isAuthenticated && (
+          <div className="mobile-account-actions">
+            <NotificationBell
+              buttonClassName="mobile-account-button mobile-tap-target"
+              iconClassName="mobile-account-icon"
+            />
+            <button
+              onClick={() => setSummaryOpen(true)}
+              className="mobile-account-button mobile-tap-target"
+              aria-label="Profile"
+            >
+              {resolveAvatarUrl(user?.profileImageUrl) ? (
+                <img
+                  src={resolveAvatarUrl(user?.profileImageUrl)}
+                  alt={user?.firstName ?? 'User'}
+                  className="mobile-avatar"
+                />
+              ) : (
+                <div className="mobile-avatar mobile-avatar-fallback">
+                  {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
+                </div>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="mobile-primary-row">
         <button
           onClick={goBack}
           aria-label="Back"
           title="Back"
-          className="mobile-tap-target flex items-center justify-center shrink-0 rounded-md text-zinc-500 active:text-zinc-100 active:bg-white/5 touch-manipulation"
+          className="mobile-back-button mobile-tap-target"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="mobile-primary-icon" />
         </button>
-        {visibleTabs.map(tab => {
-          const active = isAppNavItemActive(tab, pathname);
-          const Icon = tab.icon;
-          const isOffice = tab.id === 'office';
-          const activeColor = isOffice ? 'text-emerald-400' : 'text-sky-400';
-          if (isOffice) {
+        <div className="mobile-primary-scroll">
+          {visibleTabs.map(tab => {
+            const active = isAppNavItemActive(tab, pathname);
+            const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => navigate(consumeAppReturnPath() ?? tab.path)}
-                className={`mobile-tap-target flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation relative ${
-                  active ? 'text-emerald-400' : 'text-emerald-500 active:text-emerald-400'
-                }`}
-                style={{ textShadow: '0 0 8px rgba(52,211,153,0.5)' }}
+                onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
+                className={`mobile-primary-item mobile-tap-target ${active ? 'is-active' : ''}`}
+                aria-label={tab.label}
               >
-                <div className="absolute inset-x-2 inset-y-0 rounded-md bg-emerald-400/8 border border-emerald-400/20" />
-                <Icon className="w-6 h-6 relative z-10 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
+                <Icon className="mobile-primary-icon" />
+                {tab.id === 'comms' && isAuthenticated && commsCount > 0 && (
+                  <span className="mobile-notification-count">
+                    {commsCount > 99 ? '99+' : commsCount}
+                  </span>
+                )}
               </button>
             );
-          }
-          return (
-            <button
-              key={tab.id}
-              onClick={() => navigate(tab.path)}
-              className={`mobile-tap-target relative flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
-                active ? activeColor : 'text-zinc-600 active:text-zinc-400'
-              }`}
-            >
-              <Icon className={`w-6 h-6 ${active ? activeColor : ''}`} />
-              {tab.id === 'comms' && isAuthenticated && commsCount > 0 && (
-                <span className="absolute top-0 right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
-                  {commsCount > 99 ? '99+' : commsCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
-
-        <div className="relative flex-1 min-w-0" ref={dropdownRef}>
+          })}
+        <div className="mobile-more-anchor" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(prev => !prev)}
-            className={`mobile-tap-target relative flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
-              hasActiveDropdownItem || dropdownOpen
-                ? 'text-sky-400'
-                : 'text-zinc-600 active:text-zinc-400'
-            }`}
+            className={`mobile-primary-item mobile-tap-target ${hasActiveDropdownItem || dropdownOpen ? 'is-active' : ''}`}
+            aria-label="More navigation"
           >
-            <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-            <span className="text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none">
-              MORE
-            </span>
+            <ChevronDown className={`mobile-primary-icon transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+            <span>MORE</span>
           </button>
 
           {dropdownOpen && createPortal(
             <div
               ref={dropdownPanelRef}
-              className="mobile-scroll-region fixed w-56 max-w-[calc(100vw-1rem)] max-h-[min(70dvh,30rem)] overflow-y-auto bg-[#111113] border border-white/[0.1] rounded-xl shadow-2xl shadow-black/60 py-1"
+              className="mobile-scroll-region mobile-more-panel fixed"
               style={{ top: dropdownPos.top, right: Math.max(8, dropdownPos.right), zIndex: 9999 }}
             >
               {dropdownItems
@@ -261,14 +270,6 @@ export function MobileModuleNav() {
                       ? (userOrg?.name ?? 'ORG').toUpperCase()
                       : item.label;
                   const isRed = (item as { accent?: string }).accent === 'red';
-                  let cls = 'text-zinc-400 active:bg-white/5';
-                  let iconCls = 'text-zinc-600';
-                  if (active) {
-                    if (isRed) { cls = 'bg-red-500/10 text-red-300'; iconCls = 'text-red-300'; }
-                    else { cls = 'bg-sky-500/10 text-sky-400'; iconCls = 'text-sky-400'; }
-                  } else if (isRed) {
-                    cls = 'text-red-300/85 active:bg-red-950/40'; iconCls = 'text-red-400/80';
-                  }
                   const showCommsBadge = item.id === 'comms' && commsCount > 0;
                   return (
                     <button
@@ -277,10 +278,10 @@ export function MobileModuleNav() {
                         navigate(item.path);
                         setDropdownOpen(false);
                       }}
-                      className={`mobile-tap-target flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation ${cls}`}
+                      className={`mobile-more-item mobile-tap-target ${active ? 'is-active' : ''} ${isRed ? 'is-danger' : ''}`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${iconCls}`} />
-                      <span className="text-xs font-mono tracking-widest uppercase">{label}</span>
+                      <Icon className="mobile-more-icon" />
+                      <span>{label}</span>
                       {showCommsBadge && (
                         <span className="ml-auto min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1">
                           {commsCount > 99 ? '99+' : commsCount}
@@ -295,10 +296,10 @@ export function MobileModuleNav() {
                     navigate('/profile');
                     setDropdownOpen(false);
                   }}
-                  className="mobile-tap-target flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation text-zinc-400 active:bg-white/5"
+                  className="mobile-more-item mobile-tap-target"
                 >
-                  <User className="w-4 h-4 shrink-0 text-zinc-600" />
-                  <span className="text-xs font-mono tracking-widest uppercase">
+                  <User className="mobile-more-icon" />
+                  <span>
                     {isHome ? "START WORK" : "LOGIN"}
                   </span>
                 </button>
@@ -307,36 +308,7 @@ export function MobileModuleNav() {
             document.body
           )}
         </div>
-
-        {/* Notification bell + avatar — relocated here from the (now removed)
-            NavBar mobile utility row, so mobile chrome stays at two rows
-            without losing notifications or quick account access. Shown only
-            when signed in; signed-out users reach LOGIN via the MORE menu. */}
-        {isAuthenticated && (
-          <div className="flex items-center gap-0.5 shrink-0 pl-1 ml-0.5 max-[360px]:pl-0.5 max-[360px]:ml-0 border-l border-white/[0.06]">
-            <NotificationBell
-              buttonClassName="mobile-tap-target relative flex items-center justify-center text-zinc-500 active:text-sky-400 transition-colors rounded-md touch-manipulation"
-              iconClassName="w-5 h-5"
-            />
-            <button
-              onClick={() => setSummaryOpen(true)}
-              className="mobile-tap-target flex items-center justify-center hover:opacity-80 transition-opacity touch-manipulation"
-              aria-label="Profile"
-            >
-              {resolveAvatarUrl(user?.profileImageUrl) ? (
-                <img
-                  src={resolveAvatarUrl(user?.profileImageUrl)}
-                  alt={user?.firstName ?? 'User'}
-                  className="w-7 h-7 rounded-md object-cover border border-white/10"
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
-                  {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
-                </div>
-              )}
-            </button>
-          </div>
-        )}
+        </div>
       </div>
       {summaryOpen && createPortal(
         <MobileAccountSheet

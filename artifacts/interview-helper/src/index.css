@@ -502,6 +502,338 @@ header {
   display: block;
 }
 
+/* Shared light mobile chrome. Keep every route on one stable header instead
+   of letting each module invent its own dark, oversized toolbar. */
+.mobile-app-nav,
+.mobile-app-subnav {
+  color: #172e43;
+  background: #fff;
+  border-color: #d9e4ea;
+}
+
+.mobile-brand-row,
+.mobile-primary-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-left: max(12px, var(--app-safe-left));
+  padding-right: max(12px, var(--app-safe-right));
+}
+
+.mobile-brand-row {
+  min-height: 48px;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf2f5;
+}
+
+.mobile-brand-button {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  padding: 4px 0;
+  color: #172e43;
+  background: transparent;
+  border: 0;
+  font: 700 11px/1 "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: .14em;
+  white-space: nowrap;
+}
+
+.mobile-brand-mark {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.mobile-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mobile-account-button,
+.mobile-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  color: #718392;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.mobile-account-button:active,
+.mobile-back-button:active {
+  color: #155b86;
+  background: #e6f2f9;
+}
+
+.mobile-account-icon,
+.mobile-primary-icon,
+.mobile-more-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.mobile-avatar {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #c5dce8;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.mobile-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: #155b86;
+  background: #e6f2f9;
+  font: 700 11px/1 "DM Sans", sans-serif;
+}
+
+.mobile-primary-row {
+  min-height: 46px;
+  gap: 2px;
+  border-bottom: 1px solid #d9e4ea;
+}
+
+.mobile-primary-scroll,
+.mobile-subnav-scroll {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mobile-primary-scroll::-webkit-scrollbar,
+.mobile-subnav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-primary-scroll {
+  flex: 1 1 auto;
+  gap: 2px;
+}
+
+.mobile-primary-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  min-height: 38px;
+  gap: 4px;
+  padding: 5px 6px;
+  color: #81909c;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: 700 8px/1 "DM Sans", sans-serif;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.mobile-primary-item.is-active {
+  color: #155b86;
+  background: #e6f2f9;
+  border-color: #c9e2ef;
+}
+
+.mobile-more-anchor {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mobile-more-anchor .mobile-primary-item {
+  flex-basis: 58px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-notification-count {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  color: #fff;
+  background: #d9534f;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  font: 700 8px/11px "DM Sans", sans-serif;
+  text-align: center;
+}
+
+.mobile-app-subnav {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid #edf2f5;
+}
+
+.mobile-subnav-scroll {
+  gap: 4px;
+  min-height: 42px;
+  padding: 4px max(12px, var(--app-safe-left)) 4px max(12px, var(--app-safe-right));
+}
+
+.mobile-subnav-item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #718392;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: 700 9px/1 "DM Sans", sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mobile-subnav-item.is-active {
+  color: #155b86;
+  background: #e6f2f9;
+  border-color: #c9e2ef;
+}
+
+.mobile-subnav-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.mobile-more-panel {
+  width: min(15rem, calc(100vw - 1rem));
+  max-height: min(70dvh, 30rem);
+  overflow-y: auto;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #d9e4ea;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(23, 54, 74, .18);
+}
+
+.mobile-more-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  gap: 10px;
+  padding: 8px 10px;
+  color: #526777;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: 700 10px/1.2 "DM Sans", sans-serif;
+  letter-spacing: .08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.mobile-more-item.is-active {
+  color: #155b86;
+  background: #e6f2f9;
+}
+
+.mobile-more-item.is-danger {
+  color: #b94b45;
+}
+
+.mobile-more-item:active {
+  background: #eef6fa;
+}
+
+.mobile-more-icon {
+  flex: 0 0 16px;
+  color: #8aa0ad;
+}
+
+.mobile-more-item.is-active .mobile-more-icon {
+  color: #155b86;
+}
+
+/* Desktop uses the same white homepage chrome; module pages can keep their
+   own content styling below the header without changing their behavior. */
+@media (min-width: 640px) {
+  .desktop-app-nav {
+    color: #172e43 !important;
+    background: #fff !important;
+    border-color: #d9e4ea !important;
+  }
+
+  .desktop-app-nav > div,
+  .desktop-app-nav .bg-\[\#0a0a0b\],
+  .desktop-app-nav .bg-\[\#0d0e12\] {
+    background: #fff !important;
+    border-color: #edf2f5 !important;
+  }
+
+  .desktop-app-nav .text-zinc-100,
+  .desktop-app-nav .text-zinc-300,
+  .desktop-app-nav .text-zinc-400,
+  .desktop-app-nav .text-zinc-500,
+  .desktop-app-nav .text-zinc-600,
+  .desktop-app-nav .text-zinc-700 {
+    color: #718392 !important;
+  }
+
+  .desktop-app-nav .text-zinc-100,
+  .desktop-app-nav .text-zinc-300 {
+    color: #172e43 !important;
+  }
+
+  .desktop-app-nav .border-white\/\[0\.04\],
+  .desktop-app-nav .border-white\/\[0\.05\],
+  .desktop-app-nav .border-white\/\[0\.06\],
+  .desktop-app-nav .border-white\/\[0\.08\],
+  .desktop-app-nav .border-white\/\[0\.1\] {
+    border-color: #d9e4ea !important;
+  }
+
+  .desktop-app-nav .hover\:bg-white\/5:hover,
+  .desktop-app-nav .hover\:bg-white\/\[0\.05\]:hover,
+  .desktop-app-nav .hover\:bg-white\/\[0\.07\]:hover {
+    background: #eef6fa !important;
+  }
+
+  .desktop-more-panel,
+  .desktop-subnav-panel {
+    color: #526777;
+    background: #fff;
+    border: 1px solid #d9e4ea;
+    box-shadow: 0 16px 36px rgba(23, 54, 74, .18);
+  }
+
+  .desktop-more-panel .text-zinc-400,
+  .desktop-more-panel .text-zinc-600,
+  .desktop-subnav-panel .text-zinc-300,
+  .desktop-subnav-panel .text-zinc-400,
+  .desktop-subnav-panel .text-zinc-500 {
+    color: #526777 !important;
+  }
+
+  .desktop-more-panel .hover\:bg-white\/5:hover,
+  .desktop-subnav-panel .hover\:bg-white\/\[0\.07\]:hover {
+    background: #eef6fa !important;
+  }
+
+  .desktop-subnav {
+    background: #fff;
+    border-top: 1px solid #edf2f5;
+  }
+}
+
 /* Short landscape phone/PWA viewports need the icon-first chrome even when
    their CSS width crosses Tailwind's tablet breakpoint. */
 @media (min-width: 640px) and (min-height: 501px) {

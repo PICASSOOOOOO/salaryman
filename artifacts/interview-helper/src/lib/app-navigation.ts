@@ -29,12 +29,12 @@ export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "pablo", path: "/terminal", label: "PABLO", icon: Terminal },
   { id: "bots", path: "/bots", label: "AGENTS", icon: Bot },
   { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
-  { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
   { id: "console", path: "/terminal", label: "PABLO TERMINAL", icon: Code2 },
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase },
+  { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
   { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", icon: Megaphone },
   { id: "pledge", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
