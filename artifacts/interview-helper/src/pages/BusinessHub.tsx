@@ -103,6 +103,7 @@ const SECTIONS = [
     title: 'SALES & REVENUE',
     subtitle: 'PIPELINE, INVOICING, AND LEAD MANAGEMENT',
     items: [
+      { path: '/business/crm', label: 'CRM WORKSPACE', boomer: 'CRM WORKSPACE', desc: 'ONE SHARED VIEW FOR PEOPLE, COMPANIES, LEADS, DEALS, AND RECENT ACTIVITY.', icon: LayoutDashboard, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
       { path: '/business/deals', label: 'DEALS', boomer: 'DEALS', desc: 'KANBAN SALES PIPELINE FROM LEAD TO CLOSE.', icon: TrendingUp, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
       { path: '/business/invoices', label: 'INVOICES', boomer: 'INVOICES', desc: 'CREATE AND MANAGE CLIENT BILLING AND RECEIVABLES.', icon: FileText, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
       { path: '/business/estimates', label: 'ESTIMATES', boomer: 'ESTIMATES & QUOTES', desc: 'CREATE QUOTES AND PROPOSALS BEFORE INVOICING CLIENTS.', icon: FileText, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
