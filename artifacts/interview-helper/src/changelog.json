@@ -1807,5 +1807,17 @@
       "Add new asset image",
       "Update version and implement Pablo terminal interface enhancements"
     ]
+  },
+  {
+    "version": "v.21.6.2280",
+    "date": "2026-09-07",
+    "commitHash": "0fc270242708963a0336085bb694ecc37e7ff644",
+    "changes": [
+      "Update the salaryman professional home mockup component",
+      "Update professional home component styles and structure",
+      "Refine salaryman mockup components and update homepage memory",
+      "Implement SalarymanGameplayTour component in mockup sandbox",
+      "Update professional home mockup component and memory notes"
+    ]
   }
 ]

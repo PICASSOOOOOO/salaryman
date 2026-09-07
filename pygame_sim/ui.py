@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import math
 from pathlib import Path
 
 import pygame
@@ -62,6 +63,7 @@ class SolarPunkRenderer:
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
+        self._motion_clock = 0.0
         self._asset_root = self._find_pixel_assets()
 
     @staticmethod
@@ -141,23 +143,9 @@ class SolarPunkRenderer:
         view_w, view_h = viewport.width / scale, viewport.height / scale
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
-        floor = self._asset("floors/floor_0.png")
         wall = self._asset("walls/wall_0.png")
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
-        # floor_0 in the upstream pack is a neutral collision placeholder.
-        # Keep the pixel grid, but author a warm solar-punk floor treatment so
-        # the playable room reads as a place rather than a gray editor canvas.
-        if floor:
-            if self._floor_tiles is None:
-                self._floor_tiles = self._build_floor_tiles()
-            tile_size = max(12, int(32 * scale))
-            for row, sy in enumerate(range(viewport.top, viewport.bottom, tile_size)):
-                for col, sx in enumerate(range(viewport.left, viewport.right, tile_size)):
-                    tile = self._floor_tiles[(row + col) % len(self._floor_tiles)]
-                    self.screen.blit(
-                        pygame.transform.scale(tile, (tile_size, tile_size)),
-                        (sx, sy),
-                    )
+        self._draw_perspective_floor(viewport)
         def point(position: tuple[int, int]) -> tuple[int, int]:
             return (viewport.x + int((position[0] - camera_x) * scale),
                     viewport.y + int((position[1] - camera_y) * scale))
@@ -191,12 +179,16 @@ class SolarPunkRenderer:
                           ("furniture/WHITEBOARD/WHITEBOARD.png", (5700, 1350))],
         }
         for asset, position in placements.get(scene.current_room, []):
-            self._blit_furniture(asset, point(position), scale)
+            screen_position = point(position)
+            depth = max(0.72, min(1.28, 0.72 + (screen_position[1] - viewport.top) / max(1, viewport.height) * 0.56))
+            self._draw_sprite_shadow(screen_position, depth)
+            self._blit_furniture(asset, screen_position, scale, depth_scale=depth)
         for item in scene.objects.objects:
             if item.room != scene.current_room:
                 continue
             ix, iy = point(item.position)
-            self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale)
+            depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
+            self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
             if item == scene.nearby_object:
                 pygame.draw.circle(self.screen, (255, 224, 112), (ix, iy), 20, 2)
                 self.text("[E] " + item.label, (ix + 18, iy - 24), self.font_sm, Palette.SUN)
@@ -204,7 +196,43 @@ class SolarPunkRenderer:
             vx, vy = scene.velocity
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
             self._anim_tick += 1
+            self._motion_clock += 0.12
+        else:
+            self._motion_clock += 0.035
         self._draw_player(*point(scene.player_position), scale=scale)
+
+    def _draw_perspective_floor(self, viewport: pygame.Rect) -> None:
+        """Draw a warm pseudo-3D floor plane with a real vanishing point."""
+        floor = viewport.inflate(-18, -28)
+        horizon_y = floor.top + int(floor.height * 0.16)
+        vanishing_point = (floor.centerx, horizon_y)
+        bands = 15
+        for index in range(bands):
+            start = index / bands
+            end = (index + 1) / bands
+            y0 = horizon_y + int((floor.bottom - horizon_y) * (start ** 1.65))
+            y1 = horizon_y + int((floor.bottom - horizon_y) * (end ** 1.65))
+            color = ((194, 160, 108), (208, 176, 120), (184, 149, 100))[index % 3]
+            pygame.draw.rect(self.screen, color, (floor.left, y0, floor.width, max(2, y1 - y0)))
+            pygame.draw.line(self.screen, (151, 116, 78), (floor.left, y1), (floor.right, y1), 1)
+
+        for ratio in (0.04, 0.18, 0.34, 0.50, 0.66, 0.82, 0.96):
+            bottom_x = floor.left + int(floor.width * ratio)
+            pygame.draw.line(self.screen, (165, 128, 84), vanishing_point, (bottom_x, floor.bottom), 1)
+
+        # Soft daylight pools keep the starting state optimistic and alive.
+        glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (255, 226, 150, 30), (floor.left + 130, horizon_y + 80), 110)
+        pygame.draw.circle(glow, (115, 220, 205, 24), (floor.right - 150, horizon_y + 105), 145)
+        self.screen.blit(glow, (0, 0))
+
+        pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=max(8, int(28 * 0.34)))
+        pygame.draw.rect(
+            self.screen,
+            (151, 194, 143),
+            viewport.inflate(-max(8, int(28 * 0.34)), -max(8, int(28 * 0.34))),
+            width=2,
+        )
 
     def _build_floor_tiles(self) -> tuple[pygame.Surface, ...]:
         """Build a small hand-authored tile set around the imported art scale."""
@@ -222,14 +250,30 @@ class SolarPunkRenderer:
             tiles.append(tile)
         return tuple(tiles)
 
-    def _blit_furniture(self, name: str, position: tuple[int, int], scale: float) -> None:
+    def _blit_furniture(
+        self,
+        name: str,
+        position: tuple[int, int],
+        scale: float,
+        *,
+        depth_scale: float = 1.0,
+    ) -> None:
         image = self._asset(name)
         if image:
-            pixel_scale = min(2.0, max(0.7, scale * 5))
+            pixel_scale = min(4.2, max(1.6, scale * 12 * depth_scale))
             source_width, source_height = image.get_size()
             size = (max(8, int(source_width * pixel_scale)),
                     max(8, int(source_height * pixel_scale)))
             self.screen.blit(pygame.transform.scale(image, size), (position[0] - size[0] // 2, position[1] - size[1] // 2))
+
+    def _draw_sprite_shadow(self, position: tuple[int, int], depth_scale: float) -> None:
+        width = max(14, int(26 * depth_scale))
+        height = max(4, int(8 * depth_scale))
+        pygame.draw.ellipse(
+            self.screen,
+            (25, 39, 34),
+            (position[0] - width // 2, position[1] + height, width, height),
+        )
 
     def _draw_room_shell(
         self, rect: pygame.Rect, room_id: str, label: str, accent: tuple[int, int, int], active: bool
@@ -260,7 +304,15 @@ class SolarPunkRenderer:
         pygame.draw.circle(self.screen, (109, 184, 92), (x + 3, y - 11), 6)
         pygame.draw.circle(self.screen, (67, 137, 82), (x + 7, y - 6), 5)
 
-    def _draw_tower_object(self, kind: str, x: int, y: int, nearby: bool, scale: float = 1.0) -> None:
+    def _draw_tower_object(
+        self,
+        kind: str,
+        x: int,
+        y: int,
+        nearby: bool,
+        scale: float = 1.0,
+        depth_scale: float = 1.0,
+    ) -> None:
         """Draw a registry object with a matching pixel-art prop where available."""
         sprite_names = {
             "desk": "furniture/DESK/DESK_FRONT.png",
@@ -273,7 +325,8 @@ class SolarPunkRenderer:
             "telephone": "furniture/COFFEE/COFFEE.png",
         }
         if kind in sprite_names and self._asset(sprite_names[kind]):
-            self._blit_furniture(sprite_names[kind], (x, y), scale)
+            self._draw_sprite_shadow((x, y), depth_scale)
+            self._blit_furniture(sprite_names[kind], (x, y), scale, depth_scale=depth_scale)
             if nearby:
                 pygame.draw.circle(self.screen, Palette.SUN, (x, y), 17, 2)
             return
@@ -317,12 +370,17 @@ class SolarPunkRenderer:
         if sheet:
             # Character sheets are 7 columns x 4 cardinal rows, 16x24 each.
             rows = {"down": 0, "left": 1, "right": 2, "up": 3}
-            frame = (self._anim_tick // 8) % 4
+            moving = self._anim_tick > 0 and self._motion_clock > 0
+            frame = (self._anim_tick // 3) % 7 if moving else 0
             crop = sheet.subsurface(pygame.Rect(frame * 16, rows[self._facing] * 24, 16, 24))
-            size = (max(16, int(16 * min(3.0, max(1.5, scale * 7)))),
-                    max(24, int(24 * min(3.0, max(1.5, scale * 7)))))
-            pygame.draw.ellipse(self.screen, (21, 46, 44), (x - size[0] // 2, y + size[1] // 3, size[0], max(4, size[1] // 5)))
-            self.screen.blit(pygame.transform.scale(crop, size), (x - size[0] // 2, y - size[1] + 7))
+            sprite_scale = min(4.5, max(2.2, scale * 12))
+            size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
+            bob = int(math.sin(self._motion_clock * 3.0) * (3 if moving else 1))
+            self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
+            self.screen.blit(
+                pygame.transform.scale(crop, size),
+                (x - size[0] // 2, y - size[1] + 7 - bob),
+            )
             return
         pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
         pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)
