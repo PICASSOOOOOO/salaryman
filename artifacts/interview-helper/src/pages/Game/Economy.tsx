@@ -62,7 +62,7 @@ const RAIL_ACCENT: Record<string, { border: string; bg: string; label: string; v
  * Economy page — bridges the real-world economy with the in-game one. Single
  * source of truth for the player on what money means in Salaryman:
  *   • Same rails. Anything you earn in game is real money you can withdraw.
- *   • Conversion is fixed: $20 = ƒ20,000 = 0.1 oz GOLD.
+ *   • Baseline conversion: $1 = ƒ100 = 0.01 GOLD; live BTC moves the in-game rails.
  *   • Wanted bounty → tax collectors hunt you.
  *   • Death → hospital invoice, then back to work.
  */
@@ -203,7 +203,7 @@ export default function GameEconomy() {
         <Card title="LIVE FIAT ↔ GOLD · BANCO OMBRA" accent="amber">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-white/[0.06] bg-black/30 p-3">
             <div>
-              <div className="text-lg font-mono text-zinc-100">ƒ100 = 0.1 GOLD = $1</div>
+              <div className="text-lg font-mono text-zinc-100">ƒ100 = 0.01 GOLD = $1 at BTC baseline</div>
               <div className="text-[10px] font-mono text-zinc-500 mt-1">
                 {gold?.market.btcPerUsd
                   ? `$1 = ${gold.market.btcPerUsd.toFixed(8)} BTC · ${gold.market.status.toUpperCase()} ${gold.market.source.toUpperCase()} · ${new Date(gold.market.asOf).toLocaleString()}`

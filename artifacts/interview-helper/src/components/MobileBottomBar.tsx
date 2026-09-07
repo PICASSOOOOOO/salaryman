@@ -15,6 +15,8 @@ import { NotificationBell } from './NotificationBell';
 import { apiFetch } from '@/lib/api-client';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
+import { EconomyToggle } from './EconomyToggle';
+import { PicassoLogo } from './PicassoLogo';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -182,11 +184,14 @@ export function MobileModuleNav() {
           className="mobile-brand-button"
           aria-label="SALARYMAN home"
         >
-          <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" className="mobile-brand-mark" />
+          <span className="salaryman-logo-square mobile-brand-mark" aria-hidden="true">
+            <PicassoLogo size={18} gap={1} />
+          </span>
           <span>SALARYMAN</span>
         </button>
-        {isAuthenticated && (
-          <div className="mobile-account-actions">
+        <div className="mobile-account-actions">
+          <EconomyToggle />
+          {isAuthenticated && (
             <NotificationBell
               buttonClassName="mobile-account-button mobile-tap-target"
               iconClassName="mobile-account-icon"
@@ -208,8 +213,8 @@ export function MobileModuleNav() {
                 </div>
               )}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <div className="mobile-primary-row">
         <button

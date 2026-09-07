@@ -22,6 +22,7 @@ import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
 import { CurrencyTicker } from './CurrencyTicker';
 import { FinanceBalance } from './FinanceBalance';
+import { EconomyToggle } from './EconomyToggle';
 import { TowerLocationBadge } from './TowerLocationBadge';
 import { useTranslation } from 'react-i18next';
 import {
@@ -152,7 +153,7 @@ export function NavBar() {
               }
             }}
           >
-            <div className="w-7 h-7 rounded-md flex items-center justify-center">
+            <div className="salaryman-logo-square w-7 h-7 rounded-md flex items-center justify-center">
               <PicassoLogo size={22} gap={2} glow />
             </div>
             <div className="min-w-0">
@@ -160,6 +161,7 @@ export function NavBar() {
                 {config.name}
               </h1>
               <div className="mt-1 flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1">
+                <EconomyToggle />
                 <CurrencyTicker compact wrap />
                 <FinanceBalance isAuthenticated={isAuthenticated} />
               </div>

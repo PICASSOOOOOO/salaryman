@@ -425,28 +425,30 @@ async function refreshArtIfPending(l: RealEstateListing): Promise<RealEstateList
 // Also returns the in-game currency conversion table so the nav-bar ticker can
 // show BTC → USD → ƒ → Gold without round-tripping for each unit.
 //
-// Conversion constants are AUTHORED by the game economy, not market data:
-// Canonical game rail: $1 USD = ƒ100 = 0.1 GOLD.
-// BTC remains a live market reference: the response includes the BTC amount
-// worth $1 so every economy surface can display the exact same cross-rate.
+// USD is the fixed reference. BTC is the live multiplier for the in-game rails:
+// when BTC rises, FIAT and GOLD are worth more, so fewer units are required for
+// $1. Every economy surface reads these same cross-rates.
 const USD_TO_FIAT = 100;
-const USD_TO_GOLD_OZ = 0.1;
+const USD_TO_GOLD_OZ = 0.01;
 router.get("/real-estate/market-index", async (_req: Request, res: Response) => {
   try {
     const [idx, fx] = await Promise.all([getMarketIndex(), getFxRates()]);
+    const btcMultiplier = Number.isFinite(idx.multiplier) && idx.multiplier > 0 ? idx.multiplier : 1;
+    const usdToFiat = USD_TO_FIAT / btcMultiplier;
+    const usdToGoldOz = USD_TO_GOLD_OZ / btcMultiplier;
     res.json({
       ...idx,
       conversion: {
-        usdToFiat: USD_TO_FIAT,
-        usdToGoldOz: USD_TO_GOLD_OZ,
-        fiatPerGold: USD_TO_FIAT / USD_TO_GOLD_OZ,
+        usdToFiat,
+        usdToGoldOz,
+        fiatPerGold: usdToFiat / usdToGoldOz,
         btcPerUsd: idx.btcUsd > 0 ? 1 / idx.btcUsd : null,
         // Pre-computed cross rates for convenience (1 BTC in each unit)
-        btcToFiat: idx.btcUsd * USD_TO_FIAT,
-        btcToGoldOz: idx.btcUsd * USD_TO_GOLD_OZ,
+        btcToFiat: idx.btcUsd * usdToFiat,
+        btcToGoldOz: idx.btcUsd * usdToGoldOz,
         // 1 ETH in each unit (in-game-only market for the exchange counter).
-        ethToFiat: idx.ethUsd * USD_TO_FIAT,
-        ethToGoldOz: idx.ethUsd * USD_TO_GOLD_OZ,
+        ethToFiat: idx.ethUsd * usdToFiat,
+        ethToGoldOz: idx.ethUsd * usdToGoldOz,
       },
       // Live USD→currency fiat FX rates for the display-currency layer. Consumed
       // by src/lib/currency.ts; falls back to its static table when absent.
