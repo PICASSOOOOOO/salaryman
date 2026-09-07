@@ -8,22 +8,25 @@ const platforms = [
   {
     name: "Windows",
     detail: "Windows 10+ · x64",
-    command: "python -m pygame_sim",
+    command: "Native package pending",
     tone: "lime",
+    status: "pending",
   },
   {
     name: "macOS",
     detail: "macOS 12+ · Apple Silicon / Intel",
-    command: "python3 -m pygame_sim",
+    command: "Native package pending",
     tone: "aqua",
+    status: "pending",
   },
   {
     name: "Linux",
     detail: "Ubuntu 22.04+ · x64",
-    command: "python3 -m pygame_sim",
+    command: "salaryman-office-linux-x86_64.tar.gz",
     tone: "sun",
+    status: "available",
   },
-];
+] as const;
 
 export default function DesktopDownload() {
   const [downloadAllowed, setDownloadAllowed] = useState(false);
@@ -64,9 +67,7 @@ export default function DesktopDownload() {
           <p className="desktop-download-eyebrow">FREE DESKTOP CLIENT / OFFICE ECOLOGY</p>
           <h1>Run the office<br /><em>where you work.</em></h1>
           <p className="desktop-download-lede">
-            The SALARYMAN office is moving out of the browser and onto your desktop.
-            Manage a living solar-punk team, watch funds move, and let each workday unfold
-            at its own pace.
+            A native office client for focused work away from the browser.
           </p>
           <div className="desktop-download-actions">
             {downloadAllowed ? (
@@ -81,7 +82,7 @@ export default function DesktopDownload() {
             </Link>
           </div>
           <p className="desktop-download-note">
-            Current gameplay captures are from the downloadable Pygame client. The browser remains the secure control plane.
+            Linux is live. macOS and Windows packages are next.
           </p>
         </div>
         <div className="desktop-download-stage" aria-label="Desktop office preview">
@@ -121,15 +122,16 @@ export default function DesktopDownload() {
                 </a>
               ) : (
                 <span className="desktop-download-platform-locked">
-                  {platform.name === "Linux" ? "Admin / moderator access required" : "Build on " + platform.name}
+                  {platform.name === "Linux" ? "Admin / moderator access required" : "Native build not published yet"}
                 </span>
               )}
             </article>
           ))}
         </div>
         <p className="desktop-download-build-note" id="builds">
-          Linux is currently available as a downloadable bundle. macOS and Windows packages
-          must be built on their target operating systems because PyInstaller does not cross-compile.
+          Linux is the only published package today. macOS and Windows builds must be
+          produced and smoke-tested on their target operating systems because PyInstaller
+          does not cross-compile.
         </p>
       </section>
 

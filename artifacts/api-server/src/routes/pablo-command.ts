@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { screenEmail, logLoginAttempt } from "../lib/email-security";
 import { getOpenAiTextModel } from "../lib/openai-models";
+import { completeInternalText } from "../lib/internal-ai";
 
 // ─── IP rate limiter for the anonymously-callable public endpoint ────────────
 // In-memory window per IP: max 30 requests per 60-second rolling window.
@@ -555,13 +556,8 @@ router.post("/chat/pablo/public", async (req: Request, res: Response) => {
     }
     messages.push({ role: "user", content: safeTranscript });
 
-    const completion = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
-      messages,
-      max_completion_tokens: 500,
-    });
-
-    const reply = completion.choices[0]?.message?.content?.trim() || "I'm here.";
+    const completion = await completeInternalText(messages, { maxTokens: 320 });
+    const reply = completion.content.trim() || "I'm here.";
     res.json({ say: reply });
   } catch (err) {
     console.error("[Pablo Public] Error:", err instanceof Error ? err.message : err);

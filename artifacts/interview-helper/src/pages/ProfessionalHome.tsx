@@ -105,6 +105,7 @@ export default function ProfessionalHome() {
           </div>
           <Link href="/business" data-testid="link-web-workspace">Web workspace</Link>
           <Link className="sm-pablo" href="/pablo" data-testid="link-meet-pablo">Meet Pablo <ExternalLink size={13} /></Link>
+           <Link className="sm-privacy-nav" href="/#privacy" data-testid="link-home-privacy">Privacy</Link>
         </nav>
 
         <div className="sm-mobile-menu">
@@ -127,8 +128,7 @@ export default function ProfessionalHome() {
           <div className="sm-kicker"><span className="sm-status" /> The business operating system</div>
           <h1 id="home-title">Make work feel <span>possible.</span></h1>
           <p className="sm-lede">
-            SALARYMAN brings calls, customers, files, and daily operations into one calm
-            workspace, so your team always knows what happens next.
+             Calls, customers, files, and daily operations in one clear workspace.
           </p>
           <div className="sm-actions">
             <Link className="sm-primary" href="/business" data-testid="link-hero-workspace">
@@ -138,7 +138,12 @@ export default function ProfessionalHome() {
               Meet Pablo <ExternalLink size={15} />
             </Link>
           </div>
-          <p className="sm-note">A browser-first control plane for the work behind the work.</p>
+           <div className="sm-proof-row" aria-label="SALARYMAN highlights">
+             <span>PHONE</span>
+             <span>CRM</span>
+             <span>AGENTS</span>
+             <span>FILES</span>
+           </div>
           {desktopDownloadAllowed && (
             <a
               className="sm-desktop-download"
@@ -191,9 +196,9 @@ export default function ProfessionalHome() {
 
       <div className="sm-strip">
         <div className="sm-strip-inner">
-          <span><strong>One connected workspace</strong> for the whole company</span>
-          <span>Phone · CRM · Agents · Files · Operations</span>
-          <span>Built by Picasso AI</span>
+           <span><strong>One connected workspace</strong></span>
+           <span>Phone · CRM · Agents · Files</span>
+           <span>Built by Picasso AI</span>
         </div>
       </div>
 
@@ -220,7 +225,7 @@ export default function ProfessionalHome() {
             <h2 id="paths-title">Three paths.<br />One working world.</h2>
           </div>
           <p className="sm-section-intro">
-            Start where it is useful today. These are live destinations, not unfinished game scenes.
+             Start with the work you need today.
           </p>
         </div>
         <div className="sm-path-grid">
@@ -242,7 +247,7 @@ export default function ProfessionalHome() {
             <div className="sm-kicker">The essentials</div>
             <h2 id="essentials-title">High-return tools<br />for the working day.</h2>
           </div>
-          <p className="sm-section-intro">Clear jobs, shared context, and fewer tabs to keep open.</p>
+           <p className="sm-section-intro">The essentials, without the tab sprawl.</p>
         </div>
         <div className="sm-feature-grid">
           {features.map(([name, desc, Icon, href], index) => (
@@ -272,9 +277,24 @@ export default function ProfessionalHome() {
         </div>
       </section>
 
+      <section className="sm-privacy" id="privacy" aria-labelledby="privacy-title">
+        <div>
+          <div className="sm-kicker"><ShieldCheck size={13} /> Privacy in plain sight</div>
+          <h2 id="privacy-title">Your data. Your call.</h2>
+          <p>We do not sell personal information. See what we collect, why, and how to request deletion.</p>
+        </div>
+        <Link className="sm-privacy-link" href="/legal/privacy" data-testid="link-home-privacy-card">
+          Read privacy policy <ArrowRight size={14} />
+        </Link>
+      </section>
+
       <footer className="sm-footer">
         <span>SALARYMAN / PICASSO AI</span>
-        <span>Meet Pablo · Privacy · Status</span>
+        <span>
+          <Link href="/pablo">Meet Pablo</Link>
+          <Link href="/#privacy">Privacy</Link>
+          <Link href="/legal/contact">Contact</Link>
+        </span>
       </footer>
     </main>
   );

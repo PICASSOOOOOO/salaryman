@@ -1204,13 +1204,14 @@ router.post("/chat/pablo/lore", async (req, res) => {
 Generate ONE short piece of in-world lore: a story Pablo knows, a rumor about a building, how the terminals actually work under the hood, who used to live in this district, etc. Keep it 1–2 sentences, max ~180 chars. Sharp, wry, slightly arrogant. No glazing, no emojis, no markdown. Currency is FIAT (ƒ); never say "crypto" or "$".
 Then offer the user TWO short cheeky reply tokens (1–4 words each, ALL CAPS works well) framed as a binary choice the user might pick — NEVER plain "yes/no" or the word "text/texting". Examples to riff on, never reuse: "ON THE LOW" / "CONFETTI", "HIDE ME" / "COME CLOSER", "BOSS" / "TROUBLE", "WHISPER" / "HOLLER", "DOUBLE DOWN" / "FOLD", "MORE COFFEE" / "MORE WHISKEY", "TELL ME MORE" / "I'M BORED".
 Return strict JSON only: {"line": "...", "options": ["X","Y"]}.`;
-    const completion = await openai.chat.completions.create({
-      model: getOpenAiTextModel(),
-      max_completion_tokens: 500,
-      response_format: { type: "json_object" },
-      messages: [{ role: "system", content: LORE_PROMPT }, { role: "user", content: "give me a fresh Pablo lore beat" }],
-    });
-    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const completion = await completeInternalText(
+      [
+        { role: "system", content: LORE_PROMPT },
+        { role: "user", content: "give me a fresh Pablo lore beat" },
+      ],
+      { maxTokens: 240, json: true },
+    );
+    const raw = completion.content || "{}";
     let parsed: { line?: string; options?: string[] } = {};
     try { parsed = JSON.parse(raw); } catch {}
     const line = (parsed.line ?? "").toString().trim().slice(0, 240) || "I own the lights you're standing under. Just so we're clear.";

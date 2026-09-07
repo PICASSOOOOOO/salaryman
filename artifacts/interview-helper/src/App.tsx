@@ -332,7 +332,7 @@ function AppShell() {
   //
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/desktop", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/desktop", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
   const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
