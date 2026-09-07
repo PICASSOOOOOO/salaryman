@@ -139,7 +139,10 @@ class SolarPunkRenderer:
     def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene) -> None:
         room_x, room_y, room_w, room_h = scene.room.bounds
         scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
-        scale = max(0.16, min(0.34, scale))
+        # The room is still larger than the viewport, but the desktop capture
+        # must make the avatar readable.  Keep the camera close enough to show
+        # the character's walk cycle instead of presenting an editor overview.
+        scale = max(0.24, min(0.48, scale * 1.42))
         view_w, view_h = viewport.width / scale, viewport.height / scale
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
@@ -199,7 +202,11 @@ class SolarPunkRenderer:
             self._motion_clock += 0.12
         else:
             self._motion_clock += 0.035
-        self._draw_player(*point(scene.player_position), scale=scale)
+        self._draw_player(
+            *point(scene.player_position),
+            scale=scale,
+            moving=scene.velocity != (0.0, 0.0),
+        )
 
     def _draw_perspective_floor(self, viewport: pygame.Rect) -> None:
         """Draw a warm pseudo-3D floor plane with a real vanishing point."""
@@ -364,16 +371,22 @@ class SolarPunkRenderer:
             pygame.draw.line(self.screen, (60, 88, 86), (x - 4, y + 8), (x - 7, y + 12), 2)
         pygame.draw.circle(self.screen, outline, (x, y), 15, 2 if nearby else 1)
 
-    def _draw_player(self, x: int, y: int, scale: float = 1.0) -> None:
+    def _draw_player(
+        self,
+        x: int,
+        y: int,
+        scale: float = 1.0,
+        *,
+        moving: bool = False,
+    ) -> None:
         """Draw a real 16-bit character frame, facing the scene's movement."""
         sheet = self._asset("characters/char_0.png")
         if sheet:
             # Character sheets are 7 columns x 4 cardinal rows, 16x24 each.
             rows = {"down": 0, "left": 1, "right": 2, "up": 3}
-            moving = self._anim_tick > 0 and self._motion_clock > 0
             frame = (self._anim_tick // 3) % 7 if moving else 0
             crop = sheet.subsurface(pygame.Rect(frame * 16, rows[self._facing] * 24, 16, 24))
-            sprite_scale = min(4.5, max(2.2, scale * 12))
+            sprite_scale = min(5.4, max(2.8, scale * 12))
             size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
             bob = int(math.sin(self._motion_clock * 3.0) * (3 if moving else 1))
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
