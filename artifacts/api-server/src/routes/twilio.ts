@@ -39,6 +39,7 @@ import { resolveUserCountry, resolveUserCity, resolveOwningNumberCountry } from 
 import { getUserOutboundNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { resolveTelephonyOwner } from "../lib/telephony-owner";
 
 const router = Router();
 
@@ -1295,7 +1296,12 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
       return;
     }
     const { From, To, CallSid } = req.body;
-    const userId = req.query.userId as string;
+    const hintedUserId = req.query.userId as string | undefined;
+    const telephonyOwner = await resolveTelephonyOwner({
+      destinationNumber: To,
+      hintedUserId,
+    });
+    const userId = telephonyOwner?.userId;
 
     const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
@@ -2919,7 +2925,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       }
     }
 
-    const inbOrgId2 = userId ? await getUserOrgId(userId) : null;
+    const inbOrgId2 = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
 
     await db.insert(callHistoryTable).values({
       userId: userId || "unknown",
@@ -3073,22 +3079,14 @@ router.post("/twilio/webhook/status", async (req, res) => {
         .where(and(eq(callHistoryTable.twilioCallSid, CallSid), eq(callHistoryTable.direction, "inbound")))
         .limit(1);
       if (existing.length === 0) {
-        let resolvedUserId: string | null = null;
-        if (To) {
-          try {
-            const e164To = toE164(To) ?? To;
-            const phoneRows = await db
-              .select({ userId: phoneNumbersTable.userId })
-              .from(phoneNumbersTable)
-              .where(eq(phoneNumbersTable.number, e164To))
-              .limit(1);
-            if (phoneRows[0]) resolvedUserId = phoneRows[0].userId;
-          } catch {
-          }
-        }
+        const telephonyOwner = await resolveTelephonyOwner({
+          destinationNumber: To,
+          hintedUserId: req.query.userId as string | undefined,
+        });
+        const resolvedUserId = telephonyOwner?.userId ?? null;
         if (resolvedUserId) {
           try {
-            const fallbackOrgId = await getUserOrgId(resolvedUserId);
+            const fallbackOrgId = telephonyOwner?.orgId ?? await getUserOrgId(resolvedUserId);
             await db.insert(callHistoryTable).values({
               userId: resolvedUserId,
               orgId: fallbackOrgId ?? undefined,
@@ -3169,7 +3167,7 @@ router.post("/twilio/webhook/recording", async (req, res) => {
       RecordingDuration,
       RecordingStatus,
     } = req.body;
-    const userId = req.query.userId as string;
+    const hintedUserId = req.query.userId as string | undefined;
     const recordingType = req.query.type as string;
 
     if (RecordingStatus && RecordingStatus !== "completed") {
@@ -3178,6 +3176,7 @@ router.post("/twilio/webhook/recording", async (req, res) => {
     }
 
     let fromNumber = FromField as string | undefined;
+    let callOwner: { userId: string; orgId: number | null } | null = null;
 
     if (!fromNumber && CallSid) {
       const callRows = await db
@@ -3185,8 +3184,17 @@ router.post("/twilio/webhook/recording", async (req, res) => {
         .from(callHistoryTable)
         .where(eq(callHistoryTable.twilioCallSid, CallSid))
         .limit(1);
-      if (callRows[0]) fromNumber = callRows[0].recipientNumber;
+      if (callRows[0]) {
+        fromNumber = callRows[0].recipientNumber;
+        callOwner = { userId: callRows[0].userId, orgId: callRows[0].orgId ?? null };
+      }
     }
+
+    const telephonyOwner = callOwner ?? await resolveTelephonyOwner({
+      destinationNumber: req.body.To as string | undefined,
+      hintedUserId,
+    });
+    const userId = telephonyOwner?.userId;
 
     if (recordingType === "voicemail" && userId) {
       const transcript = `[Voicemail from ${fromNumber ?? "unknown"} - ${new Date().toLocaleString()}]`;
@@ -3204,7 +3212,7 @@ router.post("/twilio/webhook/recording", async (req, res) => {
         }
       }
 
-      const orgId = await getUserOrgId(userId);
+      const orgId = telephonyOwner?.orgId ?? await getUserOrgId(userId);
 
       const existingVmBySid = RecordingSid
         ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.recordingSid, RecordingSid)).limit(1)
@@ -3387,14 +3395,12 @@ router.post("/twilio/webhook/sms", async (req, res) => {
 
     const e164From = toE164(From) ?? From;
     const e164To = toE164(To) ?? To;
-    let userId: string | undefined;
-    if (e164To) {
-      const [ownedNumber] = await db.select({ userId: phoneNumbersTable.userId })
-        .from(phoneNumbersTable)
-        .where(eq(phoneNumbersTable.number, e164To))
-        .limit(1);
-      userId = ownedNumber?.userId;
-    }
+    const telephonyOwner = await resolveTelephonyOwner({
+      destinationNumber: To,
+      hintedUserId: req.query.userId as string | undefined,
+    });
+    let userId: string | undefined = telephonyOwner?.userId;
+    const ownerOrgId = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
     if (!userId && e164To === process.env.TWILIO_PHONE_NUMBER) {
       const recentOutbound = await db.select({ userId: smsMessagesTable.userId })
         .from(smsMessagesTable)
@@ -3490,6 +3496,7 @@ router.post("/twilio/webhook/sms", async (req, res) => {
 
         await recordTelephonyActivity({
           userId,
+          orgId: ownerOrgId,
           channel: "sms",
           direction: "inbound",
           phone: e164From,

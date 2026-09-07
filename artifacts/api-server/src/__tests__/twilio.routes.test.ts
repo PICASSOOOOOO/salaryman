@@ -19,7 +19,7 @@ vi.mock("@workspace/integrations-openai-ai-server", () => ({
 import request from "supertest";
 import type { Express } from "express";
 import twilio from "twilio";
-import { db, callHistoryTable, dialingSessionsTable, usersTable, smsConversationsTable, smsMessagesTable } from "@workspace/db";
+import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
 import {
@@ -428,6 +428,40 @@ describe("webhook/status", () => {
     expect(row.status).toBe("completed");
     expect(row.durationSeconds).toBe(30);
     expect(row.endedAt).toBeTruthy();
+  });
+});
+
+describe("webhook destination ownership", () => {
+  it("uses the active destination owner instead of a conflicting callback user hint", async () => {
+    const destination = "+15550001111";
+    const sid = "CAowner-resolution-00000000000000001";
+    await db.insert(phoneNumbersTable).values({
+      userId: otherUserId,
+      number: destination,
+      isActive: true,
+    });
+
+    try {
+      const res = await request(app)
+        .post(`/api/twilio/webhook/voice?userId=${encodeURIComponent(TEST_USER.id)}`)
+        .set("x-twilio-signature", "sig")
+        .send({
+          From: "+15550002222",
+          To: destination,
+          CallSid: sid,
+        });
+      expect(res.status).toBe(200);
+
+      const [row] = await db
+        .select()
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, sid));
+      expect(row.userId).toBe(otherUserId);
+      expect(row.userId).not.toBe(TEST_USER.id);
+    } finally {
+      await db.delete(callHistoryTable).where(eq(callHistoryTable.twilioCallSid, sid));
+      await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.number, destination));
+    }
   });
 });
 
