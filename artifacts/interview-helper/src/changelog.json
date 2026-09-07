@@ -1831,5 +1831,25 @@
       "Add Pygame assets and update desktop download styling and documentation",
       "Implement desktop download route and page UI updates"
     ]
+  },
+  {
+    "version": "v.21.8.2311",
+    "date": "2026-09-07",
+    "commitHash": "ac42f79ae75bb789da9d418922cca03b9e4ae20b",
+    "changes": [
+      "Update test mocks and components for interview helper compatibility",
+      "Add error context files for failed tests",
+      "Update memory documentation and add telephony owner resolution note",
+      "Update twilio routes and telephony owner logic with associated tests",
+      "Implement telephony owner logic and update Twilio routes and tests"
+    ]
+  },
+  {
+    "version": "v.21.9.2311",
+    "date": "2026-09-07",
+    "commitHash": "ac42f79ae75bb789da9d418922cca03b9e4ae20b",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
