@@ -36,6 +36,7 @@ import { utilityKindForItem, findBatterySpec, ELECTRICITY_RATE_FIAT_PER_UNIT } f
 import { recordUtilityRevenue } from "../lib/utility-revenue";
 import { CRAFT_RECIPES, getCraftRecipe, isUtilityOutput } from "../lib/crafting-catalog";
 import { getResourceDef } from "../lib/resource-catalog";
+import { getMarketIndex } from "./real-estate";
 import {
   isBattery,
   batteryCapacity,
@@ -128,13 +129,31 @@ async function removeConsumable(tx: Tx, userId: string, slot: number, itemId: st
 }
 
 // ─── Catalog (public) ───────────────────────────────────────────────────────
-router.get("/items/catalog", (_req, res) => {
-  res.json({ types: ITEM_TYPES, items: ITEM_CATALOG });
+async function marketCatalogItems() {
+  const market = await getMarketIndex();
+  return {
+    market: {
+      multiplier: market.multiplier,
+      asOf: market.asOf,
+      status: market.status,
+    },
+    items: ITEM_CATALOG.map((item) => ({
+      ...item,
+      basePriceFiat: item.priceFiat,
+      priceFiat: Math.max(1, Math.round(item.priceFiat * market.multiplier)),
+    })),
+  };
+}
+
+router.get("/items/catalog", async (_req, res) => {
+  const catalog = await marketCatalogItems();
+  res.json({ types: ITEM_TYPES, ...catalog });
 });
 
-router.get("/items/vending-catalog", (_req, res) => {
+router.get("/items/vending-catalog", async (_req, res) => {
   const allowed = new Set<string>(PUBLIC_VENDING_ITEM_IDS);
-  res.json({ items: ITEM_CATALOG.filter((item) => allowed.has(item.id)) });
+  const catalog = await marketCatalogItems();
+  res.json({ market: catalog.market, items: catalog.items.filter((item) => allowed.has(item.id)) });
 });
 
 // ─── Inventory for a character save slot ──────────────────────────────────────
@@ -213,6 +232,8 @@ router.post("/items/buy", async (req, res) => {
     res.status(403).json({ error: "This item is not stocked in the Tower vending machine." });
     return;
   }
+  const market = await getMarketIndex();
+  const marketPriceFiat = Math.max(1, Math.round(item.priceFiat * market.multiplier));
 
   // ─── Consumable branch: stack a quantity instead of one-time ownership ─────
   if (isConsumable(item)) {
@@ -227,7 +248,7 @@ router.post("/items/buy", async (req, res) => {
       return;
     }
 
-    const totalPrice = item.priceFiat * qty;
+    const totalPrice = marketPriceFiat * qty;
     try {
       const paid = await db.transaction(async (tx) => {
         const result = await spendFiat(tx, {
@@ -302,7 +323,7 @@ router.post("/items/buy", async (req, res) => {
   }
 
   // Negotiator I/II skill discount — read skills from the player's save slot.
-  let effectivePrice = item.priceFiat;
+  let effectivePrice = marketPriceFiat;
   try {
     const [saveRow] = await db
       .select({ data: salarymanSavesTable.data })
@@ -312,9 +333,9 @@ router.post("/items/buy", async (req, res) => {
     const skills = (saveRow?.data as any)?.skills as string[] | undefined;
     if (Array.isArray(skills)) {
       if (skills.includes("business.negotiator_2")) {
-        effectivePrice = Math.floor(item.priceFiat * 0.90);
+        effectivePrice = Math.floor(marketPriceFiat * 0.90);
       } else if (skills.includes("business.negotiator_1")) {
-        effectivePrice = Math.floor(item.priceFiat * 0.95);
+        effectivePrice = Math.floor(marketPriceFiat * 0.95);
       }
     }
   } catch { /* best-effort — fall back to full price */ }

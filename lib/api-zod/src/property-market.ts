@@ -13,6 +13,37 @@ export const PROPERTY_CONTRACT_STATUSES = ["active", "delinquent", "defaulted", 
 export const propertyContractStatusSchema = z.enum(PROPERTY_CONTRACT_STATUSES);
 export type PropertyContractStatus = z.infer<typeof propertyContractStatusSchema>;
 
+/**
+ * Property entry prices use a USD benchmark and three months of minimum wage.
+ * This is separate from the game's ƒ300/hour quick-job wage: properties are
+ * real-world-priced assets, while quick jobs are gameplay income.
+ */
+export const REAL_WORLD_MINIMUM_WAGE_USD_BY_YEAR = {
+  2009: 7.25,
+  2026: 7.25,
+} as const;
+export const USD_TO_FIAT_BASELINE = 100;
+export const MINIMUM_WAGE_HOURS_PER_MONTH = 720;
+export const PROPERTY_STARTING_WAGE_MONTHS = 3;
+
+export function realWorldMinimumWageUsd(year = new Date().getUTCFullYear()): number {
+  const years = Object.keys(REAL_WORLD_MINIMUM_WAGE_USD_BY_YEAR).map(Number).sort((a, b) => a - b);
+  const applicableYear = years.filter((candidate) => candidate <= year).at(-1) ?? years[0];
+  return REAL_WORLD_MINIMUM_WAGE_USD_BY_YEAR[applicableYear as keyof typeof REAL_WORLD_MINIMUM_WAGE_USD_BY_YEAR];
+}
+
+export function realWorldMinimumWageFiatPerHour(year = new Date().getUTCFullYear()): number {
+  return realWorldMinimumWageUsd(year) * USD_TO_FIAT_BASELINE;
+}
+
+export function minimumPropertyStartingFiat(year = new Date().getUTCFullYear()): number {
+  return Math.round(
+    realWorldMinimumWageFiatPerHour(year)
+    * MINIMUM_WAGE_HOURS_PER_MONTH
+    * PROPERTY_STARTING_WAGE_MONTHS,
+  );
+}
+
 export const propertyContractRequestIdSchema = z.object({
   requestId: z.string().uuid(),
 }).strict();

@@ -8,6 +8,7 @@ import {
   shadowTowerFloorsTable, shadowTowerWorkstationAssignmentsTable, userFeaturesTable, usersTable,
 } from "@workspace/db";
 import { getShadowTowerOfficeUnitGeometry, isCommercialShadowTowerFloor, quoteShadowTowerFloor, quoteShadowTowerOfficeUnitDetail, SHADOW_TOWER_FLOOR_ENVELOPE, SHADOW_TOWER_LISTINGS } from "@workspace/api-zod/shadow-tower";
+import { minimumPropertyStartingFiat } from "@workspace/api-zod/property-market";
 import shadowTowerRouter from "../routes/shadow-tower";
 import botsRouter from "../routes/bots";
 
@@ -23,7 +24,7 @@ async function user() {
   const email = `tower-${randomUUID()}@test.local`;
   const [created] = await db.insert(usersTable).values({ email }).returning();
   users.push(created.id);
-  await db.insert(bankAccountsTable).values({ userId: created.id, kind: "checking", label: "CHECKING", balance: 2_000_000 });
+  await db.insert(bankAccountsTable).values({ userId: created.id, kind: "checking", label: "CHECKING", balance: 4_000_000 });
   return created.id;
 }
 async function org(ownerId: string) {
@@ -86,11 +87,14 @@ describe("Shadow Tower routes", () => {
       expect(geometry.reduce((total, unit) => total + unit.squareMeters, 0)).toBe(SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters);
       expect(geometry.at(-1)!.xPixels + geometry.at(-1)!.widthPixels).toBe(SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels);
     }
-    expect(quoteShadowTowerFloor("founder_team", 1, "own")).toBe(240_000);
+    expect(quoteShadowTowerFloor("founder_team", 1, "own")).toBe(minimumPropertyStartingFiat());
     const unitQuote = quoteShadowTowerOfficeUnitDetail("founder_team", 20, 2, 3, "own");
     expect(unitQuote.squareMeters).toBe(SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters / 3);
     expect(unitQuote.squarePixels).toBe(SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels * SHADOW_TOWER_FLOOR_ENVELOPE.heightPixels / 3);
-    expect(unitQuote.totalFiat).toBe(Math.round(unitQuote.squareMeters * unitQuote.fiatPerSquareMeter * unitQuote.verticalMultiplier));
+    expect(unitQuote.totalFiat).toBe(Math.max(
+      Math.round(unitQuote.squareMeters * unitQuote.fiatPerSquareMeter * unitQuote.verticalMultiplier),
+      Math.round(minimumPropertyStartingFiat() * unitQuote.squareMeters / SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters),
+    ));
     expect(isCommercialShadowTowerFloor(5)).toBe(true);
     expect(isCommercialShadowTowerFloor(64)).toBe(true);
     expect(isCommercialShadowTowerFloor(65)).toBe(false);

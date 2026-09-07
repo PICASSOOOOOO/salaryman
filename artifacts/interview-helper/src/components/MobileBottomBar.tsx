@@ -192,27 +192,29 @@ export function MobileModuleNav() {
         <div className="mobile-account-actions">
           <EconomyToggle />
           {isAuthenticated && (
-            <NotificationBell
-              buttonClassName="mobile-account-button mobile-tap-target"
-              iconClassName="mobile-account-icon"
-            />
-            <button
-              onClick={() => setSummaryOpen(true)}
-              className="mobile-account-button mobile-tap-target"
-              aria-label="Profile"
-            >
-              {resolveAvatarUrl(user?.profileImageUrl) ? (
-                <img
-                  src={resolveAvatarUrl(user?.profileImageUrl)}
-                  alt={user?.firstName ?? 'User'}
-                  className="mobile-avatar"
+              <>
+                <NotificationBell
+                  buttonClassName="mobile-account-button mobile-tap-target"
+                  iconClassName="mobile-account-icon"
                 />
-              ) : (
-                <div className="mobile-avatar mobile-avatar-fallback">
-                  {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
-                </div>
-              )}
-            </button>
+                <button
+                  onClick={() => setSummaryOpen(true)}
+                  className="mobile-account-button mobile-tap-target"
+                  aria-label="Profile"
+                >
+                  {resolveAvatarUrl(user?.profileImageUrl) ? (
+                    <img
+                      src={resolveAvatarUrl(user?.profileImageUrl)}
+                      alt={user?.firstName ?? 'User'}
+                      className="mobile-avatar"
+                    />
+                  ) : (
+                    <div className="mobile-avatar mobile-avatar-fallback">
+                      {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
+                    </div>
+                  )}
+                </button>
+              </>
           )}
         </div>
       </div>

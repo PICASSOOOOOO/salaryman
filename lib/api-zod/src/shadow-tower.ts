@@ -6,6 +6,7 @@ import {
   type TowerBusinessConversation,
   type TowerInfrastructureBusiness,
 } from "./tower-commerce";
+import { minimumPropertyStartingFiat } from "./property-market";
 
 /** The only purchasable Shadow Tower floor plans. */
 export const SHADOW_TOWER_ARCHETYPES = ["founder_team", "company"] as const;
@@ -108,7 +109,9 @@ export function quoteShadowTowerArea(archetype: ShadowTowerArchetype, floorNumbe
   const fiatPerSquarePixel = SHADOW_TOWER_FIAT_PER_SQUARE_PIXEL[archetype][tenure];
   const verticalMultiplier = getShadowTowerVerticalMultiplier(floorNumber);
   const squarePixels = squareMeters * SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels * SHADOW_TOWER_FLOOR_ENVELOPE.heightPixels / SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters;
-  return { totalFiat: Math.round(squareMeters * fiatPerSquareMeter * verticalMultiplier), squareMeters, squarePixels, fiatPerSquareMeter, fiatPerSquarePixel, verticalMultiplier };
+  const calculatedFiat = Math.round(squareMeters * fiatPerSquareMeter * verticalMultiplier);
+  const wageFloorFiat = Math.round(minimumPropertyStartingFiat() * squareMeters / SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters);
+  return { totalFiat: Math.max(calculatedFiat, wageFloorFiat), squareMeters, squarePixels, fiatPerSquareMeter, fiatPerSquarePixel, verticalMultiplier };
 }
 /** Whole-floor total derived from canonical physical area, not a listing lump sum. */
 export function quoteShadowTowerFloor(archetype: ShadowTowerArchetype, floorNumber: number, tenure: "own" | "lease") {

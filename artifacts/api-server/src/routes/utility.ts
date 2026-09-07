@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import { GAS_UNIT_PRICE_FIAT, utilityCatalogPayload } from "../lib/utility-catalog";
 import { recordUtilityRevenue, totalUtilityRevenue } from "../lib/utility-revenue";
 import { spendEarnedFiat } from "../lib/pablo-tax";
+import { getMarketIndex } from "./real-estate";
 
 function requireAuth(req: Request, res: any): string | null {
   if (!(req as any).isAuthenticated?.()) {
@@ -26,8 +27,27 @@ function requireAuth(req: Request, res: any): string | null {
  */
 const router: IRouter = Router();
 
-router.get("/utility/catalog", (_req, res) => {
-  res.json(utilityCatalogPayload());
+router.get("/utility/catalog", async (_req, res) => {
+  const market = await getMarketIndex();
+  const payload = utilityCatalogPayload();
+  res.json({
+    ...payload,
+    market: { multiplier: market.multiplier, asOf: market.asOf, status: market.status },
+    batteries: payload.batteries.map((item) => ({
+      ...item,
+      basePriceFiat: item.priceFiat,
+      priceFiat: Math.max(1, Math.round(item.priceFiat * market.multiplier)),
+    })),
+    gasProducts: payload.gasProducts.map((item) => ({
+      ...item,
+      basePriceFiat: item.priceFiat,
+      priceFiat: Math.max(1, Math.round(item.priceFiat * market.multiplier)),
+    })),
+    gasUnitPriceFiat: Math.max(1, Math.round(payload.gasUnitPriceFiat * market.multiplier)),
+    baseGasUnitPriceFiat: payload.gasUnitPriceFiat,
+    electricityRateFiatPerUnit: Math.max(1, Math.round(payload.electricityRateFiatPerUnit * market.multiplier)),
+    baseElectricityRateFiatPerUnit: payload.electricityRateFiatPerUnit,
+  });
 });
 
 // Owner-facing peek at what the monopoly has earned. Cheap aggregate; no auth
@@ -63,7 +83,9 @@ router.post("/utility/refuel", async (req, res) => {
   const target = req.body?.target === "home" ? "home" : "vehicle";
   const label = typeof req.body?.label === "string" ? req.body.label.slice(0, 48) : "";
 
-  const cost = units * GAS_UNIT_PRICE_FIAT;
+  const market = await getMarketIndex();
+  const gasUnitPriceFiat = Math.max(1, Math.round(GAS_UNIT_PRICE_FIAT * market.multiplier));
+  const cost = units * gasUnitPriceFiat;
   const description =
     target === "home"
       ? `Gas pump: home gas supply ×${units}${label ? ` (${label})` : ""}`
