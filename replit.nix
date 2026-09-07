@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.godot_4
     pkgs.xorg.libxshmfence
     pkgs.xorg.libXtst
     pkgs.xorg.libXrender
