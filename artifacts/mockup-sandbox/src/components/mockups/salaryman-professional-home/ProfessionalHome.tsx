@@ -13,13 +13,6 @@ const features = [
   ["Finance", "Know what is moving and why", ShieldCheck, true],
 ] as const;
 
-function Capture({ src, title, copy }: { src: string; title: string; copy: string }) {
-  return <article className="sm-clip">
-    <img className="sm-capture" src={src} alt={`${title} — current desktop-client capture`} />
-    <h3>{title}</h3><p>{copy}</p>
-  </article>;
-}
-
 export default function ProfessionalHome() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -61,12 +54,23 @@ export default function ProfessionalHome() {
       </div>
     </section>
     <div className="sm-strip"><div className="sm-strip-inner"><span><strong>One connected workspace</strong> for the whole company</span><span>Phone · CRM · Files · Finance · Operations</span><span>Built by Picasso AI</span></div></div>
-    <section className="sm-section" id="how-it-works">
-      <div className="sm-section-head"><div><div className="sm-kicker">A closer look</div><h2>Current views of a<br />working office.</h2></div><p className="sm-section-intro">These are direct captures from the downloadable Pygame client. Keep a pulse on the day, move between rooms, and leave the office open when work gets busy.</p></div>
-      <div className="sm-clips">
-        <Capture src="/__mockup/images/salaryman-home/pygame/lobby.png" title="Lobby · current client capture" copy="A clear starting point for the downloadable office." />
-        <Capture src="/__mockup/images/salaryman-home/pygame/recreation.png" title="Recreation · current client capture" copy="A room for the moments between meetings." />
-        <Capture src="/__mockup/images/salaryman-home/pygame/executive.png" title="Executive · current client capture" copy="A focused view for decisions and direction." />
+    <section className="sm-section sm-tour-section" id="how-it-works">
+      <div className="sm-section-head"><div><div className="sm-kicker">A closer look</div><h2>The office is the<br />interface.</h2></div><p className="sm-section-intro">A direct view of the downloadable client: one living workday, four rooms, and a team you can actually direct.</p></div>
+      <div className="sm-tour">
+        <div className="sm-tour-main">
+          <img src="/__mockup/images/salaryman-home/pygame/lobby.png" alt="Tower lobby from the current Pygame desktop client" />
+          <div className="sm-tour-label"><span>01</span><b>TOWER LOBBY</b><small>Current desktop-client capture</small></div>
+        </div>
+        <div className="sm-tour-copy">
+          <div className="sm-tour-intro"><span className="sm-tour-live" /> START IN THE BRIGHT WORKDAY</div>
+          <h3>Move through the business, not another dashboard.</h3>
+          <p>Open the client and the work has a place. Check the office, direct a teammate, take a break, and let the day continue around you.</p>
+          <div className="sm-tour-points">
+            <div><span>02</span><b>Recreation</b><small>Room for the moments between meetings.</small></div>
+            <div><span>03</span><b>Executive</b><small>A focused room for decisions and direction.</small></div>
+            <div><span>04</span><b>Workfloor</b><small>Watch output, wages, stamina, and the live shift.</small></div>
+          </div>
+        </div>
       </div>
     </section>
      <section className="sm-section" id="workspace">
