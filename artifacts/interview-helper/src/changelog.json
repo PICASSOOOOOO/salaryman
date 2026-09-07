@@ -1875,5 +1875,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.22.3.2315",
+    "date": "2026-09-07",
+    "commitHash": "0af5010f52884920ac72987bb387c2b5ab135c0c",
+    "changes": [
+      "Update version and refactor professional home styles"
+    ]
   }
 ]
