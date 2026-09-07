@@ -29,11 +29,13 @@ describe("frontend startup boundaries", () => {
     expect(chat).toContain('import("@/components/ChatPanel")');
   });
 
-  it("does not eagerly preload full landing media", () => {
-    const landing = source("pages/ScrollLanding.tsx");
-    expect(landing).toContain('preload="none"');
-    expect(landing).toContain('preload="metadata"');
-    expect(landing).not.toContain('preload="auto"');
+  it("keeps unfinished gameplay media off the public landing page", () => {
+    const app = source("App.tsx");
+    const landing = source("pages/ProfessionalHome.tsx");
+    expect(app).toContain('lazy(() => import("@/pages/ProfessionalHome"))');
+    expect(landing).not.toContain("<video");
+    expect(landing).not.toContain("salaryman-trailer");
+    expect(landing).toContain("Three paths.");
   });
 
   it("lets route chunks own charts and syntax libraries", () => {

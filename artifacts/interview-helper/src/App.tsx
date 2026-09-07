@@ -31,7 +31,7 @@ import { isEmbedMode } from "@/lib/embed-mode";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 
 const Home = lazy(() => import("@/pages/Home"));
-const ScrollLanding = lazy(() => import("@/pages/ScrollLanding"));
+const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
@@ -221,9 +221,10 @@ function HomeOrCover() {
   // on non-home routes). Guard on the actual path so the homepage terminal does
   // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
-  // The public door is a gameplay-led preview. Pablo remains an explicit
-  // destination at /pablo rather than taking over the product homepage.
-  return <ScrollLanding />;
+  // Keep the public door focused on finished browser capabilities. The
+  // downloadable gameplay client is still in development and should not be
+  // marketed from the homepage until its visual slice is complete.
+  return <ProfessionalHome />;
 }
 
 const FLOATING_BAR_ROUTES = [
