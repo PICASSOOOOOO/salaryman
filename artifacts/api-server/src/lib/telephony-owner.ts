@@ -48,18 +48,17 @@ export async function resolveTelephonyOwner({
         id: phoneNumbersTable.id,
         userId: phoneNumbersTable.userId,
         orgId: phoneNumbersTable.orgId,
+        isActive: phoneNumbersTable.isActive,
       })
       .from(phoneNumbersTable)
-      .where(and(
-        eq(phoneNumbersTable.isActive, true),
-        candidates.length === 1
-          ? eq(phoneNumbersTable.number, candidates[0])
-          : or(...candidates.map((candidate) => eq(phoneNumbersTable.number, candidate))),
-      ))
+      .where(candidates.length === 1
+        ? eq(phoneNumbersTable.number, candidates[0])
+        : or(...candidates.map((candidate) => eq(phoneNumbersTable.number, candidate))))
       .limit(2);
 
-    if (rows.length === 1) {
-      const row = rows[0];
+    const activeRows = rows.filter((row) => row.isActive);
+    if (activeRows.length === 1) {
+      const row = activeRows[0];
       return {
         userId: row.userId,
         orgId: await resolveOrgId(row.userId, row.orgId),
@@ -70,7 +69,7 @@ export async function resolveTelephonyOwner({
 
     // More than one active row for the same callback target is an unsafe
     // configuration. Fail closed rather than guessing between organizations.
-    if (rows.length > 1) return null;
+    if (activeRows.length > 1 || rows.length > 0) return null;
   }
 
   const platformNumber = process.env.TWILIO_PHONE_NUMBER
@@ -79,12 +78,12 @@ export async function resolveTelephonyOwner({
   const isPlatformFallback = !normalizedDestination
     || (platformNumber != null && normalizedDestination === platformNumber);
 
-  if (!hintedUserId || !isPlatformFallback) return null;
+  if (!hintedUserId) return null;
 
   return {
     userId: hintedUserId,
     orgId: await resolveOrgId(hintedUserId, null),
     phoneNumberId: null,
-    source: normalizedDestination ? "platform-fallback" : "legacy-hint",
+    source: isPlatformFallback ? (normalizedDestination ? "platform-fallback" : "legacy-hint") : "legacy-hint",
   };
 }

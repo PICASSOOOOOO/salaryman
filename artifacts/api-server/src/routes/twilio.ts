@@ -1326,7 +1326,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
     }
 
     if (CallSid) {
-      const inbOrgId = userId ? await getUserOrgId(userId) : null;
+      const inbOrgId = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
       const inbCrmMatch = userId && From ? await matchContactByPhone(userId, From, inbOwningCountry) : null;
       await db.insert(callHistoryTable).values({
         userId: userId || "unknown",
@@ -2901,7 +2901,12 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       return;
     }
     const { From, To, CallSid } = req.body;
-    const userId = req.query.userId as string;
+    const hintedUserId = req.query.userId as string | undefined;
+    const telephonyOwner = await resolveTelephonyOwner({
+      destinationNumber: To,
+      hintedUserId,
+    });
+    const userId = telephonyOwner?.userId;
 
     const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";

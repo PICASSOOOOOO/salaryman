@@ -215,6 +215,21 @@ describe("hangup", () => {
 });
 
 describe("dialing sessions", () => {
+  it.each(["auto", "predictive"] as const)("keeps %s dialing available", async (mode) => {
+    const res = await request(app)
+      .post("/api/twilio/dialing/start")
+      .send({ mode, numbers: [{ phone: mode === "auto" ? "5551117777" : "5551118888", name: `${mode} lead` }] });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.mode).toBe(mode);
+
+    const stop = await request(app)
+      .post(`/api/twilio/dialing/${res.body.sessionId}/stop`)
+      .send();
+    expect(stop.status).toBe(200);
+    expect(stop.body.stoppedCalls).toBe(1);
+  });
+
   it("start: 400 on a bad mode", async () => {
     const res = await request(app)
       .post("/api/twilio/dialing/start")
@@ -432,11 +447,13 @@ describe("webhook/status", () => {
 });
 
 describe("webhook destination ownership", () => {
+  const attributionUserId = "phone_owner_attribution_user";
+
   it("uses the active destination owner instead of a conflicting callback user hint", async () => {
     const destination = "+15550001111";
     const sid = "CAowner-resolution-00000000000000001";
     await db.insert(phoneNumbersTable).values({
-      userId: otherUserId,
+      userId: attributionUserId,
       number: destination,
       isActive: true,
     });
@@ -456,7 +473,7 @@ describe("webhook destination ownership", () => {
         .select()
         .from(callHistoryTable)
         .where(eq(callHistoryTable.twilioCallSid, sid));
-      expect(row.userId).toBe(otherUserId);
+      expect(row.userId).toBe(attributionUserId);
       expect(row.userId).not.toBe(TEST_USER.id);
     } finally {
       await db.delete(callHistoryTable).where(eq(callHistoryTable.twilioCallSid, sid));
