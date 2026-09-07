@@ -915,43 +915,43 @@ header {
 body.workspace-light {
   color-scheme: light;
   --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(151 29% 16%);
+  --color-foreground: hsl(222 47% 11%);
   --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(151 29% 16%);
+  --color-card-foreground: hsl(222 47% 11%);
   --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(151 29% 16%);
-  --color-border: hsl(148 28% 85%);
+  --color-popover-foreground: hsl(222 47% 11%);
+  --color-border: hsl(214 32% 82%);
   --color-input: hsl(0 0% 100%);
-  --color-ring: hsl(151 61% 39%);
-  --color-primary: hsl(151 61% 39%);
+  --color-ring: hsl(211 82% 38%);
+  --color-primary: hsl(211 82% 38%);
   --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(145 43% 95%);
-  --color-secondary-foreground: hsl(151 22% 34%);
-  --color-muted: hsl(145 26% 96%);
-  --color-muted-foreground: hsl(151 13% 46%);
-  --color-accent: hsl(151 61% 39%);
+  --color-secondary: hsl(214 32% 95%);
+  --color-secondary-foreground: hsl(215 25% 27%);
+  --color-muted: hsl(214 32% 96%);
+  --color-muted-foreground: hsl(215 19% 35%);
+  --color-accent: hsl(199 89% 42%);
   --color-accent-foreground: hsl(0 0% 100%);
   --color-destructive: hsl(2 61% 56%);
   --color-destructive-foreground: hsl(0 0% 100%);
-  --salary-ink: 16 43 32;
-  --salary-panel: 247 251 248;
+  --salary-ink: 15 23 42;
+  --salary-panel: 241 245 249;
   --salary-paper: 255 255 255;
-  --salary-copper: 29 143 88;
-  --salary-signal: 69 220 139;
-  background: #fff;
-  color: #102b20;
+  --salary-copper: 15 90 168;
+  --salary-signal: 14 165 233;
+  background: #f8fafc;
+  color: #0f172a;
   background-image: none;
 }
 
 body.workspace-light #root {
-  background: #fff;
-  color: #102b20;
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 body.workspace-light main,
 body.workspace-light [class~="min-h-screen"],
 body.workspace-light [class~="min-h-\[100dvh\]"] {
-  background-color: #fff !important;
+  background-color: #f8fafc !important;
   background-image: none !important;
 }
 
@@ -964,15 +964,15 @@ body.workspace-light .app-chrome {
 }
 
 body.workspace-light .app-control {
-  color: #49675a;
+  color: #1e3a5f;
   background: #fff;
-  border-color: #c7e1d0;
+  border-color: #b9cbe0;
 }
 
 body.workspace-light .app-control:hover {
-  color: #187c4e;
-  background: #effaf3;
-  border-color: #8cc9a5;
+  color: #0f5ea8;
+  background: #eff6ff;
+  border-color: #7ca6d1;
 }
 
 body.workspace-light .bg-background {
@@ -980,15 +980,15 @@ body.workspace-light .bg-background {
 }
 
 body.workspace-light .text-foreground {
-  color: #102b20 !important;
+  color: #0f172a !important;
 }
 
 body.workspace-light .text-muted-foreground {
-  color: #648073 !important;
+  color: #475569 !important;
 }
 
 body.workspace-light .border-border {
-  border-color: #cfe4d6 !important;
+  border-color: #cbd5e1 !important;
 }
 
 body.workspace-light .bg-\[\#09090b\],
@@ -1001,14 +1001,39 @@ body.workspace-light .bg-\[\#0d0e12\] {
 body.workspace-light .text-zinc-100,
 body.workspace-light .text-zinc-200,
 body.workspace-light .text-zinc-300 {
-  color: #102b20 !important;
+  color: #0f172a !important;
 }
 
 body.workspace-light .text-zinc-400,
 body.workspace-light .text-zinc-500,
 body.workspace-light .text-zinc-600,
 body.workspace-light .text-zinc-700 {
-  color: #648073 !important;
+  color: #475569 !important;
+}
+
+/* Light workspace pages use dark ink for labels and descriptions. The
+   opacity-suffixed Tailwind utilities otherwise inherit the old dark-surface
+   palette and become gray-on-gray on white cards. Keep this broad so newly
+   added workspace screens inherit the same readable contract. */
+body.workspace-light [class*="text-muted-foreground"],
+body.workspace-light [class*="text-zinc-"] {
+  color: #334155 !important;
+}
+
+body.workspace-light [class*="bg-card/"] {
+  background-color: #ffffff !important;
+}
+
+body.workspace-light [class*="bg-muted/"] {
+  background-color: #f1f5f9 !important;
+}
+
+body.workspace-light [class*="border-border/"] {
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light [class*="hover:bg-muted/"]:hover {
+  background-color: #eaf2fb !important;
 }
 
 body.workspace-light .border-white\/\[0\.04\],
@@ -1016,20 +1041,20 @@ body.workspace-light .border-white\/\[0\.05\],
 body.workspace-light .border-white\/\[0\.06\],
 body.workspace-light .border-white\/\[0\.08\],
 body.workspace-light .border-white\/\[0\.1\] {
-  border-color: #cfe4d6 !important;
+  border-color: #cbd5e1 !important;
 }
 
 body.workspace-light .bg-white\/5,
 body.workspace-light .bg-white\/\[0\.04\],
 body.workspace-light .bg-white\/\[0\.05\],
 body.workspace-light .bg-white\/\[0\.07\] {
-  background-color: #f2faf5 !important;
+  background-color: #f1f5f9 !important;
 }
 
 body.workspace-light .hover\:bg-white\/5:hover,
 body.workspace-light .hover\:bg-white\/\[0\.05\]:hover,
 body.workspace-light .hover\:bg-white\/\[0\.07\]:hover {
-  background-color: #edf9f1 !important;
+  background-color: #eaf2fb !important;
 }
 
 /* Shared chrome and the two browser handoff surfaces use the same green
@@ -1037,35 +1062,35 @@ body.workspace-light .hover\:bg-white\/\[0\.07\]:hover {
 body.workspace-light .mobile-app-nav,
 body.workspace-light .mobile-app-subnav,
 body.workspace-light .desktop-app-nav {
-  color: #102b20 !important;
-  border-color: #cfe4d6 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 
 body.workspace-light .mobile-primary-item.is-active,
 body.workspace-light .mobile-subnav-item.is-active,
 body.workspace-light .mobile-more-item.is-active {
-  color: #187c4e !important;
-  background: #eaf8ef !important;
-  border-color: #bde0c9 !important;
+  color: #0f5ea8 !important;
+  background: #eaf2fb !important;
+  border-color: #a9c7e5 !important;
 }
 
 body.workspace-light .mobile-account-button:active,
 body.workspace-light .mobile-back-button:active,
 body.workspace-light .mobile-more-item:active {
-  color: #187c4e !important;
-  background: #edf9f1 !important;
+  color: #0f5ea8 !important;
+  background: #eaf2fb !important;
 }
 
 body.workspace-light .desktop-app-nav .text-zinc-100,
 body.workspace-light .desktop-app-nav .text-zinc-300 {
-  color: #102b20 !important;
+  color: #0f172a !important;
 }
 
 body.workspace-light .desktop-app-nav .text-zinc-400,
 body.workspace-light .desktop-app-nav .text-zinc-500,
 body.workspace-light .desktop-app-nav .text-zinc-600,
 body.workspace-light .desktop-app-nav .text-zinc-700 {
-  color: #648073 !important;
+  color: #475569 !important;
 }
 
 body.workspace-light .mobile-terminal-brand,

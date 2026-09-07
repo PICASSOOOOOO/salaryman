@@ -213,8 +213,19 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     unmountedRef.current = false;
+    const retryWhenOnline = () => {
+      if (unmountedRef.current || deviceStateRef.current === 'ready') return;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      retryAttemptRef.current = 0;
+      void initDeviceRef.current();
+    };
+    window.addEventListener('online', retryWhenOnline);
     return () => {
       unmountedRef.current = true;
+      window.removeEventListener('online', retryWhenOnline);
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       if (deviceRef.current) {

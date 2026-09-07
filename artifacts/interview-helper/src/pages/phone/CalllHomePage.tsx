@@ -147,7 +147,7 @@ export default function CalllHomePage() {
   }, [showTabSettings]);
 
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
-  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'unconfigured'>('checking');
+  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'restricted' | 'unconfigured'>('checking');
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -175,10 +175,19 @@ export default function CalllHomePage() {
     if (!hasPhoneAccess || planLoading) return;
     apiFetch(apiUrl('twilio/system-status'), { credentials: 'include' })
       .then(r => {
-        if (r.ok) setSystemStatus('online');
-        else if (r.status === 403) setSystemStatus('no_subscription');
-        else if (r.status === 503 || r.status === 500) setSystemStatus('unconfigured');
-        else setSystemStatus('unconfigured');
+        if (r.ok) {
+          setSystemStatus('online');
+          return;
+        }
+        return r.json().catch(() => ({})).then(data => {
+          if (r.status === 403 && data.code === 'TWILIO_ORG_RESTRICTED') {
+            setSystemStatus('restricted');
+          } else if (r.status === 403) {
+            setSystemStatus('no_subscription');
+          } else {
+            setSystemStatus('unconfigured');
+          }
+        });
       })
       .catch(() => setSystemStatus('unconfigured'));
   }, [apiUrl, hasPhoneAccess, planLoading]);
@@ -264,11 +273,11 @@ export default function CalllHomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
-                background: systemStatus === 'online' ? slate(0.7) : (systemStatus === 'unconfigured' || systemStatus === 'no_subscription') ? warning(0.7) : slate(0.2),
+                 background: systemStatus === 'online' ? slate(0.7) : (systemStatus === 'unconfigured' || systemStatus === 'no_subscription' || systemStatus === 'restricted') ? warning(0.7) : slate(0.2),
 
                 animation: systemStatus === 'online' ? 'pulse 2s infinite' : 'none' }} />
-              <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.12em' }}>
-                {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_subscription' ? 'NO ACCESS' : '...'}
+               <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.12em' }} title={systemStatus === 'restricted' ? 'Connect your own Twilio credentials or join an authorized organization.' : undefined}>
+                 {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_subscription' ? 'NO ACCESS' : systemStatus === 'restricted' ? 'RESTRICTED' : '...'}
               </span>
             </div>
             <span style={{ fontSize: '0.42rem', color: slate(0.55) }}>│</span>
@@ -300,6 +309,17 @@ export default function CalllHomePage() {
             display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={12} />
             Subscription verification failed. Please check your plan or start a free trial.
+          </div>
+        )}
+        {systemStatus === 'restricted' && (
+          <div style={{
+            margin: '8px 0', padding: '8px 14px',
+            background: slate(0.02),
+            border: `1px solid ${warning(0.2)}`, borderRadius: 6,
+            fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
+            display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={12} />
+            Platform phone access is restricted for this organization. Connect your own Twilio credentials in Settings to enable browser calling.
           </div>
         )}
 
