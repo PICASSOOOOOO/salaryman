@@ -17,10 +17,24 @@ var connection_status := "connecting to Pygame…"
 var command_sequence := 0
 var visual_player_world := Vector2.ZERO
 var visual_player_ready := false
+var pixel_textures: Dictionary = {}
+var animation_clock := 0.0
+var facing_row := 0
 
 func _ready() -> void:
+	_load_pixel_art()
 	_connect_to_pygame()
 	queue_redraw()
+
+func _load_pixel_art() -> void:
+	pixel_textures["player"] = load("res://pixel-agents/assets/characters/char_0.png")
+	pixel_textures["wall"] = load("res://pixel-agents/walls/wall_0.png")
+	pixel_textures["bookshelf"] = load("res://pixel-agents/assets/furniture/BOOKSHELF/BOOKSHELF.png")
+	pixel_textures["desk"] = load("res://pixel-agents/assets/furniture/DESK/DESK_FRONT.png")
+	pixel_textures["pc"] = load("res://pixel-agents/assets/furniture/PC/PC_FRONT_ON_1.png")
+	pixel_textures["plant"] = load("res://pixel-agents/assets/furniture/PLANT/PLANT.png")
+	pixel_textures["sofa"] = load("res://pixel-agents/assets/furniture/SOFA/SOFA_FRONT.png")
+	pixel_textures["whiteboard"] = load("res://pixel-agents/assets/furniture/WHITEBOARD/WHITEBOARD.png")
 
 func _connect_to_pygame() -> void:
 	var error := connection.connect_to_host(HOST, PORT)
@@ -29,7 +43,8 @@ func _connect_to_pygame() -> void:
 	else:
 		connection_status = "connecting to Pygame…"
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	animation_clock += delta
 	connection.poll()
 	match connection.get_status():
 		StreamPeerTCP.STATUS_CONNECTED:
@@ -112,6 +127,10 @@ func _input(event: InputEvent) -> void:
 func _send_current_input() -> void:
 	var x := int(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
 	var y := int(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
+	if abs(x) > abs(y) and x != 0:
+		facing_row = 2 if x > 0 else 1
+	elif y != 0:
+		facing_row = 0 if y > 0 else 3
 	_send_command("set_input", {"x": x, "y": y})
 
 func _world_to_screen(x: float, y: float, world_rect: Rect2) -> Vector2:
@@ -161,31 +180,102 @@ func _draw() -> void:
 func _draw_world(world_rect: Rect2) -> void:
 	var scene_data: Dictionary = snapshot.get("scene", {})
 	var rooms: Array = scene_data.get("rooms", [])
-	for room in rooms:
-		var room_pos := _world_to_screen(float(room.get("x", 0)), float(room.get("y", 0)), world_rect)
-		var room_size := Vector2(
-			float(room.get("width", 1)) / WORLD_WIDTH * world_rect.size.x,
-			float(room.get("height", 1)) / WORLD_HEIGHT * world_rect.size.y
-		)
-		var color := _accent(room.get("accent", []), Color("#234f55"))
-		if room.get("id", "") != scene_data.get("room", ""):
-			color = color.darkened(0.45)
-		draw_rect(Rect2(room_pos, room_size), color, true)
-		draw_rect(Rect2(room_pos, room_size), Color("#70c7af"), false, 1.0)
-		_label(str(room.get("label", "")), room_pos + Vector2(8, 20), 11, Color("#eff8df"))
+	var room: Dictionary = {}
+	for candidate in rooms:
+		if candidate.get("id", "") == scene_data.get("room", ""):
+			room = candidate
+			break
+	if room.is_empty():
+		draw_rect(world_rect, Color("#cbaa76"), true)
+		return
+
+	var room_x := float(room.get("x", 0))
+	var room_y := float(room.get("y", 0))
+	var room_w := float(room.get("width", 1))
+	var room_h := float(room.get("height", 1))
+	var zoom := 0.30
+	var view_w := world_rect.size.x / zoom
+	var view_h := world_rect.size.y / zoom
+	var camera_x := clamp(visual_player_world.x - view_w / 2.0, room_x, room_x + room_w - view_w)
+	var camera_y := clamp(visual_player_world.y - view_h / 2.0, room_y, room_y + room_h - view_h)
+
+	draw_rect(world_rect, Color("#bf9b6c"), true)
+	var tile_size := 24
+	for row in range(0, int(world_rect.size.y / tile_size) + 1):
+		for col in range(0, int(world_rect.size.x / tile_size) + 1):
+			var tile_color := Color("#d6b77e") if (row + col) % 2 == 0 else Color("#cbaa76")
+			var tile_rect := Rect2(world_rect.position + Vector2(col * tile_size, row * tile_size), Vector2(tile_size, tile_size))
+			draw_rect(tile_rect, tile_color, true)
+			draw_line(tile_rect.position + Vector2(0, tile_size - 1), tile_rect.position + Vector2(tile_size, tile_size - 1), Color("#a47d55"), 1.0)
+
+	var inner := world_rect.grow(-18)
+	draw_rect(inner, Color("#6f5c47"), true)
+	draw_rect(inner.grow(-8), Color("#cbaa76"), true)
+	var wall_texture: Texture2D = pixel_textures.get("wall")
+	if wall_texture:
+		for x in range(int(inner.position.x), int(inner.end.x), 32):
+			draw_texture_rect(wall_texture, Rect2(x, inner.position.y - 12, 32, 64), false)
+			draw_texture_rect(wall_texture, Rect2(x, inner.end.y - 20, 32, 64), false)
+
+	var room_id := str(scene_data.get("room", "lobby"))
+	var furniture := {
+		"lobby": [["bookshelf", 1050.0, 1250.0, Vector2(86, 44)], ["plant", 3500.0, 1400.0, Vector2(42, 84)], ["sofa", 2400.0, 3500.0, Vector2(86, 44)], ["whiteboard", 3050.0, 1400.0, Vector2(86, 86)]],
+		"recreation": [["sofa", 2500.0, 5550.0, Vector2(86, 44)], ["plant", 7300.0, 5550.0, Vector2(42, 84)], ["bookshelf", 8200.0, 5550.0, Vector2(86, 44)]],
+		"executive": [["desk", 6200.0, 1800.0, Vector2(128, 86)], ["bookshelf", 7600.0, 1450.0, Vector2(86, 44)], ["plant", 8200.0, 3300.0, Vector2(42, 84)], ["whiteboard", 5700.0, 1350.0, Vector2(86, 86)]],
+	}
+	for item in furniture.get(room_id, []):
+		var texture: Texture2D = pixel_textures.get(str(item[0]))
+		if texture:
+			var point := _world_point(world_rect, camera_x, camera_y, zoom, float(item[1]), float(item[2]))
+			draw_texture_rect(texture, Rect2(point - item[3] / 2.0, item[3]), false)
 
 	for item in scene_data.get("objects", []):
-		if item.get("room", "") != scene_data.get("room", "") and item.get("room", "") != "public":
+		if item.get("room", "") != room_id:
 			continue
-		var object_pos := _world_to_screen(float(item.get("x", 0)), float(item.get("y", 0)), world_rect)
-		var object_color := Color("#f8b957") if item.get("nearby", false) else Color("#47be9a")
-		draw_circle(object_pos, 7.0 if item.get("nearby", false) else 5.0, object_color)
+		var object_pos := _world_point(world_rect, camera_x, camera_y, zoom, float(item.get("x", 0)), float(item.get("y", 0)))
+		var object_texture: Texture2D = _texture_for_object(str(item.get("kind", "")))
+		if object_texture:
+			draw_texture_rect(object_texture, Rect2(object_pos - Vector2(20, 20), Vector2(40, 40)), false)
+		else:
+			draw_circle(object_pos, 8.0, Color("#47be9a"))
 		if item.get("nearby", false):
-			_label(str(item.get("label", "")), object_pos + Vector2(10, 4), 11, Color("#f8b957"))
+			draw_circle(object_pos, 23.0, Color("#f8b957"), false, 2.0)
+			_label("[E] " + str(item.get("label", "")), object_pos + Vector2(26, 4), 11, Color("#fff0ae"))
 
-	var player_pos := _world_to_screen(visual_player_world.x, visual_player_world.y, world_rect)
-	draw_circle(player_pos, 11.0, Color("#f07767"))
-	draw_circle(player_pos, 4.0, Color("#eff8df"))
+	var player_pos := _world_point(world_rect, camera_x, camera_y, zoom, visual_player_world.x, visual_player_world.y)
+	_draw_player_sprite(player_pos)
+	_label(str(room.get("label", "")).to_upper(), world_rect.position + Vector2(18, 28), 20, Color("#fff4ca"))
+
+func _world_point(world_rect: Rect2, camera_x: float, camera_y: float, zoom: float, x: float, y: float) -> Vector2:
+	return world_rect.position + Vector2((x - camera_x) * zoom, (y - camera_y) * zoom)
+
+func _texture_for_object(kind: String) -> Texture2D:
+	match kind:
+		"desk":
+			return pixel_textures.get("desk")
+		"crt_terminal", "tv", "arcade", "vending_machine", "atm":
+			return pixel_textures.get("pc")
+		"window":
+			return pixel_textures.get("whiteboard")
+		"telephone", "pay_phone":
+			return pixel_textures.get("pc")
+		_:
+			return null
+
+func _draw_player_sprite(position: Vector2) -> void:
+	var player: Texture2D = pixel_textures.get("player")
+	if not player:
+		draw_circle(position, 12.0, Color("#f07767"))
+		return
+	var frame := int(animation_clock * 8.0) % 4
+	var source := Rect2(frame * 16, facing_row * 24, 16, 24)
+	draw_ellipse_shadow(position + Vector2(0, 25), Vector2(18, 7))
+	draw_texture_rect_region(player, Rect2(position - Vector2(18, 42), Vector2(36, 54)), source)
+
+func draw_ellipse_shadow(center: Vector2, radius: Vector2) -> void:
+	draw_set_transform(center, 0.0, radius)
+	draw_circle(Vector2.ZERO, 1.0, Color(0.10, 0.18, 0.17, 0.55))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_sidebar() -> void:
 	var sidebar := Rect2(864, 112, 260, 500)

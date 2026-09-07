@@ -10,6 +10,7 @@ Install the optional builder first:
 from __future__ import annotations
 
 import platform
+import os
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist" / "salaryman-office"
 RELEASES = ROOT / "dist" / "releases"
 ICON_SOURCE = ROOT / "artifacts" / "interview-helper" / "public" / "icon-512.png"
+PIXEL_ASSET_SOURCE = ROOT / "artifacts" / "interview-helper" / "public" / "pixel-agents"
 EXECUTABLE_NAME = "SALARYMAN Office"
 
 
@@ -93,6 +95,9 @@ def main() -> int:
     if not ICON_SOURCE.exists():
         print(f"Branding icon was not found: {ICON_SOURCE}", file=sys.stderr)
         return 2
+    if not PIXEL_ASSET_SOURCE.exists():
+        print(f"Pixel art assets were not found: {PIXEL_ASSET_SOURCE}", file=sys.stderr)
+        return 2
 
     system_name = platform.system()
     name = EXECUTABLE_NAME
@@ -111,6 +116,8 @@ def main() -> int:
         "pkg_resources",
         "--exclude-module",
         "setuptools",
+        "--add-data",
+        f"{PIXEL_ASSET_SOURCE}{os.pathsep}pixel-agents",
         str(ROOT / "main.py"),
     ]
     print(f"Building {name} for {system_name}...")

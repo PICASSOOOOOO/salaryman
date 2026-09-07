@@ -59,6 +59,7 @@ class SolarPunkRenderer:
         self.refresh_rect = pygame.Rect(0, 0, 0, 0)
         self.candidate_rects: dict[int, pygame.Rect] = {}
         self._pixel_assets: dict[str, pygame.Surface] = {}
+        self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
         self._asset_root = self._find_pixel_assets()
@@ -143,11 +144,20 @@ class SolarPunkRenderer:
         floor = self._asset("floors/floor_0.png")
         wall = self._asset("walls/wall_0.png")
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
+        # floor_0 in the upstream pack is a neutral collision placeholder.
+        # Keep the pixel grid, but author a warm solar-punk floor treatment so
+        # the playable room reads as a place rather than a gray editor canvas.
         if floor:
-            tile = pygame.transform.scale(floor, (max(2, int(16 * scale)), max(2, int(16 * scale))))
-            for sy in range(viewport.top, viewport.bottom, tile.get_height()):
-                for sx in range(viewport.left, viewport.right, tile.get_width()):
-                    self.screen.blit(tile, (sx, sy))
+            if self._floor_tiles is None:
+                self._floor_tiles = self._build_floor_tiles()
+            tile_size = max(12, int(32 * scale))
+            for row, sy in enumerate(range(viewport.top, viewport.bottom, tile_size)):
+                for col, sx in enumerate(range(viewport.left, viewport.right, tile_size)):
+                    tile = self._floor_tiles[(row + col) % len(self._floor_tiles)]
+                    self.screen.blit(
+                        pygame.transform.scale(tile, (tile_size, tile_size)),
+                        (sx, sy),
+                    )
         def point(position: tuple[int, int]) -> tuple[int, int]:
             return (viewport.x + int((position[0] - camera_x) * scale),
                     viewport.y + int((position[1] - camera_y) * scale))
@@ -195,6 +205,22 @@ class SolarPunkRenderer:
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
             self._anim_tick += 1
         self._draw_player(*point(scene.player_position), scale=scale)
+
+    def _build_floor_tiles(self) -> tuple[pygame.Surface, ...]:
+        """Build a small hand-authored tile set around the imported art scale."""
+        colors = ((203, 170, 117), (213, 181, 126), (195, 163, 111))
+        tiles: list[pygame.Surface] = []
+        for index, color in enumerate(colors):
+            tile = pygame.Surface((16, 16), pygame.SRCALPHA)
+            tile.fill(color)
+            pygame.draw.line(tile, (157, 122, 82), (0, 15), (15, 15), 1)
+            pygame.draw.line(tile, (232, 204, 153), (15, 0), (15, 15), 1)
+            if index == 1:
+                pygame.draw.line(tile, (225, 193, 140), (2, 4), (9, 4), 1)
+            elif index == 2:
+                pygame.draw.line(tile, (173, 138, 94), (4, 11), (13, 11), 1)
+            tiles.append(tile)
+        return tuple(tiles)
 
     def _blit_furniture(self, name: str, position: tuple[int, int], scale: float) -> None:
         image = self._asset(name)
