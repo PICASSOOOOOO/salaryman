@@ -116,27 +116,36 @@ func _build_building_shell() -> void:
 	dynamic_root.name = "BridgeObjects"
 	world_root.add_child(dynamic_root)
 
-	# These proportions mirror the authoritative Pygame room rectangles:
-	# lobby -> circulation hallway -> four offices.
-	var room_specs := [
-		{"id": "lobby", "label": "TOWER LOBBY", "rect": Rect2(700, 1000, 2200, 1800), "material": "lobby_floor"},
-		{"id": "recreation", "label": "FLOOR 01 HALLWAY", "rect": Rect2(700, 3400, 8200, 1400), "material": "hall_floor"},
-		{"id": "executive", "label": "OFFICE 01", "rect": Rect2(900, 5200, 1800, 2200), "material": "office_1"},
-		{"id": "public", "label": "OFFICE 02", "rect": Rect2(3000, 5200, 1800, 2200), "material": "office_2"},
-		{"id": "office_03", "label": "OFFICE 03", "rect": Rect2(5100, 5200, 1800, 2200), "material": "office_3"},
-		{"id": "office_04", "label": "OFFICE 04", "rect": Rect2(7200, 5200, 1800, 2200), "material": "office_4"},
-	]
+	var floor_plan := _load_floor_plan()
+	var room_specs: Array = []
+	for room_data in floor_plan["rooms"]:
+		var bounds: Array = room_data["bounds"]
+		room_specs.append({
+			"id": room_data["id"],
+			"label": room_data["label"],
+			"rect": Rect2(bounds[0], bounds[1], bounds[2], bounds[3]),
+			"material": room_data["material"],
+		})
 	for spec in room_specs:
-		_add_room_shell(spec)
+		_add_room_shell(spec, floor_plan)
 
 	# A readable central circulation spine makes the building topology visible
 	# even when no snapshot has arrived yet.
-	_add_box("LobbyElevator", Vector3(19.0, 0.95, 15.0), Vector3(1.8, 1.9, 1.2), materials["metal"])
-	_add_box("HallwayElevator", Vector3(19.0, 0.95, 41.0), Vector3(1.8, 1.9, 1.2), materials["metal"])
+	_add_box("LobbyElevator", Vector3(18.0, 0.95, 30.0), Vector3(1.8, 1.9, 1.2), materials["metal"])
+	_add_box("HallwayElevator", Vector3(11.0, 0.95, 41.0), Vector3(1.8, 1.9, 1.2), materials["metal"])
 	_add_box("LobbyDesk", Vector3(11.5, 0.5, 22.2), Vector3(3.7, 1.0, 0.9), materials["metal"])
 
 
-func _add_room_shell(spec: Dictionary) -> void:
+func _load_floor_plan() -> Dictionary:
+	var raw := FileAccess.get_file_as_string("res://floor_plan.json")
+	var parsed = JSON.parse_string(raw)
+	if not parsed is Dictionary or not parsed.has("rooms"):
+		push_error("floor_plan.json is missing or invalid")
+		return {"rooms": [], "lobbyHallwayOpening": 1800, "officeDoorCenters": []}
+	return parsed
+
+
+func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var rect: Rect2 = spec["rect"]
 	var room_id: String = spec["id"]
 	var center := Vector3((rect.position.x + rect.size.x / 2.0) * WORLD_SCALE, FLOOR_HEIGHT, (rect.position.y + rect.size.y / 2.0) * WORLD_SCALE)
@@ -151,14 +160,34 @@ func _add_room_shell(spec: Dictionary) -> void:
 	_add_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, rect.size.y * WORLD_SCALE), materials["wall"])
 	_add_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, rect.size.y * WORLD_SCALE), materials["wall"])
 
-	# Keep the hallway-facing office edge visually open enough to read as a
-	# suite, while retaining a strong architectural lintel.
-	if room_id.begins_with("office") or room_id == "executive" or room_id == "public":
+	if room_id == "recreation":
+		var door_centers: Array = []
+		for door_x in floor_plan["officeDoorCenters"]:
+			door_centers.append(float(door_x) * WORLD_SCALE)
+		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, door_centers, 1.55)
+	elif room_id == "lobby":
+		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, [float(floor_plan["lobbyHallwayOpening"]) * WORLD_SCALE], 1.8)
+	elif room_id.begins_with("office") or room_id == "executive" or room_id == "public":
 		_add_box("%sBackWall" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
-		_add_box("%sLintel" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT - 0.2, top), Vector3(rect.size.x * WORLD_SCALE, 0.4, wall_thickness), materials["wall_trim"])
+		for door_x in [18.0, 39.0, 60.0, 81.0]:
+			if door_x * WORLD_SCALE > left and door_x * WORLD_SCALE < right:
+				_add_box("%sDoorLintel" % room_id, Vector3(door_x, WALL_HEIGHT - 0.18, top), Vector3(1.55, 0.36, wall_thickness + 0.04), materials["wall_trim"])
 	else:
 		_add_box("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
 		_add_box("%sWallBottom" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
+
+
+func _add_horizontal_wall_segments(node_prefix: String, left: float, right: float, z: float, door_centers: Array, opening_width: float) -> void:
+	var cursor := left
+	for door_center in door_centers:
+		var center := float(door_center)
+		var opening_left := center - opening_width / 2.0
+		var opening_right := center + opening_width / 2.0
+		if opening_left > cursor:
+			_add_box("%sSegment%d" % [node_prefix, int(cursor * 100.0)], Vector3((cursor + opening_left) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(opening_left - cursor, WALL_HEIGHT, 0.26), materials["wall"])
+		cursor = opening_right
+	if cursor < right:
+		_add_box("%sEnd" % node_prefix, Vector3((cursor + right) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(right - cursor, WALL_HEIGHT, 0.26), materials["wall"])
 
 
 func _build_static_furniture() -> void:
@@ -167,16 +196,8 @@ func _build_static_furniture() -> void:
 	imported_scenes["couch"] = load("res://agentshire-assets/furniture/couch.gltf")
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
 
-	_add_imported("LobbyCouch", "couch", Vector3(21.0, 0.0, 22.0), 1.25)
-	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 15.0), 1.1)
-	_add_imported("Office01Table", "table", Vector3(18.0, 0.0, 64.0), 1.0)
-	_add_imported("Office01Chair", "chair", Vector3(18.0, 0.0, 68.0), 1.0)
-	_add_imported("Office02Table", "table", Vector3(39.0, 0.0, 64.0), 1.0)
-	_add_imported("Office02Chair", "chair", Vector3(39.0, 0.0, 68.0), 1.0)
-	_add_imported("Office03Table", "table", Vector3(60.0, 0.0, 64.0), 1.0)
-	_add_imported("Office03Chair", "chair", Vector3(60.0, 0.0, 68.0), 1.0)
-	_add_imported("Office04Table", "table", Vector3(81.0, 0.0, 64.0), 1.0)
-	_add_imported("Office04Chair", "chair", Vector3(81.0, 0.0, 68.0), 1.0)
+	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5), 1.25)
+	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5), 1.1)
 
 
 func _add_imported(node_name: String, asset_name: String, position: Vector3, scale_value: float) -> void:

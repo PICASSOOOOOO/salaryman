@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from math import hypot
+from pathlib import Path
 
 from .objects import InteractionResult, OfficeObject, OfficeObjectRegistry, build_tower_object_registry
+
+
+_FLOOR_PLAN_PATH = Path(__file__).resolve().parent.parent / "godot" / "office-client" / "floor_plan.json"
+with _FLOOR_PLAN_PATH.open(encoding="utf-8") as _floor_plan_file:
+    FLOOR_PLAN = json.load(_floor_plan_file)
 
 
 @dataclass(frozen=True)
@@ -28,17 +35,16 @@ class TowerScene:
     height: int = 10_000
     current_floor: int = 1
     current_room: str = "lobby"
-    player_position: tuple[int, int] = (1_700, 2_400)
+    player_position: tuple[int, int] = tuple(FLOOR_PLAN["rooms"][0]["spawn"])
     rooms: tuple[Room, ...] = field(
-        default_factory=lambda: (
-            # The building is organized as lobby -> circulation hall -> four
-            # private office suites. Legacy IDs remain stable for the bridge.
-            Room("lobby", "TOWER LOBBY", (700, 1_000, 2_200, 1_800), (27, 112, 110)),
-            Room("recreation", "FLOOR 01 HALLWAY", (700, 3_400, 8_200, 1_400), (72, 94, 130)),
-            Room("executive", "OFFICE 01", (900, 5_200, 1_800, 2_200), (112, 83, 115)),
-            Room("public", "OFFICE 02", (3_000, 5_200, 1_800, 2_200), (38, 87, 94)),
-            Room("office_03", "OFFICE 03", (5_100, 5_200, 1_800, 2_200), (86, 98, 133)),
-            Room("office_04", "OFFICE 04", (7_200, 5_200, 1_800, 2_200), (122, 88, 106)),
+        default_factory=lambda: tuple(
+            Room(
+                room["id"],
+                room["label"],
+                tuple(room["bounds"]),
+                tuple(room["accent"]),
+            )
+            for room in FLOOR_PLAN["rooms"]
         )
     )
     objects: OfficeObjectRegistry = field(default_factory=build_tower_object_registry)
@@ -59,16 +65,9 @@ class TowerScene:
         return self.objects.nearby(self.player_position, room=self.current_room)
 
     def room_spawn(self, room_id: str) -> tuple[int, int]:
-        spawn_points = {
-            "lobby": (1_800, 2_100),
-            "recreation": (4_800, 4_100),
-            "executive": (1_800, 6_400),
-            "public": (3_900, 6_400),
-            "office_03": (6_000, 6_400),
-            "office_04": (8_100, 6_400),
-        }
-        if room_id in spawn_points:
-            return spawn_points[room_id]
+        for room_data in FLOOR_PLAN["rooms"]:
+            if room_data["id"] == room_id:
+                return tuple(room_data["spawn"])
         room = next(room for room in self.rooms if room.id == room_id)
         x, y, width, height = room.bounds
         return (x + width // 2, y + height // 2)

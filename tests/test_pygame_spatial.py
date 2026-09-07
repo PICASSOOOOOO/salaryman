@@ -37,6 +37,30 @@ class PygameSpatialTests(unittest.TestCase):
         )
         self.assertEqual((scene.width, scene.height), (10_000, 10_000))
 
+    def test_floor_plan_is_continuous_and_office_doors_land_on_boundary(self):
+        scene = build_tower_scene()
+        rooms = {room.id: room for room in scene.rooms}
+        lobby = rooms["lobby"].bounds
+        hallway = rooms["recreation"].bounds
+        first_office = rooms["executive"].bounds
+        office_04 = rooms["office_04"].bounds
+
+        self.assertEqual(lobby[1] + lobby[3], hallway[1])
+        self.assertEqual(hallway[1] + hallway[3], first_office[1])
+        self.assertLessEqual(hallway[0], first_office[0])
+        self.assertGreaterEqual(hallway[0] + hallway[2], office_04[0] + office_04[2])
+
+        office_doors = [
+            item for item in scene.objects.objects
+            if item.kind == "door" and item.room == "recreation"
+        ]
+        self.assertEqual(len(office_doors), 4)
+        hallway_bottom = hallway[1] + hallway[3]
+        hallway_left = hallway[0]
+        hallway_right = hallway[0] + hallway[2]
+        self.assertTrue(all(item.position[1] == hallway_bottom - 100 for item in office_doors))
+        self.assertTrue(all(hallway_left <= item.position[0] <= hallway_right for item in office_doors))
+
     def test_nearby_interactions_route_without_renderer_logic(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()

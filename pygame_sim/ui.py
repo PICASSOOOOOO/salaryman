@@ -142,7 +142,10 @@ class SolarPunkRenderer:
         # The room is still larger than the viewport, but the desktop capture
         # must make the avatar readable.  Keep the camera close enough to show
         # the character's walk cycle instead of presenting an editor overview.
-        scale = max(0.36, min(0.62, scale * 2.8))
+        # Show enough of the room to read its architecture. The previous
+        # close crop made desks and signs clip into the HUD and hid the
+        # hallway/office relationship.
+        scale = max(0.40, min(0.52, scale * 2.45))
         view_w, view_h = viewport.width / scale, viewport.height / scale
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
@@ -169,29 +172,25 @@ class SolarPunkRenderer:
         # Decorative room composition uses real furniture sprites, while the
         # interaction registry remains the sole authority for object behavior.
         placements = {
-            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (900, 1250)),
-                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2500, 1250)),
-                      ("furniture/SOFA/SOFA_FRONT.png", (1500, 2500)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2200, 1500))],
-            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 3950)),
-                           ("furniture/PLANT/PLANT.png", (8500, 3950)),
-                           ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 3600))],
-            "executive": [("furniture/DESK/DESK_FRONT.png", (1700, 5800)),
-                          ("furniture/BOOKSHELF/BOOKSHELF.png", (2450, 5450)),
-                          ("furniture/PLANT/PLANT.png", (2450, 7100)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (1100, 5500))],
-            "public": [("furniture/DESK/DESK_FRONT.png", (3800, 5800)),
-                       ("furniture/BOOKSHELF/BOOKSHELF.png", (4550, 5450)),
-                       ("furniture/PLANT/PLANT.png", (4550, 7100)),
-                       ("furniture/WHITEBOARD/WHITEBOARD.png", (3200, 5500))],
-            "office_03": [("furniture/DESK/DESK_FRONT.png", (5900, 5800)),
-                          ("furniture/BOOKSHELF/BOOKSHELF.png", (6650, 5450)),
-                          ("furniture/PLANT/PLANT.png", (6650, 7100)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5300, 5500))],
-            "office_04": [("furniture/DESK/DESK_FRONT.png", (8000, 5800)),
-                          ("furniture/BOOKSHELF/BOOKSHELF.png", (8750, 5450)),
-                          ("furniture/PLANT/PLANT.png", (8750, 7100)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (7400, 5500))],
+            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (900, 1850)),
+                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2500, 1850)),
+                      ("furniture/SOFA/SOFA_FRONT.png", (1650, 2450)),
+                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2250, 2200))],
+            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 4200)),
+                           ("furniture/PLANT/PLANT.png", (8500, 4200)),
+                           ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 4300))],
+            "executive": [("furniture/BOOKSHELF/BOOKSHELF.png", (2450, 6400)),
+                          ("furniture/PLANT/PLANT.png", (2450, 7000)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (1100, 6400))],
+            "public": [("furniture/BOOKSHELF/BOOKSHELF.png", (4550, 6400)),
+                       ("furniture/PLANT/PLANT.png", (4550, 7000)),
+                       ("furniture/WHITEBOARD/WHITEBOARD.png", (3200, 6400))],
+            "office_03": [("furniture/BOOKSHELF/BOOKSHELF.png", (6650, 6400)),
+                          ("furniture/PLANT/PLANT.png", (6650, 7000)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5300, 6400))],
+            "office_04": [("furniture/BOOKSHELF/BOOKSHELF.png", (8750, 6400)),
+                          ("furniture/PLANT/PLANT.png", (8750, 7000)),
+                          ("furniture/WHITEBOARD/WHITEBOARD.png", (7400, 6400))],
         }
         for asset, position in placements.get(scene.current_room, []):
             screen_position = point(position)
@@ -279,7 +278,7 @@ class SolarPunkRenderer:
     ) -> None:
         image = self._asset(name)
         if image:
-            pixel_scale = min(4.2, max(1.6, scale * 12 * depth_scale))
+            pixel_scale = min(3.0, max(1.4, scale * 8 * depth_scale))
             source_width, source_height = image.get_size()
             size = (max(8, int(source_width * pixel_scale)),
                     max(8, int(source_height * pixel_scale)))
@@ -343,6 +342,13 @@ class SolarPunkRenderer:
             "crt_terminal": "furniture/PC/PC_FRONT_ON_1.png",
             "telephone": "furniture/COFFEE/COFFEE.png",
         }
+        if kind == "desk_lamp":
+            pygame.draw.ellipse(self.screen, (82, 100, 94), (x - 10, y + 8, 20, 6))
+            pygame.draw.line(self.screen, (56, 74, 70), (x, y + 7), (x, y - 8), 3)
+            pygame.draw.polygon(self.screen, (238, 190, 89), [(x - 10, y - 9), (x + 10, y - 9), (x + 6, y - 17), (x - 6, y - 17)])
+            if nearby:
+                pygame.draw.circle(self.screen, Palette.SUN, (x, y - 8), 17, 2)
+            return
         if kind in sprite_names and self._asset(sprite_names[kind]):
             self._draw_sprite_shadow((x, y), depth_scale)
             self._blit_furniture(sprite_names[kind], (x, y), scale, depth_scale=depth_scale)
