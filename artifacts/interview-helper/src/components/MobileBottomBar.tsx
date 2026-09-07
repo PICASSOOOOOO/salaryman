@@ -16,7 +16,6 @@ import { apiFetch } from '@/lib/api-client';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
 import { EconomyToggle } from './EconomyToggle';
-import { PicassoLogo } from './PicassoLogo';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -37,7 +36,7 @@ export function MobileSubNav() {
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
 
-  if (!currentModule || !shouldShowModuleSubnav(currentModule.id, currentModule.subs.length)) return null;
+  if (!currentModule || !shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname)) return null;
 
   return (
     <div className="mobile-app-subnav" style={{ zIndex: 40 }}>
@@ -178,17 +177,6 @@ export function MobileModuleNav() {
   return (
     <div className="mobile-app-nav" style={{ zIndex: 60 }}>
       <div className="mobile-brand-row">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="mobile-brand-button"
-          aria-label="SALARYMAN home"
-        >
-          <span className="salaryman-logo-square mobile-brand-mark" aria-hidden="true">
-            <PicassoLogo size={18} gap={1} />
-          </span>
-          <span>SALARYMAN</span>
-        </button>
         <div className="mobile-account-actions">
             <EconomyToggle isAuthenticated={isAuthenticated} />
           {isAuthenticated && (

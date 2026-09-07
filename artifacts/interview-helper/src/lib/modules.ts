@@ -65,10 +65,10 @@ export const MODULES: Module[] = [
   {
     id: 'phone',
     path: '/phone',
-    label: 'COMMS',
-    codename: 'COMMS',
+    label: 'CALLL HOME',
+    codename: 'CALLL HOME',
     icon: Phone,
-    defaultPath: '/phone/dialer',
+    defaultPath: '/phone',
     subs: [
       { id: 'dialer', path: '/phone/dialer', label: 'DIALER', boomerLabel: 'DIALER', codename: 'DIAL-PAD', icon: PhoneCall },
       { id: 'contacts', path: '/phone/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'COMM-BOOK', icon: Users },

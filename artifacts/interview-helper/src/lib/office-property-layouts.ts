@@ -281,7 +281,7 @@ export function routeOfficePath(layout: OfficePropertyLayout, path: readonly Off
 export const OFFICE_OBJECT_DESTINATIONS = { terminal: "/console", atm: "/game/bank", vending: "/vending?from=office", elevator: "/tower" } as const;
 export type OfficeDestinationObject = keyof typeof OFFICE_OBJECT_DESTINATIONS;
 export function getOfficeObjectDestination(object: OfficeDestinationObject) { return OFFICE_OBJECT_DESTINATIONS[object]; }
-export function getPayphoneHubDestination() { return "/phone?tab=chat"; }
+export function getPayphoneHubDestination() { return "/phone"; }
 export function getOfficeHudMode(width: number): "compact" | "full" { return width < 640 ? "compact" : "full"; }
 export function officePoseStorageKey(slot: string | number, propertyKey: string) { return `salaryman.office.pose.v2:${slot}:${propertyKey}`; }
 export function loadOfficePose(slot: string | number, layout: OfficePropertyLayout): OfficePose {

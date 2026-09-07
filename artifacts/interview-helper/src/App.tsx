@@ -86,6 +86,7 @@ const OrgHub = lazy(() => import("@/pages/OrgHub"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
+const Comms = lazy(() => import("@/pages/Comms"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -127,8 +128,7 @@ const OrgAccounts = lazy(() => import("@/pages/OrgAccounts"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
-// /phone is the shared communications hub. Free tabs stay available to
-// every signed-in user; Calll Home applies entitlement UX inside paid tabs.
+// /phone opens CALLL HOME directly. Entitlement UX stays inside the product.
 function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
   if (redirectTo) return <Redirect to={redirectTo} />;
   return <CalllHomePage />;
@@ -333,7 +333,7 @@ function AppShell() {
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/desktop", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/phone", "/comms", "/bots", "/business/crm", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -570,6 +570,7 @@ function AppShell() {
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
              <Route path="/business/crm" component={CrmWorkspace} />
+             <Route path="/crm">{() => <Redirect to="/business/crm" />}</Route>
             <Route path="/business/website" component={OrgWebsite} />
             <Route path="/business/payroll" component={Payroll} />
             <Route path="/business/gusto" component={GustoPayroll} />
@@ -603,8 +604,8 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
-            <Route path="/comms">{() => <Redirect to="/phone?tab=sms" />}</Route>
-            <Route path="/social/colleagues">{() => <Redirect to="/phone?tab=sms" />}</Route>
+            <Route path="/comms" component={Comms} />
+            <Route path="/social/colleagues">{() => <Redirect to="/comms" />}</Route>
             <Route path="/creative/stems" component={StemStudio} />
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
@@ -655,7 +656,7 @@ function AppShell() {
             <Route path="/phone">{() => <PhoneGate />}</Route>
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
               const TAB_MAP: Record<string, string> = {
-                contacts: 'contacts', dialer: 'cmd', active: 'cmd', cmd: 'cmd',
+                contacts: 'contacts', dialer: 'dial', active: 'cmd', cmd: 'cmd',
                 history: 'log', recordings: 'rec', recording: 'rec',
                 voicemail: 'vm', conference: 'conf', sms: 'sms',
                 sessions: 'cmd', coach: 'ai', secretary: 'ai',

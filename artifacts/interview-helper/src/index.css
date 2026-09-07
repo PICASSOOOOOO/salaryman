@@ -522,30 +522,8 @@ header {
 
 .mobile-brand-row {
   min-height: 48px;
-  justify-content: space-between;
+  justify-content: flex-end;
   border-bottom: 1px solid #edf2f5;
-}
-
-.mobile-brand-button {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
-  padding: 4px 0;
-  color: #172e43;
-  background: transparent;
-  border: 0;
-  font: 700 11px/1 "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  letter-spacing: .14em;
-  white-space: nowrap;
-}
-
-.mobile-brand-mark {
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  border-radius: 5px;
-  object-fit: cover;
 }
 
 .mobile-account-actions {
@@ -1093,7 +1071,6 @@ body.workspace-light .desktop-app-nav .text-zinc-700 {
   color: #334155 !important;
 }
 
-body.workspace-light .mobile-terminal-brand,
 body.workspace-light .mobile-terminal-menu-button,
 body.workspace-light .mobile-terminal-content h2,
 body.workspace-light .mobile-terminal-business-link {

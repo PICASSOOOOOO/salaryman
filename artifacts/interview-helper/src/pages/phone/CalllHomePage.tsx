@@ -3,15 +3,11 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, Settings2, MessageSquare, Hash } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
 import { slate, warning } from '@/lib/phone-utils';
 import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
-import { CommsEmbedded, type CommsSection } from '@/pages/Comms';
-import { useCommsSummary } from '@/hooks/use-comms-summary';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
-import { useAlpha } from '@/hooks/use-alpha';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
@@ -35,15 +31,11 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: bo
   { key: 'dial', label: 'AUTODIALER', icon: <Zap size={12} />, emphasized: true },
   { key: 'auto', label: 'DIALING SESSIONS', icon: <Activity size={12} />, emphasized: true },
   { key: 'cc', label: 'OUTBOUND CENTER', icon: <Headphones size={12} />, emphasized: true },
-  { key: 'contacts', label: 'CRM', icon: <Users size={12} /> },
+  { key: 'contacts', label: 'CONTACTS', icon: <Users size={12} /> },
   { key: 'sms', label: 'SMS', icon: <MessageSquare size={12} /> },
   { key: 'numbers', label: 'NUMBERS', icon: <Hash size={12} /> },
   { key: 'log', label: 'CALL LOG', icon: <Clock size={12} /> },
   { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} /> },
-  { key: 'chat', label: 'CHAT', icon: <MessageSquare size={12} /> },
-  { key: 'associates', label: 'ASSOCIATES', icon: <Users size={12} /> },
-  { key: 'orgs', label: 'ORGS', icon: <Hash size={12} /> },
-  { key: 'responders', label: 'RESPONDERS', icon: <Radio size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
   { key: 'ai', label: 'AI', icon: <Bot size={12} /> },
@@ -72,11 +64,6 @@ function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode:
 
 function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: AiSubMode; setAiSubMode: (m: AiSubMode) => void }) {
   switch (tab) {
-    case 'chat':
-    case 'associates':
-    case 'orgs':
-    case 'responders':
-      return <CommsEmbedded section={tab as CommsSection} />;
     case 'cmd': return <PhoneCommandCenter />;
     case 'contacts': return <PhoneContactsPage />;
     case 'dial': return <PhoneDialerPage />;
@@ -94,19 +81,14 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
   }
 }
 
-const VALID_TABS = new Set<TabKey>(['chat','associates','orgs','responders','cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc','sms','numbers']);
-const FREE_TABS = new Set<TabKey>(['chat', 'associates', 'orgs', 'responders']);
+const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc','sms','numbers']);
 
-const PRIMARY_TABS = new Set<TabKey>(['cmd', 'contacts', 'dial', 'chat']);
+const PRIMARY_TABS = new Set<TabKey>(['cmd', 'dial', 'contacts', 'sms']);
 
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
   if (p === 'live') return 'cmd';
   return p && VALID_TABS.has(p as TabKey) ? (p as TabKey) : 'cmd';
-}
-
-export function isFreePayphoneTab(tab: TabKey): boolean {
-  return FREE_TABS.has(tab);
 }
 
 export default function CalllHomePage() {
@@ -116,7 +98,6 @@ export default function CalllHomePage() {
   const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
   const [showTabSettings, setShowTabSettings] = useState(false);
   const tabSettingsRef = useRef<HTMLDivElement | null>(null);
-  const { unreadMessages, pendingRequests } = useCommsSummary();
 
   const visibleTabs = useMemo(
     () => TABS.filter(t => PRIMARY_TABS.has(t.key)),
@@ -150,19 +131,11 @@ export default function CalllHomePage() {
   const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'restricted' | 'unconfigured'>('checking');
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [, navigate] = useLocation();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
-  const alpha = useAlpha();
   const { openPledgePopup } = usePledgePopup();
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
-  const activeTabIsFree = isFreePayphoneTab(activeTab);
-  const telephonyLocked = !hasPhoneAccess && !activeTabIsFree;
-  const accessSource = new URLSearchParams(window.location.search).get('from');
-  const hasPhysicalCommsAccess = accessSource === 'public-floor' || accessSource === 'public-terminal' || accessSource === 'terminal';
-  const hasMobileTerminalAccess = accessSource === 'mobile-terminal' &&
-    (alpha.isAdmin || alpha.isApprovedDev || alpha.isApprovedTester);
-  const hasCommsTerminalAccess = hasPhysicalCommsAccess || hasMobileTerminalAccess;
+  const telephonyLocked = !hasPhoneAccess;
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })), 1000);
@@ -199,36 +172,7 @@ export default function CalllHomePage() {
     return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
   }
 
-  if (activeTabIsFree && (alpha.loading || planLoading)) {
-    return (
-      <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', color: slate(0.55) }}>
-        VERIFYING TERMINAL ACCESS...
-      </div>
-    );
-  }
-
-  if (activeTabIsFree && !hasCommsTerminalAccess) {
-    return (
-      <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', padding: 24, color: slate(0.85) }}>
-        <section style={{ width: '100%', maxWidth: 520, border: `1px solid ${slate(0.22)}`, padding: 24, textAlign: 'center' }}>
-          <Lock size={28} style={{ margin: '0 auto 12px', color: slate(0.65) }} />
-          <h1 style={{ fontSize: '0.9rem', letterSpacing: '0.2em', margin: 0 }}>COMMS TERMINAL REQUIRED</h1>
-          <p style={{ fontSize: '0.62rem', color: slate(0.55), lineHeight: 1.7, margin: '12px 0 18px' }}>
-            Open Comms from a public payphone or terminal. Remote access is reserved for ADMIN and MOD mobile terminals.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/tower/mezzanine?focus=phone')}
-            style={{ border: `1px solid ${slate(0.45)}`, background: slate(0.08), color: slate(0.9), padding: '10px 16px', cursor: 'pointer', letterSpacing: '0.12em' }}
-          >
-            GO TO PUBLIC TERMINAL
-          </button>
-        </section>
-      </div>
-    );
-  }
-
-  if (planLoading && !activeTabIsFree) {
+  if (planLoading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -336,7 +280,6 @@ export default function CalllHomePage() {
           {visibleTabs.map(t => {
             const isActive = activeTab === t.key;
             const emphasized = t.emphasized;
-            const badge = t.key === 'chat' ? unreadMessages : t.key === 'associates' ? pendingRequests : 0;
             return (
               <button
                 key={t.key}
@@ -362,11 +305,6 @@ export default function CalllHomePage() {
                    }}
               >
                 {t.icon} {t.label}
-                {badge > 0 && (
-                  <span style={{ minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#ef4444', color: '#fff', fontSize: '0.48rem', fontWeight: 700 }}>
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -465,7 +403,7 @@ export default function CalllHomePage() {
                     <Lock size={28} style={{ color: warning(0.7), marginBottom: 16 }} />
                     <div style={{ fontSize: '0.9rem', color: slate(0.9), letterSpacing: '0.12em', marginBottom: 10 }}>CALLL HOME — ACCESS REQUIRED</div>
                     <div style={{ fontSize: '0.55rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 22 }}>
-                      Chat and community tools are free. This phone feature requires an active subscription or free trial.
+                      Browser calling, phone numbers, SMS, voicemail, recordings, and call automation require CALLL HOME access.
                     </div>
                     <button onClick={() => openPledgePopup({ reason: 'Unlock the Phone System with a Stripe-backed pass or PABLO PRIME.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
                       VIEW PHONE ACCESS OPTIONS

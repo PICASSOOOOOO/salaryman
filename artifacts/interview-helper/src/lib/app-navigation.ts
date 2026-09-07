@@ -7,11 +7,13 @@ import {
   Megaphone,
   MessageSquare,
   Network,
+  Phone,
   ShoppingBag,
   Settings,
   ShieldCheck,
   Terminal,
   User,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,7 +29,10 @@ export type AppNavItem = {
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "pablo", path: "/terminal", label: "PABLO", icon: Terminal },
-  { id: "bots", path: "/bots", label: "AGENTS", icon: Bot },
+  { id: "bots", path: "/bots", label: "PIXEL AGENTS", icon: Bot },
+  { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone, authOnly: true },
+  { id: "crm", path: "/business/crm", label: "CRM", icon: Contact, authOnly: true },
+  { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
   { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
 ];
 
@@ -53,6 +58,12 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
         pathname.startsWith("/office/");
     case "bots":
       return pathname.startsWith("/bots");
+    case "phone":
+      return pathname === "/phone" || pathname.startsWith("/phone/");
+    case "crm":
+      return pathname === "/business/crm" || pathname.startsWith("/business/crm/");
+    case "comms":
+      return pathname === "/comms" || pathname.startsWith("/comms/");
     case "org":
       return pathname === "/org" || pathname.startsWith("/org/");
     case "console":
@@ -163,6 +174,11 @@ export function installAppHistoryTracking(): void {
   };
 }
 
-export function shouldShowModuleSubnav(moduleId: string | undefined, itemCount: number): boolean {
-  return Boolean(moduleId && moduleId !== "phone" && itemCount > 0);
+export function shouldShowModuleSubnav(moduleId: string | undefined, itemCount: number, pathname = ""): boolean {
+  const isStandaloneMajorFeature =
+    pathname === "/business/crm" ||
+    pathname.startsWith("/business/crm/") ||
+    pathname === "/comms" ||
+    pathname.startsWith("/comms/");
+  return Boolean(moduleId && moduleId !== "phone" && !isStandaloneMajorFeature && itemCount > 0);
 }

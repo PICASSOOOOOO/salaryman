@@ -164,11 +164,7 @@ export default function MobileTerminal({ physicalTerminal = false }: MobileTermi
     <main className="mobile-terminal-page">
       <div className="mobile-terminal-container">
         <header className="mobile-terminal-header">
-          <button type="button" className="mobile-terminal-brand" onClick={() => go('/')}>
-            <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" />
-            <span>SALARYMAN</span>
-          </button>
-          <div className="relative">
+          <div className="relative ml-auto">
             <button
               type="button"
               aria-haspopup="menu"
@@ -193,7 +189,7 @@ export default function MobileTerminal({ physicalTerminal = false }: MobileTermi
           <div className="mobile-terminal-feature-grid">
             <button
               type="button"
-              onClick={() => go('/phone?tab=chat&from=mobile-workspace')}
+              onClick={() => go('/comms')}
               className="mobile-terminal-feature mobile-terminal-feature-comms"
             >
               <div className="flex items-start justify-between gap-3">

@@ -29,7 +29,7 @@ describe("getPabloHref", () => {
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
-    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "bots", "office"]);
+    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "bots", "phone", "crm", "comms", "office"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
       "console", "business", "org", "creative", "marketing", "pledge", "feedback",
       "settings", "profile", "admin",
@@ -42,9 +42,10 @@ describe("shared app navigation", () => {
   });
 
   it("suppresses redundant global phone sub-navigation", () => {
-    expect(shouldShowModuleSubnav("phone", 10)).toBe(false);
-    expect(shouldShowModuleSubnav("business", 10)).toBe(true);
-    expect(shouldShowModuleSubnav("business", 0)).toBe(false);
+    expect(shouldShowModuleSubnav("phone", 10, "/phone")).toBe(false);
+    expect(shouldShowModuleSubnav("business", 10, "/business")).toBe(true);
+    expect(shouldShowModuleSubnav("business", 10, "/business/crm")).toBe(false);
+    expect(shouldShowModuleSubnav("business", 0, "/business")).toBe(false);
   });
 
   it("keeps signed-out entry and authenticated office fallbacks distinct", () => {

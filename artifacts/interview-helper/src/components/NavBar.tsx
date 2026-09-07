@@ -374,7 +374,7 @@ export function NavBar() {
       {/* Secondary navigation is a readable stacked menu rather than a
           dim, horizontally-scrolling strip. Keep the main chrome quiet; the
           feature menu opens only when the user asks for it. */}
-      {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length) && (
+      {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname) && (
         <div className="desktop-subnav relative px-4 py-1.5">
           <button
             type="button"

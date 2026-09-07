@@ -1892,5 +1892,49 @@
       "Update Godot office client logic and documentation",
       "Update version number and changelog for release"
     ]
+  },
+  {
+    "version": "v.22.5.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Update navigation components and styles",
+      "Simplify the navigation bar component",
+      "Update economy toggle component and styling in interview helper",
+      "Update EconomyToggle component and clean up mobile bottom bar layout",
+      "Implement Astra model rollout logic and update EconomyToggle UI components"
+    ]
+  },
+  {
+    "version": "v.22.6.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.7.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.8.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.9.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --max-old-space-size=4096\" vite build --config vite.config.ts && node scripts/prerender-meta.mjs",
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --max-old-space-size=3072\" vite build --config vite.config.ts && node scripts/prerender-meta.mjs",
     "bundle:report": "node scripts/bundle-report.mjs",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
