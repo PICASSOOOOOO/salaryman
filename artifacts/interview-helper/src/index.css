@@ -763,6 +763,52 @@ header {
   color: #155b86;
 }
 
+/* Account summary uses the same light workspace surface as the mobile and
+   desktop chrome. Keep the sheet readable even though the global app theme
+   still supports dark immersive routes. */
+.mobile-account-sheet {
+  background: rgba(23, 46, 67, .28);
+  backdrop-filter: blur(5px);
+}
+
+.mobile-account-sheet-panel {
+  color: #172e43;
+  background: #fff;
+  border: 1px solid #cddde6;
+  box-shadow: 0 20px 44px rgba(23, 54, 74, .22);
+}
+
+.mobile-account-sheet-header {
+  border-bottom: 1px solid #edf2f5;
+}
+
+.mobile-account-sheet-card,
+.mobile-account-sheet-control {
+  background: #f7fafb;
+  border: 1px solid #d9e4ea;
+}
+
+.mobile-account-sheet-balance {
+  background: #eef8f4;
+  border: 1px solid #b9decf;
+}
+
+.mobile-account-sheet-rule {
+  border-top: 1px solid #edf2f5;
+}
+
+.mobile-account-sheet-button {
+  color: #526777;
+  background: #f7fafb;
+  border: 1px solid #d9e4ea;
+}
+
+.mobile-account-sheet-button-primary {
+  color: #155b86;
+  background: #e6f2f9;
+  border-color: #b9d9e8;
+}
+
 /* Desktop uses the same white homepage chrome; module pages can keep their
    own content styling below the header without changing their behavior. */
 @media (min-width: 640px) {

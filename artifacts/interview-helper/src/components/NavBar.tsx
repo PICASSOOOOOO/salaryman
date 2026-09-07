@@ -132,7 +132,7 @@ export function NavBar() {
   };
 
   return (
-    <header className="app-header desktop-app-nav shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
+    <header className="app-header desktop-app-nav shrink-0">
 
       {/* Top strip — brand + plan / trial info (hidden on mobile). The brand
           (logo + PABLO TERMINAL subtitle) now lives up here, stacked above the

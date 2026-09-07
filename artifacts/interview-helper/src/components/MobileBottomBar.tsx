@@ -373,32 +373,32 @@ function MobileAccountSheet({
   const employeeCount = summary?.enterprise?.employees?.active ?? members.length;
   const companyName = org?.name ?? summary?.wallet?.faction?.primary?.name ?? 'NO COMPANY FILED';
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/65 p-2 sm:items-center" onClick={onClose}>
+    <div className="mobile-account-sheet fixed inset-0 z-[10000] flex items-end justify-center p-2 sm:items-center" onClick={onClose}>
       <section
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-sky-400/25 bg-[#101217] shadow-2xl shadow-black/70"
+        className="mobile-account-sheet-panel w-full max-w-md overflow-hidden rounded-2xl"
         onClick={event => event.stopPropagation()}
         aria-label="Account summary"
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="mobile-account-sheet-header flex items-center justify-between px-4 py-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[.2em] text-sky-300">ACCOUNT SNAPSHOT</p>
-            <p className="mt-1 text-xs text-zinc-500">Spendable balance and company health</p>
+            <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#155b86]">ACCOUNT SNAPSHOT</p>
+            <p className="mt-1 text-xs text-[#718392]">Spendable balance and company health</p>
           </div>
-          <button className="mobile-tap-target rounded-lg text-zinc-400 active:bg-white/10" onClick={onClose} aria-label="Close account summary">
+          <button className="mobile-tap-target rounded-lg text-[#718392] active:bg-[#e6f2f9]" onClick={onClose} aria-label="Close account summary">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="max-h-[75dvh] overflow-y-auto p-3">
           {loading && !summary ? (
-            <div className="rounded-xl border border-white/10 bg-white/[.03] p-6 text-center font-mono text-xs uppercase tracking-widest text-zinc-500">LOADING ACCOUNT…</div>
+            <div className="mobile-account-sheet-card rounded-xl p-6 text-center font-mono text-xs uppercase tracking-widest text-[#718392]">LOADING ACCOUNT…</div>
           ) : (
             <>
-              <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] p-4">
-                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[.18em] text-emerald-300">
+              <div className="mobile-account-sheet-balance rounded-xl p-4">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[.18em] text-[#298263]">
                   <WalletCards className="h-4 w-4" /> SPENDABLE ACCOUNT
                 </div>
-                <div className="mt-2 text-3xl font-semibold tracking-tight text-white">{fiat(spendable)}</div>
-                <p className="mt-1 text-xs text-emerald-100/70">Available now for shopping, travel, and operating costs.</p>
+                <div className="mt-2 text-3xl font-semibold tracking-tight text-[#172e43]">{fiat(spendable)}</div>
+                <p className="mt-1 text-xs text-[#4e806d]">Available now for shopping, travel, and operating costs.</p>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <SummaryMetric label="CURRENT INCOME" value={fiat(summary?.wallet?.faction?.totalSalary)} />
@@ -406,37 +406,37 @@ function MobileAccountSheet({
                 <SummaryMetric label="EMPLOYEES" value={String(employeeCount)} />
                 <SummaryMetric label="LIVE NOW" value={`${liveMembers} / ${employeeCount}`} />
               </div>
-              <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+              <div className="mobile-account-sheet-card mt-3 rounded-xl p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-mono uppercase tracking-[.16em] text-zinc-500">COMPANY</p>
-                    <p className="mt-1 text-sm font-semibold text-zinc-100">{companyName}</p>
-                    <p className="mt-1 text-xs text-zinc-400">{org?.businessAddress || 'Location not filed'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-[.16em] text-[#718392]">COMPANY</p>
+                    <p className="mt-1 text-sm font-semibold text-[#172e43]">{companyName}</p>
+                    <p className="mt-1 text-xs text-[#718392]">{org?.businessAddress || 'Location not filed'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-mono uppercase tracking-[.16em] text-zinc-500">TODAY / CITY</p>
-                    <p className="mt-1 text-xs text-sky-300">{currentLocation}</p>
-                    <p className="mt-1 text-xs text-zinc-500">Live presence {liveMembers > 0 ? 'active' : 'quiet'}</p>
+                    <p className="text-[10px] font-mono uppercase tracking-[.16em] text-[#718392]">TODAY / CITY</p>
+                    <p className="mt-1 text-xs text-[#155b86]">{currentLocation}</p>
+                    <p className="mt-1 text-xs text-[#718392]">Live presence {liveMembers > 0 ? 'active' : 'quiet'}</p>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3 text-xs">
-                  <div><span className="text-zinc-500">Today’s revenue</span><br /><strong className="text-zinc-200">{fiat(summary?.enterprise?.financials?.todayRevenue)}</strong></div>
-                  <div><span className="text-zinc-500">Net profit</span><br /><strong className="text-zinc-200">{fiat(summary?.enterprise?.financials?.netProfit)}</strong></div>
+                <div className="mobile-account-sheet-rule mt-3 grid grid-cols-2 gap-2 pt-3 text-xs">
+                  <div><span className="text-[#718392]">Today’s revenue</span><br /><strong className="text-[#526777]">{fiat(summary?.enterprise?.financials?.todayRevenue)}</strong></div>
+                  <div><span className="text-[#718392]">Net profit</span><br /><strong className="text-[#526777]">{fiat(summary?.enterprise?.financials?.netProfit)}</strong></div>
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
-                <button onClick={() => onNavigate('/profile')} className="mobile-tap-target flex flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[.04] px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-zinc-300">
+                <button onClick={() => onNavigate('/profile')} className="mobile-account-sheet-button mobile-tap-target flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 font-mono text-[10px] uppercase tracking-widest">
                   PROFILE
                 </button>
-                <button onClick={() => onNavigate('/business')} className="mobile-tap-target flex flex-1 items-center justify-center gap-2 rounded-lg border border-sky-400/25 bg-sky-400/[.08] px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-sky-200">
+                <button onClick={() => onNavigate('/business')} className="mobile-account-sheet-button mobile-account-sheet-button-primary mobile-tap-target flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 font-mono text-[10px] uppercase tracking-widest">
                   COMPANY
                 </button>
               </div>
             </>
           )}
-          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[.025] px-3 py-2"><Languages className="h-4 w-4 text-zinc-500" /><LanguageSelector /></div>
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[.025] px-3 py-2"><Coins className="h-4 w-4 text-amber-300" /><CurrencySelector /></div>
+          <div className="mobile-account-sheet-rule mt-3 grid grid-cols-2 gap-2 pt-3">
+            <div className="mobile-account-sheet-control flex items-center gap-2 rounded-lg px-3 py-2"><Languages className="h-4 w-4 text-[#718392]" /><LanguageSelector /></div>
+            <div className="mobile-account-sheet-control flex items-center gap-2 rounded-lg px-3 py-2"><Coins className="h-4 w-4 text-[#b27a26]" /><CurrencySelector /></div>
           </div>
         </div>
       </section>
@@ -446,9 +446,9 @@ function MobileAccountSheet({
 
 function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-      <p className="text-[9px] font-mono uppercase tracking-[.15em] text-zinc-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-zinc-100">{value}</p>
+    <div className="mobile-account-sheet-card rounded-xl p-3">
+      <p className="text-[9px] font-mono uppercase tracking-[.15em] text-[#718392]">{label}</p>
+      <p className="mt-1 text-base font-semibold text-[#172e43]">{value}</p>
     </div>
   );
 }
