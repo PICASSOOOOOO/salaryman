@@ -82,7 +82,7 @@ export default function ProfessionalHome() {
   return (
     <main className="sm-home" id="top">
       <header className="sm-nav">
-        <Link className="sm-brand" href="/" aria-label="SALARYMAN home">
+        <Link className="sm-brand" href="/" aria-label="SALARYMAN home" data-testid="link-brand-home">
           <img className="sm-mark" src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" />
           <span>
             <strong>SALARYMAN</strong>
@@ -97,13 +97,14 @@ export default function ProfessionalHome() {
               type="button"
               onClick={() => setFeaturesOpen((open) => !open)}
               aria-expanded={featuresOpen}
+              data-testid="button-features-desktop"
             >
               Features <ChevronDown size={14} />
             </button>
             {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
           </div>
-          <Link href="/business">Web workspace</Link>
-          <Link className="sm-pablo" href="/pablo">Meet Pablo ↗</Link>
+          <Link href="/business" data-testid="link-web-workspace">Web workspace</Link>
+          <Link className="sm-pablo" href="/pablo" data-testid="link-meet-pablo">Meet Pablo <ExternalLink size={13} /></Link>
         </nav>
 
         <div className="sm-mobile-menu">
@@ -112,6 +113,7 @@ export default function ProfessionalHome() {
             type="button"
             onClick={() => setFeaturesOpen((open) => !open)}
             aria-expanded={featuresOpen}
+            data-testid="button-features-mobile"
           >
             {featuresOpen ? <X size={16} /> : <Menu size={16} />} Features
           </button>
@@ -119,35 +121,48 @@ export default function ProfessionalHome() {
         </div>
       </header>
 
-      <section className="sm-hero" aria-labelledby="home-title">
+      <section className="sm-hero" aria-labelledby="home-title" data-testid="section-hero">
+        <div className="sm-hero-wash" aria-hidden="true" />
         <div className="sm-hero-copy">
           <div className="sm-kicker"><span className="sm-status" /> The business operating system</div>
           <h1 id="home-title">Make work feel <span>possible.</span></h1>
           <p className="sm-lede">
-            SALARYMAN brings calls, customers, files, and daily operations into one
-            calm workspace so you can keep moving.
+            SALARYMAN brings calls, customers, files, and daily operations into one calm
+            workspace, so your team always knows what happens next.
           </p>
           <div className="sm-actions">
-            <Link className="sm-primary" href="/business">
+            <Link className="sm-primary" href="/business" data-testid="link-hero-workspace">
               Open web workspace <ArrowRight size={15} />
             </Link>
-            <Link className="sm-secondary" href="/pablo">
+            <Link className="sm-secondary" href="/pablo" data-testid="link-hero-pablo">
               Meet Pablo <ExternalLink size={15} />
             </Link>
           </div>
-          <p className="sm-note">The visual desktop game is in development and is intentionally not shown here yet.</p>
+          <p className="sm-note">A browser-first control plane for the work behind the work.</p>
           {desktopDownloadAllowed && (
             <a
               className="sm-desktop-download"
               href={apiUrl("/api/desktop/download")}
               download="salaryman-office-linux-x86_64.tar.gz"
+              data-testid="link-desktop-download"
             >
               <Download size={14} /> Download desktop test build <ArrowRight size={14} />
             </a>
           )}
         </div>
 
-        <div className="sm-workspace-card" aria-label="SALARYMAN workspace preview">
+        <div className="sm-hero-stage" aria-label="SALARYMAN workspace preview" data-testid="preview-workspace">
+          <div className="sm-stage-grid" aria-hidden="true" />
+          <div className="sm-stage-orbit sm-stage-orbit-one" aria-hidden="true" />
+          <div className="sm-stage-orbit sm-stage-orbit-two" aria-hidden="true" />
+          <span className="sm-stage-label">LIVE BROWSER SURFACE <b>01</b></span>
+          <div className="sm-stage-float sm-stage-float-top" aria-hidden="true">
+            <span>CONNECTED</span><strong>05</strong>
+          </div>
+          <div className="sm-stage-float sm-stage-float-bottom" aria-hidden="true">
+            <span>WORKING RHYTHM</span><strong>CALM / CLEAR</strong>
+          </div>
+          <div className="sm-workspace-card">
           <div className="sm-window-bar">
             <span className="sm-window-dots"><i /><i /><i /></span>
             <span>WORKSPACE · READY</span>
@@ -158,10 +173,10 @@ export default function ProfessionalHome() {
               <span>ONE CONNECTED WORKSPACE</span>
               <b>ACTIVE</b>
             </div>
-            <div className="sm-workspace-grid">
-              <div className="sm-workspace-stat"><small>OPEN TASKS</small><strong>12</strong><span className="sm-stat-blue" /></div>
-              <div className="sm-workspace-stat"><small>FOLLOW-UPS</small><strong>08</strong><span className="sm-stat-mint" /></div>
-              <div className="sm-workspace-stat"><small>TEAM PULSE</small><strong>92%</strong><span className="sm-stat-warm" /></div>
+            <div className="sm-workspace-grid" data-testid="preview-workspace-stats">
+              <div className="sm-workspace-stat" data-testid="stat-open-tasks"><small>OPEN TASKS</small><strong>12</strong><span className="sm-stat-blue" /></div>
+              <div className="sm-workspace-stat" data-testid="stat-follow-ups"><small>FOLLOW-UPS</small><strong>08</strong><span className="sm-stat-mint" /></div>
+              <div className="sm-workspace-stat" data-testid="stat-team-pulse"><small>TEAM PULSE</small><strong>92%</strong><span className="sm-stat-warm" /></div>
             </div>
             <div className="sm-workspace-list">
               <span><i className="sm-list-dot sm-list-blue" /> Customer follow-up queue <b>Today</b></span>
@@ -170,6 +185,7 @@ export default function ProfessionalHome() {
             </div>
           </div>
           <div className="sm-workspace-caption"><strong>Web workspace</strong><span>One clear view of the working day.</span></div>
+          </div>
         </div>
       </section>
 
@@ -180,6 +196,22 @@ export default function ProfessionalHome() {
           <span>Built by Picasso AI</span>
         </div>
       </div>
+
+      <section className="sm-story" aria-labelledby="story-title" data-testid="section-operating-rhythm">
+        <div className="sm-story-inner">
+          <div className="sm-story-topline"><span>02</span><span>THE OPERATING RHYTHM</span><span>SCROLL TO CONNECT</span></div>
+          <div className="sm-story-layout">
+            <h2 id="story-title">From the first call<br /><em>to the next clear move.</em></h2>
+            <div className="sm-story-rail" aria-label="SALARYMAN work flow">
+              <div className="sm-story-step" data-testid="story-step-capture"><span>01</span><strong>Capture</strong><p>Keep the signal.</p></div>
+              <div className="sm-story-line" aria-hidden="true" />
+              <div className="sm-story-step" data-testid="story-step-connect"><span>02</span><strong>Connect</strong><p>Share the context.</p></div>
+              <div className="sm-story-line" aria-hidden="true" />
+              <div className="sm-story-step" data-testid="story-step-move"><span>03</span><strong>Move</strong><p>Make the next step.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="sm-section sm-path-section" aria-labelledby="paths-title">
         <div className="sm-section-head">
@@ -193,7 +225,7 @@ export default function ProfessionalHome() {
         </div>
         <div className="sm-path-grid">
           {paths.map(({ number, title, description, href, label, icon: Icon, tone }) => (
-            <Link className={`sm-path-card sm-path-${tone}`} href={href} key={href}>
+            <Link className={`sm-path-card sm-path-${tone}`} href={href} key={href} data-testid={`link-path-${number}`}>
               <span className="sm-path-number">{number}</span>
               <span className="sm-path-icon"><Icon size={20} /></span>
               <h3>{title}</h3>
@@ -214,19 +246,19 @@ export default function ProfessionalHome() {
         </div>
         <div className="sm-feature-grid">
           {features.map(([name, desc, Icon, href], index) => (
-            <article className={`sm-feature-card sm-feature-${index}`} key={href}>
+            <article className={`sm-feature-card sm-feature-${index}`} key={href} data-testid={`card-feature-${index + 1}`}>
               <div className="sm-feature-icon"><Icon size={19} /></div>
               <span className="sm-feature-index">0{index + 1}</span>
               <h3>{name}</h3>
               <p>{desc}</p>
-              <Link href={href}>Open {name} <ArrowRight size={13} /></Link>
+              <Link href={href} data-testid={`link-feature-${index + 1}`}>Open {name} <ArrowRight size={13} /></Link>
             </article>
           ))}
         </div>
       </section>
 
       <section className="sm-section sm-ops">
-        <div className="sm-ops-card">
+        <div className="sm-ops-card" data-testid="panel-operating-rhythm">
           <div>
             <div className="sm-kicker">A clearer operating rhythm</div>
             <h2>Less hunting.<br />More doing.</h2>
@@ -252,7 +284,7 @@ function FeatureMenu({ onSelect }: { onSelect: () => void }) {
   return (
     <div className="sm-menu" role="menu">
       {features.map(([name, desc, Icon, href]) => (
-        <Link href={href} key={href} role="menuitem" onClick={onSelect}>
+        <Link href={href} key={href} role="menuitem" onClick={onSelect} data-testid={`link-feature-menu-${href.replace(/\//g, "-").replace(/^-/, "")}`}>
           <Icon size={16} />
           <span>{name}</span>
           <small>{desc}</small>

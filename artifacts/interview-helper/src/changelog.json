@@ -1867,5 +1867,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.22.2.2314",
+    "date": "2026-09-07",
+    "commitHash": "48c649e74226918c5c53d20ec4b7f2cc980888d2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
