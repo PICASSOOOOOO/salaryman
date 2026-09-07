@@ -74,6 +74,24 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(result.route, "/arcade/cyber_serpent")
         self.assertEqual(state.last_arcade_game, "cyber_serpent")
 
+    def test_operator_pages_require_role_access_or_a_live_object(self):
+        player = OfficeState.with_default_roster()
+        self.assertFalse(player.open_page("tools"))
+        self.assertIsNone(player.active_page)
+
+        moderator = OfficeState.with_default_roster(role="moderator")
+        self.assertTrue(moderator.open_page("tools", source="OPERATOR MENU"))
+        self.assertEqual(moderator.active_page, "tools")
+
+        scene = build_tower_scene()
+        atm_result = scene.objects.interact("lobby-atm", player, scene)
+        self.assertTrue(atm_result.success)
+        self.assertEqual(player.active_page, "economy")
+        player.close_page()
+        crt_result = scene.objects.interact("executive-crt", player, scene)
+        self.assertTrue(crt_result.success)
+        self.assertEqual(player.active_page, "tools")
+
     def test_vending_purchase_uses_the_existing_ledger_boundary(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
@@ -142,7 +160,11 @@ class PygameSpatialTests(unittest.TestCase):
     def test_headless_spatial_scene_renders(self):
         screen = pygame.display.set_mode((1180, 720))
         renderer = SolarPunkRenderer(screen)
-        renderer.draw_tower(OfficeState.with_default_roster(), build_tower_scene())
+        state = OfficeState.with_default_roster()
+        scene = build_tower_scene()
+        renderer.draw_tower(state, scene)
+        state.open_page("tools", from_object=True, source="CRT TERMINAL")
+        renderer.draw_tower(state, scene)
         pygame.display.flip()
         self.assertEqual(screen.get_size(), (1180, 720))
 

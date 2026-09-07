@@ -80,7 +80,9 @@ class Worker:
 
         self.hunger = min(100.0, self.hunger + 12.0)
         self.perform_action("work")
-        efficiency = 0.35 + (self.stamina / self.max_stamina) * 0.65
+        efficiency = (
+            0.35 + (self.stamina / self.max_stamina) * 0.65
+        ) * state.decay_efficiency_multiplier
         self.last_output = round(self.productivity_per_hour * efficiency, 2)
         state.add_funds(self.last_output, f"{self.name} output")
         self.status_note = "PRODUCING VALUE"

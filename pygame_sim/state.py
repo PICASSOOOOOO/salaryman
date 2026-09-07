@@ -17,7 +17,12 @@ SECONDS_PER_WORKSPACE_QUARTER_HOUR = SECONDS_PER_WORKSPACE_HOUR / 4
 SHIFT_START = 9
 SHIFT_END = 17
 BreakKind = Literal["short", "lunch"]
+GameRole = Literal["player", "moderator", "admin"]
+OverlayPage = Literal["tools", "economy"]
 RECRUITMENT_REFRESH_COST = 50.0
+DECAY_PER_WORKSPACE_MINUTE = 0.07
+MAINTENANCE_BASE_COST = 40.0
+MAINTENANCE_DECAY_REDUCTION = 24.0
 RECRUITMENT_POOL: tuple[RecruitCandidate, ...] = (
     RecruitCandidate("Devin Wright", "OPERATIONS ASSOCIATE", 330.0, 300.0, 400.0, (96, 165, 250)),
     RecruitCandidate("Clara Oswald", "CLIENT SUCCESS LEAD", 410.0, 360.0, 750.0, (244, 114, 182)),
@@ -86,10 +91,21 @@ class OfficeState:
     last_arcade_game: str | None = None
     recruitment_candidates: list[RecruitCandidate] = field(default_factory=list)
     recruitment_open: bool = False
+    role: GameRole = "player"
+    active_page: OverlayPage | None = None
+    page_source: str | None = None
+    tool_menu_open: bool = False
+    decay: float = 8.0
+    maintenance_runs: int = 0
 
     @classmethod
-    def with_default_roster(cls, *, real_time: bool = False) -> OfficeState:
-        state = cls(real_time=real_time)
+    def with_default_roster(
+        cls,
+        *,
+        real_time: bool = False,
+        role: GameRole = "player",
+    ) -> OfficeState:
+        state = cls(real_time=real_time, role=cls.normalize_role(role))
         state.roster.workers.extend(
             [
                 Worker(
@@ -125,6 +141,88 @@ class OfficeState:
         if state.real_time:
             state.sync_real_time()
         return state
+
+    @staticmethod
+    def normalize_role(role: str) -> GameRole:
+        if role == "admin":
+            return "admin"
+        if role in {"moderator", "mod"}:
+            return "moderator"
+        return "player"
+
+    @property
+    def has_operator_access(self) -> bool:
+        return self.role in {"admin", "moderator"}
+
+    @property
+    def decay_ratio(self) -> float:
+        return max(0.0, min(1.0, self.decay / 100.0))
+
+    @property
+    def decay_label(self) -> str:
+        if self.decay >= 75:
+            return "CRITICAL"
+        if self.decay >= 45:
+            return "UNSTABLE"
+        if self.decay >= 20:
+            return "WEARING"
+        return "STABLE"
+
+    @property
+    def decay_efficiency_multiplier(self) -> float:
+        """Decay lowers output without making the office permanently unusable."""
+        return max(0.58, 1.0 - self.decay_ratio * 0.42)
+
+    def open_page(
+        self,
+        page: OverlayPage,
+        *,
+        from_object: bool = False,
+        source: str = "OBJECT",
+    ) -> bool:
+        """Open shared pages while keeping operator tools role-gated."""
+        if not from_object and not self.has_operator_access:
+            self.notice = "ACCESS DENIED / FIND THE LIVE OBJECT"
+            return False
+        self.active_page = page
+        self.page_source = source
+        self.tool_menu_open = False
+        self.notice = f"{page.upper()} PAGE / {source}"
+        return True
+
+    def close_page(self) -> None:
+        self.active_page = None
+        self.page_source = None
+        self.tool_menu_open = False
+
+    def toggle_tool_menu(self) -> bool:
+        if not self.has_operator_access:
+            self.notice = "OPERATOR TOOLS LOCKED / USE LIVE OBJECTS"
+            return False
+        if self.active_page is not None:
+            self.close_page()
+        else:
+            self.tool_menu_open = not self.tool_menu_open
+            self.notice = "OPERATOR MENU OPEN" if self.tool_menu_open else "OPERATOR MENU CLOSED"
+        return True
+
+    def repair_decay(self) -> bool:
+        """Pay for a focused maintenance cycle and restore office efficiency."""
+        if self.decay <= 0:
+            self.notice = "SYSTEMS STABLE / NO MAINTENANCE NEEDED"
+            return False
+        cost = MAINTENANCE_BASE_COST + round(self.decay * 0.5, 2)
+        if not self.remove_funds(cost, "MAINTENANCE / DECAY CONTROL"):
+            self.notice = f"MAINTENANCE DENIED / ƒ{cost:,.0f} REQUIRED"
+            return False
+        self.decay = max(0.0, round(self.decay - MAINTENANCE_DECAY_REDUCTION, 2))
+        self.maintenance_runs += 1
+        self.notice = f"MAINTENANCE COMPLETE / DECAY {self.decay:,.1f}%"
+        return True
+
+    def _increase_decay(self, minutes: int) -> None:
+        if minutes > 0:
+            self.decay = min(100.0, round(self.decay + minutes * DECAY_PER_WORKSPACE_MINUTE, 2))
 
     @property
     def is_working(self) -> bool:
@@ -234,6 +332,8 @@ class OfficeState:
             "minute": self.minute,
             "selected_worker": self.selected_worker,
             "office_inventory": self.office_inventory,
+            "decay": self.decay,
+            "maintenance_runs": self.maintenance_runs,
             "workers": [
                 {
                     "name": worker.name,
@@ -256,10 +356,16 @@ class OfficeState:
         destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     @classmethod
-    def load_from_file(cls, path: str | Path, *, real_time: bool = False) -> OfficeState:
+    def load_from_file(
+        cls,
+        path: str | Path,
+        *,
+        real_time: bool = False,
+        role: GameRole = "player",
+    ) -> OfficeState:
         """Load a compatible save, falling back to a clean office on bad input."""
         destination = Path(path).expanduser()
-        state = cls.with_default_roster(real_time=real_time)
+        state = cls.with_default_roster(real_time=real_time, role=role)
         if not destination.exists():
             return state
         try:
@@ -289,6 +395,8 @@ class OfficeState:
                 str(key): max(0, int(value))
                 for key, value in payload.get("office_inventory", {}).items()
             }
+            state.decay = max(0.0, min(100.0, float(payload.get("decay", state.decay))))
+            state.maintenance_runs = max(0, int(payload.get("maintenance_runs", 0)))
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [
@@ -366,7 +474,7 @@ class OfficeState:
         return True
 
     def reset(self) -> None:
-        fresh = OfficeState.with_default_roster(real_time=self.real_time)
+        fresh = OfficeState.with_default_roster(real_time=self.real_time, role=self.role)
         self.funds = fresh.funds
         self.day = fresh.day
         self.hour = fresh.hour
@@ -391,6 +499,11 @@ class OfficeState:
         self.last_arcade_game = None
         self.recruitment_candidates = []
         self.recruitment_open = False
+        self.active_page = None
+        self.page_source = None
+        self.tool_menu_open = False
+        self.decay = fresh.decay
+        self.maintenance_runs = 0
         fresh.refresh_recruitment_candidates(charge=False)
         self.recruitment_candidates = fresh.recruitment_candidates
         self.real_date = fresh.real_date
@@ -435,6 +548,7 @@ class OfficeState:
         elif self.last_real_hour is not None and current.hour > self.last_real_hour:
             self.work_minutes_today = self._real_work_minutes_until(current.hour * 60 + current.minute)
             for work_hour in range(self.last_real_hour, current.hour):
+                self._increase_decay(60)
                 if self._real_hour_is_working(work_hour):
                     self.total_output += self.roster.work_hour(self, work_hour)
                     self.hours_completed_today += 1
@@ -571,6 +685,7 @@ class OfficeState:
         self.minute = total % 60
 
     def _advance_quarter_hour(self) -> bool:
+        self._increase_decay(15)
         if self.hour >= SHIFT_END and not self.policy.overtime_allowed:
             self._begin_next_day()
             return False

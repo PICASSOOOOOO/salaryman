@@ -30,6 +30,7 @@ ObjectKind = Literal[
     "chair",
     "window",
     "door",
+    "desk_lamp",
 ]
 
 VENDING_ITEMS: dict[str, tuple[str, float]] = {
@@ -192,6 +193,10 @@ class OfficeObjectRegistry:
             "chair": ("CHAIR / REST POSITION", "office"),
             "window": ("WINDOW / TOWER VIEW", "tower-view"),
         }
+        if item.kind == "atm":
+            state.open_page("economy", from_object=True, source="ATM")
+        elif item.kind == "crt_terminal":
+            state.open_page("tools", from_object=True, source="CRT TERMINAL")
         message, route = messages[item.kind]
         state.notice = message
         return InteractionResult(True, message, route=route)

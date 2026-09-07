@@ -29,6 +29,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bridge-host", default="127.0.0.1", help="Godot bridge bind address.")
     parser.add_argument("--bridge-port", type=int, default=4242, help="Godot bridge TCP port.")
     parser.add_argument("--no-bridge", action="store_true", help="Disable the optional Godot bridge.")
+    parser.add_argument(
+        "--role",
+        choices=("player", "moderator", "admin"),
+        default=os.environ.get("SALARYMAN_OPERATOR_ROLE", "player"),
+        help="Runtime role supplied by the launcher for operator tools.",
+    )
     return parser.parse_args(argv)
 
 
@@ -42,7 +48,7 @@ def run(argv: list[str] | None = None) -> int:
     screen = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption("SALARYMAN · Office Ecology")
     clock = pygame.time.Clock()
-    state = OfficeState.load_from_file(args.save_file, real_time=True)
+    state = OfficeState.load_from_file(args.save_file, real_time=True, role=args.role)
     renderer = SolarPunkRenderer(screen)
     scene = build_tower_scene()
     coffee_rects: dict[int, pygame.Rect] = {}
@@ -63,7 +69,14 @@ def run(argv: list[str] | None = None) -> int:
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_TAB:
+                if event.key == pygame.K_m:
+                    state.toggle_tool_menu()
+                elif state.active_page is not None:
+                    if event.key == pygame.K_ESCAPE:
+                        state.close_page()
+                    elif event.key == pygame.K_r and state.active_page == "tools":
+                        state.repair_decay()
+                elif event.key == pygame.K_TAB:
                     spatial_mode = not spatial_mode
                 elif spatial_mode and event.key == pygame.K_e:
                     scene.interact(state)
@@ -102,7 +115,22 @@ def run(argv: list[str] | None = None) -> int:
                 elif event.key == pygame.K_t:
                     state.toggle_auto_breaks()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if state.drawer_open:
+                if state.active_page is not None:
+                    if renderer.overlay_close_rect.collidepoint(event.pos):
+                        state.close_page()
+                    elif renderer.repair_rect.collidepoint(event.pos) and state.active_page == "tools":
+                        state.repair_decay()
+                    continue
+                if renderer.admin_tools_rect.collidepoint(event.pos):
+                    state.toggle_tool_menu()
+                elif state.tool_menu_open:
+                    if renderer.admin_economy_rect.collidepoint(event.pos):
+                        state.open_page("economy", source="OPERATOR MENU")
+                    elif renderer.admin_maintenance_rect.collidepoint(event.pos):
+                        state.open_page("tools", source="OPERATOR MENU")
+                    else:
+                        state.tool_menu_open = False
+                elif state.drawer_open:
                     if renderer.record_close_rect.collidepoint(event.pos) or not renderer.record_rect.collidepoint(event.pos):
                         state.toggle_drawer()
                     continue

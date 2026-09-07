@@ -26,6 +26,14 @@ class Palette:
     CORAL = (240, 119, 103)
     LEAF = (125, 181, 84)
     WHITE = (248, 250, 232)
+    MATRIX_BG = (5, 13, 16)
+    MATRIX_PANEL = (9, 25, 27)
+    MATRIX_PANEL_2 = (12, 36, 35)
+    MATRIX_GREEN = (69, 220, 139)
+    MATRIX_BRIGHT = (171, 255, 188)
+    MATRIX_DIM = (57, 128, 95)
+    MATRIX_GRID = (24, 76, 63)
+    MATRIX_AMBER = (226, 169, 77)
 
 
 def _ui_font(size: int, *, bold: bool = False) -> pygame.font.Font:
@@ -55,6 +63,11 @@ class SolarPunkRenderer:
         self.reset_rect = pygame.Rect(0, 0, 0, 0)
         self.record_rect = pygame.Rect(0, 0, 0, 0)
         self.record_close_rect = pygame.Rect(0, 0, 0, 0)
+        self.overlay_close_rect = pygame.Rect(0, 0, 0, 0)
+        self.repair_rect = pygame.Rect(0, 0, 0, 0)
+        self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
+        self.admin_economy_rect = pygame.Rect(0, 0, 0, 0)
+        self.admin_maintenance_rect = pygame.Rect(0, 0, 0, 0)
         self.worker_rects: dict[int, pygame.Rect] = {}
         self.recruitment_rect = pygame.Rect(0, 0, 0, 0)
         self.refresh_rect = pygame.Rect(0, 0, 0, 0)
@@ -131,10 +144,14 @@ class SolarPunkRenderer:
         """Render the authoritative scene as a camera-following pixel-art room."""
         self.screen.fill((8, 43, 49))
         self.draw_tower_header(state, scene)
-        viewport = pygame.Rect(24, 104, self.width - 48, 488)
+        viewport = pygame.Rect(18, 68, self.width - 36, 520)
         self._draw_pixel_room(viewport, scene)
 
         self.draw_tower_footer(state, scene)
+        if state.active_page is not None:
+            self.draw_game_page(state, scene)
+        elif state.tool_menu_open:
+            self.draw_operator_menu(state)
 
     def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene) -> None:
         room_x, room_y, room_w, room_h = scene.room.bounds
@@ -423,27 +440,197 @@ class SolarPunkRenderer:
         pygame.draw.rect(self.screen, Palette.CORAL, (x - 7, y + 5, 14, 12), border_radius=5)
 
     def draw_tower_header(self, state: OfficeState, scene: TowerScene) -> None:
-        header = pygame.Rect(28, 18, self.width - 56, 72)
-        self.panel(header, (255, 252, 235), (140, 190, 168), radius=16, width=2)
-        self.text("SALARYMAN", (48, 30), self.font_xl, Palette.INK)
-        self.text("PHYSICAL OFFICE SIMULATION", (50, 64), self.font_mono, Palette.MUTED)
-        self.text(f"FLOOR {scene.current_floor:02d}", (540, 37), self.font_lg, Palette.SUN)
-        self.text(f"ƒ{state.funds:,.2f}", (760, 33), self.font_lg, Palette.SEAFOAM)
-        self.text(state.time_label, (940, 39), self.font_sm, Palette.MUTED)
+        # This rail is intentionally always at y=0. World panels and page
+        # overlays move underneath it; economic context never disappears.
+        header = pygame.Rect(0, 0, self.width, 58)
+        pygame.draw.rect(self.screen, Palette.MATRIX_BG, header)
+        pygame.draw.line(self.screen, Palette.MATRIX_GREEN, (0, header.bottom - 1), (self.width, header.bottom - 1), 2)
+        self.text("SALARYMAN", (18, 10), self.font_lg, Palette.MATRIX_BRIGHT)
+        self.text(f"FLOOR {scene.current_floor:02d}", (19, 35), self.font_mono, Palette.MATRIX_DIM)
+
+        self.text("CAPITAL", (180, 9), self.font_mono, Palette.MATRIX_DIM)
+        self.text(f"ƒ{state.funds:,.2f}", (180, 25), self.font_md, Palette.MATRIX_BRIGHT)
+        self.text("NET", (336, 9), self.font_mono, Palette.MATRIX_DIM)
+        net_color = Palette.MATRIX_GREEN if state.net_today >= 0 else Palette.CORAL
+        self.text(f"{'+' if state.net_today >= 0 else ''}ƒ{state.net_today:,.0f}", (336, 25), self.font_md, net_color)
+        self.text("DECAY", (465, 9), self.font_mono, Palette.MATRIX_DIM)
+        decay_color = Palette.MATRIX_GREEN if state.decay < 45 else Palette.MATRIX_AMBER if state.decay < 75 else Palette.CORAL
+        self.text(f"{state.decay:02.0f}% {state.decay_label}", (465, 25), self.font_md, decay_color)
+        self.text(state.time_label, (665, 20), self.font_mono, Palette.MATRIX_BRIGHT)
+
+        if state.has_operator_access:
+            self.admin_tools_rect = pygame.Rect(self.width - 190, 10, 172, 36)
+            self.panel(self.admin_tools_rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=4, width=1)
+            self.text(
+                "OPERATOR MENU  M",
+                (self.admin_tools_rect.x + 15, self.admin_tools_rect.y + 11),
+                self.font_mono,
+                Palette.MATRIX_BRIGHT,
+            )
+        else:
+            self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
+            self.text("LIVE OBJECT ACCESS", (self.width - 174, 21), self.font_mono, Palette.MATRIX_DIM)
 
     def draw_tower_footer(self, state: OfficeState, scene: TowerScene) -> None:
-        footer = pygame.Rect(28, 610, self.width - 56, 78)
-        self.panel(footer, (255, 252, 235), (140, 190, 168), radius=14, width=2)
+        footer = pygame.Rect(18, 600, self.width - 36, 104)
+        self.panel(footer, Palette.MATRIX_BG, Palette.MATRIX_GRID, radius=5, width=1)
+        self.draw_minimap(scene, pygame.Rect(30, 616, 218, 76))
         nearby = scene.nearby_object
         if nearby:
-            prompt = pygame.Rect(46, 622, min(430, self.width - 550), 28)
-            self.panel(prompt, (255, 242, 190), Palette.SUN, radius=8, width=2)
-            self.text(f"[E] {nearby.prompt}", (58, 630), self.font_md, Palette.INK)
-            self.text(f"ROOM  {scene.room.label}  ·  OBJECT  {nearby.label}", (52, 658), self.font_mono, Palette.MUTED)
+            prompt = pygame.Rect(270, 620, min(430, self.width - 600), 30)
+            self.panel(prompt, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=3, width=1)
+            self.text(f"[E] {nearby.prompt}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)
+            self.text(f"ROOM  {scene.room.label}  /  OBJECT  {nearby.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
         else:
-            self.text("WALK CLOSER TO A PHYSICAL OBJECT", (52, 628), self.font_md, Palette.INK)
-            self.text(f"ROOM  {scene.room.label}", (52, 656), self.font_mono, Palette.MUTED)
-        self.text(state.notice, (760, 644), self.font_mono, Palette.SEAFOAM)
+            self.text("WALK CLOSER TO A LIVE OBJECT", (274, 628), self.font_md, Palette.MATRIX_BRIGHT)
+            self.text(f"ROOM  {scene.room.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
+        self.text(state.notice, (720, 625), self.font_mono, Palette.MATRIX_GREEN)
+        self.draw_tool_inventory(state, pygame.Rect(self.width - 286, 616, 256, 76))
+
+    def matrix_panel(
+        self,
+        rect: pygame.Rect,
+        accent: tuple[int, int, int] = Palette.MATRIX_GREEN,
+    ) -> None:
+        """A restrained game-console panel: bevel, grid, and object accents."""
+        self.panel(rect, Palette.MATRIX_PANEL, accent, radius=4, width=1)
+        inner = rect.inflate(-8, -8)
+        for x in range(inner.left + 12, inner.right, 28):
+            pygame.draw.line(self.screen, Palette.MATRIX_GRID, (x, inner.top), (x, inner.bottom), 1)
+        for y in range(inner.top + 12, inner.bottom, 18):
+            pygame.draw.line(self.screen, Palette.MATRIX_GRID, (inner.left, y), (inner.right, y), 1)
+        for point in (
+            (rect.left + 5, rect.top + 5),
+            (rect.right - 5, rect.top + 5),
+            (rect.left + 5, rect.bottom - 5),
+            (rect.right - 5, rect.bottom - 5),
+        ):
+            pygame.draw.circle(self.screen, accent, point, 2)
+
+    def draw_minimap(self, scene: TowerScene, rect: pygame.Rect) -> None:
+        self.matrix_panel(rect, Palette.MATRIX_DIM)
+        self.text("LOCAL MAP", (rect.x + 10, rect.y + 7), self.font_mono, Palette.MATRIX_BRIGHT)
+        map_rect = pygame.Rect(rect.x + 10, rect.y + 26, rect.width - 20, rect.height - 34)
+        map_scale_x = map_rect.width / max(1, scene.width)
+        map_scale_y = map_rect.height / max(1, scene.height)
+        for room in scene.rooms:
+            x, y, width, height = room.bounds
+            room_rect = pygame.Rect(
+                map_rect.x + int(x * map_scale_x),
+                map_rect.y + int(y * map_scale_y),
+                max(4, int(width * map_scale_x)),
+                max(4, int(height * map_scale_y)),
+            )
+            color = Palette.MATRIX_GREEN if room.id == scene.current_room else Palette.MATRIX_DIM
+            pygame.draw.rect(self.screen, color, room_rect, width=2)
+        px, py = scene.player_position
+        player_point = (
+            map_rect.x + int(px * map_scale_x),
+            map_rect.y + int(py * map_scale_y),
+        )
+        pygame.draw.circle(self.screen, Palette.MATRIX_AMBER, player_point, 3)
+
+    def draw_tool_inventory(self, state: OfficeState, rect: pygame.Rect) -> None:
+        self.matrix_panel(rect, Palette.MATRIX_AMBER)
+        self.text("TOOL BELT", (rect.x + 10, rect.y + 7), self.font_mono, Palette.MATRIX_BRIGHT)
+        entries = [(key, value) for key, value in state.office_inventory.items() if value > 0]
+        if not entries:
+            self.text("EMPTY / USE LIVE VENDING", (rect.x + 10, rect.y + 34), self.font_mono, Palette.MATRIX_DIM)
+            return
+        for index, (item_id, quantity) in enumerate(entries[:3]):
+            label = item_id.replace("_", " ").upper()[:14]
+            self.text(f"{index + 1} {label}", (rect.x + 10 + index * 82, rect.y + 34), self.font_mono, Palette.MATRIX_GREEN)
+            self.text(f"x{quantity}", (rect.x + 10 + index * 82, rect.y + 51), self.font_mono, Palette.MATRIX_DIM)
+
+    def draw_operator_menu(self, state: OfficeState) -> None:
+        menu = pygame.Rect(self.width - 242, 60, 224, 126)
+        self.matrix_panel(menu, Palette.MATRIX_GREEN)
+        self.text("OPERATOR ACCESS", (menu.x + 14, menu.y + 12), self.font_md, Palette.MATRIX_BRIGHT)
+        self.text(f"ROLE / {state.role.upper()}", (menu.x + 14, menu.y + 35), self.font_mono, Palette.MATRIX_DIM)
+        self.admin_economy_rect = pygame.Rect(menu.x + 12, menu.y + 60, menu.width - 24, 24)
+        self.admin_maintenance_rect = pygame.Rect(menu.x + 12, menu.y + 91, menu.width - 24, 24)
+        for rect, label in (
+            (self.admin_economy_rect, "ECONOMIC CONTROL"),
+            (self.admin_maintenance_rect, "TOOLS / MAINTENANCE"),
+        ):
+            self.panel(rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_DIM, radius=2, width=1)
+            self.text(label, (rect.x + 10, rect.y + 7), self.font_mono, Palette.MATRIX_GREEN)
+
+    def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
+        veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        pygame.draw.rect(veil, (2, 8, 10, 218), pygame.Rect(0, 58, self.width, self.height - 58))
+        self.screen.blit(veil, (0, 0))
+        page = pygame.Rect(42, 76, self.width - 84, 514)
+        accent = Palette.MATRIX_AMBER if state.active_page == "economy" else Palette.MATRIX_GREEN
+        self.matrix_panel(page, accent)
+        self.text(
+            "ECONOMIC CONTROL" if state.active_page == "economy" else "TOOLS / MAINTENANCE",
+            (page.x + 24, page.y + 18),
+            self.font_xl,
+            Palette.MATRIX_BRIGHT,
+        )
+        source = state.page_source or "LIVE OBJECT"
+        self.text(f"ACCESS PATH / {source}", (page.x + 26, page.y + 54), self.font_mono, Palette.MATRIX_DIM)
+        self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
+        self.panel(self.overlay_close_rect, Palette.MATRIX_PANEL_2, accent, radius=2, width=1)
+        self.text("CLOSE  ESC", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_mono, accent)
+        if state.active_page == "economy":
+            self.draw_economy_page(state, page)
+        else:
+            self.draw_tools_page(state, page)
+
+    def draw_economy_page(self, state: OfficeState, page: pygame.Rect) -> None:
+        cards = (
+            (pygame.Rect(page.x + 24, page.y + 86, 250, 112), "AVAILABLE", f"ƒ{state.funds:,.2f}", Palette.MATRIX_BRIGHT),
+            (pygame.Rect(page.x + 290, page.y + 86, 250, 112), "NET TODAY", f"{'+' if state.net_today >= 0 else ''}ƒ{state.net_today:,.2f}", Palette.MATRIX_GREEN),
+            (pygame.Rect(page.x + 556, page.y + 86, 250, 112), "DECAY LOAD", f"{state.decay:,.1f}%  {state.decay_label}", Palette.MATRIX_AMBER),
+        )
+        for rect, label, value, color in cards:
+            self.matrix_panel(rect, color)
+            self.text(label, (rect.x + 16, rect.y + 16), self.font_mono, Palette.MATRIX_DIM)
+            self.text(value, (rect.x + 16, rect.y + 48), self.font_lg, color)
+        ledger = pygame.Rect(page.x + 24, page.y + 218, page.width - 48, 224)
+        self.matrix_panel(ledger, Palette.MATRIX_AMBER)
+        self.text("LIVE LEDGER / RECENT MOVEMENT", (ledger.x + 16, ledger.y + 14), self.font_md, Palette.MATRIX_BRIGHT)
+        self.text("ENTRY", (ledger.x + 16, ledger.y + 45), self.font_mono, Palette.MATRIX_DIM)
+        self.text("DELTA", (ledger.right - 230, ledger.y + 45), self.font_mono, Palette.MATRIX_DIM)
+        self.text("BALANCE", (ledger.right - 102, ledger.y + 45), self.font_mono, Palette.MATRIX_DIM)
+        for index, entry in enumerate(reversed(state.ledger[-7:])):
+            y = ledger.y + 72 + index * 20
+            color = Palette.MATRIX_GREEN if entry.amount >= 0 else Palette.CORAL
+            self.text(entry.label.upper()[:43], (ledger.x + 16, y), self.font_mono, Palette.MATRIX_BRIGHT)
+            self.text(f"{'+' if entry.amount >= 0 else ''}ƒ{entry.amount:,.2f}", (ledger.right - 230, y), self.font_mono, color)
+            self.text(f"ƒ{entry.balance:,.2f}", (ledger.right - 102, y), self.font_mono, Palette.MATRIX_DIM)
+
+    def draw_tools_page(self, state: OfficeState, page: pygame.Rect) -> None:
+        decay_card = pygame.Rect(page.x + 24, page.y + 86, 420, 300)
+        self.matrix_panel(decay_card, Palette.MATRIX_GREEN)
+        self.text("DECAY CONTROL", (decay_card.x + 18, decay_card.y + 16), self.font_lg, Palette.MATRIX_BRIGHT)
+        self.text("NEGLECT REDUCES OUTPUT / MAINTENANCE RESTORES CAPACITY", (decay_card.x + 18, decay_card.y + 50), self.font_mono, Palette.MATRIX_DIM)
+        self.text(f"{state.decay:02.1f}%  {state.decay_label}", (decay_card.x + 18, decay_card.y + 92), self.font_xl, Palette.MATRIX_AMBER)
+        bar = pygame.Rect(decay_card.x + 18, decay_card.y + 145, decay_card.width - 36, 18)
+        pygame.draw.rect(self.screen, Palette.MATRIX_BG, bar)
+        pygame.draw.rect(self.screen, Palette.MATRIX_AMBER, pygame.Rect(bar.x, bar.y, max(2, int(bar.width * state.decay_ratio)), bar.height))
+        self.text(f"OUTPUT MULTIPLIER  x{state.decay_efficiency_multiplier:.2f}", (decay_card.x + 18, decay_card.y + 184), self.font_mono, Palette.MATRIX_BRIGHT)
+        self.text("WORK THE SYSTEM OR IT WORKS AGAINST YOU.", (decay_card.x + 18, decay_card.y + 214), self.font_mono, Palette.MATRIX_GREEN)
+        self.repair_rect = pygame.Rect(decay_card.x + 18, decay_card.bottom - 48, decay_card.width - 36, 30)
+        self.panel(self.repair_rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=2, width=1)
+        cost = 40 + round(state.decay * 0.5)
+        self.text(f"RUN MAINTENANCE  ƒ{cost}", (self.repair_rect.x + 14, self.repair_rect.y + 9), self.font_mono, Palette.MATRIX_BRIGHT)
+
+        inventory = pygame.Rect(page.x + 468, page.y + 86, page.width - 492, 300)
+        self.matrix_panel(inventory, Palette.MATRIX_AMBER)
+        self.text("FIELD TOOLS", (inventory.x + 18, inventory.y + 16), self.font_lg, Palette.MATRIX_BRIGHT)
+        self.text("OBJECTS FEED THE BELT / THE BELT KEEPS WORK MOVING", (inventory.x + 18, inventory.y + 50), self.font_mono, Palette.MATRIX_DIM)
+        entries = [(key, value) for key, value in state.office_inventory.items() if value > 0]
+        if entries:
+            for index, (item_id, quantity) in enumerate(entries[:6]):
+                row = pygame.Rect(inventory.x + 18, inventory.y + 82 + index * 30, inventory.width - 36, 24)
+                self.panel(row, Palette.MATRIX_PANEL_2, Palette.MATRIX_GRID, radius=2, width=1)
+                self.text(item_id.replace("_", " ").upper(), (row.x + 10, row.y + 7), self.font_mono, Palette.MATRIX_GREEN)
+                self.text(f"x{quantity}", (row.right - 46, row.y + 7), self.font_mono, Palette.MATRIX_BRIGHT)
+        else:
+            self.text("NO FIELD TOOLS / VISIT A LIVE VENDING MACHINE", (inventory.x + 18, inventory.y + 96), self.font_mono, Palette.MATRIX_DIM)
 
     def draw_ecosystem_backdrop(self) -> None:
         # Layered ocean glass, sun disk, canopy shapes, and waterline geometry

@@ -100,6 +100,35 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertEqual(worker.status_note, "READY FOR SHIFT")
         self.assertGreater(worker.stamina, 8.0)
 
+    def test_decay_accumulates_and_maintenance_restores_capacity(self):
+        state = OfficeState.with_default_roster()
+        state.policy.auto_breaks = False
+        starting_decay = state.decay
+        state.advance_workspace_minutes(60)
+
+        self.assertGreater(state.decay, starting_decay)
+        self.assertLess(state.decay_efficiency_multiplier, 1.0)
+
+        state.decay = 60.0
+        funds_before = state.funds
+        self.assertTrue(state.repair_decay())
+        self.assertLess(state.decay, 60.0)
+        self.assertLess(state.funds, funds_before)
+        self.assertEqual(state.maintenance_runs, 1)
+
+    def test_decay_persists_in_the_office_record(self):
+        state = OfficeState.with_default_roster()
+        state.decay = 47.5
+        state.maintenance_runs = 3
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "office.json"
+            state.save_to_file(path)
+            restored = OfficeState.load_from_file(path)
+
+        self.assertEqual(restored.decay, 47.5)
+        self.assertEqual(restored.maintenance_runs, 3)
+
     def test_work_and_world_actions_gently_increase_stamina(self):
         state = OfficeState.with_default_roster()
         worker = state.roster.workers[0]
