@@ -1,5 +1,4 @@
 import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, ExternalLink, FlaskConical, ArrowLeft } from 'lucide-react';
-import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -38,7 +37,7 @@ import {
 export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
-  const { config, toggleMode, isDiscreet } = useAppMode();
+  const { toggleMode, isDiscreet } = useAppMode();
   const streamerMode = useStreamerMode();
   const { isPro, isOwner, features, loading: planLoading } = usePlan();
   const { isApprovedTester, isApprovedDev, isAdmin } = useAlpha();
@@ -133,44 +132,20 @@ export function NavBar() {
   return (
     <header className="app-header desktop-app-nav shrink-0">
 
-      {/* Top strip — brand + plan / trial info (hidden on mobile). The brand
-          (logo + PABLO TERMINAL subtitle) now lives up here, stacked above the
-          ALPHA badge, so the main nav row below stays slim. */}
+      {/* Top strip — build status, economy, location, and account controls. */}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.015]">
         <div className="flex min-w-0 flex-1 basis-[min(100%,32rem)] flex-col gap-1">
-          <div
-            className="flex items-center gap-2.5 cursor-pointer group/logo"
-            onClick={() => navigate(getAppHomePath(isAuthenticated))}
-            role="link"
-            tabIndex={0}
-            aria-label={isAuthenticated ? 'Return to office floor' : 'Go to SALARYMAN home'}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                navigate(getAppHomePath(isAuthenticated));
-              }
-            }}
-          >
-            <div className="salaryman-logo-square w-7 h-7 rounded-md flex items-center justify-center">
-              <PicassoLogo size={22} gap={2} glow />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
-                {config.name}
-              </h1>
-            </div>
+          <div className="mr-auto flex items-center gap-2.5">
+            <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
+              ALPHA {__BUILD_VERSION__}
+            </span>
             <button
-              onClick={e => { e.stopPropagation(); toggleMode(); }}
+              onClick={toggleMode}
               title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
               className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
             >
               {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
-          </div>
-            <div className="mr-auto flex items-center gap-2.5">
-            <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
-              ALPHA {__BUILD_VERSION__}
-            </span>
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-3">
