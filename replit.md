@@ -28,6 +28,7 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 - When you have a clear picture of what exists, prioritize investigating the unclear parts first. Start from unknowns, not knowns.
 
 **Naming / branding conventions:**
+- **Never use, embed, restore, or republish the old gameplay trailer anywhere in SALARYMAN.** Any future gameplay media must come from the current downloadable runtime and be explicitly approved before use.
 - **The "Pledge Store" is the canonical name for the one massive SALARYMAN marketplace** — the single consolidated commerce surface. The old "Bot Factory" (`/bots`), the Pledge Store (`/pledge`), and the agents showcase (`/pledge/agents`) all merge into this one Pledge Store, which should carry extensive artwork.
 - **"Pixel Agents" are the bots/agents that are for sale — the bundle/product line sold INSIDE the Pledge Store.** Pixel Agents is NOT the page name; it is the agents section/offering within the Pledge Store. Purchasing, editing, and controlling bots lives under the Pixel Agents offering inside the Pledge Store.
 

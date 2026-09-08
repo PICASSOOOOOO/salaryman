@@ -6,11 +6,27 @@ import { and, eq } from "drizzle-orm";
 import { isOwnerEmail, isPicassoOrgOwner } from "../lib/plan";
 
 const router: IRouter = Router();
-const ARCHIVE_NAME = "salaryman-office-linux-x86_64.tar.gz";
-const ARCHIVE_PATHS = [
-  path.resolve(process.cwd(), "dist", "releases", ARCHIVE_NAME),
-  path.resolve(process.cwd(), "..", "..", "dist", "releases", ARCHIVE_NAME),
-];
+const DESKTOP_RELEASES = {
+  windows: { archiveName: "salaryman-office-windows-x86_64.zip", label: "Windows" },
+  macos: { archiveName: "salaryman-office-macos-arm64.zip", label: "macOS" },
+  linux: { archiveName: "salaryman-office-linux-x86_64.tar.gz", label: "Linux" },
+} as const;
+
+type DesktopPlatform = keyof typeof DESKTOP_RELEASES;
+const DESKTOP_PLATFORMS = Object.keys(DESKTOP_RELEASES) as DesktopPlatform[];
+
+function archivePaths(archiveName: string): string[] {
+  return [
+    path.resolve(process.cwd(), "dist", "releases", archiveName),
+    path.resolve(process.cwd(), "..", "..", "dist", "releases", archiveName),
+  ];
+}
+
+function availableDesktopPlatforms(): DesktopPlatform[] {
+  return DESKTOP_PLATFORMS.filter((platform) =>
+    archivePaths(DESKTOP_RELEASES[platform].archiveName).some((candidate) => existsSync(candidate)),
+  );
+}
 
 async function hasDesktopReleaseAccess(req: Request, res: Response): Promise<boolean> {
   if (!req.isAuthenticated()) {
@@ -39,7 +55,11 @@ async function hasDesktopReleaseAccess(req: Request, res: Response): Promise<boo
 router.get("/desktop/access", async (req, res) => {
   try {
     if (!(await hasDesktopReleaseAccess(req, res))) return;
-    res.json({ allowed: true, archiveName: ARCHIVE_NAME });
+    const availablePlatforms = availableDesktopPlatforms();
+    res.json({
+      allowed: true,
+      availablePlatforms,
+    });
   } catch (error) {
     console.error("[desktop-download] access check failed", error);
     if (!res.headersSent) res.status(500).json({ error: "Could not verify desktop release access." });
@@ -47,10 +67,11 @@ router.get("/desktop/access", async (req, res) => {
 });
 
 router.get("/desktop/download", async (req, res) => {
-  if (req.query.platform !== "linux") {
+  const platform = req.query.platform;
+  if (typeof platform !== "string" || !DESKTOP_PLATFORMS.includes(platform as DesktopPlatform)) {
     res.status(400).json({
       error: "Choose an operating-system-specific desktop package.",
-      availablePlatforms: ["linux"],
+      availablePlatforms: DESKTOP_PLATFORMS,
     });
     return;
   }
@@ -63,15 +84,16 @@ router.get("/desktop/download", async (req, res) => {
     return;
   }
 
-  const archivePath = ARCHIVE_PATHS.find((candidate) => existsSync(candidate));
+  const release = DESKTOP_RELEASES[platform as DesktopPlatform];
+  const archivePath = archivePaths(release.archiveName).find((candidate) => existsSync(candidate));
   if (!archivePath) {
     res.status(503).json({
-      error: "The Linux desktop release is not available on this server.",
+      error: `The ${release.label} desktop release is not available on this server.`,
     });
     return;
   }
 
-  res.download(archivePath, ARCHIVE_NAME, (error) => {
+  res.download(archivePath, release.archiveName, (error) => {
     if (error && !res.headersSent) {
       res.status(500).json({ error: "The desktop release could not be downloaded." });
     }

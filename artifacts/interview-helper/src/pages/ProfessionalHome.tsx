@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
+import { OrbitArtwork } from "@/components/OrbitArtwork";
 import "./ProfessionalHome.css";
 
 const paths = [
@@ -59,17 +60,33 @@ const features = [
   ["Knowledge & files", "One home for the work", FileText, "/console/vault"],
 ] as const;
 
+type DesktopPlatform = "windows" | "macos" | "linux" | "other";
+
+function detectDesktopPlatform(): DesktopPlatform {
+  const platform = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
+  if (platform.includes("win")) return "windows";
+  if (platform.includes("mac")) return "macos";
+  if (platform.includes("linux") && !platform.includes("android")) return "linux";
+  return "other";
+}
+
 export default function ProfessionalHome() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [desktopDownloadAllowed, setDesktopDownloadAllowed] = useState(false);
+  const [desktopPlatform, setDesktopPlatform] = useState<DesktopPlatform>("other");
+  const [availableDesktopPlatforms, setAvailableDesktopPlatforms] = useState<DesktopPlatform[]>([]);
 
   useEffect(() => {
+    setDesktopPlatform(detectDesktopPlatform());
     let cancelled = false;
     apiFetch("/api/desktop/access")
       .then(async (response) => {
         if (!response.ok) return;
-        const result = await response.json() as { allowed?: boolean };
-        if (!cancelled) setDesktopDownloadAllowed(result.allowed === true);
+        const result = await response.json() as { allowed?: boolean; availablePlatforms?: DesktopPlatform[] };
+        if (!cancelled) {
+          setDesktopDownloadAllowed(result.allowed === true);
+          setAvailableDesktopPlatforms(result.availablePlatforms ?? []);
+        }
       })
       .catch(() => {
         // Anonymous visitors and non-staff users simply do not see the test build.
@@ -135,17 +152,20 @@ export default function ProfessionalHome() {
                Open CALLL HOME <ArrowRight size={15} />
             </Link>
           </div>
-          {desktopDownloadAllowed && (
+          {desktopDownloadAllowed
+            && desktopPlatform !== "other"
+            && availableDesktopPlatforms.includes(desktopPlatform) && (
             <a
               className="sm-desktop-download"
-              href={apiUrl("/api/desktop/download")}
-              download="salaryman-office-linux-x86_64.tar.gz"
+              href={apiUrl(`/api/desktop/download?platform=${desktopPlatform}`)}
+              download
               data-testid="link-desktop-download"
             >
               <Download size={14} /> Download desktop test build <ArrowRight size={14} />
             </a>
           )}
         </div>
+        <OrbitArtwork />
 
       </section>
 

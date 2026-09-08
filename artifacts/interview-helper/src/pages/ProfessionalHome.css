@@ -195,7 +195,7 @@
 @keyframes sm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
 @media (max-width: 980px) {
-  .sm-hero { grid-template-columns: 1fr; gap: 56px; padding-top: 64px; }.sm-hero-copy { max-width: 660px; }.sm-hero-stage { max-width: 740px; }.sm-story-layout { grid-template-columns: 1fr; gap: 52px; }
+  .sm-hero { grid-template-columns: 1fr; gap: 56px; padding-top: 64px; }.sm-hero-copy { max-width: 660px; }.sm-hero-stage, .sm-orbit-art { max-width: 740px; width: 100%; }.sm-story-layout { grid-template-columns: 1fr; gap: 52px; }
 }
 @media (max-width: 700px) {
   .sm-nav { padding: max(16px, calc(env(safe-area-inset-top, 0px) + 10px)) max(18px, var(--app-safe-right, 0px)) 16px max(18px, var(--app-safe-left, 0px)); justify-content: space-between; gap: 12px; }

@@ -948,6 +948,22 @@ body.workspace-light :where(input, textarea)::placeholder {
   opacity: 1 !important;
 }
 
+/* OrbitArtwork is still a light browser surface, but its stacked decorative
+   layers must remain transparent or the global reset paints over the SVG. */
+body.workspace-light .sm-orbit-art,
+body.workspace-light .sm-orbit-art *,
+body.workspace-light .sm-orbit-art::before,
+body.workspace-light .sm-orbit-art::after,
+body.workspace-light .sm-orbit-art *::before,
+body.workspace-light .sm-orbit-art *::after {
+  background-color: transparent !important;
+}
+
+body.workspace-light .sm-orbit-art {
+  background-color: #fffaf0 !important;
+  background-image: radial-gradient(circle at 51% 50%, #dff3e8 0, #fffaf0 42%, #f7f1e7 100%) !important;
+}
+
 body.workspace-light main,
 body.workspace-light [class~="min-h-screen"],
 body.workspace-light [class~="min-h-\[100dvh\]"] {
