@@ -156,3 +156,4 @@
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Pygame solar-punk decay arc](pygame-solarpunk-decay.md) — desktop gameplay starts bright, lively, and gamified; darkness and deterioration emerge only as the office/world decays.
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
+- [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
