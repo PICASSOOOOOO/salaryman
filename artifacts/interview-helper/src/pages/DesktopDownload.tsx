@@ -75,6 +75,8 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
+  const gameplayVideoHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase.mp4`;
+  const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase-poster.jpg`;
   const platformMessage = !downloadAllowed
     ? "Desktop test builds are available to approved administrators and moderators."
     : clientPlatform === "other"
@@ -129,6 +131,20 @@ export default function DesktopDownload() {
             {platformMessage}
           </p>
         </div>
+        <figure className="desktop-download-gameplay">
+          <video
+            controls
+            muted
+            playsInline
+            preload="metadata"
+            src={gameplayVideoHref}
+            poster={gameplayPosterHref}
+            aria-label="Current SALARYMAN Pygame gameplay alpha"
+          />
+          <figcaption>
+            CURRENT ALPHA / REAL PYGAME CAPTURE / WINDOWS · MACOS · LINUX
+          </figcaption>
+        </figure>
       </section>
 
       <section className="desktop-download-platforms" id="install">

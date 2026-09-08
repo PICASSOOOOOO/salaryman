@@ -1333,3 +1333,17 @@ mtime_ms = 1788756845179
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/daafc029-bf74-478f-b468-d4bcc975b5aa/7fa8eb65-8d1e-4601-9f16-a3c3744a302e"
 storage_version_token = "1788756871659769"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "Lul4i7VMQ9QwCLheo_bXE"
+uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-alpha-showcase.mp4"
+type = "video"
+title = "SALARYMAN Pygame Alpha Showcase"
+description = "Fresh 18-second gameplay recording captured from the current authoritative Pygame office runtime."
+logical_id = "280ade69-e009-4dee-8048-eff2ac7c8b12"
+content_hash = "sha256:759aab3b7ceda5b5605c16b5cf5274987afadb9d73cdb8bd5382bce5291c9a07"
+size = 682821
+mtime_ms = 1788885010047
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/280ade69-e009-4dee-8048-eff2ac7c8b12/813d55c7-93fb-4b32-ab44-99ca9499ccd1"
+storage_version_token = "1788885239039172"
+content_type = "video/mp4"
