@@ -5,6 +5,12 @@ description: org-scoped recording of all Twilio calls/voicemails/SMS into one CR
 
 Every Twilio call/voicemail/SMS is mirrored into an org-shared CRM activity timeline via a single recorder helper called from each telephony touchpoint. The recorder resolves the org from the handling user's active membership, snapshots the org's industry at write time, and find-or-creates an org lead by last-10-digit phone match.
 
+**Authority boundary:** CRM owns the selected lead/contact and the intent to call; the Phone floor owns live media controls; `call_history` is the provider audit; `crm_activities` is the org interaction ledger. A CRM-originated call must verify the record belongs to the caller's org/user before metering or dialing, derive the destination from that record, and create the CRM activity immediately. Twilio callbacks enrich that same row.
+
+**Why:** Passing an arbitrary number plus an unverified lead ID lets callers misattribute activity across organizations. Delaying CRM insertion until a callback also makes live calls temporarily invisible and loses attribution when provider callbacks fail.
+
+**How to apply:** Route all CRM call buttons through the reliable outbound bridge and the existing Phone controls. Pass an authoritative lead/contact ID into the call command; never build separate CRM mute/hold/transfer logic or a second call ledger.
+
 **Invariant — dedupe by (orgId, twilioSid, channel):** Twilio fires MULTIPLE webhooks for one interaction (call status ringing/in-progress/completed, recording, transcription). The recorder must upsert on that triple — first call inserts, later calls only enrich columns that have new non-empty values.
 
 **Why:** A naive "insert every webhook" duplicates rows and, worse, the human-readable `lead_notes` mirror line and the `callCount`/`lastCalledAt` bump must fire ONCE per interaction. Writing them on every webhook overcounts calls and floods the lead timeline.

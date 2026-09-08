@@ -120,6 +120,8 @@ export interface RecordTelephonyOpts {
   phone: string;
   contactName?: string | null;
   contactId?: number | null;
+  /** Authoritative CRM lead selected by the caller. Must already be org-scoped by the caller. */
+  leadId?: number | null;
   body?: string | null;
   summary?: string | null;
   recordingUrl?: string | null;
@@ -162,7 +164,7 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
       sms: direction === "inbound" ? "inbound_sms" : "outbound_sms",
     };
 
-    const leadId = await findOrCreateOrgLead({
+    const leadId = opts.leadId ?? await findOrCreateOrgLead({
       orgId,
       userId: opts.userId,
       phone,

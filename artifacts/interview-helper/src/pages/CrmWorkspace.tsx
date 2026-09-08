@@ -20,7 +20,9 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import { addActiveCallsBatch, type ActiveCall } from '@/lib/phone-utils';
 import './crm-workspace.css';
 
 interface LeadRecord {
@@ -262,6 +264,7 @@ function ActivityFeed({ activities, loading, error }: {
 
 export default function CrmWorkspace() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, navigate] = useLocation();
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [deals, setDeals] = useState<DealRecord[]>([]);
@@ -272,6 +275,55 @@ export default function CrmWorkspace() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selected, setSelected] = useState<SelectedRecord | null>(null);
+  const [callingRecordKey, setCallingRecordKey] = useState<string | null>(null);
+  const [callError, setCallError] = useState('');
+  const apiUrl = useCallback((path: string) => `${import.meta.env.BASE_URL}api/${path}`, []);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
+
+  const callRecord = useCallback(async (record: WorkspaceRecord) => {
+    if (record.kind === 'deal') return;
+    const entity = record.raw as LeadRecord | ContactRecord;
+    if (!entity.phone) {
+      setCallError('This CRM record has no phone number.');
+      return;
+    }
+    const key = `${record.kind}-${record.id}`;
+    setCallingRecordKey(key);
+    setCallError('');
+    try {
+      const result = await bridgeOutbound(async () => {
+        const response = await apiFetch(apiUrl('twilio/call'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientNumber: entity.phone,
+            contactName: record.name,
+            ...(record.kind === 'lead' ? { leadId: record.id } : { contactId: record.id }),
+          }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || 'CRM call could not be started');
+        return body;
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
+      const activeCall: ActiveCall = {
+        callSid: result.callSid,
+        phone: result.to,
+        name: record.name,
+        status: result.status || 'queued',
+        startTime: Date.now(),
+        elapsed: 0,
+        direction: 'outbound',
+        conferenceName: result.conferenceName,
+      };
+      addActiveCallsBatch([activeCall]);
+      navigate('/phone?tab=live');
+    } catch (error) {
+      setCallError(error instanceof Error ? error.message : 'CRM call failed');
+    } finally {
+      setCallingRecordKey(null);
+    }
+  }, [apiUrl, bridgeOutbound, navigate]);
 
   const loadWorkspace = useCallback(async () => {
     if (!isAuthenticated) {
@@ -521,7 +573,13 @@ export default function CrmWorkspace() {
               </div>
             </section>
             {selectedRecord && selectedRecord.kind === 'deal' && selectedRecord.raw && (
-              <ContextPanel record={selectedRecord} onClose={() => setSelected(null)} />
+              <ContextPanel
+                record={selectedRecord}
+                onClose={() => setSelected(null)}
+                onCall={callRecord}
+                calling={callingRecordKey === `${selectedRecord.kind}-${selectedRecord.id}`}
+                callError={callError}
+              />
             )}
             <ActivityFeed activities={activities} loading={false} error={errors.find(error => error.includes('activity')) ?? null} />
           </div>
@@ -562,7 +620,15 @@ export default function CrmWorkspace() {
                 {filteredRecords.length > 100 && <p style={{ margin: 0, padding: '12px 19px', color: 'var(--crm-muted)', fontSize: 11 }}>Showing the first 100 matches. Refine your search to see more.</p>}
               </div>
             </section>
-            {selectedRecord && <ContextPanel record={selectedRecord} onClose={() => setSelected(null)} />}
+            {selectedRecord && (
+              <ContextPanel
+                record={selectedRecord}
+                onClose={() => setSelected(null)}
+                onCall={callRecord}
+                calling={callingRecordKey === `${selectedRecord.kind}-${selectedRecord.id}`}
+                callError={callError}
+              />
+            )}
             <ActivityFeed activities={activities} loading={false} error={errors.find(error => error.includes('activity')) ?? null} />
           </div>
         )}
@@ -571,7 +637,19 @@ export default function CrmWorkspace() {
   );
 }
 
-function ContextPanel({ record, onClose }: { record: WorkspaceRecord; onClose: () => void }) {
+function ContextPanel({
+  record,
+  onClose,
+  onCall,
+  calling,
+  callError,
+}: {
+  record: WorkspaceRecord;
+  onClose: () => void;
+  onCall: (record: WorkspaceRecord) => Promise<void>;
+  calling: boolean;
+  callError: string;
+}) {
   const fields: Array<[string, string]> = [];
   let note = '';
   let destination = '/business/deals';
@@ -629,7 +707,14 @@ function ContextPanel({ record, onClose }: { record: WorkspaceRecord; onClose: (
           ))}
         </div>
         <p className="crm-context-note">{note}</p>
+        {callError && <p className="crm-context-note" role="alert">{callError}</p>}
         <div className="crm-context-actions">
+          {record.kind !== 'deal' && Boolean((record.raw as LeadRecord | ContactRecord).phone) && (
+            <button className="crm-button" type="button" onClick={() => void onCall(record)} disabled={calling}>
+              <Phone size={13} aria-hidden="true" />
+              {calling ? 'Connecting…' : 'Call from CRM'}
+            </button>
+          )}
           <Link href={destination} className="crm-button">
             Open full record <ArrowUpRight size={13} aria-hidden="true" />
           </Link>

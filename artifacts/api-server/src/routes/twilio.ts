@@ -18,6 +18,7 @@ import {
   callCenterAgentsTable,
   inboundScreeningsTable,
   orgMembersTable,
+  leadRecordsTable,
   systemConfigTable,
   smsConversationsTable,
   smsMessagesTable,
@@ -229,6 +230,61 @@ async function getUserOrgId(userId: string): Promise<number | null> {
       .limit(1);
     return rows[0]?.orgId ?? null;
   } catch { return null; }
+}
+
+const PHONE_ROLE_RANK: Record<string, number> = {
+  specialist: 20,
+  manager: 40,
+  director: 60,
+  executive: 80,
+  ceo: 90,
+  owner: 100,
+  admin: 100,
+};
+
+type PhoneDialingPolicy = {
+  maxConcurrency: number;
+  minDelaySeconds: number;
+  maxQueueSize: number;
+};
+
+const DEFAULT_PHONE_DIALING_POLICY: PhoneDialingPolicy = {
+  maxConcurrency: 5,
+  minDelaySeconds: 1,
+  maxQueueSize: 250,
+};
+
+async function getPhoneOrgContext(userId: string): Promise<{ orgId: number | null; role: string; rank: number }> {
+  const rows = await db.select({ orgId: orgMembersTable.orgId, role: orgMembersTable.role })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+    .limit(1);
+  const row = rows[0];
+  const role = row?.role ?? "user";
+  return { orgId: row?.orgId ?? null, role, rank: PHONE_ROLE_RANK[role] ?? 0 };
+}
+
+function sanitizePhoneDialingPolicy(value: unknown): PhoneDialingPolicy {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const rawDelay = Number(raw.minDelaySeconds);
+  return {
+    maxConcurrency: Math.min(10, Math.max(1, Math.floor(Number(raw.maxConcurrency) || DEFAULT_PHONE_DIALING_POLICY.maxConcurrency))),
+    minDelaySeconds: Math.min(30, Math.max(0, Number.isFinite(rawDelay) ? rawDelay : DEFAULT_PHONE_DIALING_POLICY.minDelaySeconds)),
+    maxQueueSize: Math.min(1000, Math.max(1, Math.floor(Number(raw.maxQueueSize) || DEFAULT_PHONE_DIALING_POLICY.maxQueueSize))),
+  };
+}
+
+async function getPhoneDialingPolicy(orgId: number | null): Promise<PhoneDialingPolicy> {
+  if (!orgId) return DEFAULT_PHONE_DIALING_POLICY;
+  const stored = await getSystemConfig(`phone_dialing_policy_org_${orgId}`);
+  if (!stored) return DEFAULT_PHONE_DIALING_POLICY;
+  try { return sanitizePhoneDialingPolicy(JSON.parse(stored)); } catch { return DEFAULT_PHONE_DIALING_POLICY; }
+}
+
+async function canAccessDialingSession(actorId: string, sessionOwnerId: string): Promise<boolean> {
+  if (actorId === sessionOwnerId) return true;
+  const [actor, owner] = await Promise.all([getPhoneOrgContext(actorId), getPhoneOrgContext(sessionOwnerId)]);
+  return Boolean(actor.orgId && actor.orgId === owner.orgId && actor.rank >= PHONE_ROLE_RANK.manager);
 }
 
 async function matchContactByPhone(userId: string, phoneNumber: string, countryOverride?: string): Promise<{ contactId: number; contactName: string } | null> {
@@ -508,14 +564,64 @@ router.post("/twilio/twiml/client-voice", async (req, res) => {
 
 router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
-    const { recipientNumber, callerName, contactName, contactId } = req.body;
+    const { recipientNumber, callerName, contactName, contactId, leadId } = req.body;
     const userId = getAuthUserId(req);
-    if (!recipientNumber || !userId) {
+    if (!userId) {
+      res.status(400).json({ error: "recipientNumber required" });
+      return;
+    }
+    const orgId = await getUserOrgId(userId);
+    let authoritativeNumber = recipientNumber;
+    let authoritativeName = contactName || callerName;
+    let resolvedLeadId: number | undefined;
+    let resolvedContactId = contactId ? Number(contactId) : undefined;
+
+    if (leadId != null) {
+      const numericLeadId = Number(leadId);
+      const [lead] = await db.select({
+        id: leadRecordsTable.id,
+        orgId: leadRecordsTable.orgId,
+        name: leadRecordsTable.name,
+        phone: leadRecordsTable.phone,
+      }).from(leadRecordsTable)
+        .where(and(eq(leadRecordsTable.id, numericLeadId), orgId ? eq(leadRecordsTable.orgId, orgId) : sql`false`))
+        .limit(1);
+      if (!lead) {
+        res.status(404).json({ error: "CRM lead not found in your organization" });
+        return;
+      }
+      if (!lead.phone) {
+        res.status(400).json({ error: "CRM lead has no phone number" });
+        return;
+      }
+      authoritativeNumber = lead.phone;
+      authoritativeName = lead.name;
+      resolvedLeadId = lead.id;
+    } else if (resolvedContactId) {
+      const [contact] = await db.select({
+        id: contactsTable.id,
+        name: contactsTable.name,
+        phone: contactsTable.phone,
+      }).from(contactsTable)
+        .where(and(eq(contactsTable.id, resolvedContactId), eq(contactsTable.userId, userId)))
+        .limit(1);
+      if (!contact) {
+        res.status(404).json({ error: "Contact not found" });
+        return;
+      }
+      if (!contact.phone) {
+        res.status(400).json({ error: "Contact has no phone number" });
+        return;
+      }
+      authoritativeNumber = contact.phone;
+      authoritativeName = contact.name;
+    }
+    if (!authoritativeNumber) {
       res.status(400).json({ error: "recipientNumber required" });
       return;
     }
     const callCountry = await resolveUserCountry(userId);
-    const e164 = toE164(recipientNumber, callCountry);
+    const e164 = toE164(authoritativeNumber, callCountry);
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number format" });
       return;
@@ -552,9 +658,7 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
       }),
     });
 
-    const orgId = await getUserOrgId(userId);
-    let resolvedContactId = contactId ? Number(contactId) : undefined;
-    let resolvedContactName = (contactName || callerName || "").slice(0, 64) || null;
+    let resolvedContactName = (authoritativeName || "").slice(0, 64) || null;
     if (!resolvedContactId) {
       const crmMatch = await matchContactByPhone(userId, e164);
       if (crmMatch) {
@@ -581,7 +685,30 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
       })
       .returning();
 
-    res.json({ ok: true, callSid: call.sid, callId: record.id, status: call.status, to: e164, conferenceName: confName });
+    const crmActivityId = await recordTelephonyActivity({
+      userId,
+      orgId,
+      leadId: resolvedLeadId,
+      contactId: resolvedContactId,
+      channel: "call",
+      direction: "outbound",
+      phone: e164,
+      contactName: resolvedContactName,
+      status: call.status ?? "initiated",
+      twilioSid: call.sid,
+    });
+
+    res.json({
+      ok: true,
+      callSid: call.sid,
+      callId: record.id,
+      crmActivityId,
+      leadId: resolvedLeadId,
+      contactId: resolvedContactId,
+      status: call.status,
+      to: e164,
+      conferenceName: confName,
+    });
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] call error:", _msg);
@@ -877,32 +1004,57 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
       res.status(400).json({ error: "numbers array required" });
       return;
     }
+    const orgContext = await getPhoneOrgContext(userId);
+    const policy = await getPhoneDialingPolicy(orgContext.orgId);
+    const dialCountry = await resolveUserCountry(userId);
+    const seen = new Set<string>();
+    const queue = numbers.flatMap((entry: unknown) => {
+      if (!entry || typeof entry !== "object") return [];
+      const raw = entry as { phone?: unknown; name?: unknown };
+      const phone = toE164(String(raw.phone ?? ""), dialCountry);
+      if (!phone || seen.has(phone)) return [];
+      seen.add(phone);
+      return [{ phone, name: typeof raw.name === "string" ? raw.name.slice(0, 128) : undefined }];
+    });
+    if (queue.length === 0) {
+      res.status(400).json({ error: "No valid phone numbers supplied" });
+      return;
+    }
+    if (queue.length > policy.maxQueueSize) {
+      res.status(400).json({ error: `Queue exceeds the organization limit of ${policy.maxQueueSize} numbers` });
+      return;
+    }
+    const requestedConcurrency = Math.floor(Number(settings?.concurrency) || 3);
+    const requestedDelay = Number(settings?.delayBetweenCalls);
+    const effectiveSettings = {
+      concurrency: Math.min(policy.maxConcurrency, Math.max(1, requestedConcurrency)),
+      delayBetweenCalls: Math.max(policy.minDelaySeconds, Number.isFinite(requestedDelay) ? requestedDelay : 5),
+      recording: true,
+    };
     const [session] = await db
       .insert(dialingSessionsTable)
       .values({
         userId,
         mode,
         status: "running",
-        totalNumbers: numbers.length,
-        queueJson: JSON.stringify(numbers),
-        settingsJson: JSON.stringify(settings ?? {}),
+        totalNumbers: queue.length,
+        queueJson: JSON.stringify(queue),
+        settingsJson: JSON.stringify(effectiveSettings),
       })
       .returning();
 
     const client = getTwilioClient();
     const fromNumber = await getUserOutboundNumber(userId);
     const callerName = getAuthUserId(req);
-    const dialCountry = await resolveUserCountry(userId);
-
-    const settingsConcurrency = typeof settings?.concurrency === "number" ? Math.min(Math.max(settings.concurrency, 2), 5) : 3;
-    let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, numbers.length) : 1;
+    const settingsConcurrency = effectiveSettings.concurrency;
+    let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, queue.length) : 1;
     const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string; conferenceName?: string }> = [];
     const _dialingHost = getAppHost();
     const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
 
     const { consumeUsage, throttleResponse: throttleResp } = await import("../lib/usage-meter");
     for (let i = 0; i < dialCount; i++) {
-      const entry = numbers[i];
+      const entry = queue[i];
       const e164 = toE164(entry.phone, dialCountry);
       if (!e164) {
         results.push({ ok: false, phone: entry.phone, error: "Invalid number" });
@@ -956,7 +1108,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
 
     await db.update(dialingSessionsTable).set({ dialedCount: results.filter((r) => r.ok).length }).where(eq(dialingSessionsTable.id, session.id));
 
-    res.json({ ok: true, sessionId: session.id, mode, calls: results, queue: numbers });
+    res.json({ ok: true, sessionId: session.id, mode, calls: results, queue, settings: effectiveSettings, policy });
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] dialing start error:", _msg);
@@ -965,6 +1117,27 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     } else {
       res.status(500).json({ error: _msg });
     }
+  }
+});
+
+router.get("/twilio/dialing/policy", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  const actor = await getPhoneOrgContext(getAuthUserId(req));
+  const policy = await getPhoneDialingPolicy(actor.orgId);
+  res.json({ policy, role: actor.role, canManage: actor.rank >= PHONE_ROLE_RANK.manager });
+});
+
+router.put("/twilio/dialing/policy", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const actor = await getPhoneOrgContext(getAuthUserId(req));
+    if (!actor.orgId || actor.rank < PHONE_ROLE_RANK.manager) {
+      res.status(403).json({ error: "Organization manager or director access required" });
+      return;
+    }
+    const policy = sanitizePhoneDialingPolicy(req.body);
+    await setSystemConfig(`phone_dialing_policy_org_${actor.orgId}`, JSON.stringify(policy));
+    res.json({ ok: true, policy });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update dialing policy" });
   }
 });
 
@@ -1081,15 +1254,54 @@ router.post("/twilio/dialing/:sessionId/stop", requireAuth, requireFeature("phon
 router.get("/twilio/dialing/sessions", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
+    const actor = await getPhoneOrgContext(userId);
+    let visibleUserIds = [userId];
+    if (actor.orgId && actor.rank >= PHONE_ROLE_RANK.manager) {
+      const members = await db.select({ userId: orgMembersTable.userId })
+        .from(orgMembersTable)
+        .where(and(eq(orgMembersTable.orgId, actor.orgId), eq(orgMembersTable.status, "active")));
+      visibleUserIds = members.map(member => member.userId);
+    }
     const sessions = await db
       .select()
       .from(dialingSessionsTable)
-      .where(eq(dialingSessionsTable.userId, userId))
+      .where(inArray(dialingSessionsTable.userId, visibleUserIds))
       .orderBy(desc(dialingSessionsTable.startedAt))
       .limit(20);
-    res.json({ sessions });
+    res.json({ sessions, scope: actor.rank >= PHONE_ROLE_RANK.manager ? "organization" : "user" });
   } catch (err: unknown) {
     res.status(500).json({ error: "Failed to fetch sessions" });
+  }
+});
+
+router.get("/twilio/dialing/:sessionId/attempts", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const actorId = getAuthUserId(req);
+    const sessionId = Number(req.params.sessionId);
+    const [session] = await db.select().from(dialingSessionsTable).where(eq(dialingSessionsTable.id, sessionId)).limit(1);
+    if (!session || !await canAccessDialingSession(actorId, session.userId)) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    const attempts = await db.select({
+      id: callHistoryTable.id,
+      queueIndex: callHistoryTable.dialingQueueIndex,
+      phone: callHistoryTable.recipientNumber,
+      name: callHistoryTable.callerName,
+      contactId: callHistoryTable.contactId,
+      callSid: callHistoryTable.twilioCallSid,
+      status: callHistoryTable.status,
+      durationSeconds: callHistoryTable.durationSeconds,
+      recordingSid: callHistoryTable.recordingSid,
+      recordingUrl: callHistoryTable.recordingUrl,
+      startedAt: callHistoryTable.startedAt,
+      endedAt: callHistoryTable.endedAt,
+    }).from(callHistoryTable)
+      .where(eq(callHistoryTable.dialingSessionId, sessionId))
+      .orderBy(asc(callHistoryTable.dialingQueueIndex));
+    res.json({ session, attempts });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to fetch session attempts" });
   }
 });
 
@@ -3091,15 +3303,28 @@ router.post("/twilio/webhook/status", async (req, res) => {
     const terminalStatuses = ["completed", "failed", "busy", "no-answer", "canceled"];
     const isTerminal = terminalStatuses.includes(CallStatus);
 
-    const updated = await db
-      .update(callHistoryTable)
-      .set({
-        status: CallStatus,
-        ...(CallDuration && { durationSeconds: parseInt(CallDuration, 10) }),
-        ...(isTerminal && { endedAt: new Date() }),
-      })
-      .where(eq(callHistoryTable.twilioCallSid, CallSid))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${CallSid}))`);
+      const [before] = await tx.select()
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .limit(1);
+      const rows = await tx
+        .update(callHistoryTable)
+        .set({
+          status: CallStatus,
+          ...(CallDuration && { durationSeconds: parseInt(CallDuration, 10) }),
+          ...(isTerminal && { endedAt: new Date() }),
+        })
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .returning();
+      if ((CallStatus === "answered" || CallStatus === "in-progress") && before?.status !== "answered" && before?.status !== "in-progress" && before?.dialingSessionId) {
+        await tx.update(dialingSessionsTable)
+          .set({ answeredCount: sql`${dialingSessionsTable.answeredCount} + 1` })
+          .where(eq(dialingSessionsTable.id, before.dialingSessionId));
+      }
+      return rows;
+    });
 
     if (updated[0]) {
       const c = updated[0];

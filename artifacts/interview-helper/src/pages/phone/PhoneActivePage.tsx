@@ -24,6 +24,19 @@ interface DialingSession {
   total: number;
   dialed: number;
   queue?: Array<{ phone: string; name?: string }>;
+  concurrency?: number;
+  delayBetweenCalls?: number;
+}
+
+interface DialingAttempt {
+  id: number;
+  queueIndex: number | null;
+  phone: string;
+  name: string | null;
+  status: string;
+  durationSeconds: number | null;
+  recordingSid: string | null;
+  recordingUrl: string | null;
 }
 
 function loadSession(): DialingSession | null {
@@ -93,6 +106,7 @@ export default function PhoneActivePage() {
   const [error, setError] = useState('');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(() => loadSession());
   const [advancingNext, setAdvancingNext] = useState(false);
+  const [dialingAttempts, setDialingAttempts] = useState<DialingAttempt[]>([]);
   const [expandedCall, setExpandedCall] = useState<string | null>(null);
   const connectedConferenceRef = useRef<string | null>(null);
   const [phoneTranslationEnabled, setPhoneTranslationEnabled] = useState(() => {
@@ -105,6 +119,33 @@ export default function PhoneActivePage() {
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
+
+  useEffect(() => {
+    if (!dialingSession) {
+      setDialingAttempts([]);
+      return;
+    }
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const r = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/attempts`), { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (cancelled) return;
+        setDialingAttempts(d.attempts ?? []);
+        if (d.session) {
+          setDialingSession(prev => prev ? {
+            ...prev,
+            dialed: d.session.dialedCount ?? prev.dialed,
+            total: d.session.totalNumbers ?? prev.total,
+          } : null);
+        }
+      } catch {}
+    };
+    void sync();
+    const timer = window.setInterval(sync, 2000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [apiUrl, dialingSession?.id]);
 
   // Translation observes the existing live transcript only. It never touches
   // the Twilio media stream or call-control lifecycle.
@@ -198,17 +239,19 @@ export default function PhoneActivePage() {
     if (dialingSession.mode !== 'auto' && dialingSession.mode !== 'predictive') return;
     const terminal = new Set(['completed', 'failed', 'busy', 'no-answer', 'canceled']);
     const liveCount = activeCalls.filter(call => !terminal.has(call.status)).length;
-    const targetConcurrency = dialingSession.mode === 'predictive' ? 3 : 1;
+    const targetConcurrency = dialingSession.mode === 'predictive' ? (dialingSession.concurrency ?? 3) : 1;
     if (liveCount >= targetConcurrency) return;
     const timer = window.setTimeout(() => {
       void advanceSession();
-    }, 500);
+    }, Math.max(500, (dialingSession.delayBetweenCalls ?? 1) * 1000));
     return () => window.clearTimeout(timer);
   }, [
     dialingSession?.id,
     dialingSession?.mode,
     dialingSession?.dialed,
     dialingSession?.total,
+    dialingSession?.concurrency,
+    dialingSession?.delayBetweenCalls,
     advancingNext,
     activeCalls,
   ]);
@@ -379,6 +422,39 @@ export default function PhoneActivePage() {
                 <X size={13} /> STOP SESSION
               </PhoneBtn>
             </div>
+          </div>
+        </PhoneCard>
+      )}
+
+      {dialingSession && dialingAttempts.length > 0 && (
+        <PhoneCard style={{ marginBottom: 20 }}>
+          <PhoneCardHeader>LIVE NUMBER TRACKING</PhoneCardHeader>
+          <div style={{ overflowX: 'auto' }}>
+            {dialingAttempts.map(attempt => (
+              <div
+                key={attempt.id}
+                style={{
+                  minWidth: 560,
+                  display: 'grid',
+                  gridTemplateColumns: '36px minmax(170px, 1fr) 110px 80px 90px',
+                  gap: 10,
+                  alignItems: 'center',
+                  padding: '10px 14px',
+                  borderBottom: `1px solid ${slate(0.08)}`,
+                  fontSize: '0.52rem',
+                }}
+              >
+                <span style={{ color: slate(0.45) }}>#{(attempt.queueIndex ?? 0) + 1}</span>
+                <span style={{ color: slate(0.85) }}>
+                  {attempt.name || 'Unknown'} · {formatPhone(attempt.phone)}
+                </span>
+                <span style={{ color: statusColor(attempt.status) }}>{statusLabel(attempt.status)}</span>
+                <span style={{ color: slate(0.6) }}>{formatDuration(attempt.durationSeconds ?? 0)}</span>
+                <span style={{ color: attempt.recordingSid || attempt.recordingUrl ? primary(0.9) : slate(0.4) }}>
+                  {attempt.recordingSid || attempt.recordingUrl ? 'RECORDED' : attempt.status === 'answered' || attempt.status === 'in-progress' ? 'RECORDING' : '—'}
+                </span>
+              </div>
+            ))}
           </div>
         </PhoneCard>
       )}

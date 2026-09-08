@@ -20,6 +20,8 @@ interface DialingSession {
   total: number;
   dialed: number;
   queue: Array<{ phone: string; name?: string }>;
+  concurrency?: number;
+  delayBetweenCalls?: number;
 }
 
 export default function PhoneSessionsPage() {
@@ -39,6 +41,10 @@ export default function PhoneSessionsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [concurrency, setConcurrency] = useState(3);
+  const [delayBetweenCalls, setDelayBetweenCalls] = useState(5);
+  const [policy, setPolicy] = useState({ maxConcurrency: 5, minDelaySeconds: 1, maxQueueSize: 250 });
+  const [canManagePolicy, setCanManagePolicy] = useState(false);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
@@ -52,6 +58,21 @@ export default function PhoneSessionsPage() {
       })
       .catch(() => setError('Network error loading contacts'));
   }, [userId, apiUrl, navigate]);
+
+  useEffect(() => {
+    apiFetch(apiUrl('twilio/dialing/policy'), { credentials: 'include' })
+      .then(async r => {
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.policy) {
+          setPolicy(d.policy);
+          setConcurrency((current) => Math.min(current, d.policy.maxConcurrency));
+          setDelayBetweenCalls((current) => Math.max(current, d.policy.minDelaySeconds));
+        }
+        setCanManagePolicy(Boolean(d.canManage));
+      })
+      .catch(() => {});
+  }, [apiUrl]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return contacts;
@@ -77,7 +98,11 @@ export default function PhoneSessionsPage() {
       const d = await bridgeOutbound(async () => {
         const r = await apiFetch(apiUrl('twilio/dialing/start'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }) });
+          body: JSON.stringify({
+            mode: dialingMode,
+            numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })),
+            settings: { concurrency, delayBetweenCalls },
+          }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
@@ -89,7 +114,15 @@ export default function PhoneSessionsPage() {
           .filter(c => c.ok && c.callSid)
           .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
         addActiveCallsBatch(newActiveCalls);
-        const session = { id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length, queue: d.queue ?? selectedContacts.map(c => ({ phone: c.phone, name: c.name })) };
+        const session = {
+          id: d.sessionId,
+          mode: d.mode,
+          total: d.queue?.length ?? selectedContacts.length,
+          dialed: batchCalls.filter((c: BatchResult) => c.ok).length,
+          queue: d.queue ?? selectedContacts.map(c => ({ phone: c.phone, name: c.name })),
+          concurrency: d.settings?.concurrency,
+          delayBetweenCalls: d.settings?.delayBetweenCalls,
+        };
         setDialingSession(session);
         try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
         setSelected(new Set());
@@ -219,6 +252,59 @@ export default function PhoneSessionsPage() {
                   </button>
                 );
               })}
+            </div>
+          </PhoneCard>
+
+          <PhoneCard>
+            <PhoneCardHeader>SPEED & INTENSITY</PhoneCardHeader>
+            <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+              <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
+                SIMULTANEOUS LINES · {concurrency}
+                <input
+                  type="range"
+                  min={1}
+                  max={policy.maxConcurrency}
+                  value={concurrency}
+                  onChange={e => setConcurrency(Number(e.target.value))}
+                />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
+                DELAY BETWEEN CALLS · {delayBetweenCalls}s
+                <input
+                  type="range"
+                  min={policy.minDelaySeconds}
+                  max={30}
+                  step={1}
+                  value={delayBetweenCalls}
+                  onChange={e => setDelayBetweenCalls(Number(e.target.value))}
+                />
+              </label>
+              <div style={{ fontSize: '0.42rem', lineHeight: 1.6, color: slate(0.5) }}>
+                Organization limit: {policy.maxConcurrency} simultaneous lines, {policy.minDelaySeconds}s minimum delay, {policy.maxQueueSize} numbers per queue.
+                {canManagePolicy ? ' Managers and directors can update these limits.' : ''}
+              </div>
+              {canManagePolicy && (
+                <PhoneBtn
+                  size="sm"
+                  onClick={async () => {
+                    const r = await apiFetch(apiUrl('twilio/dialing/policy'), {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
+                        maxConcurrency: concurrency,
+                        minDelaySeconds: delayBetweenCalls,
+                        maxQueueSize: policy.maxQueueSize,
+                      }),
+                    });
+                    const d = await r.json().catch(() => ({}));
+                    if (!r.ok) setError(d.error || 'Could not update organization dialing limits');
+                    else setPolicy(d.policy);
+                  }}
+                >
+                  SAVE ORGANIZATION LIMITS
+                </PhoneBtn>
+              )}
             </div>
           </PhoneCard>
 
