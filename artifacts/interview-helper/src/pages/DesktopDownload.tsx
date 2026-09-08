@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Download, ExternalLink, Headphones, Laptop, MessageSquare, ShieldCheck } from "lucide-react";
+import { ArrowRight, Download, Laptop, X } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import "./desktop-download.css";
@@ -47,6 +47,7 @@ export default function DesktopDownload() {
   const [downloadAllowed, setDownloadAllowed] = useState(false);
   const [clientPlatform, setClientPlatform] = useState<DesktopPlatform>("other");
   const [availablePlatforms, setAvailablePlatforms] = useState<AvailablePlatform[]>([]);
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
 
   useEffect(() => {
     setClientPlatform(detectDesktopPlatform());
@@ -78,12 +79,15 @@ export default function DesktopDownload() {
   const gameplayVideoHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase.mp4`;
   const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase-poster.jpg`;
   const platformMessage = !downloadAllowed
-    ? "Desktop test builds are available to approved administrators and moderators."
+    ? "Desktop alpha · approved testers"
     : clientPlatform === "other"
-      ? "A verified desktop build is not available for this operating system."
+      ? "Desktop only · choose a build below"
       : !clientBuildAvailable
-        ? `A verified ${clientRelease?.name ?? "desktop"} build is not available on this server.`
-        : `${clientRelease?.name}: ${clientRelease?.command}.`;
+        ? `${clientRelease?.name ?? "Desktop"} build unavailable`
+        : `${clientRelease?.name} build ready`;
+  const displayedPlatforms = availablePlatforms.length > 0
+    ? platforms.filter((platform) => availablePlatforms.includes(platform.id))
+    : platforms;
 
   return (
     <main className="desktop-download">
@@ -93,8 +97,7 @@ export default function DesktopDownload() {
           <span>SALARYMAN</span>
         </Link>
         <nav className="desktop-download-nav" aria-label="Desktop client navigation">
-          <a href="#client">CLIENT</a>
-          <a href="#connection">CONNECTION</a>
+          <button type="button" onClick={() => setDownloadsOpen(true)}>DOWNLOADS</button>
           <Link href="/phone">CALLL HOME</Link>
           <Link href="/settings">SETTINGS</Link>
         </nav>
@@ -113,19 +116,19 @@ export default function DesktopDownload() {
                 <Download size={16} aria-hidden /> Download {clientRelease.name} gameplay alpha <ArrowRight size={15} aria-hidden />
               </a>
             ) : downloadAllowed ? (
-              <span className="desktop-download-locked"><Laptop size={15} aria-hidden /> Native client unavailable for this device</span>
+              <button className="desktop-download-primary" type="button" onClick={() => setDownloadsOpen(true)} data-testid="link-choose-desktop-build">
+                <Download size={16} aria-hidden /> Choose desktop download <ArrowRight size={15} aria-hidden />
+              </button>
             ) : (
-              <Link
+              <button
                 className="desktop-download-primary"
-                href="/sign-in?returnTo=/desktop"
+                type="button"
+                onClick={() => setDownloadsOpen(true)}
                 data-testid="link-sign-in-download-gameplay-alpha"
               >
-                <Download size={16} aria-hidden /> Download gameplay alpha <ArrowRight size={15} aria-hidden />
-              </Link>
+                <Download size={16} aria-hidden /> Desktop downloads <ArrowRight size={15} aria-hidden />
+              </button>
             )}
-            <Link className="desktop-download-secondary" href="/device-link?mode=desktop">
-              <ShieldCheck size={15} aria-hidden /> Connect a desktop
-            </Link>
           </div>
           <p className="desktop-download-note">
             {platformMessage}
@@ -146,68 +149,48 @@ export default function DesktopDownload() {
           </figcaption>
         </figure>
       </section>
-
-      <section className="desktop-download-platforms" id="install">
-        <div className="desktop-download-section-heading">
-          <div>
-            <p className="desktop-download-eyebrow">NATIVE CLIENT AVAILABILITY</p>
-            <h2>Use the build for your operating system.</h2>
-          </div>
-          <p>The client and simulation contract stay the same on every operating system. Native packages are built on their target OS.</p>
+      {downloadsOpen && (
+        <div className="desktop-download-modal-backdrop" role="presentation" onMouseDown={() => setDownloadsOpen(false)}>
+          <section
+            className="desktop-download-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="desktop-download-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <span>DESKTOP ONLY</span>
+                <h2 id="desktop-download-modal-title">Choose a build.</h2>
+              </div>
+              <button type="button" onClick={() => setDownloadsOpen(false)} aria-label="Close downloads">
+                <X size={19} aria-hidden />
+              </button>
+            </header>
+            <div className="desktop-download-platform-grid">
+              {displayedPlatforms.map((platform) => (
+                <article className="desktop-download-platform" key={platform.name}>
+                  <div className="desktop-download-platform-icon"><Laptop size={19} aria-hidden /></div>
+                  <div className="desktop-download-platform-copy">
+                    <h3>{platform.name}</h3>
+                    <p>{platform.detail}</p>
+                  </div>
+                  {downloadAllowed && availablePlatforms.includes(platform.id) ? (
+                    <a href={apiUrl(`/api/desktop/download?platform=${platform.id}`)} download={platform.archiveName} data-testid={`link-download-${platform.id}-desktop-client`}>
+                      Download <ArrowRight size={14} aria-hidden />
+                    </a>
+                  ) : (
+                    <Link className="desktop-download-platform-locked" href="/sign-in?returnTo=/desktop">
+                      Sign in <ArrowRight size={14} aria-hidden />
+                    </Link>
+                  )}
+                </article>
+              ))}
+            </div>
+            <p>Extract the package, then open START-SALARYMAN.</p>
+          </section>
         </div>
-        <div className="desktop-download-platform-grid">
-          {platforms.filter((platform) => availablePlatforms.includes(platform.id)).map((platform) => (
-            <article className={`desktop-download-platform ${platform.tone}`} key={platform.name}>
-              <div className="desktop-download-platform-icon"><Laptop size={19} aria-hidden /></div>
-              <h3>{platform.name}</h3>
-              <p>{platform.detail}</p>
-              <code>{platform.command}</code>
-              {clientBuildAvailable && clientPlatform === platform.id ? (
-                <a href={downloadHref} download={platform.archiveName} data-testid={`link-download-${platform.id}-desktop-client`}>
-                  Download package <ArrowRight size={14} aria-hidden />
-                </a>
-              ) : (
-                <span className="desktop-download-platform-locked">
-                  {downloadAllowed
-                    ? `Use this package on ${platform.name}.`
-                    : "Admin / moderator access required"}
-                </span>
-              )}
-            </article>
-          ))}
-        </div>
-        <p className="desktop-download-build-note" id="builds">
-          Download the package that matches your operating system. Linux: extract the archive
-          and run START-SALARYMAN. Windows: run START-SALARYMAN.cmd. macOS: open
-          SALARYMAN Office.app after extraction.
-        </p>
-      </section>
-
-      <section className="desktop-download-connection" id="connection">
-        <div className="desktop-download-connection-copy">
-          <p className="desktop-download-eyebrow">THE DESKTOP IS A CLIENT / NOT A SECOND DATABASE</p>
-          <h2>Bring the SALARYMAN tools with you.</h2>
-          <p>
-            Pair once in the browser, then let the desktop client request scoped office,
-            finance, employee, COMMS, notification, and document snapshots from SALARYMAN.
-            Server-owned balances and phone actions stay authoritative.
-          </p>
-          <Link className="desktop-download-primary" href="/device-link?mode=desktop">
-            <ShieldCheck size={16} aria-hidden /> Open secure pairing <ArrowRight size={15} aria-hidden />
-          </Link>
-        </div>
-        <div className="desktop-download-connection-grid">
-          <div><MessageSquare size={18} aria-hidden /><strong>COMMS</strong><span>Messages and notifications stay live.</span></div>
-          <div><Headphones size={18} aria-hidden /><strong>PHONE SYSTEM</strong><span>Open the browser call surface for live audio.</span></div>
-          <div><ShieldCheck size={18} aria-hidden /><strong>SCOPED ACCESS</strong><span>Revoke the desktop from account settings.</span></div>
-        </div>
-      </section>
-
-      <footer className="desktop-download-footer">
-        <span>DESKTOP OFFICE / 01</span>
-        <span>THE WEB REMAINS THE CONTROL PLANE</span>
-        <Link href="/">RETURN TO PABLO <ArrowRight size={13} aria-hidden /></Link>
-      </footer>
+      )}
     </main>
   );
 }
