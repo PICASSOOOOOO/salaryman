@@ -15,3 +15,10 @@ desktop-build = [
 
 [project.scripts]
 salaryman-sim = "pygame_sim.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pygame_sim"]

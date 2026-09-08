@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: repl-nix-workspace
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.11
+Requires-Dist: pygame>=2.6.1
+Requires-Dist: yt-dlp>=2026.7.4
+Provides-Extra: desktop-build
+Requires-Dist: pyinstaller>=6.11; extra == "desktop-build"
