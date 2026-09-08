@@ -59,9 +59,6 @@
   --device-link-line: 38 52 54;
   --device-link-signal: 181 230 87;
   --device-link-warm: 225 169 93;
-  /* Fallout-style readable floor: bump root rem so every size unit scales up app-wide.
-     Default browser = 16px; we bump to 19px so .5rem → 9.5px, 1rem → 19px, etc. */
-  font-size: 19px;
   /* FAB safe-zone: pages with a persistent bottom action bar set this so the
      floating action buttons (chat FAB, audio control) lift above the bar.
      Default 0px = no offset. */
@@ -139,6 +136,7 @@ body:not(.game-route) .rounded-lg {
     overflow-x: hidden;
   }
   #root {
+    min-width: 0;
     min-height: var(--app-viewport-height, 100dvh);
   }
   body {
@@ -506,9 +504,9 @@ header {
    of letting each module invent its own dark, oversized toolbar. */
 .mobile-app-nav,
 .mobile-app-subnav {
-  color: #172e43;
-  background: #fff;
-  border-color: #d9e4ea;
+  color: #102b20;
+  background: #fffaf0;
+  border-color: #cfe4d6;
 }
 
 .mobile-brand-row,
@@ -523,7 +521,7 @@ header {
 .mobile-brand-row {
   min-height: 48px;
   justify-content: flex-end;
-  border-bottom: 1px solid #edf2f5;
+  border-bottom: 1px solid #dcece1;
 }
 
 .mobile-account-actions {
@@ -578,7 +576,7 @@ header {
 .mobile-primary-row {
   min-height: 46px;
   gap: 2px;
-  border-bottom: 1px solid #d9e4ea;
+  border-bottom: 1px solid #cfe4d6;
 }
 
 .mobile-primary-scroll,
@@ -619,9 +617,9 @@ header {
 }
 
 .mobile-primary-item.is-active {
-  color: #155b86;
-  background: #e6f2f9;
-  border-color: #c9e2ef;
+  color: #0b6b3a;
+  background: #eaf8ef;
+  border-color: #9fd0ae;
 }
 
 .mobile-more-anchor {
@@ -900,14 +898,14 @@ body.workspace-light {
   --color-popover-foreground: hsl(0 0% 7%);
   --color-border: hsl(0 0% 18%);
   --color-input: hsl(42 100% 97%);
-  --color-ring: hsl(0 0% 0%);
+  --color-ring: hsl(145 81% 24%);
   --color-primary: hsl(0 0% 0%);
   --color-primary-foreground: hsl(0 0% 100%);
   --color-secondary: hsl(42 100% 97%);
   --color-secondary-foreground: hsl(0 0% 0%);
   --color-muted: hsl(42 100% 97%);
   --color-muted-foreground: hsl(0 0% 0%);
-  --color-accent: hsl(0 0% 0%);
+  --color-accent: hsl(145 81% 24%);
   --color-accent-foreground: hsl(0 0% 100%);
   --color-destructive: hsl(2 61% 56%);
   --color-destructive-foreground: hsl(0 0% 100%);
@@ -915,7 +913,7 @@ body.workspace-light {
   --salary-panel: 255 250 240;
   --salary-paper: 255 250 240;
   --salary-copper: 0 0 0;
-  --salary-signal: 0 0 0;
+  --salary-signal: 11 107 58;
   background: #fffaf0;
   color: #111111;
   background-image: none;
@@ -1115,16 +1113,16 @@ body.workspace-light .desktop-app-nav {
 body.workspace-light .mobile-primary-item.is-active,
 body.workspace-light .mobile-subnav-item.is-active,
 body.workspace-light .mobile-more-item.is-active {
-  color: #0f5ea8 !important;
-  background: #eaf2fb !important;
-  border-color: #a9c7e5 !important;
+  color: #0b6b3a !important;
+  background: #eaf8ef !important;
+  border-color: #9fd0ae !important;
 }
 
 body.workspace-light .mobile-account-button:active,
 body.workspace-light .mobile-back-button:active,
 body.workspace-light .mobile-more-item:active {
-  color: #0f5ea8 !important;
-  background: #eaf2fb !important;
+  color: #0b6b3a !important;
+  background: #eaf8ef !important;
 }
 
 body.workspace-light .desktop-app-nav .text-zinc-100,
@@ -1200,6 +1198,42 @@ body.workspace-light .desktop-download-primary {
 
 body.workspace-light .desktop-download-primary:hover {
   background: #12623d;
+}
+
+/* Matrix green is a signal color on the web, not a dark theme. */
+body.workspace-light :where(a, button, input, select, textarea):focus-visible {
+  outline-color: #0b6b3a !important;
+}
+
+body.workspace-light ::selection {
+  color: #fffaf0;
+  background: #0b6b3a;
+}
+
+body.workspace-light .sm-kicker,
+body.workspace-light .sm-hero h1 span,
+body.workspace-light .sm-menu svg,
+body.workspace-light .sm-secondary,
+body.workspace-light .sm-desktop-download {
+  color: #0b6b3a !important;
+}
+
+body.workspace-light .sm-status {
+  background: #18a957 !important;
+  box-shadow: 0 0 0 5px rgb(24 169 87 / 12%) !important;
+}
+
+body.workspace-light .sm-primary {
+  color: #0b6b3a !important;
+  background: #eaf8ef !important;
+  border: 1px solid #9fd0ae !important;
+  box-shadow: 0 10px 22px rgb(11 107 58 / 10%) !important;
+}
+
+body.workspace-light .sm-primary:hover {
+  color: #fffaf0 !important;
+  background: #0b6b3a !important;
+  border-color: #0b6b3a !important;
 }
 
 body.workspace-light .desktop-download-secondary {

@@ -24,8 +24,8 @@ export const useCalllHomeNav = () => {
 const ROUTE_TO_TAB: Record<string, TabKey> = {
   '/comms': 'chat',
   '/phone/contacts': 'contacts',
-  '/phone/dialer': 'cmd',
-  '/phone/active': 'cmd',
+  '/phone/dialer': 'dial',
+  '/phone/active': 'live',
   '/phone/cmd': 'cmd',
   '/phone/history': 'log',
   '/phone/recordings': 'rec',

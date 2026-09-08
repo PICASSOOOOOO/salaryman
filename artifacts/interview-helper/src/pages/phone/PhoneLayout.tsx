@@ -45,7 +45,7 @@ export function PhonePageLayout({
               <h2 style={{ fontSize: '0.9rem', letterSpacing: '0.2em', color: slate(0.85), margin: 0, fontWeight: 'normal', textTransform: 'uppercase' }}>
                 {title}
               </h2>
-              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.7rem', color: '#050505', lineHeight: 1.45 }}>{subtitle}</p>}
+              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.7rem', color: slate(0.62), lineHeight: 1.45 }}>{subtitle}</p>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -118,7 +118,7 @@ export function PhonePageLayout({
                   {title}
                 </h1>
                 {subtitle && (
-                  <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: '#050505', lineHeight: 1.45 }}>
+                  <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: slate(0.62), lineHeight: 1.45 }}>
                     {subtitle}
                   </p>
                 )}
@@ -308,12 +308,14 @@ export function MiniWaveform({ active, color: c, bars = 5 }: { active?: boolean;
 
 export function SignalMeter({ level, max = 5, color: c }: { level: number; max?: number; color?: (o: number) => string }) {
   const col = c || slate;
+  const safeMax = Math.max(1, max);
+  const divisor = Math.max(1, safeMax - 1);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 14 }}>
-      {Array.from({ length: max }).map((_, i) => (
+      {Array.from({ length: safeMax }).map((_, i) => (
         <div key={i} style={{
           width: 4,
-          height: `${30 + (i * 70 / (max - 1))}%`,
+          height: `${30 + (i * 70 / divisor)}%`,
           borderRadius: 1,
           background: i < level ? col(0.7) : col(0.1),
           transition: 'background 0.2s ease' }} />

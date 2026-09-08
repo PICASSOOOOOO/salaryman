@@ -45,7 +45,7 @@ export default function PhoneDialerPage() {
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
-  const { disconnect: disconnectDevice } = useTwilioDeviceContext();
+  useTwilioDeviceContext();
 
   const [manualNumber, setManualNumber] = useState('');
   const [loading, setLoading] = useState(false);
@@ -154,6 +154,7 @@ export default function PhoneDialerPage() {
       setCallStarting(false);
     }
     setLoading(false);
+    setCallStarting(false);
   };
 
   const launchDialingSession = async () => {
@@ -253,13 +254,13 @@ export default function PhoneDialerPage() {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
                 {dialKeys.map(key => (
                   <button
                     key={key}
                     onClick={() => pressKey(key)}
                     style={{
-                      height: 62, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      height: isMobile ? 58 : 62, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                       background: dtmfTone === key ? slate(0.15) : slate(0.02),
                       border: `1px solid ${dtmfTone === key ? slate(0.4) : slate(0.1)}`,
                       color: slate(0.85), cursor: 'pointer', borderRadius: 8,

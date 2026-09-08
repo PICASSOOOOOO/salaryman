@@ -55,21 +55,26 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     setDeviceState(state);
   }, []);
 
-  const scheduleTokenRefresh = useCallback(() => {
+  const scheduleTokenRefresh = useCallback((delay = TOKEN_REFRESH_MS) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     refreshTimerRef.current = setTimeout(async () => {
       if (!deviceRef.current) return;
       try {
         const r = await apiFetch(apiUrl('twilio/token'), { credentials: 'include' });
-        if (!r.ok) return;
+        if (!r.ok) {
+          console.warn(`[TwilioDevice] token refresh rejected (${r.status}); retrying`);
+          scheduleTokenRefresh(30_000);
+          return;
+        }
         const data = await r.json();
         deviceRef.current.updateToken(data.token);
         console.log('[TwilioDevice] token refreshed');
         scheduleTokenRefresh();
       } catch (err) {
         console.warn('[TwilioDevice] token refresh failed:', err instanceof Error ? err.message : 'Unknown');
+        scheduleTokenRefresh(30_000);
       }
-    }, TOKEN_REFRESH_MS);
+    }, delay);
   }, [apiUrl]);
 
   const initDevice = useCallback(async () => {
@@ -224,14 +229,21 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
       retryAttemptRef.current = 0;
       void initDeviceRef.current();
     };
+    const markOffline = () => {
+      if (unmountedRef.current) return;
+      setDeviceError('This device is offline. The phone will reconnect automatically.');
+      updateDeviceState('error');
+    };
     const retryWhenVisible = () => {
       if (document.visibilityState === 'visible') retryWhenOnline();
     };
     window.addEventListener('online', retryWhenOnline);
+    window.addEventListener('offline', markOffline);
     document.addEventListener('visibilitychange', retryWhenVisible);
     return () => {
       unmountedRef.current = true;
       window.removeEventListener('online', retryWhenOnline);
+      window.removeEventListener('offline', markOffline);
       document.removeEventListener('visibilitychange', retryWhenVisible);
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
@@ -240,7 +252,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
         deviceRef.current = null;
       }
     };
-  }, []);
+  }, [updateDeviceState]);
 
   // Manual reconnect: cancel any pending backoff and try right now.
   const reconnect = useCallback(async () => {

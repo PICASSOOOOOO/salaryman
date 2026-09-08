@@ -33,6 +33,7 @@ function formatTime(iso: string) {
 
 export default function PhoneSmsPage() {
   const isMobile = useIsMobile();
+  const BASE = import.meta.env.BASE_URL;
 
   const [conversations, setConversations] = useState<SmsConversation[]>([]);
   const [activeConv, setActiveConv] = useState<SmsConversation | null>(null);
@@ -44,28 +45,37 @@ export default function PhoneSmsPage() {
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
   const [showNewConv, setShowNewConv] = useState(false);
+  const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const loadConversations = useCallback(async () => {
     try {
-      const r = await apiFetch('/api/sms/conversations');
-      if (r.ok) { const d = await r.json(); setConversations(d.conversations || []); }
-    } catch {}
+      const r = await apiFetch(apiUrl('sms/conversations'));
+      if (!r.ok) throw new Error(`Could not load SMS threads (${r.status})`);
+      const d = await r.json();
+      setConversations(d.conversations || []);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load SMS threads');
+    }
     setLoading(false);
-  }, []);
+  }, [apiUrl]);
 
   const loadMessages = useCallback(async (convId: number) => {
     setLoadingMsgs(true);
     try {
-      const r = await apiFetch(`/api/sms/conversations/${convId}/messages`);
-      if (r.ok) {
-        const d = await r.json();
-        setMessages(d.messages || []);
-        invalidateCommsSummary();
-      }
-    } catch {}
+      const r = await apiFetch(apiUrl(`sms/conversations/${convId}/messages`));
+      if (!r.ok) throw new Error(`Could not load messages (${r.status})`);
+      const d = await r.json();
+      setMessages(d.messages || []);
+      setError('');
+      invalidateCommsSummary();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load messages');
+    }
     setLoadingMsgs(false);
-  }, []);
+  }, [apiUrl]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
@@ -90,18 +100,22 @@ export default function PhoneSmsPage() {
     if (!newMsg.trim() || !activeConv) return;
     setSending(true);
     const body = newMsg.trim();
-    setNewMsg('');
     try {
-      const r = await apiFetch('/api/sms/send', {
+      const r = await apiFetch(apiUrl('sms/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: activeConv.contactPhone, body, contactName: activeConv.contactName }) });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Message failed (${r.status})`);
       if (r.ok && d.message) {
         setMessages(prev => [...prev, d.message]);
         setConversations(prev => prev.map(c => c.id === activeConv.id ? { ...c, lastMessageAt: new Date().toISOString() } : c));
+        setNewMsg('');
+        setError('');
       }
-    } catch {}
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Message failed. Your draft was preserved.');
+    }
     setSending(false);
   }
 
@@ -109,11 +123,12 @@ export default function PhoneSmsPage() {
     if (!newPhone.trim() || !newMsg.trim()) return;
     setSending(true);
     try {
-      const r = await apiFetch('/api/sms/send', {
+      const r = await apiFetch(apiUrl('sms/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: newPhone, body: newMsg, contactName: newName || newPhone }) });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Message failed (${r.status})`);
       if (r.ok) {
         setShowNewConv(false);
         setNewPhone('');
@@ -121,8 +136,11 @@ export default function PhoneSmsPage() {
         setNewMsg('');
         await loadConversations();
         if (d.conversation) setActiveConv(d.conversation);
+        setError('');
       }
-    } catch {}
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Message failed. Your draft was preserved.');
+    }
     setSending(false);
   }
 
@@ -136,7 +154,8 @@ export default function PhoneSmsPage() {
     <div style={{
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
-      height: isMobile ? 720 : 600,
+      height: isMobile ? 'calc(var(--app-viewport-height, 100dvh) - 180px)' : 600,
+      minHeight: isMobile ? 480 : undefined,
       border: `1px solid ${slate(0.1)}`,
       borderRadius: 8,
       overflow: 'hidden',
@@ -169,6 +188,11 @@ export default function PhoneSmsPage() {
             <Plus size={12} />
           </button>
         </div>
+        {error && (
+          <div role="alert" style={{ padding: '8px 12px', borderBottom: `1px solid ${warning(0.25)}`, fontSize: '0.48rem', lineHeight: 1.45 }}>
+            {error}
+          </div>
+        )}
         {loading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Loader2 size={16} style={{ color: slate(0.55), animation: 'spin 1s linear infinite' }} />

@@ -216,7 +216,11 @@ export default function PhoneActivePage() {
   const stopSession = async () => {
     if (!dialingSession) return;
     try {
-      await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
+      const response = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Could not stop session (${response.status})`);
+      }
       setDialingSession(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not stop session');
@@ -471,7 +475,15 @@ export default function PhoneActivePage() {
                           {c.recordingActive && <span style={{ color: destructive(0.7), display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 5, height: 5, borderRadius: '50%', background: destructive(0.9), animation: 'pulse 1s infinite' }} /> REC</span>}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div style={{
+                        display: 'flex',
+                        gap: 6,
+                        flexShrink: 0,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        width: isMobile ? '100%' : 'auto',
+                        paddingLeft: isMobile ? 56 : 0,
+                      }}>
                         {!ended && (
                           <PhoneBtn onClick={() => setExpandedCall(isExpanded ? null : c.callSid)} color={isExpanded ? slate : undefined} size="sm" title="Call details">
                             <FileText size={13} />

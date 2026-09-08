@@ -232,8 +232,13 @@ export default function CalllHomePage() {
               </span>
             </div>
              {systemStatus === 'online' && deviceState !== 'ready' && (
-               <button type="button" onClick={() => void reconnect()} disabled={deviceState === 'initializing'}>
-                 {deviceState === 'initializing' ? 'CONNECTING' : 'RECONNECT'}
+               <button
+                 type="button"
+                 onClick={() => void reconnect()}
+                 disabled={deviceState === 'initializing'}
+                 aria-label={deviceState === 'initializing' ? 'Phone is connecting' : 'Reconnect browser phone'}
+               >
+                 {deviceState === 'initializing' ? '…' : 'RECONNECT'}
                </button>
              )}
           </div>
