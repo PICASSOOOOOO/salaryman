@@ -47,6 +47,14 @@ router.get("/desktop/access", async (req, res) => {
 });
 
 router.get("/desktop/download", async (req, res) => {
+  if (req.query.platform !== "linux") {
+    res.status(400).json({
+      error: "Choose an operating-system-specific desktop package.",
+      availablePlatforms: ["linux"],
+    });
+    return;
+  }
+
   try {
     if (!(await hasDesktopReleaseAccess(req, res))) return;
   } catch (error) {

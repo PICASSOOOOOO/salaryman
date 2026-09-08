@@ -4,6 +4,16 @@ import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import "./desktop-download.css";
 
+type DesktopPlatform = "windows" | "macos" | "linux" | "other";
+
+function detectDesktopPlatform(): DesktopPlatform {
+  const platform = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
+  if (platform.includes("win")) return "windows";
+  if (platform.includes("mac")) return "macos";
+  if (platform.includes("linux") && !platform.includes("android")) return "linux";
+  return "other";
+}
+
 const platforms = [
   {
     name: "Windows",
@@ -30,8 +40,10 @@ const platforms = [
 
 export default function DesktopDownload() {
   const [downloadAllowed, setDownloadAllowed] = useState(false);
+  const [clientPlatform, setClientPlatform] = useState<DesktopPlatform>("other");
 
   useEffect(() => {
+    setClientPlatform(detectDesktopPlatform());
     let cancelled = false;
     apiFetch("/api/desktop/access")
       .then(async (response) => {
@@ -45,7 +57,15 @@ export default function DesktopDownload() {
     };
   }, []);
 
-  const downloadHref = apiUrl("/api/desktop/download");
+  const downloadHref = apiUrl("/api/desktop/download?platform=linux");
+  const linuxDownloadAvailable = downloadAllowed && clientPlatform === "linux";
+  const platformMessage = clientPlatform === "windows"
+    ? "Windows client not published yet. The Linux package will not run on Windows."
+    : clientPlatform === "macos"
+      ? "macOS client not published yet. The Linux package will not run on a Mac."
+      : clientPlatform === "linux"
+        ? "Linux: extract the download, then double-click START-SALARYMAN. No Docker required."
+        : "A native package for this operating system is not published yet.";
 
   return (
     <main className="desktop-download">
@@ -70,10 +90,12 @@ export default function DesktopDownload() {
             A native office client for focused work away from the browser.
           </p>
           <div className="desktop-download-actions">
-            {downloadAllowed ? (
+            {linuxDownloadAvailable ? (
               <a className="desktop-download-primary" href={downloadHref} download="salaryman-office-linux-x86_64.tar.gz">
                 <Download size={16} aria-hidden /> Download Linux client <ArrowRight size={15} aria-hidden />
               </a>
+            ) : downloadAllowed ? (
+              <span className="desktop-download-locked"><Laptop size={15} aria-hidden /> Native client unavailable for this device</span>
             ) : (
               <span className="desktop-download-locked"><ShieldCheck size={15} aria-hidden /> Admin / moderator test access</span>
             )}
@@ -82,7 +104,7 @@ export default function DesktopDownload() {
             </Link>
           </div>
           <p className="desktop-download-note">
-            Linux: extract the download, then double-click START-SALARYMAN. No Docker required.
+            {platformMessage}
           </p>
         </div>
         <div className="desktop-download-stage" aria-label="Desktop office preview">
@@ -104,8 +126,8 @@ export default function DesktopDownload() {
       <section className="desktop-download-platforms" id="install">
         <div className="desktop-download-section-heading">
           <div>
-            <p className="desktop-download-eyebrow">ONE CLIENT / THREE PLATFORMS</p>
-            <h2>Choose your station.</h2>
+            <p className="desktop-download-eyebrow">NATIVE CLIENT AVAILABILITY</p>
+            <h2>Use the build for your operating system.</h2>
           </div>
           <p>The client and simulation contract stay the same on every operating system. Native packages are built on their target OS.</p>
         </div>
@@ -116,13 +138,17 @@ export default function DesktopDownload() {
               <h3>{platform.name}</h3>
               <p>{platform.detail}</p>
               <code>{platform.command}</code>
-              {platform.name === "Linux" && downloadAllowed ? (
+              {platform.name === "Linux" && linuxDownloadAvailable ? (
                 <a href={downloadHref} download="salaryman-office-linux-x86_64.tar.gz">
                   Download package <ArrowRight size={14} aria-hidden />
                 </a>
               ) : (
                 <span className="desktop-download-platform-locked">
-                  {platform.name === "Linux" ? "Admin / moderator access required" : "Native build not published yet"}
+                  {platform.name === "Linux"
+                    ? clientPlatform === "linux"
+                      ? "Admin / moderator access required"
+                      : "Linux only — unavailable on this device"
+                    : "Native build not published yet"}
                 </span>
               )}
             </article>
