@@ -4,6 +4,8 @@ import { slate, warning, formatPhone } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
+import type { CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 interface SmsConversation {
   id: number;
@@ -43,6 +45,7 @@ export default function PhoneSmsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [newPhone, setNewPhone] = useState('');
+  const [newPhoneCountry, setNewPhoneCountry] = useState<CountryCode>('US');
   const [newName, setNewName] = useState('');
   const [showNewConv, setShowNewConv] = useState(false);
   const [error, setError] = useState('');
@@ -126,7 +129,7 @@ export default function PhoneSmsPage() {
       const r = await apiFetch(apiUrl('sms/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: newPhone, body: newMsg, contactName: newName || newPhone }) });
+        body: JSON.stringify({ phone: newPhone, countryCode: newPhoneCountry, body: newMsg, contactName: newName || newPhone }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || `Message failed (${r.status})`);
       if (r.ok) {
@@ -258,7 +261,10 @@ export default function PhoneSmsPage() {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>PHONE NUMBER *</label>
-              <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+1 555 000 1234" data-testid="input-sms-phone" style={inputStyle} />
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '180px 1fr', gap: 8 }}>
+                <PhoneCountrySelect value={newPhoneCountry} onChange={setNewPhoneCountry} />
+                <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="555 000 1234" data-testid="input-sms-phone" style={inputStyle} />
+              </div>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>CONTACT NAME</label>

@@ -564,7 +564,7 @@ router.post("/twilio/twiml/client-voice", async (req, res) => {
 
 router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
-    const { recipientNumber, callerName, contactName, contactId, leadId } = req.body;
+    const { recipientNumber, callerName, contactName, contactId, leadId, countryCode } = req.body;
     const userId = getAuthUserId(req);
     if (!userId) {
       res.status(400).json({ error: "recipientNumber required" });
@@ -620,7 +620,9 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
       res.status(400).json({ error: "recipientNumber required" });
       return;
     }
-    const callCountry = await resolveUserCountry(userId);
+    const callCountry = typeof countryCode === "string" && /^[A-Za-z]{2}$/.test(countryCode)
+      ? countryCode.toUpperCase()
+      : DEFAULT_COUNTRY;
     const e164 = toE164(authoritativeNumber, callCountry);
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number format" });
@@ -853,7 +855,10 @@ router.post("/twilio/call/:callSid/transfer", requireAuth, requireFeature("phone
       res.status(400).json({ error: "transferTo number required" });
       return;
     }
-    const e164 = toE164(transferTo, await resolveUserCountry(userId));
+    const transferCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
+      ? req.body.countryCode.toUpperCase()
+      : DEFAULT_COUNTRY;
+    const e164 = toE164(transferTo, transferCountry);
     if (!e164) {
       res.status(400).json({ error: "Invalid transfer number" });
       return;
@@ -911,7 +916,10 @@ router.post("/twilio/conference/:roomName/add", requireAuth, requireFeature("pho
       res.status(400).json({ error: "phoneNumber required" });
       return;
     }
-    const e164 = toE164(phoneNumber, await resolveUserCountry(userId));
+    const conferenceCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
+      ? req.body.countryCode.toUpperCase()
+      : DEFAULT_COUNTRY;
+    const e164 = toE164(phoneNumber, conferenceCountry);
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number" });
       return;
@@ -1006,7 +1014,9 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     }
     const orgContext = await getPhoneOrgContext(userId);
     const policy = await getPhoneDialingPolicy(orgContext.orgId);
-    const dialCountry = await resolveUserCountry(userId);
+    const dialCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
+      ? req.body.countryCode.toUpperCase()
+      : DEFAULT_COUNTRY;
     const seen = new Set<string>();
     const queue = numbers.flatMap((entry: unknown) => {
       if (!entry || typeof entry !== "object") return [];
@@ -1174,7 +1184,7 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       return;
     }
     const entry = queue[dialed];
-    const e164 = toE164(entry.phone, await resolveUserCountry(userId));
+    const e164 = toE164(entry.phone, DEFAULT_COUNTRY);
     if (!e164) {
       res.json({ ok: false, skipped: true, phone: entry.phone, error: "Invalid number" });
       return;
@@ -2280,7 +2290,7 @@ router.post("/twilio/call-center/agents", requireAuth, requireFeature("phone_sys
       res.status(400).json({ error: "Name and phone are required" });
       return;
     }
-    const e164 = toE164(phone, await resolveUserCountry(userId));
+    const e164 = toE164(phone, DEFAULT_COUNTRY);
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number" });
       return;
@@ -2704,7 +2714,9 @@ router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), a
     const protocol = process.env.NODE_ENV === "production" ? "https" : "https";
     const host = getAppHost();
     const statusCallbackUrl = host ? `${protocol}://${host}/api/twilio/webhook/status` : undefined;
-    const batchCountry = await resolveUserCountry(userId);
+    const batchCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
+      ? req.body.countryCode.toUpperCase()
+      : DEFAULT_COUNTRY;
     const results = await Promise.allSettled(
       numbers.map(async (entry: { phone: string; name?: string }) => {
         const e164 = toE164(entry.phone, batchCountry);

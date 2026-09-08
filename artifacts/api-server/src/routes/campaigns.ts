@@ -430,7 +430,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     if (!campaign) { res.status(404).json({ error: "Not found" }); return; }
     if (!campaign.messageBody?.trim()) { res.status(400).json({ error: "Message body required" }); return; }
 
-    const campaignCountry = await resolveUserCountry(userId);
+    const campaignCountry = "US";
 
     if (test) {
       if (!testPhone) { res.status(400).json({ error: "Test phone number required" }); return; }
@@ -597,10 +597,13 @@ router.get("/sms/conversations/:id/messages", async (req: Request, res: Response
 router.post("/sms/send", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
-  const { phone, body, contactId, contactName } = req.body;
+  const { phone, body, contactId, contactName, countryCode } = req.body;
   if (!phone || !body?.trim()) { res.status(400).json({ error: "Phone and message body required" }); return; }
 
-  const e164 = toE164(phone, await resolveUserCountry(userId));
+  const outboundCountry = typeof countryCode === "string" && /^[A-Za-z]{2}$/.test(countryCode)
+    ? countryCode.toUpperCase()
+    : "US";
+  const e164 = toE164(phone, outboundCountry);
   if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
 
   const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
@@ -613,7 +616,15 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   try {
     // Outbound SMS lives in the shared telephony service so the manual route and
     // the CRM autopilot send + record identically (same CRM dedupe/side-effects).
-    const { message, conversation } = await sendSmsMessage({ userId, userEmail: req.user?.email, phone: e164, body, contactId, contactName });
+    const { message, conversation } = await sendSmsMessage({
+      userId,
+      userEmail: req.user?.email,
+      phone: e164,
+      body,
+      contactId,
+      contactName,
+      defaultCountry: outboundCountry,
+    });
     await recordUsage(userId, "sms_count", 1);
     res.json({ ok: true, message, conversation });
   } catch (err: any) {

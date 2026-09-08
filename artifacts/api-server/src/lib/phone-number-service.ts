@@ -1,7 +1,8 @@
 import twilio from "twilio";
 import { createHash } from "crypto";
 import { and, eq, or } from "drizzle-orm";
-import { db, phoneNumbersTable, phoneNumberPurchasesTable } from "@workspace/db";
+import { db, phoneNumbersTable, phoneNumberPurchasesTable, usersTable } from "@workspace/db";
+import { canUsePlatformTwilio } from "./platform-twilio-access";
 
 function getTwilioClient() {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -16,14 +17,29 @@ export function getPhoneNumberCheckoutMarker(stripeSessionId: string): string {
 }
 
 export async function getUserOutboundNumber(userId: string): Promise<string> {
+  const [user] = await db.select({
+    email: usersTable.email,
+    currentOrgId: usersTable.currentOrgId,
+  }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const currentOrgId = user?.currentOrgId ? Number(user.currentOrgId) : null;
   const [active] = await db
     .select({ number: phoneNumbersTable.number })
     .from(phoneNumbersTable)
-    .where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true)))
+    .where(and(
+      or(
+        eq(phoneNumbersTable.userId, userId),
+        ...(Number.isFinite(currentOrgId) ? [eq(phoneNumbersTable.orgId, currentOrgId!)] : []),
+      ),
+      eq(phoneNumbersTable.isActive, true),
+    ))
     .limit(1);
-  const fallback = process.env.TWILIO_PHONE_NUMBER;
-  if (!active?.number && !fallback) throw new Error("TWILIO_PHONE_NUMBER not configured");
-  return active?.number || fallback!;
+  if (active?.number) return active.number;
+  if (await canUsePlatformTwilio(userId, user?.email)) {
+    const testNumber = process.env.TWILIO_PHONE_NUMBER;
+    if (!testNumber) throw new Error("TWILIO_PHONE_NUMBER not configured");
+    return testNumber;
+  }
+  throw new Error("Your organization needs an active phone number. Purchase one for $10 in Phone Numbers.");
 }
 
 /**
@@ -141,8 +157,14 @@ export async function provisionPaidPhoneNumber(input: {
     .from(phoneNumbersTable)
     .where(and(eq(phoneNumbersTable.userId, input.userId), eq(phoneNumbersTable.isActive, true)))
     .limit(1);
+  const [buyer] = await db.select({ currentOrgId: usersTable.currentOrgId })
+    .from(usersTable)
+    .where(eq(usersTable.id, input.userId))
+    .limit(1);
+  const orgId = buyer?.currentOrgId ? Number(buyer.currentOrgId) : null;
   await db.insert(phoneNumbersTable).values({
     userId: input.userId,
+    orgId: Number.isFinite(orgId) ? orgId : null,
     number: purchased.phoneNumber,
     twilioSid: purchased.sid,
     friendlyName: purchased.friendlyName || purchased.phoneNumber,

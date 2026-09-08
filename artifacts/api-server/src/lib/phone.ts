@@ -1,3 +1,5 @@
+import { getCountries, parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js/max";
+
 // ── Country-aware phone helpers ─────────────────────────────────────────────
 // Single source of truth for E.164 normalization and the small registry of
 // countries the telephony stack supports. Kept PURE (no db / no Twilio imports)
@@ -96,23 +98,21 @@ export function countryForCity(cityId: string | null | undefined): string {
  * Returns null when the result isn't a plausible E.164 number (7–15 digits).
  */
 export function toE164(raw: string, defaultCountry: string = DEFAULT_COUNTRY): string | null {
-  const cleaned = (raw || "").replace(/[^+\d]/g, "");
-  if (!cleaned) return null;
-
-  // Explicit international number — trust it, just validate the digit count.
-  if (cleaned.startsWith("+")) {
-    const digits = cleaned.slice(1);
-    return /^\d{7,15}$/.test(digits) ? `+${digits}` : null;
+  const value = (raw || "").trim();
+  if (!value) return null;
+  try {
+    const requestedCountry = (defaultCountry || DEFAULT_COUNTRY).toUpperCase();
+    const country = getCountries().includes(requestedCountry as CountryCode)
+      ? requestedCountry as CountryCode
+      : DEFAULT_COUNTRY as CountryCode;
+    const parsed = parsePhoneNumberFromString(
+      value,
+      country,
+    );
+    return parsed?.isPossible() ? parsed.number : null;
+  } catch {
+    return null;
   }
-
-  const country = getCountryInfo(defaultCountry);
-  let national = cleaned;
-  if (country.trunkPrefix && national.startsWith(country.trunkPrefix)) {
-    national = national.slice(country.trunkPrefix.length);
-  }
-  const e164 = `+${country.dialCode}${national}`;
-  const digits = e164.slice(1);
-  return /^\d{7,15}$/.test(digits) ? e164 : null;
 }
 
 export interface RegulatoryRequirement {

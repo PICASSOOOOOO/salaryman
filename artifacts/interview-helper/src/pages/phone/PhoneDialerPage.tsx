@@ -13,6 +13,8 @@ import {
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
@@ -26,12 +28,12 @@ const MODES: { key: DialMode; label: string; desc: string; color: (o: number) =>
   { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: accent, icon: '🚀' },
 ];
 
-function validatePhoneNumber(raw: string): boolean {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 10) return true;
-  if (digits.length === 11 && digits[0] === '1') return true;
-  if (raw.startsWith('+') && digits.length >= 7 && digits.length <= 15) return true;
-  return false;
+function validatePhoneNumber(raw: string, country: CountryCode): boolean {
+  try {
+    return Boolean(parsePhoneNumberFromString(raw, country)?.isPossible());
+  } catch {
+    return false;
+  }
 }
 
 export default function PhoneDialerPage() {
@@ -48,6 +50,7 @@ export default function PhoneDialerPage() {
   useTwilioDeviceContext();
 
   const [manualNumber, setManualNumber] = useState('');
+  const [dialCountry, setDialCountry] = useState<CountryCode>('US');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recentContacts, setRecentContacts] = useState<CRMContact[]>([]);
@@ -61,7 +64,7 @@ export default function PhoneDialerPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
-  const isValidNumber = useMemo(() => validatePhoneNumber(manualNumber), [manualNumber]);
+  const isValidNumber = useMemo(() => validatePhoneNumber(manualNumber, dialCountry), [manualNumber, dialCountry]);
   const numberHasInput = manualNumber.trim().length > 0;
   const showValidationError = numberHasInput && !isValidNumber;
 
@@ -131,7 +134,7 @@ export default function PhoneDialerPage() {
   };
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
-    if (!validatePhoneNumber(phone)) { setError('Invalid phone number format'); return; }
+    if (!validatePhoneNumber(phone, dialCountry)) { setError('Invalid phone number format'); return; }
     setError('');
     setLoading(true);
     setCallStarting(true);
@@ -141,7 +144,7 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
+          body: JSON.stringify({ recipientNumber: phone, countryCode: dialCountry, userId, callerName, contactName: name, contactId }) });
         if (await handleFetchError(r)) throw new Error('Call request failed');
         return r.json();
       }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
@@ -225,23 +228,26 @@ export default function PhoneDialerPage() {
                 padding: '14px 18px', marginBottom: 8, borderRadius: 8,
                 transition: 'border-color 0.3s ease' }}>
                 <div style={{ fontSize: '0.4rem', color: showValidationError ? destructive(0.6) : slate(0.2), letterSpacing: '0.2em', marginBottom: 4 }}>NUMBER INPUT</div>
-                <input
-                  value={manualNumber}
-                  onChange={e => setManualNumber(e.target.value)}
-                  placeholder="Enter phone number..."
-                  style={{
-                    width: '100%', background: 'transparent', border: 'none',
-                    color: showValidationError ? destructive(0.8) : slate(0.95), fontSize: '1.6rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                    outline: 'none', letterSpacing: '0.08em' }}
-                  onKeyDown={e => { if (e.key === 'Enter' && isValidNumber) callSingle(manualNumber); }}
-                />
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <PhoneCountrySelect value={dialCountry} onChange={setDialCountry} compact />
+                  <input
+                    value={manualNumber}
+                    onChange={e => setManualNumber(e.target.value)}
+                    placeholder="Phone number"
+                    style={{
+                      minWidth: 0, flex: 1, background: 'transparent', border: 'none',
+                      color: showValidationError ? destructive(0.8) : slate(0.95), fontSize: '1.25rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
+                      outline: 'none', letterSpacing: '0.05em' }}
+                    onKeyDown={e => { if (e.key === 'Enter' && isValidNumber) callSingle(manualNumber); }}
+                  />
+                </div>
                 {formattedDisplay && formattedDisplay !== manualNumber && !showValidationError && (
                   <div style={{ fontSize: '0.55rem', color: slate(0.55), marginTop: 4 }}>{formattedDisplay}</div>
                 )}
                 {showValidationError && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                     <AlertCircle size={10} style={{ color: destructive(0.7), flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.48rem', color: destructive(0.7) }}>Invalid format — enter 10-digit US or E.164 number</span>
+                    <span style={{ fontSize: '0.48rem', color: destructive(0.7) }}>Invalid number for {dialCountry}. Select another country or enter the full + international number.</span>
                   </div>
                 )}
               </div>
