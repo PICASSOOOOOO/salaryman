@@ -198,6 +198,7 @@ const LEGACY_ALIASES: Record<string, FeatureKey> = {
 // ledger, identical ownership in both places. Keyed by Pledge Store itemId.
 export const PLEDGE_FEATURE_UNLOCKS: Record<string, FeatureKey[]> = {
   term_pablo_pass: ["live_listen", "screen_scan", "say_this"],
+  term_phone_pass: ["phone_system"],
 };
 
 // Returns the terminal features unlocked by a user's completed pledge

@@ -13,6 +13,7 @@ import {
   filesFoldersTable,
 } from "@workspace/db";
 import { hasFeature } from "../lib/plan";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
 
@@ -67,7 +68,7 @@ async function requireOrgAdmin(req: Request, res: Response, next: NextFunction) 
   next();
 }
 
-router.get("/media/recording/download/:callId", requireAuth, async (req, res) => {
+router.get("/media/recording/download/:callId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
@@ -159,7 +160,7 @@ router.get("/media/recording/download/:callId", requireAuth, async (req, res) =>
   }
 });
 
-router.get("/media/recording/info/:callId", requireAuth, async (req, res) => {
+router.get("/media/recording/info/:callId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
@@ -373,7 +374,7 @@ router.post("/media/inbox/:id/read", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/media/screen-session/start", requireAuth, async (req, res) => {
+router.post("/media/screen-session/start", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const orgId = await getUserOrgId(userId);
@@ -404,7 +405,7 @@ router.post("/media/screen-session/start", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/media/screen-session/:id/stop", requireAuth, async (req, res) => {
+router.post("/media/screen-session/:id/stop", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -430,7 +431,7 @@ router.post("/media/screen-session/:id/stop", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/media/screen-session/:id/screenshot", requireAuth, async (req, res) => {
+router.post("/media/screen-session/:id/screenshot", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -455,7 +456,7 @@ router.post("/media/screen-session/:id/screenshot", requireAuth, async (req, res
   }
 });
 
-router.get("/media/screen-session/my", requireAuth, async (req, res) => {
+router.get("/media/screen-session/my", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const sessions = await db
@@ -470,7 +471,7 @@ router.get("/media/screen-session/my", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/media/screen-monitoring", requireAuth, async (req, res) => {
+router.get("/media/screen-monitoring", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const orgId = await getUserOrgId(userId);

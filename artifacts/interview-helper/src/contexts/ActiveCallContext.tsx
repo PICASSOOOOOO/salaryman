@@ -76,10 +76,21 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
         if (!r.ok) return;
         const d = await r.json();
         if (d.statuses) {
-          setActiveCalls(prev => reconcilePolledCalls(prev, d.statuses, ENDED_STATUSES).map(ac => ({
-            ...ac,
-            signalLevel: callStatusToSignalLevel(ac.status),
-          })));
+          setActiveCalls(prev => {
+            const next = reconcilePolledCalls(prev, d.statuses, ENDED_STATUSES).map(ac => ({
+              ...ac,
+              signalLevel: callStatusToSignalLevel(ac.status),
+            }));
+            const hadLiveCalls = prev.some(c => !ENDED_STATUSES.includes(c.status));
+            const hasLiveCalls = next.some(c => !ENDED_STATUSES.includes(c.status));
+            if (hadLiveCalls && !hasLiveCalls) {
+              // Twilio can finish the PSTN leg remotely without emitting a
+              // browser Call disconnect event. Explicitly release WebRTC so
+              // conference/hold audio cannot continue after the call ends.
+              disconnectLocalDeviceCalls();
+            }
+            return next;
+          });
         }
       } catch (e) {
         console.warn('[ActiveCallContext] poll error:', e instanceof Error ? e.message : e);
@@ -176,6 +187,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       // immediately even if the API call is slow.
       const wasLastLive = activeCallsRef.current.filter(c => !ENDED_STATUSES.includes(c.status)).length <= 1;
       if (wasLastLive) disconnectLocalDeviceCalls();
+      setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
       const r = await apiFetch(`/api/twilio/hangup/${sid}`, { method: 'POST' });
       if (r.ok) {
         setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
@@ -193,14 +205,12 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
     if (sids.length === 0) return { ok: true };
     // Always disconnect the local WebRTC leg on hangup-all.
     disconnectLocalDeviceCalls();
+    setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
     try {
       const r = await apiFetch('/api/twilio/hangup-all', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ callSids: sids }),
       });
-      if (r.ok) {
-        setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
-      }
       return handleResponse(r, 'hangup-all');
     } catch (e) {
       const error = e instanceof Error ? e.message : 'Network error';

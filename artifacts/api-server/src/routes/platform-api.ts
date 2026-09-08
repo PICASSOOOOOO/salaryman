@@ -4,8 +4,10 @@ import { eq, and, desc } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { generateMusic, checkTrackStatus, isMusicConfigured, parseMusicGenerateBlock } from "../lib/suno-connector";
 import { hasFeature } from "../lib/plan";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
+router.use("/platform", requireFeature("claw_bot"));
 
 function hashKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");

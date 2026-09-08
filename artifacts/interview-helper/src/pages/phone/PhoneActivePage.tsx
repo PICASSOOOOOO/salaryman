@@ -198,6 +198,12 @@ export default function PhoneActivePage() {
   }, [activeCalls, connectToConference]);
 
   useEffect(() => {
+    if (!activeCalls.some(ac => ac.status === 'in-progress' && ac.conferenceName)) {
+      connectedConferenceRef.current = null;
+    }
+  }, [activeCalls]);
+
+  useEffect(() => {
     if (!expandedCall) {
       const firstLive = activeCalls.find(c => c.status === 'in-progress');
       if (firstLive) setExpandedCall(firstLive.callSid);

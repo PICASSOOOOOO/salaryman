@@ -645,7 +645,7 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
     const _host = getAppHost();
     const _baseUrl = _host ? `${_protocol}://${_host}/api` : "/api";
     const _statusCallbackUrl = _host ? `${_baseUrl}/twilio/webhook/status` : undefined;
-    const _recordingCallback = _host ? `${_baseUrl}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call` : undefined;
+    const _recordingCallback = _host ? `${_baseUrl}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&conferenceName=${encodeURIComponent(confName)}` : undefined;
 
     const twiml = `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${_recordingCallback ? ` recordingStatusCallback="${escapeTwiml(_recordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${confName}</Conference></Dial></Response>`;
 
@@ -3451,6 +3451,7 @@ router.post("/twilio/webhook/recording", async (req, res) => {
     } = req.body;
     const hintedUserId = req.query.userId as string | undefined;
     const recordingType = req.query.type as string;
+    const conferenceName = req.query.conferenceName as string | undefined;
 
     if (RecordingStatus && RecordingStatus !== "completed") {
       res.status(204).send();
@@ -3560,6 +3561,21 @@ router.post("/twilio/webhook/recording", async (req, res) => {
         })
         .where(eq(callHistoryTable.twilioCallSid, CallSid))
         .returning();
+      if (!callRows[0] && hintedUserId && conferenceName) {
+        const conferenceRows = await db
+          .update(callHistoryTable)
+          .set({
+            recordingUrl: storedRecordingUrl,
+            recordingSid: RecordingSid ?? undefined,
+            recordingRetainUntil: getRetentionDate(),
+          })
+          .where(and(
+            eq(callHistoryTable.userId, hintedUserId),
+            eq(callHistoryTable.conferenceName, conferenceName),
+          ))
+          .returning();
+        callRows.push(...conferenceRows);
+      }
       if (callRows[0]) {
         const c = callRows[0];
         await recordTelephonyActivity({

@@ -157,3 +157,4 @@
 - [Pygame solar-punk decay arc](pygame-solarpunk-decay.md) — desktop gameplay starts bright, lively, and gamified; darkness and deterioration emerge only as the office/world decays.
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
 - [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
+- [Complete Clerk account reset](clerk-account-reset.md) — clearing Postgres does not remove Clerk identities; a true dev reset must delete dev Clerk users and then clear local rows recreated by active sessions.
