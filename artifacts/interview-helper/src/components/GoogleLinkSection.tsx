@@ -113,8 +113,8 @@ export default function GoogleLinkSection() {
           </svg>
         </div>
         <div className="flex-1">
-          <p className="text-sm font-bold text-foreground">Google Account</p>
-          <p className="text-xs text-muted-foreground">Link your own Google account for Calendar &amp; email features</p>
+          <p className="text-sm font-bold text-foreground">Your Google Calendar</p>
+          <p className="text-xs text-muted-foreground">Each user connects their own Google account.</p>
         </div>
         {loading && <Loader2 className="w-4 h-4 text-primary/50 animate-spin" />}
         {!loading && status?.linked && (

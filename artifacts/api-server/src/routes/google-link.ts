@@ -230,12 +230,12 @@ function renderHtml(message: string, success: boolean) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><title>Google Link</title>
 <style>
-body{margin:0;background:#000;color:#a7f3d0;font-family:ui-monospace,Menlo,monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-.card{max-width:520px;border:1px solid ${color};background:rgba(0,0,0,.6);padding:28px;border-radius:8px}
-h1{color:${color};margin:0 0 12px;letter-spacing:.15em;font-size:14px}
+body{margin:0;background:#fffaf0;color:#050505;font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.card{max-width:520px;border:2px solid #050505;background:#fffaf0;padding:28px;border-radius:16px}
+h1{color:#050505;margin:0 0 12px;letter-spacing:.08em;font-size:16px}
 p{font-size:14px;line-height:1.5}
-pre{background:#0a0a0a;padding:8px;overflow:auto;font-size:11px;color:#fca5a5}
-button{margin-top:16px;background:transparent;border:1px solid ${color};color:${color};padding:8px 16px;letter-spacing:.15em;font-size:11px;cursor:pointer;font-family:inherit}
+pre{background:#f4ead8;padding:8px;overflow:auto;font-size:11px;color:#050505}
+button{margin-top:16px;background:#050505;border:1px solid #050505;color:#fffaf0;padding:12px 18px;min-height:44px;letter-spacing:.08em;font-size:12px;cursor:pointer;font-family:inherit}
 </style></head>
 <body><div class="card">
 <h1>${success ? "GOOGLE LINKED" : "LINK FAILED"}</h1>

@@ -12,6 +12,7 @@ import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import GoogleLinkSection from '@/components/GoogleLinkSection';
 
 type ViewMode = "month" | "week" | "day";
 
@@ -492,7 +493,7 @@ function MonthView({
     <div className="flex-1 overflow-auto">
       <div
         className="grid"
-        style={{ gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid rgba(56,189,248,0.15)" }}
+        style={{ gridTemplateColumns: "repeat(7, minmax(92px, 1fr))", minWidth: "644px", borderBottom: "1px solid rgba(56,189,248,0.15)" }}
       >
         {DAY_NAMES.map(d => (
           <div
@@ -509,7 +510,7 @@ function MonthView({
           </div>
         ))}
       </div>
-      <div className="grid" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(7, minmax(92px, 1fr))", minWidth: "644px" }}>
         {cells.map((cell, i) => {
           if (!cell) {
             return (
@@ -950,9 +951,10 @@ export default function Calendar() {
   }
 
   function buildISOFromForm(form: ApptForm) {
-    const startAt = new Date(`${form.startDate}T${form.startTime}`).toISOString();
-    const endAt = new Date(`${form.startDate}T${form.endTime}`).toISOString();
-    return { startAt, endAt };
+    const start = new Date(`${form.startDate}T${form.startTime}`);
+    const end = new Date(`${form.startDate}T${form.endTime}`);
+    if (end <= start) end.setDate(end.getDate() + 1);
+    return { startAt: start.toISOString(), endAt: end.toISOString() };
   }
 
   async function handleSave(form: ApptForm) {
@@ -1121,50 +1123,6 @@ export default function Calendar() {
     toast({ title: "Calendar exported", description: "Import the .ics file into Google Calendar, Outlook, or Apple Calendar." });
   }
 
-  const [gcalSyncQueue, setGcalSyncQueue] = useState<Appointment[]>([]);
-  const [gcalSyncIdx, setGcalSyncIdx] = useState(0);
-
-  function syncToGoogle() {
-    if (appointments.length === 0) { toast({ title: "No appointments to sync" }); return; }
-    const upcoming = appointments
-      .filter(a => new Date(a.endAt) >= new Date())
-      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
-    const toSync = upcoming.length > 0 ? upcoming : appointments.slice(0, 10);
-    setGcalSyncQueue(toSync);
-    setGcalSyncIdx(0);
-    openGcalEvent(toSync[0]);
-  }
-
-  function openGcalEvent(a: Appointment) {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const toGCal = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: a.title || 'Salaryman Mission',
-      dates: `${toGCal(new Date(a.startAt))}/${toGCal(new Date(a.endAt))}`,
-    });
-    if (a.description) params.set('details', a.description);
-    if (a.location) params.set('location', a.location);
-    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
-  }
-
-  function gcalSyncNext() {
-    const nextIdx = gcalSyncIdx + 1;
-    if (nextIdx >= gcalSyncQueue.length) {
-      toast({ title: "Google Calendar sync complete", description: `All ${gcalSyncQueue.length} event(s) synced.` });
-      setGcalSyncQueue([]);
-      setGcalSyncIdx(0);
-      return;
-    }
-    setGcalSyncIdx(nextIdx);
-    openGcalEvent(gcalSyncQueue[nextIdx]);
-  }
-
-  function gcalSyncDismiss() {
-    setGcalSyncQueue([]);
-    setGcalSyncIdx(0);
-  }
-
   function openNew(slotDate?: Date) {
     setEditTarget(null);
     setDefaultSlotDate(slotDate ?? selectedDate);
@@ -1252,7 +1210,7 @@ export default function Calendar() {
             </div>
           </div>
 
-           <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:overflow-visible sm:pb-0">
+            <div className="flex w-full flex-wrap items-center gap-2 pb-1 sm:w-auto sm:pb-0">
             {/* View toggle */}
             <div className="flex" style={{ border: "1px solid rgba(56,189,248,0.25)" }}>
               {(["month", "week", "day"] as ViewMode[]).map(v => (
@@ -1304,27 +1262,11 @@ export default function Calendar() {
             </div>
 
             <span
-              className="display-text text-xs"
+              className="order-first w-full display-text text-xs sm:order-none sm:w-auto"
               style={{ color: "rgba(56,189,248,0.6)", letterSpacing: "0.1em", minWidth: "180px", textAlign: "center" }}
             >
               {navLabel}
             </span>
-
-            <button
-              onClick={syncToGoogle}
-              className="flex items-center gap-1.5 px-3 py-1.5 display-text transition-all"
-              style={{
-                fontSize: "0.65rem",
-                letterSpacing: "0.1em",
-                color: "#34d399",
-                background: "rgba(52,211,153,0.07)",
-                border: "1px solid rgba(52,211,153,0.35)",
-              }}
-              title="Sync upcoming missions to Google Calendar"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              GOOGLE SYNC
-            </button>
 
             <button
               onClick={exportICS}
@@ -1336,10 +1278,10 @@ export default function Calendar() {
                 background: "rgba(167,139,250,0.07)",
                 border: "1px solid rgba(167,139,250,0.35)",
               }}
-              title="Export as .ics for Google Calendar, Outlook, Apple Calendar"
+              title="Download a calendar file"
             >
               <Download className="w-3.5 h-3.5" />
-              EXPORT
+              EXPORT .ICS
             </button>
 
             <button
@@ -1372,6 +1314,10 @@ export default function Calendar() {
               NEW
             </button>
           </div>
+        </div>
+
+        <div className="px-3 py-3 sm:px-4" style={{ borderBottom: "1px solid #111" }}>
+          <GoogleLinkSection />
         </div>
 
         {/* Status bar */}
@@ -1660,32 +1606,6 @@ export default function Calendar() {
             onClose={() => { setModalOpen(false); setEditTarget(null); }}
             saving={saving}
           />
-        )}
-
-        {gcalSyncQueue.length > 0 && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded"
-            style={{ background: "rgba(0,0,0,0.9)", border: "1px solid rgba(52,211,153,0.4)", boxShadow: "0 0 20px rgba(52,211,153,0.2)" }}>
-            <span className="display-text text-xs" style={{ color: "#34d399", letterSpacing: "0.1em" }}>
-              SYNCING {gcalSyncIdx + 1} / {gcalSyncQueue.length}
-            </span>
-            <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)", maxWidth: 200 }} title={gcalSyncQueue[gcalSyncIdx]?.title}>
-              {(gcalSyncQueue[gcalSyncIdx]?.title || '').slice(0, 30)}
-            </span>
-            {gcalSyncIdx < gcalSyncQueue.length - 1 ? (
-              <button onClick={gcalSyncNext} className="display-text text-xs px-3 py-1"
-                style={{ color: "#34d399", border: "1px solid rgba(52,211,153,0.4)", background: "rgba(52,211,153,0.1)" }}>
-                NEXT
-              </button>
-            ) : (
-              <button onClick={gcalSyncDismiss} className="display-text text-xs px-3 py-1"
-                style={{ color: "#34d399", border: "1px solid rgba(52,211,153,0.4)", background: "rgba(52,211,153,0.1)" }}>
-                DONE
-              </button>
-            )}
-            <button onClick={gcalSyncDismiss} style={{ color: "rgba(255,255,255,0.3)" }}>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
         )}
 
         {/* Email confirmation modal */}

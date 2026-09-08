@@ -43,20 +43,20 @@ function TransferInput({
         autoFocus
         style={{
           flex: 1, background: slate(0.5), border: `1px solid ${primary(0.25)}`, borderRadius: 4,
-          color: slate(0.85), fontSize: '0.6rem', padding: '4px 8px', outline: 'none',
+           color: '#050505', fontSize: '16px', padding: '10px 12px', minHeight: 44, outline: 'none',
           fontFamily: boomer ? undefined : FONT }}
       />
       <button
         onClick={() => { if (val.trim()) onConfirm(val); }}
         style={{
           background: primary(0.15), border: `1px solid ${primary(0.35)}`, borderRadius: 4,
-          color: primary(0.9), fontSize: '0.55rem', padding: '4px 8px', cursor: 'pointer',
+           color: '#050505', fontSize: '0.72rem', padding: '8px 12px', minHeight: 44, minWidth: 54, cursor: 'pointer',
           fontFamily: boomer ? undefined : FONT, letterSpacing: '0.08em' }}
       >XFER</button>
       <button
         onClick={onCancel}
-        style={{ background: 'none', border: 'none', color: slate(0.55), cursor: 'pointer', padding: 2 }}
-      ><X size={12} /></button>
+         style={{ background: 'none', border: '1px solid #222', color: '#050505', cursor: 'pointer', padding: 8, minWidth: 44, minHeight: 44 }}
+       ><X size={18} /></button>
     </div>
   );
 }

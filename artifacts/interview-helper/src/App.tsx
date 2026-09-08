@@ -628,7 +628,7 @@ function AppShell() {
             <Route path="/org" component={OrgHub} />
 
             {/* Legacy agent status page now belongs to the Agent Command Center. */}
-            <Route path="/console/agents">{() => <Redirect to="/bots" />}</Route>
+            <Route path="/console/agents">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/console/video" component={VideoAnalyzer} />
              <Route path="/knowledge">{() => <Redirect to="/console/vault" />}</Route>
              <Route path="/knowledge-hub">{() => <Redirect to="/console/vault" />}</Route>
@@ -645,7 +645,7 @@ function AppShell() {
             <Route path="/business/accounting" component={Accounting} />
             <Route path="/business/taxes" component={TurboTax} />
             <Route path="/intel/balance-sheet">{() => { window.location.href = '/business/balance-sheet'; return null; }}</Route>
-            <Route path="/intel/agents">{() => <Redirect to="/bots" />}</Route>
+            <Route path="/intel/agents">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
@@ -681,8 +681,8 @@ function AppShell() {
             {/* BOTS module */}
             {/* Job Command Center moved into BUSINESS — redirect old bookmarks. */}
             <Route path="/bots/jobs">{() => <Redirect to="/business/job-command" />}</Route>
-            <Route path="/bots/templates" component={ClaudeTemplates} />
-            <Route path="/bots/prompt-sensei" component={PromptSensei} />
+            <Route path="/bots/templates">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/bots/prompt-sensei">{() => <Redirect to="/pablo" />}</Route>
             {/* The isometric "android factory" office was a divergent, no-exit
                 dead-end with its own renderer. It now folds into the single
                 walkable pixel office (same artwork, live + surveillance). */}
@@ -692,25 +692,25 @@ function AppShell() {
             <Route path="/bots/:id/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/cutscene/:id" component={CutscenePage} />
             <Route path="/vending">{() => <VendingMachine />}</Route>
-            <Route path="/store/bots/vending">{() => <Redirect to="/bots" />}</Route>
+            <Route path="/store/bots/vending">{() => <Redirect to="/pablo" />}</Route>
             {/* The realty showroom is the functional acquire flow (RealtyStore):
                 rent/buy persists server-side via /api/real-estate/acquire. The
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
             <Route path="/store/realty" component={RealtyStore} />
             <Route path="/cutscene" component={CutscenePage} />
-            <Route path="/bots" component={BotFactory} />
-            <Route path="/bots/:rest*" component={BotFactory} />
+            <Route path="/bots">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/bots/:rest*">{() => <Redirect to="/pablo" />}</Route>
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
-            <Route path="/agents">{() => <Redirect to="/bots" />}</Route>
+            <Route path="/agents">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>
 
             {/* Feedback admin */}
             <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
-            <Route path="/pledge/agents">{() => <Redirect to="/bots" />}</Route>
+            <Route path="/pledge/agents">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/pledge" component={PledgeStoreRoute} />
             <Route path="/investors" component={PledgeStore} />
             {/* Legacy alias — keeps existing links working */}

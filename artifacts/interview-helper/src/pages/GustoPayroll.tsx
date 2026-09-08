@@ -144,9 +144,9 @@ export default function GustoPayroll() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <button onClick={() => navigate('/business')} className="w-8 h-8 rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-colors">
@@ -194,7 +194,7 @@ export default function GustoPayroll() {
 
         {!loading && connected && (
           <>
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex flex-wrap items-center gap-2 mb-6">
               {([
                 { key: 'overview' as const, label: 'OVERVIEW', icon: Building2 },
                 { key: 'employees' as const, label: 'EMPLOYEES', icon: Users },
@@ -208,7 +208,7 @@ export default function GustoPayroll() {
                   {t.label}
                 </button>
               ))}
-              <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.05]">
+              <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.05]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[10px] font-bold text-emerald-400 tracking-wider">GUSTO CONNECTED</span>
               </div>
@@ -274,8 +274,8 @@ export default function GustoPayroll() {
                       <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{activeEmps.length} ACTIVE / {employees.length} TOTAL</span>
                       <button onClick={fetchEmployees} className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors">REFRESH</button>
                     </div>
-                    <div className="rounded-xl border border-zinc-800 overflow-hidden">
-                      <div className="grid grid-cols-[1fr_1fr_1fr_100px_80px] gap-0 bg-zinc-900/50 px-4 py-2 border-b border-zinc-800">
+                    <div className="rounded-xl border border-zinc-800 overflow-x-auto">
+                      <div className="grid min-w-[720px] grid-cols-[1fr_1fr_1fr_100px_80px] gap-0 bg-zinc-900/50 px-4 py-2 border-b border-zinc-800">
                         <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">NAME</span>
                         <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">TITLE</span>
                         <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">EMAIL</span>
@@ -283,7 +283,7 @@ export default function GustoPayroll() {
                         <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">STATUS</span>
                       </div>
                       {employees.map(emp => (
-                        <div key={emp.id} className="grid grid-cols-[1fr_1fr_1fr_100px_80px] gap-0 px-4 py-3 border-b border-zinc-800/50 hover:bg-white/[0.02] transition-colors items-center">
+                        <div key={emp.id} className="grid min-w-[720px] grid-cols-[1fr_1fr_1fr_100px_80px] gap-0 px-4 py-3 border-b border-zinc-800/50 hover:bg-white/[0.02] transition-colors items-center">
                           <div>
                             <div className="text-sm font-bold text-foreground">{emp.firstName} {emp.lastName}</div>
                             {emp.department && <div className="text-[10px] text-zinc-600 font-mono">{emp.department}</div>}
@@ -334,7 +334,7 @@ export default function GustoPayroll() {
                         return (
                           <div key={p.id} className="rounded-xl border border-zinc-800 bg-white/[0.015] overflow-hidden">
                             <button onClick={() => setExpandedPayroll(isExpanded ? null : p.id)}
-                              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors text-left">
+                              className="w-full flex flex-wrap items-center gap-4 px-4 sm:px-5 py-4 hover:bg-white/[0.02] transition-colors text-left">
                               <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                                 <Calendar className="w-4 h-4 text-emerald-400" />
                               </div>

@@ -175,7 +175,7 @@ export default function CalllHomePage() {
         : 'CONNECTING';
 
   if (authLoading) {
-    return <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', color: slate(0.55) }}>RESTORING SESSION...</div>;
+    return <div style={{ minHeight: 'var(--app-viewport-height, 100dvh)', background: '#fffaf0', display: 'grid', placeItems: 'center', color: '#050505' }}>RESTORING SESSION...</div>;
   }
   if (!isAuthenticated) {
     return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
@@ -184,7 +184,7 @@ export default function CalllHomePage() {
   if (planLoading) {
     return (
       <div style={{
-        minHeight: '100vh',
+         minHeight: 'var(--app-viewport-height, 100dvh)',
         background: slate(0.02),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
@@ -202,7 +202,7 @@ export default function CalllHomePage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-viewport-height, 100dvh)',
       background: '#fffaf0',
       ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
       color: '#111111',
@@ -428,7 +428,7 @@ export default function CalllHomePage() {
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
-        .calll-home-shell { padding: 0 clamp(10px, 3.5vw, 16px); }
+        .calll-home-shell { padding-left: max(12px, var(--app-safe-left)); padding-right: max(12px, var(--app-safe-right)); }
         @media (max-width: 640px) {
           .calll-home-status {
             align-items: flex-start !important;
@@ -440,25 +440,19 @@ export default function CalllHomePage() {
             flex-wrap: wrap;
             gap: 8px !important;
           }
-          .calll-home-tabs {
-            display: flex !important;
-            overflow-x: auto;
-            overscroll-behavior-x: contain;
-            scroll-snap-type: x proximity;
-            scrollbar-width: none;
+           .calll-home-tabs {
+             display: grid !important;
+             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+             overflow: visible;
             padding: 6px !important;
           }
-          .calll-home-tabs::-webkit-scrollbar { display: none; }
           .calll-home-tabs > button {
-            flex: 0 0 auto !important;
+             width: 100%;
             min-height: 44px !important;
-            scroll-snap-align: start;
           }
           .calll-home-tabs > div:last-child {
-            position: sticky !important;
-            right: 0;
-            margin-left: auto !important;
-            background: ${slate(0.96)};
+             grid-column: 1 / -1;
+             margin-left: 0 !important;
           }
         }
         @media (prefers-reduced-motion: reduce) {

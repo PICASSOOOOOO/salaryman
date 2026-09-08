@@ -1952,5 +1952,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.23.2.2337",
+    "date": "2026-09-08",
+    "commitHash": "a70e8171766f65d779c1b4be2a00c803416590bb",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

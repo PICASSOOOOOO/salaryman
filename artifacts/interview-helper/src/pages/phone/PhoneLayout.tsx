@@ -45,11 +45,11 @@ export function PhonePageLayout({
               <h2 style={{ fontSize: '0.9rem', letterSpacing: '0.2em', color: slate(0.85), margin: 0, fontWeight: 'normal', textTransform: 'uppercase' }}>
                 {title}
               </h2>
-              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.45rem', color: slate(0.55), letterSpacing: '0.1em' }}>{subtitle}</p>}
+              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.7rem', color: '#050505', lineHeight: 1.45 }}>{subtitle}</p>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {statusLine && <div style={{ fontSize: '0.42rem' }}>{statusLine}</div>}
+            {statusLine && <div style={{ fontSize: '0.7rem' }}>{statusLine}</div>}
             {actions && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{actions}</div>}
           </div>
         </div>
@@ -62,12 +62,14 @@ export function PhonePageLayout({
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-viewport-height, 100dvh)',
       background: slate(0.02),
       ...(boomer ? {} : { fontFamily: "var(--font-sans)" }),
       color: slate(0.85),
       position: 'relative',
-      paddingBottom: 'calc(100px + var(--app-safe-bottom))' }}>
+       paddingBottom: 'calc(100px + var(--app-safe-bottom))',
+       paddingLeft: 'var(--app-safe-left)',
+       paddingRight: 'var(--app-safe-right)' }}>
 
       <div className="phone-page-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto' }}>
         <div style={{
@@ -116,7 +118,7 @@ export function PhonePageLayout({
                   {title}
                 </h1>
                 {subtitle && (
-                  <p style={{ margin: '5px 0 0', fontSize: '0.55rem', color: slate(0.55), letterSpacing: '0.15em' }}>
+                  <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: '#050505', lineHeight: 1.45 }}>
                     {subtitle}
                   </p>
                 )}
@@ -201,7 +203,7 @@ export const INPUT_STYLE: React.CSSProperties = {
   border: `1px solid ${slate(0.15)}`,
   color: slate(0.9),
   padding: '10px 14px',
-  fontSize: '0.72rem',
+  fontSize: '1rem',
   outline: 'none',
   borderRadius: 6,
   width: '100%',
@@ -220,7 +222,7 @@ export function PhoneBtn({
 
 }) {
   const pad = size === 'sm' ? '5px 10px' : size === 'lg' ? '12px 20px' : '8px 14px';
-  const fs = size === 'sm' ? '0.55rem' : size === 'lg' ? '0.75rem' : '0.65rem';
+  const fs = size === 'sm' ? '0.7rem' : size === 'lg' ? '0.85rem' : '0.75rem';
   return (
     <button
       onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}

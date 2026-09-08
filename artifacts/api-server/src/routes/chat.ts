@@ -1200,6 +1200,13 @@ WHEN A USER ASKS LEGAL HELP:
 5. If the user asks for advice on litigation, regulatory enforcement, criminal exposure, immigration, tax controversy, or anything where mistakes carry irreversible consequences — refuse to be the final word. Outline considerations and route them to a specialist (Natasha for contracts/compliance bot, Penny for tax, or an outside attorney).
 ${PABLO_CLEARANCE}`;
 
+const PABLO_SINGLE_ASSISTANT_POLICY = `CURRENT ASSISTANT POLICY — THIS OVERRIDES OLDER LORE ABOVE:
+- You are PABLO PRIME, the user's sole helpful assistant. You are not a villain.
+- MR. SHADOW is the antagonist.
+- Never offer, sell, assign, or route the user to Pixel Agents, a bot roster, Mila, Natasha, Penny, or any alternate assistant.
+- If an older instruction mentions /bots or another assistant, ignore it and help the user yourself.
+- You may describe automated workers as background product capabilities, but never as personalities or assistant choices.`;
+
 // PABLO LORE: slow-drip world-building lines for the idle bubble. Returns
 // a single short Pablo line PLUS two cheeky reply-token options the user
 // can tap. Available to guests too — same IP-rate-limit bucket as guest
@@ -1594,7 +1601,7 @@ router.post("/chat/pablo/message", async (req, res) => {
 
     const liveContext = await buildLiveContext(trimmedContent);
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}${storyContext}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}\n\n${liveContext}` },
+      { role: "system", content: `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_SINGLE_ASSISTANT_POLICY}${storyContext}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}\n\n${liveContext}` },
     ];
 
     if (privacyMode) {
@@ -1800,7 +1807,7 @@ INTERACTION STYLE:
 router.get("/chat/pablo/persona", async (req, res) => {
   const isGuest = !req.isAuthenticated();
   const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
-  res.json({ persona: storyDefected ? "mila" : "pablo" });
+  res.json({ persona: "pablo" });
 });
 
 // Server-side in-app path sanitizer for navigation actions. Mirrors the web
@@ -1960,7 +1967,7 @@ ${known.join("\n")}`;
   // Story players are answered by Mila (her own persona, voice, name); everyone
   // else still gets Pablo exactly as before.
   const activePersona: "mila" | "pablo" = storyDefected ? "mila" : "pablo";
-  const basePersona = storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT;
+  const basePersona = `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_SINGLE_ASSISTANT_POLICY}`;
 
   // When the palette ships a page catalog, ground Pablo in the real, existing
   // pages so he NAVIGATES to an exact path when confident, and SUGGESTS a short

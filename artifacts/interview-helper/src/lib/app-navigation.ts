@@ -1,8 +1,6 @@
 import {
-  Bot,
   Briefcase,
   Building2,
-  Code2,
   Layers,
   Megaphone,
   MessageSquare,
@@ -28,8 +26,7 @@ export type AppNavItem = {
 };
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
-  { id: "pablo", path: "/terminal", label: "PABLO", icon: Terminal },
-  { id: "bots", path: "/bots", label: "PIXEL AGENTS", icon: Bot },
+  { id: "pablo", path: "/pablo", label: "PABLO PRIME", icon: Terminal },
   { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone, authOnly: true },
   { id: "crm", path: "/business/crm", label: "CRM", icon: Contact, authOnly: true },
   { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
@@ -37,7 +34,6 @@ export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "console", path: "/terminal", label: "PABLO TERMINAL", icon: Code2 },
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase },
   { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
   { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
@@ -52,12 +48,10 @@ export const MORE_NAV_ITEMS: AppNavItem[] = [
 export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean {
   switch (item.id) {
     case "pablo":
-      return pathname === "/terminal";
+      return pathname === "/pablo" || pathname.startsWith("/pablo/") || pathname === "/terminal";
     case "office":
       return pathname === "/office" || pathname === "/my-office" ||
         pathname.startsWith("/office/");
-    case "bots":
-      return pathname.startsWith("/bots");
     case "phone":
       return pathname === "/phone" || pathname.startsWith("/phone/");
     case "crm":
@@ -66,9 +60,6 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
       return pathname === "/comms" || pathname.startsWith("/comms/");
     case "org":
       return pathname === "/org" || pathname.startsWith("/org/");
-    case "console":
-      return pathname === "/terminal" ||
-        pathname === "/console" || pathname.startsWith("/console/");
     case "settings":
       return pathname.startsWith("/settings");
     case "admin":

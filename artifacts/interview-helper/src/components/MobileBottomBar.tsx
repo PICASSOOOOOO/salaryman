@@ -76,6 +76,7 @@ export function MobileModuleNav() {
   const { total: commsCount } = useCommsSummary();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const swipeStartY = useRef<number | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summary, setSummary] = useState<MobileAccountSummary | null>(null);
   const [currentLocation, setCurrentLocation] = useState('CITY / BUILDING NOT REPORTED');
@@ -175,7 +176,30 @@ export function MobileModuleNav() {
     .filter(tab => !tab.authOnly || isAuthenticated);
 
   return (
-    <div className="mobile-app-nav" style={{ zIndex: 60 }}>
+    <div
+      className="mobile-app-nav"
+      style={{ zIndex: 60 }}
+      onTouchStart={(event) => { swipeStartY.current = event.touches[0]?.clientY ?? null; }}
+      onTouchMove={(event) => {
+        const currentY = event.touches[0]?.clientY;
+        if (isAuthenticated && swipeStartY.current != null && currentY != null && swipeStartY.current - currentY > 40) {
+          swipeStartY.current = null;
+          setSummaryOpen(true);
+        }
+      }}
+      onTouchEnd={() => { swipeStartY.current = null; }}
+    >
+      {isAuthenticated && (
+        <button
+          type="button"
+          onClick={() => setSummaryOpen(true)}
+          className="flex w-full flex-col items-center gap-0.5 py-1 text-black"
+          aria-label="Open account details"
+        >
+          <span className="h-1 w-12 rounded-full bg-black" />
+          <span className="text-[9px] font-semibold tracking-[0.12em]">SWIPE UP FOR ACCOUNT</span>
+        </button>
+      )}
       <div className="mobile-brand-row">
         <div className="mobile-account-actions">
             <EconomyToggle isAuthenticated={isAuthenticated} />
@@ -188,7 +212,7 @@ export function MobileModuleNav() {
                 <button
                   onClick={() => setSummaryOpen(true)}
                   className="mobile-account-button mobile-tap-target"
-                  aria-label="Profile"
+                  aria-label="Open account details"
                 >
                   {resolveAvatarUrl(user?.profileImageUrl) ? (
                     <img
@@ -368,12 +392,16 @@ function MobileAccountSheet({
   const employeeCount = summary?.enterprise?.employees?.active ?? members.length;
   const companyName = org?.name ?? summary?.wallet?.faction?.primary?.name ?? 'NO COMPANY FILED';
   return (
-    <div className="mobile-account-sheet fixed inset-0 z-[10000] flex items-end justify-center p-2 sm:items-center" onClick={onClose}>
+    <div className="mobile-account-sheet fixed inset-0 z-[10000] flex items-end justify-center px-2 pt-2 pb-[max(12px,var(--app-safe-bottom))] sm:items-center" onClick={onClose}>
       <section
         className="mobile-account-sheet-panel w-full max-w-md overflow-hidden rounded-2xl"
         onClick={event => event.stopPropagation()}
         aria-label="Account summary"
       >
+        <div className="flex flex-col items-center gap-1 pt-2" aria-hidden="true">
+          <span className="h-1 w-12 rounded-full bg-black" />
+          <span className="text-[10px] font-semibold text-black">ACCOUNT DETAILS</span>
+        </div>
         <div className="mobile-account-sheet-header flex items-center justify-between px-4 py-3">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#155b86]">ACCOUNT SNAPSHOT</p>
@@ -383,7 +411,7 @@ function MobileAccountSheet({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[75dvh] overflow-y-auto p-3">
+        <div className="max-h-[calc(75dvh-var(--app-safe-bottom))] overflow-y-auto p-3 pb-[max(12px,var(--app-safe-bottom))]">
           {loading && !summary ? (
             <div className="mobile-account-sheet-card rounded-xl p-6 text-center font-mono text-xs uppercase tracking-widest text-[#718392]">LOADING ACCOUNT…</div>
           ) : (

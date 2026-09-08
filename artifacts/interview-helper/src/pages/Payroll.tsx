@@ -173,11 +173,11 @@ export default function Payroll() {
   if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage payroll." />;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="payroll-page min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
@@ -258,7 +258,7 @@ export default function Payroll() {
             {employees.map(emp => {
               const rate = Number(emp.payRate);
               return (
-                <div key={emp.id} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-4">
+                <div key={emp.id} className="bg-card border border-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-foreground text-sm">{emp.name}</span>
@@ -303,7 +303,7 @@ export default function Payroll() {
               return (
                 <div key={run.id} className="bg-card border border-border rounded-xl overflow-hidden">
                   <button onClick={() => setExpandedRun(expandedRun === run.id ? null : run.id)}
-                    className="w-full px-4 py-3 flex items-center gap-4 hover:bg-muted/20 transition-colors text-left">
+                    className="w-full px-4 py-3 flex flex-wrap items-center gap-4 hover:bg-muted/20 transition-colors text-left">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-foreground text-sm">{boomerMode ? 'Payroll Run' : 'PAYROLL RUN'}</span>
@@ -400,7 +400,7 @@ export default function Payroll() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <Field label="Period Start *" value={runForm.payPeriodStart} onChange={v => setRunForm(f => ({ ...f, payPeriodStart: v }))} type="date" />
                   <Field label="Period End *" value={runForm.payPeriodEnd} onChange={v => setRunForm(f => ({ ...f, payPeriodEnd: v }))} type="date" />
                   <Field label="Run Date" value={runForm.runDate} onChange={v => setRunForm(f => ({ ...f, runDate: v }))} type="date" />
@@ -413,13 +413,13 @@ export default function Payroll() {
                     </div>
                   )}
                   {runBreakdown.map((b, idx) => (
-                    <div key={b.employeeId} className="flex items-center gap-3 mb-2">
+                    <div key={b.employeeId} className="flex flex-wrap items-center gap-3 mb-2">
                       <span className="flex-1 text-sm text-foreground">{b.employeeName}</span>
                       <div className="relative">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-amber-400/50 font-mono">ƒ</span>
                         <input type="number" value={b.amount}
                           onChange={e => setRunBreakdown(prev => prev.map((x, i) => i === idx ? { ...x, amount: Number(e.target.value) || 0 } : x))}
-                          className="w-32 bg-muted/30 border border-border rounded-lg pl-6 pr-3 py-1.5 text-sm font-mono text-amber-400 outline-none focus:border-primary/50 transition-colors" />
+                          className="w-full sm:w-32 bg-muted/30 border border-border rounded-lg pl-6 pr-3 py-2 text-base font-mono text-foreground outline-none focus:border-primary/50 transition-colors" />
                       </div>
                     </div>
                   ))}
