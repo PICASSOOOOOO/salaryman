@@ -1086,6 +1086,40 @@ export default function AdminPanel() {
     finally { setActionLoading(false); }
   };
 
+  const handleProductionUserReset = async () => {
+    setActionLoading(true);
+    try {
+      const previewResponse = await apiFetch('/api/admin/production-user-reset/preview');
+      const preview = await previewResponse.json();
+      if (!previewResponse.ok) {
+        alert(preview?.error ?? 'Production reset preview is unavailable.');
+        return;
+      }
+      const phrase = String(preview.confirmation);
+      const accepted = confirm(
+        `PUBLISHED PRODUCTION ONLY\n\nThis will delete ${preview.users} accounts, ${preview.organizations} organizations, ${preview.sessions} sessions, and ${preview.directlyOwnedRows} directly owned rows across ${Object.keys(preview.tables ?? {}).length} tables.\n\nShared catalogs, system configuration, and audit infrastructure are preserved. This cannot be undone.\n\nContinue to typed confirmation?`,
+      );
+      if (!accepted) return;
+      if (prompt(`Type exactly:\n${phrase}`) !== phrase) return;
+      const response = await apiFetch('/api/admin/production-user-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: phrase }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result?.error ?? 'Production reset failed.');
+        return;
+      }
+      alert(`${result.message}\n\nAccounts deleted: ${result.usersDeleted}\nOrganizations deleted: ${result.organizationsDeleted}`);
+      window.location.assign('/');
+    } catch {
+      alert('Production reset failed.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const loadReportsByStatus = async (status: string) => {
     setReportFilter(status);
     try {
@@ -1250,6 +1284,18 @@ export default function AdminPanel() {
                     className="px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-red-700/80 hover:bg-red-600/90 border border-red-500/70 text-white disabled:opacity-40"
                   >
                     ⚠ RESET EVERYONE TO THE BEGINNING
+                  </button>
+                </div>
+                <div className="mt-4 pt-4 border-t border-black">
+                  <p className="text-[11px] text-black mb-3">
+                    <span className="font-mono font-bold">PUBLISHED PRODUCTION RESET</span> — previews and then removes all accounts, sessions, organizations, and app data tied to users or organizations. Shared catalogs, system configuration, and audit infrastructure remain.
+                  </p>
+                  <button
+                    onClick={handleProductionUserReset}
+                    disabled={actionLoading}
+                    className="px-4 py-2 text-[10px] font-mono font-bold tracking-widest uppercase rounded-md bg-[#fffaf0] border-2 border-black text-black disabled:opacity-40"
+                  >
+                    PREVIEW & RESET ALL PRODUCTION USER DATA
                   </button>
                 </div>
               </div>

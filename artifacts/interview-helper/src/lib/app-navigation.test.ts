@@ -29,9 +29,9 @@ describe("getPabloHref", () => {
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
-    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "crm", "comms", "office"]);
+    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "contacts", "leads", "comms", "org", "office"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "business", "org", "creative", "marketing", "pledge", "feedback",
+      "business", "creative", "marketing", "pledge", "feedback",
       "settings", "profile", "admin",
     ]);
   });

@@ -900,22 +900,22 @@ body.workspace-light {
   --color-popover-foreground: hsl(0 0% 7%);
   --color-border: hsl(0 0% 18%);
   --color-input: hsl(42 100% 97%);
-  --color-ring: hsl(211 82% 38%);
-  --color-primary: hsl(211 82% 38%);
+  --color-ring: hsl(0 0% 0%);
+  --color-primary: hsl(0 0% 0%);
   --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(214 32% 95%);
-  --color-secondary-foreground: hsl(215 25% 27%);
-  --color-muted: hsl(214 32% 96%);
-  --color-muted-foreground: hsl(215 19% 35%);
-  --color-accent: hsl(199 89% 42%);
+  --color-secondary: hsl(42 100% 97%);
+  --color-secondary-foreground: hsl(0 0% 0%);
+  --color-muted: hsl(42 100% 97%);
+  --color-muted-foreground: hsl(0 0% 0%);
+  --color-accent: hsl(0 0% 0%);
   --color-accent-foreground: hsl(0 0% 100%);
   --color-destructive: hsl(2 61% 56%);
   --color-destructive-foreground: hsl(0 0% 100%);
   --salary-ink: 17 17 17;
   --salary-panel: 255 250 240;
   --salary-paper: 255 250 240;
-  --salary-copper: 15 90 168;
-  --salary-signal: 14 165 233;
+  --salary-copper: 0 0 0;
+  --salary-signal: 0 0 0;
   background: #fffaf0;
   color: #111111;
   background-image: none;
@@ -972,9 +972,9 @@ body.workspace-light .app-control {
 }
 
 body.workspace-light .app-control:hover {
-  color: #0f5ea8;
-  background: #eff6ff;
-  border-color: #7ca6d1;
+  color: #000;
+  background: #fff;
+  border-color: #000;
 }
 
 body.workspace-light .bg-background {
@@ -1003,14 +1003,14 @@ body.workspace-light .bg-\[\#0d0e12\] {
 body.workspace-light .text-zinc-100,
 body.workspace-light .text-zinc-200,
 body.workspace-light .text-zinc-300 {
-  color: #0f172a !important;
+  color: #000 !important;
 }
 
 body.workspace-light .text-zinc-400,
 body.workspace-light .text-zinc-500,
 body.workspace-light .text-zinc-600,
 body.workspace-light .text-zinc-700 {
-  color: #475569 !important;
+  color: #000 !important;
 }
 
 /* Light workspace pages use dark ink for labels and descriptions. The

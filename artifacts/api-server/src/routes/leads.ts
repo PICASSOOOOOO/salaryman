@@ -493,7 +493,6 @@ router.post("/leads", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
-  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to create leads" }); return; }
 
   const { name, phone, email, company, jobTitle, source, status, assignedUserId } = req.body ?? {};
   if (!name || typeof name !== "string" || name.trim().length < 1) {

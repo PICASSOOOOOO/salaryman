@@ -1,10 +1,10 @@
 ---
 name: Workspace light surfaces
-description: SALARYMAN's practical workspace chrome and desktop client use white pages with matrix-green signals, distinct from immersive Pablo nebula routes.
+description: SALARYMAN's browser/control-plane UI is strictly cream/white and black; cyberpunk color belongs only to the downloadable game.
 ---
 
-The practical workspace surfaces are intentionally light: shared desktop/mobile chrome, the mobile workstation, account summary sheet, and desktop client landing page use pure white pages with deep green text, matrix-green actions/signals, pale green selected states, and light borders. Immersive Pablo nebula presentation remains a separate visual surface. The native game remains black/green.
+The browser workspace is intentionally monochrome: shared desktop/mobile chrome and all browser tools use cream/white surfaces with black text, borders, icons, controls, active states, and hover states. Do not use blue, green, pink, violet, amber, or other semantic accent colors in browser UI. Cyberpunk color is reserved for the downloadable video game.
 
-**Why:** The browser business workspace and downloadable-client handoff need to feel like one professional product connected to the game, while the Pablo front door remains an expressive assistant surface.
+**Why:** The user wants a sharp visual separation between the professional browser control plane and the cyberpunk game; colored browser accents blur that boundary and make important tools harder to scan.
 
-**How to apply:** When adding practical workspace UI, use white page shells and matrix-green signal accents rather than navy or dark terminal styling. Keep game UI black/green. Do not alter the Pablo orb or voice presentation unless the user explicitly asks for that surface.
+**How to apply:** New or edited browser surfaces must use only cream/white and black, including status chips and destructive controls. Keep cyberpunk styling inside the downloadable game rather than browser routes.

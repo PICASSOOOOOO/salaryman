@@ -48,6 +48,16 @@ import { hashAccessCode, isHashedAccessCode, verifyAccessCode } from "../lib/acc
 
 const router = Router();
 
+const MEDICARE_CLUB_CLAIMERS = new Set([
+  "pamw.innerlighthealth@gmail.com",
+  "alejandroduong@gmail.com",
+]);
+
+function canClaimProtectedOrgName(name: string, email: string | null | undefined): boolean {
+  if (name.toLowerCase() !== "medicare club") return true;
+  return MEDICARE_CLUB_CLAIMERS.has((email ?? "").trim().toLowerCase());
+}
+
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -553,6 +563,10 @@ router.post("/orgs", async (req, res) => {
 
   if (isReservedOrgName(normalizedName)) {
     res.status(400).json({ error: "That organization name is reserved and cannot be used" });
+    return;
+  }
+  if (!canClaimProtectedOrgName(normalizedName, req.user.email)) {
+    res.status(400).json({ error: "That organization name is reserved for its verified owners" });
     return;
   }
 

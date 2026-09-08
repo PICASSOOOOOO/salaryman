@@ -12,6 +12,7 @@ import {
   Terminal,
   User,
   Contact,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,14 +29,15 @@ export type AppNavItem = {
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "pablo", path: "/pablo", label: "PABLO PRIME", icon: Terminal },
   { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone, authOnly: true },
-  { id: "crm", path: "/business/crm", label: "CRM", icon: Contact, authOnly: true },
+  { id: "contacts", path: "/contacts", label: "CONTACTS", icon: Contact, authOnly: true },
+  { id: "leads", path: "/leads", label: "LEADS", icon: ListChecks, authOnly: true },
   { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
+  { id: "org", path: "/organizations", label: "ORGANIZATIONS", icon: Network, authOnly: true },
   { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase },
-  { id: "org", path: "/org", label: "ORG", icon: Network, authOnly: true },
   { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", icon: Megaphone },
   { id: "pledge", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
@@ -54,12 +56,17 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
         pathname.startsWith("/office/");
     case "phone":
       return pathname === "/phone" || pathname.startsWith("/phone/");
-    case "crm":
-      return pathname === "/business/crm" || pathname.startsWith("/business/crm/");
+    case "contacts":
+      return pathname === "/contacts" || pathname.startsWith("/contacts/") ||
+        pathname === "/business/crm" || pathname.startsWith("/business/crm/");
+    case "leads":
+      return pathname === "/leads" || pathname.startsWith("/leads/") ||
+        pathname === "/marketing/leads" || pathname.startsWith("/marketing/leads/");
     case "comms":
       return pathname === "/comms" || pathname.startsWith("/comms/");
     case "org":
-      return pathname === "/org" || pathname.startsWith("/org/");
+      return pathname === "/organizations" || pathname.startsWith("/organizations/") ||
+        pathname === "/org" || pathname.startsWith("/org/");
     case "settings":
       return pathname.startsWith("/settings");
     case "admin":
@@ -169,6 +176,12 @@ export function shouldShowModuleSubnav(moduleId: string | undefined, itemCount: 
   const isStandaloneMajorFeature =
     pathname === "/business/crm" ||
     pathname.startsWith("/business/crm/") ||
+    pathname === "/contacts" ||
+    pathname.startsWith("/contacts/") ||
+    pathname === "/leads" ||
+    pathname.startsWith("/leads/") ||
+    pathname === "/organizations" ||
+    pathname.startsWith("/organizations/") ||
     pathname === "/comms" ||
     pathname.startsWith("/comms/");
   return Boolean(moduleId && moduleId !== "phone" && !isStandaloneMajorFeature && itemCount > 0);

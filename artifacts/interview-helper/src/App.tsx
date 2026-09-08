@@ -292,8 +292,8 @@ function AppShell() {
   const isRootRoute = pathname === "/";
   const isDeviceLinkRoute = pathname === "/device-link";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  // The browser product has one visual contract: warm cream surfaces and
-  // black text on every route. Native desktop owns the dark game treatment.
+  // The browser product has one visual contract: cream/white surfaces and
+  // black ink. The downloadable game owns the cyberpunk palette.
   const isLightWorkspace = true;
   const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
@@ -332,7 +332,7 @@ function AppShell() {
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/phone", "/comms", "/bots", "/business/crm", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/phone", "/comms", "/contacts", "/leads", "/organizations", "/org", "/bots", "/business", "/business/crm", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -557,6 +557,7 @@ function AppShell() {
             <Route path="/marketplace" component={Marketplace} />
             <Route path="/business/services" component={BusinessServices} />
             <Route path="/business/contacts" component={ContactCollector} />
+            <Route path="/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/jobs" component={JobBoard} />
             <Route path="/business/job-command" component={JobCommandCenter} />
@@ -616,6 +617,7 @@ function AppShell() {
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
+            <Route path="/leads" component={LeadsPage} />
             <Route path="/marketing/social" component={SocialMediaManager} />
             <Route path="/marketing/command" component={MarketingCommandCenter} />
             <Route path="/marketing" component={MarketingCommandCenter} />
@@ -626,6 +628,7 @@ function AppShell() {
 
             {/* ORG module — dedicated org-management hub (separate from OFFICE) */}
             <Route path="/org" component={OrgHub} />
+            <Route path="/organizations" component={OrgHub} />
 
             {/* Legacy agent status page now belongs to the Agent Command Center. */}
             <Route path="/console/agents">{() => <Redirect to="/pablo" />}</Route>

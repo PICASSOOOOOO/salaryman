@@ -378,19 +378,15 @@ export default function LeadsPage() {
           <div className="flex items-center gap-3">
             <Users className="w-6 h-6 text-primary" />
             <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider">LEAD DATABASE</h1>
-            {admin ? (
-              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">
-                <Shield className="w-3 h-3" /> ADMIN
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
-                <ShieldAlert className="w-3 h-3" /> VIEW ONLY
-              </span>
-            )}
+            <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase bg-background text-black border border-black rounded">
+              {admin ? <Shield className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+              {admin ? 'MANAGER' : 'MEMBER'}
+            </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {admin && (
-              <>
+            <>
+              {admin && (
+                <>
                 <button onClick={() => setShowImport(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
                   <Upload className="w-3.5 h-3.5" /> IMPORT CSV / XLSX
@@ -403,12 +399,13 @@ export default function LeadsPage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
                   <Download className="w-3.5 h-3.5" /> EXPORT XLSX
                 </button>
-                <button onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 transition-colors">
-                  <Plus className="w-3.5 h-3.5" /> ADD LEAD
-                </button>
-              </>
-            )}
+                </>
+              )}
+              <button onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold uppercase bg-background border-2 border-black text-black transition-colors">
+                <Plus className="w-3.5 h-3.5" /> ADD LEAD
+              </button>
+            </>
           </div>
         </div>
 
@@ -457,7 +454,7 @@ export default function LeadsPage() {
               <div className="leads-data">
                 {leads.length === 0 && (
                   <div className="px-4 py-12 text-center text-muted-foreground text-sm">
-                    {search || statusFilter ? 'NO LEADS MATCH YOUR FILTERS' : 'NO LEADS YET. ADMINS CAN IMPORT OR ADD LEADS.'}
+                    {search || statusFilter ? 'NO LEADS MATCH YOUR FILTERS' : 'NO LEADS YET. ADD YOUR FIRST LEAD.'}
                   </div>
                 )}
                 {leads.map(lead => (
@@ -706,7 +703,7 @@ export default function LeadsPage() {
       </div>
 
       <AnimatePresence>
-        {showAddForm && admin && (
+        {showAddForm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
             onClick={() => setShowAddForm(false)}>

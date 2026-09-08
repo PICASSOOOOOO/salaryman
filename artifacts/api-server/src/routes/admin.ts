@@ -545,6 +545,156 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
   return res.json({ ok: true, target, savesDeleted, featuresRevoked, ownersPreserved: ownerIds.size });
 });
 
+const PRODUCTION_RESET_CONFIRMATION = "RESET ALL PRODUCTION USER DATA";
+const PRODUCTION_RESET_EXCLUDED_TABLES = new Set([
+  "admin_audit_log",
+  "business_audit_events",
+  "legacy_recovery_events",
+  "legacy_recovery_snapshots",
+  "provider_health_transitions",
+  "system_config",
+  "trading_data_providers",
+]);
+const USER_OWNER_COLUMNS = [
+  "user_id", "owner_id", "owner_user_id", "created_by", "created_by_user_id",
+  "updated_by", "updated_by_user_id", "requested_by", "requester_id",
+  "user_a_id", "user_b_id", "sender_id", "sender_user_id", "recipient_id",
+  "banned_by", "assigned_to", "assigned_user_id", "uploaded_by",
+  "uploaded_by_user_id", "purchased_by", "employee_id", "employer_id",
+  "payer_id", "payee_id", "actor_user_id", "applicant_user_id",
+  "reviewer_user_id", "invited_by_user_id", "submitted_by_user_id",
+  "poster_user_id", "target_user_id", "accepted_by_user_id", "student_user_id",
+  "checked_by_user_id", "graded_by_user_id", "host_user_id", "renter_user_id",
+  "linked_user_id", "from_user_id", "to_user_id", "source_user_id",
+];
+const ORG_OWNER_COLUMNS = ["org_id", "organization_id"];
+
+function isPublishedProduction(): boolean {
+  return process.env.NODE_ENV === "production" && Boolean(process.env.REPLIT_DEPLOYMENT_URL);
+}
+
+function pgLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+type OwnedTable = { table_name: string; columns: string[] };
+
+async function getOwnedTables(executor: typeof db): Promise<OwnedTable[]> {
+  const candidateColumns = [...USER_OWNER_COLUMNS, ...ORG_OWNER_COLUMNS]
+    .map(pgLiteral).join(",");
+  const result = await executor.execute(sql.raw(`
+    SELECT table_name, array_agg(column_name ORDER BY ordinal_position) AS columns
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND column_name IN (${candidateColumns})
+    GROUP BY table_name
+    ORDER BY table_name
+  `));
+  return (result.rows as Array<{ table_name: string; columns: string[] | string }>)
+    .map((row) => ({
+      table_name: row.table_name,
+      columns: Array.isArray(row.columns)
+        ? row.columns
+        : String(row.columns).replace(/[{}]/g, "").split(",").filter(Boolean),
+    }))
+    .filter((row) =>
+      row.table_name !== "users" &&
+      row.table_name !== "organizations" &&
+      !PRODUCTION_RESET_EXCLUDED_TABLES.has(row.table_name)
+    );
+}
+
+function ownedRowPredicate(table: OwnedTable, userIds: string[], orgIds: string[]): string {
+  const userSet = userIds.length ? `(${userIds.map(pgLiteral).join(",")})` : "(NULL)";
+  const orgSet = orgIds.length ? `(${orgIds.map(pgLiteral).join(",")})` : "(NULL)";
+  const parts = table.columns.map((column) => {
+    const quoted = `"${column.replaceAll('"', '""')}"`;
+    return ORG_OWNER_COLUMNS.includes(column)
+      ? `${quoted}::text IN ${orgSet}`
+      : `${quoted}::text IN ${userSet}`;
+  });
+  return parts.length ? parts.join(" OR ") : "false";
+}
+
+router.get("/admin/production-user-reset/preview", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  if (!isPublishedProduction()) {
+    return res.status(403).json({ error: "This reset is available only in the published production deployment" });
+  }
+  const userRows = await db.select({ id: usersTable.id }).from(usersTable);
+  const orgResult = await db.execute(sql.raw(`SELECT id::text FROM "organizations"`));
+  const sessionResult = await db.execute(sql.raw(`SELECT count(*)::int AS count FROM "sessions"`));
+  const orgIds = orgResult.rows.map((row) => String(row.id));
+  const ownedTables = await getOwnedTables(db);
+  const populatedTables: Record<string, number> = {};
+  for (const table of ownedTables) {
+    const predicate = ownedRowPredicate(table, userRows.map((row) => row.id), orgIds);
+    const countResult = await db.execute(sql.raw(
+      `SELECT count(*)::int AS count FROM "${table.table_name.replaceAll('"', '""')}" WHERE ${predicate}`,
+    ));
+    const count = Number(countResult.rows[0]?.count ?? 0);
+    if (count > 0) populatedTables[table.table_name] = count;
+  }
+  return res.json({
+    production: true,
+    confirmation: PRODUCTION_RESET_CONFIRMATION,
+    users: userRows.length,
+    organizations: orgIds.length,
+    sessions: Number(sessionResult.rows[0]?.count ?? 0),
+    directlyOwnedRows: Object.values(populatedTables).reduce((sum, count) => sum + count, 0),
+    tables: populatedTables,
+  });
+});
+
+router.post("/admin/production-user-reset", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  if (!isPublishedProduction()) {
+    return res.status(403).json({ error: "This reset is available only in the published production deployment" });
+  }
+  if (req.body?.confirmation !== PRODUCTION_RESET_CONFIRMATION) {
+    return res.status(400).json({ error: `Type exactly: ${PRODUCTION_RESET_CONFIRMATION}` });
+  }
+
+  const userRows = await db.select({ id: usersTable.id }).from(usersTable);
+  const orgResult = await db.execute(sql.raw(`SELECT id::text FROM "organizations"`));
+  const userIds = userRows.map((row) => row.id);
+  const orgIds = orgResult.rows.map((row) => String(row.id));
+  const ownedTables = await getOwnedTables(db);
+  const counts: Record<string, number> = {};
+
+  await db.transaction(async (tx) => {
+    // Delete direct ownership rows repeatedly. Each statement runs in a
+    // subtransaction so FK-dependent parents can be retried after children.
+    for (let pass = 0; pass < 4; pass++) {
+      for (const table of ownedTables) {
+        const predicate = ownedRowPredicate(table, userIds, orgIds);
+        const tableName = `"${table.table_name.replaceAll('"', '""')}"`;
+        const result = await tx.execute(sql.raw(`
+          DO $reset$
+          BEGIN
+            DELETE FROM ${tableName} WHERE ${predicate};
+          EXCEPTION WHEN foreign_key_violation THEN
+            NULL;
+          END
+          $reset$;
+        `));
+        counts[table.table_name] = (result as { rowCount?: number }).rowCount ?? counts[table.table_name] ?? 0;
+      }
+    }
+    await tx.execute(sql.raw(`DELETE FROM "sessions"`));
+    await tx.execute(sql.raw(`DELETE FROM "bans"`));
+    await tx.execute(sql.raw(`DELETE FROM "organizations"`));
+    await tx.execute(sql.raw(`DELETE FROM "users"`));
+  });
+
+  return res.json({
+    ok: true,
+    production: true,
+    usersDeleted: userIds.length,
+    organizationsDeleted: orgIds.length,
+    message: "All production accounts and directly owned application data were reset. Shared catalogs, system configuration, and audit infrastructure were preserved.",
+  });
+});
+
 /**
  * EMAIL FEATURE GRANTS — pre-grant paid features by email so when the user
  * eventually signs up they have everything from first login. Implemented
