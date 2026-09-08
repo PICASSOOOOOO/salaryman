@@ -70,10 +70,11 @@
 
 .desktop-download-hero {
   display: grid;
-  grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+  grid-template-columns: minmax(0, 760px);
   align-items: center;
+  justify-content: center;
   gap: clamp(30px, 7vw, 100px);
-  max-width: 1440px;
+  max-width: 980px;
   margin: 0 auto;
   padding: clamp(64px, 10vw, 130px) clamp(20px, 7vw, 110px) clamp(80px, 11vw, 150px);
 }
@@ -259,43 +260,6 @@
 .desktop-download-leaf { position: absolute; z-index: 3; color: #d0f493; font-size: 28px; }
 .leaf-one { bottom: 20%; left: 7%; transform: rotate(-30deg); }
 .leaf-two { top: 25%; right: 6%; transform: rotate(35deg); }
-
-.desktop-download-stage {
-  min-height: 0;
-  padding: 12px;
-  border-color: #cddde6;
-  background: #f4f9fb;
-  box-shadow: 0 30px 80px rgba(23, 54, 74, .12);
-}
-
-.desktop-game-capture {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid #cddde6;
-  border-radius: 18px;
-  background: #fff;
-}
-
-.desktop-game-capture-video {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1180 / 720;
-  object-fit: cover;
-}
-
-.desktop-game-capture-label {
-  position: absolute;
-  right: 14px;
-  bottom: 12px;
-  padding: 7px 9px;
-  color: #155b86;
-  background: rgba(255, 255, 255, .92);
-  border: 1px solid #b9d9e8;
-  border-radius: 5px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: .1em;
-}
 
 .desktop-download-locked {
   display: inline-flex;

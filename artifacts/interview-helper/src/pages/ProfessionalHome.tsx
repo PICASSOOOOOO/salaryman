@@ -53,7 +53,7 @@ const paths = [
 ] as const;
 
 const features = [
-  ["Phone system", "Calls, routing, and shared numbers", Phone, "/phone"],
+  ["CALLL HOME", "Calls, routing, and shared numbers", Phone, "/phone"],
   ["CRM & sales", "Keep every relationship moving", Users, "/business/contacts"],
   ["Agents & automation", "Let routine work run itself", Bot, "/bots"],
   ["Business operations", "The daily view of your company", FolderKanban, "/business"],

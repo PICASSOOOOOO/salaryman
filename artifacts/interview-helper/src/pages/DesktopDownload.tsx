@@ -123,20 +123,6 @@ export default function DesktopDownload() {
             {platformMessage}
           </p>
         </div>
-        <div className="desktop-download-stage" aria-label="Desktop office preview">
-          <div className="desktop-game-capture">
-            <video
-              className="desktop-game-capture-video"
-              src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.mp4`}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-            />
-            <div className="desktop-game-capture-label">DIRECT CAPTURE / PYGAME CLIENT / FLOOR 01</div>
-          </div>
-        </div>
       </section>
 
       <section className="desktop-download-platforms" id="install">
