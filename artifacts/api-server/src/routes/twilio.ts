@@ -352,6 +352,7 @@ router.get("/twilio/contacts/:userId", requireAuth, requireFeature("phone_system
 });
 
 let _cachedApiKey: { sid: string; secret: string } | null = null;
+let _apiKeyPromise: Promise<{ sid: string; secret: string }> | null = null;
 let _cachedTwimlAppSid: string | null = null;
 
 async function getSystemConfig(key: string): Promise<string | null> {
@@ -368,20 +369,49 @@ async function setSystemConfig(key: string, value: string): Promise<void> {
   }
 }
 
-async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
-  if (process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET) {
-    return { sid: process.env.TWILIO_API_KEY_SID, secret: process.env.TWILIO_API_KEY_SECRET };
+async function isValidTwilioApiKey(candidate: { sid: string; secret: string }): Promise<boolean> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  if (!accountSid) return false;
+  try {
+    const keyClient = twilio(candidate.sid, candidate.secret, { accountSid });
+    // Standard API keys intentionally cannot read the Accounts resource.
+    // Calls is a supported Voice resource and therefore validates the exact
+    // credential capability the browser phone needs.
+    await keyClient.calls.list({ limit: 1 });
+    return true;
+  } catch (error) {
+    console.warn(
+      "[Twilio] Browser Voice API key rejected; replacing it:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return false;
   }
+}
+
+async function resolveTwilioApiKey(): Promise<{ sid: string; secret: string }> {
   if (_cachedApiKey) return _cachedApiKey;
+  const envSid = process.env.TWILIO_API_KEY_SID;
+  const envSecret = process.env.TWILIO_API_KEY_SECRET;
   const dbSid = await getSystemConfig("twilio_api_key_sid");
   const dbSecret = await getSystemConfig("twilio_api_key_secret");
-  if (dbSid && dbSecret) {
-    _cachedApiKey = { sid: dbSid, secret: dbSecret };
-    process.env.TWILIO_API_KEY_SID = dbSid;
-    process.env.TWILIO_API_KEY_SECRET = dbSecret;
-    console.log("[Twilio] Restored API Key from DB:", dbSid);
-    return _cachedApiKey;
+  const candidates = [
+    envSid && envSecret ? { sid: envSid, secret: envSecret } : null,
+    dbSid && dbSecret ? { sid: dbSid, secret: dbSecret } : null,
+  ].filter((candidate): candidate is { sid: string; secret: string } => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    if (await isValidTwilioApiKey(candidate)) {
+      _cachedApiKey = candidate;
+      process.env.TWILIO_API_KEY_SID = candidate.sid;
+      process.env.TWILIO_API_KEY_SECRET = candidate.secret;
+      if (dbSid !== candidate.sid || dbSecret !== candidate.secret) {
+        await setSystemConfig("twilio_api_key_sid", candidate.sid);
+        await setSystemConfig("twilio_api_key_secret", candidate.secret);
+      }
+      return candidate;
+    }
   }
+
   const client = getTwilioClient();
   const key = await client.newKeys.create({ friendlyName: "Salaryman Voice Key" });
   _cachedApiKey = { sid: key.sid, secret: key.secret! };
@@ -391,6 +421,16 @@ async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
   await setSystemConfig("twilio_api_key_secret", key.secret!);
   console.log("[Twilio] Auto-provisioned API Key:", key.sid, "(persisted to DB)");
   return _cachedApiKey;
+}
+
+async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
+  if (_cachedApiKey) return _cachedApiKey;
+  if (!_apiKeyPromise) {
+    _apiKeyPromise = resolveTwilioApiKey().finally(() => {
+      _apiKeyPromise = null;
+    });
+  }
+  return _apiKeyPromise;
 }
 
 async function ensureTwimlApp(): Promise<string> {

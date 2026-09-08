@@ -192,6 +192,46 @@ async function checkAccountActive(client: twilio.Twilio, sid: string, results: C
   }
 }
 
+async function checkBrowserVoiceApiKey(accountSid: string, results: CheckResult[]) {
+  const storedSid = await db.select({ value: systemConfigTable.value })
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, "twilio_api_key_sid"))
+    .limit(1);
+  const storedSecret = await db.select({ value: systemConfigTable.value })
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, "twilio_api_key_secret"))
+    .limit(1);
+  const candidates = [
+    process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET
+      ? { sid: process.env.TWILIO_API_KEY_SID, secret: process.env.TWILIO_API_KEY_SECRET }
+      : null,
+    storedSid[0]?.value && storedSecret[0]?.value
+      ? { sid: storedSid[0].value, secret: storedSecret[0].value }
+      : null,
+  ].filter((candidate): candidate is { sid: string; secret: string } => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      const keyClient = twilio(candidate.sid, candidate.secret, { accountSid });
+      await withTimeout(
+        keyClient.calls.list({ limit: 1 }),
+        OP_TIMEOUT_MS,
+        "Browser Voice API key authentication",
+      );
+      results.push({ name: "Browser Voice API key", status: "PASS", detail: "Authenticated against the Voice Calls API" });
+      return;
+    } catch {
+      // Try the persisted key when a stale environment key is still present.
+    }
+  }
+
+  results.push({
+    name: "Browser Voice API key",
+    status: "FAIL",
+    detail: "No configured browser Voice API key can authenticate; browser phones will remain offline",
+  });
+}
+
 async function checkPhoneNumber(client: twilio.Twilio, num: string, results: CheckResult[]) {
   try {
     const nums = await withTimeout(
@@ -375,6 +415,7 @@ async function main() {
     const num = process.env.TWILIO_PHONE_NUMBER!;
     const client = twilio(sid, token);
     await checkAccountActive(client, sid, results);
+    await checkBrowserVoiceApiKey(sid, results);
     await checkPhoneNumber(client, num, results);
     await checkTollfreeMessagingVerification(client, num, results);
     await checkBalance(client, results);
