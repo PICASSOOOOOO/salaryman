@@ -29,6 +29,16 @@ EXECUTABLE_NAME = "SALARYMAN Office"
 def write_release_launchers(staging: Path, system_name: str) -> None:
     """Add portable launch/install helpers to the extracted release."""
 
+    if system_name == "Windows":
+        launcher = staging / "START-SALARYMAN.cmd"
+        launcher.write_text(
+            '@echo off\r\n'
+            'set "ROOT=%~dp0"\r\n'
+            '"%ROOT%pygame\\SALARYMAN Office.exe" %*\r\n',
+            encoding="utf-8",
+        )
+        return
+
     launcher = staging / "launch-salaryman-office.sh"
     launch_command = (
         'open "$ROOT/pygame/SALARYMAN Office.app" --args "$@"'
@@ -140,7 +150,17 @@ def main() -> int:
         print(f"Expected application bundle was not created: {bundle_source}", file=sys.stderr)
         return 3
 
-    bundle_name = f"salaryman-office-{system_name.lower()}-{platform.machine()}"
+    system_slug = {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}.get(
+        system_name,
+        system_name.lower(),
+    )
+    machine_slug = {
+        "amd64": "x86_64",
+        "x86_64": "x86_64",
+        "arm64": "arm64",
+        "aarch64": "arm64",
+    }.get(platform.machine().lower(), platform.machine().lower())
+    bundle_name = f"salaryman-office-{system_slug}-{machine_slug}"
     staging_root = ROOT / "build" / "release"
     staging = staging_root / bundle_name
     if staging.exists():
@@ -182,8 +202,19 @@ def main() -> int:
     run_command = (
         "./launch-salaryman-office.sh"
         if system_name != "Windows"
-        else r".\pygame\SALARYMAN Office\SALARYMAN Office.exe"
+        else r".\START-SALARYMAN.cmd"
     )
+    run_instructions = {
+        "Linux": """No Docker is required. Extract the archive, open its folder,
+and double-click `START-SALARYMAN`. If your Linux file manager asks, choose
+**Run** or **Allow Launching**.""",
+        "Darwin": """No Docker or Python installation is required. Extract the
+archive and double-click `pygame/SALARYMAN Office.app`. If macOS blocks the
+first launch, Control-click the app, choose **Open**, then confirm **Open**.""",
+        "Windows": """No Docker or Python installation is required. Extract the
+archive and double-click `START-SALARYMAN.cmd`. If Windows Defender SmartScreen
+appears for this unsigned test build, choose **More info**, then **Run anyway**.""",
+    }.get(system_name, "Extract the archive and run the packaged application.")
     optional_installer = (
         """
 ## Add a branded desktop launcher (Linux)
@@ -206,9 +237,7 @@ after installing the shortcut.
 
 ## Run the desktop app
 
-No Docker is required. Extract the archive, open the extracted
-`salaryman-office-linux-x86_64` folder, and double-click `START-SALARYMAN`.
-If your Linux file manager asks, choose **Run** or **Allow Launching**.
+{run_instructions}
 
 You can also launch it from a terminal opened in this directory:
 
