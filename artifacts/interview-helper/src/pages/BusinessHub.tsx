@@ -1,17 +1,14 @@
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Briefcase, Users, CalendarDays, Archive, FileText, TrendingUp,
   DollarSign, Receipt, CreditCard, Scale, Shield, Code2, Loader2, Landmark,
-  ArrowRight, Building2, RefreshCw, AlertTriangle, CheckCircle2,
-  ArrowUpRight, ArrowDownRight, Megaphone, Target, Search,
-  BarChart2, LayoutDashboard, Bot, Zap, Clock, Phone,
-  Lightbulb, BookOpen, Star, Info, Plus, X, UserPlus,
-  Edit2, Trash2, Check, Copy, ChevronDown, Mail, Crown,
-  Save, ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
-  Eye, EyeOff, LockKeyhole, KeyRound,
+  Building2, RefreshCw, AlertTriangle, CheckCircle2,
+  Megaphone, Target, Search, BarChart2, LayoutDashboard, Bot,
+  Plus, X, Edit2, Trash2, Check, Copy, Crown,
+  ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
+  Eye, EyeOff, LockKeyhole, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -82,63 +79,58 @@ const SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 const SECTIONS = [
   {
     title: 'PEOPLE & OPERATIONS',
-    subtitle: 'MANAGE YOUR TEAM, CONTACTS, AND DAY-TO-DAY OPERATIONS',
     items: [
-      { path: '/business/team', label: 'TEAM DIRECTORY', boomer: 'TEAM DIRECTORY', desc: 'COMPLETE ORG VIEW — ROLES, DEPARTMENTS, COMPENSATION.', icon: Users, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-      { path: '/business/contacts', label: 'CONTACTS', boomer: 'CONTACTS', desc: 'MANAGE YOUR CONTACT DATABASE, COMPANY RELATIONSHIPS, AND INTERACTION HISTORY.', icon: Users, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
-      { path: '/business/services', label: 'SERVICES BOARD', boomer: 'SERVICES BOARD', desc: 'POST & CLAIM PLAYER-TO-PLAYER GIGS, DEBT BOUNTIES, VEHICLE RENTALS, AND ESCORT CONTRACTS.', icon: Briefcase, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-      { path: '/business/jobs', label: 'JOB BOARD', boomer: 'JOB BOARD & HIRING', desc: 'POST JOBS, BROWSE CANDIDATES, MAKE OFFERS, AND MANAGE EMPLOYMENT CONTRACTS.', icon: Briefcase, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-      { path: '/business/interview', label: 'INTERVIEW OFFICE', boomer: 'INTERVIEW OFFICE', desc: 'AUTOMATED INTERVIEWS AND TECHNICAL ASSESSMENTS.', icon: Code2, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-      { path: '/business/tasks', label: 'TASK BOARD', boomer: 'TASK BOARD', desc: 'ASSIGN TASKS, SET PRIORITIES, TRACK PROGRESS AND DEADLINES.', icon: ClipboardList, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-      { path: '/business/time-tracking', label: 'TIME TRACKING', boomer: 'TIME TRACKING', desc: 'CLOCK IN/OUT, TIMESHEETS, BILLABLE HOURS, RATE TRACKING.', icon: Timer, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-      { path: '/business/announcements', label: 'ANNOUNCEMENTS', boomer: 'ANNOUNCEMENTS', desc: 'COMPANY-WIDE UPDATES, POLICY CHANGES, AND TEAM BROADCASTS.', icon: Megaphone, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-      { path: '/business/calendar', label: 'CALENDAR', boomer: 'CALENDAR', desc: 'SCHEDULE MEETINGS, DEADLINES, AND EVENTS.', icon: CalendarDays, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-      { path: '/business/documents', label: 'DOCUMENTS', boomer: 'DOCUMENTS', desc: 'STORE AND ORGANIZE YOUR BUSINESS FILES.', icon: Archive, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-      { path: '/business/contracts', label: 'CONTRACTS', boomer: 'CONTRACTS', desc: 'AUTO-DRAFT NDAs, MSAs, EMPLOYMENT, CONTRACTOR, LEASES, PARTNERSHIPS, LICENSING. PABLO REVIEWS RISK.', icon: ScrollText, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-      { path: '/business/partnerships', label: 'PARTNERSHIPS', boomer: 'PARTNERSHIPS', desc: 'CONNECT WITH OTHER ORGANIZATIONS. SHARED OFFICES, RENTAL AGREEMENTS, AND CROSS-ORG MANAGEMENT.', icon: Handshake, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
-      { path: '/business/website', label: 'WEBSITE', boomer: 'PUBLIC WEBSITE', desc: 'CONNECT YOUR PUBLISHED FRAMER SITE — HOSTED ON A PICASSOO.APP/SITES URL.', icon: Globe, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+      { path: '/business/team', label: 'TEAM DIRECTORY', boomer: 'TEAM DIRECTORY', icon: Users },
+      { path: '/business/contacts', label: 'CONTACTS', boomer: 'CONTACTS', icon: Users },
+      { path: '/business/services', label: 'SERVICES BOARD', boomer: 'SERVICES BOARD', icon: Briefcase },
+      { path: '/business/jobs', label: 'JOB BOARD', boomer: 'JOB BOARD & HIRING', icon: Briefcase },
+      { path: '/business/interview', label: 'INTERVIEW OFFICE', boomer: 'INTERVIEW OFFICE', icon: Code2 },
+      { path: '/business/tasks', label: 'TASK BOARD', boomer: 'TASK BOARD', icon: ClipboardList },
+      { path: '/business/time-tracking', label: 'TIME TRACKING', boomer: 'TIME TRACKING', icon: Timer },
+      { path: '/business/announcements', label: 'ANNOUNCEMENTS', boomer: 'ANNOUNCEMENTS', icon: Megaphone },
+      { path: '/business/calendar', label: 'CALENDAR', boomer: 'CALENDAR', icon: CalendarDays },
+      { path: '/business/documents', label: 'DOCUMENTS', boomer: 'DOCUMENTS', icon: Archive },
+      { path: '/business/contracts', label: 'CONTRACTS', boomer: 'CONTRACTS', icon: ScrollText },
+      { path: '/business/partnerships', label: 'PARTNERSHIPS', boomer: 'PARTNERSHIPS', icon: Handshake },
+      { path: '/business/website', label: 'WEBSITE', boomer: 'PUBLIC WEBSITE', icon: Globe },
     ],
   },
   {
     title: 'SALES & REVENUE',
-    subtitle: 'PIPELINE, INVOICING, AND LEAD MANAGEMENT',
     items: [
-      { path: '/business/crm', label: 'CRM WORKSPACE', boomer: 'CRM WORKSPACE', desc: 'ONE SHARED VIEW FOR PEOPLE, COMPANIES, LEADS, DEALS, AND RECENT ACTIVITY.', icon: LayoutDashboard, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
-      { path: '/business/deals', label: 'DEALS', boomer: 'DEALS', desc: 'KANBAN SALES PIPELINE FROM LEAD TO CLOSE.', icon: TrendingUp, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
-      { path: '/business/invoices', label: 'INVOICES', boomer: 'INVOICES', desc: 'CREATE AND MANAGE CLIENT BILLING AND RECEIVABLES.', icon: FileText, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-      { path: '/business/estimates', label: 'ESTIMATES', boomer: 'ESTIMATES & QUOTES', desc: 'CREATE QUOTES AND PROPOSALS BEFORE INVOICING CLIENTS.', icon: FileText, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
-      { path: '/marketing/leads', label: 'LEADS', boomer: 'LEAD DATABASE', desc: 'PROSPECT DATABASE WITH SCORING AND QUALIFICATION.', icon: Target, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+      { path: '/business/crm', label: 'CRM WORKSPACE', boomer: 'CRM WORKSPACE', icon: LayoutDashboard },
+      { path: '/business/deals', label: 'DEALS', boomer: 'DEALS', icon: TrendingUp },
+      { path: '/business/invoices', label: 'INVOICES', boomer: 'INVOICES', icon: FileText },
+      { path: '/business/estimates', label: 'ESTIMATES', boomer: 'ESTIMATES & QUOTES', icon: FileText },
+      { path: '/marketing/leads', label: 'LEADS', boomer: 'LEAD DATABASE', icon: Target },
     ],
   },
   {
     title: 'FINANCIALS',
-    subtitle: 'PAYROLL, BILLS, EXPENSES, AND P&L',
     items: [
-      { path: '/business/payroll', label: 'PAYROLL', boomer: 'PAYROLL', desc: 'EMPLOYEE COMPENSATION AND PAYROLL RUNS.', icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
-      { path: '/business/gusto', label: 'GUSTO PAYROLL', boomer: 'GUSTO PAYROLL', desc: 'LIVE GUSTO DATA — EMPLOYEES, PAY RUNS, TAXES.', icon: Landmark, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-      { path: '/business/bills', label: 'BILLS', boomer: 'BILLS', desc: 'ACCOUNTS PAYABLE WITH VENDOR TRACKING.', icon: Receipt, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-      { path: '/business/expenses', label: 'EXPENSES', boomer: 'EXPENSES', desc: 'CATEGORIZED SPENDING WITH RECEIPT TRACKING.', icon: CreditCard, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-      { path: '/business/vendors', label: 'VENDORS', boomer: 'VENDOR DIRECTORY', desc: 'MANAGE VENDOR CONTACTS, PAYMENT TERMS, AND RELATIONSHIPS.', icon: Store, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-      { path: '/business/profit-loss', label: 'P&L', boomer: 'PROFIT & LOSS', desc: 'INCOME STATEMENT — REVENUE, COSTS, AND NET PROFIT.', icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-      { path: '/business/balance-sheet', label: 'BALANCE SHEET', boomer: 'BALANCE SHEET', desc: 'COMPLETE FINANCIAL OVERVIEW AND LEDGER.', icon: Scale, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+      { path: '/business/payroll', label: 'PAYROLL', boomer: 'PAYROLL', icon: DollarSign },
+      { path: '/business/gusto', label: 'GUSTO PAYROLL', boomer: 'GUSTO PAYROLL', icon: Landmark },
+      { path: '/business/bills', label: 'BILLS', boomer: 'BILLS', icon: Receipt },
+      { path: '/business/expenses', label: 'EXPENSES', boomer: 'EXPENSES', icon: CreditCard },
+      { path: '/business/vendors', label: 'VENDORS', boomer: 'VENDOR DIRECTORY', icon: Store },
+      { path: '/business/profit-loss', label: 'P&L', boomer: 'PROFIT & LOSS', icon: TrendingUp },
+      { path: '/business/balance-sheet', label: 'BALANCE SHEET', boomer: 'BALANCE SHEET', icon: Scale },
     ],
   },
   {
     title: 'MARKETING & GROWTH',
-    subtitle: 'CAMPAIGNS, SEO, AND OUTREACH',
     items: [
-      { path: '/marketing/campaigns', label: 'CAMPAIGNS', boomer: 'CAMPAIGNS', desc: 'MARKETING CAMPAIGN MANAGEMENT AND OUTREACH.', icon: Megaphone, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
-      { path: '/marketing/seo', label: 'SEO', boomer: 'SEO', desc: 'SITE AUDIT, KEYWORD RESEARCH, AND OPTIMIZATION.', icon: Search, color: 'text-lime-400', bg: 'bg-lime-500/10', border: 'border-lime-500/20' },
+      { path: '/marketing/campaigns', label: 'CAMPAIGNS', boomer: 'CAMPAIGNS', icon: Megaphone },
+      { path: '/marketing/seo', label: 'SEO', boomer: 'SEO', icon: Search },
     ],
   },
   {
     title: 'ANALYTICS & INTEL',
-    subtitle: 'REPORTS, DASHBOARDS, BOTS, AND AUTOMATION',
     items: [
-      { path: '/intel/reports', label: 'REPORTS', boomer: 'REPORTS', desc: 'BUSINESS INTELLIGENCE AND DATA VISUALIZATION.', icon: BarChart2, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-      { path: '/intel/dashboard', label: 'DASHBOARD', boomer: 'DASHBOARD', desc: 'REAL-TIME KPI COMMAND DASHBOARD.', icon: LayoutDashboard, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
-      { path: '/pledge?view=prime', label: 'PABLO PRIME', boomer: 'PABLO PRIME', desc: 'POWER YOUR AGENT WORKFORCE — MANAGE IT FROM THE AGENT COMMAND CENTER.', icon: Bot, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-      { path: '/insurance', label: 'INSURANCE API', boomer: 'INSURANCE API', desc: 'SEARCH AND COMPARE INSURANCE CARRIERS.', icon: Shield, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', requireIndustry: 'Insurance' },
+      { path: '/intel/reports', label: 'REPORTS', boomer: 'REPORTS', icon: BarChart2 },
+      { path: '/intel/dashboard', label: 'DASHBOARD', boomer: 'DASHBOARD', icon: LayoutDashboard },
+      { path: '/pledge?view=prime', label: 'PABLO PRIME', boomer: 'PABLO PRIME', icon: Bot },
+      { path: '/insurance', label: 'INSURANCE API', boomer: 'INSURANCE API', icon: Shield, requireIndustry: 'Insurance' },
     ],
   },
 ];
@@ -152,9 +144,9 @@ function fmt(n: number): string {
 function Field({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{label}</label>
       <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+        className="w-full bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary transition-colors" />
     </div>
   );
 }
@@ -162,9 +154,9 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: { label: 
 function TextAreaField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        className="w-full resize-y bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{label}</label>
+      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={2}
+        className="w-full resize-y bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary transition-colors" />
     </div>
   );
 }
@@ -177,11 +169,22 @@ const EMPTY_EDIT_FORM = {
 function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
+        className="w-full bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary transition-colors">
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
+    </div>
+  );
+}
+
+function StatBox({ label, value, prefix, color }: { label: string; value: string; prefix?: string; color?: string }) {
+  return (
+    <div className="p-3 flex flex-col justify-center gap-1 hover:bg-muted/5 transition-colors">
+      <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{label}</div>
+      <div className={`text-sm font-bold tracking-wider tabular-nums ${color || 'text-foreground'}`}>
+        {prefix}{value}
+      </div>
     </div>
   );
 }
@@ -223,9 +226,8 @@ export default function BusinessHub() {
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [memberEditForm, setMemberEditForm] = useState({ role: '', title: '', salary: '' });
   const [memberSaving, setMemberSaving] = useState(false);
-
-  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
   const [memberError, setMemberError] = useState('');
+
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(() => {
     try { const v = localStorage.getItem('sm_active_org'); return v ? parseInt(v) : null; } catch { return null; }
   });
@@ -280,6 +282,7 @@ export default function BusinessHub() {
 
   const activeOrgId = orgData?.org?.id ?? null;
   const canManageOrg = !!orgData?.member && ['owner', 'ceo', 'executive', 'director', 'manager'].includes(orgData.member.role);
+
   const loadProtectedRecords = useCallback(async () => {
     setRevealedRecords({});
     if (!activeOrgId || !canManageOrg) {
@@ -523,7 +526,6 @@ export default function BusinessHub() {
   };
 
   const switchOrg = async (orgId: number) => {
-    setShowOrgSwitcher(false);
     setSelectedOrgId(orgId);
     try { localStorage.setItem('sm_active_org', String(orgId)); } catch {}
     const target = allOrgs.find(a => a.organization?.id === orgId);
@@ -540,584 +542,417 @@ export default function BusinessHub() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 max-w-4xl mx-auto space-y-5">
-      <div className="absolute inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-violet-500/5 rounded-full blur-[120px]" />
-      </div>
+    <div className="min-h-screen bg-background text-foreground p-4 md:p-8 max-w-[1200px] mx-auto space-y-6">
 
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Briefcase className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-wider uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'ORG SETTINGS // COMMAND'}</h1>
-            <p className="text-xs text-muted-foreground tracking-wider uppercase">
-              {activeOrg ? `${activeOrg.name} · IDENTITY, PERMISSIONS & OWNERSHIP` : 'YOUR BUSINESS HEADQUARTERS'}
-            </p>
-          </div>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
+        <div>
+          <h1 className="text-xl font-bold tracking-widest uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'HUB // COMMAND'}</h1>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+            {activeOrg ? `${activeOrg.name} · ${activeOrg.businessId}` : 'YOUR BUSINESS HEADQUARTERS'}
+          </p>
         </div>
-        <button onClick={loadData} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/30 border border-border/50 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all">
-          <RefreshCw className="w-3.5 h-3.5" /> REFRESH
-        </button>
-      </motion.div>
-
-      {allOrgs.length > 1 && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
-          <button
-            onClick={() => setShowOrgSwitcher(!showOrgSwitcher)}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-card/50 border border-border/50 hover:border-primary/30 transition-all"
-          >
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary" />
-              <span className="text-xs font-bold uppercase tracking-wider">SWITCH BUSINESS</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">({allOrgs.length} ORGANIZATIONS)</span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showOrgSwitcher ? 'rotate-180' : ''}`} />
-          </button>
-          <AnimatePresence>
-            {showOrgSwitcher && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="mt-2 rounded-xl bg-card/50 border border-border/50 divide-y divide-border/30">
-                  {allOrgs.map((entry) => {
-                    const org = entry.organization;
-                    if (!org) return null;
-                    const isActive = org.id === activeOrg?.id;
-                    return (
-                      <button
-                        key={org.id}
-                        onClick={() => switchOrg(org.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/10 transition-colors ${isActive ? 'bg-primary/5' : ''}`}
-                      >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-primary/20 border border-primary/30' : 'bg-muted/20 border border-border/30'}`}>
-                          <Building2 className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-bold uppercase tracking-wider">{org.name}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            {entry.membership.role} {org.industry ? `· ${org.industry}` : ''}
-                          </div>
-                        </div>
-                        {isActive && <Check className="w-4 h-4 text-primary" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      )}
-
-      {activeOrg && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-xl bg-card/50 border border-border/50 p-4">
-          {editingOrg ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">EDIT BUSINESS DETAILS</span>
-                <button onClick={() => setEditingOrg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-              </div>
-              {isOwner ? (
-                <Field label="BUSINESS NAME · OWNER CONTROLLED" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} placeholder={activeOrg.name} />
-              ) : (
-                <div className="text-xs text-muted-foreground">BUSINESS NAME · {activeOrg.name} · ONLY THE OWNER MAY CHANGE IT</div>
-              )}
-              <SelectField label="INDUSTRY" value={editForm.industry} onChange={v => setEditForm(f => ({ ...f, industry: v }))}
-                options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
-              <SelectField label="COMPANY SIZE" value={editForm.size} onChange={v => setEditForm(f => ({ ...f, size: v }))}
-                options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s + ' EMPLOYEES' }))]} />
-               <div className="grid gap-3 sm:grid-cols-2">
-                 <Field label="LEGAL ENTITY NAME" value={editForm.legalEntityName} onChange={v => setEditForm(f => ({ ...f, legalEntityName: v }))} placeholder="REGISTERED COMPANY NAME" />
-                 <Field label="ENTITY TYPE" value={editForm.entityType} onChange={v => setEditForm(f => ({ ...f, entityType: v }))} placeholder="LLC, CORPORATION, SOLE PROPRIETOR" />
-                 <Field label="WEBSITE" value={editForm.website} onChange={v => setEditForm(f => ({ ...f, website: v }))} placeholder="https://example.com" type="url" />
-                 <Field label="CONTACT EMAIL" value={editForm.contactEmail} onChange={v => setEditForm(f => ({ ...f, contactEmail: v }))} placeholder="operations@example.com" type="email" />
-                 <Field label="CONTACT PHONE" value={editForm.contactPhone} onChange={v => setEditForm(f => ({ ...f, contactPhone: v }))} placeholder="+1 555 0100" type="tel" />
-               </div>
-               <TextAreaField label="BUSINESS / LEGAL ADDRESS" value={editForm.businessAddress} onChange={v => setEditForm(f => ({ ...f, businessAddress: v }))} placeholder="REGISTERED BUSINESS ADDRESS" />
-               <TextAreaField label="ORGANIZATION DESCRIPTION" value={editForm.description} onChange={v => setEditForm(f => ({ ...f, description: v }))} placeholder="WHAT THIS ORGANIZATION DOES" />
-              {editError && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{editError}</p>}
-              <div className="flex items-center gap-2">
-                <button onClick={handleEditOrg} disabled={editSaving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50">
-                  {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} SAVE CHANGES
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-primary" />
-              </div>
-              <div className="flex-1 min-w-[200px]">
-                <div className="text-sm font-bold tracking-wider uppercase">{activeOrg.name}</div>
-                <div className="text-xs text-muted-foreground tracking-wider uppercase">
-                  {activeOrg.industry || 'NO INDUSTRY SET'} {activeOrg.size ? `· ${activeOrg.size}` : ''}
-                </div>
-                <div className="mt-1 text-[10px] font-mono text-muted-foreground break-all">
-                  BUSINESS ID · {activeOrg.businessId}
-                </div>
-              </div>
-              {activeMember && (
-                <div className="text-right">
-                  <div className="text-xs font-bold uppercase tracking-wider text-primary">{activeMember.role}</div>
-                  {activeMember.title && <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{activeMember.title}</div>}
-                </div>
-              )}
-              {activeMembers.length > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/20 border border-border/30">
-                  <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs font-bold text-muted-foreground">{activeMembers.length} MEMBERS</span>
-                </div>
-              )}
-              {isManager && (
-                <button
-                  onClick={openEditOrg}
-                  aria-label="Edit organization settings"
-                  className="p-2 rounded-lg hover:bg-muted/20 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {activeOrg && isManager && (
-        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
-          className="rounded-xl bg-card/50 border border-border/50 overflow-hidden" aria-label="Protected records">
-          <div className="flex items-center justify-between gap-3 p-4 border-b border-border/30">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <LockKeyhole className="w-4 h-4 text-amber-400" />
-              </div>
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-[0.15em]">PROTECTED RECORDS</h2>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">ENCRYPTED BUSINESS PAPERWORK · MANAGER ACCESS</p>
-              </div>
-            </div>
-            <button
-              onClick={() => { resetRecordForm(); setShowRecordForm(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/20 transition-colors"
+        <div className="flex items-center gap-2">
+          {allOrgs.length > 1 && (
+            <select
+              className="bg-card border border-border rounded-sm px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-primary transition-colors cursor-pointer"
+              value={selectedOrgId || ''}
+              onChange={e => switchOrg(Number(e.target.value))}
             >
-              <Plus className="w-3.5 h-3.5" /> ADD RECORD
-            </button>
-          </div>
+              {allOrgs.map(entry => (
+                <option key={entry.organization?.id} value={entry.organization?.id}>
+                  {entry.organization?.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button onClick={loadData} className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-border bg-card text-[10px] font-bold uppercase tracking-widest hover:border-primary hover:text-primary transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" /> REFRESH
+          </button>
+        </div>
+      </header>
 
-          {showRecordForm && (
-            <div className="p-4 border-b border-border/30 bg-muted/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">{editingRecordId ? 'EDIT PROTECTED RECORD' : 'NEW PROTECTED RECORD'}</span>
-                <button onClick={resetRecordForm} aria-label="Close protected record form" className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-primary animate-spin" /></div>
+      ) : (
+        <>
+          {!activeOrg && (
+            <div className="max-w-md mx-auto mt-12 p-6 border border-border rounded-md bg-card space-y-4">
+              <div className="flex items-center gap-2 border-b border-border pb-3">
+                <Building2 className="w-5 h-5 text-primary" />
+                <h2 className="text-sm font-bold uppercase tracking-widest">REGISTER BUSINESS</h2>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="LABEL" value={recordForm.label} onChange={v => setRecordForm(f => ({ ...f, label: v }))} placeholder="TAX ID, LICENSE NUMBER, POLICY NUMBER" />
-                <Field label={editingRecordId ? 'NEW VALUE (OPTIONAL)' : 'VALUE'} value={recordForm.value} onChange={v => setRecordForm(f => ({ ...f, value: v }))} placeholder={editingRecordId ? 'LEAVE BLANK TO KEEP CURRENT' : 'SENSITIVE VALUE'} type="password" />
-              </div>
-              <button onClick={handleSaveRecord} disabled={recordSaving || !recordForm.label.trim()}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-black text-xs font-bold uppercase tracking-wider hover:bg-amber-400 transition-colors disabled:opacity-50">
-                {recordSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />} SAVE ENCRYPTED RECORD
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
+                CREATE AN ORGANIZATION TO UNLOCK TEAM MANAGEMENT, SHARED BILLING, EMPLOYEE TRACKING, AND COLLABORATIVE FEATURES.
+              </p>
+              <Field label="BUSINESS NAME *" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="YOUR COMPANY NAME" />
+              <SelectField label="INDUSTRY" value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))} options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
+              <SelectField label="COMPANY SIZE" value={createForm.size} onChange={v => setCreateForm(f => ({ ...f, size: v }))} options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s }))]} />
+              {createError && <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">{createError}</p>}
+              <button onClick={handleCreateOrg} disabled={creating} className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
+                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'CREATE ORGANIZATION'}
               </button>
             </div>
           )}
 
-          {recordError && <p className="px-4 pt-3 text-[10px] text-red-400 font-bold uppercase tracking-wider">{recordError}</p>}
-          {recordsLoading ? (
-            <div className="flex justify-center p-6"><Loader2 className="w-5 h-5 animate-spin text-amber-400" /></div>
-          ) : protectedRecords.length === 0 ? (
-            <div className="p-6 text-center">
-              <LockKeyhole className="w-7 h-7 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">NO PROTECTED RECORDS SAVED</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {protectedRecords.map(record => {
-                const revealed = revealedRecords[record.id];
-                return (
-                  <div key={record.id} className="p-4 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold uppercase tracking-wider truncate">{record.label}</div>
-                      <div className={`mt-1 text-sm font-mono break-all ${revealed !== undefined ? 'text-amber-300' : 'text-muted-foreground'}`}>
-                        {revealed !== undefined ? revealed : record.maskedValue}
-                      </div>
+          {activeOrg && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+              {/* LEFT COLUMN: Main Hub & Matrix */}
+              <div className="lg:col-span-8 space-y-6">
+
+                {summary && (summary.bills.overdue > 0 || summary.invoices.overdue > 0 || summary.invoices.open > 0) && (
+                  <div className="p-4 border border-primary bg-primary/5 rounded-md flex flex-col gap-3">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" /> ACTION REQUIRED
                     </div>
-                    <button onClick={() => handleRevealRecord(record.id)} aria-label={revealed !== undefined ? `Hide ${record.label}` : `Reveal ${record.label}`}
-                      className="p-2 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors">
-                      {revealed !== undefined ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                    <button onClick={() => { setEditingRecordId(record.id); setRecordForm({ label: record.label, value: '' }); setShowRecordForm(true); setRecordError(''); }}
-                      aria-label={`Edit ${record.label}`} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDeleteRecord(record)} aria-label={`Delete ${record.label}`}
-                      className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      {summary.bills.overdue > 0 && (
+                        <Link href="/business/bills" className="px-3 py-1.5 bg-background border border-primary text-[9px] font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground rounded-sm transition-colors flex items-center gap-1.5">
+                          <Receipt className="w-3 h-3" /> {summary.bills.overdue} OVERDUE BILLS
+                        </Link>
+                      )}
+                      {summary.invoices.overdue > 0 && (
+                        <Link href="/business/invoices" className="px-3 py-1.5 bg-background border border-primary text-[9px] font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground rounded-sm transition-colors flex items-center gap-1.5">
+                          <FileText className="w-3 h-3" /> {summary.invoices.overdue} OVERDUE INVOICES
+                        </Link>
+                      )}
+                      {summary.invoices.open > 0 && (
+                        <Link href="/business/invoices" className="px-3 py-1.5 bg-background border border-border text-[9px] font-bold uppercase tracking-widest text-foreground hover:bg-primary hover:text-primary-foreground rounded-sm transition-colors flex items-center gap-1.5">
+                          <FileText className="w-3 h-3" /> {summary.invoices.open} OPEN INVOICES
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </motion.section>
-      )}
-
-      {activeOrg && isOwner && (
-        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
-          className="rounded-xl bg-red-500/5 border border-red-500/25 p-4" aria-label="Danger zone">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex-1">
-              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-red-400">OWNER DANGER ZONE</h2>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">PERMANENTLY DELETE THIS BUSINESS AND ITS ORGANIZATION DATA. NAME CONFIRMATION IS REQUIRED.</p>
-              {deleteError && <p className="mt-2 text-[10px] text-red-400 font-bold uppercase tracking-wider">{deleteError}</p>}
-            </div>
-            <button onClick={handleDeleteOrg} disabled={editSaving}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors disabled:opacity-50">
-              {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} DELETE BUSINESS
-            </button>
-          </div>
-        </motion.section>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 text-primary animate-spin" />
-        </div>
-      ) : (
-        <>
-          {summary && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card/50 border border-border/50 p-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-primary" />
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.2em]">FINANCIAL SNAPSHOT</span>
-              </div>
-              <div className="space-y-3">
-                <StatRow label="NET PROFIT" value={fmt(Math.abs(netProfit))} prefix={isPositive ? '+' : '-'} icon={isPositive ? ArrowUpRight : ArrowDownRight} color={isPositive ? 'text-emerald-400' : 'text-red-400'} bg={isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'} border={isPositive ? 'border-emerald-500/20' : 'border-red-500/20'} highlight />
-                <StatRow label="GROSS INCOME" value={fmt(summary.financials.grossIncome)} icon={DollarSign} color="text-sky-400" bg="bg-sky-500/10" border="border-sky-500/20" />
-                <StatRow label="TOTAL OUTGOINGS" value={fmt(summary.financials.payrollTotal + summary.financials.billsTotal + summary.financials.expensesTotal)} icon={ArrowDownRight} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" />
-                <div className="border-t border-border/30 pt-3 space-y-2">
-                  <StatRow label="PAYROLL" value={fmt(summary.payroll.total)} sub={`${summary.payroll.runs} RUNS`} icon={DollarSign} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" />
-                  <StatRow label="BILLS" value={fmt(summary.financials.billsTotal)} sub={summary.bills.overdue > 0 ? `${summary.bills.overdue} OVERDUE` : `${summary.bills.total} TOTAL`} subColor={summary.bills.overdue > 0 ? 'text-red-400' : undefined} icon={Receipt} color="text-orange-400" bg="bg-orange-500/10" border="border-orange-500/20" />
-                  <StatRow label="EXPENSES" value={fmt(summary.expenses.amount)} sub={`${summary.expenses.total} ENTRIES`} icon={CreditCard} color="text-purple-400" bg="bg-purple-500/10" border="border-purple-500/20" />
-                </div>
-                <div className="border-t border-border/30 pt-3 space-y-2">
-                  <StatRow label="INVOICES" value={String(summary.invoices.total)} sub={summary.invoices.open > 0 ? `${summary.invoices.open} OPEN` : `${summary.invoices.paid} PAID`} icon={FileText} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" />
-                  <StatRow label="EMPLOYEES" value={String(summary.employees.active)} sub="ACTIVE" icon={Users} color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/20" />
-                </div>
-                <Link href="/business/accounting" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
-                  <BookOpen className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">OPEN ACCOUNTING BOOKS</span> <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-                <Link href="/business/taxes" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/20 transition-colors">
-                  <Landmark className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">ESTIMATE TAXES</span> <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </motion.div>
-          )}
-
-          {summary && (summary.bills.overdue > 0 || summary.invoices.overdue > 0 || summary.invoices.open > 0) && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-xl bg-amber-500/5 border border-amber-500/20 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400">ACTION REQUIRED</span>
-              </div>
-              <div className="space-y-2">
-                {summary.bills.overdue > 0 && (
-                  <Link href="/business/bills" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-colors">
-                    <Receipt className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">{summary.bills.overdue} OVERDUE {summary.bills.overdue === 1 ? 'BILL' : 'BILLS'}</span> <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
                 )}
-                {summary.invoices.overdue > 0 && (
-                  <Link href="/business/invoices" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-colors">
-                    <FileText className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">{summary.invoices.overdue} OVERDUE {summary.invoices.overdue === 1 ? 'INVOICE' : 'INVOICES'}</span> <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                )}
-                {summary.invoices.open > 0 && (
-                  <Link href="/business/invoices" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/20 transition-colors">
-                    <FileText className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">{summary.invoices.open} OPEN {summary.invoices.open === 1 ? 'INVOICE' : 'INVOICES'}</span> <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                )}
-              </div>
-            </motion.div>
-          )}
 
-          {activeOrg && activeMember && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="rounded-xl bg-card/50 border border-border/50 overflow-hidden">
-              <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    <h2 className="text-xs font-bold uppercase tracking-[0.15em]">TEAM ROSTER</h2>
+                {summary && (
+                  <div className="border border-border rounded-md bg-card">
+                    <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest">FINANCIAL SNAPSHOT</h2>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border">
+                      <StatBox label="NET PROFIT" value={fmt(Math.abs(netProfit))} prefix={isPositive ? '+' : '-'} color={isPositive ? 'text-primary' : 'text-foreground'} />
+                      <StatBox label="GROSS INCOME" value={fmt(summary.financials.grossIncome)} />
+                      <StatBox label="OUTGOINGS" value={fmt(summary.financials.payrollTotal + summary.financials.billsTotal + summary.financials.expensesTotal)} />
+                      <StatBox label="ACTIVE EMPLOYEES" value={String(summary.employees.active)} />
+                    </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{activeMembers.length} ACTIVE MEMBER{activeMembers.length !== 1 ? 'S' : ''}</p>
+                )}
+
+                <div className="space-y-6">
+                  {SECTIONS.filter(section => {
+                    const orgIndustry = activeOrg?.industry?.toLowerCase() ?? '';
+                    return section.items.some((item: any) => !item.requireIndustry || item.requireIndustry.toLowerCase() === orgIndustry);
+                  }).map(section => {
+                    const orgIndustry = activeOrg?.industry?.toLowerCase() ?? '';
+                    const items = section.items.filter((item: any) => !item.requireIndustry || item.requireIndustry.toLowerCase() === orgIndustry);
+                    return (
+                      <div key={section.title} className="space-y-3">
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{section.title}</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {items.map((item: any) => (
+                            <Link key={item.path} href={item.path} className="flex flex-col items-start gap-2 p-3 border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all rounded-md group">
+                              <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-foreground group-hover:text-primary transition-colors truncate w-full text-left">
+                                {boomerMode ? item.boomer : item.label}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/business/team"
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider text-indigo-300 hover:bg-indigo-500/20"
-                  >
-                    <ArrowRight className="w-3 h-3" /> TEAM MANAGEMENT
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                  <Link href="/business/accounting" className="flex items-center justify-center gap-2 p-3 border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all rounded-md group">
+                    <BookOpen className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-foreground group-hover:text-primary transition-colors">OPEN ACCOUNTING</span>
                   </Link>
-                  {!isOwner && (
-                    <button onClick={() => { if (confirm('Are you sure you want to leave this organization?')) handleRemoveMember(user?.id ?? ''); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-colors">
-                      LEAVE ORG
-                    </button>
-                  )}
-                  {isManager && (
-                    <button onClick={() => { setShowInvite(!showInvite); setInviteUrl(''); setInviteError(''); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
-                      <UserPlus className="w-3.5 h-3.5" /> INVITE
-                    </button>
-                  )}
+                  <Link href="/business/taxes" className="flex items-center justify-center gap-2 p-3 border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all rounded-md group">
+                    <Landmark className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-foreground group-hover:text-primary transition-colors">ESTIMATE TAXES</span>
+                  </Link>
                 </div>
               </div>
 
-              <AnimatePresence>
-                {showInvite && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <div className="px-4 pb-3 space-y-2">
+              {/* RIGHT COLUMN: Settings & Admin */}
+              <div className="lg:col-span-4 space-y-6">
+
+                <div className="border border-border rounded-md bg-card flex flex-col">
+                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest">DETAILS</h2>
+                    </div>
+                    {isManager && (
+                      <button onClick={() => { setEditingOrg(!editingOrg); if(!editingOrg) openEditOrg(); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
+                        {editingOrg ? 'CANCEL' : 'EDIT'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    {editingOrg ? (
+                      <div className="space-y-3">
+                        {isOwner ? (
+                          <Field label="NAME" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} placeholder={activeOrg.name} />
+                        ) : (
+                          <div className="text-[9px] text-muted-foreground uppercase tracking-widest">NAME: {activeOrg.name} (OWNER ONLY)</div>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <SelectField label="INDUSTRY" value={editForm.industry} onChange={v => setEditForm(f => ({ ...f, industry: v }))} options={[{ value: '', label: '—' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
+                          <SelectField label="SIZE" value={editForm.size} onChange={v => setEditForm(f => ({ ...f, size: v }))} options={[{ value: '', label: '—' }, ...SIZES.map(s => ({ value: s, label: s }))]} />
+                        </div>
+                        <Field label="ENTITY NAME" value={editForm.legalEntityName} onChange={v => setEditForm(f => ({ ...f, legalEntityName: v }))} />
+                        <Field label="ENTITY TYPE" value={editForm.entityType} onChange={v => setEditForm(f => ({ ...f, entityType: v }))} />
+                        <Field label="WEBSITE" value={editForm.website} onChange={v => setEditForm(f => ({ ...f, website: v }))} type="url" />
+                        <Field label="EMAIL" value={editForm.contactEmail} onChange={v => setEditForm(f => ({ ...f, contactEmail: v }))} type="email" />
+                        <Field label="PHONE" value={editForm.contactPhone} onChange={v => setEditForm(f => ({ ...f, contactPhone: v }))} type="tel" />
+                        <TextAreaField label="ADDRESS" value={editForm.businessAddress} onChange={v => setEditForm(f => ({ ...f, businessAddress: v }))} />
+                        <TextAreaField label="DESCRIPTION" value={editForm.description} onChange={v => setEditForm(f => ({ ...f, description: v }))} />
+                        {editError && <div className="text-[9px] font-bold text-destructive uppercase tracking-widest">{editError}</div>}
+                        <button onClick={handleEditOrg} disabled={editSaving} className="w-full mt-2 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[9px] rounded-sm disabled:opacity-50 hover:bg-primary/90 transition-colors">
+                          {editSaving ? 'SAVING...' : 'SAVE CHANGES'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">NAME</div>
+                          <div className="text-xs font-bold uppercase tracking-wider">{activeOrg.name}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">INDUSTRY</div>
+                            <div className="text-xs font-bold uppercase tracking-wider">{activeOrg.industry || '—'}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">SIZE</div>
+                            <div className="text-xs font-bold uppercase tracking-wider">{activeOrg.size || '—'}</div>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">YOUR ROLE</div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-primary">{activeMember?.role} {activeMember?.title ? `(${activeMember.title})` : ''}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border border-border rounded-md bg-card flex flex-col">
+                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest">TEAM ({activeMembers.length})</h2>
+                    </div>
+                    {isManager && (
+                      <button onClick={() => { setShowInvite(!showInvite); setInviteUrl(''); setInviteError(''); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
+                        {showInvite ? 'CANCEL' : '+ INVITE'}
+                      </button>
+                    )}
+                  </div>
+
+                  {showInvite && (
+                    <div className="p-3 border-b border-border bg-muted/20 space-y-2">
                       <div className="flex gap-2">
                         <input
                           value={inviteInput} onChange={e => setInviteInput(e.target.value)} placeholder="EMAIL OR USERNAME"
-                          className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                          className="flex-1 bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary transition-colors"
                           onKeyDown={e => e.key === 'Enter' && handleInvite()}
                         />
-                        <button onClick={handleInvite} disabled={inviting || !inviteInput.trim()}
-                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 disabled:opacity-50">
-                          {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'SEND'}
+                        <button onClick={handleInvite} disabled={inviting || !inviteInput.trim()} className="px-3 py-1.5 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[9px] rounded-sm disabled:opacity-50 hover:bg-primary/90 transition-colors">
+                          {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'SEND'}
                         </button>
                       </div>
-                      {inviteError && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{inviteError}</p>}
+                      {inviteError && <p className="text-[9px] text-destructive font-bold uppercase tracking-widest">{inviteError}</p>}
                       {inviteUrl && (
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex-1 truncate">INVITE LINK GENERATED</span>
-                          <button onClick={copyInviteUrl} className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider hover:bg-emerald-500/30">
-                            {copied ? <><Check className="w-3 h-3" /> COPIED</> : <><Copy className="w-3 h-3" /> COPY LINK</>}
+                        <div className="flex items-center gap-2 p-2 border border-primary bg-primary/10 rounded-sm">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                          <span className="text-[9px] text-primary font-bold uppercase tracking-widest flex-1 truncate">LINK GENERATED</span>
+                          <button onClick={copyInviteUrl} className="flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-[9px] font-bold uppercase tracking-widest rounded-sm hover:bg-primary/90 transition-colors">
+                            {copied ? 'COPIED' : 'COPY'}
                           </button>
                         </div>
                       )}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  )}
 
-              {memberError && (
-                <div className="px-4 py-2">
-                  <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{memberError}</p>
-                </div>
-              )}
-              <div className="divide-y divide-border/30">
-                {activeMembers.map((m) => {
-                  const isEditing = editingMember === m.userId;
-                  const isSelf = m.userId === user?.id;
-                  const canEdit = isManager && m.role !== 'owner' && !isSelf;
-                  return (
-                    <div key={m.userId} className="px-4 py-3">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-primary">EDITING MEMBER</span>
-                            <button onClick={() => setEditingMember(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <SelectField label="ROLE" value={memberEditForm.role} onChange={v => setMemberEditForm(f => ({ ...f, role: v }))}
-                              options={ROLES.map(r => ({ value: r, label: r.toUpperCase() }))} />
-                            <Field label="TITLE" value={memberEditForm.title} onChange={v => setMemberEditForm(f => ({ ...f, title: v }))} placeholder="JOB TITLE" />
-                            <Field label="SALARY" value={memberEditForm.salary} onChange={v => setMemberEditForm(f => ({ ...f, salary: v }))} placeholder="0.00" type="number" />
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => handleUpdateMember(m.userId)} disabled={memberSaving}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 disabled:opacity-50">
-                              {memberSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} SAVE
-                            </button>
-                            <button onClick={() => handleRemoveMember(m.userId)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20">
-                              <Trash2 className="w-3 h-3" /> REMOVE
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ${m.role === 'owner' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-muted/20 border border-border/30'}`}>
-                            {resolveAvatarUrl(m.profileImageUrl) ? (
-                              <img src={resolveAvatarUrl(m.profileImageUrl)} alt="" className="w-full h-full object-cover" />
-                            ) : m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Users className="w-4 h-4 text-muted-foreground" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold uppercase tracking-wider">
-                                {m.firstName ? `${m.firstName}${m.lastName ? ` ${m.lastName}` : ''}` : m.username || m.userId.slice(0, 12)}
-                              </span>
-                              {isSelf && <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">YOU</span>}
+                  {memberError && (
+                    <div className="p-3 border-b border-border text-[9px] font-bold text-destructive uppercase tracking-widest">{memberError}</div>
+                  )}
+
+                  <div className="divide-y divide-border max-h-80 overflow-y-auto">
+                    {activeMembers.map(m => {
+                      const isEditing = editingMember === m.userId;
+                      const isSelf = m.userId === user?.id;
+                      const canEdit = isManager && m.role !== 'owner' && !isSelf;
+
+                      return (
+                        <div key={m.userId} className="p-3 text-xs hover:bg-muted/5 transition-colors">
+                          {isEditing ? (
+                            <div className="space-y-3 bg-muted/20 p-3 rounded-sm border border-border">
+                              <div className="flex items-center justify-between pb-2 border-b border-border">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-primary">EDIT MEMBER</span>
+                                <button onClick={() => setEditingMember(null)}><X className="w-3.5 h-3.5"/></button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <SelectField label="ROLE" value={memberEditForm.role} onChange={v => setMemberEditForm(f => ({ ...f, role: v }))} options={ROLES.map(r => ({ value: r, label: r.toUpperCase() }))} />
+                                <Field label="TITLE" value={memberEditForm.title} onChange={v => setMemberEditForm(f => ({ ...f, title: v }))} />
+                                <Field label="SALARY" type="number" value={memberEditForm.salary} onChange={v => setMemberEditForm(f => ({ ...f, salary: v }))} />
+                              </div>
+                              <div className="flex items-center gap-2 pt-1">
+                                <button onClick={() => handleUpdateMember(m.userId)} disabled={memberSaving} className="px-3 py-1.5 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[9px] rounded-sm disabled:opacity-50 hover:bg-primary/90 transition-colors">SAVE</button>
+                                <button onClick={() => handleRemoveMember(m.userId)} className="px-3 py-1.5 bg-background border border-destructive text-destructive font-bold uppercase tracking-widest text-[9px] rounded-sm hover:bg-destructive hover:text-destructive-foreground transition-colors">REMOVE</button>
+                              </div>
                             </div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              {m.role}{m.title ? ` · ${m.title}` : ''}{m.department ? ` · ${m.department}` : ''}
+                          ) : (
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-7 h-7 rounded-sm overflow-hidden bg-background border border-border flex items-center justify-center flex-shrink-0">
+                                  {resolveAvatarUrl(m.profileImageUrl) ? (
+                                    <img src={resolveAvatarUrl(m.profileImageUrl)} alt="" className="w-full h-full object-cover" />
+                                  ) : (m.role === 'owner' ? <Crown className="w-4 h-4 text-primary" /> : <Users className="w-4 h-4 text-muted-foreground" />)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold uppercase tracking-wider truncate">
+                                      {m.firstName ? `${m.firstName}${m.lastName ? ` ${m.lastName}` : ''}` : m.username || m.userId.slice(0, 12)}
+                                    </span>
+                                    {isSelf && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded-sm">YOU</span>}
+                                  </div>
+                                  <div className="text-[9px] text-muted-foreground uppercase tracking-widest truncate">
+                                    {m.role}{m.title ? ` · ${m.title}` : ''}{m.salary ? ` · $${Number(m.salary).toLocaleString()}` : ''}
+                                  </div>
+                                </div>
+                              </div>
+                              {canEdit && (
+                                <button onClick={() => { setEditingMember(m.userId); setMemberEditForm({ role: m.role, title: m.title || '', salary: m.salary || '' }); }} className="p-1.5 hover:text-primary transition-colors text-muted-foreground">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
-                          </div>
-                          {m.salary && <span className="text-xs font-bold text-emerald-400 tabular-nums">${Number(m.salary).toLocaleString()}</span>}
-                          {canEdit && (
-                            <button
-                              onClick={() => { setEditingMember(m.userId); setMemberEditForm({ role: m.role, title: m.title || '', salary: m.salary || '' }); }}
-                              className="p-1.5 rounded-lg hover:bg-muted/20 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {activeMembers.length === 0 && (
-                  <div className="px-4 py-6 text-center">
-                    <Users className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">NO TEAM MEMBERS YET — INVITE YOUR FIRST EMPLOYEE ABOVE</p>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {activeOrg && isManager && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
-              <OrgLaborRequests orgId={activeOrg.id} orgName={activeOrg.name} />
-            </motion.div>
-          )}
-
-          {SECTIONS.map((section, si) => {
-            const orgIndustry = activeOrg?.industry?.toLowerCase() ?? '';
-            const filteredItems = section.items.filter((item: any) =>
-              !item.requireIndustry || item.requireIndustry.toLowerCase() === orgIndustry
-            );
-            if (filteredItems.length === 0) return null;
-            return (
-            <motion.div key={section.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + si * 0.03 }}
-              className="rounded-xl bg-card/50 border border-border/50 overflow-hidden">
-              <div className="px-4 pt-4 pb-2">
-                <h2 className="text-xs font-bold uppercase tracking-[0.15em]">{section.title}</h2>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{section.subtitle}</p>
-              </div>
-              <div className="divide-y divide-border/30">
-                {filteredItems.map((item: any) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.path} href={item.path} className="group flex items-start gap-3 px-4 py-3.5 hover:bg-muted/10 transition-colors">
-                      <div className={`w-9 h-9 rounded-lg ${item.bg} border ${item.border} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                        <Icon className={`w-4 h-4 ${item.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold uppercase tracking-wider">{boomerMode ? item.boomer : item.label}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1 leading-relaxed">{item.desc}</p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </motion.div>
-            );
-          })}
-
-          {!activeOrg && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              {showCreateOrg ? (
-                <div className="rounded-xl bg-card/50 border border-primary/20 p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-primary" />
-                      <h3 className="text-sm font-bold uppercase tracking-wider">REGISTER YOUR BUSINESS</h3>
-                    </div>
-                    <button onClick={() => setShowCreateOrg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                  <div className="p-3 border-t border-border flex justify-between items-center bg-muted/5">
+                    <Link href="/business/team" className="text-[9px] font-bold uppercase tracking-widest text-foreground hover:text-primary transition-colors">MANAGE FULL TEAM</Link>
+                    {!isOwner && (
+                      <button onClick={() => { if (confirm('Are you sure you want to leave this organization?')) handleRemoveMember(user?.id ?? ''); }} className="text-[9px] font-bold uppercase tracking-widest text-destructive hover:underline">LEAVE ORG</button>
+                    )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider leading-relaxed">
-                    CREATE AN ORGANIZATION TO UNLOCK TEAM MANAGEMENT, SHARED BILLING, EMPLOYEE TRACKING, AND COLLABORATIVE FEATURES ACROSS ALL BUSINESS MODULES.
-                  </p>
-                  <Field label="BUSINESS NAME *" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="YOUR COMPANY NAME" />
-                  <SelectField label="INDUSTRY" value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))}
-                    options={[{ value: '', label: '— SELECT INDUSTRY —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
-                  <SelectField label="COMPANY SIZE" value={createForm.size} onChange={v => setCreateForm(f => ({ ...f, size: v }))}
-                    options={[{ value: '', label: '— SELECT SIZE —' }, ...SIZES.map(s => ({ value: s, label: s + ' EMPLOYEES' }))]} />
-                  {createError && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{createError}</p>}
-                  <button onClick={handleCreateOrg} disabled={creating}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50">
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} CREATE ORGANIZATION
-                  </button>
                 </div>
-              ) : (
-                <div className="rounded-xl bg-primary/5 border border-primary/20 p-6 text-center space-y-4">
-                  <Building2 className="w-12 h-12 text-primary/60 mx-auto" />
-                  <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider">NO ORGANIZATION YET</h3>
-                    <p className="text-xs text-muted-foreground tracking-wider mt-1 uppercase leading-relaxed">
-                      REGISTER A BUSINESS TO UNLOCK TEAM MANAGEMENT, EMPLOYEE TRACKING, SHARED BILLING, AND FULL BUSINESS OPERATIONS.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowCreateOrg(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" /> REGISTER A BUSINESS
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
 
-          {activeOrg && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <button
-                onClick={() => { setShowCreateOrg(true); setCreateForm({ name: '', industry: '', size: '' }); setCreateError(''); }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-card/50 border border-dashed border-border/50 hover:border-primary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-all"
-              >
-                <Plus className="w-4 h-4" /> REGISTER ANOTHER BUSINESS
-              </button>
-              <AnimatePresence>
-                {showCreateOrg && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-3">
-                    <div className="rounded-xl bg-card/50 border border-primary/20 p-5 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-5 h-5 text-primary" />
-                          <h3 className="text-sm font-bold uppercase tracking-wider">REGISTER NEW BUSINESS</h3>
-                        </div>
-                        <button onClick={() => setShowCreateOrg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                {isManager && <OrgLaborRequests orgId={activeOrg.id} orgName={activeOrg.name} />}
+
+                {isManager && (
+                  <div className="border border-border rounded-md bg-card flex flex-col">
+                    <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <LockKeyhole className="w-4 h-4" />
+                        <h2 className="text-xs font-bold uppercase tracking-widest">RECORDS</h2>
                       </div>
-                      <Field label="BUSINESS NAME *" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="YOUR COMPANY NAME" />
-                      <SelectField label="INDUSTRY" value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))}
-                        options={[{ value: '', label: '— SELECT INDUSTRY —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
-                      <SelectField label="COMPANY SIZE" value={createForm.size} onChange={v => setCreateForm(f => ({ ...f, size: v }))}
-                        options={[{ value: '', label: '— SELECT SIZE —' }, ...SIZES.map(s => ({ value: s, label: s + ' EMPLOYEES' }))]} />
-                      {createError && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{createError}</p>}
-                      <button onClick={handleCreateOrg} disabled={creating}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50">
-                        {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} CREATE ORGANIZATION
+                      <button onClick={() => { resetRecordForm(); setShowRecordForm(!showRecordForm); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
+                        {showRecordForm ? 'CANCEL' : '+ ADD'}
                       </button>
                     </div>
-                  </motion.div>
+
+                    {showRecordForm && (
+                      <div className="p-4 border-b border-border bg-muted/20 space-y-3">
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-primary pb-2 border-b border-border">{editingRecordId ? 'EDIT RECORD' : 'NEW RECORD'}</div>
+                        <Field label="LABEL" value={recordForm.label} onChange={v => setRecordForm(f => ({ ...f, label: v }))} placeholder="TAX ID, ETC" />
+                        <Field label={editingRecordId ? 'NEW VALUE (OPTIONAL)' : 'VALUE'} value={recordForm.value} onChange={v => setRecordForm(f => ({ ...f, value: v }))} placeholder={editingRecordId ? 'LEAVE BLANK TO KEEP CURRENT' : 'SENSITIVE VALUE'} type="password" />
+                        {recordError && <div className="text-[9px] font-bold text-destructive uppercase tracking-widest">{recordError}</div>}
+                        <button onClick={handleSaveRecord} disabled={recordSaving || !recordForm.label.trim()} className="w-full mt-2 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[9px] rounded-sm disabled:opacity-50 hover:bg-primary/90 transition-colors">
+                          {recordSaving ? 'SAVING...' : 'SAVE RECORD'}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="divide-y divide-border max-h-80 overflow-y-auto">
+                      {recordsLoading ? (
+                        <div className="p-4 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                      ) : protectedRecords.length === 0 ? (
+                        <div className="p-4 text-center text-[9px] text-muted-foreground uppercase tracking-widest">NO RECORDS SAVED</div>
+                      ) : (
+                        protectedRecords.map(record => {
+                          const revealed = revealedRecords[record.id];
+                          return (
+                            <div key={record.id} className="p-3 flex items-center justify-between gap-3 hover:bg-muted/10 transition-colors">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-bold uppercase tracking-widest truncate">{record.label}</div>
+                                <div className={`text-xs font-mono truncate ${revealed !== undefined ? 'text-primary' : 'text-muted-foreground'}`}>
+                                  {revealed !== undefined ? revealed : record.maskedValue}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => handleRevealRecord(record.id)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                                  {revealed !== undefined ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                                <button onClick={() => { setEditingRecordId(record.id); setRecordForm({ label: record.label, value: '' }); setShowRecordForm(true); setRecordError(''); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => handleDeleteRecord(record)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
                 )}
-              </AnimatePresence>
-            </motion.div>
+
+                {isOwner && (
+                  <div className="border border-destructive/50 rounded-md bg-card flex flex-col">
+                    <div className="px-4 py-3 border-b border-destructive/20 flex items-center gap-2 bg-destructive/5">
+                      <AlertTriangle className="w-4 h-4 text-destructive" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest text-destructive">DANGER ZONE</h2>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
+                        PERMANENTLY DELETE THIS BUSINESS AND ALL RELATED ORGANIZATION DATA.
+                      </p>
+                      {deleteError && <div className="text-[9px] font-bold text-destructive uppercase tracking-widest">{deleteError}</div>}
+                      <button onClick={handleDeleteOrg} disabled={editSaving} className="w-full py-2 bg-background border border-destructive text-destructive font-bold uppercase tracking-widest text-[9px] rounded-sm hover:bg-destructive hover:text-destructive-foreground transition-colors disabled:opacity-50">
+                        {editSaving ? 'DELETING...' : 'DELETE BUSINESS'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button onClick={() => { setShowCreateOrg(!showCreateOrg); setCreateForm({ name: '', industry: '', size: '' }); setCreateError(''); }} className="w-full py-3 border border-dashed border-border bg-card text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-primary transition-colors rounded-md flex items-center justify-center gap-2">
+                    {showCreateOrg ? 'CANCEL REGISTRATION' : <><Plus className="w-3.5 h-3.5" /> REGISTER ANOTHER BUSINESS</>}
+                  </button>
+
+                  {showCreateOrg && (
+                    <div className="mt-4 p-4 border border-border bg-card rounded-md space-y-4">
+                      <div className="flex items-center justify-between border-b border-border pb-2">
+                        <h3 className="text-xs font-bold uppercase tracking-widest">NEW BUSINESS</h3>
+                      </div>
+                      <Field label="BUSINESS NAME *" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="YOUR COMPANY NAME" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <SelectField label="INDUSTRY" value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))} options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
+                        <SelectField label="SIZE" value={createForm.size} onChange={v => setCreateForm(f => ({ ...f, size: v }))} options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s }))]} />
+                      </div>
+                      {createError && <div className="text-[9px] font-bold text-destructive uppercase tracking-widest">{createError}</div>}
+                      <button onClick={handleCreateOrg} disabled={creating} className="w-full py-2 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[9px] rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
+                        {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'CREATE ORGANIZATION'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function StatRow({ label, value, prefix, sub, subColor, icon: Icon, color, bg, border, highlight }: {
-  label: string; value: string; prefix?: string; sub?: string; subColor?: string;
-  icon: React.ComponentType<{ className?: string }>; color: string; bg: string; border: string; highlight?: boolean;
-}) {
-  return (
-    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${highlight ? `${bg} border ${border}` : ''}`}>
-      <div className={`w-8 h-8 rounded-lg ${bg} border ${border} flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-4 h-4 ${color}`} />
-      </div>
-      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex-1">{label}</span>
-      {sub && <span className={`text-[10px] font-bold uppercase tracking-wider ${subColor || 'text-muted-foreground/60'}`}>{sub}</span>}
-      <span className={`text-sm font-bold tracking-wider ${color} tabular-nums`}>{prefix}{value}</span>
     </div>
   );
 }

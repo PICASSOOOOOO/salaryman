@@ -926,26 +926,83 @@ body.workspace-light #root {
 
 /* Absolute browser-wide readability contract. No web route or nested widget
    may introduce a black/dark panel. Media pixels are left untouched. */
-body.workspace-light *:not(img):not(video):not(canvas):not(svg):not(path),
+body.workspace-light *:not(img):not(video):not(canvas):not(svg):not(path):not(circle):not(rect):not(polygon):not(polyline):not(line),
 body.workspace-light *::before,
 body.workspace-light *::after {
-  background-color: #fffaf0 !important;
-  background-image: none !important;
-  color: #050505 !important;
-  border-color: #222222 !important;
-  text-shadow: none !important;
+  background-color: transparent;
 }
 
-body.workspace-light :where(h1, h2, h3, h4, p, span, label, button, input, textarea, select, option, a) {
-  color: #050505 !important;
-  -webkit-text-fill-color: #050505 !important;
-  opacity: 1 !important;
+body.workspace-light :where(h1, h2, h3, h4, p, span, label, button, input, textarea, select, option, a, div) {
+  color: inherit;
 }
 
-body.workspace-light :where(input, textarea)::placeholder {
-  color: #2b2b2b !important;
-  -webkit-text-fill-color: #2b2b2b !important;
-  opacity: 1 !important;
+body.workspace-light {
+  --color-background: 42 100% 97%;
+  --color-foreground: 0 0% 0%;
+  --color-card: 42 100% 97%;
+  --color-card-foreground: 0 0% 0%;
+  --color-popover: 42 100% 97%;
+  --color-popover-foreground: 0 0% 0%;
+  --color-border: 0 0% 90%;
+  --color-primary: 135 100% 40%;
+  --color-primary-foreground: 0 0% 0%;
+  --color-muted: 42 100% 94%;
+  --color-muted-foreground: 0 0% 40%;
+
+  background-color: #FAFAF7 !important;
+  color: #000000 !important;
+}
+
+body.workspace-light #root {
+  background: #FAFAF7 !important;
+  color: #000000 !important;
+}
+
+/* Adjust Chrome for Desktop */
+@media (min-width: 640px) {
+  .app-chrome {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #FAFAF7;
+  }
+  .desktop-app-nav {
+    display: flex;
+  }
+  .mobile-app-nav-top, .mobile-app-nav-bottom, .mobile-app-subnav {
+    display: none !important;
+  }
+}
+
+/* Adjust Chrome for Mobile */
+@media (max-width: 639px) {
+  .app-chrome {
+    display: block; /* No layout changes, elements are fixed */
+  }
+  .desktop-app-nav {
+    display: none !important;
+  }
+  body.workspace-light #root {
+    padding-top: 48px;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  body.workspace-light.has-subnav #root {
+    padding-top: 88px; /* 48px top + 40px subnav */
+  }
+  .mobile-app-nav-top, .mobile-app-nav-bottom {
+    display: flex;
+  }
+  .mobile-app-subnav {
+    display: flex;
+  }
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* OrbitArtwork is still a light browser surface, but its stacked decorative

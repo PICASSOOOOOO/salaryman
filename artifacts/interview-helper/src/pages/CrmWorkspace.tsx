@@ -7,7 +7,6 @@ import {
   Briefcase,
   Building2,
   CircleDollarSign,
-  Clock3,
   Columns3,
   LayoutDashboard,
   Mail,
@@ -23,7 +22,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 import { addActiveCallsBatch, type ActiveCall } from '@/lib/phone-utils';
-import './crm-workspace.css';
 
 interface LeadRecord {
   id: number;
@@ -168,97 +166,19 @@ function formatCurrency(value: unknown) {
 }
 
 function activityIcon(channel: string) {
-  if (channel === 'sms') return <MessageSquare size={14} aria-hidden="true" />;
-  if (channel === 'email' || channel === 'comms') return <Mail size={14} aria-hidden="true" />;
-  return <Phone size={14} aria-hidden="true" />;
-}
-
-function activityTone(channel: string) {
-  if (channel === 'sms') return 'sms';
-  if (channel === 'voicemail') return 'voicemail';
-  return '';
+  if (channel === 'sms') return <MessageSquare size={12} />;
+  if (channel === 'email' || channel === 'comms') return <Mail size={12} />;
+  return <Phone size={12} />;
 }
 
 function SkeletonPage() {
   return (
-    <div className="crm-workspace" aria-busy="true" aria-label="Loading CRM workspace">
-      <div className="crm-shell">
-        <div className="crm-skeleton" style={{ marginBottom: 22 }}>
-          <div className="crm-skeleton-line short" />
-          <div className="crm-skeleton-line tall" />
-          <div className="crm-skeleton-line medium" />
-        </div>
-        <div className="crm-summary-strip">
-          {[1, 2, 3, 4].map(item => <div className="crm-stat" key={item}><div className="crm-skeleton-line short" /></div>)}
-        </div>
-        <div className="crm-main-grid">
-          <div className="crm-skeleton">
-            {[1, 2, 3, 4].map(item => <div className="crm-skeleton-line" key={item} />)}
-          </div>
-          <div className="crm-skeleton">
-            {[1, 2, 3].map(item => <div className="crm-skeleton-line" key={item} />)}
-          </div>
-        </div>
+    <div className="flex items-center justify-center h-[calc(100vh-48px)] bg-[#FAFAF7]">
+      <div className="animate-pulse flex flex-col items-center gap-2 text-black/50">
+        <RefreshCw size={24} className="animate-spin" />
+        <span className="text-xs font-bold uppercase tracking-widest">Loading Workspace...</span>
       </div>
     </div>
-  );
-}
-
-function ActivityFeed({ activities, loading, error }: {
-  activities: ActivityRecord[];
-  loading: boolean;
-  error: string | null;
-}) {
-  return (
-    <section className="crm-panel crm-feed" aria-labelledby="crm-activity-heading">
-      <div className="crm-feed-heading">
-        <h2 id="crm-activity-heading">Recent activity</h2>
-        <span>{activities.length ? `${activities.length} updates` : 'Last 25'}</span>
-      </div>
-      {loading ? (
-        <div className="crm-feed-list" aria-label="Loading recent activity">
-          {[1, 2, 3].map(item => (
-            <div className="crm-feed-item" key={item}>
-              <div className="crm-skeleton-line" style={{ width: 28, height: 28, margin: 0 }} />
-              <div><div className="crm-skeleton-line short" style={{ margin: '3px 0 11px' }} /><div className="crm-skeleton-line" style={{ margin: 0 }} /></div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <div className="crm-empty" style={{ minHeight: 210 }}>
-          <div className="crm-empty-icon"><AlertTriangle size={19} aria-hidden="true" /></div>
-          <p>{error}. Activity will appear when the feed is available.</p>
-        </div>
-      ) : activities.length === 0 ? (
-        <div className="crm-empty" style={{ minHeight: 210 }}>
-          <div className="crm-empty-icon"><Clock3 size={19} aria-hidden="true" /></div>
-          <p>No recent activity has been recorded yet.</p>
-        </div>
-      ) : (
-        <div className="crm-feed-list">
-          {activities.map(activity => {
-            const channel = stringValue(activity.channel, 'comms').toLowerCase();
-            const subject = stringValue(activity.contactName, activity.phone || 'Workspace activity');
-            const body = stringValue(activity.summary, stringValue(activity.body, 'No message detail available.'));
-            return (
-              <article className="crm-feed-item" key={activity.id}>
-                <div className={`crm-feed-icon ${activityTone(channel)}`}>{activityIcon(channel)}</div>
-                <div>
-                  <div className="crm-feed-topline">
-                    <span className="crm-feed-kind">{channel}</span>
-                    <time className="crm-feed-time" dateTime={activity.occurredAt ?? activity.createdAt ?? undefined}>
-                      {formatRelative(activity.occurredAt ?? activity.createdAt)}
-                    </time>
-                  </div>
-                  <p>{body}</p>
-                  <div className="crm-feed-person">{subject}</div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -277,6 +197,7 @@ export default function CrmWorkspace() {
   const [selected, setSelected] = useState<SelectedRecord | null>(null);
   const [callingRecordKey, setCallingRecordKey] = useState<string | null>(null);
   const [callError, setCallError] = useState('');
+
   const apiUrl = useCallback((path: string) => `${import.meta.env.BASE_URL}api/${path}`, []);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
@@ -306,6 +227,7 @@ export default function CrmWorkspace() {
         if (!response.ok) throw new Error(body.error || 'CRM call could not be started');
         return body;
       }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
+
       const activeCall: ActiveCall = {
         callSid: result.callSid,
         phone: result.to,
@@ -344,6 +266,7 @@ export default function CrmWorkspace() {
     const dealsResult = byKey('deals');
     const summaryResult = byKey('summary');
     const activitiesResult = byKey('activities');
+
     setLeads(arrayValue<LeadRecord>(leadsResult?.data ?? {}, 'leads'));
     setContacts(arrayValue<ContactRecord>(contactsResult?.data ?? {}, 'contacts'));
     setDeals(arrayValue<DealRecord>(dealsResult?.data ?? {}, 'deals'));
@@ -429,197 +352,166 @@ export default function CrmWorkspace() {
   if (!isAuthenticated) return <SignInPage context="Sign in to access the CRM workspace." />;
 
   return (
-    <div className="crm-workspace">
-      <main className="crm-shell">
-        <header className="crm-header">
-          <div>
-            <p className="crm-eyebrow">SALARYMAN / BUSINESS / CRM</p>
-            <h1>The calm command center for <span>accountable work.</span></h1>
-            <p className="crm-header-copy">
-              Move from a person, company, or conversation to its next action without losing the thread.
-              This is the shared view across your customer records.
-            </p>
-          </div>
-          <div className="crm-header-actions">
-            <div className="crm-link-row">
-              <Link href="/marketing/leads" className="crm-nav-link">
-                <Users size={14} aria-hidden="true" /> Full lead database <ArrowUpRight size={13} aria-hidden="true" />
-              </Link>
-              <Link href="/business/deals" className="crm-nav-link">
-                <Briefcase size={14} aria-hidden="true" /> Full deal pipeline <ArrowUpRight size={13} aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </header>
+    <div className="flex flex-col h-[calc(100vh-48px)] bg-[#FAFAF7] text-black font-sans text-sm">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-black">
+        <div className="flex items-center gap-4">
+          <h1 className="font-bold uppercase text-xs tracking-widest">SALARYMAN / CRM Workspace</h1>
+        </div>
+        <div className="flex items-center gap-4 text-[10px] font-bold">
+          <Link href="/marketing/leads" className="flex items-center gap-1 uppercase hover:text-[#00ff41] hover:bg-black px-2 py-1 transition-colors">
+            <Users size={12} /> Leads <ArrowUpRight size={10} />
+          </Link>
+          <Link href="/business/deals" className="flex items-center gap-1 uppercase hover:text-[#00ff41] hover:bg-black px-2 py-1 transition-colors">
+            <Briefcase size={12} /> Deals <ArrowUpRight size={10} />
+          </Link>
+        </div>
+      </header>
 
-        <section className="crm-summary-strip" aria-label="CRM summary">
-          <div className="crm-stat">
-            <span className="crm-stat-label">People in motion</span>
-            <strong className="crm-stat-value">{metric(['leads', 'leadCount', 'totalLeads'], leads.length)}</strong>
-            <span className="crm-stat-note">Leads in the workspace</span>
-          </div>
-          <div className="crm-stat">
-            <span className="crm-stat-label">Contacts</span>
-            <strong className="crm-stat-value">{metric(['contacts', 'contactCount', 'totalContacts'], contacts.length)}</strong>
-            <span className="crm-stat-note">Known relationships</span>
-          </div>
-          <div className="crm-stat">
-            <span className="crm-stat-label">Open pipeline</span>
-            <strong className="crm-stat-value">{formatCurrency(pipelineValue)}</strong>
-            <span className="crm-stat-note">{activeDeals.length} active deals</span>
-          </div>
-          <div className="crm-stat">
-            <span className="crm-stat-label">Won to date</span>
-            <strong className="crm-stat-value">{formatCurrency(wonValue)}</strong>
-            <span className="crm-stat-note">{deals.filter(deal => stringValue(deal.stage) === 'Won').length} closed wins</span>
-          </div>
-        </section>
+      <section className="grid grid-cols-4 border-b border-black bg-white">
+        <div className="p-3 border-r border-black flex flex-col">
+          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Leads (Workspace)</span>
+          <strong className="text-xl font-mono leading-none">{metric(['leads', 'leadCount', 'totalLeads'], leads.length)}</strong>
+        </div>
+        <div className="p-3 border-r border-black flex flex-col">
+          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Known Contacts</span>
+          <strong className="text-xl font-mono leading-none">{metric(['contacts', 'contactCount', 'totalContacts'], contacts.length)}</strong>
+        </div>
+        <div className="p-3 border-r border-black flex flex-col">
+          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Active Pipeline ({activeDeals.length})</span>
+          <strong className="text-xl font-mono leading-none text-[#008f11]">{formatCurrency(pipelineValue)}</strong>
+        </div>
+        <div className="p-3 flex flex-col">
+          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Won to Date ({deals.filter(d => stringValue(d.stage) === 'Won').length})</span>
+          <strong className="text-xl font-mono leading-none">{formatCurrency(wonValue)}</strong>
+        </div>
+      </section>
 
-        <div className="crm-toolbar">
-          <div className="crm-search-wrap">
-            <Search className="crm-search-icon" size={17} aria-hidden="true" />
-            <label className="sr-only" htmlFor="crm-search">Search leads, contacts, and deals</label>
-            <input
-              id="crm-search"
-              className="crm-search"
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Search people, companies, conversations, or deals"
-              type="search"
-            />
-            {search && (
-              <button className="crm-search-clear" type="button" onClick={() => setSearch('')} aria-label="Clear search">
-                <X size={15} aria-hidden="true" />
-              </button>
-            )}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-black bg-[#FAFAF7]">
+        <div className="flex items-center gap-2 w-[400px] relative">
+          <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-black/50" />
+          <input
+            className="w-full pl-7 pr-7 py-1.5 text-xs font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black bg-white uppercase placeholder:text-black/30"
+            placeholder="SEARCH RECORDS..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-black hover:text-[#00ff41]">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('overview')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase border border-black transition-colors ${viewMode === 'overview' ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
+          >
+            <LayoutDashboard size={12} /> Overview
+          </button>
+          <button
+            onClick={() => setViewMode('pipeline')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase border border-black transition-colors ${viewMode === 'pipeline' ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
+          >
+            <Columns3 size={12} /> Pipeline
+          </button>
+        </div>
+      </div>
+
+      {errors.length > 0 && (
+        <div className="px-4 py-2 bg-black text-[#00ff41] flex items-center justify-between border-b border-black text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={14} />
+            <span>{allRequestsFailed ? 'DATA UNAVAILABLE:' : 'PARTIAL ERROR:'} {errors.join(' · ')}</span>
           </div>
-          <div className="crm-view-toggle" role="tablist" aria-label="CRM view">
-            <button
-              className={`crm-view-button ${viewMode === 'overview' ? 'is-active' : ''}`}
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'overview'}
-              onClick={() => setViewMode('overview')}
-            >
-              <LayoutDashboard size={14} aria-hidden="true" /> Overview
-            </button>
-            <button
-              className={`crm-view-button ${viewMode === 'pipeline' ? 'is-active' : ''}`}
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'pipeline'}
-              onClick={() => setViewMode('pipeline')}
-            >
-              <Columns3 size={14} aria-hidden="true" /> Pipeline
-            </button>
+          <button onClick={() => void loadWorkspace()} className="flex items-center gap-1 uppercase font-bold hover:text-white">
+            <RefreshCw size={12} /> RETRY
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-pulse flex flex-col items-center gap-2 text-black/50">
+            <RefreshCw size={24} className="animate-spin" />
           </div>
         </div>
-
-        {errors.length > 0 && (
-          <div className="crm-alert" role="status">
-            <AlertTriangle size={16} aria-hidden="true" />
-            <div>
-              <strong>{allRequestsFailed ? 'CRM data is unavailable.' : 'Some CRM data is unavailable.'}</strong>{' '}
-              {errors.join(' · ')}.
-            </div>
-            <button className="crm-button subtle" type="button" onClick={() => void loadWorkspace()}>
-              <RefreshCw size={13} aria-hidden="true" /> Retry
-            </button>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="crm-main-grid">
-            <div className="crm-skeleton">{[1, 2, 3, 4].map(item => <div className="crm-skeleton-line" key={item} />)}</div>
-            <div className="crm-skeleton">{[1, 2, 3].map(item => <div className="crm-skeleton-line" key={item} />)}</div>
-          </div>
-        ) : viewMode === 'pipeline' ? (
-          <div className={`crm-main-grid ${selectedRecord ? 'has-context' : ''}`}>
-            <section className="crm-panel crm-pipeline" aria-labelledby="crm-pipeline-heading">
-              <div className="crm-pipeline-heading">
-                <div>
-                  <h2 id="crm-pipeline-heading">Deal pipeline</h2>
-                  <p>{search ? `${filteredDeals.length} deals match “${search}”.` : 'A focused view of active and closed opportunities.'}</p>
-                </div>
-                <Link href="/business/deals" className="crm-button">
-                  Manage deals <ArrowUpRight size={13} aria-hidden="true" />
-                </Link>
-              </div>
-              <div className="crm-pipeline-board">
+      ) : (
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden border-r border-black bg-white">
+            {viewMode === 'pipeline' ? (
+              <div className="flex-1 overflow-x-auto bg-black/5 p-4 flex gap-4">
                 {PIPELINE_STAGES.map(stage => {
-                  const stageDeals = filteredDeals.filter(deal => stringValue(deal.stage, 'Lead') === stage);
+                  const stageDeals = filteredDeals.filter(d => stringValue(d.stage, 'Lead') === stage);
                   return (
-                    <div className="crm-pipeline-column" key={stage}>
-                      <div className="crm-record-heading">
-                        <span className="crm-pipeline-title">{stage}</span>
-                        <span className="crm-pipeline-count">{stageDeals.length}</span>
+                    <div key={stage} className="flex-none w-72 flex flex-col h-full bg-white border border-black">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-black bg-black text-white text-[10px] font-bold uppercase tracking-widest">
+                        <span>{stage}</span>
+                        <span className="text-[#00ff41]">{stageDeals.length}</span>
                       </div>
-                      {stageDeals.map(deal => (
-                        <button
-                          className={`crm-pipeline-card ${selectedRecord?.kind === 'deal' && selectedRecord.id === deal.id ? 'is-selected' : ''}`}
-                          type="button"
-                          key={deal.id}
-                          onClick={() => setSelected({ kind: 'deal', id: deal.id })}
-                        >
-                          <strong>{stringValue(deal.title, `Deal #${deal.id}`)}</strong>
-                          <p className="crm-deal-value">{formatCurrency(deal.value)}</p>
-                          <p>{stringValue(deal.contactName, 'No linked contact')}</p>
-                        </button>
-                      ))}
-                      {stageDeals.length === 0 && <div className="crm-empty" style={{ minHeight: 90, padding: 12 }}><p>No deals here</p></div>}
+                      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                        {stageDeals.map(deal => (
+                          <button
+                            key={deal.id}
+                            onClick={() => setSelected({ kind: 'deal', id: deal.id })}
+                            className={`w-full text-left p-3 text-xs border border-black transition-colors ${selectedRecord?.kind === 'deal' && selectedRecord.id === deal.id ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
+                          >
+                            <div className="font-bold truncate text-[11px] uppercase">{stringValue(deal.title, `Deal #${deal.id}`)}</div>
+                            <div className="mt-1 font-mono text-[10px]">{formatCurrency(deal.value)}</div>
+                            <div className={`mt-1 truncate text-[10px] ${selectedRecord?.kind === 'deal' && selectedRecord.id === deal.id ? 'text-white/70' : 'text-black/60'}`}>
+                              {stringValue(deal.contactName, 'No contact')}
+                            </div>
+                          </button>
+                        ))}
+                        {stageDeals.length === 0 && <div className="text-[9px] text-center uppercase p-4 text-black/30 font-bold tracking-widest">Empty</div>}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            </section>
-            {selectedRecord && selectedRecord.kind === 'deal' && selectedRecord.raw && (
-              <ContextPanel
-                record={selectedRecord}
-                onClose={() => setSelected(null)}
-                onCall={callRecord}
-                calling={callingRecordKey === `${selectedRecord.kind}-${selectedRecord.id}`}
-                callError={callError}
-              />
+            ) : (
+              <div className="flex-1 flex flex-col bg-white">
+                <div className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_120px] gap-4 px-4 py-2 border-b border-black bg-black/5 text-[9px] font-bold uppercase tracking-widest text-black/50">
+                  <span>Type</span>
+                  <span>Name</span>
+                  <span>Context</span>
+                  <span className="text-right">Meta</span>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {filteredRecords.length === 0 ? (
+                    <div className="p-4 text-[10px] uppercase tracking-widest text-black/40 text-center font-bold">No records found.</div>
+                  ) : (
+                    <>
+                      {filteredRecords.slice(0, 100).map(record => (
+                        <button
+                          key={`${record.kind}-${record.id}`}
+                          onClick={() => setSelected({ kind: record.kind, id: record.id })}
+                          className={`w-full text-left grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_120px] gap-4 px-4 py-3 border-b border-black/10 text-xs items-center transition-colors ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'bg-black text-[#00ff41]' : 'hover:bg-black/5'}`}
+                        >
+                          <div className="uppercase font-bold text-[9px] tracking-widest flex items-center gap-1.5 opacity-80">
+                            {record.kind === 'lead' ? <UserRound size={10} /> : record.kind === 'contact' ? <Building2 size={10} /> : <CircleDollarSign size={10} />}
+                            {record.kind}
+                          </div>
+                          <div className="font-bold truncate text-[11px] uppercase">{record.name}</div>
+                          <div className={`truncate text-[10px] ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'text-[#00ff41]/70' : 'text-black/60'}`}>{record.subtitle}</div>
+                          <div className="text-right font-mono text-[10px]">
+                            {record.kind === 'deal' && formatCurrency((record.raw as DealRecord).value)}
+                            {record.kind === 'lead' && <span className="bg-black/10 px-1 py-0.5">{stringValue((record.raw as LeadRecord).status, 'NEW').toUpperCase()}</span>}
+                          </div>
+                        </button>
+                      ))}
+                      {filteredRecords.length > 100 && (
+                        <div className="p-3 text-center text-[9px] uppercase font-bold tracking-widest text-black/40 bg-black/5">
+                          Showing first 100 matches
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
             )}
-            <ActivityFeed activities={activities} loading={false} error={errors.find(error => error.includes('activity')) ?? null} />
           </div>
-        ) : (
-          <div className={`crm-main-grid ${selectedRecord ? 'has-context' : ''}`}>
-            <section className="crm-panel" aria-labelledby="crm-records-heading">
-              <div className="crm-panel-heading">
-                <h2 id="crm-records-heading">Your working set</h2>
-                <p>{search ? `${filteredRecords.length} matches` : `${records.length} records loaded`}</p>
-              </div>
-              <div className="crm-record-list">
-                {filteredRecords.length === 0 ? (
-                  <div className="crm-empty">
-                    <div className="crm-empty-icon"><Search size={19} aria-hidden="true" /></div>
-                    <p>{search ? 'No lead, contact, or deal matches that search.' : 'No CRM records are available yet.'}</p>
-                  </div>
-                ) : filteredRecords.slice(0, 100).map(record => (
-                  <button
-                    className={`crm-record-button ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'is-selected' : ''}`}
-                    type="button"
-                    key={`${record.kind}-${record.id}`}
-                    onClick={() => setSelected({ kind: record.kind, id: record.id })}
-                  >
-                    <div className="crm-record-heading">
-                      <span className="crm-record-name">{record.name}</span>
-                      <span className={`crm-record-type ${record.kind}`}>{record.kind}</span>
-                    </div>
-                    <div className="crm-record-meta">
-                      <span>
-                        {record.kind === 'lead' ? <UserRound size={12} aria-hidden="true" /> : record.kind === 'contact' ? <Building2 size={12} aria-hidden="true" /> : <CircleDollarSign size={12} aria-hidden="true" />}
-                        {record.subtitle}
-                      </span>
-                      {record.kind === 'deal' && <span>{formatCurrency((record.raw as DealRecord).value)}</span>}
-                      {record.kind === 'lead' && <span>{stringValue((record.raw as LeadRecord).status, 'New')}</span>}
-                    </div>
-                  </button>
-                ))}
-                {filteredRecords.length > 100 && <p style={{ margin: 0, padding: '12px 19px', color: 'var(--crm-muted)', fontSize: 11 }}>Showing the first 100 matches. Refine your search to see more.</p>}
-              </div>
-            </section>
+
+          <div className="w-[360px] flex flex-col bg-[#FAFAF7] shrink-0 overflow-hidden">
             {selectedRecord && (
               <ContextPanel
                 record={selectedRecord}
@@ -629,10 +521,10 @@ export default function CrmWorkspace() {
                 callError={callError}
               />
             )}
-            <ActivityFeed activities={activities} loading={false} error={errors.find(error => error.includes('activity')) ?? null} />
+            <ActivityFeed activities={activities} loading={false} error={errors.find(e => e.includes('activity')) ?? null} />
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }
@@ -657,24 +549,24 @@ function ContextPanel({
   if (record.kind === 'lead') {
     const lead = record.raw as LeadRecord;
     fields.push(
-      ['Company', stringValue(lead.company, 'Not listed')],
-      ['Role', stringValue(lead.jobTitle, 'Not listed')],
-      ['Email', stringValue(lead.email, 'Not listed')],
-      ['Phone', stringValue(lead.phone, 'Not listed')],
+      ['Company', stringValue(lead.company, '-')],
+      ['Role', stringValue(lead.jobTitle, '-')],
+      ['Email', stringValue(lead.email, '-')],
+      ['Phone', stringValue(lead.phone, '-')],
       ['Status', stringValue(lead.status, 'New')],
       ['Source', stringValue(lead.source, 'Unknown')],
     );
-    note = lead.callCount ? `${lead.callCount} call${lead.callCount === 1 ? '' : 's'} logged for this lead.` : 'No calls logged for this lead yet.';
+    note = lead.callCount ? `${lead.callCount} call(s) logged.` : 'No calls logged.';
     destination = '/marketing/leads';
   } else if (record.kind === 'contact') {
     const contact = record.raw as ContactRecord;
     fields.push(
-      ['Company', stringValue(contact.company, 'Not listed')],
-      ['Role', stringValue(contact.role || contact.title, 'Not listed')],
-      ['Email', stringValue(contact.email, 'Not listed')],
-      ['Phone', stringValue(contact.phone, 'Not listed')],
+      ['Company', stringValue(contact.company, '-')],
+      ['Role', stringValue(contact.role || contact.title, '-')],
+      ['Email', stringValue(contact.email, '-')],
+      ['Phone', stringValue(contact.phone, '-')],
     );
-    note = 'Use this relationship as context when moving an opportunity forward.';
+    note = 'Use this relationship as context.';
   } else {
     const deal = record.raw as DealRecord;
     fields.push(
@@ -683,43 +575,95 @@ function ContextPanel({
       ['Contact', stringValue(deal.contactName, 'Not linked')],
       ['Expected close', stringValue(deal.expectedCloseDate, 'Not set')],
     );
-    note = stringValue(deal.notes, 'No deal notes have been added.');
+    note = stringValue(deal.notes, 'No deal notes.');
   }
 
   return (
-    <aside className="crm-panel crm-context" aria-labelledby="crm-context-heading">
-      <div className="crm-context-heading">
-        <div>
-          <p className="crm-context-kind">{record.kind} context</p>
-          <h2 id="crm-context-heading">{record.name}</h2>
+    <div className="flex flex-col border-b border-black bg-white shrink-0">
+      <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
+        <div className="min-w-0">
+          <div className="text-[8px] uppercase font-bold tracking-widest opacity-80 mb-0.5">{record.kind} CONTEXT</div>
+          <div className="font-bold text-xs truncate uppercase text-white">{record.name}</div>
         </div>
-        <button className="crm-close-button" type="button" onClick={onClose} aria-label="Close record context">
-          <X size={17} aria-hidden="true" />
-        </button>
+        <button onClick={onClose} className="hover:text-white transition-colors p-1"><X size={16}/></button>
       </div>
-      <div className="crm-context-body">
-        <div className="crm-context-grid">
+
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-2 gap-y-3 gap-x-4">
           {fields.map(([label, value]) => (
-            <div key={label}>
-              <span className="crm-context-label">{label}</span>
-              <span className={`crm-context-value ${value === 'Not listed' || value === 'Not set' || value === 'Not linked' ? 'muted' : ''}`}>{value}</span>
+            <div key={label} className="flex flex-col">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">{label}</span>
+              <span className="text-[11px] font-bold truncate mt-0.5">{value}</span>
             </div>
           ))}
         </div>
-        <p className="crm-context-note">{note}</p>
-        {callError && <p className="crm-context-note" role="alert">{callError}</p>}
-        <div className="crm-context-actions">
-          {record.kind !== 'deal' && Boolean((record.raw as LeadRecord | ContactRecord).phone) && (
-            <button className="crm-button" type="button" onClick={() => void onCall(record)} disabled={calling}>
-              <Phone size={13} aria-hidden="true" />
-              {calling ? 'Connecting…' : 'Call from CRM'}
+
+        <div className="pt-3 border-t border-black/10">
+          <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 block mb-1">Notes / Detail</span>
+          <p className="text-black/80 text-[10px] leading-tight font-mono">{note}</p>
+        </div>
+
+        {callError && <div className="text-[#00ff41] bg-black text-[9px] font-bold font-mono uppercase p-2 border border-black">{callError}</div>}
+
+        <div className="flex items-center gap-2 pt-1">
+          {record.kind !== 'deal' && (
+            <button
+              onClick={() => onCall(record)}
+              disabled={calling}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-black text-white border border-black px-3 py-2 font-bold uppercase text-[10px] hover:text-[#00ff41] disabled:opacity-50 transition-colors"
+            >
+              <Phone size={12} /> {calling ? 'CALLING...' : 'CALL RECORD'}
             </button>
           )}
-          <Link href={destination} className="crm-button">
-            Open full record <ArrowUpRight size={13} aria-hidden="true" />
+          <Link href={destination} className="flex-1 flex items-center justify-center gap-1.5 border border-black text-black bg-black/5 px-3 py-2 font-bold uppercase text-[10px] hover:bg-black hover:text-white transition-colors">
+            OPEN FULL <ArrowUpRight size={12} />
           </Link>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+function ActivityFeed({ activities, loading, error }: {
+  activities: ActivityRecord[];
+  loading: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="flex-1 flex flex-col min-h-0 bg-[#FAFAF7]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-black bg-black/5">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-black/60">Activity Feed</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">{activities.length ? `${activities.length} updates` : ''}</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loading ? (
+          <div className="text-[9px] font-bold uppercase tracking-widest text-black/40 text-center animate-pulse">Loading feed...</div>
+        ) : error ? (
+          <div className="text-[9px] font-bold uppercase tracking-widest text-[#00ff41] bg-black text-center p-3 border border-black">{error}</div>
+        ) : activities.length === 0 ? (
+          <div className="text-[9px] font-bold uppercase tracking-widest text-black/30 text-center p-4">No recent activity.</div>
+        ) : (
+          activities.map(activity => {
+            const channel = stringValue(activity.channel, 'comms').toLowerCase();
+            const subject = stringValue(activity.contactName, activity.phone || 'Workspace activity');
+            const body = stringValue(activity.summary, stringValue(activity.body, 'No detail available.'));
+            return (
+              <div key={activity.id} className="flex gap-3 text-xs border-b border-black/10 pb-4 last:border-0 last:pb-0">
+                <div className="mt-1 text-black/30 shrink-0">
+                  {activityIcon(channel)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold uppercase text-[9px] tracking-widest text-black/70 break-words">{channel} · {subject}</span>
+                    <time className="text-[9px] text-black/40 whitespace-nowrap shrink-0">{formatRelative(activity.occurredAt ?? activity.createdAt)}</time>
+                  </div>
+                  <p className="mt-1.5 leading-tight text-[10px] font-mono text-black/80">{body}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }

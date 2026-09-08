@@ -1,11 +1,9 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Users, Download, Trash2, Plus, X, Mail, Loader2, Check,
-  Search, ChevronDown, ChevronUp, Edit2, Upload,
-  Phone, Building2, Clock, StickyNote, Shield, ShieldAlert,
-  FileText, UserPlus, Filter, Lock,
+  Users, Download, Trash2, Plus, X, Loader2,
+  Search, Edit2, Upload, Lock, Shield, ShieldAlert,
+  Building2, Phone, Mail, StickyNote
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -70,25 +68,20 @@ interface CrmActivity {
   occurredAt: string;
 }
 
-const CHANNEL_LABEL: Record<string, string> = { call: 'CALL', voicemail: 'VOICEMAIL', sms: 'SMS', comms: 'COMMS' };
-const CHANNEL_COLOR: Record<string, string> = {
-  call: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
-  voicemail: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  sms: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  comms: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-};
-
 const STATUSES = [
-  { value: 'new', label: 'NEW', color: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
-  { value: 'contacted', label: 'CONTACTED', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  { value: 'qualified', label: 'QUALIFIED', color: 'bg-violet-500/20 text-violet-300 border-violet-500/30' },
-  { value: 'proposal', label: 'PROPOSAL', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  { value: 'closed_won', label: 'CLOSED WON', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-  { value: 'closed_lost', label: 'CLOSED LOST', color: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  { value: 'new', label: 'NEW' },
+  { value: 'contacted', label: 'CONTACTED' },
+  { value: 'qualified', label: 'QUALIFIED' },
+  { value: 'proposal', label: 'PROPOSAL' },
+  { value: 'closed_won', label: 'CLOSED WON' },
+  { value: 'closed_lost', label: 'CLOSED LOST' },
 ];
 
-function statusColor(s: string) {
-  return STATUSES.find(st => st.value === s)?.color || 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+function statusColor(s: string, selected: boolean) {
+  if (selected) return 'border-[#00ff41] bg-[#00ff41] text-black';
+  if (s === 'closed_won') return 'border-black bg-black text-[#00ff41]';
+  if (s === 'closed_lost') return 'border-black bg-black/10 text-black/50';
+  return 'border-black text-black';
 }
 function statusLabel(s: string) {
   return STATUSES.find(st => st.value === s)?.label || s.toUpperCase();
@@ -258,6 +251,9 @@ export default function LeadsPage() {
       if (r.ok) {
         setEditingLead(null);
         fetchLeads();
+        if (selectedLead?.id === editingLead.id) {
+           void openDetail(editingLead);
+        }
       } else {
         const d = await r.json();
         setError(d.error || 'Failed to update');
@@ -299,11 +295,7 @@ export default function LeadsPage() {
     if (!file) return;
     setImporting(true);
     setImportResult(null);
-
     try {
-      // Always use the multipart endpoint — it handles CSV, XLSX, and XLS via
-      // the same SheetJS-backed parser, so users can drop in whatever they
-      // exported from Excel/Numbers/Google Sheets without conversion.
       const fd = new FormData();
       fd.append('file', file);
       const r = await apiFetch('api/leads/import-file', { method: 'POST', body: fd });
@@ -319,8 +311,6 @@ export default function LeadsPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Stream the Excel export as a binary blob so the browser saves the .xlsx
-  // file directly. Same column order as the CSV export → guaranteed round-trip.
   const exportXLSX = async () => {
     try {
       const r = await apiFetch('api/leads/export/xlsx');
@@ -358,14 +348,17 @@ export default function LeadsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+      <div className="flex items-center justify-center h-[calc(100vh-48px)] bg-[#FAFAF7]">
+        <div className="animate-pulse flex flex-col items-center gap-2 text-black/50">
+          <Loader2 size={24} className="animate-spin" />
+          <span className="text-xs font-bold uppercase tracking-widest">Loading Database...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground" {...preventCopy}>
+    <div className="flex flex-col h-[calc(100vh-48px)] bg-[#FAFAF7] text-black font-sans text-sm" {...preventCopy}>
       {!admin && (
         <style>{`
           .leads-data * { user-select: none !important; -webkit-user-select: none !important; }
@@ -373,476 +366,358 @@ export default function LeadsPage() {
         `}</style>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
-            <Users className="w-6 h-6 text-primary" />
-            <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider">LEAD DATABASE</h1>
-            <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase bg-background text-black border border-black rounded">
-              {admin ? <Shield className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
-              {admin ? 'MANAGER' : 'MEMBER'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-black">
+        <div className="flex items-center gap-4">
+          <Users size={14} className="text-black" />
+          <h1 className="font-bold uppercase tracking-widest text-xs">LEAD DATABASE</h1>
+          <span className="bg-black text-[#00ff41] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest">
+            {admin ? 'MANAGER' : 'MEMBER'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {admin && (
             <>
-              {admin && (
-                <>
-                <button onClick={() => setShowImport(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
-                  <Upload className="w-3.5 h-3.5" /> IMPORT CSV / XLSX
-                </button>
-                <button onClick={exportCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
-                  <Download className="w-3.5 h-3.5" /> EXPORT CSV
-                </button>
-                <button onClick={exportXLSX}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
-                  <Download className="w-3.5 h-3.5" /> EXPORT XLSX
-                </button>
-                </>
-              )}
-              <button onClick={() => setShowAddForm(true)}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold uppercase bg-background border-2 border-black text-black transition-colors">
-                <Plus className="w-3.5 h-3.5" /> ADD LEAD
+              <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-widest font-bold uppercase border border-black hover:bg-black hover:text-[#00ff41] transition-colors">
+                <Upload size={12}/> IMPORT
+              </button>
+              <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-widest font-bold uppercase border border-black hover:bg-black hover:text-[#00ff41] transition-colors">
+                <Download size={12}/> CSV
+              </button>
+              <button onClick={exportXLSX} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-widest font-bold uppercase border border-black hover:bg-black hover:text-[#00ff41] transition-colors">
+                <Download size={12}/> XLSX
               </button>
             </>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="mb-4 p-3 bg-red-500/20 border border-red-500/30 text-red-300 text-sm flex items-center justify-between">
-              <span>{error}</span>
-              <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
-            </motion.div>
           )}
-        </AnimatePresence>
+          <button onClick={() => setShowAddForm(true)} className="flex items-center gap-1.5 px-4 py-1.5 text-[9px] tracking-widest font-bold uppercase bg-black text-[#00ff41] hover:text-white transition-colors">
+            <Plus size={12}/> ADD LEAD
+          </button>
+        </div>
+      </header>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      {/* Toolbar & Error */}
+      {error && (
+        <div className="px-4 py-2 bg-black text-[#00ff41] text-[10px] font-mono font-bold uppercase flex justify-between items-center border-b border-black">
+          <span>ERROR: {error}</span>
+          <button onClick={() => setError('')} className="hover:text-white"><X size={14}/></button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between px-4 py-2 border-b border-black bg-white">
+        <div className="flex items-center gap-3">
+          <div className="relative w-[300px]">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-black/50" />
             <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={search} onChange={e => setSearch(e.target.value)}
               placeholder="SEARCH LEADS..."
-              className="w-full pl-10 pr-4 py-2 bg-card border border-border text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 uppercase"
+              className="w-full pl-7 pr-2 py-1.5 text-xs font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30 bg-white"
             />
           </div>
           <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-card border border-border text-sm focus:outline-none focus:border-primary/50 uppercase"
+            value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 text-xs font-bold border border-black outline-none uppercase bg-white cursor-pointer"
           >
             <option value="">ALL STATUSES</option>
-            {STATUSES.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className={`flex-1 ${selectedLead ? 'sm:max-w-[55%]' : ''}`}>
-            <div className="bg-card border border-border">
-              <div className="hidden sm:grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-0 border-b border-border px-4 py-2 text-xs font-bold uppercase text-muted-foreground">
-                <span>NAME</span>
-                <span>COMPANY</span>
-                <span>CONTACT</span>
-                <span>STATUS</span>
-                <span className="w-20 text-right">CALLS</span>
-              </div>
-              <div className="leads-data">
-                {leads.length === 0 && (
-                  <div className="px-4 py-12 text-center text-muted-foreground text-sm">
-                    {search || statusFilter ? 'NO LEADS MATCH YOUR FILTERS' : 'NO LEADS YET. ADD YOUR FIRST LEAD.'}
-                  </div>
-                )}
-                {leads.map(lead => (
-                  <div
-                    key={lead.id}
-                    onClick={() => openDetail(lead)}
-                    className={`border-b border-border/50 cursor-pointer hover:bg-muted/10 transition-colors ${selectedLead?.id === lead.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
-                  >
-                    <div className="hidden sm:grid grid-cols-[1fr_1fr_1fr_auto_auto_auto] gap-0 px-4 py-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {lead.isLocked && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
-                        <span className="font-medium truncate text-sm">{lead.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
-                        {lead.company && <Building2 className="w-3 h-3 shrink-0" />}
-                        <span className="truncate">{lead.company || '-'}</span>
-                      </div>
-                      <div className="flex flex-col text-xs text-muted-foreground truncate">
-                        {lead.phone && <span className="truncate">{lead.phone}</span>}
-                        {lead.email && <span className="truncate">{lead.email}</span>}
-                        {!lead.phone && !lead.email && <span>-</span>}
-                      </div>
-                      <div className="w-24 text-xs text-muted-foreground truncate">
-                        {lead.assignedUserId ? (memberMap[lead.assignedUserId] || 'ASSIGNED') : <span className="text-muted-foreground/40">UNASSIGNED</span>}
-                      </div>
-                      <div>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${statusColor(lead.status)}`}>
-                          {statusLabel(lead.status)}
-                        </span>
-                      </div>
-                      <div className="w-20 text-right text-xs text-muted-foreground">
-                        {lead.callCount > 0 ? `${lead.callCount} CALL${lead.callCount !== 1 ? 'S' : ''}` : '-'}
-                      </div>
-                    </div>
-                    <div className="sm:hidden px-4 py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {lead.isLocked && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
-                          <span className="font-medium truncate text-sm">{lead.name}</span>
-                        </div>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${statusColor(lead.status)}`}>
-                          {statusLabel(lead.status)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                        {lead.company && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{lead.company}</span>}
-                        {lead.phone && <span>{lead.phone}</span>}
-                        {lead.callCount > 0 && <span>{lead.callCount} CALL{lead.callCount !== 1 ? 'S' : ''}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground text-right">
-              {leads.length} LEAD{leads.length !== 1 ? 'S' : ''}
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {selectedLead && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="w-full sm:w-[45%] bg-card border border-border max-h-[80vh] overflow-y-auto"
-              >
-                <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center justify-between z-10">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-bold text-sm uppercase">{selectedLead.name}</h2>
-                    {selectedLead.isLocked && <Lock className="w-3.5 h-3.5 text-amber-400" />}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {admin && (
-                      <>
-                        <button onClick={() => { setEditingLead(selectedLead); setEditForm({ name: selectedLead.name, phone: selectedLead.phone, email: selectedLead.email, company: selectedLead.company, jobTitle: selectedLead.jobTitle, status: selectedLead.status, assignedUserId: selectedLead.assignedUserId || '' }); }}
-                          className="p-1.5 hover:bg-muted/20 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => deleteLead(selectedLead.id)}
-                          className="p-1.5 hover:bg-red-500/20 transition-colors text-red-400"><Trash2 className="w-4 h-4" /></button>
-                      </>
-                    )}
-                    <button onClick={() => setSelectedLead(null)}
-                      className="p-1.5 hover:bg-muted/20 transition-colors"><X className="w-4 h-4" /></button>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">PHONE</span>
-                      <p className="font-mono">{selectedLead.phone || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">EMAIL</span>
-                      <p>{selectedLead.email || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">COMPANY</span>
-                      <p>{selectedLead.company || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">JOB TITLE</span>
-                      <p>{selectedLead.jobTitle || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">SOURCE</span>
-                      <p className="uppercase text-xs">{selectedLead.source}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">ASSIGNED TO</span>
-                      <p className="text-xs">{selectedLead.assignedUserId ? (memberMap[selectedLead.assignedUserId] || 'ASSIGNED') : <span className="text-muted-foreground/50">UNASSIGNED</span>}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground">CALLS</span>
-                      <p>{selectedLead.callCount}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] uppercase text-muted-foreground block mb-1">STATUS</span>
-                    <div className="flex flex-wrap gap-1">
-                      {STATUSES.map(s => (
-                        <button
-                          key={s.value}
-                          onClick={() => updateStatus(selectedLead.id, s.value)}
-                          className={`px-2 py-0.5 text-[10px] font-bold uppercase border transition-all ${selectedLead.status === s.value ? s.color + ' ring-1 ring-white/20' : 'bg-muted/10 text-muted-foreground border-border hover:bg-muted/20'}`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {selectedLead.pabloNotesJson && (
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground block mb-1">PABLO NOTES</span>
-                      <div className="bg-muted/10 border border-border p-2 text-xs whitespace-pre-wrap">
-                        {(() => { try { const notes = JSON.parse(selectedLead.pabloNotesJson); return Array.isArray(notes) ? notes.join('\n') : String(notes); } catch { return selectedLead.pabloNotesJson; } })()}
-                      </div>
-                    </div>
-                  )}
-
-                  <CrmRoutingPanel
-                    leadId={selectedLead.id}
-                    leadName={selectedLead.name}
-                    leadPhone={selectedLead.phone}
-                    assignedUserId={selectedLead.assignedUserId}
-                    canEdit={admin}
-                    onUpdated={() => { void openDetail(selectedLead); }}
-                  />
-
-                  <div>
-                    <span className="text-[10px] uppercase text-muted-foreground block mb-2">NOTES ({leadNotes.length})</span>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        value={newNote}
-                        onChange={e => setNewNote(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && addNote()}
-                        placeholder="ADD A NOTE..."
-                        className="flex-1 px-3 py-1.5 bg-muted/10 border border-border text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 uppercase"
-                      />
-                      <button onClick={addNote} disabled={!newNote.trim()}
-                        className="px-3 py-1.5 bg-primary/20 border border-primary/30 text-primary text-sm font-bold hover:bg-primary/30 transition-colors disabled:opacity-40">
-                        <StickyNote className="w-4 h-4" />
-                      </button>
-                    </div>
-                    {detailLoading ? (
-                      <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40" /></div>
-                    ) : (
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {leadNotes.map(n => (
-                          <div key={n.id} className="bg-muted/5 border border-border/50 p-2 text-xs">
-                            <div className="flex items-center justify-between mb-1 text-muted-foreground">
-                              <span className="font-bold uppercase">{n.userName || 'UNKNOWN'}</span>
-                              <span>{new Date(n.createdAt).toLocaleDateString()}</span>
-                            </div>
-                            <p>{n.note}</p>
-                          </div>
-                        ))}
-                        {leadNotes.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">NO NOTES YET</p>}
-                      </div>
-                    )}
-                  </div>
-
-                  {leadCalls.length > 0 && (
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground block mb-2">CALL HISTORY ({leadCalls.length})</span>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {leadCalls.map(c => (
-                          <div key={c.id} className="bg-muted/5 border border-border/50 p-2 text-xs">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-bold uppercase">{c.direction} - {c.callType}</span>
-                              <span className="text-muted-foreground">{new Date(c.startedAt).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <span>{c.status.toUpperCase()}</span>
-                              {c.durationSeconds > 0 && <span>{Math.floor(c.durationSeconds / 60)}:{String(c.durationSeconds % 60).padStart(2, '0')}</span>}
-                            </div>
-                            {c.summary && <p className="mt-1 text-muted-foreground">{c.summary}</p>}
-                            {c.transcript && (
-                              <details className="mt-1">
-                                <summary className="text-[10px] uppercase text-muted-foreground/60 cursor-pointer hover:text-muted-foreground">TRANSCRIPT</summary>
-                                <p className="mt-1 text-muted-foreground/80 whitespace-pre-wrap text-[11px] max-h-32 overflow-y-auto">{c.transcript}</p>
-                              </details>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {leadActivities.length > 0 && (
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground block mb-2">CRM ACTIVITY ({leadActivities.length})</span>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {leadActivities.map(a => (
-                          <div key={a.id} className="bg-muted/5 border border-border/50 p-2 text-xs">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className={`px-1.5 py-0.5 border text-[9px] uppercase font-bold ${CHANNEL_COLOR[a.channel] || 'bg-gray-500/20 text-gray-300 border-gray-500/30'}`}>
-                                {CHANNEL_LABEL[a.channel] || a.channel} · {a.direction.toUpperCase()}
-                              </span>
-                              <span className="text-muted-foreground">{new Date(a.occurredAt).toLocaleString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <span>{a.phone}</span>
-                              {a.status && <span>· {a.status.toUpperCase()}</span>}
-                              {!!a.durationSeconds && a.durationSeconds > 0 && (
-                                <span>· {Math.floor(a.durationSeconds / 60)}:{String(a.durationSeconds % 60).padStart(2, '0')}</span>
-                              )}
-                            </div>
-                            {a.summary && <p className="mt-1 text-muted-foreground">{a.summary}</p>}
-                            {a.body && <p className="mt-1 text-muted-foreground/80 whitespace-pre-wrap text-[11px]">{a.body}</p>}
-                            {a.recordingUrl && (
-                              <a href={a.recordingUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[10px] uppercase text-primary hover:underline">RECORDING</a>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="text-[10px] uppercase font-bold tracking-widest text-black/40">
+          {leads.length} LEAD{leads.length !== 1 ? 'S' : ''}
         </div>
       </div>
 
-      <AnimatePresence>
-        {showAddForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
-            onClick={() => setShowAddForm(false)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-card border border-border p-6 w-full max-w-md"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm uppercase">ADD NEW LEAD</h3>
-                <button onClick={() => setShowAddForm(false)}><X className="w-4 h-4" /></button>
+      {/* Main Grid Area */}
+      <div className="flex flex-1 overflow-hidden leads-data">
+        {/* Table Area */}
+        <div className="flex-1 flex flex-col border-r border-black overflow-hidden bg-white">
+          <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_1fr_100px_90px_60px] gap-4 px-4 py-2 border-b border-black bg-black/5 text-[9px] font-bold uppercase tracking-widest text-black/50">
+            <span>Name</span>
+            <span>Contact</span>
+            <span>Company</span>
+            <span>Assigned</span>
+            <span>Status</span>
+            <span className="text-right">Calls</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {leads.length === 0 && (
+              <div className="p-4 text-center text-[10px] uppercase tracking-widest font-bold text-black/30 mt-10">
+                {search || statusFilter ? 'NO LEADS MATCH FILTERS' : 'NO LEADS FOUND'}
               </div>
-              <div className="space-y-3">
-                {(['name', 'phone', 'email', 'company', 'jobTitle'] as const).map(field => (
-                  <div key={field}>
-                    <label className="text-[10px] uppercase text-muted-foreground block mb-1">{field === 'jobTitle' ? 'JOB TITLE' : field.toUpperCase()}</label>
-                    <input
-                      value={addForm[field]}
-                      onChange={e => setAddForm(prev => ({ ...prev, [field]: e.target.value }))}
-                      className="w-full px-3 py-2 bg-muted/10 border border-border text-sm focus:outline-none focus:border-primary/50"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 text-sm font-bold uppercase text-muted-foreground hover:text-foreground transition-colors">CANCEL</button>
-                <button onClick={createLead} disabled={saving || !addForm.name.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} CREATE
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {editingLead && admin && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
-            onClick={() => setEditingLead(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-card border border-border p-6 w-full max-w-md"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm uppercase">EDIT LEAD</h3>
-                <button onClick={() => setEditingLead(null)}><X className="w-4 h-4" /></button>
-              </div>
-              <div className="space-y-3">
-                {(['name', 'phone', 'email', 'company', 'jobTitle'] as const).map(field => (
-                  <div key={field}>
-                    <label className="text-[10px] uppercase text-muted-foreground block mb-1">{field === 'jobTitle' ? 'JOB TITLE' : field.toUpperCase()}</label>
-                    <input
-                      value={editForm[field]}
-                      onChange={e => setEditForm(prev => ({ ...prev, [field]: e.target.value }))}
-                      className="w-full px-3 py-2 bg-muted/10 border border-border text-sm focus:outline-none focus:border-primary/50"
-                    />
-                  </div>
-                ))}
-                <div>
-                  <label className="text-[10px] uppercase text-muted-foreground block mb-1">STATUS</label>
-                  <select
-                    value={editForm.status}
-                    onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-3 py-2 bg-muted/10 border border-border text-sm focus:outline-none focus:border-primary/50 uppercase"
-                  >
-                    {STATUSES.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
+            )}
+            {leads.map(lead => (
+              <button
+                key={lead.id}
+                onClick={() => openDetail(lead)}
+                className={`w-full text-left grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_1fr_100px_90px_60px] gap-4 px-4 py-3 border-b border-black/10 text-xs items-center transition-colors ${selectedLead?.id === lead.id ? 'bg-black text-[#00ff41]' : 'hover:bg-black/5'}`}
+              >
+                <div className="font-bold truncate uppercase text-[11px] flex items-center gap-1.5">
+                  {lead.isLocked && <Lock size={10} className={selectedLead?.id === lead.id ? 'text-[#00ff41]' : 'text-black/40'} />}
+                  {lead.name}
+                </div>
+                <div className="flex flex-col truncate">
+                  <span className="font-mono text-[10px]">{lead.phone || '-'}</span>
+                  <span className={`text-[10px] ${selectedLead?.id === lead.id ? 'text-[#00ff41]/70' : 'text-black/50'}`}>{lead.email || '-'}</span>
+                </div>
+                <div className="truncate text-[11px] font-bold">{lead.company || '-'}</div>
+                <div className={`truncate text-[9px] font-bold uppercase tracking-widest ${selectedLead?.id === lead.id ? 'text-[#00ff41]/80' : 'text-black/50'}`}>
+                  {lead.assignedUserId ? (memberMap[lead.assignedUserId] || 'ASSIGNED') : 'UNASSIGNED'}
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase text-muted-foreground block mb-1">ASSIGN TO</label>
-                  <select
-                    value={editForm.assignedUserId}
-                    onChange={e => setEditForm(prev => ({ ...prev, assignedUserId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-muted/10 border border-border text-sm focus:outline-none focus:border-primary/50 uppercase"
-                  >
-                    <option value="">UNASSIGNED</option>
-                    {Object.entries(memberMap).map(([uid, name]) => (
-                      <option key={uid} value={uid}>{name}</option>
-                    ))}
-                  </select>
+                  <span className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest border ${statusColor(lead.status, selectedLead?.id === lead.id)}`}>
+                    {statusLabel(lead.status)}
+                  </span>
                 </div>
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button onClick={() => setEditingLead(null)}
-                  className="px-4 py-2 text-sm font-bold uppercase text-muted-foreground hover:text-foreground transition-colors">CANCEL</button>
-                <button onClick={saveLead} disabled={saving}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} SAVE
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+                <div className="text-right text-[10px] font-mono">
+                  {lead.callCount > 0 ? lead.callCount : '-'}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {showImport && admin && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
-            onClick={() => { setShowImport(false); setImportResult(null); }}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-card border border-border p-6 w-full max-w-lg"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm uppercase">IMPORT LEADS — CSV OR EXCEL</h3>
-                <button onClick={() => { setShowImport(false); setImportResult(null); }}><X className="w-4 h-4" /></button>
+        {/* Selected Lead Panel */}
+        {selectedLead && (
+          <div className="w-[420px] flex flex-col bg-[#FAFAF7] shrink-0 overflow-hidden">
+            {/* Context Header */}
+            <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="font-bold uppercase tracking-widest text-xs truncate text-white">{selectedLead.name}</h2>
+                {selectedLead.isLocked && <Lock size={12} />}
               </div>
-              <div className="space-y-4">
-                <div className="bg-muted/10 border border-border p-3 text-xs">
-                  <p className="mb-2 font-bold uppercase">CSV FORMAT:</p>
-                  <p className="text-muted-foreground">Required columns: <span className="text-primary">name</span></p>
-                  <p className="text-muted-foreground">Optional: Phone, Email, Business (or Company), Job Title</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">Accepts .csv, .xlsx, .xls. Headers from a previous EXPORT will round-trip exactly. Use the <b>Business</b> column to group leads under different businesses inside your org.</p>
-                  <p className="text-muted-foreground mt-1">Imported leads are <span className="text-amber-300">LOCKED</span> — only admins can delete them.</p>
-                </div>
-                <div className="flex items-center justify-center">
-                  <label className="flex items-center gap-2 px-6 py-3 bg-primary/20 border border-primary/30 text-primary text-sm font-bold uppercase cursor-pointer hover:bg-primary/30 transition-colors">
-                    <Upload className="w-4 h-4" />
-                    {importing ? 'IMPORTING...' : 'SELECT CSV FILE'}
-                    <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" disabled={importing} />
-                  </label>
-                </div>
-                {importing && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> PROCESSING...
-                  </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {admin && (
+                  <>
+                    <button onClick={() => { setEditingLead(selectedLead); setEditForm({...selectedLead, assignedUserId: selectedLead.assignedUserId || ''}); }} className="hover:text-white transition-colors p-1.5"><Edit2 size={12}/></button>
+                    <button onClick={() => deleteLead(selectedLead.id)} className="hover:text-red-500 transition-colors p-1.5"><Trash2 size={12}/></button>
+                  </>
                 )}
-                {importResult && (
-                  <div className="bg-muted/10 border border-border p-3 text-xs space-y-1">
-                    <p className="text-emerald-300">{importResult.success} LEADS IMPORTED SUCCESSFULLY</p>
-                    {importResult.errors > 0 && <p className="text-red-300">{importResult.errors} ERRORS</p>}
-                    {importResult.errorDetails.map((e, i) => (
-                      <p key={i} className="text-red-400/70 text-[10px]">{e}</p>
+                <button onClick={() => setSelectedLead(null)} className="hover:text-white transition-colors p-1.5"><X size={14}/></button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {/* Properties Grid */}
+              <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Phone</span>
+                  <span className="text-[11px] font-mono font-bold mt-0.5">{selectedLead.phone || '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Email</span>
+                  <span className="text-[11px] font-bold mt-0.5">{selectedLead.email || '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Company</span>
+                  <span className="text-[11px] font-bold uppercase mt-0.5">{selectedLead.company || '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Job Title</span>
+                  <span className="text-[11px] font-bold uppercase mt-0.5">{selectedLead.jobTitle || '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Source</span>
+                  <span className="text-[11px] font-bold uppercase mt-0.5">{selectedLead.source || '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Assigned To</span>
+                  <span className="text-[11px] font-bold uppercase mt-0.5 text-black/80">{selectedLead.assignedUserId ? (memberMap[selectedLead.assignedUserId] || 'ASSIGNED') : 'UNASSIGNED'}</span>
+                </div>
+              </div>
+
+              {/* Status Picker */}
+              <div>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 block mb-2">Lead Status</span>
+                <div className="flex flex-wrap gap-2">
+                  {STATUSES.map(s => (
+                    <button
+                      key={s.value}
+                      onClick={() => updateStatus(selectedLead.id, s.value)}
+                      className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest border transition-colors ${selectedLead.status === s.value ? 'bg-black text-[#00ff41] border-black' : 'border-black text-black bg-white hover:bg-black/5'}`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Extraction / Pablo Notes */}
+              {selectedLead.pabloNotesJson && (
+                <div>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 block mb-2">Extraction Notes</span>
+                  <div className="bg-white border border-black p-3 text-[10px] font-mono leading-relaxed whitespace-pre-wrap">
+                    {(() => { try { const notes = JSON.parse(selectedLead.pabloNotesJson); return Array.isArray(notes) ? notes.join('\n') : String(notes); } catch { return selectedLead.pabloNotesJson; } })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Router Panel */}
+              <div className="border-t border-black/10 pt-4">
+                <CrmRoutingPanel
+                  leadId={selectedLead.id}
+                  leadName={selectedLead.name}
+                  leadPhone={selectedLead.phone}
+                  assignedUserId={selectedLead.assignedUserId}
+                  canEdit={admin}
+                  onUpdated={() => { void openDetail(selectedLead); }}
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="border-t border-black/10 pt-4">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-black/60 block mb-2">Manual Notes ({leadNotes.length})</span>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    value={newNote} onChange={e => setNewNote(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNote()}
+                    placeholder="ADD NOTE..."
+                    className="flex-1 px-3 py-1.5 text-xs font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase bg-white"
+                  />
+                  <button onClick={addNote} disabled={!newNote.trim()} className="px-4 py-1.5 border border-black bg-black text-white font-bold hover:text-[#00ff41] disabled:opacity-50 transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
+                {detailLoading ? (
+                  <div className="flex justify-center p-4"><Loader2 size={16} className="animate-spin text-black/40" /></div>
+                ) : (
+                  <div className="space-y-3">
+                    {leadNotes.map(n => (
+                      <div key={n.id} className="bg-white border border-black/20 p-3 text-xs">
+                        <div className="flex justify-between items-center mb-1.5 pb-1.5 border-b border-black/5">
+                          <span className="font-bold uppercase tracking-widest text-[9px]">{n.userName || 'UNKNOWN'}</span>
+                          <span className="text-[9px] text-black/40 font-mono">{new Date(n.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="leading-relaxed text-[11px] font-mono">{n.note}</p>
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
-            </motion.div>
-          </motion.div>
+
+              {/* Calls */}
+              {leadCalls.length > 0 && (
+                <div className="border-t border-black/10 pt-4">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/60 block mb-2">Call Log ({leadCalls.length})</span>
+                  <div className="space-y-3">
+                    {leadCalls.map(c => (
+                      <div key={c.id} className="bg-white border border-black/20 p-3 text-xs">
+                        <div className="flex justify-between items-center mb-1.5 pb-1.5 border-b border-black/5">
+                          <span className="font-bold uppercase tracking-widest text-[9px]">{c.direction} · {c.callType}</span>
+                          <span className="text-[9px] text-black/40 font-mono">{new Date(c.startedAt).toLocaleDateString()}</span>
+                        </div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-black/60 flex items-center gap-3 mb-1.5">
+                          <span>Status: {c.status}</span>
+                          <span>Dur: {c.durationSeconds}s</span>
+                        </div>
+                        {(c.summary || c.transcript) && (
+                          <p className="leading-relaxed mt-1 text-[10px] font-mono text-black/80">{c.summary || c.transcript}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline */}
+              {leadActivities.length > 0 && (
+                <div className="border-t border-black/10 pt-4">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-black/60 block mb-2">Raw Timeline ({leadActivities.length})</span>
+                  <div className="space-y-2">
+                    {leadActivities.map(a => (
+                      <div key={a.id} className="bg-black/5 border border-black/10 p-2 text-xs">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold uppercase tracking-widest text-[8px] text-black/50">{a.channel}</span>
+                          <span className="text-[8px] text-black/40 font-mono">{new Date(a.occurredAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="leading-tight text-[10px] font-mono">{a.summary || a.body || 'No detail'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
+
+      {/* Modals */}
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#FAFAF7] border border-black w-[400px] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
+              <h3 className="font-bold uppercase tracking-widest text-[10px]">Add New Lead</h3>
+              <button onClick={() => setShowAddForm(false)} className="hover:text-white transition-colors p-1"><X size={14}/></button>
+            </div>
+            <div className="p-5 space-y-4 flex flex-col text-xs bg-white">
+              <input placeholder="NAME (REQUIRED)" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} />
+              <input placeholder="COMPANY" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={addForm.company} onChange={e => setAddForm({...addForm, company: e.target.value})} />
+              <input placeholder="JOB TITLE" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={addForm.jobTitle} onChange={e => setAddForm({...addForm, jobTitle: e.target.value})} />
+              <input placeholder="EMAIL" type="email" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} />
+              <input placeholder="PHONE" type="tel" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={addForm.phone} onChange={e => setAddForm({...addForm, phone: e.target.value})} />
+            </div>
+            <div className="p-3 border-t border-black bg-black/5 flex justify-end gap-3">
+              <button onClick={() => setShowAddForm(false)} className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest border border-black hover:bg-white transition-colors">Cancel</button>
+              <button onClick={createLead} disabled={saving} className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest border border-black bg-black text-[#00ff41] hover:text-white transition-colors disabled:opacity-50">Save Lead</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingLead && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#FAFAF7] border border-black w-[400px] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
+              <h3 className="font-bold uppercase tracking-widest text-[10px]">Edit Lead</h3>
+              <button onClick={() => setEditingLead(null)} className="hover:text-white transition-colors p-1"><X size={14}/></button>
+            </div>
+            <div className="p-5 space-y-4 flex flex-col text-xs bg-white">
+              <input placeholder="NAME" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+              <input placeholder="COMPANY" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={editForm.company} onChange={e => setEditForm({...editForm, company: e.target.value})} />
+              <input placeholder="JOB TITLE" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={editForm.jobTitle} onChange={e => setEditForm({...editForm, jobTitle: e.target.value})} />
+              <input placeholder="EMAIL" type="email" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
+              <input placeholder="PHONE" type="tel" className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase placeholder:text-black/30" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+              <select className="w-full px-3 py-2 font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black uppercase bg-white cursor-pointer" value={editForm.assignedUserId} onChange={e => setEditForm({...editForm, assignedUserId: e.target.value})}>
+                <option value="">UNASSIGNED</option>
+                {Object.entries(memberMap).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </select>
+            </div>
+            <div className="p-3 border-t border-black bg-black/5 flex justify-end gap-3">
+              <button onClick={() => setEditingLead(null)} className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest border border-black hover:bg-white transition-colors">Cancel</button>
+              <button onClick={saveLead} disabled={saving} className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest border border-black bg-black text-[#00ff41] hover:text-white transition-colors disabled:opacity-50">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImport && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#FAFAF7] border border-black w-[400px] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
+              <h3 className="font-bold uppercase tracking-widest text-[10px]">Import Data</h3>
+              <button onClick={() => { setShowImport(false); setImportResult(null); }} className="hover:text-white transition-colors p-1"><X size={14}/></button>
+            </div>
+            <div className="p-6 space-y-5 flex flex-col text-xs text-center bg-white">
+              <p className="text-black/50 uppercase font-bold text-[9px] tracking-widest">Select a CSV or XLSX file to import leads.</p>
+              <label className="flex flex-col items-center justify-center gap-3 border border-black border-dashed bg-black/5 p-8 cursor-pointer hover:border-black hover:bg-black/10 transition-all">
+                <Upload size={24} className="text-black/40" />
+                <span className="font-bold uppercase text-[10px] tracking-widest">Choose File</span>
+                <input type="file" className="hidden" accept=".csv,.xlsx,.xls" ref={fileInputRef} onChange={handleCSVUpload} disabled={importing} />
+              </label>
+              {importing && <div className="text-[10px] uppercase tracking-widest font-bold animate-pulse text-[#00ff41] bg-black p-3">Importing Data...</div>}
+              {importResult && (
+                <div className="text-left bg-[#FAFAF7] border border-black p-4 space-y-1.5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-black/50 border-b border-black/10 pb-1 mb-2">Import Result</div>
+                  <div className="text-[#008f11] font-bold text-[10px] uppercase tracking-widest">Added/Updated: {importResult.success}</div>
+                  {importResult.errors > 0 && <div className="text-red-600 font-bold text-[10px] uppercase tracking-widest">Errors: {importResult.errors}</div>}
+                  {importResult.errorDetails.length > 0 && (
+                    <div className="max-h-32 overflow-y-auto text-[10px] text-red-600 mt-2 bg-red-50 p-2 font-mono border border-red-200 leading-relaxed">
+                      {importResult.errorDetails.map((err, i) => <div key={i}>{err}</div>)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
