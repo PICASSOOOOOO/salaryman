@@ -93,7 +93,7 @@ export default function DesktopDownload() {
         <nav className="desktop-download-nav" aria-label="Desktop client navigation">
           <a href="#client">CLIENT</a>
           <a href="#connection">CONNECTION</a>
-          <Link href="/phone">PHONE SYSTEM</Link>
+          <Link href="/phone">CALLL HOME</Link>
           <Link href="/settings">SETTINGS</Link>
         </nav>
       </header>
@@ -108,12 +108,18 @@ export default function DesktopDownload() {
           <div className="desktop-download-actions">
             {clientBuildAvailable && clientRelease ? (
               <a className="desktop-download-primary" href={downloadHref} download={clientRelease.archiveName} data-testid="link-download-detected-desktop-client">
-                <Download size={16} aria-hidden /> Download {clientRelease.name} client <ArrowRight size={15} aria-hidden />
+                <Download size={16} aria-hidden /> Download {clientRelease.name} gameplay alpha <ArrowRight size={15} aria-hidden />
               </a>
             ) : downloadAllowed ? (
               <span className="desktop-download-locked"><Laptop size={15} aria-hidden /> Native client unavailable for this device</span>
             ) : (
-              <span className="desktop-download-locked"><ShieldCheck size={15} aria-hidden /> Admin / moderator test access</span>
+              <Link
+                className="desktop-download-primary"
+                href="/sign-in?returnTo=/desktop"
+                data-testid="link-sign-in-download-gameplay-alpha"
+              >
+                <Download size={16} aria-hidden /> Download gameplay alpha <ArrowRight size={15} aria-hidden />
+              </Link>
             )}
             <Link className="desktop-download-secondary" href="/device-link?mode=desktop">
               <ShieldCheck size={15} aria-hidden /> Connect a desktop
