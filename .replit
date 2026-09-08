@@ -1,0 +1,138 @@
+modules = ["nodejs-24", "javascript", "python-3.11", "postgresql-16"]
+
+          [[artifacts]]
+          id = "artifacts/api-server"
+
+          [[artifacts]]
+          id = "artifacts/interview-helper"
+
+          [deployment]
+          router = "application"
+          deploymentTarget = "vm"
+
+          [deployment.build]
+          args = ["pnpm", "run", "build:prepublish"]
+
+          [deployment.run]
+          args = ["node", "artifacts/api-server/dist/index.cjs"]
+
+          [workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "phone-system"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "phone-health"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "api-structure"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "api-health"
+
+[[workflows.workflow]]
+name = "phone-system"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:phone"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "phone-health"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PHONE_HEALTH_ALWAYS_EMAIL=0 pnpm --filter @workspace/api-server run health:phone"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "api-structure"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:api-structure"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "api-health"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run health:all"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+        [agent]
+        stack = "PNPM_WORKSPACE"
+expertMode = true
+integrations = ["resend:1.0.0"]
+
+          [postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
+
+          [nix]
+          channel = "stable-25_05"
+packages = ["SDL2", "SDL2_image", "SDL2_mixer", "SDL2_ttf", "fontconfig", "freetype", "libjpeg", "libpng", "pkg-config", "portmidi"]
+
+[userenv]
+
+[userenv.shared]
+DISCORD_GUILD_INVITE_URL = "https://discord.gg/uV9DBxPnS"
+STRIPE_PRICE_CLAW_BOT = "price_1TiwLePuaB9oFoK5Jsj6npBQ"
+STRIPE_PRICE_LIVE_LISTEN = "price_1TiwLfPuaB9oFoK5BD7QAnqs"
+STRIPE_PRICE_SCREEN_SCAN = "price_1TiwLfPuaB9oFoK5oyBj3JMY"
+STRIPE_PRICE_SAY_THIS = "price_1TiwLfPuaB9oFoK51jWMCW3S"
+STRIPE_PRICE_PHONE_SYSTEM = "price_1TiwLgPuaB9oFoK5SvsdRqTY"
+STRIPE_PRICE_BOT_CLOSER_X = "price_1TiwLgPuaB9oFoK53MkNlV6y"
+STRIPE_PRICE_BOT_RESOLVE_7 = "price_1TiwLhPuaB9oFoK51y2L0leh"
+STRIPE_PRICE_BOT_INK_9 = "price_1TiwLhPuaB9oFoK5e4Pjse3i"
+STRIPE_PRICE_BOT_RECRUIT_8 = "price_1TiwLhPuaB9oFoK5iSwQRE1g"
+STRIPE_PRICE_PLEDGE_TERM_PABLO_PASS = "price_1TiwLiPuaB9oFoK54nISmAyw"
+STRIPE_PRICE_PLEDGE_TERM_PHONE_PASS = "price_1TiwLiPuaB9oFoK5GB0ScFbT"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 80
+
+[[ports]]
+localPort = 8082
+externalPort = 3001
+
+[[ports]]
+localPort = 21129
+externalPort = 3000
+
+[[ports]]
+localPort = 21130
+externalPort = 3002
+
+[objectStorage]
+defaultBucketID = "replit-objstore-72d80d45-9792-4279-b730-a825bfea9680"
+        

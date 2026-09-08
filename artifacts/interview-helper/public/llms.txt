@@ -1,0 +1,23 @@
+# SALARYMAN
+
+> SALARYMAN is a browser-based work simulation game and AI-powered business operating system. Players build companies, manage teams, earn in-game currency, and access real productivity tools — all inside a retro-pixel city.
+
+SALARYMAN combines an AI business assistant (Pablo), a persistent pixel-art city world, and a full suite of business tools (invoicing, hiring, contracts, payroll, CRM, and more) into a single gamified platform. It is designed for entrepreneurs, freelancers, and small teams who want to run their business and play at the same time.
+
+## Key Pages
+
+- [Home](https://salaryman.replit.app/): Main product page and entry point
+- [Pricing](https://salaryman.replit.app/pricing): Subscription plans and pricing
+- [Upgrade / Plans](https://salaryman.replit.app/upgrade): Upgrade to PRIME membership
+- [Pixel Agents](https://salaryman.replit.app/pledge/agents): Meet the Pixel Agents — AI bots available to SALARYMAN players
+- [Pledge Store](https://salaryman.replit.app/pledge): SALARYMAN pledge store and supporter rewards
+- [Alpha Program](https://salaryman.replit.app/alpha): Apply to join the SALARYMAN alpha
+- [Investors / Supporters](https://salaryman.replit.app/investors): Investor and supporter information
+
+## Legal
+
+- [Legal Hub](https://salaryman.replit.app/legal): Overview of legal documents
+- [Terms of Service](https://salaryman.replit.app/legal/terms)
+- [Privacy Policy](https://salaryman.replit.app/legal/privacy)
+- [Contact](https://salaryman.replit.app/legal/contact)
+- [Refund Policy](https://salaryman.replit.app/legal/refunds)

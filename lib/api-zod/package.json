@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/api-zod",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./playable-properties": "./src/playable-properties.ts",
+    "./shadow-tower": "./src/shadow-tower.ts",
+    "./property-market": "./src/property-market.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}

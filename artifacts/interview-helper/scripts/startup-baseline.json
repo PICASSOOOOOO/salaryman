@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-08-30",
+  "source": "production Vite build before startup dependency refactor",
+  "assets": [
+    { "logicalName": "polyfills.js", "kind": "modern startup", "bytes": 139443, "gzipBytes": 52490 },
+    { "logicalName": "index.js", "kind": "modern startup", "bytes": 2037122, "gzipBytes": 595080 },
+    { "logicalName": "vendor-react.js", "kind": "modern startup", "bytes": 212709, "gzipBytes": 68650 },
+    { "logicalName": "vendor-markdown.js", "kind": "modern startup", "bytes": 159900, "gzipBytes": 48470 },
+    { "logicalName": "vendor-syntax.js", "kind": "modern startup", "bytes": 60380, "gzipBytes": 20830 },
+    { "logicalName": "vendor-tanstack.js", "kind": "modern startup", "bytes": 28058, "gzipBytes": 8620 },
+    { "logicalName": "vendor-charts.js", "kind": "modern startup", "bytes": 404945, "gzipBytes": 111930 },
+    { "logicalName": "vendor-framer.js", "kind": "modern startup", "bytes": 125492, "gzipBytes": 41240 },
+    { "logicalName": "index.css", "kind": "modern startup", "bytes": 369691, "gzipBytes": 46075 },
+    { "logicalName": "polyfills-legacy.js", "kind": "legacy startup", "bytes": 147083, "gzipBytes": 55137 },
+    { "logicalName": "index-legacy.js", "kind": "legacy startup", "bytes": 2411653, "gzipBytes": 628800 }
+  ]
+}

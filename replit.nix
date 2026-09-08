@@ -1,0 +1,34 @@
+{pkgs}: {
+  deps = [
+    pkgs.godot_4
+    pkgs.xorg.libxshmfence
+    pkgs.xorg.libXtst
+    pkgs.xorg.libXrender
+    pkgs.xorg.libXi
+    pkgs.freetype
+    pkgs.fontconfig
+    pkgs.alsa-lib
+    pkgs.mesa
+    pkgs.xorg.libxcb
+    pkgs.xorg.libXrandr
+    pkgs.xorg.libXfixes
+    pkgs.xorg.libXext
+    pkgs.xorg.libXdamage
+    pkgs.xorg.libXcomposite
+    pkgs.xorg.libX11
+    pkgs.cairo
+    pkgs.pango
+    pkgs.libxkbcommon
+    pkgs.libdrm
+    pkgs.expat
+    pkgs.dbus
+    pkgs.cups
+    pkgs.at-spi2-atk
+    pkgs.atk
+    pkgs.nspr
+    pkgs.nss
+    pkgs.gtk3
+    pkgs.glib
+    pkgs.ffmpeg
+  ];
+}

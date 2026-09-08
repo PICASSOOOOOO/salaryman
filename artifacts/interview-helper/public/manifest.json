@@ -1,0 +1,51 @@
+{
+  "name": "Salaryman by Picasso AI - AI Business Operating System",
+  "short_name": "SALARYMAN",
+  "id": "./",
+  "description": "AI-powered business operating system with AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams. Built for professionals who refuse to settle.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "orientation": "portrait",
+  "categories": ["business", "productivity", "finance"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "og-salaryman.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "SALARYMAN Dashboard"
+    }
+  ],
+  "prefer_related_applications": false
+}

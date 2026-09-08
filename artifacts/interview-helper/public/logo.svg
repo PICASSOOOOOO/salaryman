@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="SALARYMAN">
+  <rect width="256" height="256" rx="48" fill="#09090b"/>
+  <path d="M64 76h128v104H64z" fill="#18181b" stroke="#38bdf8" stroke-width="8"/>
+  <path d="M84 98h88M84 126h58M84 154h76" stroke="#e4e4e7" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="172" cy="126" r="12" fill="#a78bfa"/>
+</svg>

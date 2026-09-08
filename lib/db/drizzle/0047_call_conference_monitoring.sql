@@ -1,0 +1,1 @@
+ALTER TABLE "call_history" ADD COLUMN "conference_name" varchar(180);

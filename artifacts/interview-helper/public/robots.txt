@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+Allow: /legal
+Allow: /legal/terms
+Allow: /legal/privacy
+Allow: /legal/contact
+Allow: /legal/refunds
+Allow: /legal/returns
+Allow: /legal/cancellation
+Allow: /legal/promotions
+Allow: /legal/restrictions
+Allow: /investors
+Allow: /pledge
+Allow: /pledge/agents
+Allow: /pricing
+Allow: /upgrade
+
+Disallow: /console
+Disallow: /phone
+Disallow: /bots
+Disallow: /business
+Disallow: /creative
+Disallow: /marketing
+Disallow: /intel
+Disallow: /profile
+Disallow: /world
+Disallow: /meet
+Disallow: /insurance
+Disallow: /mobile
+Disallow: /admin
+
+Sitemap: https://salaryman.replit.app/sitemap.xml

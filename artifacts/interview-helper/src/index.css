@@ -1,0 +1,1755 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
+@import "tailwindcss";
+@layer theme, base, clerk, components, utilities;
+
+@theme inline {
+  --font-sans:
+    "DM Sans", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC", "Noto Sans",
+    sans-serif;
+  --font-mono:
+    "Space Mono", "Fira Code", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC",
+    monospace;
+  --font-display: "Syne", "DM Sans", "Noto Sans", sans-serif;
+
+  /* SALARYMAN — ink, oxidized copper, and signal cyan. */
+  --color-background: hsl(216 28% 7%);
+  --color-foreground: hsl(40 22% 91%);
+
+  --color-card: hsl(216 24% 10%);
+  --color-card-foreground: hsl(40 22% 91%);
+
+  --color-popover: hsl(216 24% 11%);
+  --color-popover-foreground: hsl(40 22% 91%);
+
+  --color-border: hsl(210 17% 22%);
+  --color-input: hsl(216 23% 12%);
+  --color-ring: hsl(186 75% 54%);
+
+  --color-primary: hsl(186 75% 54%);
+  --color-primary-foreground: hsl(216 28% 7%);
+
+  --color-secondary: hsl(216 18% 17%);
+  --color-secondary-foreground: hsl(210 14% 73%);
+
+  --color-muted: hsl(216 18% 14%);
+  --color-muted-foreground: hsl(212 12% 56%);
+
+  --color-accent: hsl(35 77% 63%);
+  --color-accent-foreground: hsl(216 28% 7%);
+
+  --color-destructive: hsl(2 61% 56%);
+  --color-destructive-foreground: hsl(40 22% 91%);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+:root {
+  color-scheme: dark;
+  --salary-ink: 8 15 22;
+  --salary-panel: 13 24 32;
+  --salary-paper: 229 220 198;
+  --salary-copper: 196 126 63;
+  --salary-signal: 92 213 208;
+  --device-link-void: 7 10 12;
+  --device-link-paper: 220 231 232;
+  --device-link-muted: 142 157 159;
+  --device-link-line: 38 52 54;
+  --device-link-signal: 181 230 87;
+  --device-link-warm: 225 169 93;
+  /* Fallout-style readable floor: bump root rem so every size unit scales up app-wide.
+     Default browser = 16px; we bump to 19px so .5rem → 9.5px, 1rem → 19px, etc. */
+  font-size: 19px;
+  /* FAB safe-zone: pages with a persistent bottom action bar set this so the
+     floating action buttons (chat FAB, audio control) lift above the bar.
+     Default 0px = no offset. */
+  --fab-bottom-offset: 0px;
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-left: env(safe-area-inset-left, 0px);
+  --app-safe-right: env(safe-area-inset-right, 0px);
+  --app-viewport-height: 100dvh;
+  --app-viewport-top: 0px;
+  --app-keyboard-inset: 0px;
+}
+
+.dark {
+  --salary-ink: 8 15 22;
+  --salary-panel: 13 24 32;
+  --salary-paper: 229 220 198;
+  --salary-copper: 196 126 63;
+  --salary-signal: 92 213 208;
+  --device-link-void: 7 10 12;
+  --device-link-paper: 220 231 232;
+  --device-link-muted: 142 157 159;
+  --device-link-line: 38 52 54;
+  --device-link-signal: 181 230 87;
+  --device-link-warm: 225 169 93;
+}
+
+/* Game routes retain their comfortable reading scale without imposing a retro display face. */
+body.game-route {
+  font-size: 1.05rem;
+  line-height: 1.45;
+  font-family: var(--font-sans);
+}
+body.game-route button,
+body.game-route input,
+body.game-route select,
+body.game-route textarea {
+  font-family: inherit;
+}
+
+/* ─── Office Sim Font Floor ───
+   Bump all micro-text to readable sizes.
+   Game routes (.game-route) can override these. */
+body:not(.game-route) .text-\[8px\] {
+  font-size: 0.6875rem !important;
+  line-height: 1.3 !important;
+}
+body:not(.game-route) .text-\[9px\] {
+  font-size: 0.75rem !important;
+  line-height: 1.3 !important;
+}
+body:not(.game-route) .text-\[10px\] {
+  font-size: 0.8125rem !important;
+  line-height: 1.35 !important;
+}
+body:not(.game-route) .text-\[11px\] {
+  font-size: 0.8125rem !important;
+  line-height: 1.4 !important;
+}
+
+/* ─── Subtle Worn Border Treatment ─── */
+body:not(.game-route) .rounded-xl,
+body:not(.game-route) .rounded-lg {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  #root {
+    min-height: var(--app-viewport-height, 100dvh);
+  }
+  body {
+    @apply bg-background text-foreground font-sans min-h-screen;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: hsl(225 12% 7%);
+    background-image:
+      radial-gradient(
+        ellipse at 50% 0%,
+        rgba(56, 189, 248, 0.03) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse at 80% 100%,
+        rgba(139, 92, 246, 0.015) 0%,
+        transparent 45%
+      );
+    /* App-like feel on mobile: kill rubber-band, suppress tap highlight,
+       and stop iOS Safari from auto-zooming form inputs <16px. */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    overscroll-behavior-x: none;
+  }
+  html {
+    overscroll-behavior-y: none;
+  }
+  /* Chrome (nav rows, app headers) shouldn't be selectable — feels app-like.
+     Buttons are NOT included here because they often wrap selectable
+     content (notification bodies, chat snippets, message rows). Use the
+     .select-none utility on individual buttons that should suppress it. */
+  .app-header,
+  nav {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .app-control {
+    min-height: 32px;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgb(212 212 216);
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      opacity 150ms ease,
+      transform 150ms ease;
+  }
+  .app-control:hover {
+    border-color: rgba(125, 211, 252, 0.35);
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+  }
+  .app-control-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+  }
+  /* Shared action contract for the app chrome and Pablo's full-screen header.
+     Keep these controls visually equal at rest; mobile-tap-target supplies the
+     larger hit area without forcing desktop chrome to become oversized. */
+  .app-action {
+    min-height: 32px;
+    min-width: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding-inline: 0.75rem;
+    border-radius: 0.5rem;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  /* Pablo's fullscreen header has several compact actions sharing one phone
+     row. Keep their visual footprint small; the control lane still remains
+     easy to tap through the dedicated mobile target class. */
+  .pablo-header-action {
+    min-height: 30px;
+    min-width: 30px;
+    flex: 0 0 auto;
+    padding-inline: 0.5rem;
+    gap: 0.25rem;
+    border-radius: 0.375rem;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+  /* iOS auto-zooms <input> when font-size <16px. Force 16px on mobile. */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+    .mobile-tap-target {
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .app-control {
+      min-height: 44px;
+    }
+    .app-action {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    .pablo-header-action.mobile-tap-target {
+      min-height: 36px;
+      min-width: 36px;
+      padding-inline: 0.4rem;
+    }
+    .pablo-mobile-secondary {
+      display: none !important;
+    }
+    .pablo-download-label {
+      display: none;
+    }
+    .pablo-download-control {
+      min-width: 36px !important;
+      width: 36px;
+      padding-inline: 0.4rem;
+    }
+    .pablo-vision-trigger {
+      display: none !important;
+    }
+    .mobile-scroll-region {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .mobile-scroll-region::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .pablo-brand-wordmark {
+      display: none;
+    }
+  }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ─── Selection ─── */
+  ::selection {
+    background: rgba(56, 189, 248, 0.22);
+    color: hsl(210 20% 92%);
+  }
+
+  /* ─── Markdown prose ─── */
+  .prose {
+    @apply text-foreground max-w-none;
+  }
+  .prose p {
+    @apply leading-relaxed mb-4 text-sm;
+    color: rgba(210, 220, 230, 0.8);
+  }
+  .prose strong {
+    @apply font-bold;
+    color: hsl(210 20% 92%);
+  }
+  .prose em {
+    color: rgba(210, 220, 230, 0.7);
+    font-style: italic;
+  }
+  .prose ul,
+  .prose ol {
+    @apply mb-4 pl-5;
+    color: rgba(210, 220, 230, 0.8);
+  }
+  .prose li {
+    @apply mb-1 text-sm;
+  }
+  .prose li::marker {
+    color: hsl(200 80% 55%);
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3 {
+    color: hsl(210 20% 92%);
+    font-family: var(--font-sans);
+    letter-spacing: 0.03em;
+    @apply font-bold mb-3 mt-5;
+  }
+  .prose h1 {
+    font-size: 1.5rem;
+  }
+  .prose h2 {
+    font-size: 1.25rem;
+  }
+  .prose h3 {
+    font-size: 1.1rem;
+  }
+  .prose code {
+    font-family: "Fira Code", monospace;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    padding: 0.1em 0.4em;
+    color: hsl(200 80% 68%);
+    border-radius: 4px;
+  }
+  .prose pre {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 6px !important;
+  }
+  .prose pre code {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  .prose a {
+    color: hsl(200 80% 65%);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .prose blockquote {
+    border-left: 2px solid rgba(56, 189, 248, 0.35);
+    padding-left: 1rem;
+    color: rgba(210, 220, 230, 0.6);
+    margin-left: 0;
+    font-style: italic;
+  }
+  .prose hr {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .prose table {
+    width: 100%;
+  }
+  .prose th {
+    color: hsl(210 20% 92%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+    padding: 0.5rem;
+  }
+  .prose td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.5rem;
+    color: rgba(210, 220, 230, 0.7);
+  }
+
+  /* Syntax highlighter override */
+  .shiki,
+  .shiki span {
+    background: transparent !important;
+  }
+}
+
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes smfade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+.cursor-blink::after {
+  content: "_";
+  animation: cursor-blink 1s step-end infinite;
+  color: #38bdf8;
+}
+
+/* ─── Status Dot ─── */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  animation: none;
+  display: inline-block;
+}
+
+.status-dot.offline {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+  animation: none;
+}
+
+.status-dot.warning {
+  background: #f59e0b;
+}
+
+/* ─── Display Text ─── */
+.display-text {
+  font-family: var(--font-sans);
+  letter-spacing: 0.025em;
+}
+
+/* ─── Neon glow helper for flat vector icons (Hummingbird etc) ─── */
+.neon-glow {
+  filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.55))
+    drop-shadow(0 0 7px rgba(56, 189, 248, 0.25));
+}
+
+/* ─── App Header — NavBar cut-off prevention ─── */
+header {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  visibility: visible !important;
+}
+
+.app-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: var(--app-safe-left);
+  padding-right: var(--app-safe-right);
+  background: #0a0a0b;
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+.desktop-app-nav {
+  display: none;
+}
+.mobile-app-nav {
+  display: block;
+}
+
+/* Shared light mobile chrome. Keep every route on one stable header instead
+   of letting each module invent its own dark, oversized toolbar. */
+.mobile-app-nav,
+.mobile-app-subnav {
+  color: #172e43;
+  background: #fff;
+  border-color: #d9e4ea;
+}
+
+.mobile-brand-row,
+.mobile-primary-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-left: max(12px, var(--app-safe-left));
+  padding-right: max(12px, var(--app-safe-right));
+}
+
+.mobile-brand-row {
+  min-height: 48px;
+  justify-content: flex-end;
+  border-bottom: 1px solid #edf2f5;
+}
+
+.mobile-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mobile-account-button,
+.mobile-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  color: #718392;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.mobile-account-button:active,
+.mobile-back-button:active {
+  color: #155b86;
+  background: #e6f2f9;
+}
+
+.mobile-account-icon,
+.mobile-primary-icon,
+.mobile-more-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.mobile-avatar {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #c5dce8;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.mobile-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: #155b86;
+  background: #e6f2f9;
+  font: 700 11px/1 "DM Sans", sans-serif;
+}
+
+.mobile-primary-row {
+  min-height: 46px;
+  gap: 2px;
+  border-bottom: 1px solid #d9e4ea;
+}
+
+.mobile-primary-scroll,
+.mobile-subnav-scroll {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mobile-primary-scroll::-webkit-scrollbar,
+.mobile-subnav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-primary-scroll {
+  flex: 1 1 auto;
+  gap: 2px;
+}
+
+.mobile-primary-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  min-height: 38px;
+  gap: 4px;
+  padding: 5px 6px;
+  color: #81909c;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: 700 8px/1 "DM Sans", sans-serif;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.mobile-primary-item.is-active {
+  color: #155b86;
+  background: #e6f2f9;
+  border-color: #c9e2ef;
+}
+
+.mobile-more-anchor {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mobile-more-anchor .mobile-primary-item {
+  flex-basis: 58px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-notification-count {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  color: #fff;
+  background: #d9534f;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  font: 700 8px/11px "DM Sans", sans-serif;
+  text-align: center;
+}
+
+.mobile-app-subnav {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid #edf2f5;
+}
+
+.mobile-subnav-scroll {
+  gap: 4px;
+  min-height: 42px;
+  padding: 4px max(12px, var(--app-safe-left)) 4px max(12px, var(--app-safe-right));
+}
+
+.mobile-subnav-item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #718392;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: 700 9px/1 "DM Sans", sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mobile-subnav-item.is-active {
+  color: #155b86;
+  background: #e6f2f9;
+  border-color: #c9e2ef;
+}
+
+.mobile-subnav-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.mobile-more-panel {
+  width: min(15rem, calc(100vw - 1rem));
+  max-height: min(70dvh, 30rem);
+  overflow-y: auto;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #d9e4ea;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(23, 54, 74, .18);
+}
+
+.mobile-more-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  gap: 10px;
+  padding: 8px 10px;
+  color: #526777;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: 700 10px/1.2 "DM Sans", sans-serif;
+  letter-spacing: .08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.mobile-more-item.is-active {
+  color: #155b86;
+  background: #e6f2f9;
+}
+
+.mobile-more-item.is-danger {
+  color: #b94b45;
+}
+
+.mobile-more-item:active {
+  background: #eef6fa;
+}
+
+.mobile-more-icon {
+  flex: 0 0 16px;
+  color: #8aa0ad;
+}
+
+.mobile-more-item.is-active .mobile-more-icon {
+  color: #155b86;
+}
+
+/* Account summary uses the same light workspace surface as the mobile and
+   desktop chrome. Keep the sheet readable even though the global app theme
+   still supports dark immersive routes. */
+.mobile-account-sheet {
+  background: rgba(23, 46, 67, .28);
+  backdrop-filter: blur(5px);
+}
+
+.mobile-account-sheet-panel {
+  color: #172e43;
+  background: #fff;
+  border: 1px solid #cddde6;
+  box-shadow: 0 20px 44px rgba(23, 54, 74, .22);
+}
+
+.mobile-account-sheet-header {
+  border-bottom: 1px solid #edf2f5;
+}
+
+.mobile-account-sheet-card,
+.mobile-account-sheet-control {
+  background: #f7fafb;
+  border: 1px solid #d9e4ea;
+}
+
+.mobile-account-sheet-balance {
+  background: #eef8f4;
+  border: 1px solid #b9decf;
+}
+
+.mobile-account-sheet-rule {
+  border-top: 1px solid #edf2f5;
+}
+
+.mobile-account-sheet-button {
+  color: #526777;
+  background: #f7fafb;
+  border: 1px solid #d9e4ea;
+}
+
+.mobile-account-sheet-button-primary {
+  color: #155b86;
+  background: #e6f2f9;
+  border-color: #b9d9e8;
+}
+
+/* Desktop uses the same white homepage chrome; module pages can keep their
+   own content styling below the header without changing their behavior. */
+@media (min-width: 640px) {
+  .desktop-app-nav {
+    color: #172e43 !important;
+    background: #fff !important;
+    border-color: #d9e4ea !important;
+  }
+
+  .desktop-app-nav > div,
+  .desktop-app-nav .bg-\[\#0a0a0b\],
+  .desktop-app-nav .bg-\[\#0d0e12\] {
+    background: #fff !important;
+    border-color: #edf2f5 !important;
+  }
+
+  .desktop-app-nav .text-zinc-100,
+  .desktop-app-nav .text-zinc-300,
+  .desktop-app-nav .text-zinc-400,
+  .desktop-app-nav .text-zinc-500,
+  .desktop-app-nav .text-zinc-600,
+  .desktop-app-nav .text-zinc-700 {
+    color: #718392 !important;
+  }
+
+  .desktop-app-nav .text-zinc-100,
+  .desktop-app-nav .text-zinc-300 {
+    color: #172e43 !important;
+  }
+
+  .desktop-app-nav .border-white\/\[0\.04\],
+  .desktop-app-nav .border-white\/\[0\.05\],
+  .desktop-app-nav .border-white\/\[0\.06\],
+  .desktop-app-nav .border-white\/\[0\.08\],
+  .desktop-app-nav .border-white\/\[0\.1\] {
+    border-color: #d9e4ea !important;
+  }
+
+  .desktop-app-nav .hover\:bg-white\/5:hover,
+  .desktop-app-nav .hover\:bg-white\/\[0\.05\]:hover,
+  .desktop-app-nav .hover\:bg-white\/\[0\.07\]:hover {
+    background: #eef6fa !important;
+  }
+
+  .desktop-more-panel,
+  .desktop-subnav-panel {
+    color: #526777;
+    background: #fff;
+    border: 1px solid #d9e4ea;
+    box-shadow: 0 16px 36px rgba(23, 54, 74, .18);
+  }
+
+  .desktop-more-panel .text-zinc-400,
+  .desktop-more-panel .text-zinc-600,
+  .desktop-subnav-panel .text-zinc-300,
+  .desktop-subnav-panel .text-zinc-400,
+  .desktop-subnav-panel .text-zinc-500 {
+    color: #526777 !important;
+  }
+
+  .desktop-more-panel .hover\:bg-white\/5:hover,
+  .desktop-subnav-panel .hover\:bg-white\/\[0\.07\]:hover {
+    background: #eef6fa !important;
+  }
+
+  .desktop-subnav {
+    background: #fff;
+    border-top: 1px solid #edf2f5;
+  }
+}
+
+/* Short landscape phone/PWA viewports need the icon-first chrome even when
+   their CSS width crosses Tailwind's tablet breakpoint. */
+@media (min-width: 640px) and (min-height: 501px) {
+  .desktop-app-nav {
+    display: block;
+  }
+  .mobile-app-nav {
+    display: none;
+  }
+}
+
+/* Keep compact landscape phones on the same readable, single-column canvas.
+   The PWA manifest requests portrait; this is the safe browser fallback when
+   the device has not honored that request yet. */
+@media (max-width: 639px) and (orientation: landscape) {
+  body {
+    min-width: 320px;
+  }
+  .app-chrome {
+    position: sticky;
+  }
+  .mobile-app-nav .mobile-tap-target {
+    min-height: 40px;
+  }
+}
+
+/* ─── Light control-plane surfaces ──────────────────────────────────────────
+   The browser is the practical workspace: white on both phone and desktop.
+   The native/game client owns the black/green world aesthetic, so it stays
+   isolated from this rule set instead of making every business page feel like
+   a game screen. Pablo and the deliberately immersive routes keep their own
+   surfaces through AppShell's route class. */
+body.workspace-light {
+  color-scheme: light;
+  --color-background: hsl(42 100% 97%);
+  --color-foreground: hsl(0 0% 7%);
+  --color-card: hsl(42 100% 97%);
+  --color-card-foreground: hsl(0 0% 7%);
+  --color-popover: hsl(42 100% 97%);
+  --color-popover-foreground: hsl(0 0% 7%);
+  --color-border: hsl(0 0% 18%);
+  --color-input: hsl(42 100% 97%);
+  --color-ring: hsl(0 0% 0%);
+  --color-primary: hsl(0 0% 0%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(42 100% 97%);
+  --color-secondary-foreground: hsl(0 0% 0%);
+  --color-muted: hsl(42 100% 97%);
+  --color-muted-foreground: hsl(0 0% 0%);
+  --color-accent: hsl(0 0% 0%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(2 61% 56%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --salary-ink: 17 17 17;
+  --salary-panel: 255 250 240;
+  --salary-paper: 255 250 240;
+  --salary-copper: 0 0 0;
+  --salary-signal: 0 0 0;
+  background: #fffaf0;
+  color: #111111;
+  background-image: none;
+}
+
+body.workspace-light #root {
+  background: #fffaf0;
+  color: #111111;
+}
+
+/* Absolute browser-wide readability contract. No web route or nested widget
+   may introduce a black/dark panel. Media pixels are left untouched. */
+body.workspace-light *:not(img):not(video):not(canvas):not(svg):not(path),
+body.workspace-light *::before,
+body.workspace-light *::after {
+  background-color: #fffaf0 !important;
+  background-image: none !important;
+  color: #050505 !important;
+  border-color: #222222 !important;
+  text-shadow: none !important;
+}
+
+body.workspace-light :where(h1, h2, h3, h4, p, span, label, button, input, textarea, select, option, a) {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  opacity: 1 !important;
+}
+
+body.workspace-light :where(input, textarea)::placeholder {
+  color: #2b2b2b !important;
+  -webkit-text-fill-color: #2b2b2b !important;
+  opacity: 1 !important;
+}
+
+body.workspace-light main,
+body.workspace-light [class~="min-h-screen"],
+body.workspace-light [class~="min-h-\[100dvh\]"] {
+  background-color: #fffaf0 !important;
+  background-image: none !important;
+}
+
+body.workspace-light .desktop-download {
+  background: #fff;
+}
+
+body.workspace-light .app-chrome {
+  background: #fffaf0;
+}
+
+body.workspace-light .app-control {
+  color: #111111;
+  background: #fffaf0;
+  border-color: #222222;
+}
+
+body.workspace-light .app-control:hover {
+  color: #000;
+  background: #fff;
+  border-color: #000;
+}
+
+body.workspace-light .bg-background {
+  background-color: #fffaf0 !important;
+}
+
+body.workspace-light .text-foreground {
+  color: #111111 !important;
+}
+
+body.workspace-light .text-muted-foreground {
+  color: #111111 !important;
+}
+
+body.workspace-light .border-border {
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light .bg-\[\#09090b\],
+body.workspace-light .bg-\[\#0a0a0b\],
+body.workspace-light .bg-\[\#0a0a0c\],
+body.workspace-light .bg-\[\#0d0e12\] {
+  background-color: #fff !important;
+}
+
+body.workspace-light .text-zinc-100,
+body.workspace-light .text-zinc-200,
+body.workspace-light .text-zinc-300 {
+  color: #000 !important;
+}
+
+body.workspace-light .text-zinc-400,
+body.workspace-light .text-zinc-500,
+body.workspace-light .text-zinc-600,
+body.workspace-light .text-zinc-700 {
+  color: #000 !important;
+}
+
+/* Light workspace pages use dark ink for labels and descriptions. The
+   opacity-suffixed Tailwind utilities otherwise inherit the old dark-surface
+   palette and become gray-on-gray on white cards. Keep this broad so newly
+   added workspace screens inherit the same readable contract. */
+body.workspace-light [class*="text-muted-foreground"],
+body.workspace-light [class*="text-zinc-"],
+body.workspace-light [class*="text-slate-"],
+body.workspace-light [class*="text-cyan-"],
+body.workspace-light [class*="text-white"] {
+  color: #111111 !important;
+}
+
+body.workspace-light [class*="bg-card/"] {
+  background-color: #fffaf0 !important;
+}
+
+body.workspace-light [class*="bg-muted/"] {
+  background-color: #fffaf0 !important;
+}
+
+body.workspace-light [class*="bg-black"],
+body.workspace-light [class*="bg-zinc-9"],
+body.workspace-light [class*="bg-slate-9"],
+body.workspace-light [class*="bg-\[\#0"] {
+  background-color: #fffaf0 !important;
+  background-image: none !important;
+}
+
+body.workspace-light :where(button, input, select, textarea, [role="dialog"], [role="menu"]) {
+  color: #111111 !important;
+  background-color: #fffaf0 !important;
+  border-color: #222222 !important;
+}
+
+body.workspace-light .calll-home-shell,
+body.workspace-light .calll-home-shell [style*="background"],
+body.workspace-light .comms-page,
+body.workspace-light .comms-page [style*="background"] {
+  background-color: #fffaf0 !important;
+  background-image: none !important;
+}
+
+body.workspace-light .calll-home-shell *,
+body.workspace-light .comms-page * {
+  color: #111111 !important;
+  border-color: #222222 !important;
+  text-shadow: none !important;
+}
+
+@media (max-width: 520px) {
+  body.workspace-light .calll-home-shell :where(
+    p[style*="font-size: 0."],
+    span[style*="font-size: 0."],
+    label[style*="font-size: 0."],
+    button[style*="font-size: 0."]
+  ) {
+    font-size: 0.75rem !important;
+    line-height: 1.4 !important;
+  }
+}
+
+body.workspace-light [class*="border-border/"] {
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light [class*="hover:bg-muted/"]:hover {
+  background-color: #eaf2fb !important;
+}
+
+body.workspace-light .border-white\/\[0\.04\],
+body.workspace-light .border-white\/\[0\.05\],
+body.workspace-light .border-white\/\[0\.06\],
+body.workspace-light .border-white\/\[0\.08\],
+body.workspace-light .border-white\/\[0\.1\] {
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light .bg-white\/5,
+body.workspace-light .bg-white\/\[0\.04\],
+body.workspace-light .bg-white\/\[0\.05\],
+body.workspace-light .bg-white\/\[0\.07\] {
+  background-color: #f1f5f9 !important;
+}
+
+body.workspace-light .hover\:bg-white\/5:hover,
+body.workspace-light .hover\:bg-white\/\[0\.05\]:hover,
+body.workspace-light .hover\:bg-white\/\[0\.07\]:hover {
+  background-color: #eaf2fb !important;
+}
+
+/* Shared chrome and the two browser handoff surfaces use the same green
+   signal as the native game without turning the workspace into a dark theme. */
+body.workspace-light .mobile-app-nav,
+body.workspace-light .mobile-app-subnav,
+body.workspace-light .desktop-app-nav {
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light .mobile-primary-item.is-active,
+body.workspace-light .mobile-subnav-item.is-active,
+body.workspace-light .mobile-more-item.is-active {
+  color: #0f5ea8 !important;
+  background: #eaf2fb !important;
+  border-color: #a9c7e5 !important;
+}
+
+body.workspace-light .mobile-account-button:active,
+body.workspace-light .mobile-back-button:active,
+body.workspace-light .mobile-more-item:active {
+  color: #0f5ea8 !important;
+  background: #eaf2fb !important;
+}
+
+body.workspace-light .desktop-app-nav .text-zinc-100,
+body.workspace-light .desktop-app-nav .text-zinc-300 {
+  color: #0f172a !important;
+}
+
+body.workspace-light .desktop-app-nav .text-zinc-400,
+body.workspace-light .desktop-app-nav .text-zinc-500,
+body.workspace-light .desktop-app-nav .text-zinc-600,
+body.workspace-light .desktop-app-nav .text-zinc-700 {
+  color: #334155 !important;
+}
+
+body.workspace-light .mobile-terminal-menu-button,
+body.workspace-light .mobile-terminal-content h2,
+body.workspace-light .mobile-terminal-business-link {
+  color: #102b20;
+}
+
+body.workspace-light .mobile-terminal-header,
+body.workspace-light .mobile-terminal-menu-button,
+body.workspace-light .mobile-terminal-business-link {
+  border-color: #cfe4d6;
+}
+
+body.workspace-light .mobile-terminal-menu-button svg,
+body.workspace-light .mobile-terminal-eyebrow,
+body.workspace-light .mobile-terminal-feature-label svg,
+body.workspace-light .mobile-terminal-business-link > svg {
+  color: #187c4e;
+}
+
+body.workspace-light .mobile-terminal-menu-button:hover,
+body.workspace-light .mobile-terminal-menu-item:hover {
+  background: #edf9f1;
+  color: #187c4e;
+}
+
+body.workspace-light .mobile-terminal-menu-icon,
+body.workspace-light .mobile-terminal-business-icon {
+  color: #187c4e;
+  background: #eaf8ef;
+}
+
+body.workspace-light .mobile-terminal-feature-comms,
+body.workspace-light .mobile-terminal-feature-phone {
+  background: #effaf3;
+  border-color: #bde0c9;
+}
+
+body.workspace-light .mobile-terminal-feature-phone .mobile-terminal-feature-icon,
+body.workspace-light .mobile-terminal-feature-icon {
+  color: #187c4e;
+}
+
+body.workspace-light .desktop-download-mark {
+  color: #187c4e;
+  background: #eaf8ef;
+}
+
+body.workspace-light .desktop-download-eyebrow,
+body.workspace-light .desktop-download-hero h1 em,
+body.workspace-light .desktop-download-nav a:hover,
+body.workspace-light .desktop-download-footer a:hover {
+  color: #187c4e;
+}
+
+body.workspace-light .desktop-download-primary {
+  background: #187c4e;
+  box-shadow: 0 12px 30px rgba(24, 124, 78, .16);
+}
+
+body.workspace-light .desktop-download-primary:hover {
+  background: #12623d;
+}
+
+body.workspace-light .desktop-download-secondary {
+  color: #187c4e;
+  border-color: #a8d6b8;
+}
+
+body.workspace-light .desktop-download-secondary:hover {
+  border-color: #75bd91;
+  background: #edf9f1;
+}
+
+/* ─── Shared economy disclosure ─────────────────────────────────────────── */
+.salaryman-logo-square {
+  background: #050b12;
+  color: #fff;
+  border: 1px solid #1d3348;
+  box-shadow: 0 4px 12px rgba(5, 11, 18, .14);
+}
+
+.economy-toggle {
+  position: relative;
+  z-index: 40;
+}
+
+.economy-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 2rem;
+  padding: .35rem .55rem;
+  border: 1px solid #b7cadc;
+  border-radius: .4rem;
+  background: #fff;
+  color: #102b45;
+  font: 700 .65rem/1 "Fira Code", monospace;
+  letter-spacing: .08em;
+  transition: border-color .15s ease, color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.economy-toggle-button:hover,
+.economy-toggle-button:focus-visible,
+.economy-toggle.is-open .economy-toggle-button {
+  border-color: #187c4e;
+  background: #effaf3;
+  color: #12623d;
+  box-shadow: 0 0 0 3px rgba(24, 124, 78, .12);
+  outline: none;
+}
+
+.economy-toggle-icon,
+.economy-toggle-chevron {
+  width: .85rem;
+  height: .85rem;
+  flex: 0 0 auto;
+}
+
+.economy-toggle-chevron {
+  transition: transform .15s ease;
+}
+
+.economy-toggle-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.economy-status-dot {
+  width: .42rem;
+  height: .42rem;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, .14);
+}
+
+.economy-status-dot.is-live {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, .14);
+  animation: economy-sync-pulse 2.2s ease-in-out infinite;
+}
+
+.economy-status-dot.is-stale {
+  background: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, .14);
+}
+
+.economy-popover {
+  position: absolute;
+  top: 0;
+  right: calc(100% + .6rem);
+  width: min(23.5rem, calc(100vw - 1.5rem));
+  padding: .85rem;
+  border: 1px solid #b7cadc;
+  border-radius: .65rem;
+  background: rgba(255, 255, 255, .98);
+  color: #102b45;
+  box-shadow: 0 16px 40px rgba(15, 42, 67, .18);
+}
+
+.economy-popover-heading,
+.economy-popover-footer,
+.economy-btc-card,
+.economy-rail-grid {
+  display: flex;
+  align-items: center;
+}
+
+.economy-account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  margin-top: .55rem;
+}
+
+.economy-account-card {
+  min-width: 0;
+  padding: .65rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  background: #fbfdff;
+}
+
+.economy-account-card > svg {
+  width: .9rem;
+  height: .9rem;
+  margin-bottom: .35rem;
+  color: #187c4e;
+}
+
+.economy-account-card span,
+.economy-account-card small {
+  display: block;
+  font: 700 .55rem/1.3 "Fira Code", monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.economy-account-card span {
+  color: #64748b;
+}
+
+.economy-account-card strong {
+  display: block;
+  margin: .18rem 0;
+  color: #102b45;
+  font: 800 .82rem/1.15 "Fira Code", monospace;
+}
+
+.economy-account-card small {
+  color: #94a3b8;
+  font-size: .48rem;
+  letter-spacing: .02em;
+}
+
+.economy-account-usd > svg {
+  color: #187c4e;
+}
+
+.economy-account-property > svg {
+  color: #2563eb;
+}
+
+.economy-org-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .45rem;
+}
+
+.economy-org-grid > div {
+  min-width: 0;
+  padding: .6rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  background: #f7fbff;
+}
+
+.economy-org-grid svg {
+  width: .82rem;
+  height: .82rem;
+  margin-bottom: .35rem;
+  color: #2563eb;
+}
+
+.economy-org-grid span,
+.economy-org-grid strong {
+  display: block;
+  font-family: "Fira Code", monospace;
+}
+
+.economy-org-grid span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: .48rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.economy-org-grid strong {
+  margin-top: .2rem;
+  color: #102b45;
+  font-size: .72rem;
+}
+
+.economy-org-restricted {
+  padding: .65rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: .68rem;
+}
+
+.economy-popover-heading,
+.economy-popover-footer {
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.economy-popover-kicker,
+.economy-metric-label,
+.economy-rail-grid span,
+.economy-rail-grid small {
+  display: block;
+  font: 700 .58rem/1.3 "Fira Code", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.economy-popover-kicker {
+  margin: 0;
+  color: #187c4e;
+}
+
+.economy-popover-note {
+  margin: .22rem 0 0;
+  color: #64748b;
+  font-size: .7rem;
+}
+
+.economy-section {
+  margin-top: .85rem;
+}
+
+.economy-reference-section {
+  padding-top: .85rem;
+  border-top: 1px solid #d7e2ec;
+}
+
+.economy-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .45rem;
+  color: #102b45;
+  font: 800 .62rem/1.2 "Fira Code", monospace;
+  letter-spacing: .1em;
+}
+
+.economy-section-heading small {
+  color: #94a3b8;
+  font: 700 .5rem/1.2 "Fira Code", monospace;
+  letter-spacing: .06em;
+}
+
+.economy-refresh-button {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: .35rem;
+  color: #187c4e;
+}
+
+.economy-refresh-button:hover,
+.economy-refresh-button:focus-visible {
+  border-color: #187c4e;
+  background: #effaf3;
+  outline: none;
+}
+
+.economy-refresh-button svg {
+  width: .85rem;
+  height: .85rem;
+}
+
+.economy-refresh-button .is-spinning {
+  animation: economy-spin .8s linear infinite;
+}
+
+.economy-btc-card {
+  gap: .65rem;
+  margin-top: .8rem;
+  padding: .7rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+  background: #f7fbff;
+}
+
+.economy-btc-card > svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #187c4e;
+}
+
+.economy-btc-card strong {
+  display: block;
+  margin-top: .2rem;
+  color: #0f172a;
+  font: 800 .95rem/1 "Fira Code", monospace;
+}
+
+.economy-live-label {
+  margin-left: auto;
+  font: 700 .55rem/1 "Fira Code", monospace;
+  letter-spacing: .08em;
+}
+
+.economy-live-label.is-live {
+  color: #187c4e;
+}
+
+.economy-live-label.is-stale {
+  color: #b45309;
+}
+
+.economy-live-label.is-offline {
+  color: #64748b;
+}
+
+.economy-rail-grid {
+  gap: .55rem;
+  margin-top: .55rem;
+}
+
+.economy-rail-grid > div {
+  flex: 1;
+  padding: .65rem;
+  border: 1px solid #d7e2ec;
+  border-radius: .45rem;
+}
+
+.economy-rail-grid span {
+  color: #64748b;
+}
+
+.economy-rail-grid strong {
+  display: block;
+  margin: .22rem 0;
+  color: #102b45;
+  font: 800 .82rem/1.15 "Fira Code", monospace;
+}
+
+.economy-rail-grid small {
+  color: #94a3b8;
+  font-size: .52rem;
+  letter-spacing: .04em;
+}
+
+.economy-transfer-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: .45rem;
+  margin-top: .6rem;
+  padding: .58rem .7rem;
+  border: 1px solid #c69a28;
+  border-radius: .45rem;
+  color: #805b08;
+  background: #fff9e8;
+  font: 800 .58rem/1 "Fira Code", monospace;
+  letter-spacing: .08em;
+}
+
+.economy-transfer-button:hover,
+.economy-transfer-button:focus-visible {
+  border-color: #a8770c;
+  background: #fff3c4;
+  outline: none;
+}
+
+.economy-transfer-button svg {
+  width: .8rem;
+  height: .8rem;
+}
+
+.economy-popover-footer {
+  flex-wrap: wrap;
+  margin-top: .7rem;
+  color: #64748b;
+  font-size: .62rem;
+}
+
+.economy-popover-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.economy-popover-footer svg {
+  width: .75rem;
+  height: .75rem;
+  color: #187c4e;
+}
+
+@keyframes economy-sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+@keyframes economy-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .economy-popover {
+    position: fixed;
+    top: auto;
+    right: .75rem;
+    bottom: calc(var(--app-safe-bottom) + 4.4rem);
+  }
+
+  .economy-toggle-button {
+    min-height: 1.9rem;
+    padding-inline: .45rem;
+  }
+
+  .economy-account-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.economy-toggle-button:focus-visible,
+.economy-refresh-button:focus-visible {
+  outline: 2px solid #187c4e;
+  outline-offset: 2px;
+}
+
+.app-bottom-safe {
+  padding-bottom: var(--app-safe-bottom);
+}
+
+/* ─── Mobile nav safe area ─── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── Edge-safe positioning for fixed UI ─────────────────────────────────
+   Any element pinned to a viewport edge (back buttons, floating action
+   buttons, banners) needs to clear the iOS notch / Dynamic Island and
+   the home-indicator. These utilities add the device safe-area inset
+   on top of whatever offset the element already wanted (default 12px,
+   bumped to 20px at sm: breakpoint to match `top-5 / left-5` etc).
+   Use *positioning* utilities (top/right/bottom/left), not padding,
+   because the affected elements are usually `position: fixed`. */
+.edge-safe-top {
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+}
+.edge-safe-bottom {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+.edge-safe-left {
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
+}
+.edge-safe-right {
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
+}
+@media (min-width: 640px) {
+  .sm\:edge-safe-top {
+    top: calc(1.25rem + env(safe-area-inset-top, 0px));
+  }
+  .sm\:edge-safe-bottom {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  .sm\:edge-safe-left {
+    left: calc(1.25rem + env(safe-area-inset-left, 0px));
+  }
+  .sm\:edge-safe-right {
+    right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  }
+}
+
+/* ─── Override Radix / shadcn components ─── */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* ─── Code block override ─── */
+pre {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 6px !important;
+  padding: 1rem !important;
+}
+
+code {
+  font-family: "Fira Code", monospace !important;
+  color: hsl(200 80% 68%) !important;
+}
+
+/* ─── Low-GFX mode ──────────────────────────────────────────────────────────
+   Toggled via lib/lowGfx.ts (adds .low-gfx to <html>). Strips the most
+   expensive visual effects so the app stays usable on slow CPUs / GPUs /
+   integrated graphics. We deliberately do NOT touch layout — only paint /
+   compositor cost. ───────────────────────────────────────────────────── */
+html.low-gfx *,
+html.low-gfx *::before,
+html.low-gfx *::after {
+  /* Backdrop / regular blur are the single biggest GPU cost in the app. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  /* Box-shadows compose expensively on huge cards; keep a thin outline only. */
+  box-shadow: none !important;
+  /* Transitions and animations are paused (not removed) so layouts that
+     rely on animation end-states still render correctly. */
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+}
+/* Kill expensive CSS gradient backgrounds on full-page wrappers. */
+html.low-gfx .bg-gradient-to-br,
+html.low-gfx .bg-gradient-to-b,
+html.low-gfx .bg-gradient-to-r,
+html.low-gfx .bg-gradient-to-t,
+html.low-gfx .bg-gradient-to-l,
+html.low-gfx .bg-gradient-to-tr,
+html.low-gfx .bg-gradient-to-tl,
+html.low-gfx .bg-gradient-to-bl {
+  background-image: none !important;
+}
+/* WebGL canvases inside the nebula stack short-circuit in JS already, but
+   any stray <canvas> with the data-gfx="heavy" tag is hidden as a belt-
+   and-braces measure. */
+html.low-gfx canvas[data-gfx="heavy"] {
+  display: none !important;
+}
+/* ── Large-text terminal mode ─────────────────────────────────────────────── */
+.boomer-terminal {
+  font-family: var(--font-sans) !important;
+}
+.boomer-terminal [class*="rounded"],
+.boomer-terminal form input,
+.boomer-terminal form button {
+  border-radius: 6px !important;
+}
+.boomer-terminal * {
+  -webkit-backdrop-filter: none !important;
+}

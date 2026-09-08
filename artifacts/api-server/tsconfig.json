@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    "noImplicitAny": false
+  },
+  "include": ["src"],
+  "exclude": [
+    "src/__tests__/account.settings.integration.test.ts"
+  ],
+  "references": [
+    {
+      "path": "../../lib/db"
+    },
+    {
+      "path": "../../lib/api-zod"
+    },
+    {
+      "path": "../../lib/integrations-openai-ai-server"
+    },
+    {
+      "path": "../../lib/integrations-anthropic-ai"
+    }
+  ]
+}

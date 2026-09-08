@@ -1,0 +1,1972 @@
+[
+  {
+    "version": "v.1.0a",
+    "date": "2025-10-01",
+    "commitHash": null,
+    "changes": [
+      "Initial alpha launch",
+      "CIPHER-X interview solver core",
+      "PABLO AI chat",
+      "Basic cover and auth flow"
+    ]
+  },
+  {
+    "version": "v.1.1a",
+    "date": "2025-10-18",
+    "commitHash": null,
+    "changes": [
+      "Screen scan module added",
+      "Live listen audio capture",
+      "Auto-type printer mode"
+    ]
+  },
+  {
+    "version": "v.1.2a",
+    "date": "2025-11-05",
+    "commitHash": null,
+    "changes": [
+      "Contacts and CRM module",
+      "Hiring and HR tools",
+      "Calendar and scheduling"
+    ]
+  },
+  {
+    "version": "v.1.3a",
+    "date": "2025-11-22",
+    "commitHash": null,
+    "changes": [
+      "Phone system and dialer",
+      "Voicemail and call log",
+      "Dialing sessions and AI coach"
+    ]
+  },
+  {
+    "version": "v.1.4a",
+    "date": "2025-12-10",
+    "commitHash": null,
+    "changes": [
+      "Stripe payments and module store",
+      "Invoices and billing tools",
+      "Revenue and expense tracking"
+    ]
+  },
+  {
+    "version": "v.1.5a",
+    "date": "2026-01-14",
+    "commitHash": null,
+    "changes": [
+      "Brand kit and content studio",
+      "SEO and campaign tools",
+      "AI agent network"
+    ]
+  },
+  {
+    "version": "v.1.6a",
+    "date": "2026-03-26",
+    "commitHash": null,
+    "changes": [
+      "Balance sheet and payroll modules",
+      "Discreet mode and boomer mode",
+      "Investor portal and legal pages"
+    ]
+  },
+  {
+    "version": "v.1.9a",
+    "date": "2026-04-09",
+    "commitHash": "eaabb62c36022925542cda71e0e525b240a2a39e",
+    "changes": [
+      "Production Studio (PRD-X) — AI image and video production",
+      "Cost-gating: paid APIs behind Jean Claw subscription",
+      "Phone system GO ACTIVE and enhanced live call monitor",
+      "Video Intelligence (VID-SCAN) analyzer"
+    ]
+  },
+  {
+    "version": "v.2.0",
+    "date": "2026-04-10",
+    "commitHash": null,
+    "changes": [
+      "Dark Room — merged Content Studio + Production Studio",
+      "Signal Corps marketing module with Campaigns, SEO, Leads",
+      "Trade bot with risk presets and 20+ international markets",
+      "Multi-server architecture — 24 planned cities",
+      "Business registration and org structure on main terminal"
+    ]
+  },
+  {
+    "version": "v.2.1",
+    "date": "2026-04-11",
+    "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
+    "changes": [
+      "Corporate admin panel for users, orgs, and bans",
+      "Music generation via Replicate MusicGen",
+      "Role hierarchy and access control system"
+    ]
+  },
+  {
+    "version": "v.2.6",
+    "date": "2026-04-11",
+    "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
+    "changes": [
+      "SEO meta tags, structured data, and sitemap",
+      "Business management hub with financial overview"
+    ]
+  },
+  {
+    "version": "v.2.8",
+    "date": "2026-04-13",
+    "commitHash": "8bdb65f6991f924d7f78bebf951ad7f82627ab22",
+    "changes": [
+      "Interactive office floors — 1200x1200 with bullpen, arcade, break room",
+      "Mobile controls — joystick, sprint, floor directory with fast travel",
+      "All office objects interactive with XP, energy, and FIAT rewards",
+      "Full-screen COMMS chat panel on mobile"
+    ]
+  },
+  {
+    "version": "v.2.9",
+    "date": "2026-04-13",
+    "commitHash": "ae19fb734c919bc6c0078ed7d8601c2746d4af8c",
+    "changes": [
+      "Make chat panel full screen on mobile for better interaction"
+    ]
+  },
+  {
+    "version": "v.3.0",
+    "date": "2026-04-13",
+    "commitHash": "ae19fb734c919bc6c0078ed7d8601c2746d4af8c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.3.1",
+    "date": "2026-04-13",
+    "commitHash": "cef14e5df7e14ee3d9899db98655cc3422e3eed5",
+    "changes": [
+      "Update documentation to clarify bug submission and feedback triage policy",
+      "Add comprehensive in-app notifications for various user actions and events",
+      "Ensure translations use the proper voice output system",
+      "Add a notification system to alert users of important events",
+      "Update work approach to prioritize unknowns"
+    ]
+  },
+  {
+    "version": "v.3.2",
+    "date": "2026-04-13",
+    "commitHash": "cef14e5df7e14ee3d9899db98655cc3422e3eed5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.3.3",
+    "date": "2026-04-13",
+    "commitHash": "f701d9dfb01913fb4b8e33952439f2b8bdaee4c1",
+    "changes": [
+      "Introduce a new design studio for creating and managing visual content",
+      "Add ability to export and save audio stems to the library",
+      "Add a new creative tool for playing and editing audio stems",
+      "Add a social media management tool for posting and analytics",
+      "Optimize the game page layout and button display for mobile devices"
+    ]
+  },
+  {
+    "version": "v.3.4",
+    "date": "2026-04-15",
+    "commitHash": "9337e687e3c71a3c818bc571399e99a3b929bf71",
+    "changes": [
+      "Update office button to display \"my office\"",
+      "Restrict access to the office view based on property ownership",
+      "Add a web scraper tool for extracting content from various websites",
+      "Add a personalized second brain system with Obsidian compatibility",
+      "Persist Twilio credentials and app information in the database"
+    ]
+  },
+  {
+    "version": "v.3.5",
+    "date": "2026-04-15",
+    "commitHash": "9337e687e3c71a3c818bc571399e99a3b929bf71",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.3.6",
+    "date": "2026-04-15",
+    "commitHash": "eb866802be0d812e97c5bff87b7bc73613605958",
+    "changes": [
+      "Add a resume builder tool with multiple templates and export functionality",
+      "Fix user employment status and update versioning automatically",
+      "Remove game access from mobile and improve office navigation",
+      "Add pinch and scroll to zoom functionality for the office view",
+      "Update office view to include bot controls and green accents"
+    ]
+  },
+  {
+    "version": "v.3.7",
+    "date": "2026-04-15",
+    "commitHash": "4d274fd4020d664cae36ba14f1ef96fe2aae97b8",
+    "changes": [
+      "Add resume builder and update application version and changelog"
+    ]
+  },
+  {
+    "version": "v.3.8",
+    "date": "2026-04-16",
+    "commitHash": "e0e167ac20b3f078b473d796e65591c771f84245",
+    "changes": [
+      "Update application to fix publishing failures during build"
+    ]
+  },
+  {
+    "version": "v.3.9",
+    "date": "2026-04-16",
+    "commitHash": "e0e167ac20b3f078b473d796e65591c771f84245",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.4.0",
+    "date": "2026-04-16",
+    "commitHash": "e0e167ac20b3f078b473d796e65591c771f84245",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.4.1.855",
+    "date": "2026-04-19",
+    "commitHash": "f95aa280c877c3e8642d476ef8983d5b3043ec98",
+    "changes": [
+      "Introduce Pablo assistant with onboarding choices and voice/text modes",
+      "Enable automatic microphone activation for seamless conversations",
+      "Add an interactive tutorial to guide new users through Pablo's features",
+      "Update versioning to use commit count for automatic updates",
+      "Add floating notification system for important user updates"
+    ]
+  },
+  {
+    "version": "v.4.2.873",
+    "date": "2026-04-20",
+    "commitHash": "218bda21165f0c5d6e9473af72fda3a70b5b3881",
+    "changes": [
+      "Improve Pablo's character to speak in first person",
+      "Refine Pablo's persona to embody a wealthy business titan",
+      "Update tutorial phrases and greeting for Pablo",
+      "Update Pablo's persona and dialogue to be a villainous guide",
+      "Ensure users are sent directly to the correct page after logging in"
+    ]
+  },
+  {
+    "version": "v.4.3.881",
+    "date": "2026-04-20",
+    "commitHash": "932626aa355860576c2a9ec126bb5a5395793b94",
+    "changes": [
+      "Ensure a visual fallback for the 3D nebula component",
+      "Improve initial page load speed by delaying 3D graphics",
+      "Improve mobile nebula experience with 2D fallback and faster loading",
+      "Improve mobile experience and add profile navigation shortcuts",
+      "Update Pablo's character and fix build errors for smoother deployment"
+    ]
+  },
+  {
+    "version": "v.4.4.886",
+    "date": "2026-04-20",
+    "commitHash": "6d753c59e69050741e005a3b9c72992cfeda3df8",
+    "changes": [
+      "Redirect users to the main terminal if the 3D nebula fails to load",
+      "Remove fallback orb, show only 3D nebula",
+      "Ensure orb is always visible and purge old PWA caches",
+      "Improve page loading and visual fallbacks for the 3D nebula"
+    ]
+  },
+  {
+    "version": "v.4.5.886",
+    "date": "2026-04-20",
+    "commitHash": "6d753c59e69050741e005a3b9c72992cfeda3df8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.4.6.887",
+    "date": "2026-04-20",
+    "commitHash": "b3b61e4375927c39cd4af476ba811474bd51f44f",
+    "changes": [
+      "Remove unused fallback orb and redirect on nebula load failure"
+    ]
+  },
+  {
+    "version": "v.4.7.890",
+    "date": "2026-04-20",
+    "commitHash": "51e55b0e57e28c114f893e68ded01462c760cdb7",
+    "changes": [
+      "Set Pablo as the default landing page after users sign in",
+      "Add a 2D orb as a fallback for the 3D nebula"
+    ]
+  },
+  {
+    "version": "v.4.8.893",
+    "date": "2026-04-20",
+    "commitHash": "069453bbc0fab529cbad9e5d12f8c13c88861810",
+    "changes": [
+      "Add a persistent floating orb for voice commands across all pages"
+    ]
+  },
+  {
+    "version": "v.4.9.894",
+    "date": "2026-04-20",
+    "commitHash": "f15346b8be7d5bb3752228f3e215403597efb188",
+    "changes": [
+      "Remove persistent floating orb and simplify the Pablo terminal interface"
+    ]
+  },
+  {
+    "version": "v.5.0.895",
+    "date": "2026-04-20",
+    "commitHash": "7b240dac86eb5219721c012f4def97e1e0fda44a",
+    "changes": [
+      "Make Pablo's interface voice-only by default and respond to spoken commands"
+    ]
+  },
+  {
+    "version": "v.5.1.895",
+    "date": "2026-04-20",
+    "commitHash": "7b240dac86eb5219721c012f4def97e1e0fda44a",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.5.2.897",
+    "date": "2026-04-21",
+    "commitHash": "b98972926dd356cad7bd4229f25b87608183c979",
+    "changes": [
+      "Enhance office visuals with vibrant neon themes and detailed room designs"
+    ]
+  },
+  {
+    "version": "v.5.3.899",
+    "date": "2026-04-21",
+    "commitHash": "0a1fcdd580196b4d80541d1f6b7587fae5f0f801",
+    "changes": [
+      "Add ability to view and download call recordings",
+      "Update data retention policies and improve call recording accuracy"
+    ]
+  },
+  {
+    "version": "v.5.4.916",
+    "date": "2026-04-22",
+    "commitHash": "531d192ce03ee49e7473bf0c14d6f50ef7b20b5c",
+    "changes": [
+      "Add interactive tutorial for new users",
+      "Add currency converter and calculator tools to the Pablo tab",
+      "Pause media playback when phone calls are active or incoming",
+      "Update navigation and loading behavior for desktop and mobile interfaces",
+      "Add audio selection to various tools for sound integration"
+    ]
+  },
+  {
+    "version": "v.5.5.916",
+    "date": "2026-04-22",
+    "commitHash": "531d192ce03ee49e7473bf0c14d6f50ef7b20b5c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.5.6.949",
+    "date": "2026-04-22",
+    "commitHash": "0525563e8bf308d0e8c1d1e00dbd78de2cdc5daa",
+    "changes": [
+      "Add ability for admins to manage pre-granted features for new users",
+      "Add tools for admins to reset user progress and fix onboarding flow",
+      "Introduce new characters and cutscenes to advance the game's story",
+      "Prevent double-billing for property utilities",
+      "Add a comprehensive utility billing and property customization system"
+    ]
+  },
+  {
+    "version": "v.5.7.949",
+    "date": "2026-04-22",
+    "commitHash": "0525563e8bf308d0e8c1d1e00dbd78de2cdc5daa",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.5.8.949",
+    "date": "2026-04-22",
+    "commitHash": "0525563e8bf308d0e8c1d1e00dbd78de2cdc5daa",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.5.9.956",
+    "date": "2026-04-23",
+    "commitHash": "07be1e998bdf39082fcedcf87f7782b21756d0b6",
+    "changes": [
+      "Add a dismissible alpha warning to the application interface",
+      "Improve bot serial number generation to prevent duplicates",
+      "Update exchange rate API endpoint to ensure accurate currency conversions",
+      "Update admin panel to fix build errors and improve feature management"
+    ]
+  },
+  {
+    "version": "v.6.0.957",
+    "date": "2026-04-23",
+    "commitHash": "e50937e7bd4efb45d6f5edeccf334fcf125f3f30",
+    "changes": [
+      "Add alpha warning and improve bot serial number generation"
+    ]
+  },
+  {
+    "version": "v.6.1.957",
+    "date": "2026-04-23",
+    "commitHash": "e50937e7bd4efb45d6f5edeccf334fcf125f3f30",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.6.2.959",
+    "date": "2026-04-23",
+    "commitHash": "49b91177a2846d578b2acd83c6f22646b70beb0b",
+    "changes": [
+      "Integrate Nano Banana for image generation across creative studios",
+      "Add new scenes and artwork to the trailer video"
+    ]
+  },
+  {
+    "version": "v.6.3.960",
+    "date": "2026-04-23",
+    "commitHash": "cc014296404c58f9e2de87e8d24af45f0055f17f",
+    "changes": [
+      "Update application with new features and performance enhancements"
+    ]
+  },
+  {
+    "version": "v.6.4.966",
+    "date": "2026-04-23",
+    "commitHash": "8042259b68c5f7e18fffbb415dd170aeb6fb3fcf",
+    "changes": [
+      "Update office scene visuals and dialogue to match property art",
+      "Add exit option to office mode and enhance nebula visualization",
+      "Update real estate store with live pricing and new property tiers",
+      "Remove deprecated onboarding flows and security bypasses",
+      "Securely guide new users through an introductory storytelling experience"
+    ]
+  },
+  {
+    "version": "v.6.5.1007",
+    "date": "2026-04-23",
+    "commitHash": "75c0a6fb867a66fd051a7fccea0b4692bda5edb5",
+    "changes": [
+      "Update changelog to reflect recent feature additions and version increments",
+      "Add subscription gate for automatic music generation",
+      "Remove highlight from recordings tab",
+      "Update landing page to clearly showcase AI, partner systems, and tech stack",
+      "Add more life to the game world with NPCs, incidents, and new areas"
+    ]
+  },
+  {
+    "version": "v.6.6.1010",
+    "date": "2026-04-23",
+    "commitHash": "4fc5372fba8d423722d70b4069391ef68bff63d3",
+    "changes": [
+      "Improve mobile communication button visibility and functionality",
+      "Add ability to hide unwanted tabs on the phone hub",
+      "Update versioning and changelog with recent features and bug fixes"
+    ]
+  },
+  {
+    "version": "v.6.7.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Improve mobile communication button visibility and functionality"
+    ]
+  },
+  {
+    "version": "v.6.8.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.6.9.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.0.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.1.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.2.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.3.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.4.1062",
+    "date": "2026-04-23",
+    "commitHash": "d1c9264c6df65cfdd396be5531bd1668f73242f2",
+    "changes": [
+      "Notify authorized users about new error reports and expand access",
+      "Add architectural variety to buildings and scatter decals on terrain",
+      "Overhaul the weapon attack system with combo and lunge mechanics",
+      "Improve enemy respawn variety and camera zoom",
+      "Update game display to show debt owed instead of bounty"
+    ]
+  },
+  {
+    "version": "v.7.5.1074",
+    "date": "2026-04-23",
+    "commitHash": "76da147478b95d47f6a98b7cdf1a2b6766f0a173",
+    "changes": [
+      "Add ability to dismiss and clear notifications",
+      "Update default frames per second setting to 120",
+      "Remove uncontrolled background music from intro cinematic",
+      "Add a lock to restrict game access to administrators only",
+      "Update bank interior to only feature ATMs and remove all teller services"
+    ]
+  },
+  {
+    "version": "v.7.6.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Fix build errors and update project version"
+    ]
+  },
+  {
+    "version": "v.7.7.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.8.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.9.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.0.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Automate the resolution of recurring error reports",
+      "Saved progress at the end of the loop",
+      "Update brand name and product offerings to Pixel Agents",
+      "Show agents actively working on tasks and highlight Pablo",
+      "Add real team members and name labels to the pixel office"
+    ]
+  },
+  {
+    "version": "v.8.1.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.2.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.3.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.4.1151",
+    "date": "2026-05-09",
+    "commitHash": "647bf15c05fb300e282dcfe653c83cc5c3012a2e",
+    "changes": [
+      "Add ability to repeat music and select saved tracks",
+      "Add tempo and key detection to audio analysis",
+      "Add multi-profile support for multiple characters per account",
+      "Add a performance optimization option for users with slower computers",
+      "Update creative module and add audio conversion capabilities"
+    ]
+  },
+  {
+    "version": "v.8.5.1203",
+    "date": "2026-05-11",
+    "commitHash": "de2ffe6766406b56a8b7a42cea14856954b24868",
+    "changes": [
+      "Add shuffle and loop options to the music player",
+      "Make the phone option visible to all users with a paywall",
+      "Adjust communication panel for mobile to be a dismissible bottom sheet",
+      "Add padding to comms panel for better mobile viewing",
+      "Update tester email list to reflect correct health contact"
+    ]
+  },
+  {
+    "version": "v.8.6.1203",
+    "date": "2026-05-11",
+    "commitHash": "de2ffe6766406b56a8b7a42cea14856954b24868",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.7.1204",
+    "date": "2026-05-11",
+    "commitHash": "af15860a266be01507e3bee0a34c64c33ce38acf",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.8.1205",
+    "date": "2026-05-11",
+    "commitHash": "d4fc0d540af852762a67b78ef660751a7cb8c049",
+    "changes": [
+      "Move communications panel to the bottom-left corner"
+    ]
+  },
+  {
+    "version": "v.8.9.1206",
+    "date": "2026-05-11",
+    "commitHash": "e28dbe11d1e24cf50b9b003f9715b0c907f30ffe",
+    "changes": [
+      "Remove redundant office button from bot cards and move comms panel"
+    ]
+  },
+  {
+    "version": "v.9.0.1206",
+    "date": "2026-05-11",
+    "commitHash": "e28dbe11d1e24cf50b9b003f9715b0c907f30ffe",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.9.1.1207",
+    "date": "2026-05-11",
+    "commitHash": "827bf14dbac56874bd2bf86a8b8558e5cb34866c",
+    "changes": [
+      "Consolidate profile sections and relocate legal links to promo page"
+    ]
+  },
+  {
+    "version": "v.9.2.1208",
+    "date": "2026-05-11",
+    "commitHash": "e5002765b366ad7fef9473c445c616b8db50d457",
+    "changes": [
+      "Update button labels and navigation paths for a better user experience"
+    ]
+  },
+  {
+    "version": "v.9.3.1209",
+    "date": "2026-05-11",
+    "commitHash": "db4169bacee10ca91d8e09aab0b317b3621677df",
+    "changes": [
+      "Update button labels and navigation paths for a better user experience"
+    ]
+  },
+  {
+    "version": "v.9.4.1209",
+    "date": "2026-05-11",
+    "commitHash": "db4169bacee10ca91d8e09aab0b317b3621677df",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.9.5.1210",
+    "date": "2026-05-11",
+    "commitHash": "f18864eb970f8af290ea75a882d2c17f6fc4c0ee",
+    "changes": [
+      "Update office navigation and user status display"
+    ]
+  },
+  {
+    "version": "v.9.6.1211",
+    "date": "2026-05-11",
+    "commitHash": "bfcf979ee9061fd55451ace8ba3fea058f33c449",
+    "changes": [
+      "Update office navigation and conditionally hide intro button"
+    ]
+  },
+  {
+    "version": "v.9.7.1212",
+    "date": "2026-05-11",
+    "commitHash": "2b05c73659f247f5a94ee09a369962938a99baa1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.9.8.1213",
+    "date": "2026-05-11",
+    "commitHash": "19049cfcdfd5278a2d6be8e4f05f86cea8b4eb9a",
+    "changes": [
+      "Remove a distracting blue strip from the home page display"
+    ]
+  },
+  {
+    "version": "v.9.9.1214",
+    "date": "2026-05-11",
+    "commitHash": "e4ea156e562bbd16b1ad444023448804c53eab7b",
+    "changes": [
+      "Improve home page experience by removing distracting blue strip"
+    ]
+  },
+  {
+    "version": "v.10.0.1215",
+    "date": "2026-05-11",
+    "commitHash": "11729232402358109c61e5c11fec57e223974844",
+    "changes": [
+      "Activate surveillance mode for the Pablo terminal and remove blue strip"
+    ]
+  },
+  {
+    "version": "v.10.1.1215",
+    "date": "2026-05-11",
+    "commitHash": "11729232402358109c61e5c11fec57e223974844",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.10.2.1216",
+    "date": "2026-05-11",
+    "commitHash": "b9cfbb7d09fb83db680335330ffe803718df16f1",
+    "changes": [
+      "Update office workers to be androids and introduce a greeter modal"
+    ]
+  },
+  {
+    "version": "v.10.3.1216",
+    "date": "2026-05-11",
+    "commitHash": "b9cfbb7d09fb83db680335330ffe803718df16f1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.10.4.1223",
+    "date": "2026-05-11",
+    "commitHash": "7b2a0e4aef5c0a34c3b71312172a9eddf3dc7053",
+    "changes": [
+      "Update app to fix bugs and improve user experience",
+      "Add shuffle and repeat controls to the persistent music player",
+      "Update button text and remove visual artifacts from the home page",
+      "Fix type errors in live office component to ensure accurate rendering",
+      "Fix build errors by correctly typing office worker agent data"
+    ]
+  },
+  {
+    "version": "v.10.5.1223",
+    "date": "2026-05-11",
+    "commitHash": "7b2a0e4aef5c0a34c3b71312172a9eddf3dc7053",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.10.6.1223",
+    "date": "2026-05-11",
+    "commitHash": "7b2a0e4aef5c0a34c3b71312172a9eddf3dc7053",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.10.7.1225",
+    "date": "2026-05-11",
+    "commitHash": "c9196d4e78e87b4027a7d60b7919821836c509e6",
+    "changes": [
+      "Add compatibility for older browsers by including a legacy JavaScript bundle"
+    ]
+  },
+  {
+    "version": "v.10.8.1225",
+    "date": "2026-05-11",
+    "commitHash": "c9196d4e78e87b4027a7d60b7919821836c509e6",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.10.9.1225",
+    "date": "2026-05-11",
+    "commitHash": "c9196d4e78e87b4027a7d60b7919821836c509e6",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.0.1225",
+    "date": "2026-05-11",
+    "commitHash": "c9196d4e78e87b4027a7d60b7919821836c509e6",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.1.1225",
+    "date": "2026-05-11",
+    "commitHash": "c9196d4e78e87b4027a7d60b7919821836c509e6",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.2.1225",
+    "date": "2026-05-12",
+    "commitHash": "c9196d4e78e87b4027a7d60b7919821836c509e6",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.3.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Add daily email digests for new feedback reports and filter out noise",
+      "Add a banner to highlight new feedback reports since last visit",
+      "Implement a limit for free tester access and route error reports",
+      "Grant free access to pixel agents for testers and Picasso org members",
+      "Allow colleagues to send direct messages to each other"
+    ]
+  },
+  {
+    "version": "v.11.4.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.5.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.6.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.7.1246",
+    "date": "2026-05-13",
+    "commitHash": "8df194c61b56becb3726ef37a78180346b950a5c",
+    "changes": [
+      "Improve camera clamping and prevent input issues during text composition"
+    ]
+  },
+  {
+    "version": "v.11.8.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Improve mobile gameplay controls for a more intuitive experience",
+      "Add a money-as-HP coin spill mechanic with visual and audio effects",
+      "Add ability to save converted audio files to both libraries",
+      "Add debt restructuring and credit-based lending to the banking system",
+      "Update survival mechanics to drain stamina instead of health"
+    ]
+  },
+  {
+    "version": "v.11.9.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.0.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.1.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.2.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.3.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.4.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.5.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.6.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Add new underground subway stops and arrival safety mechanic",
+      "Improve AI writing by removing filler and awkward phrasing",
+      "Update Pablo's persona to align with corporate secrets and platform pricing",
+      "Clarify game identity and world structure for Pablo persona",
+      "Expand safe zones to reveal new areas over time"
+    ]
+  },
+  {
+    "version": "v.12.7.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.8.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.9.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.0.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.1.1463",
+    "date": "2026-06-04",
+    "commitHash": "2afcb27f6f8a90bed52cb94fbbb92645881a41ce",
+    "changes": [
+      "Add a new user to the tester allowlist for enhanced platform access",
+      "Grant owner access to the Picasso admin user panel",
+      "Improve onboarding flow by adding a back button and redirecting to office",
+      "Improve office mode navigation and fix broken links",
+      "Connect settings and profile pages with new tester program button"
+    ]
+  },
+  {
+    "version": "v.13.2.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Make the alpha notice banner clickable on all pages",
+      "Update the website's landing page to be more visually appealing and less wordy",
+      "Improve real estate transactions and personal office access",
+      "Unify office experience by consolidating all office locations",
+      "Unify office experiences by redirecting the isometric dead-end"
+    ]
+  },
+  {
+    "version": "v.13.3.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.4.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.5.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.6.1476",
+    "date": "2026-06-04",
+    "commitHash": "1577ca793a22a3f59e1af2589164393e5948a037",
+    "changes": [
+      "Merged changes from xyph7xal/main",
+      "Update version and changelog entries for upcoming release"
+    ]
+  },
+  {
+    "version": "v.13.7.1530",
+    "date": "2026-06-06",
+    "commitHash": "02774a0402cdf40753a3a08e9fc7b0d4933dda05",
+    "changes": [
+      "Add in-app owner UI to create/preview weekly gameplay reels",
+      "Weekly SALARYMAN TikTok gameplay-capture pipeline",
+      "Land claiming + approval-gated construction + labor system (SALARYMAN)",
+      "Add land and construction system for claiming plots and building structures",
+      "Add player storage and intercity travel fare system"
+    ]
+  },
+  {
+    "version": "v.13.8.1530",
+    "date": "2026-06-06",
+    "commitHash": "02774a0402cdf40753a3a08e9fc7b0d4933dda05",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.9.1530",
+    "date": "2026-06-06",
+    "commitHash": "02774a0402cdf40753a3a08e9fc7b0d4933dda05",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.14.0.1531",
+    "date": "2026-06-06",
+    "commitHash": "14030a69525754032f932f944201c88d6bddf6c2",
+    "changes": [
+      "Update release version and add new feature notes to changelogs"
+    ]
+  },
+  {
+    "version": "v.14.1.1563",
+    "date": "2026-06-15",
+    "commitHash": "ba05a5200f55ef8bc4542c173dfdb75bfb6c15b1",
+    "changes": [
+      "Adjust floating buttons and tabs for better mobile experience",
+      "Add a visible sign-in button to the application's main screen",
+      "Improve office environment by fixing movement and camera",
+      "Rebuild /office into a square HQ with enclosed executive offices",
+      "Update office view for immersive gameplay with full-screen and follow camera"
+    ]
+  },
+  {
+    "version": "v.14.2.1591",
+    "date": "2026-06-15",
+    "commitHash": "21d6bd3c02fc9ac331afebe6416af11c265647c8",
+    "changes": [
+      "Re-grade Minx City building palette to neon-noir for concept-art cohesion",
+      "Git commit prior to merge",
+      "Task #440: Property tiers & customizable templates — realty consolidation",
+      "Tell players when Pablo's AI fees draw money from their balance",
+      "Add end-to-end test: HUD balance updates on screen after AI usage"
+    ]
+  },
+  {
+    "version": "v.14.3.1591",
+    "date": "2026-06-15",
+    "commitHash": "21d6bd3c02fc9ac331afebe6416af11c265647c8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.14.4.1627",
+    "date": "2026-06-15",
+    "commitHash": "da05bbcb2aa76f3f7dffd3fbc3292156f46a196b",
+    "changes": [
+      "Add automated test for \"Reset Settings to Defaults\" (Task #519)",
+      "Make low-graphics mode also ease up on frame rate and resolution",
+      "Task #517: Remove duplicate low-graphics check from WorldPlay",
+      "test(settings-sync): fill PULL-side hydrate coverage gaps",
+      "test(settings): cover the \"RESET SETTINGS TO DEFAULTS\" button end-to-end"
+    ]
+  },
+  {
+    "version": "v.14.5.1628",
+    "date": "2026-06-15",
+    "commitHash": "a70120432da57e626c24b9eb279f457ff709e90a",
+    "changes": [
+      "Git commit prior to merge"
+    ]
+  },
+  {
+    "version": "v.14.6.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Transitioned from Plan to Build mode"
+    ]
+  },
+  {
+    "version": "v.14.7.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.14.8.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.14.9.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.0.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Add app-wide guard test: only audio settings can mute the engine",
+      "Update the graphical representation for sharing interview helper content",
+      "test(audio): app-wide guard that only the central store writes engine volume",
+      "Add guard test preventing in-game volume from overriding audio settings",
+      "Audio: make in-game volume honor the central settings chokepoint"
+    ]
+  },
+  {
+    "version": "v.15.1.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.2.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.3.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.4.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.5.1749",
+    "date": "2026-06-16",
+    "commitHash": "e876e7a1dca957af8608bec91a5ffd90dd2bc15e",
+    "changes": [
+      "Let admins retry sending to just the failed incident channels (Task #684)",
+      "Add tests: single-backend incident alerts honour the channel picker",
+      "Let admins choose channels for per-backend incident alerts",
+      "Tell admins why a duplicate incident alert was blocked",
+      "Make incident-report dedupe consider the target channels, not just text"
+    ]
+  },
+  {
+    "version": "v.15.6.1749",
+    "date": "2026-06-16",
+    "commitHash": "e876e7a1dca957af8608bec91a5ffd90dd2bc15e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.7.1749",
+    "date": "2026-06-16",
+    "commitHash": "e876e7a1dca957af8608bec91a5ffd90dd2bc15e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.8.1762",
+    "date": "2026-06-16",
+    "commitHash": "bbdce4c29ab456d91b1e265679deba793646ae69",
+    "changes": [
+      "test(interview-helper): cover Pablo front-door admittance flow (Task #713)",
+      "Fix Pablo front-door entry: admit visitors without manual Sign In hunt",
+      "Fix Discord login getting stuck on \"are you human\" verification",
+      "Audit AI model strings; migrate deprecated tts-1 proxy TTS to gpt-audio",
+      "Make Pablo a consistent villain across every live prompt"
+    ]
+  },
+  {
+    "version": "v.15.9.1863",
+    "date": "2026-06-16",
+    "commitHash": "6f26985866685a439c819c15ccef520957da1da7",
+    "changes": [
+      "Keep plan labor stats fresh after inmates complete tasks",
+      "Show per-project debtor labor stats on the Plans tab too",
+      "test: cover construction labor-summary endpoint + expanded panel render",
+      "feat: Show per-project debtor labor stat tiles in expanded project card",
+      "feat: Show org admins their open labor requests with cancel/track UI"
+    ]
+  },
+  {
+    "version": "v.16.0.1863",
+    "date": "2026-06-16",
+    "commitHash": "6f26985866685a439c819c15ccef520957da1da7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.16.1.1870",
+    "date": "2026-06-16",
+    "commitHash": "ea99b94a54b3613c1f849b6abc0eceb7b33cbed5",
+    "changes": [
+      "Fix black ScrollLanding life_* frames + add ambient scroll audio",
+      "Verify construction labor breakdown stays put when paging",
+      "Add tests for OrgLaborRequests live-stats auto-refresh (polling)",
+      "Task #961: Country-aware Twilio telephony (VN/US) for SALARYMAN",
+      "Show plan labor stats live without needing to refresh"
+    ]
+  },
+  {
+    "version": "v.16.2.1889",
+    "date": "2026-06-17",
+    "commitHash": "1190d9effee645e8bb5657d14972c67485ff8dbb",
+    "changes": [
+      "Add stackable consumables + installable slots foundation (SALARYMAN)",
+      "Git commit prior to merge",
+      "Add vertical Pablo-narrated intro tour to SALARYMAN onboarding",
+      "Play one continuous subtle score across onboarding",
+      "Add continuous full-platform API health monitoring + structure tests"
+    ]
+  },
+  {
+    "version": "v.16.3.1954",
+    "date": "2026-06-17",
+    "commitHash": "0517e70f5acdbdfe3db3596c42a4bf6257f532c5",
+    "changes": [
+      "test(NetWorthHUD): add focused unit tests for CASH flash behaviour",
+      "feat: flash stamina bar when stamina drops critically low (task-1138)",
+      "feat(NetWorthHUD): floating +ƒ/-ƒ delta pop-up on cash change",
+      "Flash net worth bar fill on value change (Task #1136)",
+      "Flash net worth value on change, mirroring cash flash behavior"
+    ]
+  },
+  {
+    "version": "v.16.4.1958",
+    "date": "2026-06-17",
+    "commitHash": "f8f7ccccfde4cb78f7d97f2e6cef22cdef8fb9bf",
+    "changes": [
+      "Replace landing page with a scroll-driven gameplay trailer and voice-over",
+      "Fix navigation bar rendering issues by adjusting type definitions",
+      "Update navigation bar to correctly handle authentication requirements"
+    ]
+  },
+  {
+    "version": "v.16.5.1992",
+    "date": "2026-08-26",
+    "commitHash": "e54a1769b0d5ac60a2a1ab67475621d9fbedf35d",
+    "changes": [
+      "Remove duplicate Office tab inside Pixel Agents nav",
+      "Power-on terminal lands on the Console, not the Pablo nebula",
+      "Rename /console module to TERMINAL + restyle as a real terminal",
+      "Add FOOD tab to the standalone vending machine (/vending)",
+      "Git commit prior to merge"
+    ]
+  },
+  {
+    "version": "v.16.6.1992",
+    "date": "2026-08-26",
+    "commitHash": "e54a1769b0d5ac60a2a1ab67475621d9fbedf35d",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.16.7.1992",
+    "date": "2026-08-26",
+    "commitHash": "e54a1769b0d5ac60a2a1ab67475621d9fbedf35d",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.16.8.1995",
+    "date": "2026-08-26",
+    "commitHash": "a2cac52026650c39298d11bc0238070ca3b5dc11",
+    "changes": [
+      "Build city-differentiated markets and Banco Ombra Finance hub",
+      "Update Pablo memory and add verification screenshot",
+      "Update version and implement cinematic intro tour features"
+    ]
+  },
+  {
+    "version": "v.16.9.1997",
+    "date": "2026-08-26",
+    "commitHash": "763e2ab8faf9a4c0ffeb0f6cbb8f7cd254e5b05c",
+    "changes": [
+      "Add missing phone number country-context migration"
+    ]
+  },
+  {
+    "version": "v.17.0.2000",
+    "date": "2026-08-26",
+    "commitHash": "6e1ef979fad8d93bd3561430574076b2f5d8e79b",
+    "changes": [
+      "Move PABLO PRIME into Pledge Store and align curated agent roster",
+      "Make the open-world stamina HUD clearly visible",
+      "Add SignInPrompt return-to test and update page imports"
+    ]
+  },
+  {
+    "version": "v.17.1.2024",
+    "date": "2026-08-29",
+    "commitHash": "a06f264e308168b9531287b8a937202cb16f3281",
+    "changes": [
+      "Implement construction overview component and land data endpoints",
+      "Update organization routes and business hub UI logic",
+      "Add speech name utility and tests for post-onboarding components.",
+      "Add tests for pablo-voice",
+      "Implement voice support features for Pablo terminal and API server"
+    ]
+  },
+  {
+    "version": "v.17.2.2025",
+    "date": "2026-08-30",
+    "commitHash": "006283793e3cdb9e1d0f603d1a0e9bfbde794872",
+    "changes": [
+      "Implement marketplace routes and supporting UI components"
+    ]
+  },
+  {
+    "version": "v.17.3.2025",
+    "date": "2026-08-30",
+    "commitHash": "006283793e3cdb9e1d0f603d1a0e9bfbde794872",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.17.4.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.17.5.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.17.6.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.17.7.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.17.8.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.17.9.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.0.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.1.2026",
+    "date": "2026-08-30",
+    "commitHash": "d9c06e396df4858afde6c2c53942dfd0ed7432de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.2.2035",
+    "date": "2026-08-30",
+    "commitHash": "fb628497f4f2d0fe562fa3c1681642508a8663ac",
+    "changes": [
+      "Update gameplay capture logic",
+      "Update App.tsx component",
+      "Add content to PabloOffice interview helper page"
+    ]
+  },
+  {
+    "version": "v.18.3.2037",
+    "date": "2026-08-31",
+    "commitHash": "7b12f63dcfa687df5fd9a16ca8ecbf311d53a516",
+    "changes": [
+      "Update world API routes and remove deprecated intake test file",
+      "Update office components and bump version"
+    ]
+  },
+  {
+    "version": "v.18.4.2037",
+    "date": "2026-08-31",
+    "commitHash": "7b12f63dcfa687df5fd9a16ca8ecbf311d53a516",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.5.2037",
+    "date": "2026-08-31",
+    "commitHash": "7b12f63dcfa687df5fd9a16ca8ecbf311d53a516",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.6.2073",
+    "date": "2026-09-01",
+    "commitHash": "030eabf8507d7a1b597c70bac1f9a6f6ba3ad6de",
+    "changes": [
+      "Update return-to logic in sign-in prompt tests",
+      "Update API server routes and add memory documentation entry",
+      "Implement credit scoring logic and update admin panel UI",
+      "Update agent memory files and add income ecosystem definition",
+      "Implement stripe connect payouts and update worldplay page"
+    ]
+  },
+  {
+    "version": "v.18.7.2073",
+    "date": "2026-09-01",
+    "commitHash": "030eabf8507d7a1b597c70bac1f9a6f6ba3ad6de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.8.2073",
+    "date": "2026-09-01",
+    "commitHash": "030eabf8507d7a1b597c70bac1f9a6f6ba3ad6de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.18.9.2073",
+    "date": "2026-09-01",
+    "commitHash": "030eabf8507d7a1b597c70bac1f9a6f6ba3ad6de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.0.2073",
+    "date": "2026-09-01",
+    "commitHash": "030eabf8507d7a1b597c70bac1f9a6f6ba3ad6de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.1.2073",
+    "date": "2026-09-01",
+    "commitHash": "030eabf8507d7a1b597c70bac1f9a6f6ba3ad6de",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.2.2074",
+    "date": "2026-09-01",
+    "commitHash": "a137b077f9ba586735ba482e9995647b335ba0db",
+    "changes": [
+      "Update interview helper features and documentation for new release"
+    ]
+  },
+  {
+    "version": "v.19.3.2074",
+    "date": "2026-09-01",
+    "commitHash": "a137b077f9ba586735ba482e9995647b335ba0db",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.4.2074",
+    "date": "2026-09-01",
+    "commitHash": "a137b077f9ba586735ba482e9995647b335ba0db",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.5.2075",
+    "date": "2026-09-01",
+    "commitHash": "0d98081cdc05e28bb37419c96445af5d2309e2b9",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.6.2075",
+    "date": "2026-09-01",
+    "commitHash": "0d98081cdc05e28bb37419c96445af5d2309e2b9",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.7.2085",
+    "date": "2026-09-01",
+    "commitHash": "4c55f343cb9e1f79ba70facd1ac918244114241c",
+    "changes": [
+      "Update api server routes and simplify bot seeding logic",
+      "Update navigation and UI components for interview helper application",
+      "Integrate shadow tower artwork and update relevant page UI and test files",
+      "Migrate SALARYMAN authentication to Replit-managed Clerk"
+    ]
+  },
+  {
+    "version": "v.19.8.2085",
+    "date": "2026-09-01",
+    "commitHash": "4c55f343cb9e1f79ba70facd1ac918244114241c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.19.9.2085",
+    "date": "2026-09-01",
+    "commitHash": "4c55f343cb9e1f79ba70facd1ac918244114241c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.0.2109",
+    "date": "2026-09-03",
+    "commitHash": "d7d233ca5d3cc78080e1a287ba2bbe40cc83c49f",
+    "changes": [
+      "Implement conversation translation logic and integrate into phone active page",
+      "Implement live translator component and associated backend routes",
+      "Initialize project repository with documentation and setup scripts",
+      "Add Gemma translator asset archive",
+      "Update PabloTerminal component logic and tests"
+    ]
+  },
+  {
+    "version": "v.20.1.2109",
+    "date": "2026-09-03",
+    "commitHash": "d7d233ca5d3cc78080e1a287ba2bbe40cc83c49f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.2.2111",
+    "date": "2026-09-03",
+    "commitHash": "58645078f756b63acc0bdb1df5fa97d023e57828",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.3.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.4.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.5.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.6.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.7.2113",
+    "date": "2026-09-03",
+    "commitHash": "e07bf9cd1d4ac1dfd73b3e2ab4656c91d42a7de1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.20.8.2132",
+    "date": "2026-09-04",
+    "commitHash": "d32ca20f4d3e0f63dd12a7b1b3234a0e51d71928",
+    "changes": [
+      "Implement TowerFloorScene component and tests with supporting documentation",
+      "Add protected scheduled Tower Clerk handoff check",
+      "Update office layout components and add tower life logic",
+      "Add route-level arcade FIAT charge regression coverage",
+      "Add opt-in real Clerk Tower handoff smoke coverage"
+    ]
+  },
+  {
+    "version": "v.20.9.2175",
+    "date": "2026-09-05",
+    "commitHash": "fdaef33b2d89fd770afaf340305986498ac86f22",
+    "changes": [
+      "Update agent metadata and include salaryman engine kit manifest",
+      "Add salaryman engine kit documentation and exports",
+      "Update gameplay world economy logic and tests",
+      "Update gameplay world economy tests and UI integration",
+      "Update world economy location logic and tests"
+    ]
+  },
+  {
+    "version": "v.21.0.2177",
+    "date": "2026-09-05",
+    "commitHash": "ee09e118996539408344665ffa94a752dc368972",
+    "changes": [
+      "Update movement logic and refactor WorldPlay page component",
+      "Refine world play logic and update versioning and changelogs"
+    ]
+  },
+  {
+    "version": "v.21.1.2180",
+    "date": "2026-09-05",
+    "commitHash": "084b41b735edb305871e8407e6928be2173e54c3",
+    "changes": [
+      "Implement device link functionality and add UI screenshots",
+      "Implement device linking functionality and server-side control bridge",
+      "Implement device linking page and update project version"
+    ]
+  },
+  {
+    "version": "v.21.2.2240",
+    "date": "2026-09-06",
+    "commitHash": "6d7989dab848f4550f3deebfef4307bac67cfe50",
+    "changes": [
+      "Add image asset to attached assets directory",
+      "Update styling and add visual assets to interview helper components",
+      "Update PabloTerminal styles and component logic",
+      "Update API connection health monitoring and documentation",
+      "Add business data route and update memory and database schema"
+    ]
+  },
+  {
+    "version": "v.21.3.2243",
+    "date": "2026-09-06",
+    "commitHash": "6882084fb0261e6a76a3f794af2220946a458ce9",
+    "changes": [
+      "Add new asset image",
+      "Update version and changelog with console improvements"
+    ]
+  },
+  {
+    "version": "v.21.4.2243",
+    "date": "2026-09-06",
+    "commitHash": "6882084fb0261e6a76a3f794af2220946a458ce9",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.21.5.2247",
+    "date": "2026-09-06",
+    "commitHash": "26ca0732f2c0def00f96cdd868d814aff63e0c0d",
+    "changes": [
+      "Add new asset image",
+      "Update version and implement Pablo terminal interface enhancements"
+    ]
+  },
+  {
+    "version": "v.21.6.2280",
+    "date": "2026-09-07",
+    "commitHash": "0fc270242708963a0336085bb694ecc37e7ff644",
+    "changes": [
+      "Update the salaryman professional home mockup component",
+      "Update professional home component styles and structure",
+      "Refine salaryman mockup components and update homepage memory",
+      "Implement SalarymanGameplayTour component in mockup sandbox",
+      "Update professional home mockup component and memory notes"
+    ]
+  },
+  {
+    "version": "v.21.7.2303",
+    "date": "2026-09-07",
+    "commitHash": "048a39c81f4c744a6164efe0a2218fe9f1727d11",
+    "changes": [
+      "Add new images to attached assets",
+      "Update ProfessionalHome styles and add assets.",
+      "Update desktop download branding assets and remove unused styles.",
+      "Add Pygame assets and update desktop download styling and documentation",
+      "Implement desktop download route and page UI updates"
+    ]
+  },
+  {
+    "version": "v.21.8.2311",
+    "date": "2026-09-07",
+    "commitHash": "ac42f79ae75bb789da9d418922cca03b9e4ae20b",
+    "changes": [
+      "Update test mocks and components for interview helper compatibility",
+      "Add error context files for failed tests",
+      "Update memory documentation and add telephony owner resolution note",
+      "Update twilio routes and telephony owner logic with associated tests",
+      "Implement telephony owner logic and update Twilio routes and tests"
+    ]
+  },
+  {
+    "version": "v.21.9.2311",
+    "date": "2026-09-07",
+    "commitHash": "ac42f79ae75bb789da9d418922cca03b9e4ae20b",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.0.2313",
+    "date": "2026-09-07",
+    "commitHash": "1f315978bc13b2d378d590e3b17995a5a671eadb",
+    "changes": [
+      "Add configuration for publish fix"
+    ]
+  },
+  {
+    "version": "v.22.1.2313",
+    "date": "2026-09-07",
+    "commitHash": "1f315978bc13b2d378d590e3b17995a5a671eadb",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.2.2314",
+    "date": "2026-09-07",
+    "commitHash": "48c649e74226918c5c53d20ec4b7f2cc980888d2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.3.2315",
+    "date": "2026-09-07",
+    "commitHash": "0af5010f52884920ac72987bb387c2b5ab135c0c",
+    "changes": [
+      "Update version and refactor professional home styles"
+    ]
+  },
+  {
+    "version": "v.22.4.2319",
+    "date": "2026-09-07",
+    "commitHash": "d1a7866415da6cab268298648fdfc5b2b60f9338",
+    "changes": [
+      "Update Godot office client logic and documentation",
+      "Update version number and changelog for release"
+    ]
+  },
+  {
+    "version": "v.22.5.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Update navigation components and styles",
+      "Simplify the navigation bar component",
+      "Update economy toggle component and styling in interview helper",
+      "Update EconomyToggle component and clean up mobile bottom bar layout",
+      "Implement Astra model rollout logic and update EconomyToggle UI components"
+    ]
+  },
+  {
+    "version": "v.22.6.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.7.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.8.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.22.9.2334",
+    "date": "2026-09-07",
+    "commitHash": "5ec191e9ff2d2281fe078fa0eed5ae4e88eb704e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.23.0.2336",
+    "date": "2026-09-08",
+    "commitHash": "1248552ff0a3f3a32e84da90eaf841f9c48696b8",
+    "changes": [
+      "Update application version and clean up mobile interface components"
+    ]
+  },
+  {
+    "version": "v.23.1.2336",
+    "date": "2026-09-08",
+    "commitHash": "1248552ff0a3f3a32e84da90eaf841f9c48696b8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.23.2.2337",
+    "date": "2026-09-08",
+    "commitHash": "a70e8171766f65d779c1b4be2a00c803416590bb",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.23.3.2338",
+    "date": "2026-09-08",
+    "commitHash": "3dc2f3b63f8258460dd5ed7c5fb58fc849bf60b8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  }
+]

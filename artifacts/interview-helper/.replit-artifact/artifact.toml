@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SALARYMAN"
+version = "1.0.0"
+id = "artifacts/interview-helper"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 21129
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/interview-helper run dev"
+
+[services.env]
+PORT = "21129"
+BASE_PATH = "/"
+
+[services.production]
+build = "pnpm --filter @workspace/interview-helper run build"
+publicDir = "artifacts/interview-helper/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"

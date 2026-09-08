@@ -1,0 +1,17 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame>=2.6.1",
+    "yt-dlp>=2026.7.4",
+]
+
+[project.optional-dependencies]
+desktop-build = [
+    "pyinstaller>=6.11",
+]
+
+[project.scripts]
+salaryman-sim = "pygame_sim.app:main"

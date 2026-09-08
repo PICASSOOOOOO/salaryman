@@ -1,0 +1,58 @@
+{
+  "world": {
+    "width": 10000,
+    "height": 10000
+  },
+  "rooms": [
+    {
+      "id": "lobby",
+      "label": "TOWER LOBBY",
+      "bounds": [700, 1000, 2200, 2400],
+      "accent": [27, 112, 110],
+      "material": "lobby_floor",
+      "spawn": [1800, 2100]
+    },
+    {
+      "id": "recreation",
+      "label": "FLOOR 01 HALLWAY",
+      "bounds": [700, 3400, 8300, 1800],
+      "accent": [72, 94, 130],
+      "material": "hall_floor",
+      "spawn": [4800, 4550]
+    },
+    {
+      "id": "executive",
+      "label": "OFFICE 01",
+      "bounds": [900, 5200, 1800, 2200],
+      "accent": [112, 83, 115],
+      "material": "office_1",
+      "spawn": [1800, 6650]
+    },
+    {
+      "id": "public",
+      "label": "OFFICE 02",
+      "bounds": [3000, 5200, 1800, 2200],
+      "accent": [38, 87, 94],
+      "material": "office_2",
+      "spawn": [3900, 6650]
+    },
+    {
+      "id": "office_03",
+      "label": "OFFICE 03",
+      "bounds": [5100, 5200, 1800, 2200],
+      "accent": [86, 98, 133],
+      "material": "office_3",
+      "spawn": [6000, 6650]
+    },
+    {
+      "id": "office_04",
+      "label": "OFFICE 04",
+      "bounds": [7200, 5200, 1800, 2200],
+      "accent": [122, 88, 106],
+      "material": "office_4",
+      "spawn": [8100, 6650]
+    }
+  ],
+  "lobbyHallwayOpening": 1800,
+  "officeDoorCenters": [1800, 3900, 6000, 8100]
+}

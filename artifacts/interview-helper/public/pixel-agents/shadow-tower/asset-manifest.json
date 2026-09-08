@@ -1,0 +1,73 @@
+{
+  "version": 2,
+  "style": "shadow-tower-1980s-analog-surveillance-pixel",
+  "spaceFamilies": [
+    { "id": "lobby", "file": "spaces/tower_space_lobby.jpg", "floors": "arrival lobby" },
+    { "id": "recreation", "file": "spaces/tower_space_recreation.jpg", "floors": "public recreation" },
+    { "id": "mezzanine", "file": "spaces/tower_space_mezzanine.jpg", "floors": "2" },
+    { "id": "rest", "file": "spaces/tower_space_rest.jpg", "floors": "3" },
+    { "id": "security", "file": "spaces/tower_space_security.jpg", "floors": "4" },
+    { "id": "founder", "file": "spaces/tower_space_founder.jpg", "floors": "commercial founder-team floors" },
+    { "id": "company", "file": "spaces/tower_space_company.jpg", "floors": "commercial company floors" },
+    { "id": "picasso", "file": "spaces/tower_space_picasso.jpg", "floors": "66" },
+    { "id": "shadow_corp", "file": "spaces/tower_space_shadow_corp.jpg", "floors": "40, 52, 65, 67" }
+  ],
+  "assets": [
+    {
+      "id": "public-terminal",
+      "file": "public-terminal.png",
+      "role": "wall-mounted public terminal",
+      "placement": "back wall beside elevator",
+      "includedInStandardFloor": true,
+      "deskMounted": false,
+      "footprintTiles": { "w": 1.5, "d": 0.5 },
+      "renderTiles": { "w": 2.25, "h": 3.5 }
+    },
+    {
+      "id": "directory",
+      "file": "directory.png",
+      "role": "active company directory",
+      "placement": "elevator lobby wall",
+      "includedInStandardFloor": true,
+      "footprintTiles": { "w": 1.25, "d": 0.4 },
+      "renderTiles": { "w": 1.8, "h": 3.5 }
+    },
+    {
+      "id": "secretary",
+      "file": "secretary.png",
+      "role": "floor-specific secretary NPC",
+      "placement": "elevator lobby reception point",
+      "includedInStandardFloor": true,
+      "footprintTiles": { "w": 0.8, "d": 0.8 },
+      "renderTiles": { "w": 1.4, "h": 3.2 }
+    },
+    {
+      "id": "desk-terminal",
+      "file": "desk-terminal.png",
+      "role": "private password-protected owner terminal",
+      "placement": "executive office",
+      "includedInStandardFloor": true,
+      "deskMounted": true,
+      "footprintTiles": { "w": 3, "d": 1.6 },
+      "renderTiles": { "w": 3.4, "h": 2.75 }
+    },
+    {
+      "id": "atm",
+      "file": "atm.png",
+      "role": "FIAT and GOLD economy access",
+      "placement": "public elevator lobby",
+      "includedInStandardFloor": true,
+      "footprintTiles": { "w": 1.4, "d": 0.9 },
+      "renderTiles": { "w": 1.8, "h": 3.2 }
+    },
+    {
+      "id": "vending",
+      "file": "vending.png",
+      "role": "paid office consumables",
+      "placement": "public utility wall",
+      "includedInStandardFloor": true,
+      "footprintTiles": { "w": 1.5, "d": 1 },
+      "renderTiles": { "w": 1.9, "h": 3.2 }
+    }
+  ]
+}

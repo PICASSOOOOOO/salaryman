@@ -1,0 +1,12 @@
+packages:
+  "react-markdown": "Render AI markdown responses beautifully"
+  "remark-gfm": "Support GitHub flavored markdown like tables and lists"
+  "react-syntax-highlighter": "Syntax highlighting for code blocks in the output"
+  "@types/react-syntax-highlighter": "TypeScript definitions for syntax highlighter"
+  "framer-motion": "Smooth animations and layout transitions"
+
+images: []
+
+notes:
+  - Uses SSE via raw fetch to /api/interview/solve
+  - App is designed as a dark-mode first professional developer tool

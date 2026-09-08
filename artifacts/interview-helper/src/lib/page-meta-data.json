@@ -1,0 +1,90 @@
+{
+  "baseUrl": "https://salaryman.replit.app",
+  "defaultOgImage": "https://salaryman.replit.app/og-salaryman.png",
+  "routes": {
+    "/": {
+      "title": "Salaryman by Picasso AI - AI Business Operating System",
+      "description": "SALARYMAN is the AI-powered business operating system by Picasso AI. AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams — all in one platform.",
+      "ogTitle": "SALARYMAN — AI-Powered Business Operating System",
+      "ogDescription": "AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and a curated nine-agent workforce across four teams — unified into one platform. Built for professionals who refuse to settle."
+    },
+    "/pricing": {
+      "title": "Pricing — SALARYMAN by Picasso AI",
+      "description": "SALARYMAN is free to start. Upgrade to PABLO PRIME at $149/month for the curated nine-agent workforce, the AI phone system, and all premium features.",
+      "ogTitle": "SALARYMAN Pricing — Free to Start, Powerful to Scale",
+      "ogDescription": "Start free with Pablo. Unlock the curated nine-agent workforce and the full SALARYMAN platform with a PABLO PRIME subscription at $149/month."
+    },
+    "/pledge": {
+      "title": "Pledge Store — SALARYMAN by Picasso AI",
+      "description": "Get PABLO PRIME and dollar-backed Pixel Agent upgrades through secure billing. Property, gear, vehicles, and supplies stay in the SALARYMAN FIAT economy.",
+      "ogTitle": "SALARYMAN Pledge Store — PABLO PRIME & Pixel Agent Upgrades",
+      "ogDescription": "The single store for PABLO PRIME membership and dollar-backed Pixel Agent upgrades, with all other goods earned or purchased in-game."
+    },
+    "/pledge/agents": {
+      "title": "Pixel Agents — Meet the AI Bot Team — SALARYMAN",
+      "description": "Meet the nine curated Pixel Agents inside SALARYMAN, organized across Core Command, The Academy, Finance Desk, and Creative Studio.",
+      "ogTitle": "Meet the Pixel Agents — 9 Curated AI Specialists — SALARYMAN",
+      "ogDescription": "Meet SALARYMAN's nine-agent workforce across Core Command, The Academy, Finance Desk, and Creative Studio."
+    },
+    "/investors": {
+      "title": "Investors — SALARYMAN by Picasso AI",
+      "description": "Investment and partnership opportunities with Picasso AI, the company behind SALARYMAN — the AI-powered business operating system built for the next era of work.",
+      "ogTitle": "Investors — SALARYMAN by Picasso AI",
+      "ogDescription": "Picasso AI is building the next generation AI business operating system. Learn about investment and partnership opportunities."
+    },
+    "/legal": {
+      "title": "Legal — SALARYMAN by Picasso AI",
+      "description": "Legal information for SALARYMAN by Picasso AI: Terms of Service, Privacy Policy, Refund Policy, Cancellation Policy, and more.",
+      "ogTitle": "Legal — SALARYMAN by Picasso AI",
+      "ogDescription": "Terms of Service, Privacy Policy, and all legal information for the SALARYMAN platform."
+    },
+    "/legal/terms": {
+      "title": "Terms of Service — SALARYMAN by Picasso AI",
+      "description": "Read the SALARYMAN Terms of Service to understand your rights and responsibilities when using the platform.",
+      "ogTitle": "Terms of Service — SALARYMAN",
+      "ogDescription": "The agreement governing use of the SALARYMAN platform by Picasso AI."
+    },
+    "/legal/privacy": {
+      "title": "Privacy Policy — SALARYMAN by Picasso AI",
+      "description": "Learn how SALARYMAN by Picasso AI collects, uses, and protects your personal information. Your privacy matters to us.",
+      "ogTitle": "Privacy Policy — SALARYMAN by Picasso AI",
+      "ogDescription": "How SALARYMAN collects, uses, and protects your personal data."
+    },
+    "/legal/contact": {
+      "title": "Contact — SALARYMAN by Picasso AI",
+      "description": "Get in touch with the SALARYMAN team. Reach us for support, partnerships, press inquiries, and general questions.",
+      "ogTitle": "Contact SALARYMAN by Picasso AI",
+      "ogDescription": "Reach the SALARYMAN team for support, partnerships, press, or general inquiries."
+    },
+    "/legal/refunds": {
+      "title": "Refund Policy — SALARYMAN by Picasso AI",
+      "description": "SALARYMAN refund policy — understand your options for refunds and how to submit a refund request.",
+      "ogTitle": "Refund Policy — SALARYMAN",
+      "ogDescription": "SALARYMAN refund policy and how to request a refund."
+    },
+    "/legal/returns": {
+      "title": "Returns Policy — SALARYMAN by Picasso AI",
+      "description": "SALARYMAN returns policy for digital products and services purchased through the platform.",
+      "ogTitle": "Returns Policy — SALARYMAN",
+      "ogDescription": "SALARYMAN returns policy for platform purchases."
+    },
+    "/legal/cancellation": {
+      "title": "Cancellation Policy — SALARYMAN by Picasso AI",
+      "description": "How to cancel your SALARYMAN subscription — cancellation policy, timing, and what happens after you cancel.",
+      "ogTitle": "Cancellation Policy — SALARYMAN",
+      "ogDescription": "How to cancel your SALARYMAN subscription and what to expect."
+    },
+    "/legal/promotions": {
+      "title": "Promotions Policy — SALARYMAN by Picasso AI",
+      "description": "Terms and conditions for SALARYMAN promotions, discounts, and special offers. Eligibility, duration, and restrictions.",
+      "ogTitle": "Promotions Policy — SALARYMAN",
+      "ogDescription": "Terms and conditions for SALARYMAN promotions and special offers."
+    },
+    "/legal/restrictions": {
+      "title": "Use Restrictions — SALARYMAN by Picasso AI",
+      "description": "Acceptable use policy for the SALARYMAN platform — what is and isn't permitted. Read before using the service.",
+      "ogTitle": "Use Restrictions — SALARYMAN",
+      "ogDescription": "Acceptable use policy for the SALARYMAN platform."
+    }
+  }
+}

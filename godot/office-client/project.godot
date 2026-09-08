@@ -1,0 +1,15 @@
+[application]
+config/name="SALARYMAN Office Client"
+run/main_scene="res://Main.tscn"
+
+[display]
+window/size/viewport_width=1180
+window/size/viewport_height=720
+window/size/window_width_override=1180
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0

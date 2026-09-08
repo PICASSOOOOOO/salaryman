@@ -1,0 +1,475 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1773898871753,
+      "tag": "0000_complete_the_renegades",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773907372386,
+      "tag": "0001_round_dexter_bennett",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773909615481,
+      "tag": "0002_huge_pet_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1742342400000,
+      "tag": "0003_salaryman_created_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773914617588,
+      "tag": "0004_salty_alex_wilder",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773916303012,
+      "tag": "0005_flaky_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773917699580,
+      "tag": "0006_conscious_purple_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773991855177,
+      "tag": "0007_ambiguous_shocker",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1742342401000,
+      "tag": "0008_pablos_slush_fund",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1773999662484,
+      "tag": "0009_goofy_rhodey",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774004933656,
+      "tag": "0010_little_skin",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774007995608,
+      "tag": "0011_feature_trials",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1742342402000,
+      "tag": "0012_org_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1742342403000,
+      "tag": "0013_picasso_developer",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1774026575757,
+      "tag": "0014_world_kv_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1774104000000,
+      "tag": "0015_business_economy_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1774032753440,
+      "tag": "0016_enterprise_financials",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1774034961301,
+      "tag": "0017_fixed_mysterio",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1774556029278,
+      "tag": "0018_sparkling_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1774700000000,
+      "tag": "0019_thinkorswim_trading",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1774561555457,
+      "tag": "0020_fast_naoko",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774563008373,
+      "tag": "0021_colossal_retro_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774559266953,
+      "tag": "0022_dapper_lyja",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1743072000000,
+      "tag": "0023_bot_status_default_paused",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1743244800000,
+      "tag": "0024_crm_lead_database",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1743331200000,
+      "tag": "0025_org_member_title_salary",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1747032360000,
+      "tag": "0026_colleagues",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1750032000000,
+      "tag": "0027_art_render_node",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1750090000000,
+      "tag": "0028_org_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1750180000000,
+      "tag": "0029_world_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1781614138000,
+      "tag": "0030_first_responder_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1781700000000,
+      "tag": "0031_org_is_education",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1781800000000,
+      "tag": "0032_global_multi_broker",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0033_real_bank_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0034_user_banking_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1782100000000,
+      "tag": "0035_player_city_visas",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787702400000,
+      "tag": "0036_phone_numbers_country_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787788800000,
+      "tag": "0037_world_economy",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787976000000,
+      "tag": "0038_org_protected_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788062400000,
+      "tag": "0039_marketplace_item_listings",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788148800000,
+      "tag": "0040_chat_read_cursor_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1788235200000,
+      "tag": "0041_live_gold_economy",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1788321600000,
+      "tag": "0042_shadow_tower_floors",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1788408000000,
+      "tag": "0043_shadow_tower_selection",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788494400000,
+      "tag": "0044_phone_number_purchases",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788580800000,
+      "tag": "0045_sms_message_sid_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1788667200000,
+      "tag": "0046_dialing_attempt_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788753600000,
+      "tag": "0047_call_conference_monitoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1788840000000,
+      "tag": "0048_recording_expiry_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1788926400000,
+      "tag": "0049_stripe_connect_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789012800000,
+      "tag": "0050_credit_applications",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1789099200000,
+      "tag": "0051_economic_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789185600000,
+      "tag": "0052_rest_bed_marketplace",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789272000000,
+      "tag": "0053_shadow_tower_office_units",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789358400000,
+      "tag": "0054_property_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789444800000,
+      "tag": "0055_property_contract_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789531200000,
+      "tag": "0056_bots_marketplace_instance_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1789617600000,
+      "tag": "0057_organization_name_index_publish",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1789704000000,
+      "tag": "0058_tower_market",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1789790400000,
+      "tag": "0059_bank_account_numbers_and_cash",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1789876800000,
+      "tag": "0060_shadow_tower_one_executive_suite",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1789963200000,
+      "tag": "0061_tower_service_listing_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1789966800000,
+      "tag": "0062_device_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1788691426186,
+      "tag": "0063_crm_routing",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1788692547903,
+      "tag": "0064_legacy_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1788693000000,
+      "tag": "0065_desktop_work_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1788693600000,
+      "tag": "0066_business_data_foundation",
+      "breakpoints": true
+    }
+  ]
+}

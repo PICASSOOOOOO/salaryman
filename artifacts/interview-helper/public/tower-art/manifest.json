@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "style": "SALARYMAN Shadow Tower hand-painted pixel art",
+  "scenes": {
+    "shadow-tower-lobby": {
+      "name": "Shadow Tower Main Lobby",
+      "file": "lobby-reception.png"
+    }
+  },
+  "objects": {
+    "shadow-radio-107-3": {
+      "name": "Shadow Radio 107.3",
+      "file": "object-shadow-radio.png",
+      "interaction": "radio-source-controls"
+    },
+    "tower-elevator-a": {
+      "name": "Tower Elevator A",
+      "file": "object-elevator.png",
+      "interaction": "tower-floor-selector"
+    }
+  },
+  "characters": {
+    "shadow-tower-receptionist": {
+      "name": "Shadow Tower Receptionist",
+      "file": "character-receptionist.png",
+      "role": "Front Desk"
+    },
+    "claw-prime": {
+      "name": "Claw Prime",
+      "file": "character-claw-prime.png",
+      "role": "Reception Lead"
+    }
+  }
+}
