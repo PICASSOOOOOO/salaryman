@@ -93,7 +93,18 @@
 .sm-hero-copy { position: relative; z-index: 1; max-width: 570px; animation: sm-rise 850ms 90ms cubic-bezier(.2,.8,.2,1) both; }
 .sm-kicker { color: var(--accent); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; display: flex; align-items: center; gap: 8px; }
 .sm-status { width: 6px; height: 6px; background: var(--coral); border-radius: 50%; display: inline-block; box-shadow: 0 0 0 5px #dc765e18; }
-.sm-hero h1 { max-width: 590px; margin: 24px 0 26px; font-family: "Space Grotesk", sans-serif; font-size: clamp(52px, 6vw, 86px); line-height: .94; letter-spacing: -.075em; font-weight: 600; }
+.sm-hero h1 {
+  max-width: 590px;
+  margin: 24px 0 26px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(52px, 6vw, 86px);
+  line-height: .98;
+  letter-spacing: -.045em;
+  font-weight: 600;
+  -webkit-text-stroke: 0 transparent;
+  text-shadow: none;
+  paint-order: normal;
+}
 .sm-hero h1 span { color: var(--accent); white-space: nowrap; }
 .sm-lede { max-width: 420px; color: var(--muted); font-size: 16px; line-height: 1.55; }
 .sm-actions { display: flex; align-items: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
