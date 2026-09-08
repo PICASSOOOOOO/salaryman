@@ -42,8 +42,7 @@ function PabloVoiceControl() {
       <div className="flex items-center gap-2">
         {enabled ? <Mic className="h-3.5 w-3.5 text-pink-300" /> : <VolumeX className="h-3.5 w-3.5 text-zinc-500" />}
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold tracking-[.2em] text-pink-200">PABLO VOICE</div>
-          <div className="text-[8px] tracking-wider text-zinc-500">Hear Pablo and advisor replies in COMMS.</div>
+          <div className="text-[10px] font-bold tracking-[.08em] text-black">AUDIO REPLIES</div>
         </div>
         <button
           type="button"
@@ -172,14 +171,14 @@ export default function Comms() {
   const { unreadMessages, pendingRequests } = useCommsSummary();
   const tabs = TABS;
   return (
-    <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
+    <div className="comms-page min-h-screen bg-[#fffaf0] text-black font-sans">
       <div className="max-w-4xl mx-auto w-full">
         <div className="px-4 sm:px-6 pt-4 sm:pt-6">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
-            <MessageSquare className="inline w-5 h-5 mr-2" /> PAYPHONE TERMINAL
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-black" style={{ fontFamily: "var(--font-sans)" }}>
+            <MessageSquare className="inline w-5 h-5 mr-2" /> COMMS
           </h1>
           <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
-            CHAT, ASSOCIATES, AND ORGS — ALL YOUR PEOPLE IN ONE PLACE.
+            Chat, associates, and organizations.
           </p>
           <div className="flex gap-1 mt-4 border-b border-cyan-500/10 overflow-x-auto scrollbar-hide">
             {tabs.map(tab => {

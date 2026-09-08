@@ -46,7 +46,9 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const TOKEN_REFRESH_MS = 50 * 60 * 1000;
-  const REGISTER_TIMEOUT_MS = 15_000;
+  // Mobile Safari and resumed tabs can take longer to negotiate the Twilio
+  // signaling socket. Do not mark a healthy phone offline prematurely.
+  const REGISTER_TIMEOUT_MS = 30_000;
 
   const updateDeviceState = useCallback((state: DeviceState) => {
     deviceStateRef.current = state;
@@ -222,10 +224,15 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
       retryAttemptRef.current = 0;
       void initDeviceRef.current();
     };
+    const retryWhenVisible = () => {
+      if (document.visibilityState === 'visible') retryWhenOnline();
+    };
     window.addEventListener('online', retryWhenOnline);
+    document.addEventListener('visibilitychange', retryWhenVisible);
     return () => {
       unmountedRef.current = true;
       window.removeEventListener('online', retryWhenOnline);
+      document.removeEventListener('visibilitychange', retryWhenVisible);
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       if (deviceRef.current) {

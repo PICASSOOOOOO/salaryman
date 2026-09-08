@@ -212,7 +212,7 @@ export default function PhoneCommandCenter() {
             boxShadow: `0 0 12px ${deviceState === 'ready' ? slate(0.5) : deviceState === 'error' ? destructive(0.5) : warning(0.4)}`
           }} />
           <span style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: slate(0.6), textTransform: 'uppercase', fontWeight: 600 }} title={deviceError || undefined}>
-            {deviceState === 'ready' ? 'READY' : deviceState === 'initializing' ? 'CONNECTING...' : deviceState === 'error' ? 'ERROR' : 'STARTING...'}
+             {deviceState === 'ready' ? 'CALLING READY' : deviceState === 'initializing' ? 'CONNECTING' : deviceState === 'error' ? 'CALLING ERROR' : 'STARTING'}
           </span>
           {(deviceState === 'error' || deviceState === 'uninitialized' || deviceState === 'initializing') && (
             <button
@@ -247,7 +247,7 @@ export default function PhoneCommandCenter() {
           fontSize: '0.68rem',
           lineHeight: 1.5,
         }}>
-          {deviceError}
+          Browser calling could not connect. Check microphone permission and tap Retry.
         </div>
       )}
 

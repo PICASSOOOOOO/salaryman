@@ -1936,5 +1936,21 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.23.0.2336",
+    "date": "2026-09-08",
+    "commitHash": "1248552ff0a3f3a32e84da90eaf841f9c48696b8",
+    "changes": [
+      "Update application version and clean up mobile interface components"
+    ]
+  },
+  {
+    "version": "v.23.1.2336",
+    "date": "2026-09-08",
+    "commitHash": "1248552ff0a3f3a32e84da90eaf841f9c48696b8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

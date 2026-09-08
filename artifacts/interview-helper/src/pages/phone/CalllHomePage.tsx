@@ -8,6 +8,7 @@ import { slate, warning } from '@/lib/phone-utils';
 import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
+import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
@@ -38,7 +39,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: bo
   { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
-  { key: 'ai', label: 'AI', icon: <Bot size={12} /> },
+  { key: 'ai', label: 'ASSIST', icon: <Bot size={12} /> },
 ];
 
 function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode: (m: AiSubMode) => void }) {
@@ -127,20 +128,15 @@ export default function CalllHomePage() {
     };
   }, [showTabSettings]);
 
-  const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
   const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'restricted' | 'unconfigured'>('checking');
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
   const { openPledgePopup } = usePledgePopup();
+  const { deviceState, deviceError, ensureDeviceReady, reconnect } = useTwilioDeviceContext();
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
   const telephonyLocked = !hasPhoneAccess;
-
-  useEffect(() => {
-    const id = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -164,6 +160,19 @@ export default function CalllHomePage() {
       })
       .catch(() => setSystemStatus('unconfigured'));
   }, [apiUrl, hasPhoneAccess, planLoading]);
+
+  useEffect(() => {
+    if (!hasPhoneAccess || planLoading || systemStatus !== 'online') return;
+    void ensureDeviceReady().catch(() => {});
+  }, [ensureDeviceReady, hasPhoneAccess, planLoading, systemStatus]);
+
+  const callingLabel = systemStatus !== 'online'
+    ? (systemStatus === 'checking' ? 'CHECKING' : systemStatus === 'no_subscription' ? 'NO ACCESS' : systemStatus === 'restricted' ? 'RESTRICTED' : 'UNAVAILABLE')
+    : deviceState === 'ready'
+      ? 'CALLING READY'
+      : deviceState === 'error'
+        ? 'CALLING ERROR'
+        : 'CONNECTING';
 
   if (authLoading) {
     return <div style={{ minHeight: '100vh', background: slate(0.02), display: 'grid', placeItems: 'center', color: slate(0.55) }}>RESTORING SESSION...</div>;
@@ -194,9 +203,9 @@ export default function CalllHomePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: slate(0.02),
+      background: '#fffaf0',
       ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-      color: slate(0.85),
+      color: '#111111',
       position: 'relative' }}>
 
       <div className="calll-home-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1400, margin: '0 auto' }}>
@@ -210,26 +219,23 @@ export default function CalllHomePage() {
               alt="CALLL HOME"
               style={{ height: 18, width: 'auto', opacity: 0.7, filter: 'brightness(1.8) saturate(0)' }}
             />
-            <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.15em' }}>│</span>
-            <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.15em' }}>EST. 1987</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
-                 background: systemStatus === 'online' ? slate(0.7) : (systemStatus === 'unconfigured' || systemStatus === 'no_subscription' || systemStatus === 'restricted') ? warning(0.7) : slate(0.2),
+                  background: systemStatus === 'online' && deviceState === 'ready' ? '#111111' : warning(0.7),
 
-                animation: systemStatus === 'online' ? 'pulse 2s infinite' : 'none' }} />
-               <span style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.12em' }} title={systemStatus === 'restricted' ? 'Connect your own Twilio credentials or join an authorized organization.' : undefined}>
-                 {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_subscription' ? 'NO ACCESS' : systemStatus === 'restricted' ? 'RESTRICTED' : '...'}
+                animation: systemStatus === 'online' && deviceState === 'ready' ? 'pulse 2s infinite' : 'none' }} />
+                <span style={{ fontSize: '0.52rem', color: '#111111', letterSpacing: '0.08em' }} title={deviceError || undefined}>
+                  {callingLabel}
               </span>
             </div>
-            <span style={{ fontSize: '0.42rem', color: slate(0.55) }}>│</span>
-            <span style={{
-              fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.1em',
-              padding: '2px 8px', border: `1px solid ${slate(0.12)}`, borderRadius: 3,
-              background: slate(0.02) }}>PSO v3</span>
-            <span style={{ fontSize: '0.42rem', color: slate(0.55), fontVariantNumeric: 'tabular-nums', letterSpacing: '0.08em' }}>{clock}</span>
+             {systemStatus === 'online' && deviceState !== 'ready' && (
+               <button type="button" onClick={() => void reconnect()} disabled={deviceState === 'initializing'}>
+                 {deviceState === 'initializing' ? 'CONNECTING' : 'RECONNECT'}
+               </button>
+             )}
           </div>
         </div>
 
@@ -403,7 +409,7 @@ export default function CalllHomePage() {
                     <Lock size={28} style={{ color: warning(0.7), marginBottom: 16 }} />
                     <div style={{ fontSize: '0.9rem', color: slate(0.9), letterSpacing: '0.12em', marginBottom: 10 }}>CALLL HOME — ACCESS REQUIRED</div>
                     <div style={{ fontSize: '0.55rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 22 }}>
-                      Browser calling, phone numbers, SMS, voicemail, recordings, and call automation require CALLL HOME access.
+                      Phone features require access.
                     </div>
                     <button onClick={() => openPledgePopup({ reason: 'Unlock the Phone System with a Stripe-backed pass or PABLO PRIME.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
                       VIEW PHONE ACCESS OPTIONS
@@ -416,26 +422,6 @@ export default function CalllHomePage() {
             </CalllHomeProvider>
         </div>
 
-        <div style={{
-          borderTop: `1px solid ${slate(0.06)}`,
-          padding: '8px 0',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          fontSize: '0.38rem', color: slate(0.55), letterSpacing: '0.12em' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img
-              src={`${BASE}brand/callhome/calll-home-brush.png`}
-              alt=""
-              style={{ height: 10, width: 'auto', opacity: 0.25, filter: 'brightness(2) saturate(0)' }}
-            />
-            <span>CALLL HOME v3 │ PSO</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Calll Poin: AI Ready</span>
-            <div style={{
-              width: 4, height: 4, borderRadius: '50%',
-              background: systemStatus === 'online' ? slate(0.4) : warning(0.3) }} />
-          </div>
-        </div>
       </div>
 
       <style>{`

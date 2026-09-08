@@ -292,10 +292,9 @@ function AppShell() {
   const isRootRoute = pathname === "/";
   const isDeviceLinkRoute = pathname === "/device-link";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  const isPabloSurface = isRootRoute || pathname === "/pablo" || pathname.startsWith("/pablo/");
-  const isSpecialDarkSurface = ["/theater", "/meet", "/immigration", "/device-link", "/sms-opt-in", "/profile/admin/billboards"]
-    .some(r => pathname === r || pathname.startsWith(r + "/"));
-  const isLightWorkspace = !isPabloSurface && !isSpecialDarkSurface;
+  // The browser product has one visual contract: warm cream surfaces and
+  // black text on every route. Native desktop owns the dark game treatment.
+  const isLightWorkspace = true;
   const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
@@ -332,7 +331,7 @@ function AppShell() {
   //
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/desktop", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
   const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/phone", "/comms", "/bots", "/business/crm", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY

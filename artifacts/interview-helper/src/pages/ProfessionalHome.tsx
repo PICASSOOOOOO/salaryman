@@ -131,19 +131,10 @@ export default function ProfessionalHome() {
              Calls, customers, files, and daily operations in one clear workspace.
           </p>
           <div className="sm-actions">
-            <Link className="sm-primary" href="/business" data-testid="link-hero-workspace">
-              Open web workspace <ArrowRight size={15} />
-            </Link>
-            <Link className="sm-secondary" href="/pablo" data-testid="link-hero-pablo">
-              Meet Pablo <ExternalLink size={15} />
+             <Link className="sm-primary" href="/phone" data-testid="link-hero-workspace">
+               Open CALLL HOME <ArrowRight size={15} />
             </Link>
           </div>
-           <div className="sm-proof-row" aria-label="SALARYMAN highlights">
-             <span>PHONE</span>
-             <span>CRM</span>
-             <span>AGENTS</span>
-             <span>FILES</span>
-           </div>
           {desktopDownloadAllowed && (
             <a
               className="sm-desktop-download"
@@ -156,51 +147,7 @@ export default function ProfessionalHome() {
           )}
         </div>
 
-        <div className="sm-hero-stage" aria-label="SALARYMAN workspace preview" data-testid="preview-workspace">
-          <div className="sm-stage-grid" aria-hidden="true" />
-          <div className="sm-stage-orbit sm-stage-orbit-one" aria-hidden="true" />
-          <div className="sm-stage-orbit sm-stage-orbit-two" aria-hidden="true" />
-          <span className="sm-stage-label">LIVE BROWSER SURFACE <b>01</b></span>
-          <div className="sm-stage-float sm-stage-float-top" aria-hidden="true">
-            <span>CONNECTED</span><strong>05</strong>
-          </div>
-          <div className="sm-stage-float sm-stage-float-bottom" aria-hidden="true">
-            <span>WORKING RHYTHM</span><strong>CALM / CLEAR</strong>
-          </div>
-          <div className="sm-workspace-card">
-          <div className="sm-window-bar">
-            <span className="sm-window-dots"><i /><i /><i /></span>
-            <span>WORKSPACE · READY</span>
-          </div>
-          <div className="sm-workspace-body">
-            <div className="sm-workspace-topline">
-              <strong>SALARYMAN</strong>
-              <span>ONE CONNECTED WORKSPACE</span>
-              <b>ACTIVE</b>
-            </div>
-            <div className="sm-workspace-grid" data-testid="preview-workspace-stats">
-              <div className="sm-workspace-stat" data-testid="stat-open-tasks"><small>OPEN TASKS</small><strong>12</strong><span className="sm-stat-blue" /></div>
-              <div className="sm-workspace-stat" data-testid="stat-follow-ups"><small>FOLLOW-UPS</small><strong>08</strong><span className="sm-stat-mint" /></div>
-              <div className="sm-workspace-stat" data-testid="stat-team-pulse"><small>TEAM PULSE</small><strong>92%</strong><span className="sm-stat-warm" /></div>
-            </div>
-            <div className="sm-workspace-list">
-              <span><i className="sm-list-dot sm-list-blue" /> Customer follow-up queue <b>Today</b></span>
-              <span><i className="sm-list-dot sm-list-mint" /> Weekly operations review <b>In progress</b></span>
-              <span><i className="sm-list-dot sm-list-warm" /> Pablo briefing <b>Ready</b></span>
-            </div>
-          </div>
-          <div className="sm-workspace-caption"><strong>Web workspace</strong><span>One clear view of the working day.</span></div>
-          </div>
-        </div>
       </section>
-
-      <div className="sm-strip">
-        <div className="sm-strip-inner">
-           <span><strong>One connected workspace</strong></span>
-           <span>Phone · CRM · Agents · Files</span>
-           <span>Built by Picasso AI</span>
-        </div>
-      </div>
 
       <section className="sm-story" aria-labelledby="story-title" data-testid="section-operating-rhythm">
         <div className="sm-story-inner">
