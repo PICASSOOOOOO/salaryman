@@ -1968,5 +1968,25 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.23.4.2361",
+    "date": "2026-09-08",
+    "commitHash": "61b8b5e538c36890a8e347efffde09e8e63b9fc8",
+    "changes": [
+      "Implement Twilio routing updates and enhance active call context handling",
+      "Implement Twilio call recording integration and update CRM workspace UI",
+      "Update phone system health checks and Twilio routes",
+      "Update Twilio device context and phone interface styling with new assets",
+      "Document github workflow write scope requirements in memory files"
+    ]
+  },
+  {
+    "version": "v.23.5.2361",
+    "date": "2026-09-08",
+    "commitHash": "61b8b5e538c36890a8e347efffde09e8e63b9fc8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

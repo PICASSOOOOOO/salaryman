@@ -1,0 +1,62 @@
+.orbit-page {
+  --cream: #f5f1e8;
+  --paper: #fbfaf5;
+  --ink: #171916;
+  --muted: #77776f;
+  --line: #d5d0c3;
+  --green: #3b815e;
+  min-height: 100vh;
+  padding: 0 54px 45px;
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "DM Sans", sans-serif;
+}
+.orbit-page *, .orbit-page *::before, .orbit-page *::after { box-sizing: border-box; }
+.orbit-page button { font: inherit; }
+.orbit-nav { max-width: 1332px; height: 92px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.orbit-brand { display: flex; align-items: center; gap: 10px; }
+.orbit-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 5px; background: var(--ink); color: var(--cream); font: 600 17px/1 "Space Grotesk"; }
+.orbit-brand-name { font: 700 12px/1 "Space Grotesk"; letter-spacing: .15em; }
+.orbit-brand-sub { color: var(--muted); font-size: 10px; margin-left: 2px; }
+.orbit-links { display: flex; align-items: center; gap: 26px; color: #5f625b; font-size: 12px; }
+.orbit-links button { border: 0; background: none; color: inherit; padding: 8px 0; cursor: pointer; }
+.orbit-links span { white-space: nowrap; }
+.orbit-links .orbit-privacy { padding-left: 26px; border-left: 1px solid var(--line); color: #8b8b83; }
+.orbit-hero { max-width: 1332px; min-height: 638px; margin: 0 auto; display: grid; grid-template-columns: .8fr 1.2fr; gap: 38px; align-items: center; }
+.orbit-copy { position: relative; z-index: 2; padding: 28px 0 32px; animation: orbit-reveal .75s ease both; }
+.orbit-kicker { display: flex; align-items: center; gap: 9px; color: var(--green); font: 700 10px/1 "Space Grotesk"; letter-spacing: .17em; }
+.orbit-kicker i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 5px #3b815e18; }
+.orbit-copy h1 { max-width: 510px; margin: 25px 0 25px; font: 600 clamp(58px, 6.1vw, 90px)/.91 "Space Grotesk"; letter-spacing: -.075em; }
+.orbit-copy h1 em { color: var(--green); font-style: normal; white-space: nowrap; }
+.orbit-copy p { max-width: 365px; margin: 0; color: #686a63; font-size: 16px; line-height: 1.55; }
+.orbit-cta { display: inline-flex; align-items: center; gap: 14px; margin-top: 31px; padding: 14px 17px; border: 0; border-radius: 4px; background: var(--ink); color: var(--paper); cursor: pointer; font: 700 11px "Space Grotesk"; letter-spacing: .06em; transition: transform .2s ease, background .2s ease; }
+.orbit-cta span { color: #8bc29d; font-size: 17px; line-height: 10px; }
+.orbit-cta:hover { transform: translateY(-2px); background: #2e352f; }
+.orbit-art { position: relative; min-height: 534px; overflow: hidden; border: 1px solid #cbc6b8; border-radius: 4px; background: #1b211d; box-shadow: 20px 20px 0 #dcd7c9; animation: orbit-in .9s .12s ease both; }
+.orbit-art::before { content: ""; position: absolute; inset: 0; opacity: .22; background-image: linear-gradient(#9cad9e19 1px, transparent 1px), linear-gradient(90deg, #9cad9e19 1px, transparent 1px); background-size: 46px 46px; mask-image: linear-gradient(135deg, #000, transparent 76%); }
+.orbit-art::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 51% 50%, #7ca88a12, transparent 31%), linear-gradient(112deg, transparent 35%, #d8e2d814, transparent 65%); pointer-events: none; }
+.art-meta { position: absolute; z-index: 3; display: flex; gap: 10px; color: #9ba69b; font: 600 9px "Space Grotesk"; letter-spacing: .12em; }
+.art-meta b { color: #85ba8c; font-weight: 600; }
+.art-meta-top { top: 23px; left: 26px; }.art-meta-bottom { right: 26px; bottom: 22px; }
+.orbit-lines { position: absolute; inset: 50% auto auto 50%; width: 100%; height: auto; min-width: 680px; transform: translate(-50%, -50%); overflow: visible; }
+.ring { fill: none; stroke: #9fb6a220; stroke-width: 1; }
+.ring-one { animation: orbit-spin 32s linear infinite; transform-origin: 380px 278px; }.ring-two { stroke: #b5c8b826; animation: orbit-spin-reverse 38s linear infinite; transform-origin: 380px 278px; }.ring-three { stroke: #6f9b7d32; animation: orbit-spin 47s linear infinite; transform-origin: 380px 278px; }
+.connector { fill: none; stroke: #a2c1a64d; stroke-width: 1; stroke-dasharray: 3 10; }.connector-soft { stroke: #bacabf25; }
+.core-ring { fill: none; stroke: #78a98272; stroke-width: 1; stroke-dasharray: 2 5; }.core-dot { fill: #98c8a0; }
+.orbit-node-list { position: absolute; inset: 0; z-index: 4; }
+.orbit-node { position: absolute; display: flex; align-items: center; gap: 8px; border: 0; background: none; color: #c7d0c6; cursor: pointer; font: 600 9px "Space Grotesk"; letter-spacing: .13em; transition: transform .25s ease, color .25s ease; }
+.orbit-node:hover, .orbit-node.is-focused { color: #a5dda9; transform: scale(1.08); }
+.node-dot { width: 9px; height: 9px; border: 1px solid #85ae8c; border-radius: 50%; background: #1b211d; box-shadow: 0 0 0 4px #71987a18; }
+.node-green .node-dot { border-color: #82c38b; background: #709f78; }.node-ink .node-dot { border-color: #b9c6bb; }
+.node-large .node-dot { width: 12px; height: 12px; }
+.node-calls { left: 14%; top: 30%; }.node-crm { left: 43%; top: 15%; }.node-files { right: 13%; top: 29%; }.node-agents { right: 10%; bottom: 29%; }.node-ops { left: 45%; bottom: 14%; }.node-finance { left: 13%; bottom: 28%; }
+.orbit-center-label { position: absolute; z-index: 5; left: 50%; top: 50%; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -50%); color: #93ae99; font: 600 8px "Space Grotesk"; letter-spacing: .16em; }
+.orbit-center-label strong { margin: 7px 0 4px; color: #e5eee4; font: 500 24px/1 "Space Grotesk"; letter-spacing: -.03em; }.orbit-center-label small { color: #849285; font: 400 10px "DM Sans"; letter-spacing: 0; }
+.art-tick { position: absolute; z-index: 2; bottom: 20px; color: #89998b; font: 10px "Space Grotesk"; }.tick-left { left: 27px; }.tick-right { right: 27px; }
+.orbit-rule { max-width: 1332px; height: 1px; margin: 0 auto; background: var(--line); }.orbit-caption { max-width: 1332px; margin: 16px auto 0; display: flex; justify-content: space-between; color: #8d8c84; font: 600 9px "Space Grotesk"; letter-spacing: .15em; }
+@keyframes orbit-reveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes orbit-in { from { opacity: 0; transform: translateX(18px) scale(.985); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@keyframes orbit-spin { to { transform: rotate(360deg); } } @keyframes orbit-spin-reverse { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .orbit-page *, .orbit-page *::before, .orbit-page *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
+@media (max-width: 900px) { .orbit-page { padding: 0 24px 32px; }.orbit-hero { grid-template-columns: 1fr; padding: 58px 0 70px; }.orbit-copy h1 { font-size: clamp(54px, 12vw, 82px); }.orbit-art { min-height: 480px; }.orbit-links { gap: 12px; }.orbit-brand-sub { display: none; } }
