@@ -17,6 +17,17 @@ relative launcher path did not match the one-folder layout.
 `--headless --frames 3 --no-bridge`, and test the Linux installer with an
 isolated `XDG_DATA_HOME` before presenting the archive.
 
+Any data file opened through a source-relative filesystem path must also be
+declared as PyInstaller data at the matching packaged path.
+
+**Why:** A package can build successfully yet crash before startup when a shared
+runtime file exists in the source tree but not inside PyInstaller's `_internal`
+directory.
+
+**How to apply:** Always smoke-test the newly created archive after extracting
+it outside the repository; never treat a successful PyInstaller build as proof
+that runtime assets were included.
+
 macOS builds produce a `.app` bundle and should ship as a `.zip`; the extracted
 launcher must use `open ...app --args` rather than treating the app as a Linux
 executable directory. The Pygame UI should choose a native readable fallback

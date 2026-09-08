@@ -20,7 +20,7 @@ Icon=$ICON_PATH
 Terminal=false
 Categories=Office;Business;Finance;
 EOF
-chmod 0o644 "$DESKTOP_PATH"
+chmod 644 "$DESKTOP_PATH"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$APPLICATION_DIR" >/dev/null 2>&1 || true

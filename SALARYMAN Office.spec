@@ -5,7 +5,7 @@ a = Analysis(
     ['/home/runner/workspace/main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('/home/runner/workspace/artifacts/interview-helper/public/pixel-agents', 'pixel-agents'), ('/home/runner/workspace/godot/office-client/floor_plan.json', 'godot/office-client')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -32,7 +32,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['/home/runner/workspace/artifacts/interview-helper/public/icon-512.png'],
 )
 coll = COLLECT(
     exe,

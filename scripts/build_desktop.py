@@ -22,6 +22,7 @@ DIST = ROOT / "dist" / "salaryman-office"
 RELEASES = ROOT / "dist" / "releases"
 ICON_SOURCE = ROOT / "artifacts" / "interview-helper" / "public" / "icon-512.png"
 PIXEL_ASSET_SOURCE = ROOT / "artifacts" / "interview-helper" / "public" / "pixel-agents"
+FLOOR_PLAN_SOURCE = ROOT / "godot" / "office-client" / "floor_plan.json"
 EXECUTABLE_NAME = "SALARYMAN Office"
 
 
@@ -44,6 +45,11 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
         encoding="utf-8",
     )
     launcher.chmod(0o755)
+
+    if system_name == "Linux":
+        easy_launcher = staging / "START-SALARYMAN"
+        easy_launcher.write_text(launcher.read_text(encoding="utf-8"), encoding="utf-8")
+        easy_launcher.chmod(0o755)
 
     if system_name != "Linux":
         return
@@ -98,6 +104,9 @@ def main() -> int:
     if not PIXEL_ASSET_SOURCE.exists():
         print(f"Pixel art assets were not found: {PIXEL_ASSET_SOURCE}", file=sys.stderr)
         return 2
+    if not FLOOR_PLAN_SOURCE.exists():
+        print(f"Office floor plan was not found: {FLOOR_PLAN_SOURCE}", file=sys.stderr)
+        return 2
 
     system_name = platform.system()
     name = EXECUTABLE_NAME
@@ -118,6 +127,8 @@ def main() -> int:
         "setuptools",
         "--add-data",
         f"{PIXEL_ASSET_SOURCE}{os.pathsep}pixel-agents",
+        "--add-data",
+        f"{FLOOR_PLAN_SOURCE}{os.pathsep}godot/office-client",
         str(ROOT / "main.py"),
     ]
     print(f"Building {name} for {system_name}...")
@@ -195,7 +206,11 @@ after installing the shortcut.
 
 ## Run the desktop app
 
-From this directory:
+No Docker is required. Extract the archive, open the extracted
+`salaryman-office-linux-x86_64` folder, and double-click `START-SALARYMAN`.
+If your Linux file manager asks, choose **Run** or **Allow Launching**.
+
+You can also launch it from a terminal opened in this directory:
 
 ```bash
 {run_command}

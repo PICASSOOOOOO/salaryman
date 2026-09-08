@@ -2,7 +2,11 @@
 
 ## Run the desktop app
 
-From this directory:
+No Docker is required. Extract the archive, open the extracted
+`salaryman-office-linux-x86_64` folder, and double-click `START-SALARYMAN`.
+If your Linux file manager asks, choose **Run** or **Allow Launching**.
+
+You can also launch it from a terminal opened in this directory:
 
 ```bash
 ./launch-salaryman-office.sh
@@ -22,13 +26,14 @@ This installs a SALARYMAN Office application shortcut and icon into your
 user-local desktop applications folder. Keep this extracted directory in place
 after installing the shortcut.
 
+
 ## Optional Godot renderer
 
 Start the Pygame app with its bridge enabled, then open
 `godot-office-client` in Godot 4:
 
 ```bash
-./pygame/SALARYMAN Office --bridge-port 4242
+./launch-salaryman-office.sh --bridge-port 4242
 godot --path godot-office-client
 ```
 

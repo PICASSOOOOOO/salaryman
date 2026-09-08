@@ -22,7 +22,7 @@ const platforms = [
   {
     name: "Linux",
     detail: "Ubuntu 22.04+ · x64",
-    command: "salaryman-office-linux-x86_64.tar.gz",
+    command: "Extract → double-click START-SALARYMAN",
     tone: "sun",
     status: "available",
   },
@@ -82,7 +82,7 @@ export default function DesktopDownload() {
             </Link>
           </div>
           <p className="desktop-download-note">
-            Linux is live. macOS and Windows packages are next.
+            Linux: extract the download, then double-click START-SALARYMAN. No Docker required.
           </p>
         </div>
         <div className="desktop-download-stage" aria-label="Desktop office preview">
@@ -129,7 +129,8 @@ export default function DesktopDownload() {
           ))}
         </div>
         <p className="desktop-download-build-note" id="builds">
-          Linux is the only published package today. macOS and Windows builds must be
+          Linux setup: extract the archive, open its folder, and run START-SALARYMAN.
+          If prompted, choose Run or Allow Launching. macOS and Windows builds must be
           produced and smoke-tested on their target operating systems because PyInstaller
           does not cross-compile.
         </p>
