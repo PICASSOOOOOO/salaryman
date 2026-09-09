@@ -1425,3 +1425,17 @@ mtime_ms = 1788959406869
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/21853ba2-eeb7-4189-ba46-896d1b42d716/9ebab400-91ae-451f-817c-b4ae3bac5386"
 storage_version_token = "1788959427252369"
 content_type = "image/png"
+
+[[outputs]]
+id = "xhVsMV09a33pKwm1W76m1"
+uri = "file://screenshots/pygame-concrete-persian-rugs.png"
+type = "image"
+title = "Concrete floor with Persian rugs"
+description = "Verified floor-base render with exposed concrete slabs and many distinct Persian-inspired rugs using orthogonal borders and motifs."
+logical_id = "f91e9393-a646-4548-b08f-c2c0d61ec1cf"
+content_hash = "sha256:64a2cf734681b389638fcbcc42225d9200a275718f0e0044b9744e02c84645ed"
+size = 30094
+mtime_ms = 1788959571484
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f91e9393-a646-4548-b08f-c2c0d61ec1cf/2f32a1fd-4d76-4d7e-9d0e-c2d229c84176"
+storage_version_token = "1788959590283364"
+content_type = "image/png"

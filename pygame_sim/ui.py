@@ -264,7 +264,7 @@ class SolarPunkRenderer:
         world_x, world_y, world_w, world_h = world_bounds
         pygame.draw.rect(self.screen, (31, 63, 57), viewport)
         tile_world_size = 400
-        palette = ((202, 205, 174), (211, 211, 180), (194, 201, 169))
+        palette = ((174, 179, 174), (181, 185, 180), (166, 172, 168))
         old_clip = self.screen.get_clip()
         self.screen.set_clip(viewport)
         first_col = max(0, int((camera_x - world_x) // tile_world_size))
@@ -281,10 +281,10 @@ class SolarPunkRenderer:
                 color = palette[(row + col) % len(palette)]
                 tile = pygame.Rect(x, y, tile_size, tile_size)
                 pygame.draw.rect(self.screen, color, tile)
-                pygame.draw.rect(self.screen, (159, 172, 143), tile, 1)
+                pygame.draw.rect(self.screen, (139, 146, 142), tile, 1)
                 pygame.draw.line(
                     self.screen,
-                    (226, 224, 191),
+                    (202, 206, 201),
                     (tile.left + 2, tile.top + 2),
                     (tile.right - 3, tile.top + 2),
                     1,
@@ -307,22 +307,52 @@ class SolarPunkRenderer:
         base_layout = FLOOR_PLAN["baseLayout"]
         for office in base_layout["offices"]:
             bay = world_rect(tuple(office["bounds"]))
-            pygame.draw.rect(self.screen, (197, 204, 172), bay)
-            pygame.draw.rect(self.screen, (79, 124, 91), bay, max(1, int(24 * scale)))
+            pygame.draw.rect(self.screen, (179, 184, 179), bay)
+            pygame.draw.rect(self.screen, (100, 111, 107), bay, max(1, int(24 * scale)))
 
         for hallway_data in base_layout["hallways"]:
             hallway = world_rect(tuple(hallway_data))
-            pygame.draw.rect(self.screen, (175, 139, 91), hallway)
-            pygame.draw.rect(self.screen, (218, 191, 139), hallway, 2)
+            pygame.draw.rect(self.screen, (126, 134, 131), hallway)
+            pygame.draw.rect(self.screen, (207, 212, 207), hallway, 2)
+
+        def draw_persian_rug(rug_data: tuple[int, int, int, int]) -> None:
+            rug = world_rect(rug_data)
+            if not rug.colliderect(viewport):
+                return
+            pygame.draw.rect(self.screen, (86, 27, 38), rug)
+            border_1 = rug.inflate(-max(2, int(80 * scale)), -max(2, int(80 * scale)))
+            pygame.draw.rect(self.screen, (207, 154, 67), border_1, max(1, int(34 * scale)))
+            border_2 = border_1.inflate(-max(2, int(120 * scale)), -max(2, int(120 * scale)))
+            pygame.draw.rect(self.screen, (28, 58, 77), border_2)
+            center = border_2.inflate(-max(2, int(150 * scale)), -max(2, int(150 * scale)))
+            pygame.draw.rect(self.screen, (177, 57, 52), center)
+            motif_w = max(3, int(min(320, rug_data[2] // 4) * scale))
+            motif_h = max(3, int(min(320, rug_data[3] // 4) * scale))
+            motif = pygame.Rect(0, 0, motif_w, motif_h)
+            motif.center = rug.center
+            pygame.draw.rect(self.screen, (232, 207, 142), motif)
+            pygame.draw.rect(self.screen, (28, 58, 77), motif, 1)
+
+        # Persian-inspired runners soften the concrete circulation network.
+        # They are finite floor objects, not a texture repeated across the
+        # entire 100-million-pixel world.
+        horizontal_y = center_y - 350
+        for rug_x in range(center_x - 20_000, center_x + 20_001, 1_800):
+            draw_persian_rug((rug_x - 600, horizontal_y, 1_200, 700))
+        vertical_x = center_x - 350
+        for rug_y in range(center_y - 20_000, center_y + 20_001, 1_800):
+            if abs(rug_y - center_y) < 1_000:
+                continue
+            draw_persian_rug((vertical_x, rug_y - 600, 700, 1_200))
 
         elevator_lobby = world_rect(tuple(base_layout["elevatorLobby"]["bounds"]))
-        pygame.draw.rect(self.screen, (176, 191, 154), elevator_lobby)
-        pygame.draw.rect(self.screen, (83, 126, 93), elevator_lobby, max(1, int(20 * scale)))
+        pygame.draw.rect(self.screen, (145, 153, 149), elevator_lobby)
+        pygame.draw.rect(self.screen, (92, 104, 100), elevator_lobby, max(1, int(20 * scale)))
 
         for office in base_layout["offices"]:
             entrance_x, entrance_y = office["entrance"]
             entrance = world_rect((entrance_x - 300, entrance_y - 300, 600, 600))
-            pygame.draw.rect(self.screen, (220, 198, 139), entrance)
+            pygame.draw.rect(self.screen, (95, 107, 103), entrance)
 
         self.screen.set_clip(old_clip)
         pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=9)
