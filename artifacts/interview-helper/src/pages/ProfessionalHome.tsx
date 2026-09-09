@@ -9,7 +9,6 @@ import {
   FileText,
   FolderKanban,
   Menu,
-  Phone,
   ShieldCheck,
   Sparkles,
   Users,
@@ -50,7 +49,6 @@ const paths = [
 ] as const;
 
 const features = [
-  ["CALLL HOME", "Calls, routing, and shared numbers", Phone, "/phone"],
   ["CRM & sales", "Keep every relationship moving", Users, "/business/contacts"],
   ["Agents & automation", "Let routine work run itself", Bot, "/bots"],
   ["Business operations", "The daily view of your company", FolderKanban, "/business"],
@@ -67,8 +65,10 @@ export default function ProfessionalHome() {
           <img className="sm-mark" src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" />
           <span>
             <strong>SALARYMAN</strong>
-            <small>by Picasso AI · business OS</small>
           </span>
+          <small className="sm-alpha-badge">
+            ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
+          </small>
         </Link>
 
         <nav className="sm-navlinks" aria-label="Main navigation">
@@ -80,13 +80,13 @@ export default function ProfessionalHome() {
               aria-expanded={featuresOpen}
               data-testid="button-features-desktop"
             >
-              FEATURES <ChevronDown size={14} />
+              MORE <ChevronDown size={14} />
             </button>
             {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
           </div>
-          <Link href="/business" data-testid="link-web-workspace">START WORK</Link>
-          <Link className="sm-pablo" href="/pablo" data-testid="link-meet-pablo">PABLO AI</Link>
-          <Link href="/desktop" data-testid="link-home-gameplay">DESKTOP / DOWNLOAD</Link>
+          <Link className="sm-navbox" href="/pablo" data-testid="link-meet-pablo">PABLO PRIME</Link>
+          <Link className="sm-navbox" href="/phone">CALLL HOME</Link>
+          <Link className="sm-navbox" href="/desktop" data-testid="link-home-gameplay">APP DOWNLOAD</Link>
         </nav>
 
         <div className="sm-mobile-menu">
@@ -97,10 +97,15 @@ export default function ProfessionalHome() {
             aria-expanded={featuresOpen}
             data-testid="button-features-mobile"
           >
-            {featuresOpen ? <X size={16} /> : <Menu size={16} />} FEATURES
+            {featuresOpen ? <X size={16} /> : <Menu size={16} />} MORE
           </button>
           {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
         </div>
+        <nav className="sm-mobile-direct" aria-label="Main navigation">
+          <Link href="/pablo">PABLO PRIME</Link>
+          <Link href="/phone">CALLL HOME</Link>
+          <Link href="/desktop">APP DOWNLOAD</Link>
+        </nav>
       </header>
 
       <section className="sm-hero" aria-labelledby="home-title" data-testid="section-hero">

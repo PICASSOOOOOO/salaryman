@@ -77,7 +77,7 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
               aria-expanded={menuOpen}
             >
               <Menu className="h-3.5 w-3.5" />
-              MENU
+              MORE
               <ChevronDown className={`h-3 w-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
 
