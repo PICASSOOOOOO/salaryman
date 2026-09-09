@@ -1,9 +1,9 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, gte, or, sql } from "drizzle-orm";
 import {
-  botsTable, db, hasRoleAccess, orgMembersTable, shadowTowerFloorsTable, shadowTowerOfficeUnitsTable,
+  botsTable, db, hasRoleAccess, orgMembersTable, shadowTowerFloorsTable, shadowTowerInterestEventsTable, shadowTowerOfficeUnitsTable,
   shadowTowerSelectedFloorsTable, shadowTowerWorkstationAssignmentsTable, type OrgRole,
 } from "@workspace/db";
 import {
@@ -15,6 +15,14 @@ import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 import { canDoInOrg } from "../lib/org-permissions";
 import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
 import { getMarketIndex } from "./real-estate";
+import {
+  calculateShadowTowerDemand,
+  isPublicSaleFloor,
+  isReleasedOffice,
+  officeOrdinal,
+  PUBLIC_SALE_FLOOR_FROM,
+  PUBLIC_SALE_FLOOR_TO,
+} from "../lib/shadow-tower-demand";
 
 const router = Router();
 const cities = new Set<ShadowTowerCity>(["minx_city", "huda_city"]);
@@ -64,7 +72,58 @@ function safeFloor(floor: typeof shadowTowerFloorsTable.$inferSelect) {
   return { ...safe, hasPassword: Boolean(floor.passwordHash) };
 }
 
+async function demandForCity(
+  city: ShadowTowerCity,
+  occupiedRows: Array<{ floorNumber: number; unitNumber: number; status: string }> = [],
+) {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const events = await db.select({ kind: shadowTowerInterestEventsTable.kind })
+    .from(shadowTowerInterestEventsTable)
+    .where(and(
+      eq(shadowTowerInterestEventsTable.city, city),
+      gte(shadowTowerInterestEventsTable.createdAt, since),
+    ));
+  const occupied = occupiedRows.filter((row) => row.status === "occupied");
+  const highestOccupiedOrdinal = occupied.length
+    ? Math.max(...occupied.map((row) => officeOrdinal(row.floorNumber, row.unitNumber) + 1))
+    : 0;
+  return calculateShadowTowerDemand({
+    views: events.filter((event) => event.kind === "view").length,
+    watches: events.filter((event) => event.kind === "watch").length,
+    inquiries: events.filter((event) => event.kind === "inquiry").length,
+    occupiedOffices: occupied.length,
+    highestOccupiedOrdinal,
+  });
+}
+
 router.get("/shadow-tower/catalog", (_req, res) => res.json({ listings: Object.values(SHADOW_TOWER_LISTINGS) }));
+router.post("/shadow-tower/interest", requireAuth, async (req, res) => {
+  const city = String(req.body?.city ?? "") as ShadowTowerCity;
+  const floorNumber = Number(req.body?.floorNumber);
+  const unitNumber = Number(req.body?.unitNumber);
+  const kind = req.body?.kind;
+  if (
+    !cities.has(city)
+    || !Number.isInteger(floorNumber)
+    || !isPublicSaleFloor(floorNumber)
+    || !Number.isInteger(unitNumber)
+    || unitNumber < 1
+    || unitNumber > 4
+    || !["view", "watch", "inquiry"].includes(kind)
+  ) {
+    res.status(400).json({ error: "Public floor, office unit, and interest kind are required" });
+    return;
+  }
+  const [event] = await db.insert(shadowTowerInterestEventsTable).values({
+    city,
+    floorNumber,
+    unitNumber,
+    userId: userId(req),
+    kind,
+    eventDay: new Date().toISOString().slice(0, 10),
+  }).onConflictDoNothing().returning({ id: shadowTowerInterestEventsTable.id });
+  res.status(event ? 201 : 200).json({ accepted: true, duplicate: !event });
+});
 router.get("/shadow-tower/availability", async (req, res) => {
   const city = String(req.query.city ?? "") as ShadowTowerCity;
   if (!cities.has(city)) { res.status(400).json({ error: "Valid city required" }); return; }
@@ -78,19 +137,22 @@ router.get("/shadow-tower/availability", async (req, res) => {
     .where(eq(shadowTowerFloorsTable.city, city));
   const byFloor = new Map<number, typeof occupied>();
   for (const row of occupied) byFloor.set(row.floorNumber, [...(byFloor.get(row.floorNumber) ?? []), row]);
-  const floors = Array.from({ length: 60 }, (_, index) => index + 5)
-    .filter(isCommercialShadowTowerFloor)
+  const demand = await demandForCity(city, occupied);
+  const floors = Array.from({ length: PUBLIC_SALE_FLOOR_TO - PUBLIC_SALE_FLOOR_FROM + 1 }, (_, index) => index + PUBLIC_SALE_FLOOR_FROM)
     .map((floorNumber) => {
       const rows = byFloor.get(floorNumber) ?? [];
       const unavailable = rows.filter((row) => row.status === "occupied").length;
+      const releasedOffices = [1, 2, 3, 4]
+        .filter((unitNumber) => isReleasedOffice(floorNumber, unitNumber, demand.releaseTarget)).length;
       return {
         floorNumber,
         totalOffices: 4,
-        availableOffices: Math.max(0, 4 - unavailable),
-        status: unavailable === 0 ? "open" : unavailable >= 4 ? "full" : "limited",
+        releasedOffices,
+        availableOffices: Math.max(0, releasedOffices - unavailable),
+        status: releasedOffices === 0 ? "held_back" : releasedOffices <= unavailable ? "full" : unavailable === 0 ? "open" : "limited",
       };
     });
-  res.json({ city, floors });
+  res.json({ city, floors, demand });
 });
 router.get("/shadow-tower/marketplace", async (req, res) => {
   const city = String(req.query.city ?? "") as ShadowTowerCity;

@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, jsonb, index, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, date, jsonb, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { organizationsTable } from "./organizations";
 
@@ -70,6 +70,24 @@ export const shadowTowerSelectedFloorsTable = pgTable("shadow_tower_selected_flo
   floorId: integer("floor_id").notNull().references(() => shadowTowerFloorsTable.id, { onDelete: "cascade" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [index("shadow_tower_selected_floor_idx").on(t.floorId)]);
+
+export const shadowTowerInterestEventsTable = pgTable("shadow_tower_interest_events", {
+  id: serial("id").primaryKey(),
+  city: varchar("city", { length: 20 }).notNull(),
+  floorNumber: integer("floor_number").notNull(),
+  unitNumber: integer("unit_number").notNull(),
+  userId: varchar("user_id").notNull(),
+  kind: varchar("kind", { length: 16 }).notNull(), // view | watch | inquiry
+  eventDay: date("event_day").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("shadow_tower_interest_dedupe_idx").on(t.city, t.floorNumber, t.unitNumber, t.userId, t.kind, t.eventDay),
+  index("shadow_tower_interest_city_created_idx").on(t.city, t.createdAt),
+  index("shadow_tower_interest_city_unit_idx").on(t.city, t.floorNumber, t.unitNumber),
+  check("shadow_tower_interest_floor_check", sql`${t.floorNumber} between 5 and 62`),
+  check("shadow_tower_interest_unit_check", sql`${t.unitNumber} between 1 and 4`),
+  check("shadow_tower_interest_kind_check", sql`${t.kind} in ('view', 'watch', 'inquiry')`),
+]);
 
 export type ShadowTowerFloor = typeof shadowTowerFloorsTable.$inferSelect;
 export type ShadowTowerOfficeUnit = typeof shadowTowerOfficeUnitsTable.$inferSelect;
