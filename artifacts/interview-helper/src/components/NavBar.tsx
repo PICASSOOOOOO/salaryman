@@ -8,13 +8,15 @@ import { resolveAvatarUrl } from '@/lib/avatar';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { HISTORIC_MODULES, type HistoricModule } from '../lib/historic-navigation';
 
-export function NavBar() {
+export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const streamerMode = useStreamerMode();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(
+    previewMode ? 'business' : null,
+  );
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -42,7 +44,7 @@ export function NavBar() {
 
   const handleModuleClick = (module: HistoricModule) => {
     if (module.subs.length === 0) {
-      navigate(module.defaultPath);
+      if (!previewMode) navigate(module.defaultPath);
       setActiveModuleId(null);
       return;
     }
@@ -95,7 +97,9 @@ export function NavBar() {
       <div className="flex items-center justify-between px-4 h-11">
         <div
           className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
-          onClick={() => navigate('/pablo')}
+          onClick={() => {
+            if (!previewMode) navigate('/pablo');
+          }}
         >
           <div className="w-7 h-7 rounded-md bg-black border border-black flex items-center justify-center">
             <Terminal className="w-3.5 h-3.5 text-[#FAF7EF]" />
@@ -145,7 +149,9 @@ export function NavBar() {
           })}
 
           <button
-            onClick={() => navigate('/world')}
+            onClick={() => {
+              if (!previewMode) navigate('/world');
+            }}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-black border border-[#CFC6B7] hover:bg-[#EEE8DC]"
           >
             <Globe className="w-3 h-3" />
@@ -158,7 +164,9 @@ export function NavBar() {
             ) : isAuthenticated && user ? (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => navigate('/profile')}
+                    onClick={() => {
+                      if (!previewMode) navigate('/profile');
+                    }}
                   className="flex items-center gap-2 hover:opacity-70 transition-opacity"
                   title="My account"
                 >
@@ -185,7 +193,9 @@ export function NavBar() {
                   </div>
                 </button>
                 <button
-                  onClick={logout}
+                  onClick={() => {
+                    if (!previewMode) logout();
+                  }}
                   title="Sign out"
                   className="p-1.5 text-[#8B8376] hover:text-black transition-colors rounded-md hover:bg-[#EEE8DC]"
                 >
@@ -194,7 +204,9 @@ export function NavBar() {
               </div>
             ) : (
               <button
-                onClick={() => login()}
+                onClick={() => {
+                  if (!previewMode) login();
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase text-black border border-[#CFC6B7] bg-[#FFFCF5] hover:bg-[#EEE8DC] transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
@@ -217,8 +229,10 @@ export function NavBar() {
               <button
                 key={sub.id}
                 onClick={() => {
-                  navigate(sub.path);
-                  setActiveModuleId(null);
+                  if (!previewMode) {
+                    navigate(sub.path);
+                    setActiveModuleId(null);
+                  }
                 }}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 border ${
                   isSubActive
