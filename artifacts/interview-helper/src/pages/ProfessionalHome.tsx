@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   Bot,
@@ -6,48 +6,45 @@ import {
   CalendarDays,
   ChevronDown,
   Download,
-  ExternalLink,
   FileText,
   FolderKanban,
   Menu,
   Phone,
   ShieldCheck,
   Sparkles,
-  TerminalSquare,
   Users,
   X,
 } from "lucide-react";
 import { Link } from "wouter";
-import { apiFetch, apiUrl } from "@/lib/api-client";
 import { OrbitArtwork } from "@/components/OrbitArtwork";
 import "./ProfessionalHome.css";
 
 const paths = [
   {
     number: "01",
-    title: "Run the workspace",
+    title: "START WORK",
     description: "Keep customers, calls, files, and daily operations in one place.",
     href: "/business",
-    label: "Open business workspace",
+    label: "Open workspace",
     icon: BriefcaseBusiness,
     tone: "blue",
   },
   {
     number: "02",
-    title: "Meet Pablo",
+    title: "PABLO AI",
     description: "Start with a conversation and turn a vague next step into a plan.",
     href: "/pablo",
-    label: "Meet Pablo",
+    label: "Open Pablo AI",
     icon: Bot,
     tone: "mint",
   },
   {
     number: "03",
-    title: "Open the terminal",
-    description: "See the live command center for work, finance, agents, and systems.",
-    href: "/console",
-    label: "Open terminal",
-    icon: TerminalSquare,
+    title: "DESKTOP GAME",
+    description: "Watch the current gameplay and get the native SALARYMAN office client.",
+    href: "/desktop",
+    label: "Watch gameplay",
+    icon: Download,
     tone: "warm",
   },
 ] as const;
@@ -60,41 +57,8 @@ const features = [
   ["Knowledge & files", "One home for the work", FileText, "/console/vault"],
 ] as const;
 
-type DesktopPlatform = "windows" | "macos" | "linux" | "other";
-
-function detectDesktopPlatform(): DesktopPlatform {
-  const platform = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
-  if (platform.includes("win")) return "windows";
-  if (platform.includes("mac")) return "macos";
-  if (platform.includes("linux") && !platform.includes("android")) return "linux";
-  return "other";
-}
-
 export default function ProfessionalHome() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
-  const [desktopDownloadAllowed, setDesktopDownloadAllowed] = useState(false);
-  const [desktopPlatform, setDesktopPlatform] = useState<DesktopPlatform>("other");
-  const [availableDesktopPlatforms, setAvailableDesktopPlatforms] = useState<DesktopPlatform[]>([]);
-
-  useEffect(() => {
-    setDesktopPlatform(detectDesktopPlatform());
-    let cancelled = false;
-    apiFetch("/api/desktop/access")
-      .then(async (response) => {
-        if (!response.ok) return;
-        const result = await response.json() as { allowed?: boolean; availablePlatforms?: DesktopPlatform[] };
-        if (!cancelled) {
-          setDesktopDownloadAllowed(result.allowed === true);
-          setAvailableDesktopPlatforms(result.availablePlatforms ?? []);
-        }
-      })
-      .catch(() => {
-        // Anonymous visitors and non-staff users simply do not see the test build.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <main className="sm-home" id="top">
@@ -120,9 +84,9 @@ export default function ProfessionalHome() {
             </button>
             {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
           </div>
-          <Link href="/business" data-testid="link-web-workspace">Web workspace</Link>
-          <Link className="sm-pablo" href="/pablo" data-testid="link-meet-pablo">Meet Pablo <ExternalLink size={13} /></Link>
-           <Link className="sm-privacy-nav" href="/#privacy" data-testid="link-home-privacy">Privacy</Link>
+          <Link href="/business" data-testid="link-web-workspace">START WORK</Link>
+          <Link className="sm-pablo" href="/pablo" data-testid="link-meet-pablo">PABLO AI</Link>
+          <Link href="/desktop" data-testid="link-home-gameplay">GAMEPLAY / DOWNLOAD</Link>
         </nav>
 
         <div className="sm-mobile-menu">
@@ -151,19 +115,10 @@ export default function ProfessionalHome() {
              <Link className="sm-primary" href="/phone" data-testid="link-hero-workspace">
                Open CALLL HOME <ArrowRight size={15} />
             </Link>
+             <Link className="sm-secondary" href="/desktop" data-testid="link-hero-gameplay">
+               Watch gameplay / downloads <Download size={15} />
+             </Link>
           </div>
-          {desktopDownloadAllowed
-            && desktopPlatform !== "other"
-            && availableDesktopPlatforms.includes(desktopPlatform) && (
-            <a
-              className="sm-desktop-download"
-              href={apiUrl(`/api/desktop/download?platform=${desktopPlatform}`)}
-              download
-              data-testid="link-desktop-download"
-            >
-              <Download size={14} /> Download desktop test build <ArrowRight size={14} />
-            </a>
-          )}
         </div>
         <OrbitArtwork />
 
@@ -244,24 +199,17 @@ export default function ProfessionalHome() {
         </div>
       </section>
 
-      <section className="sm-privacy" id="privacy" aria-labelledby="privacy-title">
-        <div>
-          <div className="sm-kicker"><ShieldCheck size={13} /> Privacy in plain sight</div>
-          <h2 id="privacy-title">Your data. Your call.</h2>
-          <p>We do not sell personal information. See what we collect, why, and how to request deletion.</p>
-        </div>
-        <Link className="sm-privacy-link" href="/legal/privacy" data-testid="link-home-privacy-card">
-          Read privacy policy <ArrowRight size={14} />
-        </Link>
-      </section>
-
       <footer className="sm-footer">
-        <span>SALARYMAN / PICASSO AI</span>
-        <span>
-          <Link href="/pablo">Meet Pablo</Link>
-          <Link href="/#privacy">Privacy</Link>
+        <span>SALARYMAN / PICASSO AI LLC</span>
+        <nav aria-label="Legal and compliance">
+          <Link href="/legal">Legal</Link>
+          <Link href="/legal/terms">Terms</Link>
+          <Link href="/legal/privacy">Privacy</Link>
+          <Link href="/legal/refunds">Refunds</Link>
+          <Link href="/legal/restrictions">Restrictions</Link>
           <Link href="/legal/contact">Contact</Link>
-        </span>
+          <Link href="/sms-opt-in">SMS Terms &amp; Opt-In · salaryman.io/sms-opt-in</Link>
+        </nav>
       </footer>
     </main>
   );

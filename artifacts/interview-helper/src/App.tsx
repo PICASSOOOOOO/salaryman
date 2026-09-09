@@ -292,6 +292,7 @@ function AppShell() {
 
   const isRootRoute = pathname === "/";
   const isDeviceLinkRoute = pathname === "/device-link";
+  const isPabloRoute = pathname === "/pablo";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   // The browser product has one visual contract: cream/white surfaces and
   // black ink. The downloadable game owns the cyberpunk palette.
@@ -441,10 +442,10 @@ function AppShell() {
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && !isGameRoute && !showNavBar && !isRootRoute && !isDeviceLinkRoute && <AlphaWipeBanner />}
+      {!isEmbed && !isGameRoute && !showNavBar && !isDeviceLinkRoute && !isPabloRoute && <AlphaWipeBanner />}
       {showNavBar && (
         <div className="app-chrome">
-          {!isEmbed && <AlphaWipeBanner />}
+          {!isEmbed && !isPabloRoute && <AlphaWipeBanner />}
           <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />

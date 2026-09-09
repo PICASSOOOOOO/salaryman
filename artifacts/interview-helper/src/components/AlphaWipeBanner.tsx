@@ -27,9 +27,9 @@ export default function AlphaWipeBanner() {
   if (!visible) return null;
 
   return (
-    <div className="hidden sm:flex sticky top-0 z-[10000] w-full bg-amber-500/15 border-b border-amber-500/40 text-amber-100 px-4 py-2 items-center gap-3 text-xs sm:text-sm font-mono backdrop-blur-sm">
+    <div className="flex sticky top-0 z-[10000] w-full bg-amber-500/15 border-b border-amber-500/40 text-amber-100 px-3 py-2 items-center gap-2 text-[10px] sm:px-4 sm:gap-3 sm:text-sm font-mono backdrop-blur-sm">
       <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-300" />
-      <p className="flex-1 min-w-0 leading-snug truncate">
+      <p className="flex-1 min-w-0 leading-snug">
         <span className="font-bold tracking-wider text-amber-200">ALPHA —</span>{' '}
         Data may be wiped anytime; back up your work. Build <span className="text-amber-300">{version}</span>.
       </p>

@@ -3,7 +3,7 @@
   overflow: visible;
   touch-action: pan-y;
   color: #11110f;
-  background: #f4f0e7;
+  background: transparent;
   font-family: var(--font-sans);
 }
 
@@ -148,8 +148,21 @@
 
 .desktop-download-primary {
   color: #11110f;
-  background: #d7ff4f;
+  background: linear-gradient(135deg, #d7ff4f, #f0ff99);
+  background-size: 200% 200%;
+  animation: download-btn-pan 3s ease infinite alternate;
   box-shadow: 7px 7px 0 #11110f;
+}
+
+@keyframes download-btn-pan {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-download-primary {
+    animation: none;
+  }
 }
 
 .desktop-download-primary:hover {

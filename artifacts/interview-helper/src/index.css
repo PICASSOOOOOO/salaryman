@@ -503,10 +503,14 @@ header {
 /* Shared light mobile chrome. Keep every route on one stable header instead
    of letting each module invent its own dark, oversized toolbar. */
 .mobile-app-nav,
+.mobile-app-nav-top,
+.mobile-app-nav-bottom,
 .mobile-app-subnav {
   color: #102b20;
-  background: #fffaf0;
-  border-color: #cfe4d6;
+  background: rgba(250, 250, 247, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(207, 228, 214, 0.6);
 }
 
 .mobile-brand-row,
@@ -790,15 +794,17 @@ header {
 @media (min-width: 640px) {
   .desktop-app-nav {
     color: #172e43 !important;
-    background: #fff !important;
-    border-color: #d9e4ea !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-color: rgba(217, 228, 234, 0.6) !important;
   }
 
   .desktop-app-nav > div,
   .desktop-app-nav .bg-\[\#0a0a0b\],
   .desktop-app-nav .bg-\[\#0d0e12\] {
-    background: #fff !important;
-    border-color: #edf2f5 !important;
+    background: transparent !important;
+    border-color: rgba(237, 242, 245, 0.6) !important;
   }
 
   .desktop-app-nav .text-zinc-100,
@@ -916,7 +922,6 @@ body.workspace-light {
   --salary-signal: 11 107 58;
   background: #fffaf0;
   color: #111111;
-  background-image: none;
   height: auto;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -926,8 +931,90 @@ body.workspace-light {
   touch-action: pan-y;
 }
 
+body.workspace-light #root::before,
+body.workspace-light #root::after {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background-size: 100% 100%;
+}
+
+body.workspace-light #root::before {
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(167, 139, 250, 0.2) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(103, 232, 249, 0.18) 0%, transparent 55%),
+    radial-gradient(circle at 40% 60%, rgba(240, 171, 252, 0.18) 0%, transparent 50%);
+  animation: workspace-nebula-1 28s ease-in-out infinite alternate;
+}
+
+body.workspace-light #root::after {
+  background-image:
+    radial-gradient(circle at 75% 25%, rgba(240, 171, 252, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 20% 85%, rgba(167, 139, 250, 0.2) 0%, transparent 45%);
+  animation: workspace-nebula-2 35s ease-in-out infinite alternate;
+}
+
+@keyframes workspace-nebula-1 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(2%, 3%) scale(1.05) rotate(1deg); }
+  100% { transform: translate(-2%, 1%) scale(0.95) rotate(-1deg); }
+}
+
+@keyframes workspace-nebula-2 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(-3%, -2%) scale(1.02) rotate(-1deg); }
+  100% { transform: translate(1%, -4%) scale(1.06) rotate(1deg); }
+}
+
+.salaryman-active-tab {
+  background: linear-gradient(135deg, #00FF41, #38e860);
+  background-size: 200% 200%;
+  animation: bg-pan 3s ease infinite alternate;
+  color: black;
+  font-weight: bold;
+}
+
+.salaryman-active-icon {
+  color: #00FF41;
+  animation: pulse-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% { filter: drop-shadow(0 0 2px rgba(0,255,65,0.4)); transform: scale(1); }
+  100% { filter: drop-shadow(0 0 6px rgba(0,255,65,0.8)); transform: scale(1.05); }
+}
+
+@keyframes bg-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.workspace-light #root::before,
+  body.workspace-light #root::after {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  body.workspace-light #root::after {
+    display: none;
+  }
+
+  body.workspace-light #root::before {
+    inset: -8%;
+    animation-duration: 42s;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(167, 139, 250, 0.16) 0%, transparent 48%),
+      radial-gradient(circle at 85% 78%, rgba(0, 184, 92, 0.1) 0%, transparent 52%);
+  }
+}
+
 body.workspace-light #root {
-  background: #fffaf0;
+  background: transparent !important;
   color: #111111;
   height: auto;
   min-height: 100dvh;
@@ -972,7 +1059,7 @@ body.workspace-light {
 }
 
 body.workspace-light #root {
-  background: #FAFAF7 !important;
+  background: transparent !important;
   color: #000000 !important;
 }
 
@@ -982,7 +1069,9 @@ body.workspace-light #root {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: #FAFAF7;
+    background: rgba(250, 250, 247, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
   .desktop-app-nav {
     display: flex;
@@ -1042,16 +1131,18 @@ body.workspace-light .sm-orbit-art {
 body.workspace-light main,
 body.workspace-light [class~="min-h-screen"],
 body.workspace-light [class~="min-h-\[100dvh\]"] {
-  background-color: #fffaf0 !important;
+  background-color: transparent !important;
   background-image: none !important;
 }
 
 body.workspace-light .desktop-download {
-  background: #fff;
+  background: transparent !important;
 }
 
 body.workspace-light .app-chrome {
-  background: #fffaf0;
+  background: rgba(250, 250, 247, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 body.workspace-light .app-control {
@@ -1283,12 +1374,16 @@ body.workspace-light .desktop-download-footer a:hover {
 }
 
 body.workspace-light .desktop-download-primary {
-  background: #187c4e;
+  background: linear-gradient(135deg, #187c4e, #33d18a);
+  background-size: 200% 200%;
+  animation: download-btn-pan 3s ease infinite alternate;
   box-shadow: 0 12px 30px rgba(24, 124, 78, .16);
 }
 
 body.workspace-light .desktop-download-primary:hover {
-  background: #12623d;
+  background: linear-gradient(135deg, #12623d, #259e66);
+  background-size: 200% 200%;
+  animation: download-btn-pan 3s ease infinite alternate;
 }
 
 /* Matrix green is a signal color on the web, not a dark theme. */

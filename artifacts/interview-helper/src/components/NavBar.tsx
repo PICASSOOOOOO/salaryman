@@ -106,7 +106,7 @@ export function NavBar() {
   };
 
   return (
-    <header className="desktop-app-nav flex flex-col bg-[#FAFAF7] border-b border-[#E5E5E5] shrink-0 z-50">
+    <header className="desktop-app-nav flex flex-col border-b border-[#E5E5E5] shrink-0 z-50">
       {/* Primary Bar */}
       <div className="flex items-center justify-between px-4 h-12">
         <div className="flex items-center gap-6">
@@ -133,7 +133,7 @@ export function NavBar() {
               const Icon = tab.icon;
               const isDesktop = tab.id === 'office';
               const activeCls = isDesktop
-                ? 'bg-[#00FF41] text-black font-bold'
+                ? 'salaryman-active-tab'
                 : 'bg-black text-white font-bold';
               const idleCls = 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium';
 
@@ -240,7 +240,7 @@ export function NavBar() {
 
       {/* Secondary Bar (Subnav) */}
       {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname) && (
-        <div className="flex items-center px-4 h-10 bg-[#FAFAFA] border-t border-[#E5E5E5] overflow-x-auto hide-scrollbar">
+        <div className="flex items-center px-4 h-10 border-t border-[#E5E5E5] overflow-x-auto hide-scrollbar">
           <div className="flex items-center gap-1 font-medium">
             {currentModule.subs.map(sub => {
               const isSubActive = pathname === sub.path || pathname.startsWith(sub.path + '/');
@@ -253,7 +253,7 @@ export function NavBar() {
                     isSubActive ? 'bg-white shadow-sm border border-gray-200 text-black font-bold' : 'text-gray-500 hover:text-black hover:bg-gray-100'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isSubActive ? 'text-[#00FF41]' : ''}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isSubActive ? 'salaryman-active-icon' : ''}`} />
                   {getSubLabel(sub)}
                 </button>
               );

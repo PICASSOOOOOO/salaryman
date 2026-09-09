@@ -55,7 +55,7 @@ export function MobileModuleNav() {
   return (
     <>
       {/* Top Bar for Context (Logo, Back, Account) */}
-      <div className="mobile-app-nav-top fixed top-0 left-0 right-0 h-12 bg-[#FAFAF7] border-b border-[#E5E5E5] flex items-center justify-between px-3 z-50">
+      <div className="mobile-app-nav-top fixed top-0 left-0 right-0 h-12 border-b border-[#E5E5E5] flex items-center justify-between px-3 z-50">
         <div className="flex items-center gap-3">
           <button onClick={goBack} className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md">
             <ArrowLeft className="w-5 h-5" />
@@ -92,7 +92,7 @@ export function MobileModuleNav() {
       </div>
 
       {/* Bottom Bar for Primary Navigation */}
-      <div className="mobile-app-nav-bottom fixed bottom-0 left-0 right-0 bg-[#FAFAF7] border-t border-[#E5E5E5] pb-[env(safe-area-inset-bottom)] z-50">
+      <div className="mobile-app-nav-bottom fixed bottom-0 left-0 right-0 border-t border-[#E5E5E5] pb-[env(safe-area-inset-bottom)] z-50">
         <div className="flex items-center justify-around px-1 h-14">
           {visibleTabs.map(tab => {
             const active = isAppNavItemActive(tab, pathname);
@@ -106,7 +106,7 @@ export function MobileModuleNav() {
                   navigate(tab.path);
                 }}
                 className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-                  active ? (isDesktop ? 'text-[#00FF41]' : 'text-black') : 'text-gray-400'
+                  active ? (isDesktop ? 'salaryman-active-icon' : 'text-black') : 'text-gray-400'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -211,7 +211,7 @@ export function MobileSubNav() {
   if (!currentModule || !shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname)) return null;
 
   return (
-    <div className="mobile-app-subnav fixed top-12 left-0 right-0 h-10 bg-[#FAFAFA] border-b border-[#E5E5E5] z-40 overflow-x-auto hide-scrollbar flex items-center px-2">
+    <div className="mobile-app-subnav fixed top-12 left-0 right-0 h-10 border-b border-[#E5E5E5] z-40 overflow-x-auto hide-scrollbar flex items-center px-2">
       <div className="flex items-center gap-1">
         {currentModule.subs.map(sub => {
           const isActive = pathname === sub.path || pathname.startsWith(sub.path + '/');
@@ -225,7 +225,7 @@ export function MobileSubNav() {
                 isActive ? 'bg-white border border-gray-200 text-black shadow-sm' : 'text-gray-500 hover:text-black'
               }`}
             >
-              <Icon className={`w-3 h-3 ${isActive ? 'text-[#00FF41]' : ''}`} />
+              <Icon className={`w-3 h-3 ${isActive ? 'salaryman-active-icon' : ''}`} />
               {label}
             </button>
           );
