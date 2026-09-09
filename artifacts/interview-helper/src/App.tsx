@@ -29,6 +29,7 @@ import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
+import { FeedbackLauncher } from "@/components/FeedbackLauncher";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
@@ -461,6 +462,7 @@ function AppShell() {
           viewport; ordinary fullscreen routes still receive it. */}
         {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
       </Suspense>
+      {showNavBar && !isEmbed && <FeedbackLauncher />}
       {/* Primary surfaces are mounted only while active. Keeping both large
           trees hidden behind every office/paid-feature route retained their
           state, effects, and DOM for the entire session. Route state already

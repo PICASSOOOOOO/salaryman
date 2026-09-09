@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, ChevronDown, ArrowLeft, WalletCards, X, Languages, Coins, Menu, MoreHorizontal, Settings, Briefcase } from 'lucide-react';
+import { User, ChevronDown, ArrowLeft, WalletCards, X, Languages, Coins, Menu, MoreHorizontal, Settings, Briefcase, Download } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,7 +15,6 @@ import { NotificationBell } from './NotificationBell';
 import { apiFetch } from '@/lib/api-client';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
-import { EconomyToggle } from './EconomyToggle';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -64,7 +63,15 @@ export function MobileModuleNav() {
           <div className="font-bold text-xs uppercase tracking-widest text-black">SALARYMAN</div>
         </div>
         <div className="flex items-center gap-2">
-          <EconomyToggle isAuthenticated={isAuthenticated} />
+          <button
+            type="button"
+            onClick={() => navigate('/desktop')}
+            className="flex h-8 items-center gap-1 border border-black bg-black px-2 text-[9px] font-bold uppercase tracking-wider text-[#FAFAF7]"
+            aria-label="Download SALARYMAN desktop app"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download app
+          </button>
           {isAuthenticated && <NotificationBell />}
           {isAuthenticated ? (
             <button onClick={() => setSummaryOpen(true)} className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 overflow-hidden">
