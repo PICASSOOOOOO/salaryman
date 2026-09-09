@@ -80,7 +80,7 @@ export default function ProfessionalHome() {
               aria-expanded={featuresOpen}
               data-testid="button-features-desktop"
             >
-              Features <ChevronDown size={14} />
+              FEATURES <ChevronDown size={14} />
             </button>
             {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
           </div>
@@ -97,7 +97,7 @@ export default function ProfessionalHome() {
             aria-expanded={featuresOpen}
             data-testid="button-features-mobile"
           >
-            {featuresOpen ? <X size={16} /> : <Menu size={16} />} Features
+            {featuresOpen ? <X size={16} /> : <Menu size={16} />} FEATURES
           </button>
           {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
         </div>

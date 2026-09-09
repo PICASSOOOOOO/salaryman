@@ -47,13 +47,24 @@
 .sm-brand > span { min-width: 0; }
 .sm-brand strong { display: block; letter-spacing: .115em; font-size: 12px; font-family: "Space Grotesk", sans-serif; }
 .sm-brand small { color: var(--muted); font-size: 10px; letter-spacing: .01em; }
-.sm-navlinks { margin-left: auto; display: flex; align-items: center; gap: 20px; color: #526b7c; font-size: 13px; }
-.sm-navlinks a { transition: color 180ms ease, transform 180ms ease; }
+.sm-navlinks {
+  width: min(100%, 600px);
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  color: #526b7c;
+  font: 600 11px "Space Grotesk", sans-serif;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.sm-navlinks > * { justify-self: center; }
+.sm-navlinks a { transition: color 180ms ease, transform 180ms ease; white-space: nowrap; }
 .sm-navlinks a:hover, .sm-pablo:hover { color: var(--accent); }
 .sm-feature-wrap { position: relative; }
 .sm-feature-btn, .sm-menu-btn {
   border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer;
-  display: flex; align-items: center; gap: 7px; padding: 8px 0;
+  display: flex; align-items: center; gap: 7px; padding: 8px 0; text-transform: uppercase;
 }
 .sm-feature-btn svg { transition: transform 180ms ease; }
 .sm-feature-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
@@ -66,9 +77,9 @@
 .sm-menu a { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; }
 .sm-menu a:hover { background: var(--sky); }
 .sm-menu svg { color: var(--accent); }
-.sm-menu span { font-size: 13px; font-weight: 700; }
+.sm-menu span { font-size: 13px; font-weight: 700; text-transform: uppercase; }
 .sm-menu small { color: var(--muted); font-size: 10px; line-height: 1.35; }
-.sm-pablo { margin-left: 7px; color: var(--muted); border-left: 1px solid var(--line); padding-left: 22px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.sm-pablo { color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
 .sm-mobile-menu { display: none; }
 
 .sm-hero {
@@ -202,6 +213,7 @@
 @keyframes sm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
 @media (max-width: 980px) {
+  .sm-navlinks { width: 520px; font-size: 11px; }
   .sm-hero { grid-template-columns: 1fr; gap: 56px; padding-top: 64px; }.sm-hero-copy { max-width: 660px; }.sm-hero-stage, .sm-orbit-art { max-width: 740px; width: 100%; }.sm-story-layout { grid-template-columns: 1fr; gap: 52px; }
 }
 @media (max-width: 700px) {
