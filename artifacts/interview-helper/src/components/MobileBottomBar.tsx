@@ -55,7 +55,7 @@ export function MobileModuleNav() {
   return (
     <>
       {/* Top Bar for Context (Logo, Back, Account) */}
-      <div className="mobile-app-nav-top fixed top-0 left-0 right-0 h-12 border-b border-[#E5E5E5] flex items-center justify-between px-3 z-50">
+      <div className="mobile-app-nav-top fixed top-0 left-0 right-0 h-14 border-b border-[#E5E5E5] flex items-center justify-between px-3 z-50">
         <div className="flex items-center gap-3">
           <button onClick={goBack} className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md">
             <ArrowLeft className="w-5 h-5" />
@@ -127,7 +127,7 @@ export function MobileModuleNav() {
             }`}
           >
             <MoreHorizontal className="w-5 h-5" />
-            <span className="text-[8px] font-bold uppercase tracking-wider">MORE</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider">FEATURES</span>
           </button>
         </div>
       </div>
@@ -144,7 +144,7 @@ export function MobileModuleNav() {
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">More Options</span>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Features</span>
               <button onClick={() => setDropdownOpen(false)} className="p-2"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="grid grid-cols-2 gap-2">

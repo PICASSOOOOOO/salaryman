@@ -27,7 +27,7 @@ export default function AlphaWipeBanner() {
   if (!visible) return null;
 
   return (
-    <div className="relative z-[10000] flex min-h-11 w-full items-center gap-2 border-b border-[#b58500] bg-[#fff1ad] px-3 py-2 text-[11px] font-mono font-bold text-black sm:min-h-12 sm:gap-3 sm:px-4 sm:text-sm">
+    <div className="alpha-wipe-banner relative z-[10000] flex min-h-[72px] w-full items-center gap-2 border-b border-[#b58500] bg-[#fff1ad] px-3 py-2 text-[11px] font-mono font-bold text-black sm:min-h-12 sm:gap-3 sm:px-4 sm:text-sm">
       <AlertTriangle className="w-4 h-4 flex-shrink-0 text-[#8a6200]" />
       <p className="flex-1 min-w-0 leading-snug">
         <span className="font-black tracking-wider">ALPHA —</span>{' '}

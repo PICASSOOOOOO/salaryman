@@ -1084,17 +1084,24 @@ body.workspace-light #root {
 /* Adjust Chrome for Mobile */
 @media (max-width: 639px) {
   .app-chrome {
-    display: block; /* No layout changes, elements are fixed */
+    display: block;
+    position: static;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   .desktop-app-nav {
     display: none !important;
   }
   body.workspace-light #root {
-    padding-top: 48px;
+    padding-top: 56px;
     padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
+  body.workspace-light:has(.alpha-wipe-banner) #root {
+    padding-top: 0;
+  }
   body.workspace-light.has-subnav #root {
-    padding-top: 88px; /* 48px top + 40px subnav */
+    padding-top: 96px; /* 56px top + 40px subnav */
   }
   .mobile-app-nav-top, .mobile-app-nav-bottom {
     display: flex;

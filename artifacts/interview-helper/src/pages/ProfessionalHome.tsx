@@ -112,8 +112,8 @@ export default function ProfessionalHome() {
              Calls, customers, files, and daily operations in one clear workspace.
           </p>
           <div className="sm-actions">
-             <Link className="sm-primary" href="/phone" data-testid="link-hero-workspace">
-               Open CALLL HOME <ArrowRight size={15} />
+             <Link className="sm-primary" href="/business" data-testid="link-hero-workspace">
+               START WORK <ArrowRight size={15} />
             </Link>
              <Link className="sm-secondary" href="/desktop" data-testid="link-hero-gameplay">
                Desktop promo / downloads <Download size={15} />

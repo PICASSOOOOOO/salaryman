@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Download, Laptop, X } from "lucide-react";
+import { ArrowRight, Bot, BriefcaseBusiness, CircleDollarSign, Download, FileText, Laptop, Phone, Settings, Users, X } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import "./desktop-download.css";
@@ -39,6 +39,17 @@ const platforms = [
     tone: "sun",
     archiveName: "salaryman-office-linux-x86_64.tar.gz",
   },
+] as const;
+
+const desktopFeatures = [
+  ["PABLO PRIME / PABLO AI", "Plan, decide, and move work forward with one assistant.", Bot, "/pablo"],
+  ["CALLL HOME", "Calls, shared numbers, routing, and remote conversations.", Phone, "/phone"],
+  ["CRM & SALES", "Keep customers, leads, and every relationship moving.", Users, "/business/contacts"],
+  ["AGENTS", "Put repeatable work into motion with automation.", Bot, "/bots"],
+  ["BUSINESS", "Run daily operations, teams, and company workflows.", BriefcaseBusiness, "/business"],
+  ["KNOWLEDGE", "Keep working files and company context in one place.", FileText, "/console/vault"],
+  ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/economy"],
+  ["SETTINGS", "Control identity, devices, audio, and desktop preferences.", Settings, "/settings"],
 ] as const;
 
 type AvailablePlatform = Exclude<DesktopPlatform, "other">;
@@ -93,18 +104,6 @@ export default function DesktopDownload() {
 
   return (
     <main className="desktop-download">
-      <header className="desktop-download-topbar">
-        <Link href="/" className="desktop-download-brand" aria-label="SALARYMAN home">
-          <img className="desktop-download-mark" src={salarymanLogoHref} alt="" />
-          <span>SALARYMAN</span>
-        </Link>
-        <nav className="desktop-download-nav" aria-label="Desktop client navigation">
-          <button type="button" onClick={() => setDownloadsOpen(true)}>DOWNLOADS</button>
-          <Link href="/phone">CALLL HOME</Link>
-          <Link href="/settings">SETTINGS</Link>
-        </nav>
-      </header>
-
       <section className="desktop-download-hero" id="client">
         <div className="desktop-download-hero-copy">
           <p className="desktop-download-eyebrow">NATIVE 2.5D OFFICE / WINDOWS · MACOS · LINUX</p>
@@ -210,6 +209,25 @@ export default function DesktopDownload() {
             <p>Share an interactive office with remote teammates, communicate in context, and experience the company as a place—not a stack of pages.</p>
             <button type="button" onClick={() => setDownloadsOpen(true)}>CHOOSE YOUR BUILD <ArrowRight size={14} aria-hidden /></button>
           </article>
+        </div>
+      </section>
+
+      <section className="desktop-download-features" aria-labelledby="desktop-features-title">
+        <div className="desktop-download-section-heading">
+          <p className="desktop-download-eyebrow">THE WHOLE SALARYMAN SYSTEM</p>
+          <h2 id="desktop-features-title">Every main feature.<br />One connected company.</h2>
+          <p>Start in the browser, continue through the interactive desktop office, and keep the same business systems within reach.</p>
+        </div>
+        <div className="desktop-download-feature-grid">
+          {desktopFeatures.map(([title, description, Icon, href], index) => (
+            <Link href={href} className="desktop-download-feature" key={title}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <Icon size={22} aria-hidden />
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <b>OPEN <ArrowRight size={13} aria-hidden /></b>
+            </Link>
+          ))}
         </div>
       </section>
 
