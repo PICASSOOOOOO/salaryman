@@ -1,16 +1,16 @@
 {
   "world": {
-    "width": 10000,
-    "height": 10000
+    "width": 1000000,
+    "height": 1000000
   },
   "rooms": [
     {
       "id": "lobby",
       "label": "TOWER LOBBY",
-      "bounds": [700, 1000, 2200, 2400],
+      "bounds": [0, 0, 1000000, 1000000],
       "accent": [27, 112, 110],
       "material": "lobby_floor",
-      "spawn": [1800, 2100]
+      "spawn": [500000, 500000]
     },
     {
       "id": "recreation",

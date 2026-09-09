@@ -1382,3 +1382,32 @@ uri = "file://screenshots/pygame-layered-square-office.png"
 type = "image"
 title = "Layered square office shell"
 description = "Verified current Pygame frame with square tiles, orthogonal wall depth, columns, partitions, ceiling-light zones, workstations, and no diagonal geometry."
+logical_id = "8997a27f-ccd5-4cd2-83cc-b9699466d72c"
+
+[[outputs]]
+id = "HizRxx3XJPtkvgTsJjxjV"
+uri = "file://screenshots/pygame-10k-floor-center.png"
+type = "image"
+title = "10,000 × 10,000 floor — center view"
+description = "A verified center-camera render of the world-anchored square floor. The player can pan across the larger floor while architecture and interactive objects retain fixed world positions."
+logical_id = "21bc58bb-3fd3-4308-81ba-c65f595da64c"
+content_hash = "sha256:06720f5f152345815e065ee034246312b102072979109fc76082a29aa2f2205b"
+size = 32314
+mtime_ms = 1788958968273
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/21bc58bb-3fd3-4308-81ba-c65f595da64c/5ff09fe8-ad10-4668-a4a6-4d2d7e3a8469"
+storage_version_token = "1788958994773233"
+content_type = "image/png"
+
+[[outputs]]
+id = "DgnQvBL8l1h4XeNsYmWu0"
+uri = "file://screenshots/pygame-million-floor-commons.png"
+type = "image"
+title = "Solar-punk million-pixel floor"
+description = "Verified center commons on a 1,000,000 × 1,000,000 world floor, with world-anchored square tiles, timber paths, productive gardens, water infrastructure, and orthogonal architecture."
+logical_id = "31e46043-df2c-4167-8f6f-fb5bde53a2bb"
+content_hash = "sha256:6767e916902990be9a18f1adb5b76580735d691f8bdd9eb9820ccbd4ffc732e4"
+size = 32442
+mtime_ms = 1788959079221
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/31e46043-df2c-4167-8f6f-fb5bde53a2bb/f1e7225f-a076-4965-8013-297d319781ab"
+storage_version_token = "1788959105995701"
+content_type = "image/png"
