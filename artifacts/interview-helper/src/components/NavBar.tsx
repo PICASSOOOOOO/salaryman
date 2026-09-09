@@ -59,8 +59,8 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
             className="h-7 w-7 rounded-md"
           />
           <span className="font-mono text-sm tracking-[0.2em] text-black">SALARYMAN</span>
-          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.16em] text-black">
-            ALPHA
+          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] text-black">
+            ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'DEV'}
           </span>
         </button>
 

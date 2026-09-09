@@ -427,27 +427,6 @@ function AppShell() {
     };
   }, [isLightWorkspace]);
 
-  const browserPathname = stripBase(window.location.pathname).replace(/\/+$/, "") || "/";
-  if (
-    import.meta.env.DEV &&
-    (browserPathname === "/" || browserPathname === "/menu-preview")
-  ) {
-    return (
-      <main className="min-h-[100dvh] bg-[#F4EFE5] text-black">
-        <NavBar previewMode />
-        <section className="mx-auto max-w-5xl px-4 py-10">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#6C665C]">
-            Historical navigation preview
-          </p>
-          <h1 className="mt-3 text-2xl font-semibold">Recovered SALARYMAN menu</h1>
-          <p className="mt-2 max-w-xl text-sm text-[#5F594F]">
-            The Menu dropdown contains the workspace sections. Preview links are disabled.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
   // Hold protected paths behind a loading screen until auth resolves (see
   // holdForAuth above) so a logged-out deep link can never flash the page.
   if (holdForAuth || holdForOnboarding) return <LoadingFallback />;
