@@ -1361,3 +1361,24 @@ mtime_ms = 1788934017128
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/42bcbab8-8be9-4408-83e0-ed3049bf11ee/fe46ce83-cb82-4dd3-b230-7dc58a797d23"
 storage_version_token = "1788934039551220"
 content_type = "image/png"
+
+[[outputs]]
+id = "bVOzIa87a7OIOqkYu5YpT"
+uri = "file://screenshots/pygame-square-office-final.png"
+type = "image"
+title = "Square top-down office"
+description = "Verified Pygame client frame with straight orthogonal camera, square carpet tiles, rectangular work zone, and properly scaled office workstations."
+logical_id = "6128dbc4-53a2-4ac4-8188-481d2c2ac5c6"
+content_hash = "sha256:8683d382f3c6b35d14eb2c7e25227683177c6d012a21b7a8fdb9448c9ef53122"
+size = 36470
+mtime_ms = 1788951470441
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6128dbc4-53a2-4ac4-8188-481d2c2ac5c6/9051728d-54ca-4923-bb39-808614e3b1d7"
+storage_version_token = "1788951498283551"
+content_type = "image/png"
+
+[[outputs]]
+id = "2vO46JTNfBIY1n_HMtXE0"
+uri = "file://screenshots/pygame-layered-square-office.png"
+type = "image"
+title = "Layered square office shell"
+description = "Verified current Pygame frame with square tiles, orthogonal wall depth, columns, partitions, ceiling-light zones, workstations, and no diagonal geometry."
