@@ -1453,3 +1453,17 @@ mtime_ms = 1788959764257
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6295f835-692f-4aa8-b3d2-661ae17fdf93/1a00b6cc-2b68-4b3f-8a4d-107f80f5ba2b"
 storage_version_token = "1788959777425192"
 content_type = "image/png"
+
+[[outputs]]
+id = "SJ6A-4o-UG6fwEkRlY3sU"
+uri = "file://screenshots/pygame-key-elevator-base.png"
+type = "image"
+title = "1,000 × 1,000 key elevator"
+description = "Verified Floor 1 base showing the exact 1,000 × 1,000 elevator car inside its lobby, aligned with the hallway approach and backed by the 67-floor destination program."
+logical_id = "63c4e434-d5fe-4f55-95a4-8415166421d2"
+content_hash = "sha256:2f824e3d75295846e619026c18a90c0ef1b10d2cbc237f65f9c9609b9c82da72"
+size = 28838
+mtime_ms = 1788959949649
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/63c4e434-d5fe-4f55-95a4-8415166421d2/a04e1991-a19e-4c3f-9c02-2f11391af8c4"
+storage_version_token = "1788960006342823"
+content_type = "image/png"

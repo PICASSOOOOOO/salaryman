@@ -346,6 +346,18 @@ class SolarPunkRenderer:
         pygame.draw.rect(self.screen, (145, 153, 149), elevator_lobby)
         pygame.draw.rect(self.screen, (92, 104, 100), elevator_lobby, max(1, int(20 * scale)))
 
+        elevator = world_rect(tuple(base_layout["elevator"]["bounds"]))
+        pygame.draw.rect(self.screen, (48, 63, 62), elevator)
+        pygame.draw.rect(self.screen, (202, 211, 202), elevator, max(1, int(18 * scale)))
+        door_split = elevator.centerx
+        pygame.draw.line(
+            self.screen,
+            (117, 137, 130),
+            (door_split, elevator.top),
+            (door_split, elevator.bottom),
+            max(1, int(8 * scale)),
+        )
+
         for office in base_layout["offices"]:
             entrance_x, entrance_y = office["entrance"]
             entrance = world_rect((entrance_x - 300, entrance_y - 300, 600, 600))
