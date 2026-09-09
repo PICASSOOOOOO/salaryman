@@ -1439,3 +1439,17 @@ mtime_ms = 1788959571484
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f91e9393-a646-4548-b08f-c2c0d61ec1cf/2f32a1fd-4d76-4d7e-9d0e-c2d229c84176"
 storage_version_token = "1788959590283364"
 content_type = "image/png"
+
+[[outputs]]
+id = "w3DFT3-x-7OyRSxs_T-8W"
+uri = "file://screenshots/pygame-subtle-patterned-rugs.png"
+type = "image"
+title = "Subtle patterned Persian rugs"
+description = "Verified blended-concrete floor with restrained Persian-inspired rug patterns, muted medallions, and low-contrast woven accents."
+logical_id = "6295f835-692f-4aa8-b3d2-661ae17fdf93"
+content_hash = "sha256:e37d589d52f70666b8de45dcc415154a64648de9e03e915417074b1c27155f48"
+size = 30010
+mtime_ms = 1788959764257
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6295f835-692f-4aa8-b3d2-661ae17fdf93/1a00b6cc-2b68-4b3f-8a4d-107f80f5ba2b"
+storage_version_token = "1788959777425192"
+content_type = "image/png"

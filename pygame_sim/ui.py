@@ -262,33 +262,9 @@ class SolarPunkRenderer:
     ) -> None:
         """Draw a massive world-anchored floor through a straight top-down camera."""
         world_x, world_y, world_w, world_h = world_bounds
-        pygame.draw.rect(self.screen, (31, 63, 57), viewport)
-        tile_world_size = 400
-        palette = ((174, 179, 174), (181, 185, 180), (166, 172, 168))
+        pygame.draw.rect(self.screen, (174, 179, 175), viewport)
         old_clip = self.screen.get_clip()
         self.screen.set_clip(viewport)
-        first_col = max(0, int((camera_x - world_x) // tile_world_size))
-        first_row = max(0, int((camera_y - world_y) // tile_world_size))
-        last_col = min((world_w + tile_world_size - 1) // tile_world_size,
-                       int((camera_x + viewport.width / scale - world_x) // tile_world_size) + 2)
-        last_row = min((world_h + tile_world_size - 1) // tile_world_size,
-                       int((camera_y + viewport.height / scale - world_y) // tile_world_size) + 2)
-        tile_size = max(1, int(tile_world_size * scale))
-        for row in range(first_row, last_row):
-            y = viewport.y + int((world_y + row * tile_world_size - camera_y) * scale)
-            for col in range(first_col, last_col):
-                x = viewport.x + int((world_x + col * tile_world_size - camera_x) * scale)
-                color = palette[(row + col) % len(palette)]
-                tile = pygame.Rect(x, y, tile_size, tile_size)
-                pygame.draw.rect(self.screen, color, tile)
-                pygame.draw.rect(self.screen, (139, 146, 142), tile, 1)
-                pygame.draw.line(
-                    self.screen,
-                    (202, 206, 201),
-                    (tile.left + 2, tile.top + 2),
-                    (tile.right - 3, tile.top + 2),
-                    1,
-                )
 
         def world_rect(rect: tuple[int, int, int, int]) -> pygame.Rect:
             x, y, width, height = rect
@@ -326,12 +302,33 @@ class SolarPunkRenderer:
             pygame.draw.rect(self.screen, (28, 58, 77), border_2)
             center = border_2.inflate(-max(2, int(150 * scale)), -max(2, int(150 * scale)))
             pygame.draw.rect(self.screen, (177, 57, 52), center)
-            motif_w = max(3, int(min(320, rug_data[2] // 4) * scale))
-            motif_h = max(3, int(min(320, rug_data[3] // 4) * scale))
+            motif_w = max(5, int(min(180, rug_data[2] // 5) * scale))
+            motif_h = max(5, int(min(180, rug_data[3] // 5) * scale))
             motif = pygame.Rect(0, 0, motif_w, motif_h)
             motif.center = rug.center
-            pygame.draw.rect(self.screen, (232, 207, 142), motif)
-            pygame.draw.rect(self.screen, (28, 58, 77), motif, 1)
+            pygame.draw.rect(self.screen, (187, 126, 72), motif)
+            pygame.draw.rect(self.screen, (47, 67, 76), motif.inflate(-2, -2))
+
+            # Quiet woven repeats: low-contrast blocks and border ticks rather
+            # than loud geometric emblems.
+            accent = (157, 91, 68)
+            tick = max(2, int(22 * scale))
+            for x_ratio in (0.25, 0.75):
+                for y_ratio in (0.32, 0.68):
+                    x = border_2.left + int(border_2.width * x_ratio)
+                    y = border_2.top + int(border_2.height * y_ratio)
+                    pygame.draw.rect(
+                        self.screen,
+                        accent,
+                        pygame.Rect(x - tick, y - tick, tick * 2, tick * 2),
+                    )
+            pygame.draw.line(
+                self.screen,
+                (116, 73, 66),
+                (center.left + tick, center.centery),
+                (center.right - tick, center.centery),
+                1,
+            )
 
         # Persian-inspired runners soften the concrete circulation network.
         # They are finite floor objects, not a texture repeated across the
