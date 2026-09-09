@@ -1,4 +1,4 @@
-import { LogIn, LogOut, ChevronDown, ExternalLink, ArrowLeft, Search, Menu } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, FlaskConical, ArrowLeft } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
@@ -11,11 +11,15 @@ import { useOrg } from '../hooks/use-org';
 import { useFeatureLabel } from '../hooks/use-feature-label';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
+import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
+import { HummingbirdNavButton } from './HummingbirdNavButton';
+import { isTutorialDone } from '@/lib/tutorial-progress';
+import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
-import { TowerLocationBadge } from './TowerLocationBadge';
 import { useTranslation } from 'react-i18next';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import {
@@ -33,9 +37,9 @@ import {
 export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
-  const { config } = useAppMode();
+  const { config, toggleMode, isDiscreet } = useAppMode();
   const streamerMode = useStreamerMode();
-  const { isOwner } = usePlan();
+  const { isPro, isOwner, features, loading: planLoading } = usePlan();
   const { isApprovedTester, isApprovedDev, isAdmin } = useAlpha();
   const roleBadge = isAdmin || isApprovedDev
     ? { label: 'ADMIN', cls: 'bg-black text-[#00FF41]' }
@@ -45,14 +49,24 @@ export function NavBar() {
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
   const { label: featureLabel } = useFeatureLabel();
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const [morePos, setMorePos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+  const [showFeedback, setShowFeedback] = useState(false);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
+  void planLoading;
   const visiblePrimary = PRIMARY_NAV_ITEMS;
   const canAdmin = isOwner || isApprovedDev || isApprovedTester;
   const moreItems = MORE_NAV_ITEMS.filter(item => !item.staffOnly || canAdmin);
@@ -101,84 +115,115 @@ export function NavBar() {
 
   const getSubLabel = (sub: typeof MODULES[0]['subs'][0]) => {
     if (sub.id === 'classroom') return featureLabel.toUpperCase();
-    return t(`labels.${sub.id}`, sub.boomerLabel);
+    if (boomerMode) return t(`labels.${sub.id}`, sub.boomerLabel);
+    return t(`codenames.${sub.id}`, sub.codename);
   };
 
   return (
-    <header className="desktop-app-nav flex flex-col border-b border-[#D8D1C3] bg-[#FAF7EF] shrink-0 z-50">
-      {/* Old-version identity strip, translated to the cream browser system. */}
-      <div className="flex items-center justify-between px-4 h-12">
-        <div className="flex items-center gap-6">
+    <header className="app-header desktop-app-nav shrink-0 bg-[#FAF7EF] border-b border-[#D8D1C3]">
+      <div className="flex items-start justify-between px-4 py-1.5 border-b border-[#E5DED1] bg-[#FFFCF5]">
+        <div className="flex flex-col gap-1">
           <div
-            className="flex items-center gap-2 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group/logo"
             onClick={() => navigate(getAppHomePath(isAuthenticated))}
           >
-            <div className="w-6 h-6 bg-black text-[#FAFAF7] flex items-center justify-center rounded">
-              <PicassoLogo size={16} gap={1} />
+            <div className="w-7 h-7 rounded-md flex items-center justify-center bg-black text-[#FAF7EF]">
+              <PicassoLogo size={22} gap={2} />
             </div>
-            <span className="font-bold text-sm tracking-tight text-black">{config.name.toUpperCase()}</span>
+            <div>
+              <h1 className="font-mono text-sm font-normal text-black tracking-widest leading-none">
+                {config.name}
+              </h1>
+              <p className="font-mono text-[11px] text-[#777064] tracking-widest leading-none mt-0.5">
+                {config.sub.replace(/\s*·\s*ALPHA.*$/i, '')}
+              </p>
+            </div>
+            <button
+              onClick={event => { event.stopPropagation(); toggleMode(); }}
+              title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
+              className="p-1 text-[#A59D90] hover:text-black transition-colors"
+            >
+              {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            </button>
           </div>
-          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#6C665C]">
-            <span>Business operating system</span>
-            <span className="text-[#B9B1A2]">◆</span>
-            <button onClick={() => navigate('/pledge')} className="hover:text-black">Pledge store</button>
-            <button onClick={() => navigate('/feedback')} className="hover:text-black">Feedback</button>
+          <div className="flex items-center gap-2.5">
+            <span className="font-mono text-xs text-[#777064] tracking-widest uppercase">
+              {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
+            </span>
+            <span className="text-[#B9B1A2] text-xs">◆</span>
+            <span className="font-mono text-[11px] text-black border border-[#CFC6B7] bg-[#F4EFE5] px-2 py-0.5 rounded tracking-widest uppercase">
+              ALPHA {__BUILD_VERSION__}
+            </span>
+            <button
+              onClick={() => navigate('/pledge')}
+              className="font-mono text-[11px] text-[#6C665C] tracking-widest uppercase hover:text-black transition-colors"
+            >
+              PLEDGE STORE
+            </button>
+            <button
+              onClick={() => navigate('/feedback')}
+              className="font-mono text-[11px] text-[#8B8376] tracking-widest uppercase hover:text-black transition-colors"
+            >
+              Feedback
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {isAuthenticated && <TowerLocationBadge />}
-
-          <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-            {isAuthenticated && <NotificationBell />}
-
-            {isLoading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
-            ) : isAuthenticated && user ? (
-              <div className="flex items-center gap-3">
-                <button onClick={() => navigate('/profile')} className="flex items-center gap-2 text-left group">
-                  <div className="flex flex-col items-end">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-black group-hover:text-gray-600 transition-colors">
-                      {user.firstName ?? (streamerMode ? 'STREAMER' : user.email?.split('@')[0]) ?? 'USER'}
-                    </span>
-                    {roleBadge && (
-                      <span className={`text-[9px] font-bold px-1 rounded ${roleBadge.cls}`}>
-                        {roleBadge.label}
-                      </span>
-                    )}
-                  </div>
-                  {resolveAvatarUrl(user.profileImageUrl) ? (
-                    <img src={resolveAvatarUrl(user.profileImageUrl)} alt="Avatar" className="w-8 h-8 rounded-md object-cover border border-gray-200" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-200">
-                      {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
-                    </div>
-                  )}
-                </button>
-                <button onClick={logout} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+          <span className="flex items-center gap-1.5">
+            {isOwner ? (
+              <span className="flex items-center gap-1.5" title={t('nav.corpAdmin')}>
+                <Zap className="w-3 h-3 text-black" />
+                <span className="font-mono text-xs text-black tracking-wide">{t('nav.corpAdmin')}</span>
+              </span>
+            ) : isPro || features.size > 0 ? (
+              <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                <Zap className="w-3 h-3 text-black" />
+                <span className="font-mono text-xs text-black tracking-wide">
+                  {boomerMode
+                    ? `${features.size} ${t('nav.active')}`
+                    : `${features.size} ${t('nav.module', { count: features.size })}${features.size !== 1 ? 'S' : ''}`}
+                </span>
+              </button>
             ) : (
-              <button onClick={() => login()} className="flex items-center gap-2 bg-black text-white px-4 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors">
-                <LogIn className="w-3.5 h-3.5" />
-                START WORK
+              <button onClick={() => navigate('/pricing')} className="font-mono text-xs text-[#6C665C] tracking-wide hover:text-black transition-colors">
+                {boomerMode ? 'PRICING' : t('nav.upgradeLabelCodename')}
               </button>
             )}
-          </div>
+          </span>
+          {!location.startsWith('/world') && (
+            <button
+              onClick={() => {
+                const next = !boomerMode;
+                setBoomerMode(next);
+                try { localStorage.setItem('sm_boomer', next ? '1' : '0'); } catch {}
+              }}
+              className={`font-mono text-xs tracking-wide px-2 py-0.5 rounded border transition-colors ${
+                boomerMode
+                  ? 'text-black border-black bg-[#F4EFE5]'
+                  : 'text-[#777064] border-[#CFC6B7] hover:text-black'
+              }`}
+              title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
+            >
+              {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
+            </button>
+          )}
+          <LanguageSelector />
+          <CurrencySelector />
         </div>
       </div>
 
-      {/* Old-version primary destination row. */}
-      <div className="flex h-10 items-center border-t border-[#E5DED1] bg-[#F4EFE5] px-4">
-        <button
-          onClick={goBack}
-          className="mr-2 flex h-7 w-7 items-center justify-center rounded text-[#777064] transition-colors hover:bg-[#E8E1D4] hover:text-black"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-        </button>
-        <nav className="flex items-center gap-1">
+      <div className="flex items-center px-4 h-12 bg-[#FAF7EF]">
+        <nav className="flex items-center gap-1 shrink-0 ml-auto">
+          <button
+            onClick={goBack}
+            aria-label="Back"
+            title="Back"
+            className="flex items-center justify-center w-8 h-8 rounded-md text-[#777064] hover:text-black hover:bg-[#EEE8DC] border border-transparent"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+
           {visiblePrimary.filter(tab => !tab.authOnly || isAuthenticated).map(tab => {
             const active = isAppNavItemActive(tab, pathname);
             const Icon = tab.icon;
@@ -186,13 +231,13 @@ export function NavBar() {
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
-                className={`relative flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
                   active
-                    ? 'border-black bg-black text-[#FAF7EF]'
-                    : 'border-transparent text-[#5F594F] hover:border-[#CFC6B7] hover:bg-[#FFFCF5] hover:text-black'
+                    ? 'bg-black text-[#FAF7EF] border-black'
+                    : 'text-[#5F594F] border-transparent hover:text-black hover:bg-[#EEE8DC]'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="w-3.5 h-3.5 shrink-0" />
                 {tab.id === 'org' ? (userOrg?.name ?? 'ORG') : tab.label}
               </button>
             );
@@ -201,37 +246,37 @@ export function NavBar() {
           <div className="relative" ref={moreRef}>
             <button
               onClick={() => setMoreOpen(open => !open)}
-              className={`flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
                 hasActiveMore || moreOpen
-                  ? 'border-black bg-black text-[#FAF7EF]'
-                  : 'border-transparent text-[#5F594F] hover:border-[#CFC6B7] hover:bg-[#FFFCF5] hover:text-black'
+                  ? 'bg-black text-[#FAF7EF] border-black'
+                  : 'text-[#5F594F] border-transparent hover:text-black hover:bg-[#EEE8DC]'
               }`}
             >
               MORE
-              <ChevronDown className={`h-2.5 w-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-2.5 h-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
               {commsCount > 0 && !moreOpen && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[8px] text-white">
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-black text-white rounded-full px-1 border border-[#FAF7EF]">
                   {commsCount > 99 ? '99+' : commsCount}
                 </span>
               )}
             </button>
             {moreOpen && createPortal(
-              <div ref={morePanelRef} className="fixed z-[9999] w-52 rounded-lg border border-[#D8D1C3] bg-[#FFFCF5] py-1 shadow-xl" style={{ top: morePos.top, right: morePos.right }}>
-                {moreItems.filter(item => !item.authOnly || isAuthenticated).map(item => {
+              <div ref={morePanelRef} className="fixed w-52 bg-[#FFFCF5] border border-[#D8D1C3] rounded-lg shadow-xl py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
+                {moreItems.filter(item => !item.authOnly || isAuthenticated).sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isAppNavItemActive(item, pathname);
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
                       onClick={() => { navigate(item.path); setMoreOpen(false); }}
-                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
-                        active ? 'bg-black text-[#FAF7EF]' : 'text-[#5F594F] hover:bg-[#F0EADF] hover:text-black'
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
+                        active ? 'bg-black text-[#FAF7EF]' : 'text-[#5F594F] hover:bg-[#EEE8DC] hover:text-black'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="text-xs font-mono tracking-widest uppercase">{item.label}</span>
                       {item.id === 'comms' && commsCount > 0 && (
-                        <span className="ml-auto rounded-full bg-black px-1.5 py-0.5 text-[8px] text-white">
+                        <span className="ml-auto min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-black text-white rounded-full px-1">
                           {commsCount > 99 ? '99+' : commsCount}
                         </span>
                       )}
@@ -242,32 +287,114 @@ export function NavBar() {
               document.body
             )}
           </div>
+
+          <div className="ml-2 pl-2 flex items-center gap-2 border-l border-[#D8D1C3]">
+            <PabloNavButton />
+            {isAuthenticated && isTutorialDone() && <HummingbirdNavButton />}
+            {isAuthenticated && <NotificationBell />}
+            <button
+              onClick={() => navigate('/alpha')}
+              title="Tester Program — apply for alpha access"
+              className="p-1.5 text-[#8B8376] hover:text-black transition-colors rounded-md hover:bg-[#EEE8DC]"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setShowFeedback(true)}
+              title="Report an issue"
+              className="p-1.5 text-[#8B8376] hover:text-black transition-colors rounded-md hover:bg-[#EEE8DC]"
+            >
+              <Bug className="w-3.5 h-3.5" />
+            </button>
+            {isLoading ? (
+              <div className="w-7 h-7 rounded-md bg-[#EEE8DC] animate-pulse" />
+            ) : isAuthenticated && user ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                  title="My account"
+                >
+                  {resolveAvatarUrl(user.profileImageUrl) ? (
+                    <img
+                      src={resolveAvatarUrl(user.profileImageUrl)}
+                      alt={user.firstName ?? 'User'}
+                      className="w-7 h-7 rounded-md object-cover border border-[#D8D1C3]"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-[#EEE8DC] border border-[#D8D1C3] text-black">
+                      {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                    </div>
+                  )}
+                  <div className="hidden sm:flex flex-col items-end gap-1">
+                    <p className="text-xs font-mono text-black leading-none">
+                      {user.firstName ?? (streamerMode ? 'STREAMER' : user.email?.split('@')[0]) ?? 'USER'}
+                    </p>
+                    {roleBadge && (
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-widest uppercase border border-black ${roleBadge.cls}`}>
+                        {roleBadge.label}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <button
+                  onClick={logout}
+                  title={t('nav.logout')}
+                  className="p-1.5 text-[#8B8376] hover:text-black transition-colors rounded-md hover:bg-[#EEE8DC]"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => login()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase text-black border border-[#CFC6B7] bg-[#FFFCF5] hover:bg-[#EEE8DC] transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                {t('nav.login')}
+              </button>
+            )}
+          </div>
         </nav>
       </div>
 
-      {/* Secondary Bar (Subnav) */}
       {currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname) && (
-        <div className="flex items-center px-4 h-10 border-t border-[#E5E5E5] overflow-x-auto hide-scrollbar">
-          <div className="flex items-center gap-1 font-medium">
-            {currentModule.subs.map(sub => {
-              const isSubActive = pathname === sub.path || pathname.startsWith(sub.path + '/');
-              const Icon = sub.icon;
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => navigate(sub.path)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest rounded-md transition-colors whitespace-nowrap ${
-                    isSubActive ? 'bg-white shadow-sm border border-gray-200 text-black font-bold' : 'text-gray-500 hover:text-black hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isSubActive ? 'salaryman-active-icon' : ''}`} />
-                  {getSubLabel(sub)}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex items-center gap-1 px-4 py-1.5 border-t border-[#E5DED1] bg-[#FFFCF5] overflow-x-auto scrollbar-hide">
+          <span className="font-mono text-xs text-[#8B8376] tracking-widest uppercase mr-2 shrink-0">
+            {boomerMode ? t(`nav.${currentModule.id}`, currentModule.label) : t(`codenames.${currentModule.id}`, currentModule.codename)}
+          </span>
+          {currentModule.subs.map(sub => {
+            const isSubActive = pathname === sub.path;
+            const Icon = sub.icon;
+            return (
+              <button
+                key={sub.id}
+                onClick={() => navigate(sub.path)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono tracking-widest uppercase transition-colors shrink-0 border ${
+                  isSubActive
+                    ? 'bg-black text-[#FAF7EF] border-black'
+                    : 'text-[#777064] hover:text-black hover:bg-[#EEE8DC] border-transparent'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                {getSubLabel(sub)}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => {
+              const base = import.meta.env.BASE_URL ?? '/';
+              window.open(`${base}${pathname.replace(/^\//, '')}`, '_blank', 'noopener');
+            }}
+            title="OPEN IN NEW TAB"
+            className="ml-auto p-1 rounded text-[#8B8376] hover:text-black hover:bg-[#EEE8DC] transition-colors shrink-0"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </button>
         </div>
       )}
+
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </header>
   );
 }
