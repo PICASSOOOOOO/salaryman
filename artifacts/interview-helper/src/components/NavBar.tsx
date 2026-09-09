@@ -1,4 +1,4 @@
-import { LogIn, LogOut, ChevronDown, Zap, ExternalLink, ArrowLeft, Search, Menu } from 'lucide-react';
+import { LogIn, LogOut, ChevronDown, ExternalLink, ArrowLeft, Search, Menu } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,7 +15,6 @@ import { MODULES, getModuleForPath } from '../lib/modules';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
 import { NotificationBell } from './NotificationBell';
-import { EconomyToggle } from './EconomyToggle';
 import { TowerLocationBadge } from './TowerLocationBadge';
 import { useTranslation } from 'react-i18next';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
@@ -36,10 +35,9 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config } = useAppMode();
   const streamerMode = useStreamerMode();
-  const { isOwner, features } = usePlan();
-  const hasPabloPrime = isOwner || features.has('claw_bot');
+  const { isOwner } = usePlan();
   const { isApprovedTester, isApprovedDev, isAdmin } = useAlpha();
-  const roleBadge = isOwner || isAdmin || isApprovedDev
+  const roleBadge = isAdmin || isApprovedDev
     ? { label: 'ADMIN', cls: 'bg-black text-[#00FF41]' }
     : isApprovedTester
       ? { label: 'MOD', cls: 'bg-black text-white' }
@@ -109,16 +107,16 @@ export function NavBar() {
   return (
     <header className="desktop-app-nav flex flex-col border-b border-[#E5E5E5] shrink-0 z-50">
       {/* Primary Bar */}
-      <div className="flex h-16 items-center justify-between px-6">
-        <div className="flex items-center gap-8">
+      <div className="flex items-center justify-between px-4 h-12">
+        <div className="flex items-center gap-6">
           <div
             className="flex items-center gap-2 cursor-pointer group"
             onClick={() => navigate(getAppHomePath(isAuthenticated))}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-[#FAFAF7]">
-              <PicassoLogo size={22} gap={1} />
+            <div className="w-6 h-6 bg-black text-[#FAFAF7] flex items-center justify-center rounded">
+              <PicassoLogo size={16} gap={1} />
             </div>
-            <span className="text-base font-black tracking-[.08em] text-black">{config.name.toUpperCase()}</span>
+            <span className="font-bold text-sm tracking-tight text-black">{config.name.toUpperCase()}</span>
           </div>
 
           <nav className="flex items-center gap-1">
@@ -142,14 +140,10 @@ export function NavBar() {
                 <button
                   key={tab.id}
                   onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
-                  className={`relative flex min-h-10 items-center gap-2.5 rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${active ? activeCls : idleCls}`}
+                  className={`relative flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider rounded-md transition-colors ${active ? activeCls : idleCls}`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                   {tab.id === 'org'
-                     ? (userOrg?.name ?? 'ORG')
-                     : tab.id === 'pablo' && hasPabloPrime
-                       ? 'PABLO PRIME'
-                       : tab.label}
+                  {tab.id === 'org' ? (userOrg?.name ?? 'ORG') : tab.label}
                   {tab.id === 'comms' && commsCount > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-[#00FF41] text-black rounded-full px-1 shadow-sm">
                       {commsCount > 99 ? '99+' : commsCount}
@@ -159,24 +153,14 @@ export function NavBar() {
               );
             })}
 
-             {!hasPabloPrime && (
-               <button
-                 onClick={() => navigate('/upgrade?feature=claw_bot')}
-                 className="flex min-h-10 items-center gap-2 rounded-md border-2 border-black px-4 py-2 text-[10px] font-black uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white"
-               >
-                 <Zap className="h-3 w-3" />
-                 UPGRADE TO PRIME
-               </button>
-             )}
-
             <div className="relative ml-1" ref={moreRef}>
               <button
                 onClick={() => setMoreOpen(o => !o)}
-                 className={`flex min-h-10 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
+                className={`flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider rounded-md transition-colors ${
                   hasActiveMore || moreOpen ? 'bg-black text-white font-bold' : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
                 }`}
               >
-                 FEATURES
+                MORE
                 <ChevronDown className={`w-3 h-3 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
               </button>
               {moreOpen && createPortal(
@@ -210,7 +194,6 @@ export function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <EconomyToggle isAuthenticated={isAuthenticated} />
           {isAuthenticated && <TowerLocationBadge />}
 
           <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
