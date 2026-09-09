@@ -113,26 +113,6 @@ STRIPE_PRICE_BOT_RECRUIT_8 = "price_1TiwLhPuaB9oFoK5iSwQRE1g"
 STRIPE_PRICE_PLEDGE_TERM_PABLO_PASS = "price_1TiwLiPuaB9oFoK54nISmAyw"
 STRIPE_PRICE_PLEDGE_TERM_PHONE_PASS = "price_1TiwLiPuaB9oFoK5GB0ScFbT"
 
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8081
-externalPort = 80
-
-[[ports]]
-localPort = 8082
-externalPort = 3001
-
-[[ports]]
-localPort = 21129
-externalPort = 3000
-
-[[ports]]
-localPort = 21130
-externalPort = 3002
-
 [objectStorage]
 defaultBucketID = "replit-objstore-72d80d45-9792-4279-b730-a825bfea9680"
         
