@@ -77,7 +77,9 @@ export default function DesktopDownload() {
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
   const gameplayVideoHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase.mp4`;
+  const gameplayDetailVideoHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.mp4`;
   const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase-poster.jpg`;
+  const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = !downloadAllowed
     ? "Desktop alpha · approved testers"
     : clientPlatform === "other"
@@ -93,7 +95,7 @@ export default function DesktopDownload() {
     <main className="desktop-download">
       <header className="desktop-download-topbar">
         <Link href="/" className="desktop-download-brand" aria-label="SALARYMAN home">
-          <span className="desktop-download-mark">SM</span>
+          <img className="desktop-download-mark" src={salarymanLogoHref} alt="" />
           <span>SALARYMAN</span>
         </Link>
         <nav className="desktop-download-nav" aria-label="Desktop client navigation">
@@ -105,15 +107,15 @@ export default function DesktopDownload() {
 
       <section className="desktop-download-hero" id="client">
         <div className="desktop-download-hero-copy">
-          <p className="desktop-download-eyebrow">FREE DESKTOP CLIENT / OFFICE ECOLOGY</p>
-          <h1>Run the office<br /><em>where you work.</em></h1>
+          <p className="desktop-download-eyebrow">NATIVE 2.5D OFFICE / WINDOWS · MACOS · LINUX</p>
+          <h1>Your remote team.<br /><em>In the room.</em></h1>
           <p className="desktop-download-lede">
-            A native office client for focused work away from the browser.
+            Move through a shared office, communicate with remote teammates interactively, and keep the work connected without living inside browser tabs.
           </p>
           <div className="desktop-download-actions">
             {clientBuildAvailable && clientRelease ? (
               <a className="desktop-download-primary" href={downloadHref} download={clientRelease.archiveName} data-testid="link-download-detected-desktop-client">
-                <Download size={16} aria-hidden /> Download {clientRelease.name} gameplay alpha <ArrowRight size={15} aria-hidden />
+                <Download size={16} aria-hidden /> Download {clientRelease.name} desktop alpha <ArrowRight size={15} aria-hidden />
               </a>
             ) : downloadAllowed ? (
               <button className="desktop-download-primary" type="button" onClick={() => setDownloadsOpen(true)} data-testid="link-choose-desktop-build">
@@ -138,17 +140,93 @@ export default function DesktopDownload() {
           <video
             controls
             muted
+            autoPlay
+            loop
             playsInline
             preload="metadata"
             src={gameplayVideoHref}
             poster={gameplayPosterHref}
-            aria-label="Current SALARYMAN Pygame gameplay alpha"
+            aria-label="Current SALARYMAN desktop client preview"
           />
+          <span className="desktop-download-promo-tag">DESKTOP PROMO</span>
           <figcaption>
-            CURRENT ALPHA / REAL PYGAME CAPTURE / WINDOWS · MACOS · LINUX
+            CURRENT ALPHA / REAL DESKTOP CAPTURE / WINDOWS · MACOS · LINUX
           </figcaption>
         </figure>
       </section>
+
+      <section className="desktop-download-promo" aria-labelledby="desktop-team-title">
+        <div className="desktop-download-section-heading">
+          <p className="desktop-download-eyebrow">REMOTE WORK SHOULD FEEL PRESENT</p>
+          <h2 id="desktop-team-title">Not another chat window.<br />A shared place to work.</h2>
+          <p>
+            The web workspace organizes the business. The desktop client turns your remote team into an interactive office you can move through, communicate inside, and return to each day.
+          </p>
+        </div>
+
+        <div className="desktop-download-footage-grid">
+          <figure className="desktop-download-footage desktop-download-footage-wide">
+            <video
+              muted
+              autoPlay
+              loop
+              playsInline
+              preload="metadata"
+              src={gameplayDetailVideoHref}
+              poster={gameplayPosterHref}
+              controls
+              aria-label="SALARYMAN shared office desktop preview"
+            />
+            <figcaption><span>01</span><strong>MOVE TOGETHER</strong><small>Navigate the same 2.5D office instead of disappearing into separate tabs.</small></figcaption>
+          </figure>
+          <article className="desktop-download-signal-card">
+            <span>LIVE TEAM SIGNAL</span>
+            <strong>SEE WHO IS THERE.<br />TALK WHERE THE WORK HAPPENS.</strong>
+            <p>Presence, communication, and the office environment become one continuous team experience.</p>
+            <div aria-hidden>
+              <i>YOU</i><b />
+              <i>TEAM</i><b />
+              <i>PABLO</i>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="desktop-download-compare" aria-labelledby="desktop-better-title">
+        <div className="desktop-download-section-heading">
+          <p className="desktop-download-eyebrow">WHY DESKTOP</p>
+          <h2 id="desktop-better-title">The web runs the company.<br />Desktop brings the team to life.</h2>
+        </div>
+        <div className="desktop-download-compare-grid">
+          <article>
+            <span>WEB WORKSPACE</span>
+            <h3>Operate the business.</h3>
+            <p>Manage customers, calls, files, settings, and structured workflows from any browser.</p>
+            <Link href="/business">START WORK <ArrowRight size={14} aria-hidden /></Link>
+          </article>
+          <article className="is-desktop">
+            <span>2.5D DESKTOP CLIENT</span>
+            <h3>Operate as a team.</h3>
+            <p>Share an interactive office with remote teammates, communicate in context, and experience the company as a place—not a stack of pages.</p>
+            <button type="button" onClick={() => setDownloadsOpen(true)}>CHOOSE YOUR BUILD <ArrowRight size={14} aria-hidden /></button>
+          </article>
+        </div>
+      </section>
+
+      <section className="desktop-download-final-cta">
+        <div>
+          <p className="desktop-download-eyebrow">THE OFFICE IS OPEN</p>
+          <h2>Bring your remote team inside.</h2>
+        </div>
+        <button className="desktop-download-primary" type="button" onClick={() => setDownloadsOpen(true)}>
+          <Download size={16} aria-hidden /> DESKTOP DOWNLOADS <ArrowRight size={15} aria-hidden />
+        </button>
+      </section>
+
+      <footer className="desktop-download-footer">
+        <span>SALARYMAN / PICASSO AI LLC</span>
+        <Link href="/">BACK TO SALARYMAN</Link>
+      </footer>
       {downloadsOpen && (
         <div className="desktop-download-modal-backdrop" role="presentation" onMouseDown={() => setDownloadsOpen(false)}>
           <section

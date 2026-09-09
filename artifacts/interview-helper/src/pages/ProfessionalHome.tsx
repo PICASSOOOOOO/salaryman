@@ -40,10 +40,10 @@ const paths = [
   },
   {
     number: "03",
-    title: "DESKTOP GAME",
-    description: "Watch the current gameplay and get the native SALARYMAN office client.",
+    title: "DESKTOP CLIENT",
+    description: "Preview the interactive office and get the native SALARYMAN client.",
     href: "/desktop",
-    label: "Watch gameplay",
+    label: "View desktop promo",
     icon: Download,
     tone: "warm",
   },
@@ -86,7 +86,7 @@ export default function ProfessionalHome() {
           </div>
           <Link href="/business" data-testid="link-web-workspace">START WORK</Link>
           <Link className="sm-pablo" href="/pablo" data-testid="link-meet-pablo">PABLO AI</Link>
-          <Link href="/desktop" data-testid="link-home-gameplay">GAMEPLAY / DOWNLOAD</Link>
+          <Link href="/desktop" data-testid="link-home-gameplay">DESKTOP / DOWNLOAD</Link>
         </nav>
 
         <div className="sm-mobile-menu">
@@ -116,7 +116,7 @@ export default function ProfessionalHome() {
                Open CALLL HOME <ArrowRight size={15} />
             </Link>
              <Link className="sm-secondary" href="/desktop" data-testid="link-hero-gameplay">
-               Watch gameplay / downloads <Download size={15} />
+               Desktop promo / downloads <Download size={15} />
              </Link>
           </div>
         </div>

@@ -200,7 +200,6 @@ class SolarPunkRenderer:
         pygame.draw.rect(self.screen, (48, 67, 62), lower_beam)
         pygame.draw.line(self.screen, (164, 201, 158), lower_beam.topleft, lower_beam.topright, 2)
         self.text(scene.room.label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
-        self.text("WASD / ARROWS  MOVE   E  INTERACT", (viewport.right - 290, viewport.y + 19), self.font_mono, (180, 220, 178))
 
         # Decorative room composition uses real furniture sprites, while the
         # interaction registry remains the sole authority for object behavior.

@@ -327,14 +327,6 @@ func _build_interface() -> void:
 	notice_label.add_theme_color_override("font_color", Color("#a8c8b6"))
 	canvas.add_child(notice_label)
 
-	var controls := Label.new()
-	controls.text = "WASD / ARROWS MOVE    E INTERACT    1–6 ROOMS    +/- ZOOM    SPACE PAUSE    R RECONNECT"
-	controls.position = Vector2(30, 704)
-	controls.add_theme_font_size_override("font_size", 11)
-	controls.add_theme_color_override("font_color", Color("#8bb0aa"))
-	canvas.add_child(controls)
-
-
 func _connect_to_pygame() -> void:
 	var error := connection.connect_to_host(HOST, PORT)
 	if error != OK:
