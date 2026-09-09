@@ -183,10 +183,18 @@ class SolarPunkRenderer:
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
-        self._draw_perspective_floor(viewport)
+        self._draw_isometric_office_floor(viewport)
+        camera_center_x = camera_x + view_w / 2
+        camera_center_y = camera_y + view_h / 2
+
         def point(position: tuple[int, int]) -> tuple[int, int]:
-            return (viewport.x + int((position[0] - camera_x) * scale),
-                    viewport.y + int((position[1] - camera_y) * scale))
+            """Project office coordinates through one fixed 2:1 isometric camera."""
+            dx = position[0] - camera_center_x
+            dy = position[1] - camera_center_y
+            return (
+                viewport.centerx + int((dx - dy) * scale * 0.58),
+                viewport.centery + 38 + int((dx + dy) * scale * 0.29),
+            )
         # Keep the architecture legible at close camera distances. Repeating
         # the tiny source wall tile becomes visual noise and collides with the
         # room label, so use a clean structural beam instead.
@@ -207,7 +215,9 @@ class SolarPunkRenderer:
             "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (900, 1850)),
                       ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2500, 1850)),
                       ("furniture/SOFA/SOFA_FRONT.png", (1650, 2450)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2250, 2200))],
+                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2250, 2200)),
+                      ("furniture/DESK/DESK_FRONT.png", (1250, 1450)),
+                      ("furniture/DESK/DESK_FRONT.png", (2150, 1450))],
             "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 4200)),
                            ("furniture/PLANT/PLANT.png", (8500, 4200)),
                            ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 4300))],
@@ -251,38 +261,72 @@ class SolarPunkRenderer:
             moving=scene.velocity != (0.0, 0.0),
         )
 
-    def _draw_perspective_floor(self, viewport: pygame.Rect) -> None:
-        """Draw a warm pseudo-3D floor plane with a real vanishing point."""
+    def _draw_isometric_office_floor(self, viewport: pygame.Rect) -> None:
+        """Draw a fixed 2:1 isometric office floor with no vanishing point."""
         floor = viewport.inflate(-18, -28)
-        horizon_y = floor.top + int(floor.height * 0.16)
-        vanishing_point = (floor.centerx, horizon_y)
-        bands = 15
-        for index in range(bands):
-            start = index / bands
-            end = (index + 1) / bands
-            y0 = horizon_y + int((floor.bottom - horizon_y) * (start ** 1.65))
-            y1 = horizon_y + int((floor.bottom - horizon_y) * (end ** 1.65))
-            color = ((194, 160, 108), (208, 176, 120), (184, 149, 100))[index % 3]
-            pygame.draw.rect(self.screen, color, (floor.left, y0, floor.width, max(2, y1 - y0)))
-            pygame.draw.line(self.screen, (151, 116, 78), (floor.left, y1), (floor.right, y1), 1)
+        pygame.draw.rect(self.screen, (29, 42, 42), viewport)
+        pygame.draw.rect(self.screen, (91, 105, 100), floor)
 
-        for ratio in (0.04, 0.18, 0.34, 0.50, 0.66, 0.82, 0.96):
-            bottom_x = floor.left + int(floor.width * ratio)
-            pygame.draw.line(self.screen, (165, 128, 84), vanishing_point, (bottom_x, floor.bottom), 1)
+        # Commercial carpet tiles: quiet graphite/green rather than the old
+        # orange corridor bands. Every diamond shares the same angle and size.
+        tile_w, tile_h = 92, 46
+        palette = ((91, 105, 100), (95, 109, 104), (88, 102, 98))
+        diagonal_count = floor.width // tile_w + floor.height // tile_h + 8
+        origin_x = floor.centerx
+        origin_y = floor.top - tile_h * 2
+        old_clip = self.screen.get_clip()
+        self.screen.set_clip(floor)
+        for row in range(-3, diagonal_count):
+            for col in range(-diagonal_count, diagonal_count):
+                cx = origin_x + (col - row) * tile_w // 2
+                cy = origin_y + (col + row) * tile_h // 2
+                points = (
+                    (cx, cy - tile_h // 2),
+                    (cx + tile_w // 2, cy),
+                    (cx, cy + tile_h // 2),
+                    (cx - tile_w // 2, cy),
+                )
+                color = palette[(row + col) % len(palette)]
+                pygame.draw.polygon(self.screen, color, points)
+                pygame.draw.polygon(self.screen, (80, 94, 90), points, 1)
+                pygame.draw.line(
+                    self.screen,
+                    (108, 123, 116),
+                    points[0],
+                    points[1],
+                    1,
+                )
 
-        # Soft daylight pools keep the starting state optimistic and alive.
-        glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        pygame.draw.circle(glow, (255, 226, 150, 30), (floor.left + 130, horizon_y + 80), 110)
-        pygame.draw.circle(glow, (115, 220, 205, 24), (floor.right - 150, horizon_y + 105), 145)
-        self.screen.blit(glow, (0, 0))
-
-        pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=max(8, int(28 * 0.34)))
-        pygame.draw.rect(
-            self.screen,
-            (151, 194, 143),
-            viewport.inflate(-max(8, int(28 * 0.34)), -max(8, int(28 * 0.34))),
-            width=2,
+        # An inset collaboration rug establishes a work zone without making
+        # the floor resemble a street or station concourse.
+        rug_center = (floor.centerx, floor.centery + 54)
+        rug = (
+            (rug_center[0], rug_center[1] - 78),
+            (rug_center[0] + 190, rug_center[1]),
+            (rug_center[0], rug_center[1] + 78),
+            (rug_center[0] - 190, rug_center[1]),
         )
+        pygame.draw.polygon(self.screen, (68, 105, 91), rug)
+        pygame.draw.polygon(self.screen, (157, 191, 169), rug, 2)
+        # Subtle brass floor boxes imply power/network access for desks.
+        for x, y in ((floor.centerx - 235, floor.centery - 48),
+                     (floor.centerx + 235, floor.centery + 72)):
+            box = (
+                (x, y - 8),
+                (x + 16, y),
+                (x, y + 8),
+                (x - 16, y),
+            )
+            pygame.draw.polygon(self.screen, (74, 83, 78), box)
+            pygame.draw.polygon(self.screen, (180, 155, 93), box, 1)
+        self.screen.set_clip(old_clip)
+
+        # Soft overhead daylight without a horizon or center vanishing point.
+        glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        pygame.draw.ellipse(glow, (225, 255, 226, 20), floor.inflate(-80, -130))
+        self.screen.blit(glow, (0, 0))
+        pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=9)
+        pygame.draw.rect(self.screen, (151, 194, 143), floor, width=2)
 
     def _build_floor_tiles(self) -> tuple[pygame.Surface, ...]:
         """Build a small hand-authored tile set around the imported art scale."""

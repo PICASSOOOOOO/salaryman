@@ -1347,3 +1347,17 @@ mtime_ms = 1788885010047
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/280ade69-e009-4dee-8048-eff2ac7c8b12/813d55c7-93fb-4b32-ab44-99ca9499ccd1"
 storage_version_token = "1788885239039172"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "7RKnHQvbkj43kdnL4f1G1"
+uri = "file://screenshots/pygame-isometric-office-final.png"
+type = "image"
+title = "Revised isometric office floor"
+description = "Current rendered Pygame client frame with diagonal isometric projection, office carpet, workstations, collaboration zone, and no vanishing-point corridor."
+logical_id = "42bcbab8-8be9-4408-83e0-ed3049bf11ee"
+content_hash = "sha256:006d37aae41f19d9235df25bbcde4626a7e0e8d801b6060897c34501bd958c46"
+size = 53534
+mtime_ms = 1788934017128
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/42bcbab8-8be9-4408-83e0-ed3049bf11ee/fe46ce83-cb82-4dd3-b230-7dc58a797d23"
+storage_version_token = "1788934039551220"
+content_type = "image/png"
