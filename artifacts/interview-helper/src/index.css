@@ -917,11 +917,19 @@ body.workspace-light {
   background: #fffaf0;
   color: #111111;
   background-image: none;
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 body.workspace-light #root {
   background: #fffaf0;
   color: #111111;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
 }
 
 /* Absolute browser-wide readability contract. No web route or nested widget
