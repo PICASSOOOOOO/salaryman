@@ -441,7 +441,7 @@ function AppShell() {
           </p>
           <h1 className="mt-3 text-2xl font-semibold">Recovered SALARYMAN menu</h1>
           <p className="mt-2 max-w-xl text-sm text-[#5F594F]">
-            Use the module buttons above to inspect each original submenu. Links are disabled on this preview.
+            The Menu dropdown contains the workspace sections. Preview links are disabled.
           </p>
         </section>
       </main>

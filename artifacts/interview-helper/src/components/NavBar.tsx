@@ -1,252 +1,192 @@
-import { ChevronDown, Eye, EyeOff, Globe, LogIn, LogOut, Terminal } from 'lucide-react';
+import {
+  ChevronDown,
+  Download,
+  Globe,
+  LogIn,
+  LogOut,
+  Menu,
+  Phone,
+  Sparkles,
+  User,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
-import { useAppMode } from '../hooks/use-app-mode';
-import { getDefaultBoomerMode } from '../hooks/use-mobile';
-import { resolveAvatarUrl } from '@/lib/avatar';
-import { useStreamerMode } from '@/hooks/use-streamer-mode';
-import { HISTORIC_MODULES, type HistoricModule } from '../lib/historic-navigation';
+import { HISTORIC_MODULES } from '@/lib/historic-navigation';
+
+const MENU_MODULES = HISTORIC_MODULES.filter(
+  module => module.id !== 'pablo' && module.id !== 'phone',
+);
 
 export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) {
   const [location, navigate] = useLocation();
-  const { user, isLoading, isAuthenticated, login, logout } = useAuth();
-  const { config, toggleMode, isDiscreet } = useAppMode();
-  const streamerMode = useStreamerMode();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(
-    previewMode ? 'business' : null,
-  );
-
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === 'sm_boomer') setBoomerMode(event.newValue === '1');
-    };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => {
-      try {
-        setBoomerMode(localStorage.getItem('sm_boomer') === '1');
-      } catch {}
-    }, 2000);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      clearInterval(id);
-    };
-  }, []);
-
+  const { isAuthenticated, login, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(previewMode);
   const pathname = location.split('?')[0];
 
-  const isModuleActive = (module: HistoricModule) => {
-    if (module.id === 'pablo') return pathname === '/pablo' || pathname.startsWith('/pablo/');
-    if (module.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    return pathname === module.path || pathname.startsWith(`${module.path}/`);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [menuOpen]);
+
+  const go = (path: string) => {
+    if (!previewMode) navigate(path);
+    setMenuOpen(false);
   };
 
-  const handleModuleClick = (module: HistoricModule) => {
-    if (module.subs.length === 0) {
-      if (!previewMode) navigate(module.defaultPath);
-      setActiveModuleId(null);
-      return;
-    }
-    setActiveModuleId(activeModuleId === module.id ? null : module.id);
-  };
-
-  const expandedModule = HISTORIC_MODULES.find(module => module.id === activeModuleId) ?? null;
+  const directLinks = [
+    { label: 'PABLO PRIME', path: '/pablo', icon: Sparkles },
+    { label: 'CALLL HOME', path: '/phone', icon: Phone },
+    { label: 'APP DOWNLOAD', path: '/desktop', icon: Download },
+  ];
 
   return (
-    <header className="app-header desktop-app-nav flex flex-col shrink-0 border-b border-[#D8D1C3] bg-[#FAF7EF]">
-      <div className="hidden sm:flex items-center justify-between px-4 py-0.5 border-b border-[#E5DED1] bg-[#FFFCF5]">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-[#6C665C] tracking-widest uppercase">
-            {boomerMode ? 'SALARYMAN' : 'PABLO CORP'}
-          </span>
-          <span className="text-[#B9B1A2] text-[9px]">◆</span>
-          <span className="font-mono text-[10px] text-[#8B8376] tracking-widest">
-            {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-black" />
-            <span className="font-mono text-[10px] text-[#6C665C] tracking-wide">
-              {boomerMode ? 'FREE FOREVER' : 'ALL FEATURES FREE'}
-            </span>
-          </span>
-          {!location.startsWith('/world') && (
-            <button
-              onClick={() => {
-                const next = !boomerMode;
-                setBoomerMode(next);
-                try {
-                  localStorage.setItem('sm_boomer', next ? '1' : '0');
-                } catch {}
-              }}
-              className={`font-mono text-[10px] tracking-wide px-1.5 py-0.5 rounded border transition-colors ${
-                boomerMode
-                  ? 'text-black border-black bg-[#F4EFE5]'
-                  : 'text-[#6C665C] border-[#CFC6B7] hover:text-black'
-              }`}
-              title={boomerMode ? 'Boomer Mode ON — click to disable' : 'Boomer Mode: simpler labels'}
-            >
-              {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between px-4 h-11">
-        <div
-          className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
-          onClick={() => {
-            if (!previewMode) navigate('/pablo');
-          }}
+    <header className="app-header desktop-app-nav relative z-50 shrink-0 border-b border-[#D8D1C3] bg-[#FAF7EF]">
+      <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-4">
+        <button
+          type="button"
+          onClick={() => go('/')}
+          className="flex shrink-0 items-center gap-2.5"
+          aria-label="SALARYMAN home"
         >
-          <div className="w-7 h-7 rounded-md bg-black border border-black flex items-center justify-center">
-            <Terminal className="w-3.5 h-3.5 text-[#FAF7EF]" />
-          </div>
-          <div>
-            <h1 className="font-mono text-sm font-normal text-black tracking-widest leading-none">
-              {config.name}
-            </h1>
-            <p className="font-mono text-[9px] text-[#8B8376] tracking-widest leading-none mt-0.5">
-              {config.sub}
-            </p>
-          </div>
-          <button
-            onClick={event => {
-              event.stopPropagation();
-              toggleMode();
-            }}
-            title={isDiscreet ? 'Show real name' : 'Discreet mode'}
-            className="p-1 text-[#8B8376] hover:text-black transition-colors"
-          >
-            {isDiscreet ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-          </button>
-        </div>
+          <img
+            src={`${import.meta.env.BASE_URL}icon-192.png`}
+            alt=""
+            className="h-7 w-7 rounded-md"
+          />
+          <span className="font-mono text-sm tracking-[0.2em] text-black">SALARYMAN</span>
+          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.16em] text-black">
+            ALPHA
+          </span>
+        </button>
 
-        <nav className="hidden sm:flex items-center gap-0.5 shrink-0">
-          {HISTORIC_MODULES.map(module => {
-            const active = isModuleActive(module);
-            const expanded = activeModuleId === module.id;
-            const Icon = module.icon;
-            return (
-              <button
-                key={module.id}
-                onClick={() => handleModuleClick(module)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors border ${
-                  active || expanded
-                    ? 'bg-black text-[#FAF7EF] border-black'
-                    : 'text-[#5F594F] hover:text-black hover:bg-[#EEE8DC] border-transparent'
-                }`}
-              >
-                <Icon className="w-3 h-3 shrink-0" />
-                {boomerMode ? module.label : module.codename}
-                {module.subs.length > 0 && (
-                  <ChevronDown className={`w-2.5 h-2.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-                )}
-              </button>
-            );
-          })}
+        <nav className="hidden items-center gap-1 sm:flex" aria-label="Main navigation">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(open => !open)}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-2 font-mono text-[11px] tracking-widest ${
+                menuOpen
+                  ? 'border-black bg-black text-[#FAF7EF]'
+                  : 'border-[#CFC6B7] bg-[#FFFCF5] text-black hover:bg-[#EEE8DC]'
+              }`}
+              aria-expanded={menuOpen}
+            >
+              <Menu className="h-3.5 w-3.5" />
+              MENU
+              <ChevronDown className={`h-3 w-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          <button
-            onClick={() => {
-              if (!previewMode) navigate('/world');
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-black border border-[#CFC6B7] hover:bg-[#EEE8DC]"
-          >
-            <Globe className="w-3 h-3" />
-            EXPLORE
-          </button>
+            {menuOpen && (
+              <div className="absolute left-0 top-[calc(100%+0.5rem)] w-[min(720px,calc(100vw-2rem))] border border-black bg-[#FFFCF5] p-3 shadow-[6px_6px_0_#000]">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {MENU_MODULES.map(module => {
+                    const ModuleIcon = module.icon;
+                    return (
+                      <section key={module.id}>
+                        <button
+                          type="button"
+                          onClick={() => go(module.defaultPath)}
+                          className="flex w-full items-center gap-2 border-b border-[#D8D1C3] pb-2 text-left font-mono text-[11px] tracking-widest text-black hover:opacity-60"
+                        >
+                          <ModuleIcon className="h-3.5 w-3.5" />
+                          {module.label}
+                        </button>
+                        <div className="mt-1 grid grid-cols-2 gap-1">
+                          {module.subs.map(sub => {
+                            const SubIcon = sub.icon;
+                            return (
+                              <button
+                                type="button"
+                                key={sub.id}
+                                onClick={() => go(sub.path)}
+                                className="flex items-center gap-1.5 rounded px-2 py-1.5 text-left font-mono text-[9px] tracking-wide text-[#5F594F] hover:bg-[#EEE8DC] hover:text-black"
+                              >
+                                <SubIcon className="h-3 w-3 shrink-0" />
+                                {sub.boomerLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
 
-          <div className="ml-2 pl-2 flex items-center gap-2 border-l border-[#D8D1C3]">
-            {isLoading ? (
-              <div className="w-7 h-7 rounded-md bg-[#EEE8DC] animate-pulse" />
-            ) : isAuthenticated && user ? (
-              <div className="flex items-center gap-2">
-                <button
-                    onClick={() => {
-                      if (!previewMode) navigate('/profile');
-                    }}
-                  className="flex items-center gap-2 hover:opacity-70 transition-opacity"
-                  title="My account"
-                >
-                  {resolveAvatarUrl(user.profileImageUrl) ? (
-                    <img
-                      src={resolveAvatarUrl(user.profileImageUrl)}
-                      alt={user.firstName ?? 'User'}
-                      className="w-7 h-7 rounded-md object-cover border border-[#D8D1C3]"
-                    />
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#D8D1C3] pt-3">
+                  <button
+                    type="button"
+                    onClick={() => go('/world')}
+                    className="flex items-center gap-1.5 border border-[#CFC6B7] px-2.5 py-1.5 font-mono text-[10px] tracking-widest hover:bg-[#EEE8DC]"
+                  >
+                    <Globe className="h-3 w-3" />
+                    EXPLORE
+                  </button>
+                  {isAuthenticated ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => go('/profile')}
+                        className="flex items-center gap-1.5 border border-[#CFC6B7] px-2.5 py-1.5 font-mono text-[10px] tracking-widest hover:bg-[#EEE8DC]"
+                      >
+                        <User className="h-3 w-3" />
+                        ACCOUNT
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!previewMode) logout();
+                          setMenuOpen(false);
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] tracking-widest text-[#6C665C] hover:text-black"
+                      >
+                        <LogOut className="h-3 w-3" />
+                        LOG OUT
+                      </button>
+                    </>
                   ) : (
-                    <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-[#EEE8DC] border border-[#D8D1C3] text-black">
-                      {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!previewMode) login();
+                        setMenuOpen(false);
+                      }}
+                      className="flex items-center gap-1.5 border border-[#CFC6B7] px-2.5 py-1.5 font-mono text-[10px] tracking-widest hover:bg-[#EEE8DC]"
+                    >
+                      <LogIn className="h-3 w-3" />
+                      LOG IN
+                    </button>
                   )}
-                  <div className="hidden sm:block text-right">
-                    <p className="text-[11px] font-mono text-black leading-none">
-                      {user.firstName ?? (streamerMode ? 'STREAMER' : user.email?.split('@')[0]) ?? 'USER'}
-                    </p>
-                    {user.email && (
-                      <p className="text-[9px] font-mono text-[#8B8376] leading-none mt-0.5">
-                        {streamerMode ? '••••••••' : user.email}
-                      </p>
-                    )}
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    if (!previewMode) logout();
-                  }}
-                  title="Sign out"
-                  className="p-1.5 text-[#8B8376] hover:text-black transition-colors rounded-md hover:bg-[#EEE8DC]"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
+                </div>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  if (!previewMode) login();
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase text-black border border-[#CFC6B7] bg-[#FFFCF5] hover:bg-[#EEE8DC] transition-colors"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                LOG IN
-              </button>
             )}
           </div>
-        </nav>
-      </div>
 
-      {expandedModule && expandedModule.subs.length > 0 && (
-        <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-[#E5DED1] bg-[#FFFCF5] overflow-x-auto scrollbar-hide">
-          <span className="font-mono text-[9px] text-[#8B8376] tracking-widest uppercase mr-2 shrink-0">
-            {boomerMode ? expandedModule.label : expandedModule.codename}
-          </span>
-          {expandedModule.subs.map(sub => {
-            const isSubActive = pathname === sub.path;
-            const Icon = sub.icon;
+          {directLinks.map(item => {
+            const Icon = item.icon;
+            const active = pathname === item.path || pathname.startsWith(`${item.path}/`);
             return (
               <button
-                key={sub.id}
-                onClick={() => {
-                  if (!previewMode) {
-                    navigate(sub.path);
-                    setActiveModuleId(null);
-                  }
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 border ${
-                  isSubActive
-                    ? 'bg-black text-[#FAF7EF] border-black'
-                    : 'text-[#6C665C] hover:text-black hover:bg-[#EEE8DC] border-transparent'
+                type="button"
+                key={item.path}
+                onClick={() => go(item.path)}
+                className={`flex items-center gap-1.5 rounded-md border px-3 py-2 font-mono text-[11px] tracking-widest ${
+                  active
+                    ? 'border-black bg-black text-[#FAF7EF]'
+                    : 'border-[#CFC6B7] bg-[#FFFCF5] text-black hover:bg-[#EEE8DC]'
                 }`}
               >
-                <Icon className="w-3 h-3 shrink-0" />
-                {boomerMode ? sub.boomerLabel : sub.codename}
+                <Icon className="h-3.5 w-3.5" />
+                {item.label}
               </button>
             );
           })}
-        </div>
-      )}
+        </nav>
+      </div>
     </header>
   );
 }
