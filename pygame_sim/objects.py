@@ -207,11 +207,11 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
 
     registry = OfficeObjectRegistry()
     entries = [
-        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (502_800, 502_600), "RIDE TO FLOOR 01", destination_floor=1),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (501_900, 502_600), "CLIMB / CHANGE FLOOR"),
-        OfficeObject("lobby-atm", "atm", "ATM", "lobby", (500_900, 500_300), "CHECK BANCO OMBRA"),
-        OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (498_500, 500_300), "CALL PHONE CENTER"),
-        OfficeObject("lobby-tv", "tv", "TV", "lobby", (499_100, 500_300), "WATCH SHADOW RADIO"),
+        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "SELECT FLOOR", destination_floor=1),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_979_500, 50_001_500), "STAIRS / CHANGE FLOOR"),
+        OfficeObject("lobby-atm", "atm", "ATM", "lobby", (50_000_900, 50_000_300), "CHECK BANCO OMBRA"),
+        OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_998_500, 50_000_300), "CALL PHONE CENTER"),
+        OfficeObject("lobby-tv", "tv", "TV", "lobby", (49_999_100, 50_000_300), "WATCH SHADOW RADIO"),
         OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (1_100, 4_100), "RETURN TO LOBBY", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (8_500, 4_100), "CLIMB / CHANGE FLOOR"),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (1_800, 5_100), "ENTER OFFICE 01", destination_room="executive"),

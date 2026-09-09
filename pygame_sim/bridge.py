@@ -12,7 +12,7 @@ import socket
 from dataclasses import dataclass
 from typing import Any
 
-from .scene import TowerScene
+from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
 
 
@@ -25,6 +25,7 @@ COMMANDS = {
     "set_input",
     "interact",
     "select_room",
+    "select_floor",
     "select_worker",
     "buy_coffee",
     "toggle_running",
@@ -72,6 +73,9 @@ def validate_command(command: object) -> tuple[bool, str]:
         room = payload.get("room")
         if not isinstance(room, str) or room not in ALLOWED_ROOMS:
             return False, "ROOM NOT FOUND"
+    elif name == "select_floor":
+        if not _is_int(payload.get("floor")) or not 1 <= payload["floor"] <= FLOOR_COUNT:
+            return False, f"FLOOR MUST BE BETWEEN 1 AND {FLOOR_COUNT}"
     elif name in {"select_worker", "buy_coffee", "hire_candidate"} and not _is_int(payload.get("index")):
         return False, f"{name.upper()} REQUIRES AN INTEGER INDEX"
     elif name == "start_break" and payload.get("kind", "short") not in {"short", "lunch"}:
@@ -124,6 +128,11 @@ def apply_command(command: object, state: OfficeState, scene: TowerScene) -> Com
             return CommandResult(False, "ROOM NOT FOUND")
         state.notice = f"ROOM / {scene.room.label}"
         return CommandResult(True, state.notice)
+    if name == "select_floor":
+        if not scene.select_floor(payload["floor"]):
+            return CommandResult(False, "FLOOR NOT FOUND")
+        state.notice = f"FLOOR {scene.current_floor:02d} / BASE"
+        return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
     if name == "select_worker":
         ok = state.select_worker(payload["index"])
         return CommandResult(ok, state.notice if ok else "WORKER NOT FOUND")

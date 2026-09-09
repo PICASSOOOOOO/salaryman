@@ -13,6 +13,7 @@ from .objects import InteractionResult, OfficeObject, OfficeObjectRegistry, buil
 _FLOOR_PLAN_PATH = Path(__file__).resolve().parent.parent / "godot" / "office-client" / "floor_plan.json"
 with _FLOOR_PLAN_PATH.open(encoding="utf-8") as _floor_plan_file:
     FLOOR_PLAN = json.load(_floor_plan_file)
+FLOOR_COUNT = int(FLOOR_PLAN["floorCount"])
 
 
 @dataclass(frozen=True)
@@ -31,8 +32,8 @@ class Room:
 class TowerScene:
     """World-space scene state; drawing is intentionally kept elsewhere."""
 
-    width: int = 10_000
-    height: int = 10_000
+    width: int = int(FLOOR_PLAN["world"]["width"])
+    height: int = int(FLOOR_PLAN["world"]["height"])
     current_floor: int = 1
     current_room: str = "lobby"
     player_position: tuple[int, int] = tuple(FLOOR_PLAN["rooms"][0]["spawn"])
@@ -61,6 +62,14 @@ class TowerScene:
         return next(room for room in self.rooms if room.id == self.current_room)
 
     @property
+    def floor_bounds(self) -> tuple[int, int, int, int]:
+        return (0, 0, self.width, self.height)
+
+    @property
+    def floor_count(self) -> int:
+        return FLOOR_COUNT
+
+    @property
     def nearby_object(self) -> OfficeObject | None:
         return self.objects.nearby(self.player_position, room=self.current_room)
 
@@ -73,8 +82,8 @@ class TowerScene:
         return (x + width // 2, y + height // 2)
 
     def move(self, dx: int, dy: int) -> None:
-        """Move the cursor/player inside the current room's physical bounds."""
-        x, y, width, height = self.room.bounds
+        """Move the player inside the current floor's physical bounds."""
+        x, y, width, height = self.floor_bounds
         px = min(max(self.player_position[0] + dx, x + 250), x + width - 250)
         py = min(max(self.player_position[1] + dy, y + 250), y + height - 250)
         self.player_position = (px, py)
@@ -139,6 +148,17 @@ class TowerScene:
             return False
         self.current_room = room_id
         self.player_position = self.room_spawn(room_id)
+        self.input_vector = (0.0, 0.0)
+        self.velocity = (0.0, 0.0)
+        self.motion_remainder = (0.0, 0.0)
+        return True
+
+    def select_floor(self, floor: int) -> bool:
+        if floor < 1 or floor > self.floor_count:
+            return False
+        self.current_floor = floor
+        self.current_room = "lobby"
+        self.player_position = self.room_spawn("lobby")
         self.input_vector = (0.0, 0.0)
         self.velocity = (0.0, 0.0)
         self.motion_remainder = (0.0, 0.0)

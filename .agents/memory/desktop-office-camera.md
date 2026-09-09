@@ -7,7 +7,9 @@ The desktop Pygame office must use a straight top-down/orthogonal camera with sq
 
 The building should still have depth through real vertical layers: basement, lobby, and upper office floors connected by authoritative elevators and stairs. Wall thickness, ceiling lights, shadows, and elevation cues must use horizontal/vertical geometry; a visual stack must never substitute for functional floors.
 
-Each building floor is a 1,000,000 × 1,000,000-pixel navigable world. Offices and shared spaces are zones inside that floor, not separate small scenes. Render only the camera-visible tile window; never allocate a floor-sized surface.
+Shadow Tower has 67 floors, each a 100,000,000 × 100,000,000-pixel navigable world. Render only the camera-visible tile window; never allocate a floor-sized surface.
+
+Each floor base has one elevator lobby connected to one continuous hallway serving four separate offices. Each office comfortably supports up to 100 desks; users needing more capacity must acquire another office. Do not merge capacity across offices.
 
 **Why:** The owner explicitly rejected both the straight-ahead vanishing-point corridor and the later diagonal isometric treatment. They selected “Square grid viewed straight ahead/top-down — no diagonal floor.”
 

@@ -1411,3 +1411,17 @@ mtime_ms = 1788959079221
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/31e46043-df2c-4167-8f6f-fb5bde53a2bb/f1e7225f-a076-4965-8013-297d319781ab"
 storage_version_token = "1788959105995701"
 content_type = "image/png"
+
+[[outputs]]
+id = "7QV8Cvk4fQ6ZqG13RzTs9"
+uri = "file://screenshots/pygame-four-office-floor-base.png"
+type = "image"
+title = "Four-office floor base"
+description = "Verified central hallway view for the 67-floor base contract. Each 100,000,000 × 100,000,000 floor has an elevator lobby, connected hallway, and four separate 100-desk office footprints; interiors are intentionally not built yet."
+logical_id = "21853ba2-eeb7-4189-ba46-896d1b42d716"
+content_hash = "sha256:54c80e4df40827fe35a371580130d1ad382575dbdf22550a8d2a5b1910174006"
+size = 29565
+mtime_ms = 1788959406869
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/21853ba2-eeb7-4189-ba46-896d1b42d716/9ebab400-91ae-451f-817c-b4ae3bac5386"
+storage_version_token = "1788959427252369"
+content_type = "image/png"

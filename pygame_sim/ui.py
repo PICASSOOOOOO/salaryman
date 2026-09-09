@@ -9,7 +9,7 @@ from pathlib import Path
 import pygame
 
 from .models import Worker
-from .scene import TowerScene
+from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
 
 
@@ -170,7 +170,7 @@ class SolarPunkRenderer:
             self.draw_operator_menu(state)
 
     def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene) -> None:
-        room_x, room_y, room_w, room_h = scene.room.bounds
+        room_x, room_y, room_w, room_h = scene.floor_bounds
         scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
         # Keep a broad orthographic view so the office reads as a substantial,
         # walkable floor rather than a small room wrapped around the avatar.
@@ -203,19 +203,12 @@ class SolarPunkRenderer:
         lower_beam = pygame.Rect(viewport.x + 8, viewport.bottom - 13, viewport.width - 16, 13)
         pygame.draw.rect(self.screen, (48, 67, 62), lower_beam)
         pygame.draw.line(self.screen, (164, 201, 158), lower_beam.topleft, lower_beam.topright, 2)
-        self.text(scene.room.label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
+        self.text(f"FLOOR {scene.current_floor:02d} / BASE", (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
 
         # Decorative room composition uses real furniture sprites, while the
         # interaction registry remains the sole authority for object behavior.
         placements = {
-            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (498250, 499650)),
-                      ("furniture/BOOKSHELF/BOOKSHELF.png", (501750, 499650)),
-                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (498450, 500350)),
-                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (501550, 500350)),
-                      ("furniture/SOFA/SOFA_FRONT.png", (499250, 500350)),
-                      ("furniture/SOFA/SOFA_FRONT.png", (500750, 500350)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (499000, 499500)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (501000, 499500))],
+            "lobby": [],
             "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 4200)),
                            ("furniture/PLANT/PLANT.png", (8500, 4200)),
                            ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 4300))],
@@ -309,93 +302,27 @@ class SolarPunkRenderer:
         center_x = world_x + world_w // 2
         center_y = world_y + world_h // 2
 
-        # Permanent orthogonal architecture anchored around the floor center.
-        zones = (
-            ((center_x - 2100, center_y - 900, 4200, 1800), (176, 191, 154)),
-            ((center_x - 4300, center_y - 4100, 3500, 2500), (190, 190, 157)),
-            ((center_x + 800, center_y - 4100, 3500, 2500), (190, 190, 157)),
-            ((center_x - 4300, center_y + 1600, 3500, 2500), (184, 193, 157)),
-            ((center_x + 800, center_y + 1600, 3500, 2500), (184, 193, 157)),
-        )
-        for zone_data, color in zones:
-            zone = world_rect(zone_data)
-            pygame.draw.rect(self.screen, color, zone)
-            pygame.draw.rect(self.screen, (83, 126, 93), zone, max(1, int(14 * scale)))
+        # Floor-plan base only: elevator lobby -> connected hallway -> four
+        # separately leasable 100-desk offices. Interiors are deferred.
+        base_layout = FLOOR_PLAN["baseLayout"]
+        for office in base_layout["offices"]:
+            bay = world_rect(tuple(office["bounds"]))
+            pygame.draw.rect(self.screen, (197, 204, 172), bay)
+            pygame.draw.rect(self.screen, (79, 124, 91), bay, max(1, int(24 * scale)))
 
-        # Warm timber circulation paths cross the floor without changing its
-        # square top-down projection.
-        for walkway_data in (
-            (world_x, center_y - 350, world_w, 700),
-            (center_x - 350, world_y, 700, world_h),
-        ):
-            walkway = world_rect(walkway_data)
-            pygame.draw.rect(self.screen, (174, 137, 86), walkway)
-            board_step = max(5, int(300 * scale))
-            for x in range(walkway.left, walkway.right, board_step):
-                pygame.draw.line(self.screen, (137, 104, 68), (x, walkway.top), (x, walkway.bottom), 1)
+        for hallway_data in base_layout["hallways"]:
+            hallway = world_rect(tuple(hallway_data))
+            pygame.draw.rect(self.screen, (175, 139, 91), hallway)
+            pygame.draw.rect(self.screen, (218, 191, 139), hallway, 2)
 
-        # Water-recycling channels frame the central commons.
-        for channel_data in (
-            (center_x - 2250, center_y - 1100, 4500, 130),
-            (center_x - 2250, center_y + 970, 4500, 130),
-        ):
-            channel = world_rect(channel_data)
-            pygame.draw.rect(self.screen, (69, 151, 156), channel)
-            pygame.draw.rect(self.screen, (158, 223, 207), channel, 2)
+        elevator_lobby = world_rect(tuple(base_layout["elevatorLobby"]["bounds"]))
+        pygame.draw.rect(self.screen, (176, 191, 154), elevator_lobby)
+        pygame.draw.rect(self.screen, (83, 126, 93), elevator_lobby, max(1, int(20 * scale)))
 
-        for partition_data in (
-            (center_x - 2100, center_y - 900, 4200, 90),
-            (center_x - 2100, center_y + 810, 4200, 90),
-            (center_x - 2100, center_y - 900, 90, 1800),
-            (center_x + 2010, center_y - 900, 90, 1800),
-        ):
-            partition = world_rect(partition_data)
-            pygame.draw.rect(self.screen, (85, 111, 84), partition)
-            pygame.draw.rect(self.screen, (210, 222, 181), partition, 1)
-
-        for column_x, column_y in (
-            (center_x - 2350, center_y - 1150),
-            (center_x + 2150, center_y - 1150),
-            (center_x - 2350, center_y + 1050),
-            (center_x + 2150, center_y + 1050),
-        ):
-            column = world_rect((column_x, column_y, 220, 220))
-            pygame.draw.rect(self.screen, (48, 65, 62), column)
-            pygame.draw.rect(self.screen, (205, 218, 178), column, 2)
-
-        # Productive indoor gardens: food, shade, and air quality are part of
-        # the office infrastructure rather than decorative afterthoughts.
-        for bed_data in (
-            (center_x - 1950, center_y - 750, 650, 260),
-            (center_x + 1300, center_y - 750, 650, 260),
-            (center_x - 1950, center_y + 490, 650, 260),
-            (center_x + 1300, center_y + 490, 650, 260),
-        ):
-            bed = world_rect(bed_data)
-            pygame.draw.rect(self.screen, (111, 78, 51), bed)
-            inner = bed.inflate(-max(2, int(32 * scale)), -max(2, int(32 * scale)))
-            pygame.draw.rect(self.screen, (62, 122, 68), inner)
-            leaf_step = max(5, int(110 * scale))
-            for leaf_x in range(inner.left + leaf_step // 2, inner.right, leaf_step):
-                pygame.draw.rect(
-                    self.screen,
-                    (117, 183, 87),
-                    pygame.Rect(leaf_x, inner.centery - 3, max(3, int(42 * scale)), max(5, int(84 * scale))),
-                )
-
-        # Photovoltaic canopy arrays power the shared floor systems. Panel
-        # geometry remains strictly horizontal and vertical.
-        for array_data in (
-            (center_x - 4000, center_y - 3850, 2200, 520),
-            (center_x + 1800, center_y - 3850, 2200, 520),
-        ):
-            array = world_rect(array_data)
-            pygame.draw.rect(self.screen, (37, 82, 91), array)
-            pygame.draw.rect(self.screen, (113, 193, 181), array, 2)
-            panel_width = max(8, int(440 * scale))
-            for panel_x in range(array.left + panel_width, array.right, panel_width):
-                pygame.draw.line(self.screen, (86, 145, 148), (panel_x, array.top), (panel_x, array.bottom), 1)
-            pygame.draw.line(self.screen, (86, 145, 148), (array.left, array.centery), (array.right, array.centery), 1)
+        for office in base_layout["offices"]:
+            entrance_x, entrance_y = office["entrance"]
+            entrance = world_rect((entrance_x - 300, entrance_y - 300, 600, 600))
+            pygame.draw.rect(self.screen, (220, 198, 139), entrance)
 
         self.screen.set_clip(old_clip)
         pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=9)
