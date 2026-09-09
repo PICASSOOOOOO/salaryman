@@ -352,7 +352,7 @@ export default function CrmWorkspace() {
   if (!isAuthenticated) return <SignInPage context="Sign in to access the CRM workspace." />;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-48px)] bg-[#FAFAF7] text-black font-sans text-sm">
+    <div className="flex min-h-[calc(100dvh-48px)] flex-col bg-[#FAFAF7] text-black font-sans text-sm">
       <header className="flex items-center justify-between px-4 py-3 border-b border-black">
         <div className="flex items-center gap-4">
           <h1 className="font-bold uppercase text-xs tracking-widest">SALARYMAN / CRM Workspace</h1>

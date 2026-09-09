@@ -34,7 +34,7 @@ export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
   { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone, authOnly: true },
   { id: "org", path: "/organizations", label: "ORGANIZATIONS", icon: Network, authOnly: true },
-  { id: "office", path: "/office", label: "DESKTOP", icon: Building2, authOnly: true, accent: "green" },
+  { id: "office", path: "/desktop", label: "DOWNLOADS", icon: Building2, accent: "green" },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [

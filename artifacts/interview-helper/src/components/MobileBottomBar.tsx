@@ -34,6 +34,15 @@ export function MobileModuleNav() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDropdownOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [dropdownOpen]);
+
   const pathname = location.split('?')[0];
   const isHome = pathname === "/";
   const goBack = () => {
@@ -85,7 +94,10 @@ export function MobileModuleNav() {
             return (
               <button
                 key={tab.id}
-                onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
+                onClick={() => {
+                  setDropdownOpen(false);
+                  navigate(tab.path);
+                }}
                 className={`relative flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
                   active ? (isDesktop ? 'text-[#00FF41]' : 'text-black') : 'text-gray-400'
                 }`}
@@ -115,8 +127,15 @@ export function MobileModuleNav() {
 
       {/* More Overflow Menu Overlay */}
       {dropdownOpen && createPortal(
-        <div className="fixed inset-0 bg-black/20 z-[9999] flex flex-col justify-end">
-          <div className="bg-white rounded-t-xl pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] pt-2 px-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/20 z-[9999] flex flex-col justify-end"
+          role="presentation"
+          onPointerDown={() => setDropdownOpen(false)}
+        >
+          <div
+            className="bg-white rounded-t-xl pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] pt-2 px-4 shadow-xl"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">More Options</span>
               <button onClick={() => setDropdownOpen(false)} className="p-2"><X className="w-5 h-5 text-gray-400" /></button>

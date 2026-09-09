@@ -922,6 +922,8 @@ body.workspace-light {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
 }
 
 body.workspace-light #root {
@@ -930,6 +932,14 @@ body.workspace-light #root {
   height: auto;
   min-height: 100dvh;
   overflow: visible;
+}
+
+html:has(body.workspace-light) {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
 }
 
 /* Absolute browser-wide readability contract. No web route or nested widget

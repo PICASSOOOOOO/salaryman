@@ -358,7 +358,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-48px)] bg-[#FAFAF7] text-black font-sans text-sm" {...preventCopy}>
+    <div className="flex min-h-[calc(100dvh-48px)] flex-col bg-[#FAFAF7] text-black font-sans text-sm" {...preventCopy}>
       {!admin && (
         <style>{`
           .leads-data * { user-select: none !important; -webkit-user-select: none !important; }

@@ -1,5 +1,7 @@
 .desktop-download {
   min-height: 100dvh;
+  overflow: visible;
+  touch-action: pan-y;
   color: #11110f;
   background: #f4f0e7;
   font-family: var(--font-sans);
