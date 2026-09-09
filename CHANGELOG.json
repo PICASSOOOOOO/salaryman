@@ -1988,5 +1988,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.23.6.2391",
+    "date": "2026-09-09",
+    "commitHash": "7de1930766c9eb0db89010df681d31612f95bd20",
+    "changes": [
+      "Implement shadow tower demand logic and schema updates",
+      "Configure Replit environment settings",
+      "Update UI logic and add new rug asset metadata and screenshots",
+      "Update agent assets and enhance UI components with new camera visualization",
+      "Update floor plan metadata and refine simulation scene and UI logic"
+    ]
   }
 ]

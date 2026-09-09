@@ -105,8 +105,8 @@ export function NavBar() {
   };
 
   return (
-    <header className="desktop-app-nav flex flex-col border-b border-[#E5E5E5] shrink-0 z-50">
-      {/* Primary Bar */}
+    <header className="desktop-app-nav flex flex-col border-b border-[#D8D1C3] bg-[#FAF7EF] shrink-0 z-50">
+      {/* Old-version identity strip, translated to the cream browser system. */}
       <div className="flex items-center justify-between px-4 h-12">
         <div className="flex items-center gap-6">
           <div
@@ -118,79 +118,12 @@ export function NavBar() {
             </div>
             <span className="font-bold text-sm tracking-tight text-black">{config.name.toUpperCase()}</span>
           </div>
-
-          <nav className="flex items-center gap-1">
-            <button
-              onClick={goBack}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded-md transition-colors mr-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-
-            {visiblePrimary.filter(t => !t.authOnly || isAuthenticated).map(tab => {
-              const active = isAppNavItemActive(tab, pathname);
-              const Icon = tab.icon;
-              const isDesktop = tab.id === 'office';
-              const activeCls = isDesktop
-                ? 'salaryman-active-tab'
-                : 'bg-black text-white font-bold';
-              const idleCls = 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium';
-
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
-                  className={`relative flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider rounded-md transition-colors ${active ? activeCls : idleCls}`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {tab.id === 'org' ? (userOrg?.name ?? 'ORG') : tab.label}
-                  {tab.id === 'comms' && commsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-[#00FF41] text-black rounded-full px-1 shadow-sm">
-                      {commsCount > 99 ? '99+' : commsCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-
-            <div className="relative ml-1" ref={moreRef}>
-              <button
-                onClick={() => setMoreOpen(o => !o)}
-                className={`flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider rounded-md transition-colors ${
-                  hasActiveMore || moreOpen ? 'bg-black text-white font-bold' : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
-                }`}
-              >
-                MORE
-                <ChevronDown className={`w-3 h-3 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {moreOpen && createPortal(
-                <div ref={morePanelRef} className="fixed w-56 bg-white border border-[#E5E5E5] shadow-xl rounded-lg py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
-                  {moreItems.filter(it => !(it as { authOnly?: boolean }).authOnly || isAuthenticated).map(item => {
-                    const active = isAppNavItemActive(item, pathname);
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => { navigate(item.path); setMoreOpen(false); }}
-                        className={`flex items-center gap-3 w-full px-4 py-2.5 text-left text-[11px] uppercase tracking-wider transition-colors ${
-                          active ? 'bg-gray-100 text-black font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-black font-medium'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span>{item.label}</span>
-                        {item.id === 'comms' && commsCount > 0 && (
-                          <span className="ml-auto min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-[#00FF41] text-black rounded-full px-1">
-                            {commsCount > 99 ? '99+' : commsCount}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>,
-                document.body
-              )}
-            </div>
-          </nav>
+          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#6C665C]">
+            <span>Business operating system</span>
+            <span className="text-[#B9B1A2]">◆</span>
+            <button onClick={() => navigate('/pledge')} className="hover:text-black">Pledge store</button>
+            <button onClick={() => navigate('/feedback')} className="hover:text-black">Feedback</button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -234,6 +167,82 @@ export function NavBar() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Old-version primary destination row. */}
+      <div className="flex h-10 items-center border-t border-[#E5DED1] bg-[#F4EFE5] px-4">
+        <button
+          onClick={goBack}
+          className="mr-2 flex h-7 w-7 items-center justify-center rounded text-[#777064] transition-colors hover:bg-[#E8E1D4] hover:text-black"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+        </button>
+        <nav className="flex items-center gap-1">
+          {visiblePrimary.filter(tab => !tab.authOnly || isAuthenticated).map(tab => {
+            const active = isAppNavItemActive(tab, pathname);
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.id === 'office' ? (consumeAppReturnPath() ?? tab.path) : tab.path)}
+                className={`relative flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                  active
+                    ? 'border-black bg-black text-[#FAF7EF]'
+                    : 'border-transparent text-[#5F594F] hover:border-[#CFC6B7] hover:bg-[#FFFCF5] hover:text-black'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.id === 'org' ? (userOrg?.name ?? 'ORG') : tab.label}
+              </button>
+            );
+          })}
+
+          <div className="relative" ref={moreRef}>
+            <button
+              onClick={() => setMoreOpen(open => !open)}
+              className={`flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                hasActiveMore || moreOpen
+                  ? 'border-black bg-black text-[#FAF7EF]'
+                  : 'border-transparent text-[#5F594F] hover:border-[#CFC6B7] hover:bg-[#FFFCF5] hover:text-black'
+              }`}
+            >
+              MORE
+              <ChevronDown className={`h-2.5 w-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+              {commsCount > 0 && !moreOpen && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[8px] text-white">
+                  {commsCount > 99 ? '99+' : commsCount}
+                </span>
+              )}
+            </button>
+            {moreOpen && createPortal(
+              <div ref={morePanelRef} className="fixed z-[9999] w-52 rounded-lg border border-[#D8D1C3] bg-[#FFFCF5] py-1 shadow-xl" style={{ top: morePos.top, right: morePos.right }}>
+                {moreItems.filter(item => !item.authOnly || isAuthenticated).map(item => {
+                  const active = isAppNavItemActive(item, pathname);
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { navigate(item.path); setMoreOpen(false); }}
+                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                        active ? 'bg-black text-[#FAF7EF]' : 'text-[#5F594F] hover:bg-[#F0EADF] hover:text-black'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                      {item.id === 'comms' && commsCount > 0 && (
+                        <span className="ml-auto rounded-full bg-black px-1.5 py-0.5 text-[8px] text-white">
+                          {commsCount > 99 ? '99+' : commsCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>,
+              document.body
+            )}
+          </div>
+        </nav>
       </div>
 
       {/* Secondary Bar (Subnav) */}

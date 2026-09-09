@@ -1467,3 +1467,17 @@ mtime_ms = 1788959949649
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/63c4e434-d5fe-4f55-95a4-8415166421d2/a04e1991-a19e-4c3f-9c02-2f11391af8c4"
 storage_version_token = "1788960006342823"
 content_type = "image/png"
+
+[[outputs]]
+id = "dv7SyZ1dZ-Jl7E23t9SVA"
+uri = "file://screenshots/old-menu-cream-preview.jpg"
+type = "image"
+title = "Old menu restored in cream"
+description = "Two-tier SALARYMAN navigation with Pablo Prime, Calll Home, Agents, Office, and More. Economy is removed."
+logical_id = "8e41dc25-86e3-4b39-9baf-4bacfff1187d"
+content_hash = "sha256:a8218b1ea85114ee21b0a7fe59e5f0511d5613b590511b7e4e90ec20d96c7232"
+size = 115043
+mtime_ms = 1788969410289
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8e41dc25-86e3-4b39-9baf-4bacfff1187d/365008c4-3aaf-4dfd-9dff-143f480a0087"
+storage_version_token = "1788969417870974"
+content_type = "image/jpeg"

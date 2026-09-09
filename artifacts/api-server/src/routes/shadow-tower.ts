@@ -74,7 +74,7 @@ function safeFloor(floor: typeof shadowTowerFloorsTable.$inferSelect) {
 
 async function demandForCity(
   city: ShadowTowerCity,
-  occupiedRows: Array<{ floorNumber: number; unitNumber: number; status: string }> = [],
+  occupiedRows: Array<{ floorNumber: number; unitNumber: number | null; status: string | null }> = [],
 ) {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const events = await db.select({ kind: shadowTowerInterestEventsTable.kind })
@@ -83,7 +83,10 @@ async function demandForCity(
       eq(shadowTowerInterestEventsTable.city, city),
       gte(shadowTowerInterestEventsTable.createdAt, since),
     ));
-  const occupied = occupiedRows.filter((row) => row.status === "occupied");
+  const occupied = occupiedRows.filter(
+    (row): row is { floorNumber: number; unitNumber: number; status: string } =>
+      row.status === "occupied" && row.unitNumber !== null,
+  );
   const highestOccupiedOrdinal = occupied.length
     ? Math.max(...occupied.map((row) => officeOrdinal(row.floorNumber, row.unitNumber) + 1))
     : 0;
