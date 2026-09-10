@@ -39,7 +39,7 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
   };
 
   const directLinks = [
-    { label: 'PABLO PRIME', path: '/pablo', icon: Sparkles },
+    { label: 'PABLO AI', path: '/pablo', icon: Sparkles },
     { label: 'CALLL HOME', path: '/phone', icon: Phone },
     { label: 'APP DOWNLOAD', path: '/desktop', icon: Download },
   ];

@@ -84,7 +84,7 @@ export default function ProfessionalHome() {
             </button>
             {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
           </div>
-          <Link className="sm-navbox" href="/pablo" data-testid="link-meet-pablo">PABLO PRIME</Link>
+          <Link className="sm-navbox" href="/pablo" data-testid="link-meet-pablo">PABLO AI</Link>
           <Link className="sm-navbox" href="/phone">CALLL HOME</Link>
           <Link className="sm-navbox" href="/desktop" data-testid="link-home-gameplay">APP DOWNLOAD</Link>
         </nav>
@@ -102,7 +102,7 @@ export default function ProfessionalHome() {
           {featuresOpen && <FeatureMenu onSelect={() => setFeaturesOpen(false)} />}
         </div>
         <nav className="sm-mobile-direct" aria-label="Main navigation">
-          <Link href="/pablo">PABLO PRIME</Link>
+          <Link href="/pablo">PABLO AI</Link>
           <Link href="/phone">CALLL HOME</Link>
           <Link href="/desktop">APP DOWNLOAD</Link>
         </nav>

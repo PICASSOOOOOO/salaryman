@@ -28,7 +28,7 @@ export type AppNavItem = {
 };
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
-  { id: "pablo", path: "/pablo", label: "PABLO PRIME", icon: Terminal },
+  { id: "pablo", path: "/pablo", label: "PABLO AI", icon: Terminal },
   { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone },
   { id: "office", path: "/desktop", label: "APP DOWNLOAD", icon: Building2, accent: "green" },
 ];
