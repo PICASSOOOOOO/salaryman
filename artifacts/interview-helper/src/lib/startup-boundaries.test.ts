@@ -10,7 +10,7 @@ describe("frontend startup boundaries", () => {
     const main = source("main.tsx");
     expect(main).not.toMatch(/^import .*errorReporter/m);
     expect(main).not.toMatch(/^import .*global-ui-sound/m);
-    expect(main).not.toContain("errorReporter");
+    expect(main).toContain('import("./lib/errorReporter")');
     expect(main).toContain("armAudioAutoUnlock();");
     expect(main).toContain("installDeferredGlobalUiSound();");
   });

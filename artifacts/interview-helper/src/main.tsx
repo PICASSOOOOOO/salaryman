@@ -46,6 +46,7 @@ const afterFirstPaint = (start: () => void) => {
 };
 
 afterFirstPaint(() => {
+  void import("./lib/errorReporter").then(({ installGlobalErrorHandlers }) => installGlobalErrorHandlers());
   if ("serviceWorker" in navigator) {
     const base = import.meta.env.BASE_URL;
     void navigator.serviceWorker

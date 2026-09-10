@@ -145,6 +145,7 @@ function PledgeStoreRoute() {
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
+const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const ArtLibrary = lazy(() => import("@/pages/ArtLibrary"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
@@ -495,6 +496,7 @@ function AppShell() {
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
             <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
+            <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
             <Route path="/profile/admin/art" component={ArtLibrary} />
             <Route path="/alpha" component={AlphaApply} />
@@ -537,6 +539,7 @@ function AppShell() {
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
             <Route path="/admin/dev-tasks">{() => <Redirect to="/profile/admin/dev-tasks" />}</Route>
+            <Route path="/admin/feedback">{() => <Redirect to="/profile/admin/feedback" />}</Route>
             <Route path="/admin">{() => {
               const qs = window.location.search;
               return <Redirect to={`/profile/admin${qs}`} />;

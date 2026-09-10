@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
+import { FeedbackLauncher } from './FeedbackLauncher';
 
 export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) {
   const [location, navigate] = useLocation();
@@ -49,6 +50,7 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
 
           {isAuthenticated ? (
             <>
+              <FeedbackLauncher />
               <button
                 type="button"
                 onClick={() => go('/profile')}

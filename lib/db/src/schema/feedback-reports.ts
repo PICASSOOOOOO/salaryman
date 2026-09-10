@@ -23,6 +23,11 @@ export const feedbackReportsTable = pgTable("feedback_reports", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   resolutionReason: varchar("resolution_reason", { length: 64 }),
+  githubIssueNumber: integer("github_issue_number"),
+  githubIssueUrl: text("github_issue_url"),
+  githubSyncStatus: varchar("github_sync_status", { length: 20 }).notNull().default("pending"),
+  githubSyncError: text("github_sync_error"),
+  githubSyncedAt: timestamp("github_synced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
