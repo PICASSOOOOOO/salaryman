@@ -20,7 +20,7 @@
 - [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
 - [Plan/auth gate loading race](auth-plan-gate-loading-race.md) — usePlan/gates must wait on useAuth().isLoading; isAuthenticated starts false (not undefined), so cold-load gated routes bounce paid users to /upgrade.
 - [Keep-alive ErrorBoundary + HMR](keepalive-errorboundary-hmr.md) — always-mounted hidden subtrees (Console "terminal", home) get stuck on fallback after a transient Fast-Refresh hook-order crash; ErrorBoundary now auto-resets on vite:afterUpdate. Don't re-chase as a runtime bug.
-- [New-user funnel gate](newuser-funnel-gate.md) — Pablo is always the homepage; protected deep links still gate, and authenticated newcomers enter Tower only through an explicit handoff.
+- [Browser auth routing](newuser-funnel-gate.md) — public homepage stays at `/`; missing/expired sessions go directly to compact sign-in with returnTo, never through Pablo.
 - [Pablo nebula canonical](pablo-nebula-canonical.md) — approved /pablo nebula is the shader purple "emotion/wavy orb" (659-line PabloNebula3D w/ variants), NOT the 7f0d717 starfield (which full-bleed = broken white blob). Match the `Published your App` commit, not "older = original".
 - [Pablo voice output gating](pablo-voice-output-gating.md) — "replies in text but no sound": voice OUTPUT was gated to voice-mode INPUT, and voice mode needs a mic; speak replies in ALL modes, gate only the mic.
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — /pablo: voice needs an explicit labeled "Tap to talk" button (orb-tap is invisible); bottom controls share a safe lane — keep reply/idle bubbles well above the talk button + give it higher z, or they overlap/intercept taps.
@@ -99,7 +99,7 @@
 - [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.
 - [Release build heap cap](release-build-heap-cap.md) — full modern+legacy Vite build needs a 3 GiB Node heap cap here; unbounded rendering is OOM-killed despite ample reported free memory.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
-- [Responsive navigation chrome](responsive-navigation-chrome.md) — desktop/mobile share one destination model; short landscape uses icon chrome; Back trusts only history from the current document session.
+- [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
 - [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ100=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — ElevenLabs needs the one-time `sk_` secret, never the dashboard key ID; Pablo/Mila must fail closed instead of falling back to another accent.
 - [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.

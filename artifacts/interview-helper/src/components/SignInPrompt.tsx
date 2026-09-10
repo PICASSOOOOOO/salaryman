@@ -22,7 +22,8 @@ interface SignInPromptProps {
 export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPromptProps) {
   const { login } = useAuth();
   const [boomer] = useBoomerMode();
-  const signInPrimary = () => login(returnTo);
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const signInPrimary = () => login(returnTo ?? currentPath);
 
   if (inline) {
     return (

@@ -29,10 +29,10 @@ describe("getPabloHref", () => {
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
-    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "contacts", "leads", "comms", "org", "office"]);
+    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "office"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "business", "creative", "marketing", "pledge", "feedback",
-      "settings", "profile", "admin",
+      "bots", "org", "comms", "business", "contacts", "leads",
+      "creative", "marketing", "pledge", "feedback", "settings", "profile", "admin",
     ]);
   });
 
@@ -51,7 +51,7 @@ describe("shared app navigation", () => {
   it("keeps signed-out entry and authenticated office fallbacks distinct", () => {
     expect(getAppHomePath(false)).toBe("/");
     expect(getAppHomePath(true)).toBe("/office");
-    expect(getAppBackPath(false)).toBe("/pablo");
+    expect(getAppBackPath(false)).toBe("/");
     expect(getAppBackPath(true)).toBe("/office");
   });
 });

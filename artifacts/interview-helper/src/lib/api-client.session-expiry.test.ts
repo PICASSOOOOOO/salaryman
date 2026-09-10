@@ -2,14 +2,14 @@
 //
 // Guards the session-expiry redirect in `apiFetch`. When a background API call
 // comes back 401 it usually means the session lapsed, so the handler bounces the
-// visitor to /pablo?returnTo=<path> to sign in and return. BUT on public /
+// visitor to /sign-in?returnTo=<path> to sign in and return. BUT on public /
 // anonymous routes a 401 is EXPECTED (the visitor simply isn't signed in) and
 // must NOT hijack navigation — otherwise the public scroll-cinematic landing at
 // "/" never renders because a background 401 jumps straight to /pablo.
 //
 // Contract:
 //   1. A 401 on a genuinely protected page (e.g. /office, /business) →
-//      redirect to /pablo?returnTo=<encoded path+search>.
+//      redirect to /sign-in?returnTo=<encoded path+search>.
 //   2. A 401 on a public route ("/", "/pablo", "/immigration", "/sms-opt-in",
 //      auth pages and their
 //      subpaths) → NO redirect.
@@ -65,14 +65,14 @@ afterEach(() => {
 });
 
 describe("apiFetch session-expiry redirect", () => {
-  it("redirects to /pablo?returnTo=<path> on a 401 from a protected page", async () => {
+  it("redirects to /sign-in?returnTo=<path> on a 401 from a protected page", async () => {
     setLocation("/office", "?tab=desk");
     global.fetch = vi.fn(() => Promise.resolve(status401()));
     const apiFetch = await freshApiFetch();
     await settle(apiFetch("/api/business/summary"));
     expect(replaceMock).toHaveBeenCalledTimes(1);
     expect(replaceMock).toHaveBeenCalledWith(
-      `/pablo?returnTo=${encodeURIComponent("/office?tab=desk")}`,
+      `/sign-in?returnTo=${encodeURIComponent("/office?tab=desk")}`,
     );
   });
 

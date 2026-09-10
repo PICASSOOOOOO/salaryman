@@ -132,8 +132,8 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
   const p = fetch(fullPath, { ...opts, credentials: 'include' });
 
   // Session-expiry redirect: when any API call comes back 401 it means the
-  // session has lapsed. Bounce the user to /pablo?returnTo=<current-path> so
-  // that after sign-in they land back exactly where they were.
+  // session has lapsed. Send the user directly to the compact sign-in screen
+  // and preserve the current page as the post-authentication destination.
   p.then((r) => {
     if (
       r.status === 401 &&
@@ -149,7 +149,7 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
         _sessionExpiredRedirecting = true;
         const safePath = currentPath + window.location.search;
         const returnTo = encodeURIComponent(safePath);
-        window.location.replace(`/pablo?returnTo=${returnTo}`);
+        window.location.replace(`/sign-in?returnTo=${returnTo}`);
       }
     }
   }).catch(() => {});

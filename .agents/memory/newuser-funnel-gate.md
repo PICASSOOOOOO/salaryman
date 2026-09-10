@@ -1,17 +1,19 @@
 ---
-name: New-user funnel gate (interview-helper)
-description: Why logged-out / not-cleared users land on the /pablo nebula terminal on every route — App.tsx global gate, not a routing bug.
+name: Browser authentication routing
+description: Public entry, protected-route sign-in, and post-authentication return behavior.
 ---
 
-`AppShell` in `artifacts/interview-helper/src/App.tsx` has a GLOBAL GATE: any user whose tutorial is not done (`isTutorialDone()` false) is redirected for **every protected path** except an allow-list that DIFFERS BY AUTH STATE:
-- signed-out (anon) allow-list is DELIBERATELY NARROW: only `/`, `/pablo`, `/auth`, `/api`. The owner's rule: "no URL other than the front door (Pablo nebula) reachable by typing/deep-linking before sign-in" — Pablo is the firewall/bot filter. `/legal` + `/alpha` are NOT anon-reachable (they bounce to `/pablo`); only `/auth` + `/api` stay open because they ARE the sign-in machinery, not pages.
-- authed-but-not-cleared allow-list adds `/immigration`, `/legal`, `/alpha`, and `/tower` (post-sign-in surfaces).
-- both signed-out and signed-in visitors see Pablo at `/`; the single primary header action sends visitors straight to sign-in/Tower/Office based on state, while readiness text hands off to Tower without a spoken delay.
+The public website remains at `/`. Pablo is a product destination, not the
+authentication gateway. A missing or expired session must go directly to the
+compact `/sign-in` screen with a safe `returnTo` for the requested page.
 
-Two cold-load guards matter: (1) bounce only when `!isLoading` (isAuthenticated starts false, so acting mid-hydration mis-kicks a real authed user off /immigration|/legal); (2) `holdForAuth` early-returns `<CRTFallback/>` for any non-anon path while `isLoading` so a logged-out deep link can't FLASH the protected page before the bounce fires. Cleared users (tutorialDone) are never held/gated.
+Protected products may be explicitly allowed to render their own compact sign-in
+state. Authentication recovery must preserve the requested product route.
 
-Pablo does the sign-in funnel NATURALLY (server prompt forbids "sign up for an account"; free CHATTING phase; only nudges login when user asks for a tool) — there are no explicit "how to sign in" instructions, by design. Don't add any.
+**Why:** Sending users to the nebula when they pressed Back, opened Automation, or
+finished login broke navigation and made Pablo appear to own unrelated products.
 
-**Why:** The owner wants the app to OPEN directly on the Pablo nebula, like the original — no marketing/landing/explanation page. A bold art-forward `/landing` Cover page was tried and explicitly rejected ("it's ugly, delete that, should start with pablo nebula like before"). `Cover.tsx` was deleted and `/landing` fully removed.
-
-**How to apply:** When screenshot-verifying a gated page (e.g. `/pledge`, `/bots`, `/world`) anonymously you'll see the Pablo nebula (purple orb + "ask anything"), not the page — expected, NOT a routing bug. Screenshots show the 2D fallback gradient, not the live WebGL orb. To truly verify gated pages you need an authenticated, tutorial-done session. New routes inside the `<Switch>` inherit this gate automatically. Do NOT re-introduce a `/landing` page as the funnel entry — the entry is `/pablo`. The homepage itself always stays on Pablo; only the explicit Tower handoff leaves it.
+**How to apply:** Unexpected 401 handling routes to `/sign-in?returnTo=...`.
+Signed-out Back fallback is `/`. Legacy Automation paths resolve to the Automation
+workspace, whose sign-in returns there. Never use `/pablo` as a generic auth,
+Back, or product fallback.

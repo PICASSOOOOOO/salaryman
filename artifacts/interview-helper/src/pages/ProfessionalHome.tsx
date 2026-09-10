@@ -50,7 +50,7 @@ const paths = [
 
 const features = [
   ["CRM & sales", "Keep every relationship moving", Users, "/business/contacts"],
-  ["Agents & automation", "Let routine work run itself", Bot, "/bots"],
+  ["Agents & automation", "Let routine work run itself", Bot, "/business/autopilot"],
   ["Business operations", "The daily view of your company", FolderKanban, "/business"],
   ["Knowledge & files", "One home for the work", FileText, "/console/vault"],
 ] as const;

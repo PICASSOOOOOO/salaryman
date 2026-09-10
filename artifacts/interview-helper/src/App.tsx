@@ -8,10 +8,9 @@ import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
-import AlphaWipeBanner from "@/components/AlphaWipeBanner";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
-import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
+import { MobileModuleNav } from "@/components/MobileBottomBar";
 import { installAppHistoryTracking } from "@/lib/app-navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
@@ -29,7 +28,6 @@ import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
-import { FeedbackLauncher } from "@/components/FeedbackLauncher";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -344,7 +342,13 @@ function AppShell() {
   // them while logged out still bounces to the door). The console sign-in
   // screen passes returnTo="/console" to OAuth, so after signing in the visitor
   // lands back on the console rather than the app base.
-  const ANON_ALLOWED_EXACT = ["/console"];
+  const ANON_ALLOWED_EXACT = [
+    "/console",
+    "/business/autopilot",
+    "/bots",
+    "/agents",
+    "/intel/agents",
+  ];
   const matchesPrefix = (list: string[]) =>
     pathname === "/" || list.some(p => pathname === p || pathname.startsWith(p + "/"));
   const allowedForAnon = matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
@@ -440,17 +444,11 @@ function AppShell() {
   return (
     <>
       <DeviceControlBridge />
-      {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
-          on every page (including fullscreen office/game routes that hide the
-          NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && !isGameRoute && !showNavBar && !isDeviceLinkRoute && !isPabloRoute && <AlphaWipeBanner />}
       {showNavBar && (
         <div className="app-chrome">
-          {!isEmbed && !isPabloRoute && <AlphaWipeBanner />}
           <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />
-          <MobileSubNav />
         </div>
       )}
       {/* Site-wide command palette (nav search bar + ⌘K). Mounted wherever the
@@ -464,7 +462,6 @@ function AppShell() {
           viewport; ordinary fullscreen routes still receive it. */}
         {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
       </Suspense>
-      {showNavBar && !isEmbed && <FeedbackLauncher />}
       {/* Primary surfaces are mounted only while active. Keeping both large
           trees hidden behind every office/paid-feature route retained their
           state, effects, and DOM for the entire session. Route state already
@@ -653,7 +650,7 @@ function AppShell() {
             <Route path="/business/accounting" component={Accounting} />
             <Route path="/business/taxes" component={TurboTax} />
             <Route path="/intel/balance-sheet">{() => { window.location.href = '/business/balance-sheet'; return null; }}</Route>
-            <Route path="/intel/agents">{() => <Redirect to="/pablo" />}</Route>
+             <Route path="/intel/agents">{() => <Redirect to="/business/autopilot" />}</Route>
             <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
@@ -706,12 +703,12 @@ function AppShell() {
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
             <Route path="/store/realty" component={RealtyStore} />
             <Route path="/cutscene" component={CutscenePage} />
-            <Route path="/bots">{() => <Redirect to="/pablo" />}</Route>
-            <Route path="/bots/:rest*">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/bots">{() => <Redirect to="/business/autopilot" />}</Route>
+            <Route path="/bots/:rest*">{() => <Redirect to="/business/autopilot" />}</Route>
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
-            <Route path="/agents">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/agents">{() => <Redirect to="/business/autopilot" />}</Route>
             <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>
 
             {/* Feedback admin */}
@@ -808,7 +805,7 @@ function ClerkSignUpPage() {
 }
 
 function ClerkSignInPage() {
-  const returnTo = new URLSearchParams(window.location.search).get("returnTo") ?? undefined;
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo") ?? "/";
   return <div className="flex min-h-[100dvh] items-center justify-center bg-zinc-950 px-4">
     <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={returnTo} />
   </div>;

@@ -1095,7 +1095,7 @@ body.workspace-light #root {
   }
   body.workspace-light #root {
     padding-top: 56px;
-    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
   }
   body.workspace-light:has(.alpha-wipe-banner) #root {
     padding-top: 0;
@@ -1103,8 +1103,11 @@ body.workspace-light #root {
   body.workspace-light.has-subnav #root {
     padding-top: 96px; /* 56px top + 40px subnav */
   }
-  .mobile-app-nav-top, .mobile-app-nav-bottom {
+  .mobile-app-nav-top {
     display: flex;
+  }
+  .mobile-app-nav-bottom {
+    display: none !important;
   }
   .mobile-app-subnav {
     display: flex;
