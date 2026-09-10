@@ -43,7 +43,6 @@ export const MORE_NAV_ITEMS: AppNavItem[] = [
   { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", icon: Megaphone },
   { id: "pledge", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
-  { id: "feedback", path: "/feedback", label: "FEEDBACK", icon: MessageSquare },
   { id: "settings", path: "/settings", label: "SETTINGS", icon: Settings, authOnly: true },
   { id: "profile", path: "/profile", label: "PROFILE", icon: User, authOnly: true },
   { id: "admin", path: "/profile/admin", label: "ADMIN", icon: ShieldCheck, authOnly: true, staffOnly: true },

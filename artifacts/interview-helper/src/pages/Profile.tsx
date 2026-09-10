@@ -1,10 +1,9 @@
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, Plug, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop, Eye, EyeOff, Map, Network, ShieldCheck } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, Plug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop, Eye, EyeOff, Map, Network, ShieldCheck } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
-import { FeedbackModal } from '@/components/FeedbackModal';
 import { useLocation, Link, Redirect } from 'wouter';
 
 import { useBoomerMode } from '@/hooks/use-mobile';
@@ -363,7 +362,6 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
   const [boomerMode] = useBoomerMode();
   const { isPro, isOwner, features } = usePlan();
   const { t } = useTranslation();
-  const [showFeedback, setShowFeedback] = useState(false);
 
   const [affiliations, setAffiliations] = useState<OrgAffiliation[]>([]);
   const [affiliationsLoading, setAffiliationsLoading] = useState(true);
@@ -693,12 +691,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                     <span>Currency</span>
                     <div className="w-32"><CurrencySelector /></div>
                   </div>
-                  <button onClick={() => setShowFeedback(true)} className="w-full text-left pt-3 border-t border-black/20 flex justify-between items-center hover:text-emerald-700 transition-colors">
-                    <span>Report Anomaly (Bug)</span>
-                    <Bug className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-                {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
               </Panel>
 
               {donationHistory.filter(d => d.status === 'completed').length > 0 && (

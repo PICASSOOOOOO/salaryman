@@ -146,7 +146,6 @@ function PledgeStoreRoute() {
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
-const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const ArtLibrary = lazy(() => import("@/pages/ArtLibrary"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
@@ -498,7 +497,6 @@ function AppShell() {
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
             <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
-            <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/profile/admin/art" component={ArtLibrary} />
             <Route path="/alpha" component={AlphaApply} />
             <Route path="/desktop" component={DesktopDownload} />
@@ -708,8 +706,6 @@ function AppShell() {
             <Route path="/agents">{() => <Redirect to="/business/autopilot" />}</Route>
             <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>
 
-            {/* Feedback admin */}
-            <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
             <Route path="/pledge/agents">{() => <Redirect to="/pablo" />}</Route>
