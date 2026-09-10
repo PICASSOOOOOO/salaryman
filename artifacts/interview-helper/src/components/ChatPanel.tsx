@@ -13,11 +13,11 @@ import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
-const CRT = (a: number) => `rgba(0,255,65,${a})`;
+const CRT = (a: number) => `rgba(0,0,0,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
 const AMBER = (a: number) => `rgba(251,191,36,${a})`;
-const BG = "rgba(3,10,3,0.98)";
-const BORDER = (a: number) => `rgba(0,255,65,${a})`;
+const BG = "rgba(255,252,245,0.98)";
+const BORDER = (a: number) => `rgba(0,0,0,${a})`;
 const FONT = "var(--font-sans)";
 
 type Tab = "pablo" | "global" | "company" | "private";
@@ -1271,7 +1271,7 @@ export function ChatPanel({
           )}
           <div
             style={{
-              background: `linear-gradient(90deg, rgba(0,255,65,0.06), rgba(0,0,0,0))`,
+              background: "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(255,252,245,0))",
               borderBottom: `1px solid ${BORDER(0.15)}`,
               padding: isMobile ? "12px 16px" : "8px 12px",
               display: "flex",
@@ -1297,7 +1297,7 @@ export function ChatPanel({
                   letterSpacing: "0.12em",
                 }}
               >
-                PAYPHONE
+                {connected ? "PABLO IS WORKING" : "COMMS OFFLINE"}
               </span>
             </div>
             {!embedded && <button

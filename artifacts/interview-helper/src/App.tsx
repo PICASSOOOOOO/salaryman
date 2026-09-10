@@ -30,6 +30,7 @@ import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { FeedbackLauncher } from "@/components/FeedbackLauncher";
+import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
@@ -483,6 +484,7 @@ function AppShell() {
           </Suspense>
         </ErrorBoundary>
       )}
+      {isConsoleTerminal && isAuthenticated && <DeferredChatPanel />}
 
       {/* Other routes — lazy-loaded */}
       {!isPrimarySurfaceActive && (

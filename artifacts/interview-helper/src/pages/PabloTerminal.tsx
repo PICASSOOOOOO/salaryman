@@ -539,11 +539,11 @@ function useNebulaSize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const d = Math.hypot(w, h);
-    // A smaller field gives the visual room around the controls and reads as
-    // a zoomed-out camera instead of a full-screen wash.
+    // The 2D fallback fades to transparent before its own edge, so it must
+    // exceed the viewport diagonal or its circular boundary becomes visible.
     const isMobile = w < 640;
-    const mult = isMobile ? 0.78 : 0.9;
-    const min = isMobile ? 360 : 520;
+    const mult = 1.35;
+    const min = isMobile ? 520 : 900;
     return Math.max(min, Math.floor(d * mult));
   };
   const [size, setSize] = useState(compute);

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { MessageSquare } from "lucide-react";
 import { useCommsSummary } from "@/hooks/use-comms-summary";
 
 const ChatPanel = lazy(() =>
@@ -43,14 +44,15 @@ export function DeferredChatPanel() {
     <button
       type="button"
       data-testid="button-comms-toggle"
-      aria-label="Open chat"
-      title="Chat"
+      aria-label="Open COMMS"
+      title="Open COMMS"
       onClick={() => setLoadPanel(true)}
-      className="fixed bottom-[calc(var(--app-safe-bottom)+16px+var(--fab-bottom-offset,0px))] right-[calc(var(--app-safe-right)+16px)] z-[901] flex h-[52px] w-[52px] items-center justify-center rounded-full border border-emerald-400/40 bg-slate-950/92 text-xl text-emerald-300 shadow-[0_4px_18px_rgba(0,0,0,.65),0_0_12px_rgba(52,211,153,.18)] backdrop-blur sm:bottom-[calc(16px+var(--fab-bottom-offset,0px))] sm:right-4 sm:h-[42px] sm:w-[42px] sm:border-[1.5px] sm:text-lg"
+      className="fixed bottom-[calc(var(--app-safe-bottom)+16px+var(--fab-bottom-offset,0px))] right-[calc(var(--app-safe-right)+16px)] z-[901] flex h-11 items-center justify-center gap-2 border border-black bg-[#FFFCF5] px-3 font-mono text-[10px] font-bold tracking-[0.14em] text-black shadow-[4px_4px_0_#000] sm:bottom-[calc(16px+var(--fab-bottom-offset,0px))] sm:right-4"
     >
-      <span aria-hidden>◇</span>
+      <MessageSquare className="h-3.5 w-3.5" />
+      COMMS
       {total > 0 && (
-        <span className="absolute -left-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-slate-950 bg-red-500 px-1 text-[10px] font-bold text-white">
+        <span className="absolute -left-2 -top-2 flex h-5 min-w-5 items-center justify-center border border-black bg-black px-1 text-[9px] font-bold text-[#FFFCF5]">
           {total > 99 ? "99+" : total}
         </span>
       )}
