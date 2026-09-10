@@ -6,6 +6,24 @@ import { initLowGfx } from "./lib/lowGfx";
 import { armAudioAutoUnlock } from "./lib/tts";
 import { installDeferredGlobalUiSound, warmGlobalUiSound } from "./lib/deferred-ui-sound";
 
+// Replit may append its Feedback Widget script to published HTML after the
+// application build. Keep SALARYMAN free of platform-branded controls even
+// when the corresponding Publishing toggle is unavailable.
+const removeReplitInjectedUi = () => {
+  document.querySelectorAll([
+    "replit-agent-inbox-widget",
+    "replit-agent-inbox-i18n-mirror",
+    'script[src*="replit-cdn.com/feedback-widget/"]',
+    'script[src="https://i.replit.com/script.js"]',
+  ].join(",")).forEach((node) => node.remove());
+};
+
+removeReplitInjectedUi();
+new MutationObserver(removeReplitInjectedUi).observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+});
+
 // Canonical front door: salaryman.io is THE domain. In production, anyone who
 // lands on the deployment's *.replit.app host (e.g. salaryman.replit.app) or
 // the www. alias is routed straight to https://picassoo.app, preserving the

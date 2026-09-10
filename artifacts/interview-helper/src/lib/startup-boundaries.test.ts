@@ -15,6 +15,13 @@ describe("frontend startup boundaries", () => {
     expect(main).toContain("installDeferredGlobalUiSound();");
   });
 
+  it("removes Replit-injected feedback controls from every route", () => {
+    const main = source("main.tsx");
+    expect(main).toContain("replit-agent-inbox-widget");
+    expect(main).toContain("replit-cdn.com/feedback-widget/");
+    expect(main).toContain("new MutationObserver(removeReplitInjectedUi)");
+  });
+
   it("keeps Three, Twilio, audio conversion, and chat on demand", () => {
     const app = source("App.tsx");
     const twilio = source("contexts/TwilioDeviceContext.tsx");
