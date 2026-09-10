@@ -201,9 +201,9 @@ function LoadingFallback() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#09090b",
-        color: "rgba(56,189,248,0.7)",
-        fontFamily: "monospace",
+        background: "#FAFAF7",
+        color: "#000000",
+        fontFamily: "var(--font-sans)",
         fontSize: "0.85rem",
         letterSpacing: "0.1em",
       }}
