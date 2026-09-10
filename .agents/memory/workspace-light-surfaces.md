@@ -1,10 +1,10 @@
 ---
 name: Workspace light surfaces
-description: SALARYMAN's browser/control-plane UI is cream and black with restrained Matrix-green signal accents; immersive cyberpunk color belongs to the game.
+description: SALARYMAN's browser UI is an extremely minimal cream/black system; immersive color and visual density belong only to the desktop client.
 ---
 
-The browser workspace uses cream surfaces and black text, borders, icons, and controls. Restrained Matrix green is approved for active navigation, status markers, focus rings, and decisive actions. Do not let green become a dark theme or broad neon treatment; other cyberpunk color remains reserved for the downloadable game.
+Every browser page uses cream surfaces and black text. Shared browser chrome is limited to essential navigation, with one compact mobile top header and no fixed bottom navigation, promotional banners, or persistent feedback overlays. Prefer flat page flow and whitespace over nested cards, decorative borders, shadows, status decoration, and repeated explanatory copy. Reserve immersive color and visual density for the downloadable desktop client.
 
-**Why:** The user loves the cream control plane but explicitly wants Matrix-green accents. A signal-only green preserves the professional browser/game separation while giving the web UI a recognizable SALARYMAN accent.
+**Why:** Layering a light color override over the old dark interface preserved its excessive cards and controls. The user explicitly rejected that approach and required the redesign to apply to all browser pages with clutter reduced almost entirely.
 
-**How to apply:** Keep cream dominant and black structural. Use green sparingly on active/ready/focus/primary states, never as a page-wide background. Keep immersive cyberpunk styling inside the downloadable game.
+**How to apply:** Start with removal and hierarchy before styling. Keep one primary action per entry/supporting screen when possible. Data-heavy tools may remain dense enough to function, but shared tokens and surfaces stay cream/black, flat, and readable at 320px. Keep cyberpunk styling inside the desktop client.

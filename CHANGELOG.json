@@ -2000,5 +2000,17 @@
       "Update agent assets and enhance UI components with new camera visualization",
       "Update floor plan metadata and refine simulation scene and UI logic"
     ]
+  },
+  {
+    "version": "v.23.7.2402",
+    "date": "2026-09-10",
+    "commitHash": "5f9d7909523bb3a7e19b4d3301fab78744491fe1",
+    "changes": [
+      "Update interview helper app component",
+      "Refine navigation logic and update agent memory documentation",
+      "Update memory documents and refactor interview helper components",
+      "Update navigation components and add documentation screenshot",
+      "Update professional home layout and document recent navigation changes"
+    ]
   }
 ]
