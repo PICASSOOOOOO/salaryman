@@ -8,11 +8,19 @@ export default function ProfessionalHome() {
       <header className="mx-auto flex h-14 max-w-5xl items-center justify-between">
         <Link
           href="/"
-          className="font-sans text-xs font-bold tracking-[0.2em]"
+          className="flex items-center gap-2.5 font-mono text-xs tracking-[0.2em]"
           aria-label="SALARYMAN home"
           data-testid="link-brand-home"
         >
+          <img
+            src={`${import.meta.env.BASE_URL}icon-192.png`}
+            alt=""
+            className="h-7 w-7 rounded-md"
+          />
           SALARYMAN
+          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em]">
+            ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
+          </span>
         </Link>
         <Link
           href="/sign-in"

@@ -23,10 +23,18 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
         <button
           type="button"
           onClick={() => go('/')}
-          className="flex shrink-0 items-center gap-3 text-black"
+          className="flex shrink-0 items-center gap-2.5 text-black"
           aria-label="SALARYMAN home"
         >
-          <span className="font-sans font-bold text-sm tracking-[0.2em] uppercase">SALARYMAN</span>
+          <img
+            src={`${import.meta.env.BASE_URL}icon-192.png`}
+            alt=""
+            className="h-7 w-7 rounded-md"
+          />
+          <span className="font-mono text-sm tracking-[0.2em]">SALARYMAN</span>
+          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em]">
+            ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
+          </span>
         </button>
 
         <nav className="hidden items-center gap-6 sm:flex text-black" aria-label="Main navigation">
