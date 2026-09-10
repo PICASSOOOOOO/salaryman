@@ -52,8 +52,5 @@ afterFirstPaint(() => {
       .register(`${base}sw.js`, { scope: base })
       .catch((error) => console.warn("[PWA] service worker registration failed:", error));
   }
-  void import("./lib/errorReporter").then(({ installGlobalErrorHandlers }) => {
-    installGlobalErrorHandlers();
-  });
   warmGlobalUiSound();
 });

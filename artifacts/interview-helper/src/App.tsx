@@ -49,7 +49,6 @@ const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const SeoModule = lazy(() => import("@/pages/SeoModule"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
-const GlobalErrorReporter = lazy(() => import("@/components/GlobalErrorReporter").then((m) => ({ default: m.GlobalErrorReporter })));
 const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
 const NotificationToaster = lazy(() => import("@/components/NotificationToaster").then((m) => ({ default: m.NotificationToaster })));
 const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
@@ -780,7 +779,6 @@ function ClerkProviderWithRoutes() {
                   </FeatureStateProvider>
                 </NavBarVisibilityProvider>
                 <Toaster />
-                <Suspense fallback={null}><GlobalErrorReporter /></Suspense>
               </MusicPlayerProvider>
             </ActiveCallProvider>
           </TwilioDeviceProvider>

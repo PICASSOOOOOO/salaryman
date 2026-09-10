@@ -10,7 +10,7 @@ describe("frontend startup boundaries", () => {
     const main = source("main.tsx");
     expect(main).not.toMatch(/^import .*errorReporter/m);
     expect(main).not.toMatch(/^import .*global-ui-sound/m);
-    expect(main).toContain('import("./lib/errorReporter")');
+    expect(main).not.toContain("errorReporter");
     expect(main).toContain("armAudioAutoUnlock();");
     expect(main).toContain("installDeferredGlobalUiSound();");
   });
@@ -35,7 +35,7 @@ describe("frontend startup boundaries", () => {
     expect(app).toContain('lazy(() => import("@/pages/ProfessionalHome"))');
     expect(landing).not.toContain("<video");
     expect(landing).not.toContain(".mp4");
-    expect(landing).toContain("Three paths.");
+    expect(landing).toContain("Make work possible.");
   });
 
   it("lets route chunks own charts and syntax libraries", () => {
