@@ -315,10 +315,13 @@ async function checkTollfreeMessagingVerification(client: twilio.Twilio, num: st
     if (status === "TWILIO_APPROVED") {
       results.push({ name: "Toll-free SMS verification", status: "PASS", detail: "Sender approved by Twilio" });
     } else {
+      const rejectionReason = verifications[0]?.rejectionReason;
       results.push({
         name: "Toll-free SMS verification",
         status: "FAIL",
-        detail: status ? `Sender verification status is ${status}` : "No toll-free verification record exists",
+        detail: status
+          ? `Sender verification status is ${status}${rejectionReason ? `: ${rejectionReason}` : ""}`
+          : "No toll-free verification record exists",
       });
     }
   } catch (e: any) {
