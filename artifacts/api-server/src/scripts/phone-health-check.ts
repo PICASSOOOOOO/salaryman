@@ -192,7 +192,7 @@ async function checkAccountActive(client: twilio.Twilio, sid: string, results: C
   }
 }
 
-async function checkBrowserVoiceApiKey(accountSid: string, results: CheckResult[]) {
+async function checkBrowserVoiceApiKey(client: twilio.Twilio, accountSid: string, results: CheckResult[]) {
   const storedSid = await db.select({ value: systemConfigTable.value })
     .from(systemConfigTable)
     .where(eq(systemConfigTable.key, "twilio_api_key_sid"))
@@ -225,11 +225,35 @@ async function checkBrowserVoiceApiKey(accountSid: string, results: CheckResult[
     }
   }
 
-  results.push({
-    name: "Browser Voice API key",
-    status: "FAIL",
-    detail: "No configured browser Voice API key can authenticate; browser phones will remain offline",
-  });
+  // Keep scheduled repair aligned with the live /twilio/token route. Twilio
+  // returns an API key secret only at creation time, so persist it immediately.
+  try {
+    const key = await withTimeout(
+      client.newKeys.create({ friendlyName: "Salaryman Voice Key" }),
+      OP_TIMEOUT_MS,
+      "Browser Voice API key provisioning",
+    );
+    if (!key.secret) throw new Error("Twilio returned a key without a secret");
+    await db.insert(systemConfigTable)
+      .values({ key: "twilio_api_key_sid", value: key.sid, category: "twilio", description: "Auto-repaired by phone health" })
+      .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: key.sid, updatedAt: new Date() } });
+    await db.insert(systemConfigTable)
+      .values({ key: "twilio_api_key_secret", value: key.secret, category: "twilio", description: "Auto-repaired by phone health" })
+      .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: key.secret, updatedAt: new Date() } });
+    process.env.TWILIO_API_KEY_SID = key.sid;
+    process.env.TWILIO_API_KEY_SECRET = key.secret;
+    results.push({
+      name: "Browser Voice API key",
+      status: "PASS",
+      detail: "Stale key was replaced and authenticated for browser Voice",
+    });
+  } catch (e: any) {
+    results.push({
+      name: "Browser Voice API key",
+      status: "FAIL",
+      detail: `Could not authenticate or auto-provision a browser Voice API key: ${e?.message || e}`,
+    });
+  }
 }
 
 async function checkPhoneNumber(client: twilio.Twilio, num: string, results: CheckResult[]) {
@@ -415,7 +439,7 @@ async function main() {
     const num = process.env.TWILIO_PHONE_NUMBER!;
     const client = twilio(sid, token);
     await checkAccountActive(client, sid, results);
-    await checkBrowserVoiceApiKey(sid, results);
+    await checkBrowserVoiceApiKey(client, sid, results);
     await checkPhoneNumber(client, num, results);
     await checkTollfreeMessagingVerification(client, num, results);
     await checkBalance(client, results);

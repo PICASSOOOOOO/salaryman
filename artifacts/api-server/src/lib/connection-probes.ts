@@ -154,8 +154,16 @@ export async function probeResend(): Promise<ProbeResult> {
 }
 
 export async function probeOpenClaw(): Promise<ProbeResult> {
-  const OPENCLAW_WS_URL = "ws://127.0.0.1:18789";
+  const OPENCLAW_WS_URL = (process.env.OPENCLAW_GATEWAY_URL || "").trim();
   const start = Date.now();
+  if (!OPENCLAW_WS_URL) {
+    return makeResult(
+      "OpenClaw Gateway",
+      "PASS",
+      "Not configured; Claude/GPT fallback is active",
+      0,
+    );
+  }
   return new Promise<ProbeResult>((resolve) => {
     let done = false;
     const finish = (r: ProbeResult) => { if (!done) { done = true; resolve(r); } };
@@ -231,7 +239,7 @@ export async function probeElevenLabs(): Promise<ProbeResult> {
   const start = Date.now();
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) {
-    return makeResult("ElevenLabs (TTS)", "WARN", "ELEVENLABS_API_KEY not set — phone TTS falls back to Google TTS", 0);
+    return makeResult("ElevenLabs (TTS)", "WARN", "ELEVENLABS_API_KEY not set — ElevenLabs voice output is unavailable", 0);
   }
   try {
     const { res, latencyMs } = await timedFetch(
