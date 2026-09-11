@@ -8,6 +8,8 @@ import {
   readAppHistoryDepth,
 } from "./app-navigation";
 
+const settleHistory = () => new Promise(resolve => setTimeout(resolve, 25));
+
 describe("browser app history tracking", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -31,17 +33,17 @@ describe("browser app history tracking", () => {
     expect(readAppHistoryDepth(window.history.state)).toBe(2);
 
     window.history.back();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await settleHistory();
     expect(window.location.pathname).toBe("/business");
     expect(canGoBackInApp()).toBe(true);
 
     window.history.back();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await settleHistory();
     expect(window.location.pathname).toBe("/");
     expect(canGoBackInApp()).toBe(false);
 
     window.history.forward();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await settleHistory();
     expect(window.location.pathname).toBe("/business");
     expect(canGoBackInApp()).toBe(true);
   });
