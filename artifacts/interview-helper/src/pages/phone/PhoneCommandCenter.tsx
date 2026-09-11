@@ -201,11 +201,11 @@ export default function PhoneCommandCenter() {
     <div className="dialer-container" style={{ padding: '16px 0 40px', maxWidth: 460, margin: '0 auto' }}>
       
       {/* STATUS & TOP NAV */}
-      <div style={{
+      <div className="dialer-status-nav" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 32, padding: '0 8px' }}>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="dialer-status" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
             background: deviceState === 'ready' ? slate(0.7) : deviceState === 'error' ? destructive(0.7) : warning(0.5),
@@ -225,7 +225,7 @@ export default function PhoneCommandCenter() {
         </div>
 
         {switchTab && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="dialer-quick-nav" style={{ display: 'flex', gap: 8 }}>
             <button className="nav-pill" onClick={() => switchTab('contacts')} title="Open CRM">
               <Users size={12} /> <span style={{ paddingRight: 4 }}>CRM</span>
             </button>
@@ -371,6 +371,9 @@ export default function PhoneCommandCenter() {
           --c-border-hover: ${slate(0.2)};
           --c-text: ${slate(0.9)};
           --c-text-muted: ${slate(0.4)};
+          min-width: 0;
+          width: 100%;
+          box-sizing: border-box;
         }
         .status-btn {
           padding: 4px 10px;
@@ -406,6 +409,10 @@ export default function PhoneCommandCenter() {
           background: ${slate(0.08)};
           border-color: ${slate(0.25)};
           color: ${slate(0.9)};
+        }
+        .dialer-status,
+        .dialer-quick-nav {
+          min-width: 0;
         }
         .number-container {
           height: 100px;
@@ -625,6 +632,44 @@ export default function PhoneCommandCenter() {
         
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spin { animation: spin 1s linear infinite; }
+        @media (max-width: 420px) {
+          .dialer-status-nav {
+            align-items: stretch !important;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 24px !important;
+          }
+          .dialer-status {
+            width: 100%;
+            overflow: hidden;
+          }
+          .dialer-status > span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .dialer-quick-nav {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+          }
+          .nav-pill {
+            min-width: 0;
+            justify-content: center;
+            padding-inline: 8px;
+            letter-spacing: 0.08em;
+            overflow: hidden;
+          }
+          .nav-pill span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .number-input {
+            font-size: clamp(1.7rem, 11vw, 2.75rem) !important;
+          }
+        }
       `}</style>
     </div>
   );

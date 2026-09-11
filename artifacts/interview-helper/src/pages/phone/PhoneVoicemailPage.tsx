@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Voicemail, Trash2, Play, Pause, Phone, CheckCircle, Eye, EyeOff, X, AlertTriangle , Volume2, Check } from 'lucide-react';
+import { Voicemail, Trash2, Play, Pause, Phone, CheckCircle, Eye, EyeOff, X, AlertTriangle , Volume2, Check, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
@@ -284,7 +284,7 @@ export default function PhoneVoicemailPage() {
                         <span style={{ color: slate(0.55) }}>·</span>
                         <span>{new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         {v.recordingUrl && <Volume2 size={12} style={{ color: primary(0.5) }} />}
-                        {v.transcript && <span style={{ color: accent(0.5) }}>📝</span>}
+                        {v.transcript && <FileText size={12} color={accent(0.6)} />}
                       </div>
                       {v.summary && !isExpanded && (
                         <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 4, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

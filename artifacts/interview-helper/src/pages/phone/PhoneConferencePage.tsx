@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Plus, PhoneOff, Loader2, X, MicOff, Video, VideoOff, Mic } from 'lucide-react';
+import { Users, Plus, PhoneOff, Loader2, X, MicOff, Video, VideoOff, Mic, User } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
@@ -131,7 +131,7 @@ function ConferenceVideoPanel({ roomName, participantName, onClose }: Conference
               />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontSize: '1.8rem', opacity: 0.3 }}>👤</div>
+                <User size={36} color={slate(0.3)} />
                 {!videoEnabled && <span style={{ fontSize: '0.4rem', color: slate(0.55), letterSpacing: '0.1em' }}>CAM OFF</span>}
               </div>
             )}
@@ -159,7 +159,7 @@ function ConferenceVideoPanel({ roomName, participantName, onClose }: Conference
                 />
               ) : (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: '1.8rem', opacity: 0.4 }}>👤</div>
+                  <User size={36} color={slate(0.4)} />
                   <div style={{ fontSize: '0.38rem', color: primary(0.55), letterSpacing: '0.08em' }}>CONNECTING...</div>
                 </div>
               )}

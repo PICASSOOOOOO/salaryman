@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, Upload, PhoneOutgoing, FileText , Check} from 'lucide-react';
+import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, Upload, PhoneOutgoing, FileText, Check, Briefcase, Smile, Settings2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
@@ -141,10 +141,10 @@ export default function PhoneSecretaryPage() {
   const isEnabled = !!secretaryForm.isEnabled;
 
   const PERSONALITIES = [
-    { key: 'professional', label: 'PROFESSIONAL', desc: 'Formal, businesslike, and efficient', icon: '💼', color: primary },
-    { key: 'friendly', label: 'FRIENDLY', desc: 'Warm, conversational, and approachable', icon: '😊', color: slate },
+    { key: 'professional', label: 'PROFESSIONAL', desc: 'Formal, businesslike, and efficient', icon: <Briefcase size={14} />, color: primary },
+    { key: 'friendly', label: 'FRIENDLY', desc: 'Warm, conversational, and approachable', icon: <Smile size={14} />, color: slate },
     { key: 'assertive', label: 'ASSERTIVE', desc: 'Direct, efficient, and to-the-point', icon: <Zap size={14} />, color: warning },
-    { key: 'custom', label: 'CUSTOM', desc: 'Define your own personality in the greeting', icon: '🎭', color: accent },
+    { key: 'custom', label: 'CUSTOM', desc: 'Define your own personality in the greeting', icon: <Settings2 size={14} />, color: accent },
   ];
 
   const AFTER_HOURS = [

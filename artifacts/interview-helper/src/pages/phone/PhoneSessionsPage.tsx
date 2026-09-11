@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Radio, Users, Zap, Square, CheckSquare, Loader2, X, Search } from 'lucide-react';
+import { Radio, Users, Zap, Square, CheckSquare, Loader2, X, Search, RefreshCw, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
@@ -151,8 +151,8 @@ export default function PhoneSessionsPage() {
 
   const MODES: { key: DialMode; label: string; desc: string; details: string; color: (o: number) => string; icon: React.ReactNode }[] = [
     { key: 'power', label: 'POWER DIALING', desc: 'Manual queue advancement', details: 'Call one contact at a time. When a call ends, you manually advance to the next contact in the queue.', color: slate, icon: <Zap size={14} /> },
-    { key: 'auto', label: 'AUTO DIALING', desc: 'Automatic queue progression', details: 'Automatically dials the next contact after the current call completes. Configurable delay between calls.', color: primary, icon: '🔄' },
-    { key: 'predictive', label: 'PREDICTIVE DIALING', desc: 'Multi-line simultaneous (3x)', details: 'Dials multiple numbers simultaneously to maximize connect rate. Connects you to the first person who answers.', color: accent, icon: '🚀' },
+    { key: 'auto', label: 'AUTO DIALING', desc: 'Automatic queue progression', details: 'Automatically dials the next contact after the current call completes. Configurable delay between calls.', color: primary, icon: <RefreshCw size={14} /> },
+    { key: 'predictive', label: 'PREDICTIVE DIALING', desc: 'Multi-line simultaneous (3x)', details: 'Dials multiple numbers simultaneously to maximize connect rate. Connects you to the first person who answers.', color: accent, icon: <Rocket size={14} /> },
   ];
 
   const sessionProgress = dialingSession ? Math.round((dialingSession.dialed / dialingSession.total) * 100) : 0;

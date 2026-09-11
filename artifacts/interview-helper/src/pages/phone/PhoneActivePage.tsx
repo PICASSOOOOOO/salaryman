@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight, FileText, MessageSquare, Clock, Shield, Volume2, Hash, User, Activity , PhoneIncoming, VolumeX} from 'lucide-react';
+import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight, FileText, MessageSquare, Clock, Shield, Volume2, Hash, User, Activity , PhoneIncoming, VolumeX, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
@@ -640,7 +640,7 @@ export default function PhoneActivePage() {
                             {c.liveTranscript
                               ? c.liveTranscript
                               : isLive
-                                ? '⏳ Waiting for speech...'
+                                ? <><Loader2 size={10} style={{ marginRight: 4, display: 'inline' }} className="animate-spin" /> Waiting for speech...</>
                                 : isRinging
                                   ? <><PhoneIncoming size={10} style={{ marginRight: 4 }} /> Connecting...</>
                                   : 'No transcript available'

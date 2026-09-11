@@ -13,8 +13,12 @@ const removeReplitInjectedUi = () => {
   document.querySelectorAll([
     "replit-agent-inbox-widget",
     "replit-agent-inbox-i18n-mirror",
+    "replit-app-badge",
+    "#replit-badge",
+    ".replit-badge",
     'script[src*="replit-cdn.com/feedback-widget/"]',
     'script[src="https://i.replit.com/script.js"]',
+    "iframe[src*='replit.com']"
   ].join(",")).forEach((node) => node.remove());
 };
 

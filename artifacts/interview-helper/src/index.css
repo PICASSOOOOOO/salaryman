@@ -980,6 +980,17 @@ body.workspace-light #root::after {
   }
 }
 
+/* Hide injected Replit badges/widgets */
+replit-app-badge,
+replit-badge,
+replit-agent-inbox-widget,
+#replit-badge,
+.replit-badge {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @media (max-width: 480px) {
   body.workspace-light #root::after {
     display: none;
@@ -1075,14 +1086,14 @@ body.workspace-light #root {
     display: none !important;
   }
   body.workspace-light #root {
-    padding-top: 56px;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
     padding-bottom: 0;
   }
   body.workspace-light:has(.alpha-wipe-banner) #root {
     padding-top: 0;
   }
   body.workspace-light.has-subnav #root {
-    padding-top: 96px; /* 56px top + 40px subnav */
+    padding-top: calc(96px + env(safe-area-inset-top, 0px)); /* 56px top + 40px subnav */
   }
   .mobile-app-nav-top {
     display: flex;

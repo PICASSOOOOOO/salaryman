@@ -212,7 +212,7 @@ export default function CalllHomePage() {
         <div className="calll-home-status" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 0', borderBottom: `1px solid ${slate(0.08)}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="calll-home-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Phone size={18} style={{ color: slate(0.7) }} />
             <img
               src={`${BASE}brand/callhome/calll-home-brush.png`}
@@ -220,7 +220,7 @@ export default function CalllHomePage() {
               style={{ height: 18, width: 'auto', opacity: 0.7, filter: 'brightness(1.8) saturate(0)' }}
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="calll-home-connection" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
@@ -436,14 +436,34 @@ export default function CalllHomePage() {
         .calll-home-shell { padding-left: max(12px, var(--app-safe-left)); padding-right: max(12px, var(--app-safe-right)); }
         @media (max-width: 640px) {
           .calll-home-status {
-            align-items: flex-start !important;
+            width: 100%;
+            min-width: 0;
+            align-items: center !important;
             gap: 8px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
           }
           .calll-home-status > div {
             min-width: 0;
-            flex-wrap: wrap;
             gap: 8px !important;
+          }
+          .calll-home-brand {
+            flex: 1 1 auto;
+            overflow: hidden;
+          }
+          .calll-home-brand img {
+            max-width: 100%;
+            object-fit: contain;
+          }
+          .calll-home-connection {
+            flex: 0 1 auto;
+            justify-content: flex-end;
+          }
+          .calll-home-connection span {
+            display: block;
+            max-width: 8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
            .calll-home-tabs {
              display: grid !important;
@@ -452,12 +472,28 @@ export default function CalllHomePage() {
             padding: 6px !important;
           }
           .calll-home-tabs > button {
-             width: 100%;
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
             min-height: 44px !important;
           }
           .calll-home-tabs > div:last-child {
              grid-column: 1 / -1;
              margin-left: 0 !important;
+          }
+          .calll-home-tabs > div:last-child > button {
+            width: 100%;
+            justify-content: flex-start;
+          }
+        }
+        @media (max-width: 360px) {
+          .calll-home-connection {
+            max-width: 46%;
+          }
+          .calll-home-connection > button {
+            padding-inline: 6px !important;
+            min-width: 0 !important;
           }
         }
         @media (prefers-reduced-motion: reduce) {

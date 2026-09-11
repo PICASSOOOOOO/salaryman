@@ -55,15 +55,18 @@ export function MobileModuleNav() {
   return (
     <>
       {/* Top Bar for Context (Logo, Back, Account) */}
-      <div className="mobile-app-nav-top fixed top-0 left-0 right-0 h-14 border-b border-[#E5E5E5] flex items-center justify-between px-3 z-50">
-        <div className="flex items-center gap-3">
-          <button onClick={goBack} className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md">
+      <div
+        className="mobile-app-nav-top fixed top-0 left-0 right-0 border-b border-[#E5E5E5] flex items-center justify-between px-2 z-50"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+      >
+        <div className="flex items-center gap-1 overflow-hidden pr-2 min-w-0">
+          <button onClick={goBack} className="w-8 h-8 shrink-0 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 rounded-sm px-1 py-1 text-left"
+            className="flex items-center gap-1.5 rounded-sm px-1 py-1 text-left min-w-0 shrink"
             aria-label="SALARYMAN home"
           >
             <img
@@ -71,10 +74,10 @@ export function MobileModuleNav() {
               alt=""
               className="h-5 w-5 shrink-0 rounded"
             />
-            <span className="font-bold text-xs uppercase tracking-widest text-black">SALARYMAN</span>
+            <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-black truncate">SALARYMAN</span>
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {isAuthenticated && <NotificationBell />}
           {isAuthenticated ? (
             <button onClick={() => setSummaryOpen(true)} className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 overflow-hidden">
@@ -95,7 +98,10 @@ export function MobileModuleNav() {
       </div>
 
       {/* Bottom Bar for Primary Navigation */}
-      <div className="mobile-app-nav-bottom fixed bottom-0 left-0 right-0 border-t border-[#E5E5E5] pb-[env(safe-area-inset-bottom)] z-50">
+      <div
+        className="mobile-app-nav-bottom fixed bottom-0 left-0 right-0 border-t border-[#E5E5E5] z-50 bg-[#FAFAF7]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         <div className="flex items-center justify-around px-1 h-14">
           {visibleTabs.map(tab => {
             const active = isAppNavItemActive(tab, pathname);
@@ -214,7 +220,10 @@ export function MobileSubNav() {
   if (!currentModule || !shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname)) return null;
 
   return (
-    <div className="mobile-app-subnav fixed top-12 left-0 right-0 h-10 border-b border-[#E5E5E5] z-40 overflow-x-auto hide-scrollbar flex items-center px-2">
+    <div
+      className="mobile-app-subnav fixed left-0 right-0 h-10 border-b border-[#E5E5E5] z-40 overflow-x-auto hide-scrollbar flex items-center px-2"
+      style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+    >
       <div className="flex items-center gap-1">
         {currentModule.subs.map(sub => {
           const isActive = pathname === sub.path || pathname.startsWith(sub.path + '/');

@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle } from 'lucide-react';
+import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle, RefreshCw, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
@@ -24,8 +24,8 @@ type DialMode = 'power' | 'auto' | 'predictive';
 
 const MODES: { key: DialMode; label: string; desc: string; color: (o: number) => string; icon: React.ReactNode }[] = [
   { key: 'power', label: 'POWER', desc: 'Manual queue — one at a time', color: slate, icon: <Zap size={14} /> },
-  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: primary, icon: '🔄' },
-  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: accent, icon: '🚀' },
+  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: primary, icon: <RefreshCw size={14} /> },
+  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: accent, icon: <Rocket size={14} /> },
 ];
 
 function validatePhoneNumber(raw: string, country: CountryCode): boolean {

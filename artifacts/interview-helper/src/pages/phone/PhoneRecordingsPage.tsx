@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Mic, Search, Phone, Download, AlertTriangle, X, ArrowUpRight, ArrowDownLeft, ChevronRight, ChevronDown, Shield, Voicemail } from 'lucide-react';
+import { Mic, Search, Phone, Download, AlertTriangle, X, ArrowUpRight, ArrowDownLeft, ChevronRight, ChevronDown, Shield, Voicemail, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
@@ -273,7 +273,7 @@ export default function PhoneRecordingsPage() {
                       <span style={{ color: slate(0.55) }}>·</span>
                       <span>{new Date(it.startedAt).toLocaleDateString()} {new Date(it.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       {it.kind === 'call' && it.direction === 'inbound' && <span style={{ color: primary(0.6) }}>↙ INBOUND</span>}
-                      {it.transcript && <span style={{ color: accent(0.5) }}>📝</span>}
+                      {it.transcript && <FileText size={12} color={accent(0.6)} />}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
