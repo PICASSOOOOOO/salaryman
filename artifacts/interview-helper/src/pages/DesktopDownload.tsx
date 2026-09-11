@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Bot, BriefcaseBusiness, CircleDollarSign, Download, FileText, Laptop, Phone, Settings, Users, X } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
@@ -59,6 +59,7 @@ export default function DesktopDownload() {
   const [clientPlatform, setClientPlatform] = useState<DesktopPlatform>("other");
   const [availablePlatforms, setAvailablePlatforms] = useState<AvailablePlatform[]>([]);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
+  const heroGameplayVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setClientPlatform(detectDesktopPlatform());
@@ -78,6 +79,27 @@ export default function DesktopDownload() {
     };
   }, []);
 
+  useEffect(() => {
+    const video = heroGameplayVideoRef.current;
+    if (!video) return;
+
+    const resumeGameplay = () => {
+      video.muted = true;
+      video.defaultMuted = true;
+      void video.play().catch(() => {
+        // Browser data-saver and battery policies may still require a manual play.
+      });
+    };
+
+    resumeGameplay();
+    video.addEventListener("canplay", resumeGameplay);
+    window.addEventListener("pageshow", resumeGameplay);
+    return () => {
+      video.removeEventListener("canplay", resumeGameplay);
+      window.removeEventListener("pageshow", resumeGameplay);
+    };
+  }, []);
+
   const clientBuildAvailable = clientPlatform !== "other"
     && downloadAllowed
     && availablePlatforms.includes(clientPlatform);
@@ -87,8 +109,14 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const gameplayVideoHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase.mp4`;
-  const gameplayDetailVideoHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.mp4`;
+  const gameplayVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase.webm`;
+  const gameplayVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase-web.mp4`;
+  const gameplayDetailVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.webm`;
+  const gameplayDetailVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay-web.mp4`;
+  const supportsVp9Webm = typeof document !== "undefined"
+    && document.createElement("video").canPlayType('video/webm; codecs="vp9"') !== "";
+  const gameplayVideoHref = supportsVp9Webm ? gameplayVideoWebmHref : gameplayVideoMp4Href;
+  const gameplayDetailVideoHref = supportsVp9Webm ? gameplayDetailVideoWebmHref : gameplayDetailVideoMp4Href;
   const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-alpha-showcase-poster.jpg`;
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = !downloadAllowed
@@ -137,6 +165,7 @@ export default function DesktopDownload() {
         </div>
         <figure className="desktop-download-gameplay">
           <video
+            ref={heroGameplayVideoRef}
             controls
             muted
             autoPlay

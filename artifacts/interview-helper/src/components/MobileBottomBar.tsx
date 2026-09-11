@@ -60,7 +60,19 @@ export function MobileModuleNav() {
           <button onClick={goBack} className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="font-bold text-xs uppercase tracking-widest text-black">SALARYMAN</div>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 rounded-sm px-1 py-1 text-left"
+            aria-label="SALARYMAN home"
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}icon-192.png`}
+              alt=""
+              className="h-5 w-5 shrink-0 rounded"
+            />
+            <span className="font-bold text-xs uppercase tracking-widest text-black">SALARYMAN</span>
+          </button>
         </div>
         <div className="flex items-center gap-2">
           {isAuthenticated && <NotificationBell />}

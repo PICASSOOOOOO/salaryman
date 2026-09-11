@@ -18,3 +18,9 @@ The staff-only `/desktop` download page is the exception: it may show direct cap
 **Why:** The public homepage should remain truthful and finished-looking, while internal testers need to see the actual client they are downloading.
 
 **How to apply:** Use current-runtime Pygame captures for the download page and protect the package route server-side for Picasso admins and approved moderators.
+
+**Browser playback rule:** The App Download hero must use a muted, inline autoplay capture with an explicit source selected from `canPlayType`: VP9/WebM when supported, otherwise H.264 MP4. Do not rely on a `<source>` list to choose the playable format.
+
+**Why:** The development Chromium environment rejects H.264 but supports VP9. Its media element fell through an otherwise valid WebM-first source list to the unsupported MP4; direct source selection plays reliably. This is also the most reliable way to retain an MP4 fallback for browsers that lack VP9.
+
+**How to apply:** Keep both current-runtime WebM and fast-start H.264 derivatives alongside the original capture. Verify autoplay in a real mobile browser by checking `readyState`, `paused`, and advancing `currentTime`, not from a static screenshot.
