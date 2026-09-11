@@ -27,6 +27,12 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 **Work approach:**
 - When you have a clear picture of what exists, prioritize investigating the unclear parts first. Start from unknowns, not knowns.
 
+**Browser UI rules:**
+- Assume every business workflow is primarily used on a 320px-wide phone.
+- Lead with working, tappable feature visuals and motion; keep explanatory copy to an absolute minimum.
+- Preserve established product, route, and feature names during redesigns.
+- Never compress desktop tables or navigation into mobile; use mobile-native layouts without horizontal bleed or overlapping borders.
+
 **Naming / branding conventions:**
 - **Never use, embed, restore, or republish the old gameplay trailer anywhere in SALARYMAN.** Any future gameplay media must come from the current downloadable runtime and be explicitly approved before use.
 - **The "Pledge Store" is the canonical name for the one massive SALARYMAN marketplace** — the single consolidated commerce surface. The old "Bot Factory" (`/bots`), the Pledge Store (`/pledge`), and the agents showcase (`/pledge/agents`) all merge into this one Pledge Store, which should carry extensive artwork.

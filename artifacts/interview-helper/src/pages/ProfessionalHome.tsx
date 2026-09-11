@@ -1,59 +1,86 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight, Bot, BriefcaseBusiness, Download, Phone } from "lucide-react";
 import { Link } from "wouter";
 import "./ProfessionalHome.css";
 
+const MODULES = [
+  {
+    id: "business",
+    title: "START WORK",
+    href: "/business",
+    icon: BriefcaseBusiness,
+  },
+  {
+    id: "pablo",
+    title: "PABLO AI",
+    href: "/pablo",
+    icon: Bot,
+  },
+  {
+    id: "phone",
+    title: "CALLL HOME",
+    href: "/phone",
+    icon: Phone,
+  },
+  {
+    id: "desktop",
+    title: "APP DOWNLOAD",
+    href: "/desktop",
+    icon: Download,
+  },
+] as const;
+
 export default function ProfessionalHome() {
   return (
-    <main className="min-h-[100dvh] bg-[#FAFAF7] px-5 text-black sm:px-8">
-      <header className="mx-auto flex h-14 max-w-5xl items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-2.5 font-mono text-xs tracking-[0.2em]"
-          aria-label="SALARYMAN home"
-          data-testid="link-brand-home"
-        >
+    <main className="min-h-[100dvh] bg-[#FAFAF7] text-black overflow-x-hidden flex flex-col">
+      <header className="home-header shrink-0 px-4 sm:px-8 h-14 flex items-center justify-between border-b border-black/10">
+        <Link href="/" className="flex items-center gap-2.5">
           <img
             src={`${import.meta.env.BASE_URL}icon-192.png`}
             alt=""
             className="h-7 w-7 rounded-md"
           />
-          SALARYMAN
-          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em]">
+          <span className="font-mono text-xs font-bold tracking-[0.2em] uppercase">SALARYMAN</span>
+          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] bg-black text-[#FAFAF7]">
             ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
           </span>
         </Link>
         <Link
           href="/sign-in"
-          className="font-sans text-[10px] font-bold tracking-[0.14em]"
-          data-testid="link-home-login"
+          className="font-sans text-[10px] font-bold tracking-[0.14em] uppercase hover:opacity-60 transition-opacity"
         >
           LOG IN
         </Link>
       </header>
 
-      <section
-        className="mx-auto flex min-h-[calc(100dvh-7rem)] max-w-5xl items-center py-16"
-        aria-labelledby="home-title"
-        data-testid="section-hero"
-      >
-        <div className="max-w-2xl">
-          <h1
-            id="home-title"
-            className="m-0 max-w-xl font-sans text-[clamp(3.4rem,12vw,7rem)] font-semibold leading-[0.9] tracking-[-0.065em]"
-          >
-            Make work possible.
-          </h1>
-          <p className="mb-0 mt-8 max-w-sm text-base leading-relaxed text-black/60">
-            One place for the company.
-          </p>
-          <Link
-            href="/business"
-            className="mt-10 inline-flex h-12 items-center gap-8 bg-black px-6 font-sans text-[11px] font-bold tracking-[0.14em] text-[#FAFAF7]"
-            data-testid="link-hero-workspace"
-          >
-            START WORK
-            <ArrowRight size={15} aria-hidden />
-          </Link>
+      <section className="home-stage">
+        <h1 className="home-title">
+          Make work possible.
+        </h1>
+
+        <div className="home-modules">
+          {MODULES.map((mod) => (
+            <Link
+              key={mod.id}
+              href={mod.href}
+              className={`home-module home-module--${mod.id}`}
+            >
+              <div className="home-module-visual" aria-hidden="true">
+                <mod.icon className="home-module-icon" strokeWidth={1.35} />
+                <div className="home-signal">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+
+              <div className="home-module-action">
+                <h2>
+                  {mod.title}
+                </h2>
+                <ArrowUpRight aria-hidden="true" />
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
     </main>

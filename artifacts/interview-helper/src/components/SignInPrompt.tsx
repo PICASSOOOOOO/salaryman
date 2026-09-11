@@ -1,4 +1,15 @@
 import { useAuth } from '@/hooks/use-auth';
+import { useBoomerMode } from '@/hooks/use-mobile';
+
+const FONT = "var(--font-sans)";
+const FONT_VT = "var(--font-sans)";
+
+function fontFor(boomer: boolean) {
+  return boomer ? undefined : FONT;
+}
+function fontForVT(boomer: boolean) {
+  return boomer ? undefined : FONT_VT;
+}
 
 interface SignInPromptProps {
   context?: string;
@@ -10,21 +21,32 @@ interface SignInPromptProps {
 
 export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPromptProps) {
   const { login } = useAuth();
+  const [boomer] = useBoomerMode();
   const currentPath = `${window.location.pathname}${window.location.search}`;
   const signInPrimary = () => login(returnTo ?? currentPath);
 
   if (inline) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center">
-        <div className="font-sans text-xs tracking-widest text-black/40 mb-2 uppercase">
-          ACCESS RESTRICTED
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '3rem 1.5rem', textAlign: 'center',
+      }}>
+        <div style={{ fontFamily: fontFor(boomer), color: 'rgba(56,189,248,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          {boomer ? 'SIGN IN REQUIRED' : 'ACCESS RESTRICTED'}
         </div>
-        <div className="font-sans text-sm text-black/60 mb-8 max-w-[320px] leading-relaxed">
-          {context || 'Authentication required to access this area.'}
+        <div style={{ fontFamily: fontFor(boomer), fontSize: '0.6rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.08em', marginBottom: '20px', maxWidth: 320, lineHeight: 1.6 }}>
+          {context || (boomer ? 'Sign in to access this feature.' : 'Authentication required to access this module.')}
         </div>
         <button
           onClick={signInPrimary}
-          className="font-sans text-xs font-bold tracking-widest uppercase bg-black text-white px-8 py-3 hover:bg-black/80 transition-colors"
+          style={{
+            fontFamily: fontFor(boomer), fontSize: '0.7rem', color: '#38bdf8',
+            border: '1px solid rgba(56,189,248,0.4)', padding: '8px 24px',
+            background: 'rgba(56,189,248,0.06)', cursor: 'pointer', letterSpacing: '0.12em',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.12)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.6)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.06)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.4)'; }}
         >
           SIGN IN
         </button>
@@ -35,33 +57,68 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
   return (
     <div
       onClick={onDismiss}
-      className="fixed inset-0 z-[99999] bg-black/10 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="bg-[#FAFAF7] border border-black/10 p-10 max-w-[380px] w-full text-center shadow-2xl flex flex-col items-center"
+        style={{
+          background: '#0a0a0b', border: '1px solid rgba(56,189,248,0.2)',
+          padding: '2.5rem 2rem', maxWidth: 380, width: '90%', textAlign: 'center',
+          boxShadow: '0 0 40px rgba(56,189,248,0.05)',
+        }}
       >
-        <div className="font-sans font-bold text-xl tracking-widest uppercase mb-6">
-          AUTHENTICATE
+        <div style={{
+          fontFamily: fontForVT(boomer), fontSize: '1.6rem', color: '#38bdf8',
+          letterSpacing: '0.2em', marginBottom: '6px',
+          textShadow: '0 0 15px rgba(56,189,248,0.3)',
+        }}>
+          {boomer ? 'SIGN IN' : 'AUTHENTICATE'}
         </div>
 
-        <div className="w-12 h-px bg-black/20 mb-6" />
+        <div style={{
+          width: '60px', height: '1px', margin: '0 auto 16px',
+          background: 'linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)',
+        }} />
 
-        <div className="font-sans text-sm text-black/60 mb-8 leading-relaxed">
-          {context || 'Credentials required. Area locked until authenticated.'}
+        <div style={{
+          fontFamily: fontFor(boomer), fontSize: '0.65rem',
+          color: 'rgba(56,189,248,0.4)', letterSpacing: '0.08em',
+          lineHeight: 1.7, marginBottom: '24px',
+        }}>
+          {context || (boomer
+            ? 'Sign in to access all features.'
+            : 'Salaryman credentials required. All modules locked until authenticated.'
+          )}
         </div>
 
         <button
           onClick={signInPrimary}
-          className="w-full font-sans text-xs font-bold tracking-widest uppercase bg-black text-white px-8 py-4 hover:bg-black/80 transition-colors mb-4"
+          style={{
+            fontFamily: fontFor(boomer), fontSize: '0.75rem', color: '#38bdf8',
+            border: '1px solid rgba(56,189,248,0.5)', padding: '10px 32px',
+            background: 'rgba(56,189,248,0.08)', cursor: 'pointer', letterSpacing: '0.15em',
+            width: '100%', transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.15)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.7)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.08)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.5)'; }}
         >
           SIGN IN
         </button>
 
+
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="w-full font-sans text-[10px] tracking-widest uppercase text-black/40 hover:text-black transition-colors py-2"
+            style={{
+              fontFamily: fontFor(boomer), fontSize: '0.55rem',
+              color: 'rgba(56,189,248,0.25)', background: 'none', border: 'none',
+              cursor: 'pointer', marginTop: '16px', letterSpacing: '0.1em',
+              display: 'block', width: '100%',
+            }}
           >
             DISMISS
           </button>
@@ -73,7 +130,7 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
 
 export function SignInPage({ context, returnTo }: { context?: string; returnTo?: string }) {
   return (
-    <div className="min-h-screen bg-[#FAFAF7] flex items-center justify-center">
+    <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <SignInPrompt inline context={context} returnTo={returnTo} />
     </div>
   );

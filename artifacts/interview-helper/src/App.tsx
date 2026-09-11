@@ -4,9 +4,11 @@ import { Switch, Route, Router as WouterRouter, useLocation, Redirect, Link } fr
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
+import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
+import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileModuleNav } from "@/components/MobileBottomBar";
 import { installAppHistoryTracking } from "@/lib/app-navigation";
@@ -443,6 +445,7 @@ function AppShell() {
       <DeviceControlBridge />
       {showNavBar && (
         <div className="app-chrome">
+          <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />
         </div>
@@ -793,51 +796,64 @@ function ClerkProviderWithRoutes() {
 export default App;
 
 function ClerkSignUpPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FAFAF7] px-4">
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-zinc-950 px-4">
     <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
   </div>;
 }
 
 function ClerkSignInPage() {
   const returnTo = new URLSearchParams(window.location.search).get("returnTo") ?? "/";
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FAFAF7] px-4">
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-zinc-950 px-4">
     <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={returnTo} />
   </div>;
 }
 
 const clerkAppearance = {
+  theme: dark,
   cssLayerName: "clerk",
   options: {
+    logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
   },
   variables: {
-    colorPrimary: "#000000",
-    colorForeground: "#000000",
-    colorMutedForeground: "#666666",
-    colorDanger: "#000000",
-    colorBackground: "#FAFAF7",
-    colorInput: "#FAFAF7",
-    colorInputForeground: "#000000",
-    colorNeutral: "#CCCCCC",
-    fontFamily: "var(--font-sans)",
-    borderRadius: "0px",
+    colorPrimary: "#38bdf8",
+    colorForeground: "#f4f4f5",
+    colorMutedForeground: "#a1a1aa",
+    colorDanger: "#fb7185",
+    colorBackground: "#18181b",
+    colorInput: "#09090b",
+    colorInputForeground: "#f4f4f5",
+    colorNeutral: "#3f3f46",
+    fontFamily: "Inter, sans-serif",
+    borderRadius: "0.75rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "!bg-transparent w-[400px] max-w-full !overflow-visible !border-0 !shadow-none",
+    cardBox: "bg-zinc-900 rounded-xl w-[440px] max-w-full overflow-hidden border border-zinc-700",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    logoBox: "!hidden",
-    headerTitle: "text-black font-bold uppercase tracking-widest text-xl",
-    headerSubtitle: "text-black/60 font-sans",
-    socialButtonsBlockButtonText: "text-black uppercase tracking-widest font-bold text-xs",
-    socialButtonsBlockButton: "border border-black/10 hover:bg-black/5 rounded-none",
-    formFieldLabel: "text-black uppercase tracking-widest font-bold text-xs",
-    formFieldInput: "border border-black/20 rounded-none focus:ring-0 focus:border-black",
-    formButtonPrimary: "bg-black text-white hover:bg-black/80 rounded-none uppercase tracking-widest font-bold text-xs",
-    footerActionLink: "text-black uppercase tracking-widest font-bold text-xs hover:text-black/60",
-    identityPreviewText: "text-black font-sans text-sm",
-    identityPreviewEditButton: "text-black uppercase tracking-widest font-bold text-xs hover:text-black/60",
+    headerTitle: "text-zinc-50 font-semibold",
+    headerSubtitle: "text-zinc-400",
+    socialButtonsBlockButtonText: "text-zinc-100",
+    formFieldLabel: "text-zinc-200",
+    footerActionLink: "text-sky-400",
+    footerActionText: "text-zinc-400",
+    dividerText: "text-zinc-400",
+    identityPreviewEditButton: "text-sky-400",
+    formFieldSuccessText: "text-emerald-400",
+    alertText: "text-zinc-100",
+    logoBox: "mb-5",
+    logoImage: "w-12 h-12",
+    socialButtonsBlockButton: "border-zinc-600 bg-zinc-800 hover:bg-zinc-700",
+    formButtonPrimary: "bg-sky-500 hover:bg-sky-400 text-zinc-950",
+    formFieldInput: "bg-zinc-950 border-zinc-600 text-zinc-100",
+    footerAction: "border-zinc-700",
+    dividerLine: "bg-zinc-700",
+    alert: "bg-zinc-800 border-zinc-600",
+    otpCodeFieldInput: "bg-zinc-950 border-zinc-600 text-zinc-100",
+    formFieldRow: "gap-2",
+    main: "gap-4",
   },
 };
 
