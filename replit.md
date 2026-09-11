@@ -26,6 +26,8 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 
 **Work approach:**
 - When you have a clear picture of what exists, prioritize investigating the unclear parts first. Start from unknowns, not knowns.
+- Treat the full release audit as a hard publishing gate after every change. Do not recommend publishing until typecheck, builds, full test suites, workflow logs, production smoke checks, auth controls, API health, and 320px overflow/overlap checks have been reviewed.
+- Keep an hourly read-only production audit scheduled. It must fail visibly and alert the owner when routes, auth rendering, cream surfaces, mobile layout, browser runtime, API health, or injected third-party UI regress.
 
 **Browser UI rules:**
 - Assume every business workflow is primarily used on a 320px-wide phone.

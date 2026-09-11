@@ -363,9 +363,9 @@ const PHONE_NUMBER_LISTING: PledgeItem = {
   storeAction: "phone_number_picker",
 };
 
-// The full internal catalog is retained for delayed webhook fulfillment, but
-// the live storefront has exactly three products: Phone System, Custom Phone
-// Number, and PABLO PRIME. Historical products stay fulfillment-only.
+// The full internal catalog is retained for delayed webhook fulfillment. The
+// live storefront contains the real-money agent/workforce offers, terminal
+// passes, and membership; in-world goods remain fulfillment-only.
 const FULL_CATALOG: PledgeItem[] = [
   ...PLEDGE_CATALOG,
   ...RETIRED_FULFILLMENT_CATALOG,
@@ -374,9 +374,17 @@ const FULL_CATALOG: PledgeItem[] = [
   PRIME_LISTING,
   PHONE_NUMBER_LISTING,
 ];
-const PUBLIC_PRODUCT_IDS = new Set(["term_phone_pass", "phone_number", "membership_pablo_prime"]);
+const PUBLIC_PRODUCT_IDS = new Set([
+  "bot_extra_seat",
+  "bot_overclock",
+  "bot_jean_claw_elite",
+  "term_pablo_pass",
+  "term_phone_pass",
+  "phone_number",
+  "membership_pablo_prime",
+]);
 const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => PUBLIC_PRODUCT_IDS.has(item.id));
-const PUBLIC_CATEGORIES = ["terminals", "membership"] as const;
+const PUBLIC_CATEGORIES = ["bots", "terminals", "membership"] as const;
 
 // Client-safe projection. This is the ONLY shape that reaches the client:
 // the derived retail price ONLY — never costUsd, markup, or internal

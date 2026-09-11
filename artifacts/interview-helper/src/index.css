@@ -933,27 +933,8 @@ body.workspace-light {
 
 body.workspace-light #root::before,
 body.workspace-light #root::after {
-  content: "";
-  position: fixed;
-  inset: -20%;
-  z-index: -1;
-  pointer-events: none;
-  background-size: 100% 100%;
-}
-
-body.workspace-light #root::before {
-  background-image:
-    radial-gradient(circle at 10% 20%, rgba(167, 139, 250, 0.2) 0%, transparent 45%),
-    radial-gradient(circle at 90% 80%, rgba(103, 232, 249, 0.18) 0%, transparent 55%),
-    radial-gradient(circle at 40% 60%, rgba(240, 171, 252, 0.18) 0%, transparent 50%);
-  animation: workspace-nebula-1 28s ease-in-out infinite alternate;
-}
-
-body.workspace-light #root::after {
-  background-image:
-    radial-gradient(circle at 75% 25%, rgba(240, 171, 252, 0.15) 0%, transparent 45%),
-    radial-gradient(circle at 20% 85%, rgba(167, 139, 250, 0.2) 0%, transparent 45%);
-  animation: workspace-nebula-2 35s ease-in-out infinite alternate;
+  content: none;
+  display: none;
 }
 
 @keyframes workspace-nebula-1 {

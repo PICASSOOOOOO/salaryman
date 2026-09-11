@@ -68,15 +68,14 @@ afterAll(async () => {
 });
 
 describe("organization settings and protected records", () => {
-  it("persists expanded organization settings for managers", async () => {
+  it("persists expanded organization settings for directors", async () => {
     const owner = await createUser();
     const manager = await createUser();
     const org = await createOrg(owner.id);
-    await addMember(org.id, manager.id, "manager");
+    await addMember(org.id, manager.id, "director");
     actAs(manager);
 
     const update = await request(app).put(`/api/orgs/${org.id}`).send({
-      name: org.name,
       industry: "Technology",
       size: "11-50",
       description: "Secure research and operations.",

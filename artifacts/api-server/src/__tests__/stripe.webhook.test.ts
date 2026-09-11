@@ -623,7 +623,9 @@ describe("POST /stripe/webhook", () => {
       const [acct] = await db
         .select()
         .from(bankAccountsTable)
-        .where(and(eq(bankAccountsTable.userId, TOPUP_USER), eq(bankAccountsTable.kind, "checking")))
+        // FIAT now uses the authoritative CASH WALLET shape. Keep the helper
+        // name for readability in the top-up assertions.
+        .where(and(eq(bankAccountsTable.userId, TOPUP_USER), eq(bankAccountsTable.kind, "cash")))
         .limit(1);
       return acct ? acct.balance : null;
     }

@@ -124,7 +124,18 @@ beforeEach(() => {
   mocks.isNearBankOrStore.mockReturnValue(false);
 });
 
-describe("POST /api/events/:id/respond", () => {
+describe("retired outside-world events API", () => {
+  it.each([
+    ["post", "/api/events/42/respond"],
+    ["get", "/api/events/responders/weekly"],
+  ] as const)("returns 410 for %s %s", async (method, path) => {
+    const res = await request(buildApp())[method](path).send();
+    expect(res.status).toBe(410);
+    expect(res.body.error).toMatch(/outside world/i);
+  });
+});
+
+describe.skip("POST /api/events/:id/respond — legacy behavior while outside world is retired", () => {
   it("401 when the caller is not authenticated", async () => {
     const app = express();
     app.use(express.json());
@@ -275,7 +286,7 @@ describe("POST /api/events/:id/respond", () => {
   });
 });
 
-describe("GET /api/events/responders/weekly (leaderboard)", () => {
+describe.skip("GET /api/events/responders/weekly — legacy behavior while outside world is retired", () => {
   it("returns an empty leaderboard when there are no responses this week", async () => {
     // Main rows query returns empty -> no further queries run
     pushSelect([]); // eventResponsesTable weekly aggregation

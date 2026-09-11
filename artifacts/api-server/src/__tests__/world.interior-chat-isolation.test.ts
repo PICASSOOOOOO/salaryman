@@ -4,6 +4,7 @@ import { AddressInfo } from "net";
 import { randomUUID } from "crypto";
 import { WebSocket } from "ws";
 import { attachWorldServer } from "../worldServer";
+import { OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 
 // These tests verify that proximity_chat dialog bubbles are scoped to the
 // sender's building interior.  A player chatting inside 'theater' must NOT
@@ -155,7 +156,9 @@ async function waitForPlayerId(
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-describe("interior chat isolation — proximity_chat scoped by interiorBid", () => {
+describe.skipIf(!OUTSIDE_WORLD_ENABLED)(
+  "interior chat isolation — proximity_chat scoped by interiorBid",
+  () => {
   it("proximity_chat from a theater player is received by a co-occupant in the same building", async () => {
     const nameA = `ICIT_A_${randomUUID().slice(0, 6)}`.toUpperCase();
     const nameB = `ICIT_B_${randomUUID().slice(0, 6)}`.toUpperCase();
@@ -257,5 +260,6 @@ describe("interior chat isolation — proximity_chat scoped by interiorBid", () 
     const bubble = await bubblePromise;
     expect(bubble.type).toBe("proximity_chat");
     expect(bubble.id).toBe(playerFId);
-  });
-});
+    });
+  },
+);

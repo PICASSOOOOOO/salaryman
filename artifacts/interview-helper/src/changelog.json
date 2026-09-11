@@ -2022,5 +2022,24 @@
       "Remove feedback module and associated components",
       "Update generated mockup components"
     ]
+  },
+  {
+    "version": "v.23.9.2420",
+    "date": "2026-09-11",
+    "commitHash": "39cd275a68a6028817972b5c75118e0767a83150",
+    "changes": [
+      "Add attached asset image",
+      "Update generated mockup components",
+      "Update feedback documentation, add test coverage, and integrate new assets",
+      "Update changelog and refactor navigation components"
+    ]
+  },
+  {
+    "version": "v.24.0.2420",
+    "date": "2026-09-11",
+    "commitHash": "39cd275a68a6028817972b5c75118e0767a83150",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

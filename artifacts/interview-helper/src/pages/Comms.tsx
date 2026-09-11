@@ -9,7 +9,7 @@ import Colleagues from './Colleagues';
 import { apiFetch } from '@/lib/api-client';
 import { ChatPanel } from '@/components/ChatPanel';
 
-export type CommsSection = 'chat' | 'associates' | 'responders';
+export type CommsSection = 'chat' | 'sms' | 'associates' | 'responders';
 
 interface ResponderEntry {
   rank: number;
@@ -21,6 +21,7 @@ interface ResponderEntry {
 
 const TABS: { id: CommsSection; label: string; icon: typeof MessageSquare }[] = [
   { id: 'chat', label: 'CHAT', icon: MessageSquare },
+  { id: 'sms', label: 'SMS', icon: MessageSquare },
   { id: 'associates', label: 'ASSOCIATES', icon: Users },
   { id: 'responders', label: 'RESPONDERS', icon: Shield },
 ];
@@ -88,6 +89,16 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
   return (
     <div className="flex-1 flex flex-col bg-[#fffaf0] text-black">
       {section === 'chat' && <ChatPanel embedded initiallyOpen />}
+      {section === 'sms' && (
+        <div className="flex-1 grid place-items-center p-6">
+          <a
+            href="/phone/sms"
+            className="border border-black px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-black hover:text-[#fffaf0]"
+          >
+            Open SMS
+          </a>
+        </div>
+      )}
       {section === 'associates' && <Colleagues embedded />}
       {section === 'responders' && (
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
@@ -139,7 +150,7 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
 
 export default function Comms() {
   const [section, setSection] = useState<CommsSection>('chat');
-  const { unreadMessages, pendingRequests } = useCommsSummary();
+  const { unreadMessages, unreadSms, pendingRequests } = useCommsSummary();
 
   return (
     <div className="comms-page min-h-[100dvh] flex flex-col bg-[#fffaf0] text-black font-sans">
@@ -158,7 +169,14 @@ export default function Comms() {
 
           <div className="flex gap-4 overflow-x-auto scrollbar-hide">
             {TABS.map(tab => {
-              const badge = tab.id === 'chat' ? unreadMessages : tab.id === 'associates' ? pendingRequests : 0;
+              const badge =
+                tab.id === 'chat'
+                  ? unreadMessages
+                  : tab.id === 'sms'
+                    ? unreadSms
+                    : tab.id === 'associates'
+                      ? pendingRequests
+                      : 0;
               const active = section === tab.id;
               const Icon = tab.icon;
               return (

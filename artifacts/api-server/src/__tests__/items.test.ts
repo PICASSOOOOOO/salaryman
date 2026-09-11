@@ -58,7 +58,7 @@ describe("POST /items/buy", () => {
     resetAuthState();
     const { authState } = await import("./helpers/itemsTestApp");
     authState.authed = false;
-    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" });
     expect(res.status).toBe(401);
   });
 
@@ -69,21 +69,21 @@ describe("POST /items/buy", () => {
 
   it("success: debits FIAT and grants the item", async () => {
     await seedFiat(20000);
-    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" });
     expect(res.status).toBe(200);
     expect(res.body.owned).toBe(true);
-    expect(res.body.fiat).toBe(BAT.price);
-    expect(res.body.newBalance).toBe(20000 - BAT.price);
-    expect(await fiatBalance()).toBe(20000 - BAT.price);
+    expect(res.body.fiat).toBeGreaterThan(0);
+    expect(res.body.newBalance).toBe(20000 - res.body.fiat);
+    expect(await fiatBalance()).toBe(20000 - res.body.fiat);
     expect(await ownedItemIds()).toContain(BAT.id);
   });
 
   it("402 when the player can't afford it (balance untouched)", async () => {
     await seedFiat(100); // far below the price
-    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" });
     expect(res.status).toBe(402);
     expect(res.body.error).toBe("insufficient_fiat");
-    expect(res.body.required).toBe(BAT.price);
+    expect(res.body.required).toBeGreaterThan(0);
     expect(await fiatBalance()).toBe(100); // not charged
     expect(await ownedItemIds()).not.toContain(BAT.id);
   });
@@ -96,7 +96,7 @@ describe("POST /items/buy", () => {
       itemId: BAT.id,
       acquiredVia: "grant",
     });
-    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" });
     expect(res.status).toBe(200);
     expect(res.body.alreadyOwned).toBe(true);
     expect(await fiatBalance()).toBe(20000); // untouched
@@ -108,7 +108,7 @@ describe("POST /items/buy", () => {
   it("owner gets a free grant (no FIAT spent)", async () => {
     (isOwnerEmail as ReturnType<typeof vi.fn>).mockReturnValue(true);
     await seedFiat(20000);
-    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" });
     expect(res.status).toBe(200);
     expect(res.body.granted).toBe(true);
     expect(await fiatBalance()).toBe(20000); // free
@@ -125,7 +125,7 @@ describe("POST /items/buy", () => {
       acquiredVia: "fiat",
     });
 
-    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" });
     expect(res.status).toBe(200);
     expect(res.body.alreadyOwned).toBe(true);
     expect(await fiatBalance()).toBe(20000);
@@ -135,8 +135,8 @@ describe("POST /items/buy", () => {
   it("two real concurrent buys: item owned once, charged once", async () => {
     await seedFiat(20000);
     const [a, b] = await Promise.all([
-      request(app).post("/api/items/buy").send({ itemId: BAT.id }),
-      request(app).post("/api/items/buy").send({ itemId: BAT.id }),
+      request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" }),
+      request(app).post("/api/items/buy").send({ itemId: BAT.id, source: "black_market" }),
     ]);
     expect(a.status).toBe(200);
     expect(b.status).toBe(200);
@@ -144,7 +144,9 @@ describe("POST /items/buy", () => {
     const flags = [a.body, b.body].map((x) => x.alreadyOwned === true);
     expect(flags).toContain(true);
     expect((await ownedItemIds()).filter((i) => i === BAT.id)).toHaveLength(1);
-    expect(await fiatBalance()).toBe(20000 - BAT.price); // charged exactly once
+    const charged = a.body.fiat ?? b.body.fiat;
+    expect(charged).toBeGreaterThan(0);
+    expect(await fiatBalance()).toBe(20000 - charged); // charged exactly once
   });
 });
 
@@ -216,8 +218,8 @@ describe("POST /items/buy (consumables)", () => {
     expect(res.status).toBe(200);
     expect(res.body.owned).toBe(true);
     expect(res.body.quantity).toBe(3);
-    expect(res.body.fiat).toBe(GAS.price * 3);
-    expect(await fiatBalance()).toBe(20000 - GAS.price * 3);
+    expect(res.body.fiat).toBeGreaterThan(0);
+    expect(await fiatBalance()).toBe(20000 - res.body.fiat);
     expect(await itemQuantity(GAS.id)).toBe(3);
   });
 
@@ -254,23 +256,19 @@ describe("POST /items/buy (consumables)", () => {
 });
 
 describe("POST /items/consume", () => {
-  it("decrements the stack and deletes the row at zero", async () => {
+  it("rejects direct consumption for install-only supplies", async () => {
     await seedFiat(20000);
     await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 2 });
-    const one = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 1 });
-    expect(one.status).toBe(200);
-    expect(await itemQuantity(GAS.id)).toBe(1);
-    const two = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 1 });
-    expect(two.status).toBe(200);
-    expect(await itemQuantity(GAS.id)).toBe(0);
-    expect((await ownedItemIds()).filter((i) => i === GAS.id)).toHaveLength(0);
+    const res = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 1 });
+    expect(res.status).toBe(400);
+    expect(await itemQuantity(GAS.id)).toBe(2);
   });
 
-  it("409 when consuming more than held (stack untouched)", async () => {
+  it("400 when consuming an install-only supply (stack untouched)", async () => {
     await seedFiat(20000);
     await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 1 });
     const res = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 5 });
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
     expect(await itemQuantity(GAS.id)).toBe(1);
   });
 

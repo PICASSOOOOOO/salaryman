@@ -4,6 +4,7 @@ import { AddressInfo } from "net";
 import { randomUUID } from "crypto";
 import { WebSocket } from "ws";
 import { attachWorldServer } from "../worldServer";
+import { OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 
 // These tests stand up the REAL world WebSocket server and connect two real
 // `ws` clients to the same city, exercising the full move→broadcast path to
@@ -114,7 +115,7 @@ afterAll(async () => {
   await new Promise<void>((resolve) => httpServer.close(() => resolve()));
 });
 
-describe("interiorBid — building presence broadcast", () => {
+describe.skipIf(!OUTSIDE_WORLD_ENABLED)("interiorBid — building presence broadcast", () => {
   it("player_move carries interiorBid when a player enters a building interior", async () => {
     const name1 = `IBT1_${randomUUID().slice(0, 6)}`.toUpperCase();
     const name2 = `IBT2_${randomUUID().slice(0, 6)}`.toUpperCase();

@@ -60,19 +60,19 @@ async function mount() {
   });
 }
 
-// The CHAT tab is the first nav button; its badge is the red pill span inside it.
+// The CHAT tab is the first nav button; its badge is the green pill span inside it.
 function chatTabBadge(): string | null {
   const buttons = Array.from(container.querySelectorAll("button"));
   const chatBtn = buttons.find(b => /CHAT/.test(b.textContent ?? ""));
   if (!chatBtn) return null;
-  const badge = chatBtn.querySelector("span.bg-red-500");
+  const badge = chatBtn.querySelector("span.bg-emerald-600");
   return badge ? (badge.textContent ?? "") : null;
 }
 
 function smsTabBadge(): string | null {
   const buttons = Array.from(container.querySelectorAll("button"));
   const smsBtn = buttons.find(b => /^SMS/.test((b.textContent ?? "").trim()));
-  const badge = smsBtn?.querySelector("span.bg-red-500");
+  const badge = smsBtn?.querySelector("span.bg-emerald-600");
   return badge ? (badge.textContent ?? "") : null;
 }
 
