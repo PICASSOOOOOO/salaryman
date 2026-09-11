@@ -60,7 +60,13 @@ export function MobileModuleNav() {
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
       >
         <div className="flex items-center gap-1 overflow-hidden pr-2 min-w-0">
-          <button onClick={goBack} className="w-8 h-8 shrink-0 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md">
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Go back"
+            title="Go back"
+            className="w-8 h-8 shrink-0 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-md"
+          >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <button
