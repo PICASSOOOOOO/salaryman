@@ -435,6 +435,104 @@ body:not(.game-route) .rounded-lg {
   }
 }
 
+.app-route-surface {
+  min-width: 0;
+  animation: app-route-enter 180ms ease-out both;
+  transform-origin: top center;
+}
+
+@keyframes app-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-loading-screen {
+  min-height: var(--app-viewport-height, 100dvh);
+  display: grid;
+  place-items: center;
+  background: #fafaf7;
+  color: #000;
+  font-family: var(--font-sans);
+}
+
+.app-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  padding: 1.5rem;
+}
+
+.app-loading-signal {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 18px;
+}
+
+.app-loading-signal span {
+  width: 4px;
+  height: 8px;
+  background: #000;
+  animation: app-signal 900ms ease-in-out infinite;
+}
+
+.app-loading-signal span:nth-child(2) {
+  height: 12px;
+  animation-delay: 100ms;
+}
+
+.app-loading-signal span:nth-child(3) {
+  height: 16px;
+  animation-delay: 200ms;
+}
+
+.app-loading-signal span:nth-child(4) {
+  height: 10px;
+  animation-delay: 300ms;
+}
+
+@keyframes app-signal {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scaleY(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.app-loading-label,
+.app-loading-detail {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.app-loading-label {
+  font-size: 0.68rem;
+}
+
+.app-loading-detail {
+  color: rgba(0, 0, 0, 0.48);
+  font-size: 0.52rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-route-surface,
+  .app-loading-signal span {
+    animation: none;
+  }
+}
+
 .cursor-blink::after {
   content: "_";
   animation: cursor-blink 1s step-end infinite;

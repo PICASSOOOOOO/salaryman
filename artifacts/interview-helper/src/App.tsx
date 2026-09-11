@@ -194,19 +194,21 @@ const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", 
 function LoadingFallback() {
   return (
     <div
-      style={{
-        minHeight: "var(--app-viewport-height, 100dvh)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#FAFAF7",
-        color: "#000000",
-        fontFamily: "var(--font-sans)",
-        fontSize: "0.85rem",
-        letterSpacing: "0.1em",
-      }}
+      className="app-loading-screen"
+      role="status"
+      aria-live="polite"
+      aria-label="Pablo is synchronizing this workspace"
     >
-      LOADING...
+      <div className="app-loading-card">
+        <div className="app-loading-signal" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+        <p className="app-loading-label">PABLO // SYNCING</p>
+        <p className="app-loading-detail">ROUTE HANDSHAKE</p>
+      </div>
     </div>
   );
 }
@@ -465,6 +467,7 @@ function AppShell() {
           state, effects, and DOM for the entire session. Route state already
           persists through the app stores, so unmounting here releases memory
           without weakening the office or paid-feature paths. */}
+      <div key={location} className="app-route-surface">
       {isHome && (
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>
@@ -739,6 +742,7 @@ function AppShell() {
           covered the music indicator and other corner widgets. The full
           legal section now lives at /legal (linked from the pledge store
           and the immigration desk). */}
+      </div>
     </>
   );
 }
