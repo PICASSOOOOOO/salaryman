@@ -16,7 +16,7 @@ import {
 } from "@workspace/db";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
-import { recordTelephonyActivity } from "../lib/crm-recorder";
+import { recordTelephonyActivity, resolveOrgForUser } from "../lib/crm-recorder";
 import { sendSmsMessage } from "../lib/telephony-service";
 import { toE164 } from "../lib/phone";
 import { resolveUserCountry } from "../lib/phone-context";
@@ -429,6 +429,9 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       .where(and(eq(smsCampaignsTable.id, Number(req.params.id)), eq(smsCampaignsTable.userId, userId)));
     if (!campaign) { res.status(404).json({ error: "Not found" }); return; }
     if (!campaign.messageBody?.trim()) { res.status(400).json({ error: "Message body required" }); return; }
+    // Pin every campaign touch to the sender's owning organization rather than
+    // relying on whichever membership happens to be resolved later.
+    const campaignOrgId = (await resolveOrgForUser(userId))?.orgId ?? undefined;
 
     const campaignCountry = "US";
 
@@ -439,6 +442,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       await sendSmsMessage({
         userId,
         userEmail: req.user?.email,
+        orgId: campaignOrgId,
         phone: e164,
         body: `[TEST] ${campaign.messageBody}`,
         defaultCountry: campaignCountry,
@@ -491,6 +495,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
           const sentSms = await sendSmsMessage({
             userId: campaign.userId,
             userEmail: req.user?.email,
+            orgId: campaignOrgId,
             phone: e164,
             body: campaign.messageBody,
             contactId: contact.id,
@@ -645,18 +650,33 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
     const fromPhone = From;
     const toPhone = To;
 
+    // This legacy inbound endpoint must use the same owning-number resolution
+    // as the primary Twilio SMS webhook. Looking up a contact by raw phone
+    // alone can select another user's contact (or "unknown"), which silently
+    // prevents the shared CRM recorder from finding the owning organization.
+    const { resolveTelephonyOwner } = await import("../lib/telephony-owner");
+    const owner = await resolveTelephonyOwner({ destinationNumber: toPhone });
+    const ownerUserId = owner?.userId ?? null;
+    const ownerOrgId = owner?.orgId ?? (ownerUserId ? (await resolveOrgForUser(ownerUserId))?.orgId ?? null : null);
     const contacts = await db
       .select()
       .from(contactsTable)
-      .where(eq(contactsTable.phone, fromPhone))
+      .where(and(
+        eq(contactsTable.phone, fromPhone),
+        ...(ownerUserId ? [eq(contactsTable.userId, ownerUserId)] : []),
+      ))
       .limit(1);
 
     const contact = contacts[0];
+    const conversationUserId = ownerUserId ?? contact?.userId ?? null;
 
     const [conv] = await db
       .select()
       .from(smsConversationsTable)
-      .where(eq(smsConversationsTable.contactPhone, fromPhone))
+      .where(and(
+        eq(smsConversationsTable.contactPhone, fromPhone),
+        ...(conversationUserId ? [eq(smsConversationsTable.userId, conversationUserId)] : []),
+      ))
       .limit(1);
 
     let conversation = conv;
@@ -664,7 +684,7 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
       [conversation] = await db
         .insert(smsConversationsTable)
         .values({
-          userId: contact?.userId || "unknown",
+          userId: conversationUserId || "unknown",
           contactId: contact?.id || null,
           contactPhone: fromPhone,
           contactName: contact?.name || fromPhone,
@@ -696,6 +716,7 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
 
     await recordTelephonyActivity({
       userId: conversation.userId,
+      orgId: ownerOrgId,
       channel: "sms",
       direction: "inbound",
       phone: fromPhone,
