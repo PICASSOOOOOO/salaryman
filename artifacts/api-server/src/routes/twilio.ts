@@ -223,6 +223,19 @@ router.all("/twilio/voice/mila/:token", async (req, res) => {
 async function getUserOrgId(userId: string): Promise<number | null> {
   if (!userId) return null;
   try {
+    const [user] = await db.select({ currentOrgId: usersTable.currentOrgId })
+      .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const currentOrgId = user?.currentOrgId ? Number(user.currentOrgId) : null;
+    if (Number.isFinite(currentOrgId)) {
+      const [current] = await db.select({ orgId: orgMembersTable.orgId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.orgId, currentOrgId!),
+          eq(orgMembersTable.status, "active"),
+        )).limit(1);
+      if (current) return current.orgId;
+    }
     const rows = await db
       .select({ orgId: orgMembersTable.orgId })
       .from(orgMembersTable)
@@ -953,6 +966,36 @@ router.post("/twilio/conference/:roomName/add", requireAuth, requireFeature("pho
         .set({ participantsJson: JSON.stringify(existing) })
         .where(eq(conferenceRoomsTable.id, roomRows[0].id));
     }
+    // Conference participants are real outbound calls too. Persist the owner
+    // before Twilio can deliver a status callback, then let all callbacks
+    // enrich this same CRM activity by CallSid.
+    const conferenceOrgId = await getUserOrgId(userId);
+    const conferenceContact = await matchContactByPhone(userId, e164);
+    await db.insert(callHistoryTable).values({
+      userId,
+      orgId: conferenceOrgId ?? undefined,
+      callerName: name ?? conferenceContact?.contactName ?? null,
+      recipientNumber: e164,
+      twilioCallSid: call.sid,
+      status: call.status ?? "initiated",
+      direction: "outbound",
+      callType: "conference",
+      conferenceName: roomName,
+      contactId: conferenceContact?.contactId,
+      consentGiven: true,
+      recordingRetainUntil: getRetentionDate(),
+    });
+    await recordTelephonyActivity({
+      userId,
+      orgId: conferenceOrgId,
+      channel: "call",
+      direction: "outbound",
+      phone: e164,
+      contactName: name ?? conferenceContact?.contactName,
+      contactId: conferenceContact?.contactId,
+      status: call.status ?? "initiated",
+      twilioSid: call.sid,
+    }).catch(() => {});
 
     res.json({ ok: true, callSid: call.sid, phone: e164, name });
   } catch (err: unknown) {
@@ -981,10 +1024,23 @@ router.post("/twilio/conference/:roomName/end", requireAuth, requireFeature("pho
   try {
     const roomName = req.params.roomName as string;
     const userId = getAuthUserId(req);
+    const [ownedRoom] = await db
+      .select({ id: conferenceRoomsTable.id })
+      .from(conferenceRoomsTable)
+      .where(and(
+        eq(conferenceRoomsTable.roomName, roomName),
+        eq(conferenceRoomsTable.userId, userId),
+        eq(conferenceRoomsTable.status, "active"),
+      ))
+      .limit(1);
+    if (!ownedRoom) {
+      res.status(403).json({ error: "Not authorized to end this conference" });
+      return;
+    }
     await db
       .update(conferenceRoomsTable)
       .set({ status: "ended", endedAt: new Date() })
-      .where(and(eq(conferenceRoomsTable.roomName, roomName), eq(conferenceRoomsTable.userId, userId)));
+      .where(eq(conferenceRoomsTable.id, ownedRoom.id));
     try {
       const client = getTwilioClient();
       const confs = await client.conferences.list({ friendlyName: roomName, status: "in-progress" });
@@ -1110,6 +1166,17 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
           consentGiven: true,
           recordingRetainUntil: getRetentionDate(),
         });
+        await recordTelephonyActivity({
+          userId,
+          orgId: dialOrgId,
+          channel: "call",
+          direction: "outbound",
+          phone: e164,
+          contactName: (entry.name || callerName || "").slice(0, 64) || undefined,
+          contactId: dialCrmMatch?.contactId,
+          status: call.status ?? "initiated",
+          twilioSid: call.sid,
+        }).catch(() => {});
         results.push({ ok: true, phone: e164, name: entry.name, callSid: call.sid, conferenceName: confName });
       } catch (e: unknown) {
         results.push({ ok: false, phone: entry.phone, error: e instanceof Error ? e.message : "Failed" });
@@ -1219,6 +1286,17 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       conferenceName: confName,
       contactId: nextCrmMatch?.contactId, consentGiven: true, recordingRetainUntil: getRetentionDate(),
     });
+    await recordTelephonyActivity({
+      userId,
+      orgId: nextOrgId,
+      channel: "call",
+      direction: "outbound",
+      phone: e164,
+      contactName: entry.name,
+      contactId: nextCrmMatch?.contactId,
+      status: call.status ?? "initiated",
+      twilioSid: call.sid,
+    }).catch(() => {});
     const sessionSettings = JSON.parse(session.settingsJson ?? "{}");
     const rawDelay = typeof sessionSettings.delayBetweenCalls === "number" ? sessionSettings.delayBetweenCalls : 5;
     const delayBetweenCalls = Math.min(Math.max(rawDelay, 0), 30);
@@ -1781,14 +1859,36 @@ router.post("/twilio/pablo/gather", async (req, res) => {
         const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
         const fromNumber = userNumbers[0]?.number || process.env.TWILIO_PHONE_NUMBER || "";
         if (fromNumber) {
-          client.calls.create({
+          const transferCall = await client.calls.create({
             to: action.transferTo,
             from: fromNumber,
             twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${safeConf}</Conference></Dial></Response>`,
             statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
             statusCallbackMethod: "POST",
             statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-          }).catch((e: unknown) => console.error("[Pablo] transfer dial error:", e instanceof Error ? e.message : "Unknown"));
+          });
+          const transferOrgId = await getUserOrgId(userId);
+          await db.insert(callHistoryTable).values({
+            userId,
+            orgId: transferOrgId ?? undefined,
+            recipientNumber: action.transferTo,
+            twilioCallSid: transferCall.sid,
+            status: transferCall.status ?? "initiated",
+            direction: "outbound",
+            callType: "pablo_transfer",
+            conferenceName: confName,
+            consentGiven: true,
+            recordingRetainUntil: getRetentionDate(),
+          });
+          await recordTelephonyActivity({
+            userId,
+            orgId: transferOrgId,
+            channel: "call",
+            direction: "outbound",
+            phone: action.transferTo,
+            status: transferCall.status ?? "initiated",
+            twilioSid: transferCall.sid,
+          }).catch(() => {});
         }
       } catch (e: unknown) {
         console.error("[Pablo] transfer setup error:", e instanceof Error ? e.message : "Unknown");
@@ -2005,14 +2105,38 @@ ${milaVoice("I'm sorry, but no agents are currently available. Please leave a me
     const confName = `screening_${callSid}_${Date.now()}`;
     const client = getTwilioClient();
     const agentCallerId = await getUserOutboundNumber(userId);
-    client.calls.create({
+    const agentCall = await client.calls.create({
       to: agent.phone,
       from: agentCallerId,
       twiml: `<Response>${milaVoice("Incoming screened call for you. Connecting now.")}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-    }).catch(err => console.error("[Pablo] conference agent dial error:", err instanceof Error ? err.message : "Unknown"));
+    });
+    const agentOrgId = await getUserOrgId(userId);
+    await db.insert(callHistoryTable).values({
+      userId,
+      orgId: agentOrgId ?? undefined,
+      callerName: agent.name,
+      recipientNumber: agent.phone,
+      twilioCallSid: agentCall.sid,
+      status: agentCall.status ?? "initiated",
+      direction: "outbound",
+      callType: "screening_transfer",
+      conferenceName: confName,
+      consentGiven: true,
+      recordingRetainUntil: getRetentionDate(),
+    });
+    await recordTelephonyActivity({
+      userId,
+      orgId: agentOrgId,
+      channel: "call",
+      direction: "outbound",
+      phone: agent.phone,
+      contactName: agent.name,
+      status: agentCall.status ?? "initiated",
+      twilioSid: agentCall.sid,
+    }).catch(() => {});
 
     res.type("text/xml").send(`<Response>
 ${milaVoice(`I'll connect you with ${agent.name} now. Please hold for just a moment.`)}
@@ -2126,6 +2250,17 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       consentGiven: true,
       recordingRetainUntil: getRetentionDate(),
     });
+    await recordTelephonyActivity({
+      userId,
+      orgId: pabloOrgId,
+      channel: "call",
+      direction: "outbound",
+      phone: phoneNumber,
+      contactName: leadName,
+      contactId: pabloCrmMatch?.contactId,
+      status: "initiated",
+      twilioSid: call.sid,
+    }).catch(() => {});
 
     res.json({ ok: true, callSid: call.sid });
   } catch (err: unknown) {
@@ -2252,6 +2387,16 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
           consentGiven: true,
           recordingRetainUntil: getRetentionDate(),
         });
+        await recordTelephonyActivity({
+          userId,
+          orgId: campOrgId,
+          channel: "call",
+          direction: "outbound",
+          phone: lead.phone,
+          contactName: lead.name,
+          status: "initiated",
+          twilioSid: call.sid,
+        }).catch(() => {});
         dialed++;
       } catch (e: unknown) {
         console.error(`[Pablo] campaign dial error for ${lead.phone}:`, e instanceof Error ? e.message : "Unknown");
@@ -2750,6 +2895,17 @@ router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), a
             recordingRetainUntil: getRetentionDate(),
           })
           .returning();
+        await recordTelephonyActivity({
+          userId,
+          orgId: batchOrgId,
+          channel: "call",
+          direction: "outbound",
+          phone: e164,
+          contactName: (entry.name || callerName || "").slice(0, 64) || undefined,
+          contactId: batchCrmMatch?.contactId,
+          status: call.status ?? "initiated",
+          twilioSid: call.sid,
+        }).catch(() => {});
         return { ok: true, phone: e164, name: entry.name, callSid: call.sid, callId: record.id, status: call.status, conferenceName: batchConfName };
       })
     );
@@ -3196,19 +3352,39 @@ router.post("/twilio/webhook/voice", async (req, res) => {
 
     const inbOrgId2 = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
 
-    await db.insert(callHistoryTable).values({
-      userId: userId || "unknown",
-      orgId: inbOrgId2 ?? undefined,
-      callerName: fromName ?? null,
-      recipientNumber: From ?? "unknown",
-      twilioCallSid: CallSid,
-      status: "ringing",
-      direction: "inbound",
-      callType: "single",
-      contactId: inbCrmContactId,
-      consentGiven: true,
-      recordingRetainUntil: getRetentionDate(),
-    });
+    const existingInbound = CallSid
+      ? await db.select({ id: callHistoryTable.id })
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, CallSid)).limit(1)
+      : [];
+    if (!existingInbound.length) {
+      await db.insert(callHistoryTable).values({
+        userId: userId || "unknown",
+        orgId: inbOrgId2 ?? undefined,
+        callerName: fromName ?? null,
+        recipientNumber: From ?? "unknown",
+        twilioCallSid: CallSid,
+        status: "ringing",
+        direction: "inbound",
+        callType: "single",
+        contactId: inbCrmContactId,
+        consentGiven: true,
+        recordingRetainUntil: getRetentionDate(),
+      });
+    }
+    if (userId && CallSid && From) {
+      await recordTelephonyActivity({
+        userId,
+        orgId: inbOrgId2,
+        channel: "call",
+        direction: "inbound",
+        phone: From,
+        contactName: fromName,
+        contactId: inbCrmContactId,
+        status: "ringing",
+        twilioSid: CallSid,
+      }).catch(() => {});
+    }
 
     const isInboundDidCall = config?.inboundDid && To && toE164(To) === toE164(config.inboundDid);
 

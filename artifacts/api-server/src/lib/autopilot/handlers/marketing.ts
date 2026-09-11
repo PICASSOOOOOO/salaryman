@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import {
   generateSocialCopy,
+  createSocialPost,
   publishSocialPost,
   getBridgedSocialPlatforms,
   isSocialPlatform,
@@ -159,17 +160,13 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
 
   // Create the draft via the same table the manual "create post" screen writes,
   // so it appears in the human's posts list for review/edit/takeover.
-  const [draft] = await db
-    .insert(socialPostsTable)
-    .values({
-      userId: ctx.ownerId,
-      platform,
-      content,
-      hashtags,
-      status: "draft",
-      aiGenerated: "yes",
-    })
-    .returning();
+  const draft = await createSocialPost(ctx.ownerId, {
+    platform,
+    content,
+    hashtags,
+    status: "draft",
+    aiGenerated: "yes",
+  });
 
   await ctx.log({
     action: "draft_post",

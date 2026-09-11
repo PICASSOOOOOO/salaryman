@@ -144,6 +144,43 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
     let orgId = opts.orgId ?? null;
     let industry: string | null = null;
     if (orgId) {
+      const membership = await db
+        .select({ orgId: orgMembersTable.orgId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.userId, opts.userId),
+          eq(orgMembersTable.orgId, orgId),
+          eq(orgMembersTable.status, "active"),
+        ))
+        .limit(1);
+      // Never trust a stale/foreign org hint from a callback or client.
+      if (!membership[0] && opts.leadId) {
+        const [ownedLead] = await db
+          .select({ id: leadRecordsTable.id })
+          .from(leadRecordsTable)
+          .where(and(
+            eq(leadRecordsTable.id, opts.leadId),
+            eq(leadRecordsTable.orgId, orgId),
+            eq(leadRecordsTable.assignedUserId, opts.userId),
+          ))
+          .limit(1);
+        if (ownedLead) membership.push({ orgId });
+      }
+      if (!membership[0]) {
+        const [ownedLead] = await db
+          .select({ id: leadRecordsTable.id })
+          .from(leadRecordsTable)
+          .where(and(
+            eq(leadRecordsTable.orgId, orgId),
+            eq(leadRecordsTable.assignedUserId, opts.userId),
+            eq(leadRecordsTable.phone, opts.phone),
+          ))
+          .limit(1);
+        if (ownedLead) membership.push({ orgId });
+      }
+      if (!membership[0]) orgId = null;
+    }
+    if (orgId) {
       const orgRows = await db
         .select({ industry: organizationsTable.industry })
         .from(organizationsTable)

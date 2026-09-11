@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// Renders the AGENT AUTOPILOT dashboard (Autopilot page) against a mocked
+// Renders the PIXEL AGENT AUTOMATION dashboard (Autopilot page) against a mocked
 // GET /api/autopilot response and pins that the control surface correctly
 // reflects what the server saved. The backend save/read paths already have
 // integration tests; this is the missing FRONT-END guard that the dashboard
@@ -195,6 +195,11 @@ afterEach(() => {
 });
 
 describe("Autopilot dashboard renders saved config", () => {
+  it("identifies the dashboard as PIXEL AGENT AUTOMATION", async () => {
+    await mount();
+    expect(container.textContent).toContain("PIXEL AGENT AUTOMATION");
+  });
+
   it("renders all four domains from the loaded control surface", async () => {
     await mount();
     for (const label of ["Business Ops", "Marketing", "CRM & Calls", "Accounting"]) {

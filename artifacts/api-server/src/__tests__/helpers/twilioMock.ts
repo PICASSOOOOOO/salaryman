@@ -17,6 +17,7 @@ export const mockState = {
 // carries `.jwt` and `.validateRequest`. The same `client` instance is returned
 // on every call, so all spies are shared and assertable across requests.
 export function makeTwilioMock() {
+  let createdCallSequence = 0;
   const participantUpdate = vi.fn().mockResolvedValue({});
   const participantsCallable: any = vi.fn(() => ({ update: participantUpdate }));
   participantsCallable.list = vi.fn(async () => [{ callSid: mockState.callSid, muted: false, hold: false }]);
@@ -41,7 +42,18 @@ export function makeTwilioMock() {
   }));
   const callUpdate = vi.fn().mockResolvedValue({ sid: mockState.callSid, status: "completed" });
   const callsCallable: any = vi.fn(() => ({ fetch: callFetch, update: callUpdate }));
-  callsCallable.create = vi.fn(async () => ({ sid: mockState.createdCallSid, status: mockState.createdStatus }));
+  // A real Twilio account returns a fresh CallSid for every create. Keep the
+  // first value stable for legacy assertions, but make subsequent calls
+  // distinct so the real call_history SID uniqueness constraint is exercised
+  // by route tests. The sequence intentionally spans tests because the test
+  // database is shared across the suite.
+  callsCallable.create = vi.fn(async () => {
+    const callNumber = ++createdCallSequence;
+    const sid = callNumber === 1
+      ? mockState.createdCallSid
+      : `CAcreated${String(callNumber).padStart(27, "0")}`;
+    return { sid, status: mockState.createdStatus };
+  });
 
   const incomingList = vi.fn(async () => []);
   const incomingRemove = vi.fn(async () => true);

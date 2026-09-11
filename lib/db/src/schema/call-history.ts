@@ -1,4 +1,5 @@
 import { pgTable, serial, varchar, integer, timestamp, text, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const callHistoryTable = pgTable("call_history", {
   id: serial("id").primaryKey(),
@@ -29,6 +30,9 @@ export const callHistoryTable = pgTable("call_history", {
 }, (table) => [
   uniqueIndex("call_history_dialing_attempt_unique")
     .on(table.dialingSessionId, table.dialingQueueIndex),
+  uniqueIndex("call_history_twilio_sid_unique")
+    .on(table.twilioCallSid)
+    .where(sql`${table.twilioCallSid} is not null`),
 ]);
 
 export type CallHistory = typeof callHistoryTable.$inferSelect;

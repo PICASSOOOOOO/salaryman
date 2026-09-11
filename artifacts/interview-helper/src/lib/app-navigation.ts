@@ -34,7 +34,7 @@ export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "bots", path: "/business/autopilot", label: "AUTOMATION", icon: Bot },
+  { id: "bots", path: "/business/autopilot", label: "PIXEL AGENT AUTOMATION", icon: Bot },
   { id: "org", path: "/organizations", label: "ORG", icon: Network, authOnly: true },
   { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase, authOnly: true },

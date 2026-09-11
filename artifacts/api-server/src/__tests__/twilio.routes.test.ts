@@ -19,7 +19,7 @@ vi.mock("@workspace/integrations-openai-ai-server", () => ({
 import request from "supertest";
 import type { Express } from "express";
 import twilio from "twilio";
-import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable } from "@workspace/db";
+import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable, conferenceRoomsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
 import {
@@ -347,6 +347,24 @@ describe("batch-call", () => {
 });
 
 describe("conference rooms", () => {
+  it("end: denies an outsider before invoking Twilio", async () => {
+    const roomName = "CalllHome-outsider-end";
+    await db.insert(conferenceRoomsTable).values({
+      userId: "conference-room-owner",
+      roomName,
+      status: "active",
+      participantsJson: "[]",
+    });
+    try {
+      const res = await request(app).post(`/api/twilio/conference/${roomName}/end`).send();
+      expect(res.status).toBe(403);
+      expect(spies.conferencesList).not.toHaveBeenCalled();
+      expect(spies.conferenceUpdate).not.toHaveBeenCalled();
+    } finally {
+      await db.delete(conferenceRoomsTable).where(eq(conferenceRoomsTable.roomName, roomName));
+    }
+  });
+
   it("create -> add -> list -> end lifecycle", async () => {
     const create = await request(app)
       .post("/api/twilio/conference/create")

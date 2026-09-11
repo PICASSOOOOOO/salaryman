@@ -52,7 +52,7 @@ const ALIASES: Record<string, string[]> = {
   "/business/profit-loss": ["profit and loss", "p&l", "pnl", "income statement"],
   "/business/marketplace": ["business marketplace", "buy a business", "sell business"],
   "/marketplace": ["marketplace", "cross-city exchange", "buy items", "sell items", "properties", "vehicles"],
-  "/business/autopilot": ["autopilot", "agent autopilot", "automation"],
+  "/business/autopilot": ["pixel agent automation", "automation", "autopilot"],
   "/business/contacts": ["contacts", "address book", "people"],
   "/business/services": ["services board", "gigs", "bounties", "debt bounty", "vehicle rental", "escort", "player services"],
   "/business/tasks": ["tasks", "task board", "todo", "to do"],

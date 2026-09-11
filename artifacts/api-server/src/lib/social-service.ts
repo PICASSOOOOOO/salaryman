@@ -18,6 +18,29 @@ import { hasFeature } from "./plan";
 
 export type SocialPost = typeof socialPostsTable.$inferSelect;
 
+export interface CreateSocialPostInput {
+  platform: SocialPlatform;
+  content?: string;
+  hashtags?: string[];
+  status?: string;
+  scheduledAt?: Date | null;
+  aiGenerated?: string;
+}
+
+/** Create a post in the same table used by the manual Marketing Command Center. */
+export async function createSocialPost(userId: string, input: CreateSocialPostInput): Promise<SocialPost> {
+  const [post] = await db.insert(socialPostsTable).values({
+    userId,
+    platform: input.platform,
+    content: input.content || "",
+    hashtags: input.hashtags || [],
+    status: input.status || "draft",
+    scheduledAt: input.scheduledAt ?? null,
+    ...(input.aiGenerated !== undefined ? { aiGenerated: input.aiGenerated } : {}),
+  }).returning();
+  return post;
+}
+
 export const SOCIAL_PLATFORMS = [
   "twitter",
   "linkedin",
