@@ -744,6 +744,9 @@ function AppShell() {
 }
 
 function App() {
+  // Tag every client-side route entry so the shared back control can distinguish
+  // app navigation from a direct browser entry or an external page.
+  installAppHistoryTracking();
   return (
     <ErrorBoundary fallbackTitle="APP CRASHED">
       <WouterRouter base={basePath}>
