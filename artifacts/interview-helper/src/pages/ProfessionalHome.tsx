@@ -1,13 +1,14 @@
-import { ArrowUpRight, Bot, BriefcaseBusiness, Download, Phone } from "lucide-react";
+import { ArrowUpRight, Bot, Download, Phone, Workflow } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import "./ProfessionalHome.css";
 
 const MODULES = [
   {
-    id: "business",
-    title: "START WORK",
-    href: "/business",
-    icon: BriefcaseBusiness,
+    id: "automation",
+    title: "PIXEL AGENT AUTOMATION",
+    href: "/business/autopilot",
+    icon: Workflow,
   },
   {
     id: "pablo",
@@ -30,6 +31,11 @@ const MODULES = [
 ] as const;
 
 export default function ProfessionalHome() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const accountHref = isAuthenticated
+    ? "/business"
+    : "/sign-in?returnTo=%2Fbusiness";
+
   return (
     <main className="min-h-[100dvh] bg-[#FAFAF7] text-black overflow-x-hidden flex flex-col">
       <header className="home-header shrink-0 px-4 sm:px-8 h-14 flex items-center justify-between border-b border-black/10">
@@ -45,10 +51,10 @@ export default function ProfessionalHome() {
           </span>
         </Link>
         <Link
-          href="/sign-in"
+          href={accountHref}
           className="font-sans text-[10px] font-bold tracking-[0.14em] uppercase hover:opacity-60 transition-opacity"
         >
-          LOG IN
+          {isLoading ? "···" : isAuthenticated ? "START WORK" : "LOG IN"}
         </Link>
       </header>
 

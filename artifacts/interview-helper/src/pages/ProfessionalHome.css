@@ -39,9 +39,34 @@
   justify-content: space-between;
   overflow: hidden;
   border: 1px solid rgb(0 0 0 / 16%);
-  background: #fff;
+  background: #FFFCF5;
   color: #000;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.home-module--automation {
+  border-color: #000;
+  background: #000;
+  color: #FAFAF7;
+}
+
+body.workspace-light .home-module--automation {
+  background-color: #000 !important;
+  color: #FAFAF7 !important;
+}
+
+.home-module--automation:hover,
+.home-module--automation:focus-visible,
+.home-module--automation:active {
+  background: #FFFCF5;
+  color: #000;
+}
+
+body.workspace-light .home-module--automation:hover,
+body.workspace-light .home-module--automation:focus-visible,
+body.workspace-light .home-module--automation:active {
+  background-color: #FFFCF5 !important;
+  color: #000 !important;
 }
 
 .home-module::after {
@@ -158,6 +183,10 @@
   .home-modules {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
+  }
+
+  .home-module--automation {
+    grid-column: span 2;
   }
 
   .home-module {

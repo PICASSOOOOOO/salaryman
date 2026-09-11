@@ -11,31 +11,31 @@
     monospace;
   --font-display: "Syne", "DM Sans", "Noto Sans", sans-serif;
 
-  /* SALARYMAN — ink, oxidized copper, and signal cyan. */
-  --color-background: hsl(216 28% 7%);
-  --color-foreground: hsl(40 22% 91%);
+  /* Browser/control-plane default: cream paper and black ink. */
+  --color-background: #FAFAF7;
+  --color-foreground: #000000;
 
-  --color-card: hsl(216 24% 10%);
-  --color-card-foreground: hsl(40 22% 91%);
+  --color-card: #FFFCF5;
+  --color-card-foreground: #000000;
 
-  --color-popover: hsl(216 24% 11%);
-  --color-popover-foreground: hsl(40 22% 91%);
+  --color-popover: #FFFCF5;
+  --color-popover-foreground: #000000;
 
-  --color-border: hsl(210 17% 22%);
-  --color-input: hsl(216 23% 12%);
-  --color-ring: hsl(186 75% 54%);
+  --color-border: #D8D1C3;
+  --color-input: #FFFCF5;
+  --color-ring: #000000;
 
-  --color-primary: hsl(186 75% 54%);
-  --color-primary-foreground: hsl(216 28% 7%);
+  --color-primary: #000000;
+  --color-primary-foreground: #FAFAF7;
 
-  --color-secondary: hsl(216 18% 17%);
-  --color-secondary-foreground: hsl(210 14% 73%);
+  --color-secondary: #EEE8DC;
+  --color-secondary-foreground: #000000;
 
-  --color-muted: hsl(216 18% 14%);
-  --color-muted-foreground: hsl(212 12% 56%);
+  --color-muted: #EEE8DC;
+  --color-muted-foreground: #6C665C;
 
-  --color-accent: hsl(35 77% 63%);
-  --color-accent-foreground: hsl(216 28% 7%);
+  --color-accent: #EEE8DC;
+  --color-accent-foreground: #000000;
 
   --color-destructive: hsl(2 61% 56%);
   --color-destructive-foreground: hsl(40 22% 91%);
@@ -47,7 +47,7 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --salary-ink: 8 15 22;
   --salary-panel: 13 24 32;
   --salary-paper: 229 220 198;
@@ -87,6 +87,24 @@
 
 /* Game routes retain their comfortable reading scale without imposing a retro display face. */
 body.game-route {
+  color-scheme: dark;
+  --color-background: hsl(216 28% 7%);
+  --color-foreground: hsl(40 22% 91%);
+  --color-card: hsl(216 24% 10%);
+  --color-card-foreground: hsl(40 22% 91%);
+  --color-popover: hsl(216 24% 11%);
+  --color-popover-foreground: hsl(40 22% 91%);
+  --color-border: hsl(210 17% 22%);
+  --color-input: hsl(216 23% 12%);
+  --color-ring: hsl(186 75% 54%);
+  --color-primary: hsl(186 75% 54%);
+  --color-primary-foreground: hsl(216 28% 7%);
+  --color-secondary: hsl(216 18% 17%);
+  --color-secondary-foreground: hsl(210 14% 73%);
+  --color-muted: hsl(216 18% 14%);
+  --color-muted-foreground: hsl(212 12% 56%);
+  --color-accent: hsl(35 77% 63%);
+  --color-accent-foreground: hsl(216 28% 7%);
   font-size: 1.05rem;
   line-height: 1.45;
   font-family: var(--font-sans);
@@ -145,18 +163,8 @@ body:not(.game-route) .rounded-lg {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: hsl(225 12% 7%);
-    background-image:
-      radial-gradient(
-        ellipse at 50% 0%,
-        rgba(56, 189, 248, 0.03) 0%,
-        transparent 55%
-      ),
-      radial-gradient(
-        ellipse at 80% 100%,
-        rgba(139, 92, 246, 0.015) 0%,
-        transparent 45%
-      );
+    background-color: #FAFAF7;
+    background-image: none;
     /* App-like feel on mobile: kill rubber-band, suppress tap highlight,
        and stop iOS Safari from auto-zooming form inputs <16px. */
     overscroll-behavior-y: none;

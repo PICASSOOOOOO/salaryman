@@ -97,7 +97,7 @@ export function MobileModuleNav() {
             </button>
           ) : (
             <button onClick={() => login()} className="text-[10px] font-bold uppercase bg-black text-[#FAFAF7] px-3 py-1.5 rounded">
-              LOGIN
+              LOG IN
             </button>
           )}
         </div>

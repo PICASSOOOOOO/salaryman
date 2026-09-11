@@ -43,6 +43,14 @@ describe("frontend startup boundaries", () => {
     expect(landing).not.toContain("<video");
     expect(landing).not.toContain(".mp4");
     expect(landing).toContain("Make work possible.");
+    expect(landing).toContain("PIXEL AGENT AUTOMATION");
+    expect(landing).toContain('href: "/business/autopilot"');
+  });
+
+  it("forces successful sign-in into the requested work route", () => {
+    const app = source("App.tsx");
+    expect(app).toContain("forceRedirectUrl={returnTo}");
+    expect(app).toContain('?? "/business"');
   });
 
   it("lets route chunks own charts and syntax libraries", () => {

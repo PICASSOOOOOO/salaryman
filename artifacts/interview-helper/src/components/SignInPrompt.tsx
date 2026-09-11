@@ -31,22 +31,22 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: '3rem 1.5rem', textAlign: 'center',
       }}>
-        <div style={{ fontFamily: fontFor(boomer), color: 'rgba(56,189,248,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '8px' }}>
-          {boomer ? 'SIGN IN REQUIRED' : 'ACCESS RESTRICTED'}
+        <div style={{ fontFamily: fontFor(boomer), color: '#000', fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '8px' }}>
+          SIGN IN REQUIRED
         </div>
-        <div style={{ fontFamily: fontFor(boomer), fontSize: '0.6rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.08em', marginBottom: '20px', maxWidth: 320, lineHeight: 1.6 }}>
+        <div style={{ fontFamily: fontFor(boomer), fontSize: '0.7rem', color: 'rgba(0,0,0,0.58)', letterSpacing: '0.04em', marginBottom: '20px', maxWidth: 320, lineHeight: 1.6 }}>
           {context || (boomer ? 'Sign in to access this feature.' : 'Authentication required to access this module.')}
         </div>
         <button
           onClick={signInPrimary}
           style={{
-            fontFamily: fontFor(boomer), fontSize: '0.7rem', color: '#38bdf8',
-            border: '1px solid rgba(56,189,248,0.4)', padding: '8px 24px',
-            background: 'rgba(56,189,248,0.06)', cursor: 'pointer', letterSpacing: '0.12em',
+            fontFamily: fontFor(boomer), fontSize: '0.7rem', color: '#FAFAF7',
+            border: '1px solid #000', padding: '9px 24px',
+            background: '#000', cursor: 'pointer', letterSpacing: '0.12em',
             transition: 'all 0.2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.12)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.6)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.06)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.4)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#2A2A2A'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#000'; }}
         >
           SIGN IN
         </button>
@@ -59,34 +59,34 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
       onClick={onDismiss}
       style={{
         position: 'fixed', inset: 0, zIndex: 99999,
-        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+        background: 'rgba(250,250,247,0.94)', backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#0a0a0b', border: '1px solid rgba(56,189,248,0.2)',
+          background: '#FFFCF5', border: '1px solid #000',
           padding: '2.5rem 2rem', maxWidth: 380, width: '90%', textAlign: 'center',
-          boxShadow: '0 0 40px rgba(56,189,248,0.05)',
+          boxShadow: '6px 6px 0 #000',
         }}
       >
         <div style={{
-          fontFamily: fontForVT(boomer), fontSize: '1.6rem', color: '#38bdf8',
+          fontFamily: fontForVT(boomer), fontSize: '1.35rem', color: '#000',
+          fontWeight: 800,
           letterSpacing: '0.2em', marginBottom: '6px',
-          textShadow: '0 0 15px rgba(56,189,248,0.3)',
         }}>
-          {boomer ? 'SIGN IN' : 'AUTHENTICATE'}
+          SIGN IN
         </div>
 
         <div style={{
           width: '60px', height: '1px', margin: '0 auto 16px',
-          background: 'linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)',
+          background: '#000',
         }} />
 
         <div style={{
           fontFamily: fontFor(boomer), fontSize: '0.65rem',
-          color: 'rgba(56,189,248,0.4)', letterSpacing: '0.08em',
+          color: 'rgba(0,0,0,0.58)', letterSpacing: '0.06em',
           lineHeight: 1.7, marginBottom: '24px',
         }}>
           {context || (boomer
@@ -98,13 +98,13 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
         <button
           onClick={signInPrimary}
           style={{
-            fontFamily: fontFor(boomer), fontSize: '0.75rem', color: '#38bdf8',
-            border: '1px solid rgba(56,189,248,0.5)', padding: '10px 32px',
-            background: 'rgba(56,189,248,0.08)', cursor: 'pointer', letterSpacing: '0.15em',
+            fontFamily: fontFor(boomer), fontSize: '0.75rem', color: '#FAFAF7',
+            border: '1px solid #000', padding: '10px 32px',
+            background: '#000', cursor: 'pointer', letterSpacing: '0.15em',
             width: '100%', transition: 'all 0.2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.15)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.7)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.08)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.5)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#2A2A2A'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#000'; }}
         >
           SIGN IN
         </button>
@@ -115,7 +115,7 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
             onClick={onDismiss}
             style={{
               fontFamily: fontFor(boomer), fontSize: '0.55rem',
-              color: 'rgba(56,189,248,0.25)', background: 'none', border: 'none',
+              color: 'rgba(0,0,0,0.5)', background: 'none', border: 'none',
               cursor: 'pointer', marginTop: '16px', letterSpacing: '0.1em',
               display: 'block', width: '100%',
             }}
@@ -130,7 +130,7 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
 
 export function SignInPage({ context, returnTo }: { context?: string; returnTo?: string }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#FAFAF7', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <SignInPrompt inline context={context} returnTo={returnTo} />
     </div>
   );

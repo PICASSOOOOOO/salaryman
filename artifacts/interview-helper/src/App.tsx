@@ -26,6 +26,7 @@ import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
+import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 
@@ -803,14 +804,27 @@ export default App;
 
 function ClerkSignUpPage() {
   return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FFFAF0] px-4">
-    <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+    <SignUp
+      routing="path"
+      path={`${basePath}/sign-up`}
+      signInUrl={`${basePath}/sign-in`}
+      fallbackRedirectUrl="/business"
+    />
   </div>;
 }
 
 function ClerkSignInPage() {
-  const returnTo = new URLSearchParams(window.location.search).get("returnTo") ?? "/";
+  const returnTo = sanitizeReturnPath(
+    new URLSearchParams(window.location.search).get("returnTo"),
+  ) ?? "/business";
   return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FFFAF0] px-4">
-    <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={returnTo} />
+    <SignIn
+      routing="path"
+      path={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      fallbackRedirectUrl={returnTo}
+      forceRedirectUrl={returnTo}
+    />
   </div>;
 }
 
