@@ -16,6 +16,30 @@ with _FLOOR_PLAN_PATH.open(encoding="utf-8") as _floor_plan_file:
 FLOOR_COUNT = int(FLOOR_PLAN["floorCount"])
 
 
+NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {
+    "executive": (
+        ((1_250, 6_850), (1_520, 6_850), (1_520, 7_080), (1_250, 7_080)),
+        ((2_050, 6_900), (2_300, 6_900), (2_300, 6_650), (2_050, 6_650)),
+        ((2_150, 6_150), (2_350, 6_150), (2_350, 6_380), (2_150, 6_380)),
+    ),
+    "public": (
+        ((3_350, 6_850), (3_620, 6_850), (3_620, 7_080), (3_350, 7_080)),
+        ((4_150, 6_900), (4_400, 6_900), (4_400, 6_650), (4_150, 6_650)),
+        ((4_250, 6_150), (4_450, 6_150), (4_450, 6_380), (4_250, 6_380)),
+    ),
+    "office_03": (
+        ((5_450, 6_850), (5_720, 6_850), (5_720, 7_080), (5_450, 7_080)),
+        ((6_250, 6_900), (6_500, 6_900), (6_500, 6_650), (6_250, 6_650)),
+        ((6_350, 6_150), (6_550, 6_150), (6_550, 6_380), (6_350, 6_380)),
+    ),
+    "office_04": (
+        ((7_550, 6_850), (7_820, 6_850), (7_820, 7_080), (7_550, 7_080)),
+        ((8_350, 6_900), (8_600, 6_900), (8_600, 6_650), (8_350, 6_650)),
+        ((8_450, 6_150), (8_650, 6_150), (8_650, 6_380), (8_450, 6_380)),
+    ),
+}
+
+
 @dataclass(frozen=True)
 class Room:
     id: str
@@ -52,6 +76,7 @@ class TowerScene:
     input_vector: tuple[float, float] = (0.0, 0.0)
     velocity: tuple[float, float] = (0.0, 0.0)
     motion_remainder: tuple[float, float] = (0.0, 0.0)
+    npc_motion_seconds: float = 0.0
 
     MAX_SPEED: float = 300.0
     ACCELERATION: float = 1_500.0
@@ -140,6 +165,42 @@ class TowerScene:
         self.velocity = (velocity_x, velocity_y)
         if step_x or step_y:
             self.move(step_x, step_y)
+
+    def update_npc_motion(self, delta_seconds: float) -> None:
+        """Advance deterministic office routes independently of player input."""
+        if delta_seconds > 0:
+            self.npc_motion_seconds += delta_seconds
+
+    def npc_pose(self, room_id: str, index: int) -> tuple[tuple[int, int], str] | None:
+        """Return an NPC's current route position and cardinal facing."""
+        routes = NPC_ROUTES.get(room_id)
+        if routes is None or index >= len(routes):
+            return None
+        route = routes[index]
+        segment_lengths = []
+        total_length = 0.0
+        for start, end in zip(route, route[1:] + route[:1]):
+            length = hypot(end[0] - start[0], end[1] - start[1])
+            segment_lengths.append(length)
+            total_length += length
+        if total_length <= 0:
+            return route[0], "down"
+
+        # Small phase offsets keep the three workers from marching in lockstep.
+        distance = (self.npc_motion_seconds * (72.0 + index * 9.0) + index * total_length / 3.0) % total_length
+        travelled = 0.0
+        for segment_index, (start, end) in enumerate(zip(route, route[1:] + route[:1])):
+            segment_length = segment_lengths[segment_index]
+            if distance <= travelled + segment_length:
+                ratio = (distance - travelled) / max(1.0, segment_length)
+                x = round(start[0] + (end[0] - start[0]) * ratio)
+                y = round(start[1] + (end[1] - start[1]) * ratio)
+                dx = end[0] - start[0]
+                dy = end[1] - start[1]
+                facing = "right" if abs(dx) > abs(dy) and dx > 0 else "left" if abs(dx) > abs(dy) else "down" if dy > 0 else "up"
+                return (x, y), facing
+            travelled += segment_length
+        return route[0], "down"
 
     @staticmethod
     def _move_toward(current: float, target: float, amount: float) -> float:

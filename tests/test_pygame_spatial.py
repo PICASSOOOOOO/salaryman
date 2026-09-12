@@ -84,6 +84,19 @@ class PygameSpatialTests(unittest.TestCase):
 
         self.assertEqual(scene.current_room, "executive")
 
+    def test_npc_routes_advance_without_player_input(self):
+        scene = build_tower_scene()
+        scene.select_room("executive")
+
+        before = scene.npc_pose("executive", 0)
+        scene.update_npc_motion(1.0)
+        after = scene.npc_pose("executive", 0)
+
+        self.assertIsNotNone(before)
+        self.assertIsNotNone(after)
+        self.assertNotEqual(before[0], after[0])
+        self.assertIn(after[1], {"up", "down", "left", "right"})
+
     def test_operator_pages_require_role_access_or_a_live_object(self):
         player = OfficeState.with_default_roster()
         self.assertFalse(player.open_page("tools"))
@@ -177,6 +190,16 @@ class PygameSpatialTests(unittest.TestCase):
         renderer.draw_tower(state, scene)
         pygame.display.flip()
         self.assertEqual(screen.get_size(), (1180, 720))
+
+    def test_character_frames_use_full_sprite_cells(self):
+        screen = pygame.display.set_mode((1180, 720))
+        renderer = SolarPunkRenderer(screen)
+
+        rendered, bounds, _ = renderer._character_sprite("left", 0, 0.32)
+
+        self.assertIsNotNone(rendered)
+        self.assertIsNotNone(bounds)
+        self.assertGreater(bounds.height, bounds.width)
 
 
 if __name__ == "__main__":

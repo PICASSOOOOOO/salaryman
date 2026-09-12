@@ -189,6 +189,7 @@ def run(argv: list[str] | None = None) -> int:
         elif args.no_bridge or not bridge.connected:
             scene.set_motion_input(0.0, 0.0)
         scene.update_motion(delta_seconds)
+        scene.update_npc_motion(delta_seconds)
         state.update(delta_seconds)
         if not args.no_bridge:
             bridge_elapsed += delta_seconds

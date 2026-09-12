@@ -128,6 +128,7 @@ def main() -> int:
                 state.notice = notice
             arrived = move_toward_target(scene, target)
             scene.update_motion(delta)
+            scene.update_npc_motion(delta)
             state.update(delta)
             if arrived and not action_done:
                 if phase == 3:

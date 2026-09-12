@@ -77,7 +77,7 @@ class SolarPunkRenderer:
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
-        self._character_frame_cache: dict[tuple[int, int], pygame.Surface] = {}
+        self._character_frame_cache: dict[tuple[str, int], pygame.Surface] = {}
         self._asset_root = self._find_pixel_assets()
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
@@ -258,19 +258,22 @@ class SolarPunkRenderer:
         scale: float,
     ) -> None:
         """Place the office roster into the active room as visible NPCs."""
-        npc_positions = {
-            "executive": ((1_350, 6_850), (2_150, 6_900), (2_250, 6_150)),
-            "public": ((3_450, 6_850), (4_250, 6_900), (4_300, 6_150)),
-            "office_03": ((5_550, 6_850), (6_350, 6_900), (6_400, 6_150)),
-            "office_04": ((7_650, 6_850), (8_450, 6_900), (8_500, 6_150)),
-        }
-        positions = npc_positions.get(scene.current_room)
-        if not positions:
-            return
-        for index, worker in enumerate(state.roster.workers[: len(positions)]):
-            npc_x, npc_y = positions[index]
+        for index, worker in enumerate(state.roster.workers[:3]):
+            pose = scene.npc_pose(scene.current_room, index)
+            if pose is None:
+                continue
+            (npc_x, npc_y), facing = pose
             screen_x, screen_y = point((npc_x, npc_y))
-            self._draw_npc(screen_x, screen_y, worker.name, worker.accent, scale)
+            frame = (int(scene.npc_motion_seconds * 12) + index * 2) % 7
+            self._draw_npc(
+                screen_x,
+                screen_y,
+                worker.name,
+                worker.accent,
+                scale,
+                facing=facing,
+                frame=frame,
+            )
 
     def _draw_npc(
         self,
@@ -279,15 +282,13 @@ class SolarPunkRenderer:
         name: str,
         accent: tuple[int, int, int],
         scale: float,
+        *,
+        facing: str,
+        frame: int,
     ) -> None:
-        """Draw a stationary teammate with a stable footprint and nameplate."""
-        sheet = self._asset("characters/char_0.png")
-        if sheet:
-            source = sheet.subsurface(pygame.Rect(0, 0, 16, 24))
-            sprite_scale = min(4.4, max(2.4, scale * 10))
-            size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
-            rendered = pygame.transform.scale(source, size)
-            bounds = rendered.get_bounding_rect(min_alpha=1)
+        """Draw a moving teammate with the same stable sprite path as the player."""
+        rendered, bounds, sprite_scale = self._character_sprite(facing, frame, scale, npc=True)
+        if rendered is not None and bounds is not None:
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
             self.screen.blit(
                 rendered,
@@ -296,8 +297,11 @@ class SolarPunkRenderer:
                     y + 7 - bounds.bottom,
                 ),
             )
-        pygame.draw.circle(self.screen, accent, (x, y - 52), 4)
-        self.text(name.upper()[:14], (x - 34, y - 70), self.font_mono, accent)
+            label_y = y + 7 - bounds.bottom - 15
+        else:
+            label_y = y - 52
+        pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
+        self.text(name.upper()[:14], (x - 34, label_y - 8), self.font_mono, accent)
 
     def _draw_square_office_floor(
         self,
@@ -564,33 +568,10 @@ class SolarPunkRenderer:
         moving: bool = False,
     ) -> None:
         """Draw a real 16-bit character frame, facing the scene's movement."""
-        sheet = self._asset("characters/char_0.png")
-        if sheet:
-            # Character sheets are 7 columns x 4 cardinal rows, 16x24 each.
-            rows = {"down": 0, "left": 1, "right": 2, "up": 3}
-            frame = (self._anim_tick // 3) % 7 if moving else 0
-            row = rows[self._facing]
-            cache_key = (row, frame)
-            crop = self._character_frame_cache.get(cache_key)
-            if crop is None:
-                source = sheet.subsurface(pygame.Rect(frame * 16, row * 24, 16, 24))
-                # The source sheet has a one- to two-pixel difference in the
-                # opaque bounds between walk frames. Normalize the feet and
-                # body center before scaling, otherwise the whole sprite
-                # appears to jump while the shadow stays still.
-                crop = pygame.Surface((16, 24), pygame.SRCALPHA)
-                bounds = source.get_bounding_rect(min_alpha=1)
-                centered_left = (16 - bounds.width) // 2
-                crop.blit(source, (centered_left - bounds.left, 24 - bounds.bottom))
-                self._character_frame_cache[cache_key] = crop
-            sprite_scale = min(5.4, max(2.8, scale * 12))
-            size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
+        frame = (self._anim_tick // 3) % 7 if moving else 0
+        rendered, rendered_bounds, sprite_scale = self._character_sprite(self._facing, frame, scale)
+        if rendered is not None and rendered_bounds is not None:
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
-            rendered = pygame.transform.scale(crop, size)
-            rendered_bounds = rendered.get_bounding_rect(min_alpha=1)
-            # Anchor the final scaled opaque footprint, not the transparent
-            # source cell. This prevents odd-width frames from snapping one
-            # screen pixel sideways at large pixel-art scales.
             rendered_center_x = rendered_bounds.left + rendered_bounds.width / 2.0
             rendered_bottom = rendered_bounds.bottom
             self.screen.blit(
@@ -605,6 +586,37 @@ class SolarPunkRenderer:
         pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)
         pygame.draw.circle(self.screen, (216, 151, 107), (x, y - 2), 7)
         pygame.draw.rect(self.screen, Palette.CORAL, (x - 7, y + 5, 14, 12), border_radius=5)
+
+    def _character_sprite(
+        self,
+        facing: str,
+        frame: int,
+        scale: float,
+        *,
+        npc: bool = False,
+    ) -> tuple[pygame.Surface | None, pygame.Rect | None, float]:
+        """Extract the actual 16x32 character cells without row-boundary tearing."""
+        sheet = self._asset("characters/char_0.png")
+        if sheet is None:
+            return None, None, 0.0
+        # char_0.png is 7 columns x 3 rows: front, back, and right profile.
+        row_by_facing = {"down": 0, "up": 1, "left": 2, "right": 2}
+        row = row_by_facing.get(facing, 0)
+        cache_key = (facing, frame)
+        crop = self._character_frame_cache.get(cache_key)
+        if crop is None:
+            source = sheet.subsurface(pygame.Rect(frame * 16, row * 32, 16, 32))
+            if facing == "left":
+                source = pygame.transform.flip(source, True, False)
+            crop = pygame.Surface((16, 32), pygame.SRCALPHA)
+            bounds = source.get_bounding_rect(min_alpha=1)
+            centered_left = (16 - bounds.width) // 2
+            crop.blit(source, (centered_left - bounds.left, 32 - bounds.bottom))
+            self._character_frame_cache[cache_key] = crop
+        sprite_scale = min(4.8 if npc else 5.4, max(2.5 if npc else 2.8, scale * (10 if npc else 12)))
+        size = (max(16, int(16 * sprite_scale)), max(32, int(32 * sprite_scale)))
+        rendered = pygame.transform.scale(crop, size)
+        return rendered, rendered.get_bounding_rect(min_alpha=1), sprite_scale
 
     def draw_tower_header(self, state: OfficeState, scene: TowerScene) -> None:
         # This rail is intentionally always at y=0. World panels and page
