@@ -7,7 +7,13 @@ import json
 from math import hypot
 from pathlib import Path
 
-from .objects import InteractionResult, OfficeObject, OfficeObjectRegistry, build_tower_object_registry
+from .objects import (
+    EXECUTIVE_SHOWCASE_OBJECT_IDS,
+    InteractionResult,
+    OfficeObject,
+    OfficeObjectRegistry,
+    build_tower_object_registry,
+)
 
 
 _FLOOR_PLAN_PATH = Path(__file__).resolve().parent.parent / "godot" / "office-client" / "floor_plan.json"
@@ -96,7 +102,16 @@ class TowerScene:
 
     @property
     def nearby_object(self) -> OfficeObject | None:
-        return self.objects.nearby(self.player_position, room=self.current_room)
+        allowed_ids = (
+            EXECUTIVE_SHOWCASE_OBJECT_IDS
+            if self.current_room == "executive"
+            else None
+        )
+        return self.objects.nearby(
+            self.player_position,
+            room=self.current_room,
+            allowed_ids=allowed_ids,
+        )
 
     def room_spawn(self, room_id: str) -> tuple[int, int]:
         for room_data in FLOOR_PLAN["rooms"]:
@@ -139,6 +154,11 @@ class TowerScene:
         player_half_width, player_half_height = (90, 90)
         for item in self.objects.objects:
             if item.room != self.current_room:
+                continue
+            if (
+                self.current_room == "executive"
+                and item.id not in EXECUTIVE_SHOWCASE_OBJECT_IDS
+            ):
                 continue
             object_half_width, object_half_height = item.collision_half_extents
             if object_half_width <= 0 or object_half_height <= 0:

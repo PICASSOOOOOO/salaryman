@@ -39,6 +39,10 @@ VENDING_ITEMS: dict[str, tuple[str, float]] = {
     "office_chair": ("OFFICE CHAIR", 160.0),
 }
 
+EXECUTIVE_SHOWCASE_OBJECT_IDS = frozenset(
+    {"executive-desk", "executive-chair", "executive-crt"}
+)
+
 
 @dataclass(frozen=True)
 class InteractionResult:
@@ -109,12 +113,14 @@ class OfficeObjectRegistry:
         *,
         room: str | None = None,
         radius: int = 1_250,
+        allowed_ids: frozenset[str] | None = None,
     ) -> OfficeObject | None:
         candidates = [
             item
             for item in self.objects
             if item.interactive
             and (room is None or item.room == room)
+            and (allowed_ids is None or item.id in allowed_ids)
             and hypot(item.position[0] - position[0], item.position[1] - position[1]) <= radius
         ]
         return min(

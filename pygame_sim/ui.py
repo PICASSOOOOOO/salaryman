@@ -8,6 +8,7 @@ from pathlib import Path
 import pygame
 
 from .models import Worker
+from .objects import EXECUTIVE_SHOWCASE_OBJECT_IDS
 from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
 
@@ -231,11 +232,7 @@ class SolarPunkRenderer:
         for item in scene.objects.objects:
             if item.room != scene.current_room:
                 continue
-            if scene.current_room == "executive" and item.id not in {
-                "executive-desk",
-                "executive-chair",
-                "executive-crt",
-            }:
+            if scene.current_room == "executive" and item.id not in EXECUTIVE_SHOWCASE_OBJECT_IDS:
                 continue
             ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
@@ -384,18 +381,17 @@ class SolarPunkRenderer:
             self._draw_sprite_shadow(desk_screen, depth)
             self._blit_furniture("furniture/DESK/DESK_FRONT.png", desk_screen, scale, depth_scale=depth)
             self._blit_furniture("furniture/PC/PC_FRONT_ON_1.png", pc_screen, scale, depth_scale=depth)
-            for lamp_offset_x in (-120, -40, 40, 120):
-                lamp_screen = screen_position(
-                    (desk_position[0] + lamp_offset_x, desk_position[1] - 58)
-                )
-                self._draw_tower_object(
-                    "desk_lamp",
-                    lamp_screen[0],
-                    lamp_screen[1],
-                    False,
-                    scale,
-                    depth,
-                )
+            lamp_screen = screen_position(
+                (desk_position[0] - 100, desk_position[1] - 58)
+            )
+            self._draw_tower_object(
+                "desk_lamp",
+                lamp_screen[0],
+                lamp_screen[1],
+                False,
+                scale,
+                depth,
+            )
 
     def _draw_square_office_floor(
         self,
