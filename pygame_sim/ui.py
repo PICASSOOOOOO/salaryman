@@ -171,9 +171,10 @@ class SolarPunkRenderer:
     def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene, state: OfficeState) -> None:
         room_x, room_y, room_w, room_h = scene.floor_bounds
         scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
-        # Keep a broad orthographic view so the office reads as a substantial,
-        # walkable floor rather than a small room wrapped around the avatar.
-        scale = max(0.24, min(0.42, scale * 1.5))
+        # Keep the playable office readable at trailer scale. The prior broad
+        # framing left too much empty floor around the salaryman, making the
+        # real object prompts and NPC actions look static at a glance.
+        scale = max(0.32, min(0.58, scale * 2.0))
         view_w, view_h = viewport.width / scale, viewport.height / scale
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
