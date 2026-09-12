@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 import json
 from math import hypot
 from pathlib import Path
+from typing import Literal
 
 from .objects import (
     EXECUTIVE_SHOWCASE_OBJECT_IDS,
@@ -24,9 +25,9 @@ FLOOR_COUNT = int(FLOOR_PLAN["floorCount"])
 
 NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {
     "executive": (
-        ((1_250, 6_850), (1_520, 6_850), (1_520, 7_080), (1_250, 7_080)),
-        ((2_050, 6_900), (2_300, 6_900), (2_300, 6_650), (2_050, 6_650)),
-        ((2_150, 6_150), (2_350, 6_150), (2_350, 6_380), (2_150, 6_380)),
+        ((1_000, 5_500), (1_000, 5_900), (1_000, 6_500), (1_000, 7_300)),
+        ((2_600, 5_500), (2_600, 5_900), (2_600, 6_500), (2_600, 7_300)),
+        ((1_800, 5_500), (1_800, 6_000), (1_800, 6_600), (1_800, 7_300)),
     ),
     "public": (
         ((3_350, 6_850), (3_620, 6_850), (3_620, 7_080), (3_350, 7_080)),
@@ -44,6 +45,8 @@ NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {
         ((8_450, 6_150), (8_650, 6_150), (8_650, 6_380), (8_450, 6_380)),
     ),
 }
+
+CharacterAction = Literal["stand", "jump", "sit", "sleep"]
 
 
 @dataclass(frozen=True)
@@ -83,6 +86,9 @@ class TowerScene:
     velocity: tuple[float, float] = (0.0, 0.0)
     motion_remainder: tuple[float, float] = (0.0, 0.0)
     npc_motion_seconds: float = 0.0
+    player_action: CharacterAction = "stand"
+    player_action_elapsed: float = 0.0
+    player_action_remaining: float = 0.0
 
     MAX_SPEED: float = 300.0
     ACCELERATION: float = 1_500.0
@@ -173,6 +179,17 @@ class TowerScene:
         """Apply normalized acceleration/friction without duplicating authority."""
         if delta_seconds <= 0:
             return
+        self.player_action_elapsed += delta_seconds
+        if self.player_action_remaining > 0:
+            self.player_action_remaining = max(
+                0.0, self.player_action_remaining - delta_seconds
+            )
+            if self.player_action_remaining == 0:
+                self.player_action = "stand"
+        if self.player_action in {"sit", "sleep"}:
+            self.velocity = (0.0, 0.0)
+            self.input_vector = (0.0, 0.0)
+            return
         input_x, input_y = self.input_vector
         input_length = hypot(input_x, input_y)
         if input_length > 0:
@@ -198,6 +215,41 @@ class TowerScene:
         self.velocity = (velocity_x, velocity_y)
         if step_x or step_y:
             self.move(step_x, step_y)
+
+    def set_player_action(
+        self,
+        action: CharacterAction,
+        *,
+        duration: float = 0.0,
+    ) -> bool:
+        """Set a grounded action; sitting attaches the player to a nearby chair."""
+        if action not in {"stand", "jump", "sit", "sleep"}:
+            return False
+        if action == "sit":
+            chairs = [
+                item
+                for item in self.objects.objects
+                if item.room == self.current_room and item.kind == "chair"
+            ]
+            if not chairs:
+                return False
+            chair = min(
+                chairs,
+                key=lambda item: hypot(
+                    item.position[0] - self.player_position[0],
+                    item.position[1] - self.player_position[1],
+                ),
+            )
+            if hypot(
+                chair.position[0] - self.player_position[0],
+                chair.position[1] - self.player_position[1],
+            ) > 450:
+                return False
+            self.player_position = chair.position
+        self.player_action = action
+        self.player_action_elapsed = 0.0
+        self.player_action_remaining = max(0.0, duration)
+        return True
 
     def update_npc_motion(self, delta_seconds: float) -> None:
         """Advance deterministic office routes independently of player input."""
@@ -257,6 +309,7 @@ class TowerScene:
         self.input_vector = (0.0, 0.0)
         self.velocity = (0.0, 0.0)
         self.motion_remainder = (0.0, 0.0)
+        self.set_player_action("stand")
         return True
 
     def select_floor(self, floor: int) -> bool:
@@ -268,6 +321,7 @@ class TowerScene:
         self.input_vector = (0.0, 0.0)
         self.velocity = (0.0, 0.0)
         self.motion_remainder = (0.0, 0.0)
+        self.set_player_action("stand")
         return True
 
 

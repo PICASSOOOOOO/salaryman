@@ -87,6 +87,14 @@ def run(argv: list[str] | None = None) -> int:
                     spatial_mode = not spatial_mode
                 elif spatial_mode and event.key == pygame.K_e:
                     scene.interact(state)
+                elif spatial_mode and event.key == pygame.K_j:
+                    scene.set_player_action("jump", duration=0.9)
+                    state.notice = "JUMP"
+                elif spatial_mode and event.key == pygame.K_c:
+                    state.notice = "SIT" if scene.set_player_action("sit") else "NO CHAIR IN RANGE"
+                elif spatial_mode and event.key == pygame.K_l:
+                    scene.set_player_action("sleep", duration=4.0)
+                    state.notice = "SLEEP"
                 elif spatial_mode and event.key == pygame.K_1:
                     scene.select_room("lobby")
                     state.notice = "ROOM / TOWER LOBBY"

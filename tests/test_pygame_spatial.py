@@ -118,6 +118,23 @@ class PygameSpatialTests(unittest.TestCase):
             self.assertEqual(lamp.parent_id, desk_id)
             self.assertGreater(chair.position[1], desk.position[1])
 
+    def test_player_actions_stay_grounded_and_sit_on_a_nearby_chair(self):
+        scene = build_tower_scene()
+        scene.select_room("executive")
+        scene.player_position = (1_000, 7_100)
+
+        self.assertTrue(scene.set_player_action("sit", duration=1.0))
+        self.assertEqual(scene.player_position, (1_300, 7_100))
+        self.assertEqual(scene.player_action, "sit")
+
+        scene.update_motion(1.1)
+        self.assertEqual(scene.player_action, "stand")
+
+        self.assertTrue(scene.set_player_action("jump", duration=0.9))
+        self.assertEqual(scene.player_action, "jump")
+        self.assertTrue(scene.set_player_action("sleep", duration=1.0))
+        self.assertEqual(scene.player_action, "sleep")
+
     def test_npc_routes_advance_without_player_input(self):
         scene = build_tower_scene()
         scene.select_room("executive")

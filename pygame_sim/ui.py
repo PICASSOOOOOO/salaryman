@@ -206,6 +206,15 @@ class SolarPunkRenderer:
         pygame.draw.line(self.screen, (164, 201, 158), lower_beam.topleft, lower_beam.topright, 2)
         self.text(f"FLOOR {scene.current_floor:02d} / BASE", (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
 
+        content_clip = pygame.Rect(
+            viewport.x,
+            viewport.y + 43,
+            viewport.width,
+            viewport.height - 56,
+        )
+        previous_clip = self.screen.get_clip()
+        self.screen.set_clip(content_clip)
+
         # Decorative room composition uses real furniture sprites, while the
         # interaction registry remains the sole authority for object behavior.
         placements = {
@@ -250,7 +259,10 @@ class SolarPunkRenderer:
             *point(scene.player_position),
             scale=scale,
             moving=scene.velocity != (0.0, 0.0),
+            action=scene.player_action,
+            action_elapsed=scene.player_action_elapsed,
         )
+        self.screen.set_clip(previous_clip)
 
     def _draw_office_npcs(
         self,
@@ -329,7 +341,7 @@ class SolarPunkRenderer:
         """Build the office around real desk, chair, and PC assets."""
         layouts = {
             "executive": (
-                (),
+                # Executive workstations are registry-owned composite objects.
             ),
             "public": (
                 ((3_260, 5_950), (3_260, 6_210), (3_260, 5_850), "cushioned"),
@@ -666,6 +678,8 @@ class SolarPunkRenderer:
         scale: float = 1.0,
         *,
         moving: bool = False,
+        action: str = "stand",
+        action_elapsed: float = 0.0,
     ) -> None:
         """Draw a real 16-bit character frame, facing the scene's movement."""
         frame = (self._anim_tick // 3) % 7 if moving else 0
@@ -676,16 +690,32 @@ class SolarPunkRenderer:
             character_asset="characters/char_0.png",
         )
         if rendered is not None and rendered_bounds is not None:
+            jump_offset = 0
+            if action == "jump":
+                jump_phase = min(1.0, action_elapsed / 0.8)
+                jump_offset = round(-48 * (4 * jump_phase * (1 - jump_phase)))
+            displayed = rendered
+            if action == "sit":
+                displayed = pygame.transform.scale(
+                    rendered,
+                    (rendered.get_width(), max(32, int(rendered.get_height() * 0.72))),
+                )
+            elif action == "sleep":
+                displayed = pygame.transform.rotate(rendered, 90)
+            displayed_bounds = displayed.get_bounding_rect(min_alpha=1)
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
-            rendered_center_x = rendered_bounds.left + rendered_bounds.width / 2.0
-            rendered_bottom = rendered_bounds.bottom
+            rendered_center_x = displayed_bounds.left + displayed_bounds.width / 2.0
+            rendered_bottom = displayed_bounds.bottom
             self.screen.blit(
-                rendered,
+                displayed,
                 (
                     round(x - rendered_center_x),
-                    y + 7 - rendered_bottom,
+                    y + 7 - rendered_bottom + jump_offset,
                 ),
             )
+            if action == "sleep":
+                self.text("Z", (x + 24, y - 66), self.font_lg, Palette.MATRIX_BRIGHT)
+                self.text("Z", (x + 43, y - 88), self.font_md, Palette.MATRIX_DIM)
             return
         pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
         pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)
@@ -719,7 +749,7 @@ class SolarPunkRenderer:
             centered_left = (16 - bounds.width) // 2
             crop.blit(source, (centered_left - bounds.left, 32 - bounds.bottom))
             self._character_frame_cache[cache_key] = crop
-        sprite_scale = min(4.8 if npc else 5.4, max(2.5 if npc else 2.8, scale * (10 if npc else 12)))
+        sprite_scale = min(5.0, max(2.8, scale * 11))
         size = (max(16, int(16 * sprite_scale)), max(32, int(32 * sprite_scale)))
         rendered = pygame.transform.scale(crop, size)
         return rendered, rendered.get_bounding_rect(min_alpha=1), sprite_scale

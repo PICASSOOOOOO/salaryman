@@ -23,6 +23,7 @@ ALLOWED_VENDING_ITEMS = {"coffee", "desk_lamp", "office_chair"}
 COMMANDS = {
     "move",
     "set_input",
+    "set_action",
     "interact",
     "select_room",
     "select_floor",
@@ -69,6 +70,9 @@ def validate_command(command: object) -> tuple[bool, str]:
             return False, "INPUT REQUIRES NUMERIC X AND Y"
         if abs(float(payload["x"])) > 1 or abs(float(payload["y"])) > 1:
             return False, "INPUT VECTOR OUT OF RANGE"
+    elif name == "set_action":
+        if payload.get("action") not in {"stand", "jump", "sit", "sleep"}:
+            return False, "ACTION NOT ALLOWED"
     elif name == "select_room":
         room = payload.get("room")
         if not isinstance(room, str) or room not in ALLOWED_ROOMS:
@@ -116,6 +120,13 @@ def apply_command(command: object, state: OfficeState, scene: TowerScene) -> Com
     if name == "set_input":
         scene.set_motion_input(payload["x"], payload["y"])
         return CommandResult(True, "MOTION INPUT ACCEPTED")
+    if name == "set_action":
+        action = payload["action"]
+        duration = 0.9 if action == "jump" else 4.0 if action == "sleep" else 0.0
+        if not scene.set_player_action(action, duration=duration):
+            return CommandResult(False, "NO CHAIR IN RANGE")
+        state.notice = action.upper()
+        return CommandResult(True, state.notice)
     if name == "interact":
         result = scene.interact(
             state,
@@ -192,7 +203,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
         "scene": {
             "floor": scene.current_floor,
             "room": scene.current_room,
-            "player": {"x": scene.player_position[0], "y": scene.player_position[1]},
+            "player": {
+                "x": scene.player_position[0],
+                "y": scene.player_position[1],
+                "action": scene.player_action,
+            },
             "rooms": [
                 {
                     "id": room.id,

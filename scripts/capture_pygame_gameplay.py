@@ -175,6 +175,17 @@ def main() -> int:
                 if state.active_page is not None:
                     state.close_page()
                 state.notice = notice
+                if args.fast_trailer:
+                    phase_action = {
+                        0: ("jump", 1.2),
+                        3: ("stand", 0.0),
+                        5: ("sleep", 5.8),
+                    }.get(phase)
+                    if phase_action is not None:
+                        scene.set_player_action(
+                            phase_action[0],
+                            duration=phase_action[1],
+                        )
             arrived = move_toward_target(scene, target)
             scene.update_motion(delta)
             scene.update_npc_motion(delta)
@@ -182,6 +193,7 @@ def main() -> int:
             if arrived and not action_done:
                 if phase == 3:
                     state.start_break("short")
+                    scene.set_player_action("sit", duration=5.5)
                 elif phase == 4:
                     state.notice = "TEAM HUDDLE / MARA VOSS"
                 elif phase == 5:
