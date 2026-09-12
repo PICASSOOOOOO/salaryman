@@ -39,14 +39,45 @@ export function MiniNebula({
   status = "idle",
   target = "/pablo",
   title = "Open Pablo nebula",
+  interactive = true,
 }: {
   size?: number;
   status?: NebulaStatus;
   target?: string;
   title?: string;
+  interactive?: boolean;
 }) {
   const [, navigate] = useLocation();
-  const [enhanced, setEnhanced] = useState(false);
+  const [enhanced, setEnhanced] = useState(!interactive);
+  const visual = (
+    <span
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+      }}
+    >
+      <Suspense fallback={<LightweightNebula size={size} />}>
+        {enhanced ? <PabloNebula3D status={status} size={size} /> : <LightweightNebula size={size} />}
+      </Suspense>
+    </span>
+  );
+  const className = "relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0" +
+    (interactive ? " hover:scale-110 active:scale-95 transition-transform" : "");
+  const style = {
+    width: size,
+    height: size,
+    background: "rgba(0,0,0,0.35)",
+    boxShadow: "0 0 8px rgba(236,72,153,0.35), 0 0 16px rgba(168,85,247,0.18)",
+    border: "1px solid rgba(236,72,153,0.35)",
+    cursor: interactive ? "pointer" : "default",
+  } as const;
+
+  if (!interactive) {
+    return <span className={className} style={style} data-testid="mini-nebula">{visual}</span>;
+  }
+
   return (
     <button
       type="button"
@@ -60,29 +91,10 @@ export function MiniNebula({
       title={title}
       aria-label={title}
       data-testid="mini-nebula"
-      className="relative inline-flex items-center justify-center rounded-full overflow-hidden hover:scale-110 active:scale-95 transition-transform shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: "rgba(0,0,0,0.35)",
-        boxShadow:
-          "0 0 8px rgba(236,72,153,0.35), 0 0 16px rgba(168,85,247,0.18)",
-        border: "1px solid rgba(236,72,153,0.35)",
-        cursor: "pointer",
-      }}
+      className={className}
+      style={style}
     >
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-        }}
-      >
-        <Suspense fallback={<LightweightNebula size={size} />}>
-          {enhanced ? <PabloNebula3D status={status} size={size} /> : <LightweightNebula size={size} />}
-        </Suspense>
-      </span>
+      {visual}
     </button>
   );
 }

@@ -6,6 +6,7 @@ import {
   Bot, Loader2, RefreshCw, Power, AlertCircle, Clock,
   Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check,
 } from 'lucide-react';
+import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
 
 type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting';
 
@@ -1004,6 +1005,8 @@ export default function Autopilot() {
             {data.domains.map((cfg) => {
               const Icon = DOMAIN_ICON[cfg.domain];
               const meta = data.meta[cfg.domain];
+               const assignedBot = data.bots.find((bot) => bot.id === cfg.botId);
+               const agentTheme = divisionFor(assignedBot?.department ?? 'automation').theme;
               const busy = savingDomain === cfg.domain;
               const status = saveState[cfg.domain];
               const nonce = revertNonce[cfg.domain] ?? 0;
@@ -1011,14 +1014,21 @@ export default function Autopilot() {
                 <div key={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                        <Icon className="w-4 h-4 text-cyan-400/80" />
+                       <div className="w-9 h-9 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 overflow-hidden">
+                         {assignedBot ? (
+                           <PixelAgentFace seed={assignedBot.name} theme={agentTheme} className="h-8 w-8" />
+                         ) : (
+                           <Icon className="w-4 h-4 text-cyan-400/80" />
+                         )}
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-mono text-xs text-cyan-300 tracking-wider">{meta?.label ?? cfg.domain}</h3>
                         <p className="font-mono text-[9px] text-cyan-500/40 leading-relaxed mt-0.5">
                           {meta?.description}
                         </p>
+                         <p className="mt-1 font-mono text-[9px] tracking-wider text-violet-300/70">
+                           {assignedBot ? `RUN BY ${assignedBot.name.toUpperCase()}` : 'NO PIXEL AGENT ASSIGNED'}
+                         </p>
                       </div>
                     </div>
                     <button

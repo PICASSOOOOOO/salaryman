@@ -5,6 +5,7 @@ import { Bot, Zap, Brain, Activity, Cpu, Shield, AlertCircle } from 'lucide-reac
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
+import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
 
 interface AgentDefinition {
   id: string;
@@ -172,19 +173,24 @@ export default function AgentTeam({ embedded = false }: { embedded?: boolean } =
                     }`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 ${
+                      <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 overflow-hidden ${
                         agent.provider === 'claude'
                           ? 'bg-orange-500/10 border-orange-500/30'
                           : agent.provider === 'openclaw'
                           ? 'bg-cyan-500/10 border-cyan-500/30'
                           : 'bg-sky-500/10 border-sky-500/30'
                       }`}>
-                        {agent.provider === 'claude'
-                          ? <Brain className="w-6 h-6 text-orange-400" />
-                          : agent.provider === 'openclaw'
-                          ? <Cpu className="w-6 h-6 text-cyan-400" />
-                          : <Zap className="w-6 h-6 text-sky-400" />
-                        }
+                        <PixelAgentFace
+                          seed={agent.id}
+                          theme={
+                            agent.provider === 'claude'
+                              ? divisionFor('creative').theme
+                              : agent.provider === 'openclaw'
+                              ? divisionFor('automation').theme
+                              : divisionFor('core').theme
+                          }
+                          className="h-10 w-10"
+                        />
                       </div>
 
                       <div className="flex-1 min-w-0">

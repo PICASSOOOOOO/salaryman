@@ -214,6 +214,16 @@ export function useChatSocket(): UseChatSocket {
     };
   }, [isAuthenticated, user, connect]);
 
+  // Pablo is a normal chat channel on the server. Subscribe whenever its
+  // metadata arrives, and again after a reconnect, so channel events follow
+  // the same live Comms path as the other chat tabs.
+  useEffect(() => {
+    const channelId = state.channelMeta?.pabloChannelId;
+    const ws = wsRef.current;
+    if (!state.connected || channelId == null || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "subscribe", channelId }));
+  }, [state.connected, state.channelMeta?.pabloChannelId]);
+
   const send: SendFn = useCallback((channelId, content, attachmentFileId) => {
     const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
     const ws = wsRef.current;

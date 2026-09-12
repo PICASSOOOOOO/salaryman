@@ -14,6 +14,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { HISTORIC_MODULES } from '@/lib/historic-navigation';
 import { FeedbackLauncher } from './FeedbackLauncher';
+import { MiniNebula } from './MiniNebula';
 
 const MENU_MODULES = HISTORIC_MODULES.filter(
   module => module.id !== 'pablo' && module.id !== 'phone',
@@ -89,6 +90,25 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
 
             {menuOpen && (
               <div className="absolute left-0 top-[calc(100%+0.5rem)] w-[min(720px,calc(100vw-2rem))] border border-black bg-[#FFFCF5] p-3 shadow-[6px_6px_0_#000]">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => go('/pablo')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') go('/pablo');
+                  }}
+                  className="mb-3 flex cursor-pointer items-center gap-3 border border-black bg-black px-3 py-2 text-left text-[#FAF7EF] hover:bg-[#211B2B]"
+                  aria-label="Open Pablo nebula"
+                >
+                  <MiniNebula size={42} status="idle" title="Open Pablo nebula" interactive={false} />
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[11px] font-bold tracking-[0.18em]">PABLO PRIME</span>
+                    <span className="mt-0.5 block font-mono text-[9px] tracking-wider text-[#D8CBE6]">
+                      OPEN THE HIGH-RES NEBULA
+                    </span>
+                  </span>
+                  <Sparkles className="ml-auto h-4 w-4 shrink-0 text-fuchsia-300" />
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   {MENU_MODULES.map(module => {
                     const ModuleIcon = module.icon;

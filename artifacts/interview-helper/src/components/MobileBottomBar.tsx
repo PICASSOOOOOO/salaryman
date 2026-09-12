@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
+import { MiniNebula } from './MiniNebula';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -149,6 +150,25 @@ export function MobileModuleNav() {
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Menu</span>
               <button onClick={() => setDropdownOpen(false)} className="p-2"><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => { navigate('/pablo'); setDropdownOpen(false); }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  navigate('/pablo');
+                  setDropdownOpen(false);
+                }
+              }}
+              className="mb-2 flex cursor-pointer items-center gap-3 rounded-lg bg-black p-3 text-[#FAF7EF]"
+              aria-label="Open Pablo nebula"
+            >
+              <MiniNebula size={38} status="idle" title="Open Pablo nebula" interactive={false} />
+              <span className="min-w-0">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.16em]">PABLO PRIME</span>
+                <span className="mt-0.5 block text-[9px] uppercase tracking-wider text-[#D8CBE6]">HIGH-RES NEBULA</span>
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {dropdownItems.map(item => {

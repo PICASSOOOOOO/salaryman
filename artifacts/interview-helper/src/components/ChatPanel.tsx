@@ -12,6 +12,7 @@ import { useCommsAlerts, useCommsCityDnd, useImmersiveViewActive } from "@/lib/c
 import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { MiniNebula } from "@/components/MiniNebula";
 
 const CRT = (a: number) => `rgba(0,0,0,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
@@ -1281,25 +1282,45 @@ export function ChatPanel({
               flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              {pabloChannelId != null && (
+                <MiniNebula
+                  size={22}
+                  status={connected ? "idle" : "thinking"}
+                  title="Open Pablo nebula"
+                />
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ fontSize: isMobile ? "0.72rem" : "0.58rem", color: CRT(0.82), letterSpacing: "0.1em", fontWeight: 700 }}>
+                    PABLO PRIME
+                  </span>
+                  <span style={{ fontSize: "0.5rem", color: connected && pabloChannelId != null ? "rgba(22,101,52,0.9)" : CRT(0.42), letterSpacing: "0.08em" }}>
+                    {connected && pabloChannelId != null ? "ONLINE" : "SYNCING"}
+                  </span>
+                </div>
+                <span style={{ display: "block", marginTop: 2, fontSize: "0.48rem", color: CRT(0.42), letterSpacing: "0.08em" }}>
+                  {connected ? "LIVE COMMS" : commsReady ? "COMMS READY · SYNCING" : "COMMS OFFLINE"}
+                </span>
+              </div>
               <div
+                aria-hidden
                 style={{
                   width: 7,
                   height: 7,
+                  marginLeft: 2,
                   borderRadius: "50%",
-                  background: connected ? CRT(0.9) : "rgba(255,60,60,0.8)",
-                  boxShadow: connected ? `0 0 6px ${CRT(0.5)}` : "none",
+                  background: connected && pabloChannelId != null ? "rgb(74,222,128)" : "rgba(120,120,120,0.5)",
+                  boxShadow: connected && pabloChannelId != null ? "0 0 6px rgba(74,222,128,0.8)" : "none",
                 }}
               />
-              <span
+              {/* Keep the compact transport label for screen readers and existing
+                  layout expectations without showing it twice visually. */}
+              <div
                 style={{
-                  fontSize: isMobile ? "0.75rem" : "0.62rem",
-                  color: CRT(0.7),
-                  letterSpacing: "0.12em",
+                  display: "none",
                 }}
-              >
-                {connected ? "LIVE COMMS" : commsReady ? "COMMS READY · SYNCING" : "COMMS OFFLINE"}
-              </span>
+              />
             </div>
             {!embedded && <button
               onClick={() => setOpen(false)}
