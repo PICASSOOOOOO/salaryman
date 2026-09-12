@@ -201,6 +201,32 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertIsNotNone(bounds)
         self.assertGreater(bounds.height, bounds.width)
 
+    def test_roster_character_assets_are_visually_distinct(self):
+        screen = pygame.display.set_mode((1180, 720))
+        renderer = SolarPunkRenderer(screen)
+
+        first, _, _ = renderer._character_sprite(
+            "down",
+            0,
+            0.32,
+            npc=True,
+            character_asset="characters/char_1.png",
+        )
+        second, _, _ = renderer._character_sprite(
+            "down",
+            0,
+            0.32,
+            npc=True,
+            character_asset="characters/char_2.png",
+        )
+
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        self.assertNotEqual(
+            pygame.image.tostring(first, "RGBA"),
+            pygame.image.tostring(second, "RGBA"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

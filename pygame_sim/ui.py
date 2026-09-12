@@ -77,7 +77,7 @@ class SolarPunkRenderer:
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
-        self._character_frame_cache: dict[tuple[str, int], pygame.Surface] = {}
+        self._character_frame_cache: dict[tuple[str, str, int], pygame.Surface] = {}
         self._asset_root = self._find_pixel_assets()
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
@@ -239,6 +239,7 @@ class SolarPunkRenderer:
             if item == scene.nearby_object:
                 pygame.draw.circle(self.screen, (255, 224, 112), (ix, iy), 20, 2)
                 self.text("[E] " + item.label, (ix + 18, iy - 24), self.font_sm, Palette.SUN)
+        self._draw_office_workstations(point, scene, scale)
         self._draw_office_npcs(point, scene, state, scale)
         if scene.velocity != (0.0, 0.0):
             vx, vy = scene.velocity
@@ -258,7 +259,14 @@ class SolarPunkRenderer:
         scale: float,
     ) -> None:
         """Place the office roster into the active room as visible NPCs."""
-        for index, worker in enumerate(state.roster.workers[:3]):
+        character_assets = (
+            "characters/char_1.png",
+            "characters/char_2.png",
+            "characters/char_3.png",
+            "characters/char_4.png",
+            "characters/char_5.png",
+        )
+        for index, worker in enumerate(state.roster.workers[: len(character_assets)]):
             pose = scene.npc_pose(scene.current_room, index)
             if pose is None:
                 continue
@@ -273,6 +281,7 @@ class SolarPunkRenderer:
                 scale,
                 facing=facing,
                 frame=frame,
+                character_asset=character_assets[index],
             )
 
     def _draw_npc(
@@ -285,9 +294,16 @@ class SolarPunkRenderer:
         *,
         facing: str,
         frame: int,
+        character_asset: str,
     ) -> None:
         """Draw a moving teammate with the same stable sprite path as the player."""
-        rendered, bounds, sprite_scale = self._character_sprite(facing, frame, scale, npc=True)
+        rendered, bounds, sprite_scale = self._character_sprite(
+            facing,
+            frame,
+            scale,
+            npc=True,
+            character_asset=character_asset,
+        )
         if rendered is not None and bounds is not None:
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
             self.screen.blit(
@@ -302,6 +318,76 @@ class SolarPunkRenderer:
             label_y = y - 52
         pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
         self.text(name.upper()[:14], (x - 34, label_y - 8), self.font_mono, accent)
+
+    def _draw_office_workstations(
+        self,
+        point: object,
+        scene: TowerScene,
+        scale: float,
+    ) -> None:
+        """Build the office around real desk, chair, and PC assets."""
+        layouts = {
+            "executive": (
+                ((1_160, 5_950), (1_160, 6_210), (1_160, 5_850), "cushioned"),
+                ((2_340, 5_950), (2_340, 6_210), (2_340, 5_850), "wooden"),
+                ((1_160, 7_020), (1_160, 6_760), (1_160, 7_110), "wooden"),
+                ((2_340, 7_020), (2_340, 6_760), (2_340, 7_110), "cushioned"),
+            ),
+            "public": (
+                ((3_260, 5_950), (3_260, 6_210), (3_260, 5_850), "cushioned"),
+                ((4_440, 5_950), (4_440, 6_210), (4_440, 5_850), "wooden"),
+                ((3_260, 7_020), (3_260, 6_760), (3_260, 7_110), "wooden"),
+                ((4_440, 7_020), (4_440, 6_760), (4_440, 7_110), "cushioned"),
+            ),
+            "office_03": (
+                ((5_360, 5_950), (5_360, 6_210), (5_360, 5_850), "cushioned"),
+                ((6_540, 5_950), (6_540, 6_210), (6_540, 5_850), "wooden"),
+                ((5_360, 7_020), (5_360, 6_760), (5_360, 7_110), "wooden"),
+                ((6_540, 7_020), (6_540, 6_760), (6_540, 7_110), "cushioned"),
+            ),
+            "office_04": (
+                ((7_460, 5_950), (7_460, 6_210), (7_460, 5_850), "cushioned"),
+                ((8_640, 5_950), (8_640, 6_210), (8_640, 5_850), "wooden"),
+                ((7_460, 7_020), (7_460, 6_760), (7_460, 7_110), "wooden"),
+                ((8_640, 7_020), (8_640, 6_760), (8_640, 7_110), "cushioned"),
+            ),
+        }
+        layout = layouts.get(scene.current_room)
+        if layout is None:
+            return
+
+        def screen_position(position: tuple[int, int]) -> tuple[int, int]:
+            return point(position)
+
+        # Low panels make the four desk clusters read as cubicles without
+        # inventing a non-existent cubicle sprite.
+        for x, y in ((1_750, 5_850), (1_750, 7_000)):
+            if scene.current_room == "executive":
+                sx, sy = screen_position((x, y))
+                panel = pygame.Rect(
+                    sx - int(520 * scale),
+                    sy - int(38 * scale),
+                    int(1_040 * scale),
+                    max(5, int(26 * scale)),
+                )
+                pygame.draw.rect(self.screen, (82, 104, 100), panel, border_radius=3)
+                pygame.draw.line(self.screen, (154, 181, 156), panel.topleft, panel.topright, max(1, int(2 * scale)))
+
+        for desk_position, chair_position, pc_position, chair_style in layout:
+            desk_screen = screen_position(desk_position)
+            chair_screen = screen_position(chair_position)
+            pc_screen = screen_position(pc_position)
+            depth = max(0.72, min(1.28, 0.72 + (desk_screen[1] - 68) / 520 * 0.56))
+            chair_asset = (
+                "furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png"
+                if chair_style == "cushioned"
+                else "furniture/WOODEN_CHAIR/WOODEN_CHAIR_FRONT.png"
+            )
+            self._draw_sprite_shadow(chair_screen, depth)
+            self._blit_furniture(chair_asset, chair_screen, scale, depth_scale=depth)
+            self._draw_sprite_shadow(desk_screen, depth)
+            self._blit_furniture("furniture/DESK/DESK_FRONT.png", desk_screen, scale, depth_scale=depth)
+            self._blit_furniture("furniture/PC/PC_FRONT_ON_1.png", pc_screen, scale, depth_scale=depth)
 
     def _draw_square_office_floor(
         self,
@@ -569,7 +655,12 @@ class SolarPunkRenderer:
     ) -> None:
         """Draw a real 16-bit character frame, facing the scene's movement."""
         frame = (self._anim_tick // 3) % 7 if moving else 0
-        rendered, rendered_bounds, sprite_scale = self._character_sprite(self._facing, frame, scale)
+        rendered, rendered_bounds, sprite_scale = self._character_sprite(
+            self._facing,
+            frame,
+            scale,
+            character_asset="characters/char_0.png",
+        )
         if rendered is not None and rendered_bounds is not None:
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
             rendered_center_x = rendered_bounds.left + rendered_bounds.width / 2.0
@@ -594,15 +685,16 @@ class SolarPunkRenderer:
         scale: float,
         *,
         npc: bool = False,
+        character_asset: str = "characters/char_0.png",
     ) -> tuple[pygame.Surface | None, pygame.Rect | None, float]:
         """Extract the actual 16x32 character cells without row-boundary tearing."""
-        sheet = self._asset("characters/char_0.png")
+        sheet = self._asset(character_asset)
         if sheet is None:
             return None, None, 0.0
         # char_0.png is 7 columns x 3 rows: front, back, and right profile.
         row_by_facing = {"down": 0, "up": 1, "left": 2, "right": 2}
         row = row_by_facing.get(facing, 0)
-        cache_key = (facing, frame)
+        cache_key = (character_asset, facing, frame)
         crop = self._character_frame_cache.get(cache_key)
         if crop is None:
             source = sheet.subsurface(pygame.Rect(frame * 16, row * 32, 16, 32))
