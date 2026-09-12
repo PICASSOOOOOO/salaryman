@@ -6,13 +6,7 @@ import path from "path";
 import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion, bumpVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
-
-const isBuild = process.argv.includes("build");
-
-if (isBuild) {
-  try { bumpVersion(); } catch {}
-}
+const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 const rawPort = process.env.PORT;
 
 if (!rawPort && !isBuild) {
