@@ -69,15 +69,25 @@ def draw_trailer_action(
     phase: int,
     *,
     executive_focus: bool = False,
+    fast_trailer: bool = False,
 ) -> None:
     """Add a restrained shot label so each real interaction reads in a trailer."""
-    labels = (
-        (
+    if executive_focus:
+        labels = (
             ("EXECUTIVE OFFICE", "WINDOW / SINGLE WORKSTATION"),
             ("TERMINAL ACCESS", "OFFICE RECORD / TOOLS INTERFACE"),
         )
-        if executive_focus
-        else (
+    elif fast_trailer:
+        labels = (
+            ("EXECUTIVE OFFICE", "FOUR CENTER WORKSTATIONS"),
+            ("TERMINAL ACCESS", "OFFICE RECORD / TOOLS"),
+            ("WORKSTATION TWO", "DESK / COMPUTER / CHAIR"),
+            ("BREAK / REST", "CHAIR / RECOVERING"),
+            ("TEAM HUDDLE", "LIVE NPC ROUTE"),
+            ("WORKSTATION FOUR", "DESK / COMPUTER / CHAIR"),
+        )
+    else:
+        labels = (
             ("EXECUTIVE OFFICE", "WINDOW / SINGLE WORKSTATION"),
             ("PHONE / CALLL HOME", "TELEPHONE READY / PHONE CENTER"),
             ("TERMINAL / OFFICE RECORD", "CRT TERMINAL / LIVE OBJECT"),
@@ -85,7 +95,6 @@ def draw_trailer_action(
             ("NPC HUDDLE / MARA VOSS", "TEAM CONVERSATION / SHIFT READY"),
             ("SLEEP / RECOVER", "REST POSITION / SLEEP MODE"),
         )
-    )
     title, subtitle = labels[phase]
     card = pygame.Rect(38, 88, 360, 56)
     veil = pygame.Surface(card.size, pygame.SRCALPHA)
@@ -181,7 +190,13 @@ def main() -> int:
                     scene.interact(state, object_id=object_id)
                 action_done = True
             renderer.draw_tower(state, scene)
-            draw_trailer_action(screen, renderer, phase, executive_focus=args.executive_office)
+            draw_trailer_action(
+                screen,
+                renderer,
+                phase,
+                executive_focus=args.executive_office,
+                fast_trailer=args.fast_trailer,
+            )
             pygame.image.save(screen, frames / f"frame-{frame:05d}.png")
 
         subprocess.run(

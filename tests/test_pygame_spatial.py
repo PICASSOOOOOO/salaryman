@@ -88,11 +88,12 @@ class PygameSpatialTests(unittest.TestCase):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
         scene.select_room("executive")
-        scene.player_position = (2_200, 6_400)
+        scene.player_position = (1_750, 6_200)
 
         scene.move(-100, 0)
 
-        self.assertEqual(scene.player_position, (2_200, 6_400))
+        self.assertEqual(scene.player_position, (1_750, 6_200))
+        scene.player_position = (1_750, 6_350)
         result = scene.interact(state)
         self.assertTrue(result.success)
         self.assertEqual(result.route, "office-record")

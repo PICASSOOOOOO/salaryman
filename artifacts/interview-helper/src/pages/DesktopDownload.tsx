@@ -179,7 +179,7 @@ export default function DesktopDownload() {
           />
           <span className="desktop-download-promo-tag">DESKTOP PROMO</span>
           <figcaption>
-             42-SECOND CUT / OFFICE ACTIONS / CALL HOME SOUNDTRACK
+             36-SECOND FAST CUT / LIVE GAMEPLAY / CALL HOME SOUNDTRACK
           </figcaption>
         </figure>
       </section>

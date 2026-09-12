@@ -1486,14 +1486,14 @@ content_type = "image/jpeg"
 id = "W9uyb8_mMeSeGjrjltyTl"
 uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-trailer.mp4"
 type = "video"
-title = "Final collision-aware trailer"
-description = "Updated 42-second trailer from the collision-aware runtime with the single executive workstation, visible windows, desk-mounted computer, and terminal access."
+title = "Final fast gameplay trailer"
+description = "36-second fast-cut trailer made from the actual Pygame runtime, with four center workstations, desk-mounted computers, chairs, windows, terminal access, NPC movement, and CALL HOME soundtrack."
 logical_id = "66ad0a22-b385-4ee0-bae6-9f234da113d1"
-content_hash = "sha256:9828efeffc03255f6a22b0e602bcb6163ef5d8f73805a579dd033373ee153294"
-size = 2140327
-mtime_ms = 1789223065716
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/87404b6a-e891-4f98-8fe0-060b9fcabdfa"
-storage_version_token = "1789223205768594"
+content_hash = "sha256:306c9f1fac837bd9b1106c9de092156cb2839de200312f151eacbd5f76e72100"
+size = 2157986
+mtime_ms = 1789223466840
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/83f69a06-8d6b-4d3b-bddd-799cdf7fc255"
+storage_version_token = "1789223723227703"
 content_type = "video/mp4"
 
 [[outputs]]
@@ -1550,4 +1550,46 @@ size = 206525
 mtime_ms = 1789222994055
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fd6d54cd-6e29-4003-8c11-926ad17d4e34/759d19db-cf48-4223-b4d6-eabacd3577f3"
 storage_version_token = "1789223204669935"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "unm2RZZGw23yZTKKjVBcp"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-workstations.mp4"
+type = "video"
+title = "Fast gameplay: four workstations"
+description = "Six-second raw gameplay beat showing the four center desk, computer, and chair setups with real NPC movement."
+logical_id = "12f3f999-fab2-4d4d-a40f-7d01d4c08326"
+content_hash = "sha256:e1833c517e887c40a668c333d1cc468d0551d91f29993d3d96e7abc8a8d18ac0"
+size = 150156
+mtime_ms = 1789223510080
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/12f3f999-fab2-4d4d-a40f-7d01d4c08326/e6057157-d3cc-4b7e-a7f8-b61b46f72c26"
+storage_version_token = "1789223720503717"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "jq4QS_ibrAQa6nB4Eo87f"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-terminal.mp4"
+type = "video"
+title = "Fast gameplay: terminal access"
+description = "Six-second raw gameplay beat showing the live terminal interaction and office tools interface."
+logical_id = "ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56"
+content_hash = "sha256:504cc9e2da17054c42f4051f668f5e828dddeff33c89997d081590dc5293c4f1"
+size = 107887
+mtime_ms = 1789223510616
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56/53d42874-d347-465e-856e-75b43842dd63"
+storage_version_token = "1789223721281449"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "-YsA9m_RZH_Eu5Yz63-8o"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-huddle.mp4"
+type = "video"
+title = "Fast gameplay: office huddle"
+description = "Six-second raw gameplay beat showing live NPC movement around the workstation layout."
+logical_id = "038cbb47-c949-48ae-be24-b878c02f56b2"
+content_hash = "sha256:0e8244e8e15c418c199cb53a94e1da25df432af5eaef04789acf0b3ef6e655e2"
+size = 343537
+mtime_ms = 1789223511228
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/038cbb47-c949-48ae-be24-b878c02f56b2/212e644d-d103-4495-ab53-44ff874b9b64"
+storage_version_token = "1789223722174674"
 content_type = "video/mp4"
