@@ -231,6 +231,12 @@ class SolarPunkRenderer:
         for item in scene.objects.objects:
             if item.room != scene.current_room:
                 continue
+            if scene.current_room == "executive" and item.id not in {
+                "executive-desk",
+                "executive-chair",
+                "executive-crt",
+            }:
+                continue
             ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
             self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
@@ -378,6 +384,18 @@ class SolarPunkRenderer:
             self._draw_sprite_shadow(desk_screen, depth)
             self._blit_furniture("furniture/DESK/DESK_FRONT.png", desk_screen, scale, depth_scale=depth)
             self._blit_furniture("furniture/PC/PC_FRONT_ON_1.png", pc_screen, scale, depth_scale=depth)
+            for lamp_offset_x in (-120, -40, 40, 120):
+                lamp_screen = screen_position(
+                    (desk_position[0] + lamp_offset_x, desk_position[1] - 58)
+                )
+                self._draw_tower_object(
+                    "desk_lamp",
+                    lamp_screen[0],
+                    lamp_screen[1],
+                    False,
+                    scale,
+                    depth,
+                )
 
     def _draw_square_office_floor(
         self,
@@ -554,9 +572,9 @@ class SolarPunkRenderer:
                 pygame.draw.circle(self.screen, (226, 170, 91), (x, rect.y + 28), 8)
                 pygame.draw.circle(self.screen, (255, 239, 181), (x - 2, rect.y + 26), 3)
         elif room_id == "executive":
-            pygame.draw.rect(self.screen, (150, 207, 220), (rect.x + 12, rect.y + 29, rect.width - 24, 12), border_radius=4)
-            self._draw_planter(rect.x + 25, rect.bottom - 25)
-            self._draw_planter(rect.right - 25, rect.bottom - 25)
+            # The executive trailer is intentionally reduced to the four
+            # workstations; furniture is the visual focus of this room.
+            return
 
     def _draw_planter(self, x: int, y: int) -> None:
         pygame.draw.ellipse(self.screen, (185, 154, 104), (x - 10, y - 4, 20, 9))
