@@ -874,7 +874,7 @@ class SolarPunkRenderer:
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
         veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        pygame.draw.rect(veil, (2, 8, 10, 218), pygame.Rect(0, 58, self.width, self.height - 58))
+        pygame.draw.rect(veil, (2, 8, 10, 255), pygame.Rect(0, 58, self.width, self.height - 58))
         self.screen.blit(veil, (0, 0))
         page = pygame.Rect(42, 76, self.width - 84, 514)
         accent = Palette.MATRIX_AMBER if state.active_page == "economy" else Palette.MATRIX_GREEN

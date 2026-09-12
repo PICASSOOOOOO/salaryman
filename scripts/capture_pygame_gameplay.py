@@ -70,6 +70,7 @@ def draw_trailer_action(
     *,
     executive_focus: bool = False,
     fast_trailer: bool = False,
+    terminal_active: bool = False,
 ) -> None:
     """Add a restrained shot label so each real interaction reads in a trailer."""
     if executive_focus:
@@ -96,7 +97,8 @@ def draw_trailer_action(
             ("SLEEP / RECOVER", "REST POSITION / SLEEP MODE"),
         )
     title, subtitle = labels[phase]
-    card = pygame.Rect(38, 88, 360, 56)
+    card_y = 518 if terminal_active and phase == 1 else 88
+    card = pygame.Rect(38, card_y, 360, 56)
     veil = pygame.Surface(card.size, pygame.SRCALPHA)
     pygame.draw.rect(veil, (3, 17, 20, 238), veil.get_rect(), border_radius=4)
     pygame.draw.rect(veil, (164, 201, 158, 220), veil.get_rect(), width=1, border_radius=4)
@@ -208,6 +210,7 @@ def main() -> int:
                 phase,
                 executive_focus=args.executive_office,
                 fast_trailer=args.fast_trailer,
+                terminal_active=state.active_page is not None,
             )
             pygame.image.save(screen, frames / f"frame-{frame:05d}.png")
 

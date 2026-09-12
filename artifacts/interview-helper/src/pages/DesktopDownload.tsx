@@ -109,7 +109,7 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const trailerAssetVersion = "office-four-workstations-fast-2";
+  const trailerAssetVersion = "office-four-workstations-fast-3";
   const gameplayVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.webm?v=${trailerAssetVersion}`;
   const gameplayVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.mp4?v=${trailerAssetVersion}`;
   const gameplayDetailVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.webm`;
