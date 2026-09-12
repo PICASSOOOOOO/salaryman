@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, ChevronDown, ArrowLeft, WalletCards, X, Languages, Coins, Menu, MoreHorizontal, Settings, Briefcase, Download } from 'lucide-react';
+import { ArrowLeft, X, Menu, MoreHorizontal } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
@@ -10,11 +10,7 @@ import { useOrg } from '../hooks/use-org';
 import { useAlpha } from '../hooks/use-alpha';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
-import { resolveAvatarUrl } from '@/lib/avatar';
-import { NotificationBell } from './NotificationBell';
 import { apiFetch } from '@/lib/api-client';
-import { LanguageSelector } from './LanguageSelector';
-import { CurrencySelector } from './CurrencySelector';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -28,10 +24,9 @@ import {
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
-  const { isAuthenticated, user, login } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { total: commsCount } = useCommsSummary();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -54,7 +49,7 @@ export function MobileModuleNav() {
 
   return (
     <>
-      {/* Top Bar for Context (Logo, Back, Account) */}
+      {/* One stable top bar: back, brand, and menu. Account actions live in the menu. */}
       <div
         className="mobile-app-nav-top fixed top-0 left-0 right-0 border-b border-[#E5E5E5] flex items-center justify-between px-2 z-50"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
@@ -83,7 +78,7 @@ export function MobileModuleNav() {
             <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-black truncate">SALARYMAN</span>
           </button>
         </div>
-        <div className="mobile-header-actions flex items-center gap-1 shrink-0">
+        <div className="mobile-header-actions flex items-center shrink-0">
           <button
             type="button"
             onClick={() => setDropdownOpen(open => !open)}
@@ -96,22 +91,6 @@ export function MobileModuleNav() {
             {dropdownOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             <span>MENU</span>
           </button>
-          {isAuthenticated && <NotificationBell />}
-          {isAuthenticated ? (
-            <button onClick={() => setSummaryOpen(true)} className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 overflow-hidden">
-              {resolveAvatarUrl(user?.profileImageUrl) ? (
-                <img src={resolveAvatarUrl(user?.profileImageUrl)} alt="User" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-200 text-gray-500 flex items-center justify-center text-[10px] font-bold">
-                  {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
-                </div>
-              )}
-            </button>
-          ) : (
-            <button onClick={() => login()} className="text-[10px] font-bold uppercase bg-black text-[#FAFAF7] px-3 py-1.5 rounded">
-              LOG IN
-            </button>
-          )}
         </div>
       </div>
 
@@ -172,7 +151,7 @@ export function MobileModuleNav() {
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Features</span>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Menu</span>
               <button onClick={() => setDropdownOpen(false)} className="p-2"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -195,27 +174,6 @@ export function MobileModuleNav() {
         document.body
       )}
 
-      {/* Account Summary Modal Placeholder */}
-      {summaryOpen && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40" onClick={() => setSummaryOpen(false)}>
-           <div className="bg-white p-6 rounded-xl w-[90%] max-w-sm" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
-                <h3 className="font-bold uppercase text-xs tracking-widest">Account Summary</h3>
-                <button onClick={() => setSummaryOpen(false)}><X className="w-4 h-4 text-gray-400" /></button>
-              </div>
-              <div className="flex flex-col gap-2">
-                 <button onClick={() => { setSummaryOpen(false); navigate('/profile'); }} className="p-3 bg-gray-50 font-bold text-[10px] tracking-widest uppercase rounded flex items-center gap-2"><User className="w-4 h-4" /> Profile</button>
-                 <button onClick={() => { setSummaryOpen(false); navigate('/settings'); }} className="p-3 bg-gray-50 font-bold text-[10px] tracking-widest uppercase rounded flex items-center gap-2"><Settings className="w-4 h-4" /> Settings</button>
-                 <button onClick={() => { setSummaryOpen(false); navigate('/business'); }} className="p-3 bg-gray-50 font-bold text-[10px] tracking-widest uppercase rounded flex items-center gap-2"><Briefcase className="w-4 h-4" /> Company</button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-xs"><Languages className="w-4 h-4" /><LanguageSelector /></div>
-                <div className="flex items-center gap-2 text-xs"><Coins className="w-4 h-4" /><CurrencySelector /></div>
-              </div>
-           </div>
-        </div>,
-        document.body
-      )}
     </>
   );
 }

@@ -1229,8 +1229,7 @@ iframe[src*="feedback"] {
     padding-inline: 4px;
   }
 
-  .mobile-menu-trigger span,
-  .mobile-header-actions .notification-bell-label {
+  .mobile-menu-trigger span {
     display: none;
   }
 

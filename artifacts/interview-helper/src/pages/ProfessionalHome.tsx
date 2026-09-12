@@ -37,11 +37,8 @@ const MODULES = [
 ] as const;
 
 export default function ProfessionalHome() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const accountHref = isAuthenticated
-    ? "/business"
-    : "/sign-in?returnTo=%2Fbusiness";
 
   return (
     <main className="min-h-[100dvh] bg-[#FAFAF7] text-black overflow-x-hidden flex flex-col">
@@ -53,9 +50,6 @@ export default function ProfessionalHome() {
             className="h-7 w-7 rounded-md"
           />
           <span className="font-mono text-xs font-bold tracking-[0.2em] uppercase">SALARYMAN</span>
-          <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] bg-black text-[#FAFAF7]">
-            ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
-          </span>
         </Link>
         <div className="home-header-actions">
           <button
@@ -69,13 +63,20 @@ export default function ProfessionalHome() {
             {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
             <span>MENU</span>
           </button>
-          <Link href={accountHref} className="home-start-link">
-            {isLoading ? "···" : isAuthenticated ? "START WORK" : "LOG IN"}
-          </Link>
         </div>
         {menuOpen && (
           <div id="home-features-menu" className="home-features-menu" role="menu">
-            <div className="home-features-heading">FEATURES</div>
+            <div className="home-features-heading">MENU</div>
+            {!isAuthenticated && (
+              <Link
+                href="/sign-in?returnTo=%2Fbusiness"
+                role="menuitem"
+                className="home-feature-link home-feature-link--primary"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span>LOG IN</span>
+              </Link>
+            )}
             {MORE_NAV_ITEMS
               .filter(item => !item.authOnly || isAuthenticated)
               .map(item => {

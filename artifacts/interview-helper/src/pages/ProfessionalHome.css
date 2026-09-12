@@ -13,7 +13,6 @@
   gap: 0.5rem;
 }
 
-.home-start-link,
 .home-menu-button {
   display: inline-flex;
   min-height: 2rem;
@@ -25,10 +24,6 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-
-.home-start-link {
-  padding: 0.45rem 0.15rem;
 }
 
 .home-menu-button {
@@ -94,6 +89,17 @@
 
 .home-feature-link:hover,
 .home-feature-link:focus-visible {
+  background: #eee8dc;
+}
+
+.home-feature-link--primary {
+  color: #fff;
+  background: #000;
+}
+
+.home-feature-link--primary:hover,
+.home-feature-link--primary:focus-visible {
+  color: #000;
   background: #eee8dc;
 }
 
