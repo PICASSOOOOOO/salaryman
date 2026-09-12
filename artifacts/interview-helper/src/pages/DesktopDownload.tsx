@@ -109,15 +109,16 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const gameplayVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.webm`;
-  const gameplayVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.mp4`;
+  const trailerAssetVersion = "foot-lock-3";
+  const gameplayVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.webm?v=${trailerAssetVersion}`;
+  const gameplayVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.mp4?v=${trailerAssetVersion}`;
   const gameplayDetailVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.webm`;
   const gameplayDetailVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay-web.mp4`;
   const supportsVp9Webm = typeof document !== "undefined"
     && document.createElement("video").canPlayType('video/webm; codecs="vp9"') !== "";
   const gameplayVideoHref = supportsVp9Webm ? gameplayVideoWebmHref : gameplayVideoMp4Href;
   const gameplayDetailVideoHref = supportsVp9Webm ? gameplayDetailVideoWebmHref : gameplayDetailVideoMp4Href;
-  const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer-poster.jpg`;
+  const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer-poster.jpg?v=${trailerAssetVersion}`;
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = !downloadAllowed
     ? "Desktop alpha · approved testers"

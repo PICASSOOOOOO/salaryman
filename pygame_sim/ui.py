@@ -77,6 +77,7 @@ class SolarPunkRenderer:
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
+        self._character_frame_cache: dict[tuple[int, int], pygame.Surface] = {}
         self._asset_root = self._find_pixel_assets()
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
@@ -517,13 +518,36 @@ class SolarPunkRenderer:
             # Character sheets are 7 columns x 4 cardinal rows, 16x24 each.
             rows = {"down": 0, "left": 1, "right": 2, "up": 3}
             frame = (self._anim_tick // 3) % 7 if moving else 0
-            crop = sheet.subsurface(pygame.Rect(frame * 16, rows[self._facing] * 24, 16, 24))
+            row = rows[self._facing]
+            cache_key = (row, frame)
+            crop = self._character_frame_cache.get(cache_key)
+            if crop is None:
+                source = sheet.subsurface(pygame.Rect(frame * 16, row * 24, 16, 24))
+                # The source sheet has a one- to two-pixel difference in the
+                # opaque bounds between walk frames. Normalize the feet and
+                # body center before scaling, otherwise the whole sprite
+                # appears to jump while the shadow stays still.
+                crop = pygame.Surface((16, 24), pygame.SRCALPHA)
+                bounds = source.get_bounding_rect(min_alpha=1)
+                centered_left = (16 - bounds.width) // 2
+                crop.blit(source, (centered_left - bounds.left, 24 - bounds.bottom))
+                self._character_frame_cache[cache_key] = crop
             sprite_scale = min(5.4, max(2.8, scale * 12))
             size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
+            rendered = pygame.transform.scale(crop, size)
+            rendered_bounds = rendered.get_bounding_rect(min_alpha=1)
+            # Anchor the final scaled opaque footprint, not the transparent
+            # source cell. This prevents odd-width frames from snapping one
+            # screen pixel sideways at large pixel-art scales.
+            rendered_center_x = rendered_bounds.left + rendered_bounds.width / 2.0
+            rendered_bottom = rendered_bounds.bottom
             self.screen.blit(
-                pygame.transform.scale(crop, size),
-                (x - size[0] // 2, y - size[1] + 7),
+                rendered,
+                (
+                    round(x - rendered_center_x),
+                    y + 7 - rendered_bottom,
+                ),
             )
             return
         pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
