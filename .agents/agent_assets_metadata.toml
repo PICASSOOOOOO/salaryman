@@ -1495,3 +1495,45 @@ mtime_ms = 1789218600916
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/1cc2cac2-7445-4aa9-9369-87ad6484bfdf"
 storage_version_token = "1789218854611457"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "dFCanmxDxhv3Ac4W76chA"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-walk-phone.mp4"
+type = "video"
+title = "Gameplay example: walk to phone"
+description = "14-second raw gameplay segment showing the salaryman moving through Office 01 and reaching the telephone."
+logical_id = "a8177bb8-16c0-4b58-b917-461b30086258"
+content_hash = "sha256:b022216e74b94dde3a4c280e7e0a7071fe0fa53697c4d2472ce5cc6918f30ced"
+size = 179931
+mtime_ms = 1789218908820
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a8177bb8-16c0-4b58-b917-461b30086258/fb95ed63-785d-4daa-b388-2d1e90c443f2"
+storage_version_token = "1789218920757773"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "E8DZ-XURU-MmYiJR4N8Bv"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-terminal-break.mp4"
+type = "video"
+title = "Gameplay example: terminal to break"
+description = "14-second raw gameplay segment showing the terminal interaction returning to the physical office and chair break."
+logical_id = "891a4f71-5164-4a49-b766-1d7c012fbd90"
+content_hash = "sha256:eb513cb3525bde454998543616afff185550bb77195beae126f1251ec86ad08f"
+size = 274199
+mtime_ms = 1789218910012
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/891a4f71-5164-4a49-b766-1d7c012fbd90/29f916c9-c6af-44b7-a5a6-54c6c23424f0"
+storage_version_token = "1789218921782365"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "qZDJtBgZ1AAtbjnKk64B2"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-npc-sleep.mp4"
+type = "video"
+title = "Gameplay example: NPC to sleep"
+description = "14-second raw gameplay segment showing the NPC conversation beat followed by sleep/recovery."
+logical_id = "e302c2e0-c0b4-4b97-a494-485430556a28"
+content_hash = "sha256:2c63e4e9118853498405e5b31e3149b2174eb58ab4121f581dc4a3bfe9ef4da5"
+size = 150748
+mtime_ms = 1789218911288
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e302c2e0-c0b4-4b97-a494-485430556a28/6bb761a5-f26c-454f-89cd-51464d7f6674"
+storage_version_token = "1789218922702691"
+content_type = "video/mp4"
