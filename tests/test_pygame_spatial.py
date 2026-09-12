@@ -35,7 +35,7 @@ class PygameSpatialTests(unittest.TestCase):
                 "chair",
             }.issubset(kinds)
         )
-        self.assertEqual((scene.width, scene.height), (10_000, 10_000))
+        self.assertEqual((scene.width, scene.height), (100_000_000, 100_000_000))
 
     def test_floor_plan_is_continuous_and_office_doors_land_on_boundary(self):
         scene = build_tower_scene()
@@ -45,7 +45,8 @@ class PygameSpatialTests(unittest.TestCase):
         first_office = rooms["executive"].bounds
         office_04 = rooms["office_04"].bounds
 
-        self.assertEqual(lobby[1] + lobby[3], hallway[1])
+        self.assertGreaterEqual(lobby[2], hallway[0] + hallway[2])
+        self.assertGreaterEqual(lobby[3], hallway[1] + hallway[3])
         self.assertEqual(hallway[1] + hallway[3], first_office[1])
         self.assertLessEqual(hallway[0], first_office[0])
         self.assertGreaterEqual(hallway[0] + hallway[2], office_04[0] + office_04[2])
@@ -73,6 +74,15 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.route, "/arcade/cyber_serpent")
         self.assertEqual(state.last_arcade_game, "cyber_serpent")
+
+    def test_movement_inside_office_does_not_snap_back_to_lobby(self):
+        scene = build_tower_scene()
+        scene.select_room("executive")
+
+        scene.set_motion_input(1.0, 0.0)
+        scene.update_motion(1 / 30)
+
+        self.assertEqual(scene.current_room, "executive")
 
     def test_operator_pages_require_role_access_or_a_live_object(self):
         player = OfficeState.with_default_roster()

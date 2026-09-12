@@ -160,7 +160,7 @@ class SolarPunkRenderer:
         self.screen.fill((8, 43, 49))
         self.draw_tower_header(state, scene)
         viewport = pygame.Rect(18, 68, self.width - 36, 520)
-        self._draw_pixel_room(viewport, scene)
+        self._draw_pixel_room(viewport, scene, state)
 
         self.draw_tower_footer(state, scene)
         if state.active_page is not None:
@@ -168,7 +168,7 @@ class SolarPunkRenderer:
         elif state.tool_menu_open:
             self.draw_operator_menu(state)
 
-    def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene) -> None:
+    def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene, state: OfficeState) -> None:
         room_x, room_y, room_w, room_h = scene.floor_bounds
         scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
         # Keep a broad orthographic view so the office reads as a substantial,
@@ -238,6 +238,7 @@ class SolarPunkRenderer:
             if item == scene.nearby_object:
                 pygame.draw.circle(self.screen, (255, 224, 112), (ix, iy), 20, 2)
                 self.text("[E] " + item.label, (ix + 18, iy - 24), self.font_sm, Palette.SUN)
+        self._draw_office_npcs(point, scene, state, scale)
         if scene.velocity != (0.0, 0.0):
             vx, vy = scene.velocity
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
@@ -247,6 +248,55 @@ class SolarPunkRenderer:
             scale=scale,
             moving=scene.velocity != (0.0, 0.0),
         )
+
+    def _draw_office_npcs(
+        self,
+        point: object,
+        scene: TowerScene,
+        state: OfficeState,
+        scale: float,
+    ) -> None:
+        """Place the office roster into the active room as visible NPCs."""
+        npc_positions = {
+            "executive": ((1_350, 6_850), (2_150, 6_900), (2_250, 6_150)),
+            "public": ((3_450, 6_850), (4_250, 6_900), (4_300, 6_150)),
+            "office_03": ((5_550, 6_850), (6_350, 6_900), (6_400, 6_150)),
+            "office_04": ((7_650, 6_850), (8_450, 6_900), (8_500, 6_150)),
+        }
+        positions = npc_positions.get(scene.current_room)
+        if not positions:
+            return
+        for index, worker in enumerate(state.roster.workers[: len(positions)]):
+            npc_x, npc_y = positions[index]
+            screen_x, screen_y = point((npc_x, npc_y))
+            self._draw_npc(screen_x, screen_y, worker.name, worker.accent, scale)
+
+    def _draw_npc(
+        self,
+        x: int,
+        y: int,
+        name: str,
+        accent: tuple[int, int, int],
+        scale: float,
+    ) -> None:
+        """Draw a stationary teammate with a stable footprint and nameplate."""
+        sheet = self._asset("characters/char_0.png")
+        if sheet:
+            source = sheet.subsurface(pygame.Rect(0, 0, 16, 24))
+            sprite_scale = min(4.4, max(2.4, scale * 10))
+            size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
+            rendered = pygame.transform.scale(source, size)
+            bounds = rendered.get_bounding_rect(min_alpha=1)
+            self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
+            self.screen.blit(
+                rendered,
+                (
+                    round(x - (bounds.left + bounds.width / 2.0)),
+                    y + 7 - bounds.bottom,
+                ),
+            )
+        pygame.draw.circle(self.screen, accent, (x, y - 52), 4)
+        self.text(name.upper()[:14], (x - 34, y - 70), self.font_mono, accent)
 
     def _draw_square_office_floor(
         self,

@@ -109,7 +109,7 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const trailerAssetVersion = "foot-lock-3";
+  const trailerAssetVersion = "office-actions-1";
   const gameplayVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.webm?v=${trailerAssetVersion}`;
   const gameplayVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.mp4?v=${trailerAssetVersion}`;
   const gameplayDetailVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.webm`;
@@ -179,7 +179,7 @@ export default function DesktopDownload() {
           />
           <span className="desktop-download-promo-tag">DESKTOP PROMO</span>
           <figcaption>
-             36-SECOND CUT / REAL DESKTOP CAPTURE / CALL HOME SOUNDTRACK
+             42-SECOND CUT / OFFICE ACTIONS / CALL HOME SOUNDTRACK
           </figcaption>
         </figure>
       </section>

@@ -87,10 +87,22 @@ class TowerScene:
         px = min(max(self.player_position[0] + dx, x + 250), x + width - 250)
         py = min(max(self.player_position[1] + dy, y + 250), y + height - 250)
         self.player_position = (px, py)
-        for candidate in self.rooms:
-            if candidate.contains(self.player_position):
-                self.current_room = candidate.id
-                break
+        # The lobby is the whole-world fallback room, so it contains every
+        # office as well. Prefer the smallest physical room that contains the
+        # player; otherwise any movement inside an office immediately snapped
+        # the scene back to the empty lobby.
+        containing_rooms = [
+            candidate
+            for candidate in self.rooms
+            if candidate.id != "lobby" and candidate.contains(self.player_position)
+        ]
+        if containing_rooms:
+            self.current_room = min(
+                containing_rooms,
+                key=lambda candidate: candidate.bounds[2] * candidate.bounds[3],
+            ).id
+        elif next((room for room in self.rooms if room.id == "lobby"), None) is not None:
+            self.current_room = "lobby"
 
     def set_motion_input(self, x: float, y: float) -> None:
         """Set a bounded input vector received from the Godot renderer."""
