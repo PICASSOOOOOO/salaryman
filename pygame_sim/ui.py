@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import math
 from pathlib import Path
 
 import pygame
@@ -78,7 +77,6 @@ class SolarPunkRenderer:
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
-        self._motion_clock = 0.0
         self._asset_root = self._find_pixel_assets()
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
@@ -243,9 +241,6 @@ class SolarPunkRenderer:
             vx, vy = scene.velocity
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
             self._anim_tick += 1
-            self._motion_clock += 0.12
-        else:
-            self._motion_clock += 0.035
         self._draw_player(
             *point(scene.player_position),
             scale=scale,
@@ -525,11 +520,10 @@ class SolarPunkRenderer:
             crop = sheet.subsurface(pygame.Rect(frame * 16, rows[self._facing] * 24, 16, 24))
             sprite_scale = min(5.4, max(2.8, scale * 12))
             size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
-            bob = int(math.sin(self._motion_clock * 3.0) * (3 if moving else 1))
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
             self.screen.blit(
                 pygame.transform.scale(crop, size),
-                (x - size[0] // 2, y - size[1] + 7 - bob),
+                (x - size[0] // 2, y - size[1] + 7),
             )
             return
         pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
