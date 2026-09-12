@@ -456,6 +456,39 @@ export async function probeInternalApiAuth(baseUrl: string): Promise<ProbeResult
   }
 }
 
+/** Verify that a high-priority protected surface is mounted and still rejects
+ * unauthenticated callers. This is deliberately read-only: it proves the
+ * boundary without creating calls, CRM records, or automation runs. */
+export async function probeProtectedSurface(
+  baseUrl: string,
+  name: string,
+  path: string,
+): Promise<ProbeResult> {
+  const start = Date.now();
+  try {
+    const { res, latencyMs } = await timedFetch(
+      `${baseUrl}${path}`,
+      { headers: { Accept: "application/json" } },
+      DEFAULT_TIMEOUT_MS,
+    );
+    if (res.status === 401) {
+      return makeResult(name, "PASS", `GET ${path} → 401 (mounted, auth enforced)`, latencyMs);
+    }
+    if (res.status === 404) {
+      return makeResult(name, "FAIL", `GET ${path} → 404 (route/router unmounted!)`, latencyMs);
+    }
+    if (res.status === 200) {
+      return makeResult(name, "FAIL", `GET ${path} → 200 (auth NOT enforced!)`, latencyMs);
+    }
+    if (res.status >= 500) {
+      return makeResult(name, "FAIL", `GET ${path} → ${res.status} (server error)`, latencyMs);
+    }
+    return makeResult(name, "FAIL", `GET ${path} → ${res.status} (expected 401)`, latencyMs);
+  } catch (e: any) {
+    return makeResult(name, "FAIL", `Unreachable: ${e?.message || e}`, Date.now() - start);
+  }
+}
+
 // ── Run all probes ────────────────────────────────────────────────────────────
 
 export async function runAllProbes(baseUrl = "https://salaryman.io"): Promise<AllProbeResults> {
@@ -473,6 +506,9 @@ export async function runAllProbes(baseUrl = "https://salaryman.io"): Promise<Al
     probeMusicBrainz(),
     probeInternalApi(baseUrl),
     probeInternalApiAuth(baseUrl),
+    probeProtectedSurface(baseUrl, "CALLL HOME API surface", "/api/twilio/system-status"),
+    probeProtectedSurface(baseUrl, "CRM API surface", "/api/crm/summary"),
+    probeProtectedSurface(baseUrl, "Pablo Prime automation surface", "/api/autopilot"),
   ]);
 
   const failCount = results.filter((r) => r.status === "FAIL").length;
