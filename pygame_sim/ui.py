@@ -212,9 +212,7 @@ class SolarPunkRenderer:
             "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 4200)),
                            ("furniture/PLANT/PLANT.png", (8500, 4200)),
                            ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 4300))],
-            "executive": [("furniture/BOOKSHELF/BOOKSHELF.png", (2450, 6400)),
-                          ("furniture/PLANT/PLANT.png", (2450, 7000)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (1100, 6400))],
+            "executive": [],
             "public": [("furniture/BOOKSHELF/BOOKSHELF.png", (4550, 6400)),
                        ("furniture/PLANT/PLANT.png", (4550, 7000)),
                        ("furniture/WHITEBOARD/WHITEBOARD.png", (3200, 6400))],
@@ -327,6 +325,11 @@ class SolarPunkRenderer:
     ) -> None:
         """Build the office around real desk, chair, and PC assets."""
         layouts = {
+            "executive": (
+                ((2_300, 6_100), (2_300, 6_400), (2_300, 6_070), "wooden"),
+                ((1_300, 6_800), (1_300, 7_100), (1_300, 6_770), "wooden"),
+                ((2_300, 6_800), (2_300, 7_100), (2_300, 6_770), "cushioned"),
+            ),
             "public": (
                 ((3_260, 5_950), (3_260, 6_210), (3_260, 5_850), "cushioned"),
                 ((4_440, 5_950), (4_440, 6_210), (4_440, 5_850), "wooden"),

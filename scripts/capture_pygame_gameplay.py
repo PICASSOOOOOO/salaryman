@@ -38,6 +38,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Hold on the single executive workstation and window for a focused clip",
     )
+    parser.add_argument(
+        "--fast-trailer",
+        action="store_true",
+        help="Use six-second gameplay beats for a quick trailer cut",
+    )
     return parser.parse_args()
 
 
@@ -117,19 +122,29 @@ def main() -> int:
     delta = 1.0 / args.fps
     phase_targets = (
         (
-            ("executive", (2_200, 6_400), "EXECUTIVE OFFICE / WINDOW", None),
-            ("executive", (2_200, 6_400), "TERMINAL ACCESS / OFFICE RECORD", "executive-crt"),
+            ("executive", (1_800, 6_550), "EXECUTIVE OFFICE / FOUR WORKSTATIONS", None),
+            ("executive", (1_750, 6_350), "TERMINAL ACCESS / OFFICE RECORD", "executive-crt"),
         )
         if args.executive_office
         else (
+            ("executive", (1_800, 6_550), "EXECUTIVE OFFICE / FOUR WORKSTATIONS", None),
+            ("executive", (1_750, 6_350), "TERMINAL / OFFICE RECORD", "executive-crt"),
+            ("executive", (2_300, 6_400), "MOVE / WORKSTATION 02", None),
+            ("executive", (1_300, 7_100), "BREAK / REST POSITION", "executive-chair"),
+            ("executive", (1_800, 6_550), "NPC HUDDLE / MARA VOSS", None),
+            ("executive", (2_300, 7_100), "SLEEP / RECOVERING", "executive-chair"),
+        )
+        if args.fast_trailer
+        else (
             ("executive", (1_800, 6_250), "SHIFT START / OFFICE LIVE", None),
             ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME", "executive-telephone"),
-            ("executive", (2_200, 6_400), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
-            ("executive", (1_800, 6_600), "BREAK / REST POSITION", "executive-chair"),
+            ("executive", (1_750, 6_350), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
+            ("executive", (1_300, 6_400), "BREAK / REST POSITION", "executive-chair"),
             ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS", None),
-            ("executive", (1_800, 6_600), "SLEEP MODE / RECOVERING", "executive-chair"),
+            ("executive", (1_300, 6_400), "SLEEP MODE / RECOVERING", "executive-chair"),
         )
     )
+    phase_seconds = 6.0 if args.fast_trailer else 7.0
     active_phase = -1
     action_done = False
 
@@ -140,7 +155,7 @@ def main() -> int:
             # Keep the trailer inside the furnished office slice. Each phase
             # centers the real player on a live object or teammate, then lets
             # the renderer show the interaction prompt and office context.
-            phase = min(len(phase_targets) - 1, int(second // 7))
+            phase = min(len(phase_targets) - 1, int(second // phase_seconds))
             room_id, target, notice, object_id = phase_targets[phase]
             if phase != active_phase:
                 active_phase = phase
