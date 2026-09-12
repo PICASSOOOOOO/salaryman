@@ -1184,6 +1184,29 @@ iframe[src*="feedback"] {
   border-color: #111;
 }
 
+.calll-home-mark-box {
+  display: inline-flex;
+  width: 112px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #111;
+  border-radius: 3px;
+}
+
+.calll-home-mark-box img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
 .mobile-menu-trigger span {
   white-space: nowrap;
 }
@@ -1595,6 +1618,55 @@ body.workspace-light .mobile-terminal-feature-icon {
 body.workspace-light .desktop-download-mark {
   color: #187c4e;
   background: #eaf8ef;
+}
+
+/* Calendar is a browser workspace surface, not a game screen. The legacy
+   calendar component still carries dark inline tokens, so keep the light
+   contract authoritative until those tokens are removed. */
+body.workspace-light .calendar-page {
+  color: #111 !important;
+  background: #fffaf0 !important;
+  font-family: var(--font-sans) !important;
+}
+
+body.workspace-light .calendar-page .calendar-surface,
+body.workspace-light .calendar-page .calendar-surface[style] {
+  color: #111 !important;
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 28px rgba(23, 54, 74, .08) !important;
+}
+
+body.workspace-light .calendar-page :where(input, textarea, select) {
+  color: #111 !important;
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color-scheme: light !important;
+}
+
+body.workspace-light .calendar-page :where(button) {
+  color: #111 !important;
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light .calendar-page :where(button:hover, button:focus-visible) {
+  background: #eaf8ef !important;
+  border-color: #187c4e !important;
+}
+
+body.workspace-light .calendar-page :where(h1, h2, h3, p, span, label, div) {
+  text-shadow: none !important;
+}
+
+@media (max-width: 340px) {
+  body.workspace-light .calendar-page {
+    min-height: calc(100dvh - 3.5rem) !important;
+  }
+
+  body.workspace-light .calendar-page > :where(div) {
+    max-width: 100%;
+  }
 }
 
 body.workspace-light .desktop-download-eyebrow,

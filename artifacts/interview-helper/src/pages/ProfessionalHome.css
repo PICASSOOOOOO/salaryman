@@ -1,5 +1,8 @@
 .home-header {
   background: #FAFAF7;
+  position: sticky;
+  top: 0;
+  z-index: 90;
 }
 
 .home-header-actions {

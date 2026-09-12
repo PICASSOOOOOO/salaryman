@@ -107,7 +107,7 @@ function formatDuration(startStr: string, endStr: string): string {
 function SurfaceCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={className}
+      className={`calendar-surface ${className}`}
       style={{
         border: "1px solid rgba(148,163,184,0.2)",
         background: "hsl(225 11% 10%)",
@@ -1166,7 +1166,7 @@ export default function Calendar() {
 
   return (
       <div
-        className="flex flex-col"
+         className="calendar-page flex flex-col"
         style={{
           minHeight: "calc(100vh - 88px)",
           background: "#09090b",

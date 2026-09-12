@@ -1,5 +1,6 @@
 import { ArrowUpRight, Bot, Download, Menu, Phone, Workflow, X } from "lucide-react";
 import { Link } from "wouter";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { MORE_NAV_ITEMS } from "@/lib/app-navigation";
 import "./ProfessionalHome.css";
@@ -37,7 +38,7 @@ const MODULES = [
 
 export default function ProfessionalHome() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const accountHref = isAuthenticated
     ? "/business"
     : "/sign-in?returnTo=%2Fbusiness";

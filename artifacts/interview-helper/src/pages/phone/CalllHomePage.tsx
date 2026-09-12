@@ -214,11 +214,9 @@ export default function CalllHomePage() {
           padding: '8px 0', borderBottom: `1px solid ${slate(0.08)}` }}>
           <div className="calll-home-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Phone size={18} style={{ color: slate(0.7) }} />
-            <img
-              src={`${BASE}brand/callhome/calll-home-logo-2.png`}
-              alt="CALLL HOME"
-              style={{ height: 34, width: 34, objectFit: 'contain', opacity: 0.95 }}
-            />
+            <span className="calll-home-mark-box">
+              <img src={`${BASE}brand/callhome/calll-home-logo-2.png`} alt="CALLL HOME" />
+            </span>
           </div>
           <div className="calll-home-connection" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

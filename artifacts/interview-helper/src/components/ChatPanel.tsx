@@ -870,6 +870,7 @@ export function ChatPanel({
     sendToPablo,
     refreshChannels,
   } = useChatSocket();
+  const commsReady = connected || channelMeta !== null;
 
   const currentUserId = (user as any)?.id ?? "";
 
@@ -1297,7 +1298,7 @@ export function ChatPanel({
                   letterSpacing: "0.12em",
                 }}
               >
-                {connected ? "PABLO IS WORKING" : "COMMS OFFLINE"}
+                {connected ? "LIVE COMMS" : commsReady ? "COMMS READY · SYNCING" : "COMMS OFFLINE"}
               </span>
             </div>
             {!embedded && <button
