@@ -7,6 +7,7 @@ import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
 const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
+const isBuild = process.argv.includes("build");
 const rawPort = process.env.PORT;
 
 if (!rawPort && !isBuild) {
