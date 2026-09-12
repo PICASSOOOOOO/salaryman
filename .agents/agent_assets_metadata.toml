@@ -1481,3 +1481,17 @@ mtime_ms = 1788969410289
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8e41dc25-86e3-4b39-9baf-4bacfff1187d/365008c4-3aaf-4dfd-9dff-143f480a0087"
 storage_version_token = "1788969417870974"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "W9uyb8_mMeSeGjrjltyTl"
+uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-trailer.mp4"
+type = "video"
+title = "SALARYMAN desktop trailer"
+description = "36-second capture from the current Pygame desktop runtime with the CALL HOME soundtrack mixed in."
+logical_id = "66ad0a22-b385-4ee0-bae6-9f234da113d1"
+content_hash = "sha256:f017a30b7a76bb0cb7a3b131ffe251b5ffeb3a5173e61d2d7ebf2533774c42c6"
+size = 1306612
+mtime_ms = 1789215747063
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/8ec5e251-83a0-43de-9825-f3e5dbd3b509"
+storage_version_token = "1789215925036577"
+content_type = "video/mp4"

@@ -30,21 +30,21 @@ from pygame_sim.ui import SolarPunkRenderer
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Capture authentic SALARYMAN Pygame footage")
     parser.add_argument("--output", type=Path, default=ROOT / "screenshots" / "salaryman-pygame-gameplay.mp4")
-    parser.add_argument("--seconds", type=float, default=8.0)
+    parser.add_argument("--seconds", type=float, default=36.0)
     parser.add_argument("--fps", type=int, default=30)
     return parser.parse_args()
 
 
 def input_for_frame(frame: int, fps: int) -> tuple[float, float]:
-    """Walk a short loop that demonstrates continuous authoritative movement."""
-    second = frame / fps
-    if second < 1.5:
+    """Walk a repeated, readable loop that keeps the real client in motion."""
+    second = (frame / fps) % 12.0
+    if second < 2.5:
         return (1.0, 0.0)
-    if second < 3.0:
+    if second < 5.0:
         return (0.0, 1.0)
-    if second < 4.5:
+    if second < 7.5:
         return (-1.0, 0.0)
-    if second < 6.0:
+    if second < 10.0:
         return (0.0, -1.0)
     return (0.0, 0.0)
 
@@ -68,6 +68,12 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="salaryman-capture-") as temp_dir:
         frames = Path(temp_dir)
         for frame in range(frame_count):
+            second = frame / args.fps
+            # Show the same playable office from several authored room
+            # positions instead of leaving the trailer on one static view.
+            if frame > 0 and frame % int(12 * args.fps) == 0:
+                room_index = int(second // 12) % 4
+                scene.select_room(("lobby", "recreation", "executive", "public")[room_index])
             scene.set_motion_input(*input_for_frame(frame, args.fps))
             scene.update_motion(delta)
             state.update(delta)

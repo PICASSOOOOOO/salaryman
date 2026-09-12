@@ -17,13 +17,17 @@ const CAMERA_DISTANCE_MAX := 22.0
 const CAMERA_ORTHO_SIZE_MIN := 9.0
 const CAMERA_ORTHO_SIZE_MAX := 18.0
 const CAMERA_ORTHO_SIZE_BASE := 13.0
+# Room floors are 0.16 units above the world origin (0.08 center + 0.08
+# half-height). Keep the player root on that same surface; the imported
+# character's feet are authored at its local origin.
+const PLAYER_GROUND_Y := FLOOR_HEIGHT + 0.08
 
 var connection := StreamPeerTCP.new()
 var receive_buffer := ""
 var snapshot: Dictionary = {}
 var connection_status := "connecting to Pygame…"
 var command_sequence := 0
-var visual_player_world := Vector3(0.0, 0.45, 0.0)
+var visual_player_world := Vector3(0.0, PLAYER_GROUND_Y, 0.0)
 var visual_player_ready := false
 var target_player_world := Vector3.ZERO
 var animation_clock := 0.0
@@ -402,7 +406,7 @@ func _apply_snapshot(message: Dictionary) -> void:
 
 
 func _pygame_to_world(x: float, y: float) -> Vector3:
-	return Vector3(x * WORLD_SCALE, 0.42, y * WORLD_SCALE)
+	return Vector3(x * WORLD_SCALE, PLAYER_GROUND_Y, y * WORLD_SCALE)
 
 
 func _smooth_visual_player(delta: float) -> void:
@@ -410,7 +414,9 @@ func _smooth_visual_player(delta: float) -> void:
 		return
 	visual_player_world = visual_player_world.lerp(target_player_world, min(1.0, delta * 14.0))
 	if player_root:
-		player_root.position = visual_player_world + Vector3(0.0, sin(animation_clock * 5.0) * 0.025, 0.0)
+		# Do not bob the root vertically. The walk animation supplies motion;
+		# changing Y here makes the player visibly hover over the floor.
+		player_root.position = visual_player_world
 
 
 func _rebuild_bridge_objects(objects: Array) -> void:

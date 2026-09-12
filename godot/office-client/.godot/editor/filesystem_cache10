@@ -1,8 +1,9 @@
 ea4bc82a6ad023ab7ee23ee620429895
-::res://::1788767130
-main.gd::GDScript/GDScript::305725880813587578::1788762237::0::1::::<>Node3D<><>0<>0<><>::
+::res://::1789215678
+floor_plan.json::JSON::-1::1788959932::0::1::::<><><>0<>0<><>::
+main.gd::GDScript::305725880813587578::1789215678::0::1::::<>Node3D<><>0<>0<><>::
 Main.tscn::PackedScene/PackedScene::-1::1788762199::0::1::::<><><>0<>0<><>::res://main.gd
-README.md::TextFile/TextFile::-1::1788762200::0::1::::<><><>0<>0<><>::
+README.md::TextFile::-1::1788791503::0::1::::<><><>0<>0<><>::
 THIRD_PARTY_NOTICES.md::TextFile/TextFile::-1::1788762200::0::1::::<><><>0<>0<><>::
 ::res://agentshire-assets/::1788762131
 ::res://agentshire-assets/buildings/::1788767131
@@ -11,8 +12,8 @@ building_A.gltf::PackedScene/PackedScene::3108133877905841792::1788762131::17887
 citybits_texture.png::CompressedTexture2D/CompressedTexture2D::5666824967816353637::1788762137::1788767130::1::::<><><>0<>0<>ebd3cdefbe16c56e38f5e10ce7e98841<>res://.godot/imported/citybits_texture.png-bcfb8db98c28e8a47a0333a0975f62e9.ctex::
 ::res://agentshire-assets/characters/::1788767264
 character-male-a.glb::PackedScene/PackedScene::6061522104929625160::1788762131::1788767131::1::::<><><>0<>0<>f52d725c60ac567f5622645dc164130f<>res://.godot/imported/character-male-a.glb-b51edeaedecc9090329fc662bc69012a.scn::
-::res://agentshire-assets/characters/Textures/::1788767264
-colormap.png::CompressedTexture2D::1837662691000075396::1788767265::1788767274::1::::<><><>0<>0<>6c8b7bb2673b3cc2b2010f9e0eefd48d<>res://.godot/imported/colormap.png-70d0fc829a99f21fca5dada17c72f5a2.ctex::
+::res://agentshire-assets/characters/Textures/::1788767274
+colormap.png::CompressedTexture2D/CompressedTexture2D::1837662691000075396::1788767265::1788767274::1::::<><><>0<>0<>6c8b7bb2673b3cc2b2010f9e0eefd48d<>res://.godot/imported/colormap.png-70d0fc829a99f21fca5dada17c72f5a2.ctex::
 ::res://agentshire-assets/furniture/::1788767131
 chair_A.gltf::PackedScene/PackedScene::2648892990642551867::1788762131::1788767131::1::::<><><>0<>0<>d20549699f3df3423b9bce2cf92feb40<>res://.godot/imported/chair_A.gltf-4cd7cc29f66099a85548448e3f6f0a84.scn::uid://4q3lenmt4v48::::res://agentshire-assets/furniture/furniturebits_texture.png
 couch.gltf::PackedScene/PackedScene::1620190255636866686::1788762131::1788767131::1::::<><><>0<>0<>6277793dd3ab2dc324cddd04be10b619<>res://.godot/imported/couch.gltf-68fc84ae29b848bd07c907048a17b35a.scn::uid://4q3lenmt4v48::::res://agentshire-assets/furniture/furniturebits_texture.png
