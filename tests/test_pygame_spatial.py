@@ -135,6 +135,18 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertTrue(scene.set_player_action("sleep", duration=1.0))
         self.assertEqual(scene.player_action, "sleep")
 
+    def test_player_auto_sleeps_after_five_minutes_and_wakes_on_input(self):
+        scene = build_tower_scene()
+
+        scene.update_motion(scene.AUTO_SLEEP_AFTER_SECONDS - 0.1)
+        self.assertEqual(scene.player_action, "stand")
+        scene.update_motion(0.1)
+        self.assertEqual(scene.player_action, "sleep")
+
+        scene.set_motion_input(1.0, 0.0)
+        self.assertEqual(scene.player_action, "stand")
+        self.assertEqual(scene.idle_seconds, 0.0)
+
     def test_npc_routes_advance_without_player_input(self):
         scene = build_tower_scene()
         scene.select_room("executive")

@@ -87,7 +87,7 @@ def run(argv: list[str] | None = None) -> int:
                     spatial_mode = not spatial_mode
                 elif spatial_mode and event.key == pygame.K_e:
                     scene.interact(state)
-                elif spatial_mode and event.key == pygame.K_j:
+                elif spatial_mode and event.key == pygame.K_SPACE:
                     scene.set_player_action("jump", duration=0.9)
                     state.notice = "JUMP"
                 elif spatial_mode and event.key == pygame.K_c:

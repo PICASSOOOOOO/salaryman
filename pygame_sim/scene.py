@@ -89,10 +89,12 @@ class TowerScene:
     player_action: CharacterAction = "stand"
     player_action_elapsed: float = 0.0
     player_action_remaining: float = 0.0
+    idle_seconds: float = 0.0
 
     MAX_SPEED: float = 300.0
     ACCELERATION: float = 1_500.0
     FRICTION: float = 2_000.0
+    AUTO_SLEEP_AFTER_SECONDS: float = 5 * 60
 
     @property
     def room(self) -> Room:
@@ -120,6 +122,10 @@ class TowerScene:
 
     def move(self, dx: int, dy: int) -> None:
         """Move inside floor bounds while respecting solid office objects."""
+        if dx or dy:
+            self.idle_seconds = 0.0
+            if self.player_action in {"sit", "sleep"}:
+                self.set_player_action("stand")
         x, y, width, height = self.floor_bounds
         current_x, current_y = self.player_position
         candidate_x = min(max(current_x + dx, x + 250), x + width - 250)
@@ -174,6 +180,10 @@ class TowerScene:
             max(-1.0, min(1.0, float(x))),
             max(-1.0, min(1.0, float(y))),
         )
+        if hypot(*self.input_vector) > 0:
+            self.idle_seconds = 0.0
+            if self.player_action in {"sit", "sleep"}:
+                self.set_player_action("stand")
 
     def update_motion(self, delta_seconds: float) -> None:
         """Apply normalized acceleration/friction without duplicating authority."""
@@ -193,6 +203,7 @@ class TowerScene:
         input_x, input_y = self.input_vector
         input_length = hypot(input_x, input_y)
         if input_length > 0:
+            self.idle_seconds = 0.0
             direction_x = input_x / input_length
             direction_y = input_y / input_length
             target_x = direction_x * self.MAX_SPEED
@@ -214,13 +225,22 @@ class TowerScene:
         self.motion_remainder = (travel_x - step_x, travel_y - step_y)
         self.velocity = (velocity_x, velocity_y)
         if step_x or step_y:
+            self.idle_seconds = 0.0
             self.move(step_x, step_y)
+        elif velocity_x == 0.0 and velocity_y == 0.0:
+            self.idle_seconds += delta_seconds
+            if (
+                self.idle_seconds >= self.AUTO_SLEEP_AFTER_SECONDS
+                and self.player_action != "sleep"
+            ):
+                self.set_player_action("sleep", reset_idle=False)
 
     def set_player_action(
         self,
         action: CharacterAction,
         *,
         duration: float = 0.0,
+        reset_idle: bool = True,
     ) -> bool:
         """Set a grounded action; sitting attaches the player to a nearby chair."""
         if action not in {"stand", "jump", "sit", "sleep"}:
@@ -249,6 +269,8 @@ class TowerScene:
         self.player_action = action
         self.player_action_elapsed = 0.0
         self.player_action_remaining = max(0.0, duration)
+        if reset_idle:
+            self.idle_seconds = 0.0
         return True
 
     def update_npc_motion(self, delta_seconds: float) -> None:
