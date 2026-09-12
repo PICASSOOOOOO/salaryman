@@ -1486,14 +1486,14 @@ content_type = "image/jpeg"
 id = "W9uyb8_mMeSeGjrjltyTl"
 uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-trailer.mp4"
 type = "video"
-title = "Updated workstation trailer"
-description = "Latest 42-second office cut with corrected desk-mounted computers, varied character sheets, desks, chairs, cubicle structure, movement, and CALL HOME soundtrack."
+title = "Updated executive office trailer"
+description = "Latest 42-second trailer synced to the one-workstation executive office layout with visible windows and CALL HOME soundtrack."
 logical_id = "66ad0a22-b385-4ee0-bae6-9f234da113d1"
-content_hash = "sha256:ee4e9652ddfca568f17a674505d2b1decdc07cd1a1c1514677bdf14991e592f3"
-size = 2330520
-mtime_ms = 1789220349172
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/ae49bbe3-c88d-477d-bdc3-e5089db02929"
-storage_version_token = "1789220524702144"
+content_hash = "sha256:2001bc4d441996b87f7412c4e8645041bb0a5d8c9e39adcf708143997fa89ff9"
+size = 2104264
+mtime_ms = 1789222012748
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/a22285bd-74b6-4aa8-901d-f6f7c0c8d8eb"
+storage_version_token = "1789222175206534"
 content_type = "video/mp4"
 
 [[outputs]]
@@ -1536,4 +1536,18 @@ size = 426399
 mtime_ms = 1789220113457
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e302c2e0-c0b4-4b97-a494-485430556a28/d8ba245c-a671-49e9-ad3e-0da9e44edfe6"
 storage_version_token = "1789220187269961"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "nXxPz9cT6vRl3qUg8GGMB"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-executive-office.mp4"
+type = "video"
+title = "Executive office clip"
+description = "Focused 14-second Pygame clip showing the single desk, desk-mounted computer, chair, two opposing rugs, and visible executive windows."
+logical_id = "fd6d54cd-6e29-4003-8c11-926ad17d4e34"
+content_hash = "sha256:1164c5053490eda90d140bdb88fbf510b7982aeceefeb94553bcecfd8547a0f2"
+size = 361904
+mtime_ms = 1789221935315
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fd6d54cd-6e29-4003-8c11-926ad17d4e34/6b039de5-cb1b-42ca-a4ee-df6b7e01fa22"
+storage_version_token = "1789222174086178"
 content_type = "video/mp4"

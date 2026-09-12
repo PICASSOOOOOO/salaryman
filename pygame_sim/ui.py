@@ -327,12 +327,6 @@ class SolarPunkRenderer:
     ) -> None:
         """Build the office around real desk, chair, and PC assets."""
         layouts = {
-            "executive": (
-                ((1_160, 5_950), (1_160, 6_210), (1_160, 5_850), "cushioned"),
-                ((2_340, 5_950), (2_340, 6_210), (2_340, 5_850), "wooden"),
-                ((1_160, 7_020), (1_160, 6_760), (1_160, 7_110), "wooden"),
-                ((2_340, 7_020), (2_340, 6_760), (2_340, 7_110), "cushioned"),
-            ),
             "public": (
                 ((3_260, 5_950), (3_260, 6_210), (3_260, 5_850), "cushioned"),
                 ((4_440, 5_950), (4_440, 6_210), (4_440, 5_850), "wooden"),
@@ -359,19 +353,9 @@ class SolarPunkRenderer:
         def screen_position(position: tuple[int, int]) -> tuple[int, int]:
             return point(position)
 
-        # Low panels make the four desk clusters read as cubicles without
-        # inventing a non-existent cubicle sprite.
-        for x, y in ((1_750, 5_850), (1_750, 7_000)):
-            if scene.current_room == "executive":
-                sx, sy = screen_position((x, y))
-                panel = pygame.Rect(
-                    sx - int(520 * scale),
-                    sy - int(38 * scale),
-                    int(1_040 * scale),
-                    max(5, int(26 * scale)),
-                )
-                pygame.draw.rect(self.screen, (82, 104, 100), panel, border_radius=3)
-                pygame.draw.line(self.screen, (154, 181, 156), panel.topleft, panel.topright, max(1, int(2 * scale)))
+        # Low panels make the repeated desk clusters read as cubicles without
+        # inventing a non-existent cubicle sprite. The executive room stays a
+        # single private office and uses its live desk object instead.
 
         for desk_position, chair_position, _pc_position, chair_style in layout:
             desk_screen = screen_position(desk_position)
@@ -591,7 +575,6 @@ class SolarPunkRenderer:
             "desk": "furniture/DESK/DESK_FRONT.png",
             "chair": "furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png",
             "tv": "furniture/PC/PC_FRONT_ON_1.png",
-            "window": "furniture/WHITEBOARD/WHITEBOARD.png",
             "arcade": "furniture/PC/PC_FRONT_ON_2.png",
             "vending_machine": "furniture/PC/PC_FRONT_ON_3.png",
             "crt_terminal": "furniture/PC/PC_FRONT_ON_1.png",
@@ -614,8 +597,21 @@ class SolarPunkRenderer:
         if nearby:
             pygame.draw.circle(self.screen, (255, 229, 132), (x, y), 17)
         if kind == "window":
-            pygame.draw.rect(self.screen, (91, 181, 209), (x - 12, y - 6, 24, 12), border_radius=2)
-            pygame.draw.line(self.screen, (230, 249, 244), (x, y - 5), (x, y + 5), 1)
+            width = max(48, int(280 * scale))
+            height = max(24, int(120 * scale))
+            window = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (55, 107, 122), window, border_radius=3)
+            pygame.draw.rect(self.screen, (154, 218, 222), window.inflate(-6, -6), border_radius=2)
+            pygame.draw.rect(self.screen, (43, 73, 77), window, width=max(2, int(8 * scale)), border_radius=3)
+            pygame.draw.line(self.screen, (43, 89, 96), window.midtop, window.midbottom, max(2, int(4 * scale)))
+            pygame.draw.line(self.screen, (43, 89, 96), window.midleft, window.midright, max(2, int(4 * scale)))
+            pygame.draw.line(
+                self.screen,
+                (224, 245, 224),
+                (window.left + 8, window.top + 8),
+                (window.right - 10, window.top + 8),
+                max(1, int(2 * scale)),
+            )
         elif kind in ("elevator", "stairs"):
             pygame.draw.rect(self.screen, (121, 150, 151), (x - 10, y - 12, 20, 24), border_radius=2)
             if kind == "elevator":

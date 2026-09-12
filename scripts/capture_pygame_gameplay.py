@@ -33,6 +33,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=ROOT / "screenshots" / "salaryman-pygame-gameplay.mp4")
     parser.add_argument("--seconds", type=float, default=42.0)
     parser.add_argument("--fps", type=int, default=30)
+    parser.add_argument(
+        "--executive-office",
+        action="store_true",
+        help="Hold on the single executive workstation and window for a focused clip",
+    )
     return parser.parse_args()
 
 
@@ -56,7 +61,7 @@ def move_toward_target(
 def draw_trailer_action(screen: pygame.Surface, renderer: SolarPunkRenderer, phase: int) -> None:
     """Add a restrained shot label so each real interaction reads in a trailer."""
     labels = (
-        ("OFFICE LIVE", "FLOOR 01 / OFFICE 01"),
+        ("EXECUTIVE OFFICE", "WINDOW / SINGLE WORKSTATION"),
         ("PHONE / CALLL HOME", "TELEPHONE READY / PHONE CENTER"),
         ("TERMINAL / OFFICE RECORD", "CRT TERMINAL / LIVE OBJECT"),
         ("BREAK / REST", "SHORT BREAK / RECOVERING"),
@@ -98,12 +103,16 @@ def main() -> int:
     frame_count = max(1, int(args.seconds * args.fps))
     delta = 1.0 / args.fps
     phase_targets = (
-        ("executive", (1_800, 6_250), "SHIFT START / OFFICE LIVE", None),
-        ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME", "executive-telephone"),
-        ("executive", (2_100, 6_250), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
-        ("executive", (1_800, 6_950), "BREAK / REST POSITION", "executive-chair"),
-        ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS", None),
-        ("executive", (1_800, 6_950), "SLEEP MODE / RECOVERING", "executive-chair"),
+        (("executive", (1_800, 6_250), "EXECUTIVE OFFICE / WINDOW", None),)
+        if args.executive_office
+        else (
+            ("executive", (1_800, 6_250), "SHIFT START / OFFICE LIVE", None),
+            ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME", "executive-telephone"),
+            ("executive", (2_100, 6_250), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
+            ("executive", (1_800, 6_600), "BREAK / REST POSITION", "executive-chair"),
+            ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS", None),
+            ("executive", (1_800, 6_600), "SLEEP MODE / RECOVERING", "executive-chair"),
+        )
     )
     active_phase = -1
     action_done = False
