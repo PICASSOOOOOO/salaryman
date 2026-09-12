@@ -3,6 +3,8 @@
   position: sticky;
   top: 0;
   z-index: 90;
+  min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .home-header-actions {

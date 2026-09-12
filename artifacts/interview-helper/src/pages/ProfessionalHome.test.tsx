@@ -32,10 +32,15 @@ afterEach(() => {
   container.remove();
 });
 
-describe("ProfessionalHome entry actions", () => {
-  it("sends logged-out visitors through sign-in and highlights automation", () => {
+describe("ProfessionalHome header", () => {
+  it("keeps the header compact and puts sign-in inside the menu", () => {
     act(() => root.render(<ProfessionalHome />));
 
+    expect(container.querySelector(".home-start-link")).toBeNull();
+    const menuButton = container.querySelector(".home-menu-button") as HTMLButtonElement;
+    expect(menuButton).not.toBeNull();
+
+    act(() => menuButton.click());
     const links = Array.from(container.querySelectorAll("a"));
     const login = links.find(link => link.textContent?.trim() === "LOG IN");
     const automation = links.find(link => link.textContent?.includes("PIXEL AGENT AUTOMATION"));
@@ -45,14 +50,12 @@ describe("ProfessionalHome entry actions", () => {
     expect(automation?.className).toContain("home-module--automation");
   });
 
-  it("turns LOG IN into START WORK after authentication", () => {
+  it("keeps the authenticated header to one menu control", () => {
     authState.isAuthenticated = true;
     act(() => root.render(<ProfessionalHome />));
 
-    const links = Array.from(container.querySelectorAll("a"));
-    const startWork = links.find(link => link.textContent?.trim() === "START WORK");
-
-    expect(startWork?.getAttribute("href")).toContain("/business");
+    expect(container.querySelector(".home-start-link")).toBeNull();
+    expect(container.querySelector(".home-menu-button")).not.toBeNull();
     expect(container.textContent).not.toContain("LOG IN");
   });
 });

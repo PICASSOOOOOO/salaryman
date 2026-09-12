@@ -5,12 +5,8 @@ import { ArrowLeft, X, Menu, MoreHorizontal } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
-import { usePlan } from '../hooks/use-plan';
-import { useOrg } from '../hooks/use-org';
-import { useAlpha } from '../hooks/use-alpha';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
-import { apiFetch } from '@/lib/api-client';
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
