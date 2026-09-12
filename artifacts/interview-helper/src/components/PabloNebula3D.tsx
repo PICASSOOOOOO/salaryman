@@ -99,6 +99,17 @@ function webglAvailable(): boolean {
   } catch { return false; }
 }
 
+function prefersLightweightRendering(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & {
+    deviceMemory?: number;
+    connection?: { saveData?: boolean };
+  };
+  return nav.connection?.saveData === true
+    || (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4)
+    || (typeof nav.deviceMemory === "number" && nav.deviceMemory <= 4);
+}
+
 function NebulaFallback2D({ status, size, variant, animate = true }: { status: NebulaStatus; size: number; variant: NebulaVariant; animate?: boolean }) {
   const c = variant.fallback[status] ?? variant.fallback.idle;
   const pulseSpeed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
@@ -107,7 +118,7 @@ function NebulaFallback2D({ status, size, variant, animate = true }: { status: N
       <div style={{
         position: "absolute", inset: 0, borderRadius: "50%",
         background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
-        filter: "blur(2px)",
+        filter: animate ? "blur(2px)" : "none",
         // When the user has prefers-reduced-motion the orb is fully static —
         // otherwise we'd be honoring "reduce motion" by swapping a moving
         // shader for a slightly slower-moving CSS pulse, which isn't really
@@ -333,6 +344,7 @@ export function PabloNebula3D({
 }) {
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
   const [lowGfx] = useLowGfx();
+  const [lowPowerDevice, setLowPowerDevice] = useState(false);
   // Latched once the GPU drops the WebGL context. Without this we used to just
   // preventDefault() and warn — the canvas stayed black forever and the user
   // lost the entire intro screen ("screen goes black" bug). Now we permanently
@@ -344,6 +356,7 @@ export function PabloNebula3D({
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
     setHasWebGL(webglAvailable());
+    setLowPowerDevice(prefersLightweightRendering());
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReduceMotion(mq.matches);
@@ -373,11 +386,11 @@ export function PabloNebula3D({
     return window.innerWidth < 640 ? [1, 1.25] : [1, 2];
   }, []);
 
-  if (hasWebGL === false || contextLost || reduceMotion || lowGfx) {
+  if (hasWebGL === false || contextLost || reduceMotion || lowGfx || lowPowerDevice) {
     // When the user has prefers-reduced-motion the fallback orb stops pulsing
     // entirely — otherwise we'd be replacing one moving thing with another,
     // which doesn't actually honor the OS preference.
-    return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion} />;
+    return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion && !lowPowerDevice} />;
   }
   if (hasWebGL === null) {
     return <div style={{ width: size, height: size }} />;

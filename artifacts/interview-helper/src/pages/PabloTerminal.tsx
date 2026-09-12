@@ -1982,7 +1982,7 @@ function PabloTerminalAuthed() {
 
   return (
     <div
-      className={`fixed left-0 top-0 z-50 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}`}
+      className={`pablo-terminal fixed left-0 top-0 z-50 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}`}
       style={{
         // Brand-toned base. Used to be near-black (#0a0a14 → #000), which
         // turned the whole page into a "black screen" on iOS Safari whenever
@@ -2296,7 +2296,7 @@ function PabloTerminalAuthed() {
       {mode === "text" && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
-          className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
+          className="pablo-text-form absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
           data-testid="pablo-text-form"
         >
@@ -2309,14 +2309,14 @@ function PabloTerminalAuthed() {
                 : interviewPhaseRef.current === 'asking-email' ? "Type your email"
                 : "Type a message…"
             }
-            className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+            className="min-w-0 flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
             autoFocus
             data-testid="pablo-text-input"
           />
           <button
             type="submit"
             disabled={!textInput.trim() || status === "thinking"}
-            className="mobile-tap-target px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
+            className="mobile-tap-target w-11 shrink-0 px-2 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
             aria-label="Send"
             data-testid="pablo-text-send"
           >
