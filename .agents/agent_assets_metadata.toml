@@ -1486,28 +1486,28 @@ content_type = "image/jpeg"
 id = "W9uyb8_mMeSeGjrjltyTl"
 uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-trailer.mp4"
 type = "video"
-title = "Final furnished office trailer"
-description = "Latest 42-second cut with varied character sheets, real workstation furniture, desks, PCs, chairs, cubicle dividers, movement, and CALL HOME soundtrack."
+title = "Updated workstation trailer"
+description = "Latest 42-second office cut with corrected desk-mounted computers, varied character sheets, desks, chairs, cubicle structure, movement, and CALL HOME soundtrack."
 logical_id = "66ad0a22-b385-4ee0-bae6-9f234da113d1"
-content_hash = "sha256:63b7585a41bc12141662268d77c501c8193a4c402c0c698f82feef6d3bfffbdc"
-size = 2311406
-mtime_ms = 1789220049808
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/c5202bd5-5205-49ff-a29a-523214c26d2f"
-storage_version_token = "1789220188425215"
+content_hash = "sha256:ee4e9652ddfca568f17a674505d2b1decdc07cd1a1c1514677bdf14991e592f3"
+size = 2330520
+mtime_ms = 1789220349172
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/ae49bbe3-c88d-477d-bdc3-e5089db02929"
+storage_version_token = "1789220524702144"
 content_type = "video/mp4"
 
 [[outputs]]
 id = "dFCanmxDxhv3Ac4W76chA"
 uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-walk-phone.mp4"
 type = "video"
-title = "Furnished office example: walk to phone"
-description = "Latest raw gameplay segment with distinct roster characters, workstation desks, PCs, chairs, and cubicle divider runs."
+title = "Corrected workstation example"
+description = "Raw gameplay showing monitors positioned on the desk surfaces, distinct characters, chairs, and cubicle divider runs."
 logical_id = "a8177bb8-16c0-4b58-b917-461b30086258"
-content_hash = "sha256:ee075b83803b09c5dcf1f033f7941fe04de7210dbc7000bba2965f222c29e615"
-size = 456215
-mtime_ms = 1789220111109
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a8177bb8-16c0-4b58-b917-461b30086258/e6a01774-1207-407f-b577-25cbdfad2698"
-storage_version_token = "1789220185815284"
+content_hash = "sha256:97883fed6fd7e165e678e5715f17f60d2faae41d2a9737eb1e5420592532880a"
+size = 459018
+mtime_ms = 1789220412224
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a8177bb8-16c0-4b58-b917-461b30086258/976d5bf8-db42-4e7f-ab51-8aaa78820f69"
+storage_version_token = "1789220523649258"
 content_type = "video/mp4"
 
 [[outputs]]

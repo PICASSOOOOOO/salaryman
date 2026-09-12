@@ -373,10 +373,13 @@ class SolarPunkRenderer:
                 pygame.draw.rect(self.screen, (82, 104, 100), panel, border_radius=3)
                 pygame.draw.line(self.screen, (154, 181, 156), panel.topleft, panel.topright, max(1, int(2 * scale)))
 
-        for desk_position, chair_position, pc_position, chair_style in layout:
+        for desk_position, chair_position, _pc_position, chair_style in layout:
             desk_screen = screen_position(desk_position)
             chair_screen = screen_position(chair_position)
-            pc_screen = screen_position(pc_position)
+            # PC_FRONT_ON is a tabletop asset. Anchor it to the desk rather
+            # than treating it as a floor prop; the previous -100 world-unit
+            # offset left the monitor visibly floating above the workstation.
+            pc_screen = screen_position((desk_position[0], desk_position[1] - 30))
             depth = max(0.72, min(1.28, 0.72 + (desk_screen[1] - 68) / 520 * 0.56))
             chair_asset = (
                 "furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png"
