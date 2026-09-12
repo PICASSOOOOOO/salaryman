@@ -107,11 +107,16 @@ class TowerScene:
         return (x + width // 2, y + height // 2)
 
     def move(self, dx: int, dy: int) -> None:
-        """Move the player inside the current floor's physical bounds."""
+        """Move inside floor bounds while respecting solid office objects."""
         x, y, width, height = self.floor_bounds
-        px = min(max(self.player_position[0] + dx, x + 250), x + width - 250)
-        py = min(max(self.player_position[1] + dy, y + 250), y + height - 250)
-        self.player_position = (px, py)
+        current_x, current_y = self.player_position
+        candidate_x = min(max(current_x + dx, x + 250), x + width - 250)
+        if not self._collides_with_object((candidate_x, current_y)):
+            current_x = candidate_x
+        candidate_y = min(max(current_y + dy, y + 250), y + height - 250)
+        if not self._collides_with_object((current_x, candidate_y)):
+            current_y = candidate_y
+        self.player_position = (current_x, current_y)
         # The lobby is the whole-world fallback room, so it contains every
         # office as well. Prefer the smallest physical room that contains the
         # player; otherwise any movement inside an office immediately snapped
@@ -128,6 +133,23 @@ class TowerScene:
             ).id
         elif next((room for room in self.rooms if room.id == "lobby"), None) is not None:
             self.current_room = "lobby"
+
+    def _collides_with_object(self, position: tuple[int, int]) -> bool:
+        """Use simple axis-aligned footprints so movement slides around props."""
+        player_half_width, player_half_height = (90, 90)
+        for item in self.objects.objects:
+            if item.room != self.current_room:
+                continue
+            object_half_width, object_half_height = item.collision_half_extents
+            if object_half_width <= 0 or object_half_height <= 0:
+                continue
+            object_x, object_y = item.visual_position
+            if (
+                abs(position[0] - object_x) <= player_half_width + object_half_width
+                and abs(position[1] - object_y) <= player_half_height + object_half_height
+            ):
+                return True
+        return False
 
     def set_motion_input(self, x: float, y: float) -> None:
         """Set a bounded input vector received from the Godot renderer."""

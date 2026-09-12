@@ -58,15 +58,28 @@ def move_toward_target(
     return False
 
 
-def draw_trailer_action(screen: pygame.Surface, renderer: SolarPunkRenderer, phase: int) -> None:
+def draw_trailer_action(
+    screen: pygame.Surface,
+    renderer: SolarPunkRenderer,
+    phase: int,
+    *,
+    executive_focus: bool = False,
+) -> None:
     """Add a restrained shot label so each real interaction reads in a trailer."""
     labels = (
-        ("EXECUTIVE OFFICE", "WINDOW / SINGLE WORKSTATION"),
-        ("PHONE / CALLL HOME", "TELEPHONE READY / PHONE CENTER"),
-        ("TERMINAL / OFFICE RECORD", "CRT TERMINAL / LIVE OBJECT"),
-        ("BREAK / REST", "SHORT BREAK / RECOVERING"),
-        ("NPC HUDDLE / MARA VOSS", "TEAM CONVERSATION / SHIFT READY"),
-        ("SLEEP / RECOVER", "REST POSITION / SLEEP MODE"),
+        (
+            ("EXECUTIVE OFFICE", "WINDOW / SINGLE WORKSTATION"),
+            ("TERMINAL ACCESS", "OFFICE RECORD / TOOLS INTERFACE"),
+        )
+        if executive_focus
+        else (
+            ("EXECUTIVE OFFICE", "WINDOW / SINGLE WORKSTATION"),
+            ("PHONE / CALLL HOME", "TELEPHONE READY / PHONE CENTER"),
+            ("TERMINAL / OFFICE RECORD", "CRT TERMINAL / LIVE OBJECT"),
+            ("BREAK / REST", "SHORT BREAK / RECOVERING"),
+            ("NPC HUDDLE / MARA VOSS", "TEAM CONVERSATION / SHIFT READY"),
+            ("SLEEP / RECOVER", "REST POSITION / SLEEP MODE"),
+        )
     )
     title, subtitle = labels[phase]
     card = pygame.Rect(38, 88, 360, 56)
@@ -103,12 +116,15 @@ def main() -> int:
     frame_count = max(1, int(args.seconds * args.fps))
     delta = 1.0 / args.fps
     phase_targets = (
-        (("executive", (1_800, 6_250), "EXECUTIVE OFFICE / WINDOW", None),)
+        (
+            ("executive", (2_200, 6_400), "EXECUTIVE OFFICE / WINDOW", None),
+            ("executive", (2_200, 6_400), "TERMINAL ACCESS / OFFICE RECORD", "executive-crt"),
+        )
         if args.executive_office
         else (
             ("executive", (1_800, 6_250), "SHIFT START / OFFICE LIVE", None),
             ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME", "executive-telephone"),
-            ("executive", (2_100, 6_250), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
+            ("executive", (2_200, 6_400), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
             ("executive", (1_800, 6_600), "BREAK / REST POSITION", "executive-chair"),
             ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS", None),
             ("executive", (1_800, 6_600), "SLEEP MODE / RECOVERING", "executive-chair"),
@@ -150,7 +166,7 @@ def main() -> int:
                     scene.interact(state, object_id=object_id)
                 action_done = True
             renderer.draw_tower(state, scene)
-            draw_trailer_action(screen, renderer, phase)
+            draw_trailer_action(screen, renderer, phase, executive_focus=args.executive_office)
             pygame.image.save(screen, frames / f"frame-{frame:05d}.png")
 
         subprocess.run(

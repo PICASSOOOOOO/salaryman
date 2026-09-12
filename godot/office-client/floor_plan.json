@@ -70,7 +70,7 @@
       "bounds": [900, 5200, 1800, 2200],
       "accent": [112, 83, 115],
       "material": "office_1",
-      "spawn": [1800, 6650]
+      "spawn": [2200, 6400]
     },
     {
       "id": "public",

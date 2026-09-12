@@ -84,6 +84,20 @@ class PygameSpatialTests(unittest.TestCase):
 
         self.assertEqual(scene.current_room, "executive")
 
+    def test_executive_desk_blocks_crossing_but_terminal_stays_reachable(self):
+        state = OfficeState.with_default_roster()
+        scene = build_tower_scene()
+        scene.select_room("executive")
+        scene.player_position = (2_200, 6_400)
+
+        scene.move(-100, 0)
+
+        self.assertEqual(scene.player_position, (2_200, 6_400))
+        result = scene.interact(state)
+        self.assertTrue(result.success)
+        self.assertEqual(result.route, "office-record")
+        self.assertEqual(state.active_page, "tools")
+
     def test_npc_routes_advance_without_player_input(self):
         scene = build_tower_scene()
         scene.select_room("executive")

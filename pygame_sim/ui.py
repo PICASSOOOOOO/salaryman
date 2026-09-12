@@ -233,7 +233,7 @@ class SolarPunkRenderer:
         for item in scene.objects.objects:
             if item.room != scene.current_room:
                 continue
-            ix, iy = point(item.position)
+            ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
             self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
             if item == scene.nearby_object:

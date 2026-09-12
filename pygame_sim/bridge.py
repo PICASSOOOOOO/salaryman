@@ -213,6 +213,8 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "room": item.room,
                     "x": item.position[0],
                     "y": item.position[1],
+                    "displayX": item.visual_position[0],
+                    "displayY": item.visual_position[1],
                     "interactive": item.interactive,
                     "nearby": item == scene.nearby_object,
                 }

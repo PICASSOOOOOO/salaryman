@@ -16,3 +16,9 @@ The attached office-management prototypes are reference material only: take usef
 **Why:** Replacing the established office surface with a parallel prototype would risk losing the tested wage, break, ledger, and tower behavior; optional desks are easier to evaluate and remove.
 
 **How to apply:** Integrate new office workflows behind explicit UI state or controls, and preserve the existing workfloor path until the replacement is intentionally approved.
+
+Physical props also need two coordinate concepts: an interaction anchor for proximity/actions and a visual anchor for where the sprite is drawn. Desk and chair footprints own movement collision; tabletop props such as terminals, phones, and lamps should not become separate floor obstacles.
+
+**Why:** Using one floor coordinate for both concerns put the player on top of the desk, made monitors appear to sit on the floor, and trapped the executive spawn inside the chair when solid collision was added.
+
+**How to apply:** Give tabletop props a display position, keep their interaction point reachable from the open side of the desk, and place every room spawn outside solid footprints.

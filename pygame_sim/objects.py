@@ -62,6 +62,31 @@ class OfficeObject:
     destination_floor: int | None = None
     destination_room: str | None = None
     interactive: bool = True
+    display_position: tuple[int, int] | None = None
+
+    @property
+    def visual_position(self) -> tuple[int, int]:
+        return self.display_position or self.position
+
+    @property
+    def collision_half_extents(self) -> tuple[int, int]:
+        """Return the solid footprint in world units; tabletop props use zero."""
+        return {
+            "desk": (300, 150),
+            "chair": (180, 130),
+            "window": (220, 90),
+            "atm": (150, 180),
+            "vending_machine": (150, 180),
+            "elevator": (0, 0),
+            "stairs": (0, 0),
+            "door": (0, 0),
+            "telephone": (0, 0),
+            "crt_terminal": (0, 0),
+            "desk_lamp": (0, 0),
+            "pay_phone": (100, 100),
+            "tv": (140, 100),
+            "arcade": (140, 160),
+        }.get(self.kind, (120, 120))
 
 
 @dataclass
@@ -226,13 +251,38 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("executive-stairs", "stairs", "STAIRS", "executive", (2_500, 6_400), "RETURN TO HALLWAY"),
         OfficeObject("executive-desk", "desk", "CORNER DESK", "executive", (1_800, 6_250), "USE EXECUTIVE DESK"),
         OfficeObject("executive-chair", "chair", "CHAIR", "executive", (1_800, 6_600), "SIT / REST"),
-        OfficeObject("executive-crt", "crt_terminal", "CRT TERMINAL", "executive", (1_800, 6_220), "OPEN OFFICE RECORD"),
-        OfficeObject("executive-telephone", "telephone", "TELEPHONE", "executive", (1_400, 6_250), "OPEN PHONE CENTER"),
+        OfficeObject(
+            "executive-crt",
+            "crt_terminal",
+            "CRT TERMINAL",
+            "executive",
+            (2_200, 6_400),
+            "OPEN OFFICE RECORD",
+            display_position=(1_800, 6_220),
+        ),
+        OfficeObject(
+            "executive-telephone",
+            "telephone",
+            "TELEPHONE",
+            "executive",
+            (1_400, 6_250),
+            "OPEN PHONE CENTER",
+            display_position=(1_650, 6_220),
+        ),
         OfficeObject("executive-atm", "atm", "ATM", "executive", (2_700, 6_150), "CHECK BANCO OMBRA"),
         OfficeObject("executive-vending", "vending_machine", "VENDING", "executive", (2_700, 6_950), "BUY OFFICE SUPPLIES"),
         OfficeObject("executive-window-west", "window", "WEST WINDOW", "executive", (1_400, 5_750), "LOOK OUT"),
         OfficeObject("executive-window-east", "window", "EAST WINDOW", "executive", (2_800, 5_750), "LOOK OUT"),
-        OfficeObject("executive-desk-lamp", "desk_lamp", "DESK LAMP", "executive", (1_900, 6_100), "USE DESK LAMP", interactive=False),
+        OfficeObject(
+            "executive-desk-lamp",
+            "desk_lamp",
+            "DESK LAMP",
+            "executive",
+            (1_900, 6_220),
+            "USE DESK LAMP",
+            interactive=False,
+            display_position=(1_900, 6_220),
+        ),
         OfficeObject("office4-elevator", "elevator", "ELEVATOR", "public", (3_200, 6_400), "RETURN TO HALLWAY", destination_floor=1),
         OfficeObject("office4-stairs", "stairs", "STAIRS", "public", (4_600, 6_400), "RETURN TO HALLWAY"),
         OfficeObject("office4-desk", "desk", "WORK DESK", "public", (3_900, 6_250), "USE WORK DESK"),
