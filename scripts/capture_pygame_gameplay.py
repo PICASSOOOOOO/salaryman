@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from math import hypot
 from pathlib import Path
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -35,18 +36,21 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def input_for_frame(frame: int, fps: int) -> tuple[float, float]:
-    """Walk short, readable paths between the office's live objects."""
-    second = frame / fps
-    if second < 4.0:
-        return (1.0, 0.0)
-    if second < 8.0:
-        return (0.0, 1.0)
-    if second < 12.0:
-        return (-1.0, 0.0)
-    if second < 16.0:
-        return (0.0, -1.0)
-    return (0.0, 0.0)
+def move_toward_target(
+    scene,
+    target: tuple[int, int],
+    *,
+    stop_radius: float = 90.0,
+) -> bool:
+    """Drive the real movement loop toward a shot target without teleporting."""
+    dx = target[0] - scene.player_position[0]
+    dy = target[1] - scene.player_position[1]
+    distance = hypot(dx, dy)
+    if distance <= stop_radius:
+        scene.set_motion_input(0.0, 0.0)
+        return True
+    scene.set_motion_input(dx / distance, dy / distance)
+    return False
 
 
 def draw_trailer_action(screen: pygame.Surface, renderer: SolarPunkRenderer, phase: int) -> None:
@@ -93,6 +97,16 @@ def main() -> int:
     renderer = SolarPunkRenderer(screen)
     frame_count = max(1, int(args.seconds * args.fps))
     delta = 1.0 / args.fps
+    phase_targets = (
+        ("executive", (1_800, 6_250), "SHIFT START / OFFICE LIVE", None),
+        ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME", "executive-telephone"),
+        ("executive", (2_100, 6_250), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
+        ("executive", (1_800, 6_950), "BREAK / REST POSITION", "executive-chair"),
+        ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS", None),
+        ("executive", (1_800, 6_950), "SLEEP MODE / RECOVERING", "executive-chair"),
+    )
+    active_phase = -1
+    action_done = False
 
     with tempfile.TemporaryDirectory(prefix="salaryman-capture-") as temp_dir:
         frames = Path(temp_dir)
@@ -101,34 +115,30 @@ def main() -> int:
             # Keep the trailer inside the furnished office slice. Each phase
             # centers the real player on a live object or teammate, then lets
             # the renderer show the interaction prompt and office context.
-            phase = int(second // 7) % 6
-            phase_targets = (
-                ("executive", (1_800, 6_650), "SHIFT START / OFFICE LIVE"),
-                ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME"),
-                ("executive", (2_100, 6_250), "CRT TERMINAL / OFFICE RECORD"),
-                ("executive", (1_800, 6_950), "BREAK / REST POSITION"),
-                ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS"),
-                ("executive", (2_150, 6_900), "SLEEP MODE / RECOVERING"),
-            )
-            room_id, target, notice = phase_targets[phase]
-            if frame % int(7 * args.fps) == 0:
-                scene.select_room(room_id)
-                scene.player_position = target
+            phase = min(len(phase_targets) - 1, int(second // 7))
+            room_id, target, notice, object_id = phase_targets[phase]
+            if phase != active_phase:
+                active_phase = phase
+                action_done = False
+                if scene.current_room != room_id:
+                    scene.select_room(room_id)
                 scene.set_motion_input(0.0, 0.0)
                 if state.active_page is not None:
                     state.close_page()
                 state.notice = notice
-                if phase == 1:
-                    scene.interact(state, object_id="executive-telephone")
-                elif phase == 2:
-                    scene.interact(state, object_id="executive-crt")
-                elif phase == 3:
-                    state.start_break("short")
-                elif phase == 5:
-                    state.notice = "SLEEP MODE / RECOVERING"
-            scene.set_motion_input(0.0, 0.0)
+            arrived = move_toward_target(scene, target)
             scene.update_motion(delta)
             state.update(delta)
+            if arrived and not action_done:
+                if phase == 3:
+                    state.start_break("short")
+                elif phase == 4:
+                    state.notice = "TEAM HUDDLE / MARA VOSS"
+                elif phase == 5:
+                    state.notice = "SLEEP MODE / RECOVERING"
+                elif object_id is not None:
+                    scene.interact(state, object_id=object_id)
+                action_done = True
             renderer.draw_tower(state, scene)
             draw_trailer_action(screen, renderer, phase)
             pygame.image.save(screen, frames / f"frame-{frame:05d}.png")
