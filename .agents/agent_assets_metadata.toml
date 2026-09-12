@@ -1486,14 +1486,14 @@ content_type = "image/jpeg"
 id = "W9uyb8_mMeSeGjrjltyTl"
 uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-trailer.mp4"
 type = "video"
-title = "Final fast gameplay trailer"
-description = "36-second fast-cut trailer made from the actual Pygame runtime, with four center workstations, desk-mounted computers, chairs, windows, terminal access, NPC movement, and CALL HOME soundtrack."
+title = "Updated one-lamp-per-desk trailer"
+description = "36-second fast gameplay trailer from the actual Pygame runtime. The executive room now shows only four desk/computer/chair setups with one lamp per desk."
 logical_id = "66ad0a22-b385-4ee0-bae6-9f234da113d1"
-content_hash = "sha256:306c9f1fac837bd9b1106c9de092156cb2839de200312f151eacbd5f76e72100"
-size = 2157986
-mtime_ms = 1789223466840
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/83f69a06-8d6b-4d3b-bddd-799cdf7fc255"
-storage_version_token = "1789223723227703"
+content_hash = "sha256:0e12d1813778983ac2da90635072d03859c875ed8f86fcba902e3e25317c9ca6"
+size = 2072392
+mtime_ms = 1789227569675
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/35bec97c-ae40-4268-bb75-95827cef77f5"
+storage_version_token = "1789227760358320"
 content_type = "video/mp4"
 
 [[outputs]]
@@ -1556,28 +1556,28 @@ content_type = "video/mp4"
 id = "unm2RZZGw23yZTKKjVBcp"
 uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-workstations.mp4"
 type = "video"
-title = "Fast gameplay: four workstations"
-description = "Six-second raw gameplay beat showing the four center desk, computer, and chair setups with real NPC movement."
+title = "Updated workstation gameplay clip"
+description = "Six-second raw gameplay clip showing the clean office workstation layout with chairs positioned in front of the desks."
 logical_id = "12f3f999-fab2-4d4d-a40f-7d01d4c08326"
-content_hash = "sha256:e1833c517e887c40a668c333d1cc468d0551d91f29993d3d96e7abc8a8d18ac0"
-size = 150156
-mtime_ms = 1789223510080
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/12f3f999-fab2-4d4d-a40f-7d01d4c08326/e6057157-d3cc-4b7e-a7f8-b61b46f72c26"
-storage_version_token = "1789223720503717"
+content_hash = "sha256:84ed0e7646d6a533a6dbef5289598e94978fe2d9abdcb6badf920c12cabd601e"
+size = 148684
+mtime_ms = 1789227614858
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/12f3f999-fab2-4d4d-a40f-7d01d4c08326/fca6eeb3-dc3c-4faa-a581-a2ad6f51c0c2"
+storage_version_token = "1789227761338548"
 content_type = "video/mp4"
 
 [[outputs]]
 id = "jq4QS_ibrAQa6nB4Eo87f"
 uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-terminal.mp4"
 type = "video"
-title = "Fast gameplay: terminal access"
-description = "Six-second raw gameplay beat showing the live terminal interaction and office tools interface."
+title = "Updated terminal gameplay clip"
+description = "Six-second raw gameplay clip showing terminal access without hidden props blocking movement or HUD prompts."
 logical_id = "ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56"
-content_hash = "sha256:504cc9e2da17054c42f4051f668f5e828dddeff33c89997d081590dc5293c4f1"
-size = 107887
-mtime_ms = 1789223510616
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56/53d42874-d347-465e-856e-75b43842dd63"
-storage_version_token = "1789223721281449"
+content_hash = "sha256:c9b1dc30bd6efbc2eaca965066d731e5a80a8602166eda6efd6af4aba7eb805b"
+size = 100759
+mtime_ms = 1789227615398
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56/0daa0e89-2379-4883-b084-18d9312470c3"
+storage_version_token = "1789227762605237"
 content_type = "video/mp4"
 
 [[outputs]]
