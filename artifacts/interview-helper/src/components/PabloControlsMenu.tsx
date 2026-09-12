@@ -76,11 +76,11 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
+        className="pablo-header-action app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
       >
         <SlidersHorizontal className="app-control-icon" aria-hidden />
         <span className="hidden min-[520px]:inline">SETTINGS</span>
-        <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
+        <ChevronDown className={`pablo-controls-chevron h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
       {open && (

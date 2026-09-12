@@ -2041,7 +2041,7 @@ function PabloTerminalAuthed() {
            On desktop, the global alpha warning occupies the top strip, so
            reserve that strip here rather than hiding the controls behind it. */}
       <header
-        className="relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:mt-12 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
+         className="pablo-header relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:mt-12 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
           // header below that so its logo + buttons don't collide with them.
@@ -2103,9 +2103,10 @@ function PabloTerminalAuthed() {
               data-testid="pablo-sign-in"
                 className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work in the terminal"
+                aria-label="Start work in the terminal"
             >
               <LogIn className="w-3 h-3" />
-               START WORK
+                <span className="pablo-start-work-label">START WORK</span>
             </button>
           )}
           {!isLoading && isAuthenticated && (
@@ -2115,9 +2116,10 @@ function PabloTerminalAuthed() {
               data-testid="pablo-enter-tower"
               className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work in the terminal"
+               aria-label="Start work in the terminal"
             >
               <LogIn className="w-3 h-3" />
-              START WORK
+               <span className="pablo-start-work-label">START WORK</span>
             </button>
           )}
            <button
@@ -2143,9 +2145,10 @@ function PabloTerminalAuthed() {
             data-testid="pablo-mode-toggle"
               className="app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
             title={mode === "text" ? "Switch to voice" : "Switch to text"}
+             aria-label={mode === "text" ? "Switch to voice" : "Switch to text"}
           >
             {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-            {mode === "text" ? "VOICE" : "TEXT"}
+             <span className="pablo-mode-label">{mode === "text" ? "VOICE" : "TEXT"}</span>
           </button>
           {/* No exit X — the SALARYMAN logo is the only authenticated exit,
               and the primary work handoff goes through the physical Tower. */}

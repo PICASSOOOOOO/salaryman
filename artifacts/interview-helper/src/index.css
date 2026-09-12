@@ -289,6 +289,42 @@ body:not(.game-route) .rounded-lg {
     }
   }
 
+  /* Very small phones cannot fit the Pablo wordmark plus four controls with
+     readable labels. Keep every action available and discoverable through its
+     title/aria-label, but use the icons as the compact visual language. */
+  @media (max-width: 359px) {
+    .pablo-header {
+      gap: 0.25rem;
+      padding-inline: 0.25rem;
+    }
+
+    .pablo-brand-wordmark,
+    .pablo-start-work-label,
+    .pablo-mode-label {
+      display: none;
+    }
+
+    .pablo-header > .flex.items-center.gap-1\.5 {
+      gap: 0.25rem;
+    }
+
+    .pablo-header-action.mobile-tap-target {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-controls-menu > .pablo-header-action {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-controls-chevron {
+      display: none;
+    }
+  }
+
   @media (max-width: 420px) {
     .pablo-brand-wordmark {
       display: none;
