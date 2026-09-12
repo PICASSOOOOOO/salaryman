@@ -46,6 +46,7 @@
 - [Pygame spatial object boundary](pygame-spatial-objects.md) — standalone tower objects are registry data and route through OfficeState; keep persistence/web inventory sync as a separate boundary.
 - [Desktop office camera](desktop-office-camera.md) — Pygame office uses a straight top-down camera with square office flooring; never describe or redraw it as diagonal isometric.
 - [Pygame character grounding](pygame-character-grounding.md) — use one sprite scale/baseline for player and NPCs, clip room actors between the header beam and footer, and reserve offsets for intentional actions only.
+- [Pygame idle sleep](pygame-idle-sleep.md) — the authoritative scene sleeps the player after five minutes fully stopped; movement input or bridge movement wakes and resets the timer.
 - [Office ambient bed](office-ambient-bed.md) — /office's own quiet bed (startOfficeAmbient), gated via shared `_musicVol` chokepoint; transient swell/chime voices MUST be tracked or they ring ~11s + leak after stop.
 - [Pablo Radio global station](pablo-radio-global.md) — exactly one app-wide Call Home player serves all non-phone routes; HUDs and settings only change shared radio state.
 - [Marketplace bot roster](marketplace-bot-roster.md) — CURATED to 9 bots (pablo-assistant/claw-bot/rick-underboss/prompt-sensei/finance-tracker/music-bot/social-media-bot/movie-bot/research-bot); access gate = isOwnerEmail||isActiveDeveloperOrgMember (NOT claw_bot PRIME); seed deactivates removed entries, never deletes bot rows.
