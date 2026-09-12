@@ -8,7 +8,7 @@ export default function TermsOfService() {
       </div>
 
       <h2>1. About PICASSO AI LLC &amp; SALARYMAN</h2>
-      <p>SALARYMAN is a professional intelligence platform developed and operated by <strong>PICASSO AI LLC</strong>. The platform provides AI-powered tools including live listening, screen scanning, ghost typing, AI agents, a phone system (Calll Home), a CRM, cosmetic store, and related services (collectively, the "Service").</p>
+      <p>SALARYMAN is a professional intelligence platform developed and operated by <strong>PICASSO AI LLC</strong>. The platform provides AI-powered tools including live listening, screen scanning, ghost typing, AI agents, CALLL HOME, a CRM, cosmetic store, and related services (collectively, the "Service").</p>
 
       <h2>2. Eligibility</h2>
       <p>You must be at least 13 years of age to use SALARYMAN. If you are under 18, you must have parental or guardian consent. By accessing the Service you represent and warrant that you meet these requirements. Certain features — including purchasing FIAT (ƒ) virtual currency, Passport, and physical merchandise — require you to be at least 18 years old or have verifiable parental consent.</p>
@@ -24,7 +24,7 @@ export default function TermsOfService() {
         <li>Attempt to gain unauthorized access to any part of the Service or its related systems</li>
         <li>Use the AI tools to generate content that is defamatory, harassing, or fraudulent</li>
         <li>Reverse engineer, decompile, or disassemble any portion of the Service</li>
-        <li>Use the phone system (Calll Home) to make unauthorized or illegal calls</li>
+        <li>Use CALLL HOME to make unauthorized or illegal calls</li>
         <li>Violate any third-party rights including intellectual property rights</li>
       </ul>
 

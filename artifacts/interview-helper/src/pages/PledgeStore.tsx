@@ -225,7 +225,7 @@ export default function PledgeStore() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Equip your empire.</h1>
           <p className="text-zinc-400 text-sm max-w-xl mx-auto leading-relaxed">
-          Buy the services that power your SALARYMAN operation: Phone System access, a custom phone number, or PABLO PRIME. In-world advantages are earned or purchased with FIAT (ƒ) from the game economy.
+          Buy the services that power your SALARYMAN operation: CALLL HOME access, a custom phone number, or PABLO PRIME. In-world advantages are earned or purchased with FIAT (ƒ) from the game economy.
           </p>
         </div>
 

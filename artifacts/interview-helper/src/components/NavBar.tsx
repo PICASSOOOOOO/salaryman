@@ -41,7 +41,12 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
 
   const directLinks = [
     { label: 'PABLO AI', path: '/pablo', icon: Sparkles },
-    { label: 'CALLL HOME', path: '/phone', icon: Phone },
+    {
+      label: 'CALLL HOME',
+      path: '/phone',
+      icon: Phone,
+      logoSrc: `${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`,
+    },
     { label: 'APP DOWNLOAD', path: '/desktop', icon: Download },
   ];
 
@@ -181,7 +186,15 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
                     : 'border-[#CFC6B7] bg-[#FFFCF5] text-black hover:bg-[#EEE8DC]'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                {item.logoSrc ? (
+                  <img
+                    src={item.logoSrc}
+                    alt=""
+                    className="h-5 w-[4.25rem] object-contain object-left invert"
+                  />
+                ) : (
+                  <Icon className="h-3.5 w-3.5" />
+                )}
                 {item.label}
               </button>
             );

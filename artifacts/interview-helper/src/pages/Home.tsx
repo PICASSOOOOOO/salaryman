@@ -899,7 +899,7 @@ export default function Home() {
             <Layers className="w-3.5 h-3.5 text-sky-400/70" />
             <div>
               <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "var(--font-sans)", color: 'rgba(56,189,248,0.7)' }}>THE SALARYMAN PLATFORM</span>
-              <span className="text-[9px] ml-2" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
+              <span className="text-[9px] ml-2" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + CALLL HOME</span>
             </div>
           </div>
           <button

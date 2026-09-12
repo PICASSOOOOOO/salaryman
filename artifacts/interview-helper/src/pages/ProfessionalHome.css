@@ -106,9 +106,23 @@ body.workspace-light .home-module--automation:active {
   animation: home-float 3.2s ease-in-out infinite;
 }
 
+.home-module-logo {
+  width: clamp(4.75rem, 18vw, 7.5rem);
+  height: clamp(2.35rem, 9vw, 3.75rem);
+  object-fit: contain;
+  object-position: left center;
+  filter: invert(1);
+  animation: home-float 3.2s ease-in-out infinite;
+}
+
+.home-module--automation .home-module-logo {
+  filter: none;
+}
+
 .home-module:nth-child(2) .home-module-icon { animation-delay: -0.8s; }
 .home-module:nth-child(3) .home-module-icon { animation-delay: -1.6s; }
 .home-module:nth-child(4) .home-module-icon { animation-delay: -2.4s; }
+.home-module:nth-child(3) .home-module-logo { animation-delay: -1.6s; }
 
 .home-signal {
   display: flex;

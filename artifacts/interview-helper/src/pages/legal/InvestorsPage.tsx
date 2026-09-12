@@ -240,7 +240,7 @@ export default function InvestorsPage() {
                 { label: "ECHO-7", desc: "Live AI listening & real-time coaching during calls and interviews" },
                 { label: "OPTIC-9", desc: "Screen scanner that reads context and delivers instant insights" },
                 { label: "VOX-4", desc: "Speech analysis and real-time coaching for cadence and clarity" },
-                { label: "TTC Phone System", desc: "AI-powered phone & SMS with call coaching and transcription" },
+                { label: "CALLL HOME", desc: "AI-powered phone & SMS with call coaching and transcription" },
                 { label: "CRM & Contacts", desc: "Intelligent contact management with AI-enhanced relationship context" },
                 { label: "Agent Team", desc: "Deployable AI agents for research, outreach, and intelligence tasks" },
                 { label: "Dark Room", desc: "Creative studio — graphics, copy, social, image production & video scripts" },

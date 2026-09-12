@@ -81,7 +81,7 @@ export default function PhoneNumbersPage() {
   };
 
   const purchaseNumber = async (phoneNumber: string) => {
-    if (!window.confirm(`Buy ${formatPhone(phoneNumber)} for $10 one-time?\n\nYour $95/month Phone System subscription includes calls and two-way SMS.`)) return;
+    if (!window.confirm(`Buy ${formatPhone(phoneNumber)} for $10 one-time?\n\nYour $95/month CALLL HOME subscription includes calls and two-way SMS.`)) return;
     setPurchasingNumber(phoneNumber);
     setSearchError('');
     try {
@@ -175,7 +175,7 @@ export default function PhoneNumbersPage() {
           <PhoneCardHeader><Search size={11} /> BUY A NUMBER</PhoneCardHeader>
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: '0.52rem', color: warning(0.9) }}>$10 ONE-TIME PER CUSTOM NUMBER</div>
-            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>The $95/month Phone System includes two-way SMS and a default platform toll-free number.</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>The $95/month CALLL HOME subscription includes two-way SMS and a default platform toll-free number.</div>
             {regionDefaults && (
               <div style={{ fontSize: '0.5rem', color: slate(0.55) }}>
                 Home realm: {regionDefaults.countryInfo.flag} {regionDefaults.countryInfo.region}

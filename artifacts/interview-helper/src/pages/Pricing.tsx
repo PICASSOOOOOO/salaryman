@@ -7,7 +7,7 @@ import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
 
 // Paid services are deliberately separate: Automation Pixel Agents and the
-// Twilio-backed Phone System each require their own USD subscription.
+// Twilio-backed CALLL HOME and Pixel Agent Automation each require their own USD subscription.
 const BOT_CATEGORIES = [
   { name: "CORE COMMAND", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
   { name: "THE ACADEMY", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
@@ -149,7 +149,7 @@ export default function Pricing() {
                     AUTOMATION PIXEL AGENTS
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
-                    A curated nine-agent automation workforce managed across four teams. Includes automation tools, bot chaining, and business workflows. The Twilio Phone System is billed separately.
+                    A curated nine-agent automation workforce managed across four teams. Includes automation tools, bot chaining, and business workflows. CALLL HOME is billed separately.
                   </p>
                 </div>
               </div>
@@ -224,7 +224,11 @@ export default function Pricing() {
                 <Phone className="w-6 h-6 text-sky-300" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-sky-300">TWILIO PHONE SYSTEM</h2>
+                <img
+                  src={`${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`}
+                  alt="CALLL HOME"
+                  className="h-10 w-32 object-contain object-left"
+                />
                 <p className="mt-1 text-xs text-slate-400 max-w-xl">
                   Business calling, SMS, phone numbers, call campaigns, recordings, and the AI secretary. Locked until this separate USD subscription is active.
                 </p>

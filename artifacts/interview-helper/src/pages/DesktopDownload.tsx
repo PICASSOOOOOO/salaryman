@@ -42,14 +42,14 @@ const platforms = [
 ] as const;
 
 const desktopFeatures = [
-  ["PABLO PRIME / PABLO AI", "Plan, decide, and move work forward with one assistant.", Bot, "/pablo"],
-  ["CALLL HOME", "Calls, shared numbers, routing, and remote conversations.", Phone, "/phone"],
-  ["CRM & SALES", "Keep customers, leads, and every relationship moving.", Users, "/business/contacts"],
-  ["AGENTS", "Put repeatable work into motion with automation.", Bot, "/bots"],
-  ["BUSINESS", "Run daily operations, teams, and company workflows.", BriefcaseBusiness, "/business"],
-  ["KNOWLEDGE", "Keep working files and company context in one place.", FileText, "/console/vault"],
-  ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/economy"],
-  ["SETTINGS", "Control identity, devices, audio, and desktop preferences.", Settings, "/settings"],
+  ["PABLO PRIME / PABLO AI", "Plan, decide, and move work forward with one assistant.", Bot, "/pablo", null],
+  ["CALLL HOME", "Calls, shared numbers, routing, and remote conversations.", Phone, "/phone", `${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`],
+  ["CRM & SALES", "Keep customers, leads, and every relationship moving.", Users, "/business/contacts", null],
+  ["AGENTS", "Put repeatable work into motion with automation.", Bot, "/bots", null],
+  ["BUSINESS", "Run daily operations, teams, and company workflows.", BriefcaseBusiness, "/business", null],
+  ["KNOWLEDGE", "Keep working files and company context in one place.", FileText, "/console/vault", null],
+  ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/economy", null],
+  ["SETTINGS", "Control identity, devices, audio, and desktop preferences.", Settings, "/settings", null],
 ] as const;
 
 type AvailablePlatform = Exclude<DesktopPlatform, "other">;
@@ -248,10 +248,18 @@ export default function DesktopDownload() {
           <p>Start in the browser, continue through the interactive desktop office, and keep the same business systems within reach.</p>
         </div>
         <div className="desktop-download-feature-grid">
-          {desktopFeatures.map(([title, description, Icon, href], index) => (
+          {desktopFeatures.map(([title, description, Icon, href, logoSrc], index) => (
             <Link href={href} className="desktop-download-feature" key={title}>
               <span>{String(index + 1).padStart(2, "0")}</span>
-              <Icon size={22} aria-hidden />
+              {logoSrc ? (
+                <img
+                  src={logoSrc}
+                  alt=""
+                  className="desktop-download-feature-logo"
+                />
+              ) : (
+                <Icon size={22} aria-hidden />
+              )}
               <h3>{title}</h3>
               <p>{description}</p>
               <b>OPEN <ArrowRight size={13} aria-hidden /></b>

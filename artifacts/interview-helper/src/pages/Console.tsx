@@ -250,10 +250,10 @@ export default function Console() {
             data-testid="console-open-phone"
             className="hidden items-center gap-1.5 rounded px-2 py-1 md:inline-flex"
             style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(110,231,183,0.95)', border: '1px solid rgba(110,231,183,0.32)', background: 'rgba(110,231,183,0.06)' }}
-            title="Open Phone System"
+            title="Open CALLL HOME"
           >
             <Radio className="w-3 h-3" />
-            PHONE SYSTEM
+            CALLL HOME
           </Link>
         <button
           type="button"
@@ -313,7 +313,7 @@ export default function Console() {
               onClick={() => setShowMobileActions(false)}
               className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-emerald-300 hover:bg-emerald-500/10"
             >
-              <Radio className="h-3 w-3" /> PHONE SYSTEM
+              <Radio className="h-3 w-3" /> CALLL HOME
             </Link>
             <button
               type="button"

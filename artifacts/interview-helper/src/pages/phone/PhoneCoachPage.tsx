@@ -43,7 +43,7 @@ export default function PhoneCoachPage() {
   const handleApiError = useCallback(async (r: Response, fallback: string) => {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
-      setError(d.error || 'Access denied — phone system subscription required.');
+      setError(d.error || 'Access denied — CALLL HOME subscription required.');
       navigate('/pricing');
       return true;
     }

@@ -489,6 +489,14 @@ body.workspace-light .desktop-download-signal-card {
   font-size: 19px;
 }
 
+.desktop-download-feature-logo {
+  width: 6.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  object-position: left center;
+  filter: invert(1);
+}
+
 .desktop-download-feature p {
   margin: 10px 0 24px;
   color: #64645c;

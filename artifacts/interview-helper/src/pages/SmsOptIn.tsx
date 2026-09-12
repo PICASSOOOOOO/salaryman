@@ -43,7 +43,7 @@ export default function SmsOptIn() {
             Enable SALARYMAN text messages
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400">
-            Receive important account, phone-system, and service updates by SMS from SALARYMAN.
+            Receive important account, CALLL HOME, and service updates by SMS from SALARYMAN.
             Message frequency varies based on your activity and settings.
           </p>
 

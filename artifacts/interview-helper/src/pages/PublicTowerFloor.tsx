@@ -267,14 +267,14 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
           </div>
           {panel === "terminal" && <div className="p-6 space-y-4">
              <img src={`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/public-terminal.png`} alt="Shadow Tower public terminal" className="mx-auto h-36 w-full max-w-sm object-contain [image-rendering:pixelated]" />
-             <p className="text-[10px] font-bold tracking-[.18em] text-zinc-500">PUBLIC CLASSIFIEDS · PHONE SYSTEMS · OPEN ACCESS</p>
+             <p className="text-[10px] font-bold tracking-[.18em] text-zinc-500">PUBLIC CLASSIFIEDS · CALLL HOME · OPEN ACCESS</p>
             <div className="border border-emerald-400/25 bg-emerald-400/5 p-4">
               <strong className="text-emerald-300">FREE PUBLIC COMPUTER ACCESS</strong>
-             <p className="text-xs text-zinc-500 mt-1">Browse Tower Life, use the work board, or open the phone system from any public terminal.</p>
+             <p className="text-xs text-zinc-500 mt-1">Browse Tower Life, use the work board, or open CALLL HOME from any public terminal.</p>
             </div>
              <div className="grid gap-2 sm:grid-cols-2">
                <Link href="/console" className="block w-full bg-cyan-300 text-black text-center font-black py-3 transition hover:bg-cyan-200 active:scale-[.99]">ALL SYSTEMS TERMINAL</Link>
-               <Link href="/phone?from=public-terminal" className="block w-full border border-emerald-300/50 bg-emerald-300/10 text-center font-black py-3 text-emerald-100 transition hover:bg-emerald-300/20 active:scale-[.99]">PHONE SYSTEM</Link>
+               <Link href="/phone?from=public-terminal" className="block w-full border border-emerald-300/50 bg-emerald-300/10 text-center font-black py-3 text-emerald-100 transition hover:bg-emerald-300/20 active:scale-[.99]">CALLL HOME</Link>
              </div>
              <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="PUBLIC TERMINAL · CLASSIFIEDS" />
           </div>}

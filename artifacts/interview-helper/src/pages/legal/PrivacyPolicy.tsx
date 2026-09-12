@@ -19,7 +19,7 @@ export default function PrivacyPolicy() {
       <ul>
         <li><strong>Usage data</strong> — features used, pages visited, session duration, and interaction logs</li>
         <li><strong>Device &amp; browser data</strong> — IP address, browser type, operating system, device identifiers</li>
-        <li><strong>Phone system data</strong> — call logs, call recordings (when enabled by you), voicemails, and transcriptions from Calll Home</li>
+        <li><strong>CALLL HOME data</strong> — call logs, call recordings (when enabled by you), voicemails, and transcriptions</li>
         <li><strong>AI interaction data</strong> — prompts, outputs, and session context from AI agent interactions (used to improve service quality)</li>
       </ul>
       <h3>1.3 Information from Third Parties</h3>
@@ -85,7 +85,7 @@ export default function PrivacyPolicy() {
       <p>SALARYMAN is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us personal information, please contact us immediately.</p>
 
       <h2>9. SMS and Communications</h2>
-      <p>Where available, recurring SMS requires your consent. Message frequency varies and message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. Phone-system data may include call metadata, recordings, voicemails, transcripts, and related support records when you use or enable those features.</p>
+      <p>Where available, recurring SMS requires your consent. Message frequency varies and message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. CALLL HOME data may include call metadata, recordings, voicemails, transcripts, and related support records when you use or enable those features.</p>
 
       <h2>10. Service Disclaimer</h2>
       <p>SALARYMAN includes fictional simulation, AI-generated output, communications, financial features, and regional services. These may be incomplete, inaccurate, delayed, unavailable, or wrong. Nothing in the Service is legal, financial, medical, employment, emergency, or immigration advice. Verify important decisions independently and follow applicable law.</p>

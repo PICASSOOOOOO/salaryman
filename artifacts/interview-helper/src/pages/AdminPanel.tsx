@@ -214,7 +214,7 @@ const FEATURE_LABELS: Record<string, string> = {
   live_listen: 'LIVE LISTEN',
   screen_scan: 'SCREEN SCAN',
   say_this: 'SAY THIS',
-  phone_system: 'PHONE SYSTEM',
+  phone_system: 'CALLL HOME',
   claw_bot: 'CLAW BOT',
 };
 
@@ -225,7 +225,7 @@ const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: str
   { key: 'registration_open', label: 'REGISTRATION OPEN', desc: 'Allow new user registration', category: 'system', defaultOn: true },
   { key: 'world_enabled', label: 'SALARYMAN WORLD', desc: 'Enable or disable the Salaryman MMO world', category: 'features', defaultOn: true },
   { key: 'marketplace_enabled', label: 'PIXEL AGENTS STORE', desc: 'Enable or disable the Pixel Agents store', category: 'features', defaultOn: true },
-  { key: 'phone_system_enabled', label: 'PHONE SYSTEM', desc: 'Enable or disable the Twilio phone integration', category: 'features', defaultOn: true },
+  { key: 'phone_system_enabled', label: 'CALLL HOME', desc: 'Enable or disable the CALLL HOME phone integration', category: 'features', defaultOn: true },
   { key: 'chat_enabled', label: 'CHAT SYSTEM', desc: 'Enable or disable in-app messaging', category: 'features', defaultOn: true },
   { key: 'hiring_enabled', label: 'HIRING BOARD', desc: 'Enable or disable the job board', category: 'features', defaultOn: true },
   { key: 'crm_enabled', label: 'CRM TOOLS', desc: 'Enable or disable CRM / contacts / deals', category: 'features', defaultOn: true },

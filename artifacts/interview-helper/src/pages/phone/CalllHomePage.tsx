@@ -178,7 +178,7 @@ export default function CalllHomePage() {
     return <div style={{ minHeight: 'var(--app-viewport-height, 100dvh)', background: '#fffaf0', display: 'grid', placeItems: 'center', color: '#050505' }}>RESTORING SESSION...</div>;
   }
   if (!isAuthenticated) {
-    return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
+    return <SignInPage context="Salaryman credentials required. CALLL HOME access locked." />;
   }
 
   if (planLoading) {
@@ -416,7 +416,7 @@ export default function CalllHomePage() {
                     <div style={{ fontSize: '0.55rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 22 }}>
                       Phone features require access.
                     </div>
-                    <button onClick={() => openPledgePopup({ reason: 'Unlock the Phone System with a Stripe-backed pass or PABLO PRIME.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
+                    <button onClick={() => openPledgePopup({ reason: 'Unlock CALLL HOME with a Stripe-backed pass or PABLO PRIME.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
                       VIEW PHONE ACCESS OPTIONS
                     </button>
                   </div>

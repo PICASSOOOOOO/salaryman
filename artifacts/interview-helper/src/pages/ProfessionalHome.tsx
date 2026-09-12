@@ -9,24 +9,28 @@ const MODULES = [
     title: "PIXEL AGENT AUTOMATION",
     href: "/business/autopilot",
     icon: Workflow,
+    logoSrc: undefined,
   },
   {
     id: "pablo",
     title: "PABLO AI",
     href: "/pablo",
     icon: Bot,
+    logoSrc: undefined,
   },
   {
     id: "phone",
     title: "CALLL HOME",
     href: "/phone",
     icon: Phone,
+    logoSrc: `${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`,
   },
   {
     id: "desktop",
     title: "APP DOWNLOAD",
     href: "/desktop",
     icon: Download,
+    logoSrc: undefined,
   },
 ] as const;
 
@@ -71,7 +75,15 @@ export default function ProfessionalHome() {
               className={`home-module home-module--${mod.id}`}
             >
               <div className="home-module-visual" aria-hidden="true">
-                <mod.icon className="home-module-icon" strokeWidth={1.35} />
+                {mod.logoSrc ? (
+                  <img
+                    src={mod.logoSrc}
+                    alt=""
+                    className="home-module-logo"
+                  />
+                ) : (
+                  <mod.icon className="home-module-icon" strokeWidth={1.35} />
+                )}
                 <div className="home-signal">
                   <span />
                   <span />

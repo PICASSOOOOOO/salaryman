@@ -55,7 +55,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     boomerLabel: "PABLO PRIME",
     codename: "PABLO PRIME",
     flagship: true,
-    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and secretary, plus a curated nine-agent workforce organized across four teams. One price. One platform.",
+    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full CALLL HOME service with predictive dialer and secretary, plus a curated nine-agent workforce organized across four teams. One price. One platform.",
     boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, secretary, and a curated nine-agent workforce across four teams — under one subscription. Customize your office, your business, your digital life.",
     price: 149,
     color: "text-emerald-400",
@@ -65,7 +65,7 @@ const FEATURE_CARDS: FeatureCard[] = [
       { name: 'ECHO-7 · Live Listen', desc: 'Real-time audio intercept on meetings & interviews. Feeds you answers as people talk.' },
       { name: 'OPTIC-9 · Screen Scan', desc: 'Military-grade screen capture. Identifies code, content, and context — no copy/paste.' },
       { name: 'VOX-4 · Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
-      { name: 'TTC · Phone System', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform toll-free number. Custom numbers are $10 one-time each.' },
+      { name: 'TTC · CALLL HOME', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform toll-free number. Custom numbers are $10 one-time each.' },
       { name: 'Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
       { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
       { name: 'CORE COMMAND · PABLO', desc: 'Your all-purpose AI business operative for email, schedules, CRM, documents, and Q&A.' },
@@ -443,7 +443,7 @@ export default function Upgrade({ embedded = false, onPrimeCheckout, primeChecko
           {[
             [
               boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
-              "One subscription, $149/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full Phone System, and the nine-agent curated workforce. Cancel anytime.",
+              "One subscription, $149/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full CALLL HOME service, and the nine-agent curated workforce. Cancel anytime.",
             ],
             [
               "What about cosmetics, properties, vehicles?",

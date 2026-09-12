@@ -71,7 +71,7 @@ export default function PhoneDialerPage() {
   const handleFetchError = useCallback(async (r: Response) => {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
-      setError(d.error || 'Access denied — phone system subscription required.');
+      setError(d.error || 'Access denied — CALLL HOME subscription required.');
       navigate('/upgrade');
       return true;
     }

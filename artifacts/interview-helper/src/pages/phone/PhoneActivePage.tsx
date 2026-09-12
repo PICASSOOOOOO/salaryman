@@ -171,7 +171,7 @@ export default function PhoneActivePage() {
       const r = await apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' });
       if (r.status === 403) {
         const d = await r.json().catch(() => ({}));
-        setError(d.error || 'Access denied — phone system subscription required.');
+        setError(d.error || 'Access denied — CALLL HOME subscription required.');
         navigate('/pricing');
         return;
       }
