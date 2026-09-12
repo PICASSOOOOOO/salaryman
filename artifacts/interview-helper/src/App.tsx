@@ -334,7 +334,10 @@ function AppShell() {
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/phone", "/comms", "/contacts", "/leads", "/organizations", "/org", "/bots", "/business", "/business/crm", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
+  // A freshly authenticated account must complete the one-screen registry
+  // choice before it can reach the workspace. Immigration itself provides the
+  // two valid exits: register a business or skip business setup for now.
+  const NEW_USER_ALLOWED_PREFIXES = ["/immigration", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -351,8 +354,8 @@ function AppShell() {
     "/intel/agents",
   ];
   const matchesPrefix = (list: string[]) =>
-    pathname === "/" || list.some(p => pathname === p || pathname.startsWith(p + "/"));
-  const allowedForAnon = matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
+    list.some(p => pathname === p || pathname.startsWith(p + "/"));
+  const allowedForAnon = pathname === "/" || matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
   const allowedForAuthedNew = matchesPrefix(NEW_USER_ALLOWED_PREFIXES);
   const tutorialDone = isTutorialDone();
   const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
@@ -384,7 +387,9 @@ function AppShell() {
     // Send authed-but-uncleared users to the desktop client handoff. The
     // browser now contains practical tools only; office simulation lives in
     // the native client.
-    navigate("/desktop", { replace: true });
+    const requested = `${window.location.pathname}${window.location.search}`;
+    const returnTo = requested === "/immigration" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
+    navigate(`/immigration${returnTo}`, { replace: true });
   }, [newUserBlocked, isAuthenticated, location, navigate]);
 
   // Cross-device settings sync: once signed in, pull the player's saved display
@@ -440,7 +445,7 @@ function AppShell() {
   // updates browser history. Mounting it can start authenticated API requests;
   // their expected 401 would otherwise win the race and send the visitor to
   // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked) return <Redirect to="/desktop" />;
+  if (newUserBlocked) return <Redirect to="/immigration" />;
 
   return (
     <>

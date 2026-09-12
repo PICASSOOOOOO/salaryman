@@ -43,7 +43,7 @@ describe("ProfessionalHome header", () => {
     act(() => menuButton.click());
     const links = Array.from(container.querySelectorAll("a"));
     const login = links.find(link => link.textContent?.trim() === "LOG IN");
-    const automation = links.find(link => link.textContent?.includes("PIXEL AGENT AUTOMATION"));
+    const automation = container.querySelector(".home-module--automation") as HTMLAnchorElement | null;
 
     expect(login?.getAttribute("href")).toContain("/sign-in?returnTo=%2Fbusiness");
     expect(automation?.getAttribute("href")).toContain("/business/autopilot");

@@ -177,8 +177,8 @@ export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) 
             <legend style={labelStyle}>START AS</legend>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {([
-                ['office', 'OFFICE'],
-                ['business', 'BUILD A BUSINESS'],
+                ['office', 'SKIP BUSINESS'],
+                ['business', 'REGISTER BUSINESS'],
               ] as const).map(([value, label]) => {
                 const selected = path === value;
                 return (

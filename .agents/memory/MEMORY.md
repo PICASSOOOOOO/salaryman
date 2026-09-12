@@ -133,3 +133,4 @@
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.
 - [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is a cream/black floating terminal widget; its live socket drives Pablo working/offline status.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
+- [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
