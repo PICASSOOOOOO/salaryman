@@ -102,16 +102,7 @@ class TowerScene:
 
     @property
     def nearby_object(self) -> OfficeObject | None:
-        allowed_ids = (
-            EXECUTIVE_SHOWCASE_OBJECT_IDS
-            if self.current_room == "executive"
-            else None
-        )
-        return self.objects.nearby(
-            self.player_position,
-            room=self.current_room,
-            allowed_ids=allowed_ids,
-        )
+        return self.objects.nearby(self.player_position, room=self.current_room)
 
     def room_spawn(self, room_id: str) -> tuple[int, int]:
         for room_data in FLOOR_PLAN["rooms"]:
