@@ -2,6 +2,98 @@
   background: #FAFAF7;
 }
 
+.home-header-actions {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.home-start-link,
+.home-menu-button {
+  display: inline-flex;
+  min-height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-start-link {
+  padding: 0.45rem 0.15rem;
+}
+
+.home-menu-button {
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgb(0 0 0 / 18%);
+  background: #fff;
+}
+
+.home-menu-button svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.home-menu-button.is-open {
+  color: #fff;
+  background: #000;
+  border-color: #000;
+}
+
+.home-features-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: clamp(0.75rem, 2vw, 2rem);
+  z-index: 100;
+  display: grid;
+  width: min(22rem, calc(100vw - 1.5rem));
+  max-height: min(70dvh, 32rem);
+  gap: 0.2rem;
+  overflow-y: auto;
+  padding: 0.65rem;
+  border: 1px solid #000;
+  background: #fffdf7;
+  box-shadow: 6px 6px 0 #000;
+}
+
+.home-features-heading {
+  padding: 0.35rem 0.45rem 0.55rem;
+  border-bottom: 1px solid rgb(0 0 0 / 14%);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.home-feature-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+}
+
+.home-feature-link svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: 0 0 auto;
+}
+
+.home-feature-link:hover,
+.home-feature-link:focus-visible {
+  background: #eee8dc;
+}
+
 .home-stage {
   display: flex;
   width: min(100%, 80rem);
@@ -220,6 +312,44 @@ body.workspace-light .home-module--automation:active {
 
   .home-header > a:first-child > span:nth-of-type(2) {
     display: none;
+  }
+
+  .home-header {
+    gap: 0.35rem;
+  }
+
+  .home-header > a:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .home-header > a:first-child > span:first-of-type {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .home-header-actions {
+    gap: 0.2rem;
+  }
+
+  .home-menu-button {
+    width: 2rem;
+    padding-inline: 0;
+  }
+
+  .home-menu-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .home-start-link {
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
   }
 
   .home-stage {

@@ -77,7 +77,9 @@ export function PhonePageLayout({
           padding: 'max(6px, env(safe-area-inset-top, 0px)) 0 6px', borderBottom: `1px solid ${slate(0.06)}`,
           fontSize: '0.45rem', color: slate(0.55), letterSpacing: '0.2em' }}>
           <div className="phone-page-status-brand" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <img src={`${BASE}brand/callhome/calll-home-brush.png`} alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />
+            <span className="calll-home-mark-box">
+              <img src={`${BASE}brand/callhome/calll-home-logo-2.png`} alt="CALLL HOME" />
+            </span>
             <span style={{ color: slate(0.55) }}>│</span>
             <span>ALPHA {__BUILD_VERSION__}</span>
             <span style={{ color: slate(0.55) }}>│</span>

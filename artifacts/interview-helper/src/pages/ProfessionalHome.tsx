@@ -1,6 +1,7 @@
-import { ArrowUpRight, Bot, Download, Phone, Workflow } from "lucide-react";
+import { ArrowUpRight, Bot, Download, Menu, Phone, Workflow, X } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { MORE_NAV_ITEMS } from "@/lib/app-navigation";
 import "./ProfessionalHome.css";
 
 const MODULES = [
@@ -36,13 +37,14 @@ const MODULES = [
 
 export default function ProfessionalHome() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const accountHref = isAuthenticated
     ? "/business"
     : "/sign-in?returnTo=%2Fbusiness";
 
   return (
     <main className="min-h-[100dvh] bg-[#FAFAF7] text-black overflow-x-hidden flex flex-col">
-      <header className="home-header shrink-0 px-4 sm:px-8 h-14 flex items-center justify-between border-b border-black/10">
+      <header className="home-header relative shrink-0 px-4 sm:px-8 h-14 flex items-center justify-between gap-2 border-b border-black/10">
         <Link href="/" className="flex items-center gap-2.5">
           <img
             src={`${import.meta.env.BASE_URL}icon-192.png`}
@@ -54,12 +56,44 @@ export default function ProfessionalHome() {
             ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
           </span>
         </Link>
-        <Link
-          href={accountHref}
-          className="font-sans text-[10px] font-bold tracking-[0.14em] uppercase hover:opacity-60 transition-opacity"
-        >
-          {isLoading ? "···" : isAuthenticated ? "START WORK" : "LOG IN"}
-        </Link>
+        <div className="home-header-actions">
+          <button
+            type="button"
+            className={`home-menu-button${menuOpen ? " is-open" : ""}`}
+            onClick={() => setMenuOpen(open => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="home-features-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+            <span>MENU</span>
+          </button>
+          <Link href={accountHref} className="home-start-link">
+            {isLoading ? "···" : isAuthenticated ? "START WORK" : "LOG IN"}
+          </Link>
+        </div>
+        {menuOpen && (
+          <div id="home-features-menu" className="home-features-menu" role="menu">
+            <div className="home-features-heading">FEATURES</div>
+            {MORE_NAV_ITEMS
+              .filter(item => !item.authOnly || isAuthenticated)
+              .map(item => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.path}
+                    role="menuitem"
+                    className="home-feature-link"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Icon aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+          </div>
+        )}
       </header>
 
       <section className="home-stage">

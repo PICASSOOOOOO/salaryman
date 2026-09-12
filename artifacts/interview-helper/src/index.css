@@ -1140,11 +1140,84 @@ body.workspace-light #root::after {
 replit-app-badge,
 replit-badge,
 replit-agent-inbox-widget,
+replit-feedback-widget,
+replit-feedback-button,
+replit-feedback,
 #replit-badge,
-.replit-badge {
+.replit-badge,
+[data-replit-badge],
+[data-replit-feedback],
+[data-replit-feedback-widget],
+[id*="replit-feedback" i],
+[class*="replit-feedback" i],
+[id*="replit-badge" i],
+[class*="replit-badge" i],
+[aria-label*="Replit" i],
+iframe[src*="replit.com"],
+iframe[src*="feedback"] {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.mobile-menu-trigger {
+  display: inline-flex;
+  min-width: 36px;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 6px;
+  color: #111;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: 700 8px/1 var(--font-sans);
+  letter-spacing: .08em;
+}
+
+.mobile-menu-trigger.is-open {
+  color: #fff;
+  background: #111;
+  border-color: #111;
+}
+
+.mobile-menu-trigger span {
+  white-space: nowrap;
+}
+
+@media (max-width: 340px) {
+  .mobile-app-nav-top {
+    padding-inline: 4px !important;
+  }
+
+  .mobile-app-nav-top > .flex.items-center.gap-1.overflow-hidden {
+    padding-right: 0 !important;
+  }
+
+  .mobile-header-actions {
+    gap: 0 !important;
+  }
+
+  .mobile-menu-trigger {
+    min-width: 32px;
+    padding-inline: 4px;
+  }
+
+  .mobile-menu-trigger span,
+  .mobile-header-actions .notification-bell-label {
+    display: none;
+  }
+
+  #mobile-features-menu .grid {
+    grid-template-columns: 1fr;
+  }
+
+  #mobile-features-menu {
+    padding-inline: 10px;
+  }
 }
 
 @media (max-width: 480px) {

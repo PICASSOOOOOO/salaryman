@@ -10,16 +10,45 @@ import { installDeferredGlobalUiSound, warmGlobalUiSound } from "./lib/deferred-
 // application build. Keep SALARYMAN free of platform-branded controls even
 // when the corresponding Publishing toggle is unavailable.
 const removeReplitInjectedUi = () => {
-  document.querySelectorAll([
+  const selectors = [
     "replit-agent-inbox-widget",
     "replit-agent-inbox-i18n-mirror",
     "replit-app-badge",
+    "replit-feedback-widget",
+    "replit-feedback-button",
+    "replit-feedback",
     "#replit-badge",
     ".replit-badge",
+    "[data-replit-badge]",
+    "[data-replit-feedback]",
+    "[data-replit-feedback-widget]",
+    "[id*='replit-feedback' i]",
+    "[class*='replit-feedback' i]",
+    "[id*='replit-badge' i]",
+    "[class*='replit-badge' i]",
+    "[aria-label*='Replit' i]",
     'script[src*="replit-cdn.com/feedback-widget/"]',
     'script[src="https://i.replit.com/script.js"]',
-    "iframe[src*='replit.com']"
-  ].join(",")).forEach((node) => node.remove());
+    "iframe[src*='replit.com']",
+    "iframe[src*='feedback']",
+  ];
+  document.querySelectorAll(selectors.join(",")).forEach((node) => node.remove());
+
+  // The publishing widget has changed host tags over time and may use a
+  // shadow-root host, so also remove custom elements and marked controls by
+  // their stable platform name rather than relying on one selector.
+  document.querySelectorAll<HTMLElement>("*").forEach((node) => {
+    const tag = node.tagName.toLowerCase();
+    const id = node.id || "";
+    const className = typeof node.className === "string" ? node.className : "";
+    const label = node.getAttribute("aria-label") || "";
+    if (
+      tag.startsWith("replit-") ||
+      /replit[-_ ]?(feedback|badge|agent[-_ ]?inbox)/i.test(`${id} ${className} ${label}`)
+    ) {
+      node.remove();
+    }
+  });
 };
 
 removeReplitInjectedUi();

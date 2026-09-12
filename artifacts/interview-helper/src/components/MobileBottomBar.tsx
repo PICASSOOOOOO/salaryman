@@ -83,7 +83,19 @@ export function MobileModuleNav() {
             <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-black truncate">SALARYMAN</span>
           </button>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="mobile-header-actions flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(open => !open)}
+            className={`mobile-menu-trigger${dropdownOpen ? ' is-open' : ''}`}
+            aria-expanded={dropdownOpen}
+            aria-controls="mobile-features-menu"
+            aria-label={dropdownOpen ? 'Close menu' : 'Open menu'}
+            title={dropdownOpen ? 'Close menu' : 'Open menu'}
+          >
+            {dropdownOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            <span>MENU</span>
+          </button>
           {isAuthenticated && <NotificationBell />}
           {isAuthenticated ? (
             <button onClick={() => setSummaryOpen(true)} className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 overflow-hidden">
@@ -155,6 +167,7 @@ export function MobileModuleNav() {
           onPointerDown={() => setDropdownOpen(false)}
         >
           <div
+            id="mobile-features-menu"
             className="bg-white rounded-t-xl pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] pt-2 px-4 shadow-xl"
             onPointerDown={(event) => event.stopPropagation()}
           >
