@@ -138,10 +138,10 @@ def main() -> int:
         else (
             ("executive", (1_800, 6_550), "EXECUTIVE OFFICE / FOUR WORKSTATIONS", None),
             ("executive", (1_750, 6_350), "TERMINAL / OFFICE RECORD", "executive-crt"),
-            ("executive", (2_300, 6_400), "MOVE / WORKSTATION 02", None),
-            ("executive", (1_300, 7_100), "BREAK / REST POSITION", "executive-chair"),
+            ("executive", (2_600, 6_400), "MOVE / WORKSTATION 02", None),
+            ("executive", (1_000, 7_100), "BREAK / REST POSITION", "executive-chair"),
             ("executive", (1_800, 6_550), "NPC HUDDLE / MARA VOSS", None),
-            ("executive", (2_300, 7_100), "SLEEP / RECOVERING", "executive-chair"),
+            ("executive", (2_600, 7_100), "SLEEP / RECOVERING", "executive-chair"),
         )
         if args.fast_trailer
         else (

@@ -99,6 +99,25 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(result.route, "office-record")
         self.assertEqual(state.active_page, "tools")
 
+    def test_executive_workstation_children_belong_to_their_desk(self):
+        scene = build_tower_scene()
+        workstation_ids = ("", "-2", "-3", "-4")
+
+        for suffix in workstation_ids:
+            desk_id = f"executive-desk{suffix}"
+            desk = scene.objects.get(desk_id)
+            chair = scene.objects.get(f"executive-chair{suffix}")
+            computer = scene.objects.get(f"executive-crt{suffix}")
+            lamp = scene.objects.get(
+                "executive-desk-lamp" if not suffix else f"executive-desk-lamp{suffix}"
+            )
+
+            self.assertIsNotNone(desk)
+            self.assertEqual(chair.parent_id, desk_id)
+            self.assertEqual(computer.parent_id, desk_id)
+            self.assertEqual(lamp.parent_id, desk_id)
+            self.assertGreater(chair.position[1], desk.position[1])
+
     def test_npc_routes_advance_without_player_input(self):
         scene = build_tower_scene()
         scene.select_room("executive")

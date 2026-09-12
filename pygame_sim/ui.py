@@ -329,9 +329,7 @@ class SolarPunkRenderer:
         """Build the office around real desk, chair, and PC assets."""
         layouts = {
             "executive": (
-                ((2_300, 6_100), (2_300, 6_400), (2_300, 6_070), "wooden"),
-                ((1_300, 6_800), (1_300, 7_100), (1_300, 6_770), "wooden"),
-                ((2_300, 6_800), (2_300, 7_100), (2_300, 6_770), "cushioned"),
+                (),
             ),
             "public": (
                 ((3_260, 5_950), (3_260, 6_210), (3_260, 5_850), "cushioned"),
