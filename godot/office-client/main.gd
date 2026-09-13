@@ -31,6 +31,7 @@ var visual_player_world := Vector3(0.0, PLAYER_GROUND_Y, 0.0)
 var visual_player_ready := false
 var target_player_world := Vector3.ZERO
 var animation_clock := 0.0
+var player_pose_blend := 0.0
 var camera_distance := 14.0
 var last_room_id := ""
 var last_sequence := -1
@@ -287,6 +288,19 @@ func _set_player_animation(animation_name: String) -> void:
 		animation_player.play(animation_name)
 
 
+func _has_player_animation(animation_name: String) -> bool:
+	if player_root == null:
+		return false
+	var animation_player := player_root.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	return animation_player != null and animation_player.has_animation(animation_name)
+
+
+func _current_player_action() -> String:
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	var player: Dictionary = scene_data.get("player", {})
+	return str(player.get("action", "stand"))
+
+
 func _build_interface() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.name = "HUD"
@@ -414,9 +428,18 @@ func _smooth_visual_player(delta: float) -> void:
 		return
 	visual_player_world = visual_player_world.lerp(target_player_world, min(1.0, delta * 14.0))
 	if player_root:
-		# Do not bob the root vertically. The walk animation supplies motion;
-		# changing Y here makes the player visibly hover over the floor.
-		player_root.position = visual_player_world
+		# Pygame owns the authoritative position. This renderer-only layer adds a
+		# small sit-down settle and quiet breathing without changing gameplay state.
+		var target_pose_blend := 1.0 if _current_player_action() == "sit" else 0.0
+		player_pose_blend = move_toward(player_pose_blend, target_pose_blend, delta * 7.5)
+		var eased_blend := player_pose_blend * player_pose_blend * (3.0 - 2.0 * player_pose_blend)
+		var breathing := sin(animation_clock * 1.8) * 0.012 + sin(animation_clock * 0.9 + 0.4) * 0.006
+		player_root.position = visual_player_world + Vector3(0.0, (-0.26 + breathing) * eased_blend, 0.0)
+		player_root.rotation = Vector3(
+			-0.16 * eased_blend,
+			sin(animation_clock * 0.75) * 0.018 * eased_blend,
+			sin(animation_clock * 1.15 + 0.5) * 0.012 * eased_blend,
+		)
 
 
 func _rebuild_bridge_objects(objects: Array) -> void:
@@ -526,10 +549,14 @@ func _update_art_motion(delta: float) -> void:
 
 
 func _update_player_animation() -> void:
-	var scene_data: Dictionary = snapshot.get("scene", {})
-	var player: Dictionary = scene_data.get("player", {})
+	var action := _current_player_action()
 	var moving := visual_player_world.distance_to(target_player_world) > 0.018
-	_set_player_animation("walk" if moving else "idle")
+	if action == "sit":
+		_set_player_animation("sit" if _has_player_animation("sit") else "idle")
+	elif action == "sleep":
+		_set_player_animation("sleep" if _has_player_animation("sleep") else "idle")
+	else:
+		_set_player_animation("walk" if moving else "idle")
 
 
 func _update_hud() -> void:
