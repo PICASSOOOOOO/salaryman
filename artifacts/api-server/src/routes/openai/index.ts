@@ -15,6 +15,10 @@ import {
 import { requireFeature } from "../../middlewares/requirePro";
 import { MILA_VOICE_ID } from "../../lib/mila-voice";
 import { PABLO_VOICE_ID } from "../../lib/pablo-voice";
+import {
+  isSonioxConfigured,
+  transcribeWithSoniox,
+} from "../../lib/soniox-transcription";
 
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
@@ -327,15 +331,50 @@ router.post("/transcribe", async (req, res) => {
   // Defensive: same crash class as /interview/listen — if the proxy or a
   // bad client posts an empty body, destructuring an undefined req.body
   // throws a 500 instead of returning a clean 400. Always coerce.
-  const { audio, mimeType } = (req.body ?? {}) as { audio?: string; mimeType?: string };
+  const { audio, mimeType, translationTo } = (req.body ?? {}) as {
+    audio?: string;
+    mimeType?: string;
+    translationTo?: string;
+  };
   if (!audio || typeof audio !== "string") {
     res.status(400).json({ error: "audio (base64) is required" });
+    return;
+  }
+  if (translationTo !== undefined && (
+    typeof translationTo !== "string" || !/^[a-z]{2}$/i.test(translationTo.trim())
+  )) {
+    res.status(400).json({ error: "translationTo must be a two-letter ISO language code" });
     return;
   }
 
   try {
     const audioBuffer = Buffer.from(audio, "base64");
     console.log(`[Transcribe] Received ${audioBuffer.length} bytes, mimeType: ${mimeType || 'not specified'}, first bytes: ${audioBuffer.slice(0, 8).toString('hex')}`);
+
+    if (isSonioxConfigured()) {
+      try {
+        const soniox = await transcribeWithSoniox({
+          audioBuffer,
+          filename: mimeType?.includes("mp4") ? "audio.mp4" : "audio.webm",
+          mimeType,
+          translationTo,
+        });
+        console.log(`[Transcribe] Soniox result: "${soniox.text}" (${soniox.text.length} chars)`);
+        res.json({
+          text: soniox.text,
+          provider: "soniox",
+          ...(soniox.translation ? {
+            sourceText: soniox.sourceText,
+            translation: soniox.translation,
+          } : {}),
+        });
+        return;
+      } catch (sonioxError) {
+        console.warn(
+          `[Transcribe] Soniox failed; falling back to OpenAI: ${sonioxError instanceof Error ? sonioxError.message : "unknown error"}`,
+        );
+      }
+    }
 
     const { speechToText, detectAudioFormat, convertToWav } = await import("@workspace/integrations-openai-ai-server/audio");
     const detected = detectAudioFormat(audioBuffer);
@@ -398,7 +437,7 @@ router.post("/transcribe", async (req, res) => {
 
     const text = await speechToText(finalBuffer, finalFormat);
     console.log(`[Transcribe] Result: "${text}" (${text.length} chars)`);
-    res.json({ text: text || "" });
+    res.json({ text: text || "", provider: "openai" });
   } catch (err: any) {
     console.error("Transcription error:", err?.message || err);
     res.status(500).json({ error: `Transcription failed: ${err?.message || "unknown"}` });
