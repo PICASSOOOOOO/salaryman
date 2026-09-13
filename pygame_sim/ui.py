@@ -186,6 +186,7 @@ class SolarPunkRenderer:
             camera_x,
             camera_y,
             scale,
+            floor_number=scene.current_floor,
         )
         def point(position: tuple[int, int]) -> tuple[int, int]:
             return (
@@ -410,10 +411,18 @@ class SolarPunkRenderer:
         camera_x: float,
         camera_y: float,
         scale: float,
+        *,
+        floor_number: int = 1,
     ) -> None:
         """Draw a massive world-anchored floor through a straight top-down camera."""
         world_x, world_y, world_w, world_h = world_bounds
-        pygame.draw.rect(self.screen, (174, 179, 175), viewport)
+        is_lobby = floor_number == 1
+        is_premium = floor_number >= 63
+        pygame.draw.rect(
+            self.screen,
+            (188, 194, 188) if is_lobby else (27, 38, 42) if is_premium else (174, 179, 175),
+            viewport,
+        )
         old_clip = self.screen.get_clip()
         self.screen.set_clip(viewport)
 
@@ -429,18 +438,38 @@ class SolarPunkRenderer:
         center_x = world_x + world_w // 2
         center_y = world_y + world_h // 2
 
-        # Floor-plan base only: elevator lobby -> connected hallway -> four
-        # separately leasable 100-desk offices. Interiors are deferred.
         base_layout = FLOOR_PLAN["baseLayout"]
-        for office in base_layout["offices"]:
-            bay = world_rect(tuple(office["bounds"]))
-            pygame.draw.rect(self.screen, (179, 184, 179), bay)
-            pygame.draw.rect(self.screen, (100, 111, 107), bay, max(1, int(24 * scale)))
+        if is_lobby:
+            # The lobby is a separate arrival scene: one broad reception
+            # chamber, lounge seating, and the lift core instead of office
+            # rectangles.
+            lobby = world_rect((center_x - 9_000, center_y - 7_000, 18_000, 14_000))
+            pygame.draw.rect(self.screen, (204, 207, 194), lobby)
+            pygame.draw.rect(self.screen, (80, 101, 92), lobby, max(1, int(34 * scale)))
+            reception = world_rect((center_x - 2_600, center_y - 2_000, 5_200, 1_000))
+            pygame.draw.rect(self.screen, (91, 116, 101), reception)
+            pygame.draw.rect(self.screen, (205, 183, 117), reception, max(1, int(12 * scale)))
+            for seat_x in (center_x - 5_200, center_x - 3_200, center_x + 3_200, center_x + 5_200):
+                lounge = world_rect((seat_x - 550, center_y + 2_000 - 300, 1_100, 600))
+                pygame.draw.rect(self.screen, (111, 133, 120), lounge)
+                pygame.draw.rect(self.screen, (69, 89, 82), lounge, max(1, int(8 * scale)))
+        else:
+            office_fill = (46, 61, 70) if is_premium else (179, 184, 179)
+            office_stroke = (202, 170, 92) if is_premium else (100, 111, 107)
+            hallway_fill = (47, 61, 67) if is_premium else (126, 134, 131)
+            hallway_stroke = (225, 203, 139) if is_premium else (207, 212, 207)
+            # Four individual office rectangles sit around the horizontal and
+            # vertical hallway. The hall stays continuous from the lift core
+            # to every office entrance.
+            for office in base_layout["offices"]:
+                bay = world_rect(tuple(office["bounds"]))
+                pygame.draw.rect(self.screen, office_fill, bay)
+                pygame.draw.rect(self.screen, office_stroke, bay, max(1, int(24 * scale)))
 
-        for hallway_data in base_layout["hallways"]:
-            hallway = world_rect(tuple(hallway_data))
-            pygame.draw.rect(self.screen, (126, 134, 131), hallway)
-            pygame.draw.rect(self.screen, (207, 212, 207), hallway, 2)
+            for hallway_data in base_layout["hallways"]:
+                hallway = world_rect(tuple(hallway_data))
+                pygame.draw.rect(self.screen, hallway_fill, hallway)
+                pygame.draw.rect(self.screen, hallway_stroke, hallway, 2)
 
         def draw_persian_rug(rug_data: tuple[int, int, int, int]) -> None:
             rug = world_rect(rug_data)
@@ -761,7 +790,8 @@ class SolarPunkRenderer:
         pygame.draw.rect(self.screen, Palette.MATRIX_BG, header)
         pygame.draw.line(self.screen, Palette.MATRIX_GREEN, (0, header.bottom - 1), (self.width, header.bottom - 1), 2)
         self.text("SALARYMAN", (18, 10), self.font_lg, Palette.MATRIX_BRIGHT)
-        self.text(f"FLOOR {scene.current_floor:02d}", (19, 35), self.font_mono, Palette.MATRIX_DIM)
+        floor_label = "LOBBY" if scene.current_floor == 1 else "PREMIUM" if scene.current_floor >= 63 else "OFFICE"
+        self.text(f"FLOOR {scene.current_floor:02d} · {floor_label}", (19, 35), self.font_mono, Palette.MATRIX_DIM)
         self.text(self.pablo_status, (805, 35), self.font_mono, self.pablo_status_color)
 
         self.text("CAPITAL", (180, 9), self.font_mono, Palette.MATRIX_DIM)

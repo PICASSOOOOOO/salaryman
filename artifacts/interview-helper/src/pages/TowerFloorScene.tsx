@@ -230,7 +230,11 @@ function getLayoutForFloor(
   // The server plan schema starts at F1. B1 is the same built shell rendered as
   // a service level, with a distinct property key and identity in the chrome.
   const planFloor = floor === -1 ? 1 : Math.max(1, floor);
-  const plan = getShadowTowerPlan(city, planFloor, archetype, upgrades, Math.max(1, tenants.length));
+  // The premium upper stack is presented as a complete four-suite floor even
+  // when it has no ordinary tenant record. Lower commercial floors still
+  // respect the server-provided tenant subdivision.
+  const officeCount = floor >= 63 ? 4 : Math.max(1, tenants.length);
+  const plan = getShadowTowerPlan(city, planFloor, archetype, upgrades, officeCount);
   return officePropertyLayoutFromPlan(plan, `${city}:${floor === -1 ? "b1" : floor}`, tenants, lockOfficeEntrances);
 }
 

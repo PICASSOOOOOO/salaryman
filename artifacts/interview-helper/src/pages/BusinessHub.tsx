@@ -219,6 +219,8 @@ export default function BusinessHub() {
   const [recordForm, setRecordForm] = useState({ label: '', value: '' });
   const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
   const [showRecordForm, setShowRecordForm] = useState(false);
+  const [showMobileRecords, setShowMobileRecords] = useState(false);
+  const [showMobileDanger, setShowMobileDanger] = useState(false);
   const [recordSaving, setRecordSaving] = useState(false);
   const [recordError, setRecordError] = useState('');
   const [revealedRecords, setRevealedRecords] = useState<Record<number, string>>({});
@@ -542,19 +544,19 @@ export default function BusinessHub() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 md:p-8 max-w-[1200px] mx-auto space-y-6">
+    <div className="min-h-screen w-full bg-background text-foreground p-3 sm:p-4 md:p-8 max-w-[1200px] mx-auto space-y-4 sm:space-y-6">
 
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-border">
         <div>
           <h1 className="text-xl font-bold tracking-widest uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'HUB // COMMAND'}</h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-widest mt-1 truncate">
             {activeOrg ? `${activeOrg.name} · ${activeOrg.businessId}` : 'YOUR BUSINESS HEADQUARTERS'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto">
           {allOrgs.length > 1 && (
             <select
-              className="bg-card border border-border rounded-sm px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-primary transition-colors cursor-pointer"
+              className="min-w-0 flex-1 md:flex-none bg-card border border-border rounded-sm px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-primary transition-colors cursor-pointer"
               value={selectedOrgId || ''}
               onChange={e => switchOrg(Number(e.target.value))}
             >
@@ -565,7 +567,7 @@ export default function BusinessHub() {
               ))}
             </select>
           )}
-          <button onClick={loadData} className="flex items-center gap-2 px-3 py-1.5 rounded-sm border border-border bg-card text-[10px] font-bold uppercase tracking-widest hover:border-primary hover:text-primary transition-colors">
+          <button onClick={loadData} className="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-sm border border-border bg-card text-[10px] font-bold uppercase tracking-widest hover:border-primary hover:text-primary transition-colors">
             <RefreshCw className="w-3.5 h-3.5" /> REFRESH
           </button>
         </div>
@@ -576,7 +578,7 @@ export default function BusinessHub() {
       ) : (
         <>
           {!activeOrg && (
-            <div className="max-w-md mx-auto mt-12 p-6 border border-border rounded-md bg-card space-y-4">
+            <div className="max-w-md mx-auto mt-6 sm:mt-12 p-4 sm:p-6 border border-border rounded-md bg-card space-y-4">
               <div className="flex items-center gap-2 border-b border-border pb-3">
                 <Building2 className="w-5 h-5 text-primary" />
                 <h2 className="text-sm font-bold uppercase tracking-widest">REGISTER BUSINESS</h2>
@@ -650,7 +652,7 @@ export default function BusinessHub() {
                     return (
                       <div key={section.title} className="space-y-3">
                         <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{section.title}</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {items.map((item: any) => (
                             <Link key={item.path} href={item.path} className="flex flex-col items-start gap-2 p-3 border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all rounded-md group">
                               <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
@@ -855,11 +857,17 @@ export default function BusinessHub() {
                         <LockKeyhole className="w-4 h-4" />
                         <h2 className="text-xs font-bold uppercase tracking-widest">RECORDS</h2>
                       </div>
-                      <button onClick={() => { resetRecordForm(); setShowRecordForm(!showRecordForm); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
-                        {showRecordForm ? 'CANCEL' : '+ ADD'}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => setShowMobileRecords(open => !open)} className="sm:hidden text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
+                          {showMobileRecords ? 'HIDE' : 'SHOW'}
+                        </button>
+                        <button onClick={() => { resetRecordForm(); setShowRecordForm(!showRecordForm); setShowMobileRecords(true); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
+                          {showRecordForm ? 'CANCEL' : '+ ADD'}
+                        </button>
+                      </div>
                     </div>
 
+                    <div className={showMobileRecords ? '' : 'hidden sm:block'}>
                     {showRecordForm && (
                       <div className="p-4 border-b border-border bg-muted/20 space-y-3">
                         <div className="text-[9px] font-bold uppercase tracking-widest text-primary pb-2 border-b border-border">{editingRecordId ? 'EDIT RECORD' : 'NEW RECORD'}</div>
@@ -892,7 +900,7 @@ export default function BusinessHub() {
                                 <button onClick={() => handleRevealRecord(record.id)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                                   {revealed !== undefined ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                 </button>
-                                <button onClick={() => { setEditingRecordId(record.id); setRecordForm({ label: record.label, value: '' }); setShowRecordForm(true); setRecordError(''); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                                <button onClick={() => { setEditingRecordId(record.id); setRecordForm({ label: record.label, value: '' }); setShowRecordForm(true); setShowMobileRecords(true); setRecordError(''); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button onClick={() => handleDeleteRecord(record)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
@@ -904,18 +912,24 @@ export default function BusinessHub() {
                         })
                       )}
                     </div>
+                    </div>
                   </div>
                 )}
 
                 {isOwner && (
                   <div className="border border-destructive/50 rounded-md bg-card flex flex-col">
-                    <div className="px-4 py-3 border-b border-destructive/20 flex items-center gap-2 bg-destructive/5">
-                      <AlertTriangle className="w-4 h-4 text-destructive" />
-                      <h2 className="text-xs font-bold uppercase tracking-widest text-destructive">DANGER ZONE</h2>
+                    <div className="px-4 py-3 border-b border-destructive/20 flex items-center justify-between gap-2 bg-destructive/5">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-destructive" />
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-destructive">DANGER ZONE</h2>
+                      </div>
+                      <button onClick={() => setShowMobileDanger(open => !open)} className="sm:hidden text-[9px] font-bold uppercase tracking-widest text-destructive">
+                        {showMobileDanger ? 'HIDE' : 'SHOW'}
+                      </button>
                     </div>
-                    <div className="p-4 space-y-4">
+                    <div className={`p-4 space-y-4 ${showMobileDanger ? '' : 'hidden sm:block'}`}>
                       <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">
-                        PERMANENTLY DELETE THIS BUSINESS AND ALL RELATED ORGANIZATION DATA.
+                        DELETE THIS BUSINESS AND RELATED ORGANIZATION DATA.
                       </p>
                       {deleteError && <div className="text-[9px] font-bold text-destructive uppercase tracking-widest">{deleteError}</div>}
                       <button onClick={handleDeleteOrg} disabled={editSaving} className="w-full py-2 bg-background border border-destructive text-destructive font-bold uppercase tracking-widest text-[9px] rounded-sm hover:bg-destructive hover:text-destructive-foreground transition-colors disabled:opacity-50">

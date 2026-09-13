@@ -121,10 +121,28 @@ export function quoteShadowTowerFloor(archetype: ShadowTowerArchetype, floorNumb
 export type ShadowTowerOfficeGeometry = {
   unitNumber: number; xPixels: number; yPixels: number; widthPixels: number; heightPixels: number; squareMeters: number;
 };
-/** Equal vertical strips cover the entire canonical envelope without gaps or overflow. */
+/**
+ * Commercial addresses are laid out as four large rectangular suites around a
+ * cross-shaped circulation hall. The real-estate envelope remains a square
+ * meter accounting surface, while the pixel coordinates describe the
+ * walkable/visual plan. Keep the one-to-three legacy subdivisions stable for
+ * already-settled floors.
+ */
 export function getShadowTowerOfficeUnitGeometry(officeCount: number): ShadowTowerOfficeGeometry[] {
   if (!Number.isInteger(officeCount) || officeCount < SHADOW_TOWER_MIN_OFFICE_UNITS || officeCount > SHADOW_TOWER_MAX_OFFICE_UNITS) {
     throw new Error("officeCount must be between 1 and 4");
+  }
+  if (officeCount === 4) {
+    const suites = [
+      { xPixels: 4_000, yPixels: 4_000, widthPixels: 42_000, heightPixels: 42_000 },
+      { xPixels: 54_000, yPixels: 4_000, widthPixels: 42_000, heightPixels: 42_000 },
+      { xPixels: 4_000, yPixels: 54_000, widthPixels: 42_000, heightPixels: 42_000 },
+      { xPixels: 54_000, yPixels: 54_000, widthPixels: 42_000, heightPixels: 42_000 },
+    ];
+    return suites.map((suite, index) => ({
+      unitNumber: index + 1, ...suite,
+      squareMeters: SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters / 4,
+    }));
   }
   const width = SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels / officeCount;
   return Array.from({ length: officeCount }, (_, index) => ({
@@ -168,17 +186,23 @@ function terminalObjects(upgrades: readonly string[]) {
 }
 
 function officeUnitObjects(count: number, floorNumber: number) {
-  // The elevator hall occupies the west-side circulation core. Suites run
-  // continuously along the north perimeter instead of floating in the room.
-  const suiteStart = 4;
-  const suiteWidth = Math.floor(26 / count);
-  return Array.from({ length: count }, (_, index) => ({
+  // Four large suites sit around a connected cross hallway. The elevator
+  // landing is west of the hall; each suite has a single door into circulation.
+  const suitePlans = [
+    { x: 4, y: 1, cols: 12, rows: 8, side: "bottom" as const },
+    { x: 20, y: 1, cols: 12, rows: 8, side: "bottom" as const },
+    { x: 4, y: 15, cols: 12, rows: 8, side: "top" as const },
+    { x: 20, y: 15, cols: 12, rows: 8, side: "top" as const },
+  ];
+  return suitePlans.slice(0, count).map((suite, index) => ({
     id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
     kind: "office_unit" as const,
-    footprint: rect(suiteStart + index * suiteWidth, 0, suiteWidth, 7),
+    footprint: rect(suite.x, suite.y, suite.cols, suite.rows),
     door: {
-      side: "bottom" as const,
-      at: suiteStart + index * suiteWidth + Math.max(0, Math.floor((suiteWidth - 2) / 2)),
+      side: suite.side,
+      at: suite.side === "bottom"
+        ? suite.x + Math.floor((suite.cols - 2) / 2)
+        : suite.x + Math.floor((suite.cols - 2) / 2),
       span: 2,
       access: "password" as const,
     },
@@ -193,22 +217,22 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
   const suites = officeUnitObjects(suiteCount, floorNumber);
   const executiveSuite = suites[0];
   const plan: ShadowTowerPlan = {
-    floorType: "office", city, floorNumber, archetype, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 10 },
+    floorType: "office", city, floorNumber, archetype, cols: 36, rows: 24, spawn: { x: 3, y: 12 },
     objects: [
-      { id: "elevator", kind: "elevator", footprint: rect(0, 1, 2, 2), interactive: true },
-      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 0, 4, 8), interactive: false },
+      { id: "elevator", kind: "elevator", footprint: rect(1, 10, 2, 2), interactive: true },
+      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 8, 5, 8), interactive: false },
       ...suites,
       // Suite 1 is the furnished executive office assigned to the founder.
       { id: "executive-desk", kind: "executive_desk" as const, footprint: rect(executiveSuite.footprint.x + 2, 5, 2, 1), interactive: false },
       { id: "executive-terminal", kind: "terminal" as const, footprint: rect(executiveSuite.footprint.x + 5, 5, 1, 1), interactive: true },
       // Additional desks and terminals are separate vending-machine fit-outs.
       ...(enabledUpgrades.includes("extra_workstations")
-        ? workstationObjects(4, 6, 9)
-        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length, 6, 9)),
+        ? workstationObjects(4, 6, 3)
+        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length, 6, 3)),
       ...terminalObjects(enabledUpgrades),
       { id: "atm", kind: "atm", footprint: rect(2, 13, 1, 1), interactive: true },
-      { id: "vending", kind: "vending_machine", footprint: rect(27, 11, 1, 1), interactive: true },
-      { id: "stairs", kind: "stairs", footprint: rect(27, 13, 2, 2), interactive: true },
+      { id: "vending", kind: "vending_machine", footprint: rect(31, 11, 1, 1), interactive: true },
+      { id: "stairs", kind: "stairs", footprint: rect(33, 19, 2, 2), interactive: true },
     ],
     upgrades: enabledUpgrades, collisionFootprints: [],
   };

@@ -27,7 +27,7 @@ describe("Soniox transcription adapter", () => {
       const path = new URL(String(input)).pathname;
 
       if (path === "/v1/files") {
-        expect(init?.method).toBeUndefined();
+        expect(init?.method).toBe("POST");
         expect(init?.body).toBeInstanceOf(FormData);
         const file = (init?.body as FormData).get("file");
         expect(file).toBeInstanceOf(Blob);

@@ -32,10 +32,12 @@ describe("Shadow Tower contract", () => {
     const hall = plan.objects.find((item) => item.kind === "elevator_hall");
     const elevator = plan.objects.find((item) => item.kind === "elevator");
     const suites = plan.objects.filter((item) => item.kind === "office_unit");
-    expect(hall?.footprint).toMatchObject({ x: 0, y: 0, cols: 4, rows: 8 });
-    expect(elevator?.footprint.x).toBe(0);
+    expect(hall?.footprint).toMatchObject({ x: 0, y: 8, cols: 5, rows: 8 });
+    expect(elevator?.footprint).toMatchObject({ x: 1, y: 10, cols: 2, rows: 2 });
     expect(suites).toHaveLength(4);
-    expect(suites.every((item) => item.footprint.y === 0 && item.door?.access === "password")).toBe(true);
+    expect(suites.every((item) => item.door?.access === "password")).toBe(true);
+    expect(new Set(suites.map((item) => item.footprint.y))).toEqual(new Set([1, 15]));
+    expect(new Set(suites.map((item) => item.footprint.x))).toEqual(new Set([4, 20]));
     expect(validateShadowTowerPlan(plan)).toMatchObject({ ok: true });
   });
   it("makes settled workstation upgrades visible", () => {
