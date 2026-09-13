@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, Download, Trash2, Plus, X, Loader2,
-  Search, Edit2, Upload, Lock, Shield, ShieldAlert,
+  Search, Edit2, Upload, Lock, Shield, ShieldAlert, ChevronDown,
   Building2, Phone, Mail, StickyNote
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -116,6 +116,7 @@ export default function LeadsPage() {
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', company: '', jobTitle: '', status: '', assignedUserId: '' });
 
   const [showImport, setShowImport] = useState(false);
+  const [showMobileTools, setShowMobileTools] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: number; errorDetails: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -367,17 +368,17 @@ export default function LeadsPage() {
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-black">
-        <div className="flex items-center gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3 sm:px-4 py-3 border-b border-black">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Users size={14} className="text-black" />
-          <h1 className="font-bold uppercase tracking-widest text-xs">LEAD DATABASE</h1>
+          <h1 className="font-bold uppercase tracking-widest text-xs truncate">LEAD DATABASE</h1>
           <span className="bg-black text-[#00ff41] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest">
             {admin ? 'MANAGER' : 'MEMBER'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
           {admin && (
-            <>
+            <div className="hidden sm:flex items-center gap-2">
               <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-widest font-bold uppercase border border-black hover:bg-black hover:text-[#00ff41] transition-colors">
                 <Upload size={12}/> IMPORT
               </button>
@@ -387,12 +388,34 @@ export default function LeadsPage() {
               <button onClick={exportXLSX} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-widest font-bold uppercase border border-black hover:bg-black hover:text-[#00ff41] transition-colors">
                 <Download size={12}/> XLSX
               </button>
-            </>
+            </div>
           )}
-          <button onClick={() => setShowAddForm(true)} className="flex items-center gap-1.5 px-4 py-1.5 text-[9px] tracking-widest font-bold uppercase bg-black text-[#00ff41] hover:text-white transition-colors">
+          {admin && (
+            <button
+              onClick={() => setShowMobileTools(open => !open)}
+              className="sm:hidden flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-widest font-bold uppercase border border-black"
+              aria-expanded={showMobileTools}
+            >
+              TOOLS <ChevronDown size={12} className={showMobileTools ? 'rotate-180' : ''} />
+            </button>
+          )}
+          <button onClick={() => setShowAddForm(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 text-[9px] tracking-widest font-bold uppercase bg-black text-[#00ff41] hover:text-white transition-colors">
             <Plus size={12}/> ADD LEAD
           </button>
         </div>
+        {admin && showMobileTools && (
+          <div className="sm:hidden flex flex-wrap gap-2 pt-1 border-t border-black/10">
+            <button onClick={() => setShowImport(true)} className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 px-2 py-2 text-[9px] tracking-widest font-bold uppercase border border-black">
+              <Upload size={12}/> IMPORT
+            </button>
+            <button onClick={exportCSV} className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 px-2 py-2 text-[9px] tracking-widest font-bold uppercase border border-black">
+              <Download size={12}/> CSV
+            </button>
+            <button onClick={exportXLSX} className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 px-2 py-2 text-[9px] tracking-widest font-bold uppercase border border-black">
+              <Download size={12}/> XLSX
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Toolbar & Error */}
@@ -403,9 +426,9 @@ export default function LeadsPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 py-2 border-b border-black bg-white">
-        <div className="flex items-center gap-3">
-          <div className="relative w-[300px]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-2 border-b border-black bg-white">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center min-w-0">
+          <div className="relative w-full sm:w-[300px]">
             <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-black/50" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
@@ -415,7 +438,7 @@ export default function LeadsPage() {
           </div>
           <select
             value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs font-bold border border-black outline-none uppercase bg-white cursor-pointer"
+            className="w-full sm:w-auto px-3 py-1.5 text-xs font-bold border border-black outline-none uppercase bg-white cursor-pointer"
           >
             <option value="">ALL STATUSES</option>
             {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -429,8 +452,8 @@ export default function LeadsPage() {
       {/* Main Grid Area */}
       <div className="flex flex-1 overflow-hidden leads-data">
         {/* Table Area */}
-        <div className="flex-1 flex flex-col border-r border-black overflow-hidden bg-white">
-          <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_1fr_100px_90px_60px] gap-4 px-4 py-2 border-b border-black bg-black/5 text-[9px] font-bold uppercase tracking-widest text-black/50">
+        <div className={`flex-1 flex-col border-r border-black overflow-hidden bg-white ${selectedLead ? 'hidden sm:flex' : 'flex'}`}>
+          <div className="hidden sm:grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_1fr_100px_90px_60px] gap-4 px-4 py-2 border-b border-black bg-black/5 text-[9px] font-bold uppercase tracking-widest text-black/50">
             <span>Name</span>
             <span>Contact</span>
             <span>Company</span>
@@ -448,26 +471,30 @@ export default function LeadsPage() {
               <button
                 key={lead.id}
                 onClick={() => openDetail(lead)}
-                className={`w-full text-left grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_1fr_100px_90px_60px] gap-4 px-4 py-3 border-b border-black/10 text-xs items-center transition-colors ${selectedLead?.id === lead.id ? 'bg-black text-[#00ff41]' : 'hover:bg-black/5'}`}
+                className={`w-full text-left grid grid-cols-1 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)_1fr_100px_90px_60px] gap-1 sm:gap-4 px-3 sm:px-4 py-3 border-b border-black/10 text-xs sm:items-center transition-colors ${selectedLead?.id === lead.id ? 'bg-black text-[#00ff41]' : 'hover:bg-black/5'}`}
               >
                 <div className="font-bold truncate uppercase text-[11px] flex items-center gap-1.5">
                   {lead.isLocked && <Lock size={10} className={selectedLead?.id === lead.id ? 'text-[#00ff41]' : 'text-black/40'} />}
                   {lead.name}
                 </div>
-                <div className="flex flex-col truncate">
+                <div className="flex flex-col truncate sm:hidden text-black/60">
+                  <span className="text-[10px] truncate">{lead.company || 'NO COMPANY'}</span>
+                  <span className="text-[10px] truncate">{statusLabel(lead.status)} · {lead.callCount > 0 ? `${lead.callCount} CALLS` : 'NO CALLS'}</span>
+                </div>
+                <div className="hidden sm:flex flex-col truncate">
                   <span className="font-mono text-[10px]">{lead.phone || '-'}</span>
                   <span className={`text-[10px] ${selectedLead?.id === lead.id ? 'text-[#00ff41]/70' : 'text-black/50'}`}>{lead.email || '-'}</span>
                 </div>
-                <div className="truncate text-[11px] font-bold">{lead.company || '-'}</div>
-                <div className={`truncate text-[9px] font-bold uppercase tracking-widest ${selectedLead?.id === lead.id ? 'text-[#00ff41]/80' : 'text-black/50'}`}>
+                <div className="hidden sm:block truncate text-[11px] font-bold">{lead.company || '-'}</div>
+                <div className={`hidden sm:block truncate text-[9px] font-bold uppercase tracking-widest ${selectedLead?.id === lead.id ? 'text-[#00ff41]/80' : 'text-black/50'}`}>
                   {lead.assignedUserId ? (memberMap[lead.assignedUserId] || 'ASSIGNED') : 'UNASSIGNED'}
                 </div>
-                <div>
+                <div className="hidden sm:block">
                   <span className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest border ${statusColor(lead.status, selectedLead?.id === lead.id)}`}>
                     {statusLabel(lead.status)}
                   </span>
                 </div>
-                <div className="text-right text-[10px] font-mono">
+                <div className="hidden sm:block text-right text-[10px] font-mono">
                   {lead.callCount > 0 ? lead.callCount : '-'}
                 </div>
               </button>
@@ -477,7 +504,7 @@ export default function LeadsPage() {
 
         {/* Selected Lead Panel */}
         {selectedLead && (
-          <div className="w-[420px] flex flex-col bg-[#FAFAF7] shrink-0 overflow-hidden">
+          <div className="w-full sm:w-[420px] flex flex-col bg-[#FAFAF7] shrink-0 overflow-hidden">
             {/* Context Header */}
             <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
               <div className="flex items-center gap-2 min-w-0">
