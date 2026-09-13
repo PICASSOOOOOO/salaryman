@@ -720,6 +720,8 @@ class SolarPunkRenderer:
         )
         if rendered is not None and rendered_bounds is not None:
             jump_offset = 0
+            seated_offset_x = 0
+            seated_offset_y = 0
             if action == "jump":
                 jump_phase = min(1.0, action_elapsed / 0.8)
                 jump_offset = round(-48 * (4 * jump_phase * (1 - jump_phase)))
@@ -728,6 +730,15 @@ class SolarPunkRenderer:
                 displayed = pygame.transform.scale(
                     rendered,
                     (rendered.get_width(), max(32, int(rendered.get_height() * 0.72))),
+                )
+                # A seated character should not look like a frozen cropped
+                # sprite. Keep the motion deliberately small so the chair
+                # remains the visual anchor while the player breathes.
+                seated_offset_x = round(math.sin(action_elapsed * 1.1) * 1.0)
+                seated_offset_y = round(math.sin(action_elapsed * 1.8) * 1.2)
+                displayed = pygame.transform.rotate(
+                    displayed,
+                    math.sin(action_elapsed * 0.9) * 1.4,
                 )
             elif action == "sleep":
                 displayed = pygame.transform.rotate(rendered, 90)
@@ -738,8 +749,8 @@ class SolarPunkRenderer:
             self.screen.blit(
                 displayed,
                 (
-                    round(x - rendered_center_x),
-                    y + 7 - rendered_bottom + jump_offset,
+                    round(x - rendered_center_x + seated_offset_x),
+                    y + 7 - rendered_bottom + jump_offset + seated_offset_y,
                 ),
             )
             if action == "sleep":
