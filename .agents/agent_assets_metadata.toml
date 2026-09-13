@@ -1593,3 +1593,17 @@ mtime_ms = 1789230338339
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/038cbb47-c949-48ae-be24-b878c02f56b2/c3521e57-8cf6-4f3a-a713-8b22258852e9"
 storage_version_token = "1789232382493731"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "2kh1XSQOstfdXR-asRd94"
+uri = "file://exports/salaryman-api-replit-build.zip"
+type = "unspecified"
+title = "SALARYMAN API Replit build"
+description = "Portable Node/TypeScript API handoff for another Replit project. Includes the compiled production server, API source, shared workspace packages, database migrations, tests, lockfile, and setup instructions; excludes the web app, node_modules, and secret values."
+logical_id = "bb0e596b-71bc-4ecd-bda5-1d85fffb58a7"
+content_hash = "sha256:e27bc7cf451d202688518060b359d6fea6ef01f6e8baa8e62a4b4e0a99367831"
+size = 3510335
+mtime_ms = 1789278287954
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/bb0e596b-71bc-4ecd-bda5-1d85fffb58a7/8ce29538-ffad-4450-9ce1-e85049476927"
+storage_version_token = "1789278299213002"
+content_type = "application/octet-stream"
