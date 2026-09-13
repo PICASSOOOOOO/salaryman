@@ -135,9 +135,14 @@ async function uploadAudio(
   apiKey: string,
 ): Promise<string> {
   const form = new FormData();
+  // Node's Buffer is backed by ArrayBufferLike, while the publish toolchain's
+  // DOM typings require an owned ArrayBuffer for BlobPart. Copy the bytes into
+  // an ArrayBuffer before handing them to the web-standard FormData API.
+  const audioData = new ArrayBuffer(options.audioBuffer.byteLength);
+  new Uint8Array(audioData).set(options.audioBuffer);
   form.append(
     "file",
-    new Blob([options.audioBuffer], { type: options.mimeType || "application/octet-stream" }),
+    new Blob([audioData], { type: options.mimeType || "application/octet-stream" }),
     options.filename,
   );
 

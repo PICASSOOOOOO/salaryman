@@ -47,3 +47,19 @@ builder at peak memory.
 **How to apply:** Never use the root recursive build as an artifact's
 `services.production.build`. The web artifact should invoke only its filtered
 package build; the API artifact should do the same.
+
+## Web-standard binary APIs need owned buffers
+
+Node `Buffer` values can fail the publish TypeScript gate when passed directly
+to browser-standard APIs such as `Blob`: the deployment toolchain may type the
+buffer as `ArrayBufferLike`, while `BlobPart` requires an owned `ArrayBuffer`.
+Copy binary data into a fresh `ArrayBuffer` before constructing `Blob` or
+`FormData` payloads.
+
+**Why:** The Soniox upload path worked in development and its runtime tests but
+the publish compiler rejected `Buffer<ArrayBufferLike>` against the stricter
+DOM typings.
+
+**How to apply:** For server-side multipart uploads, allocate an
+`ArrayBuffer`, copy the Node buffer through `Uint8Array`, and pass that owned
+array to `Blob`; keep the publish typecheck as the authority.
