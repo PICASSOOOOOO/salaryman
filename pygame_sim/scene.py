@@ -90,6 +90,7 @@ class TowerScene:
     player_action_elapsed: float = 0.0
     player_action_remaining: float = 0.0
     idle_seconds: float = 0.0
+    seated_chair_id: str | None = None
 
     MAX_SPEED: float = 300.0
     ACCELERATION: float = 1_500.0
@@ -110,7 +111,40 @@ class TowerScene:
 
     @property
     def nearby_object(self) -> OfficeObject | None:
+        if self.seated_workstation_id is not None:
+            terminal = next(
+                (
+                    item
+                    for item in self.objects.objects
+                    if item.kind == "crt_terminal"
+                    and item.parent_id == self.seated_workstation_id
+                    and item.room == self.current_room
+                    and item.interactive
+                ),
+                None,
+            )
+            if terminal is not None:
+                return terminal
         return self.objects.nearby(self.player_position, room=self.current_room)
+
+    @property
+    def seated_workstation_id(self) -> str | None:
+        """Return the desk parent of the exact chair occupied by the player."""
+        if self.player_action != "sit" or self.seated_chair_id is None:
+            return None
+        chair = self.objects.get(self.seated_chair_id)
+        return chair.parent_id if chair is not None and chair.kind == "chair" else None
+
+    def is_seated_at_workstation(self, workstation_id: str | None) -> bool:
+        return workstation_id is not None and self.seated_workstation_id == workstation_id
+
+    def workstation_permission(self, workstation_id: str | None) -> str | None:
+        """Return a user-facing denial, or None when the matching chair is occupied."""
+        if self.player_action != "sit" or self.seated_chair_id is None:
+            return "SIT TO USE COMPUTER"
+        if not self.is_seated_at_workstation(workstation_id):
+            return "WRONG WORKSTATION / SIT AT MATCHING CHAIR"
+        return None
 
     def room_spawn(self, room_id: str) -> tuple[int, int]:
         for room_data in FLOOR_PLAN["rooms"]:
@@ -195,7 +229,7 @@ class TowerScene:
                 0.0, self.player_action_remaining - delta_seconds
             )
             if self.player_action_remaining == 0:
-                self.player_action = "stand"
+                self.set_player_action("stand", reset_idle=False)
         if self.player_action in {"sit", "sleep"}:
             self.velocity = (0.0, 0.0)
             self.input_vector = (0.0, 0.0)
@@ -249,7 +283,9 @@ class TowerScene:
             chairs = [
                 item
                 for item in self.objects.objects
-                if item.room == self.current_room and item.kind == "chair"
+                if item.room == self.current_room
+                and item.kind == "chair"
+                and item.interactive
             ]
             if not chairs:
                 return False
@@ -266,6 +302,9 @@ class TowerScene:
             ) > 450:
                 return False
             self.player_position = chair.position
+            self.seated_chair_id = chair.id
+        else:
+            self.seated_chair_id = None
         self.player_action = action
         self.player_action_elapsed = 0.0
         self.player_action_remaining = max(0.0, duration)

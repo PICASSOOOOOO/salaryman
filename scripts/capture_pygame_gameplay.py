@@ -134,7 +134,7 @@ def main() -> int:
     phase_targets = (
         (
             ("executive", (1_800, 6_550), "EXECUTIVE OFFICE / FOUR WORKSTATIONS", None),
-            ("executive", (1_750, 6_350), "TERMINAL ACCESS / OFFICE RECORD", "executive-crt"),
+            ("executive", (1_300, 6_380), "TERMINAL ACCESS / OFFICE RECORD", "executive-crt"),
         )
         if args.executive_office
         else (
@@ -149,10 +149,10 @@ def main() -> int:
         else (
             ("executive", (1_800, 6_250), "SHIFT START / OFFICE LIVE", None),
             ("executive", (1_400, 6_250), "TELEPHONE / CALLL HOME", "executive-telephone"),
-            ("executive", (1_750, 6_350), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
-            ("executive", (1_300, 6_400), "BREAK / REST POSITION", "executive-chair"),
+            ("executive", (1_300, 6_380), "CRT TERMINAL / OFFICE RECORD", "executive-crt"),
+            ("executive", (1_300, 6_380), "BREAK / REST POSITION", "executive-chair"),
             ("executive", (1_350, 6_850), "TEAM HUDDLE / MARA VOSS", None),
-            ("executive", (1_300, 6_400), "SLEEP MODE / RECOVERING", "executive-chair"),
+            ("executive", (1_300, 6_380), "SLEEP MODE / RECOVERING", "executive-chair"),
         )
     )
     phase_seconds = 6.0 if args.fast_trailer else 7.0
@@ -201,6 +201,8 @@ def main() -> int:
                 elif phase == 5:
                     state.notice = "SLEEP MODE / RECOVERING"
                 elif object_id is not None:
+                    if object_id.startswith("executive-crt"):
+                        scene.set_player_action("sit", duration=5.5)
                     scene.interact(state, object_id=object_id)
                 action_done = True
             renderer.draw_tower(state, scene)

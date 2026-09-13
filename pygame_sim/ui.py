@@ -795,7 +795,10 @@ class SolarPunkRenderer:
         if nearby:
             prompt = pygame.Rect(270, 620, min(430, self.width - 600), 30)
             self.panel(prompt, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=3, width=1)
-            self.text(f"[E] {nearby.prompt}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)
+            prompt_text = nearby.prompt
+            if nearby.kind == "crt_terminal" and scene.is_seated_at_workstation(nearby.parent_id):
+                prompt_text = "USE COMPUTER"
+            self.text(f"[E] {prompt_text}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)
             self.text(f"ROOM  {scene.room.label}  /  OBJECT  {nearby.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
         else:
             self.text("WALK CLOSER TO A LIVE OBJECT", (274, 628), self.font_md, Palette.MATRIX_BRIGHT)
