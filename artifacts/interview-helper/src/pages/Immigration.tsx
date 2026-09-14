@@ -121,7 +121,7 @@ export function getPostOnboardingDestination(search: string): string {
     : '/office';
 }
 
-export default function Immigration() {
+export default function Onboarding() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   // Read the destination once: the SPA route changes as the cinematic moves
@@ -380,7 +380,7 @@ export default function Immigration() {
   // Intake is the one onboarding. Once the registry stamp is complete, go
   // directly to the requested destination instead of launching a second
   // post-onboarding sequence.
-  const finishImmigration = () => {
+  const finishOnboarding = () => {
     if (phase === 'done') return;
     void handleIntroComplete();
   };
@@ -408,7 +408,7 @@ export default function Immigration() {
       {phase === 'intake' && (
         <QuickOnboarding
           charName={charName}
-          onComplete={handleComplete}
+        onComplete={handleComplete}
         />
       )}
     </div>
@@ -532,14 +532,13 @@ function StampingPanel({
   );
 }
 
-function ImmigrationBackdrop({ phase }: { phase: Phase }) {
+function OnboardingBackdrop({ phase }: { phase: Phase }) {
   const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   const stageLabel = phase === 'stamping' ? 'SAVING' : 'READY';
   const isMobile = useIsMobile();
-  // Painted cinematic base — the border-control terminal in the game's
-  // painted style (Nano Banana). Sits behind the canonical Pablo orb so the
-  // whole intake reads as one painted scene instead of a flat gradient.
+  // Painted cinematic base for the onboarding terminal. Sits behind the
+  // canonical Pablo orb so the intake reads as one painted scene.
   const sceneUrl = useArtAsset(phase === 'stamping' ? 'scene_pablo_terminal' : 'scene_office', 4000, { retryOnFail: true });
   return (
     <>
@@ -569,7 +568,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
         }
       `}</style>
 
-      {/* Top stripe — "BORDER CONTROL" */}
+      {/* Top stripe — onboarding status */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
         padding: isMobile ? '.4rem .6rem' : '.6rem 1.1rem',
