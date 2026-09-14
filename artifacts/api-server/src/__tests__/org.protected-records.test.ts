@@ -68,6 +68,21 @@ afterAll(async () => {
 });
 
 describe("organization settings and protected records", () => {
+  it("allows any unique business name without a hidden reservation list", async () => {
+    const owner = await createUser();
+    actAs(owner);
+
+    const created = await request(app).post("/api/orgs").send({ name: "Medicare Club" });
+    expect(created.status).toBe(201);
+    expect(created.body.org.name).toBe("MEDICARE CLUB");
+    const orgId = created.body.org.id as number;
+    createdOrgIds.push(orgId);
+
+    const renamed = await request(app).put(`/api/orgs/${orgId}`).send({ name: "Picasso AI LLC" });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.org.name).toBe("PICASSO AI LLC");
+  });
+
   it("persists expanded organization settings for directors", async () => {
     const owner = await createUser();
     const manager = await createUser();
@@ -168,6 +183,6 @@ describe("organization settings and protected records", () => {
     actAs(owner);
     const response = await request(app).delete(`/api/orgs/${org.id}`).send({ confirmName: org.name });
     expect(response.status).toBe(403);
-    expect(response.body.error).toMatch(/reserved organizations/i);
+    expect(response.body.error).toMatch(/developer organizations/i);
   });
 });

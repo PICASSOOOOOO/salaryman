@@ -2,7 +2,7 @@
 //
 // Covers the CLIENT half of the server-authoritative onboarding skip — the glue
 // that lets a returning, already-onboarded user land on /office instead of being
-// looped back through the immigration intake on a fresh device / cleared browser.
+// looped back through onboarding on a fresh device / cleared browser.
 //
 // hydrateOnboardingStatus():
 //   • GET /world/my-business: a world-business row → flip the local flag

@@ -1,9 +1,9 @@
-/** E2E: authenticated fresh accounts enter the shared onboarding flow. */
+/** E2E: after the development reset, no prior account bypasses sign-up. */
 
 import { test, expect } from "@playwright/test";
 
-test("authenticated fresh accounts enter onboarding from Tower bookmarks", async ({ page }) => {
+test("Tower bookmarks require a fresh sign-up session after reset", async ({ page }) => {
   await page.goto("/tower");
 
-  await expect(page).toHaveURL(/\/onboarding\?returnTo=%2Ftower/);
+  await expect(page).toHaveURL(/\/sign-in\?returnTo=%2Ftower/);
 });

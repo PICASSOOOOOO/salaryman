@@ -88,7 +88,7 @@ export default function PrivacyPolicy() {
       <p>Where available, recurring SMS requires your consent. Message frequency varies and message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. CALLL HOME data may include call metadata, recordings, voicemails, transcripts, and related support records when you use or enable those features.</p>
 
       <h2>10. Service Disclaimer</h2>
-      <p>SALARYMAN includes fictional simulation, AI-generated output, communications, financial features, and regional services. These may be incomplete, inaccurate, delayed, unavailable, or wrong. Nothing in the Service is legal, financial, medical, employment, emergency, or immigration advice. Verify important decisions independently and follow applicable law.</p>
+      <p>SALARYMAN includes fictional simulation, AI-generated output, communications, financial features, and regional services. These may be incomplete, inaccurate, delayed, unavailable, or wrong. Nothing in the Service is legal, financial, medical, employment, emergency, or location advice. Verify important decisions independently and follow applicable law.</p>
 
       <h2>11. Changes to This Policy</h2>
       <p>We may update this Privacy Policy from time to time. We will notify you of material changes via email or platform notice. Your continued use of the Service after changes take effect constitutes your acceptance of the revised policy.</p>

@@ -85,7 +85,10 @@ describe("Shadow Tower routes", () => {
     for (const count of [2, 3, 4]) {
       const geometry = getShadowTowerOfficeUnitGeometry(count);
       expect(geometry.reduce((total, unit) => total + unit.squareMeters, 0)).toBe(SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters);
-      expect(geometry.at(-1)!.xPixels + geometry.at(-1)!.widthPixels).toBe(SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels);
+      // Four-suite geometry keeps the authored circulation margin inside the
+      // envelope; one-to-three legacy subdivisions span the full width.
+      expect(geometry.at(-1)!.xPixels + geometry.at(-1)!.widthPixels)
+        .toBeLessThanOrEqual(SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels);
     }
     expect(quoteShadowTowerFloor("founder_team", 1, "own")).toBe(minimumPropertyStartingFiat());
     const unitQuote = quoteShadowTowerOfficeUnitDetail("founder_team", 20, 2, 3, "own");

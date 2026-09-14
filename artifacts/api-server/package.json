@@ -13,7 +13,8 @@
     "health:phone": "tsx ./src/scripts/phone-health-check.ts",
     "health:phone:daily": "PHONE_HEALTH_ALWAYS_EMAIL=1 tsx ./src/scripts/phone-health-check.ts",
     "health:all": "tsx ./src/scripts/connection-health-check.ts",
-    "audit:site": "tsx ./src/scripts/site-audit-check.ts"
+    "audit:site": "tsx ./src/scripts/site-audit-check.ts",
+    "reset:development": "RESET_DEVELOPMENT=CONFIRM tsx ./src/scripts/reset-development.ts"
   },
   "dependencies": {
     "@clerk/backend": "^3.16.13",

@@ -41,18 +41,14 @@ Call log:
   7  |  */
   8  | 
   9  | import { test, expect } from "@playwright/test";
-  10 | 
-  11 | test.describe("Legacy immigration route", () => {
-  12 |   test("hands the legacy route to the desktop client surface", async ({ page }) => {
-  13 |     await page.goto("/immigration");
-  14 | 
-> 15 |     await expect(page).toHaveURL(/\/desktop(?:$|[?#])/);
-     |                        ^ Error: expect(page).toHaveURL(expected) failed
-  16 |     await expect(
-  17 |       page.getByRole("heading", { name: "Run the office where you work." }),
-  18 |     ).toBeVisible();
-  19 |     await expect(page.getByRole("link", { name: "Connect a desktop" })).toBeVisible();
-  20 |     await expect(page.getByTestId("audio-control-toggle")).not.toBeAttached();
-  21 |   });
-  22 | });
+ 10  | 
+ 11  | test.describe("Legacy immigration route", () => {
+ 12  |   test("hands the legacy route to the desktop client surface", async ({ page }) => {
+ 13  |     await page.goto("/immigration");
+ 14  |
+>15  |     await expect(page).toHaveURL(/\/desktop(?:$|[?#])/);
+    |                        ^ Error: expect(page).toHaveURL failed
+ 16  |     await expect(page.getByRole("heading", { name: "Run the office where you work." })).toBeVisible();
+ 17  |   });
+ 18  | });
 ```

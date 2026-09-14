@@ -260,15 +260,29 @@ export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, 
  */
 export function routeOfficePath(layout: OfficePropertyLayout, path: readonly OfficeTile[]): OfficeTile[] {
   if (path.length < 2) return path.slice();
+  const blocked = getOfficeBlockedTiles(layout);
   const clamp = (point: OfficeTile): OfficeTile => ({
     col: Math.max(0, Math.min(layout.cols - 1, Math.floor(point.col))),
     row: Math.max(0, Math.min(layout.rows - 1, Math.floor(point.row))),
   });
-  const start = clamp(path[0]);
+  const nearestWalkable = (point: OfficeTile): OfficeTile => {
+    if (!blocked.has(`${point.col},${point.row}`)) return point;
+    for (let radius = 1; radius < Math.max(layout.cols, layout.rows); radius += 1) {
+      for (let col = point.col - radius; col <= point.col + radius; col += 1) {
+        for (let row = point.row - radius; row <= point.row + radius; row += 1) {
+          if (col < 0 || row < 0 || col >= layout.cols || row >= layout.rows) continue;
+          if (Math.abs(col - point.col) + Math.abs(row - point.row) > radius) continue;
+          if (!blocked.has(`${col},${row}`)) return { col, row };
+        }
+      }
+    }
+    return point;
+  };
+  const start = nearestWalkable(clamp(path[0]));
   const routed: OfficeTile[] = [{ col: start.col, row: start.row }];
   let current = start;
   for (const waypoint of path.slice(1)) {
-    const target = clamp(waypoint);
+    const target = nearestWalkable(clamp(waypoint));
     const segment = findOfficeRoute(layout, current, target);
     for (const tile of segment) {
       const previous = routed[routed.length - 1];

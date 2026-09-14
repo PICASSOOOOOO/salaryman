@@ -8,8 +8,8 @@ import { isTutorialDone, markTutorialDone, resetTutorial } from "./tutorial-prog
 // (salaryman_tutorial_done, read by isTutorialDone()). That breaks for a
 // returning, already-onboarded user who signs in on a fresh device or after
 // clearing their browser: the local flag is missing, so every routing gate
-// (App.tsx HomeOrCover, AppShell, NavBar, Immigration) treats them as brand new
-// and force-redirects them through the /immigration intake again.
+// (App.tsx HomeOrCover, AppShell, NavBar, Onboarding) treats them as brand new
+// and force-redirects them through the /onboarding flow again.
 //
 // The server already knows the truth: an already-onboarded user has a row in
 // worldBusinessesTable, exposed via GET /world/my-business. This module checks
@@ -108,7 +108,7 @@ export function hydrateOnboardingStatus(): Promise<void> {
         const data = (await businessResult.value.json()) as { businesses?: unknown };
         if (Array.isArray(data.businesses) && data.businesses.length > 0) {
           // Server says this user already onboarded — flip the local flag so
-          // App.tsx / AppShell / NavBar / Immigration all treat them as cleared.
+          // App.tsx / AppShell / NavBar / Onboarding all treat them as cleared.
           markTutorialDone();
         }
       }

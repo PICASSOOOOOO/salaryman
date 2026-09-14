@@ -16,7 +16,7 @@ import {
   isTutorialDone,
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
-import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
+import { isReadyToEnter, isCostCurious } from "@/lib/signup-intent";
 import { formatSpeechName } from "@/lib/speech-name";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
@@ -992,7 +992,7 @@ function PabloTerminalAuthed() {
   });
 
   // Camera/file/URL-vision UI is available only after authentication and the
-  // immigration desk has completed.
+  // onboarding desk has completed.
   const hasFinishedOnboarding = isAuthenticated && isTutorialDone();
   const enterFromHomepage = useCallback(() => {
     navigate("/console");
@@ -1025,7 +1025,7 @@ function PabloTerminalAuthed() {
   }, []);
 
   // Start the pre-auth intake when the visitor chooses to enter. The remaining
-  // race/gender/biz/appearance/location onboarding lives in Immigration and
+  // race/gender/biz/appearance/location onboarding lives in Onboarding and
   // WorldPlay after auth returns.
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
@@ -1360,11 +1360,10 @@ function PabloTerminalAuthed() {
         await speak(line);
         return;
       }
-      if (isReadyToEnter(text) || isShowPapers(text)) {
-        // Admittance intent: "let me in" / "I'm ready" / "sign up" or the
-        // immigration "here are my papers" framing. A returning visitor we
-        // already have on file goes STRAIGHT to the sign-in choice; a brand
-        // new one pivots to asking-name with the sharper prompt.
+      if (isReadyToEnter(text)) {
+        // Readiness intent: "let me in" / "I'm ready" / "sign up".
+        // A returning visitor we already have on file goes straight to the
+        // sign-in choice; a brand-new one pivots to asking-name.
         const known = getSalarymanName();
         const spokenKnown = known ? formatSpeechName(known) : null;
         if (admitIfKnown(spokenKnown ? `Cleared, ${spokenKnown}. Heading in.` : "Cleared. Heading in.")) return;
@@ -1698,7 +1697,7 @@ function PabloTerminalAuthed() {
     // Authenticated new users remain on Pablo's homepage until they explicitly
     // choose to enter. Keep the handoff deterministic instead of asking the
     // command model to infer whether "I'm ready" means Tower access.
-    if (isAuthenticated && !hasFinishedOnboarding && (isReadyToEnter(text) || isShowPapers(text))) {
+    if (isAuthenticated && !hasFinishedOnboarding && isReadyToEnter(text)) {
       enterFromHomepage();
       return;
     }
@@ -1752,7 +1751,7 @@ function PabloTerminalAuthed() {
       //     an unauthenticated user is a phishing surface.
       // In every case the action is set to null so nothing fires now, and
       // we append an in-voice gating sentence to Pablo's reply so the
-      // user understands why we're routing them through immigration.
+      // user understands why we're routing them through onboarding.
       const isPreOnboarding =
         !isAuthenticated ||
         interviewPhaseRef.current !== 'idle';
@@ -2258,7 +2257,7 @@ function PabloTerminalAuthed() {
           {/* Removed: persistent "UPGRADE TO PABLO PRIME" button.
               On mobile it sat directly over the text input box, and it
               shouldn't be the very first thing a brand-new arrival sees
-              before they've even cleared immigration. The Prime upsell
+              before they've completed onboarding. The Prime upsell
               is now delivered as a one-shot TV-ad interstitial on /
               after onboarding (see PrimeAdInterstitial). */}
         </div>

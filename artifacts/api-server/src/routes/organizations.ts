@@ -24,7 +24,6 @@ import {
   ORG_ROLE_HIERARCHY,
   ORG_MEMBER_TYPES,
   hasRoleAccess,
-  isReservedOrgName,
   normalizeOrgName,
   orgPermissionsTable,
   ORG_PERMISSION_KEYS,
@@ -48,16 +47,6 @@ import {
 import { hashAccessCode, isHashedAccessCode, verifyAccessCode } from "../lib/access-code";
 
 const router = Router();
-
-const MEDICARE_CLUB_CLAIMERS = new Set([
-  "pamw.innerlighthealth@gmail.com",
-  "alejandroduong@gmail.com",
-]);
-
-function canClaimProtectedOrgName(name: string, email: string | null | undefined): boolean {
-  if (name.toLowerCase() !== "medicare club") return true;
-  return MEDICARE_CLUB_CLAIMERS.has((email ?? "").trim().toLowerCase());
-}
 
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
@@ -562,15 +551,6 @@ router.post("/orgs", async (req, res) => {
     return;
   }
 
-  if (isReservedOrgName(normalizedName)) {
-    res.status(400).json({ error: "That organization name is reserved and cannot be used" });
-    return;
-  }
-  if (!canClaimProtectedOrgName(normalizedName, req.user.email)) {
-    res.status(400).json({ error: "That organization name is reserved for its verified owners" });
-    return;
-  }
-
   const [existingOrg] = await db
     .select()
     .from(organizationsTable)
@@ -692,10 +672,6 @@ router.put("/orgs/:orgId", async (req, res) => {
     const normalizedName = typeof name === "string" ? normalizeOrgName(name) : "";
     if (normalizedName.length < 2 || normalizedName.length > 120) {
       res.status(400).json({ error: "Organization name must be 2-120 characters" });
-      return;
-    }
-    if (isReservedOrgName(normalizedName)) {
-      res.status(400).json({ error: "That organization name is reserved and cannot be used" });
       return;
     }
     const [existingOrg] = await db
@@ -1588,8 +1564,8 @@ router.delete("/orgs/:orgId", async (req, res) => {
     .where(eq(organizationsTable.id, orgId))
     .limit(1);
   if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
-  if (org.isDeveloper || isReservedOrgName(org.name)) {
-    res.status(403).json({ error: "Reserved organizations cannot be deleted" });
+  if (org.isDeveloper) {
+    res.status(403).json({ error: "Developer organizations cannot be deleted" });
     return;
   }
 

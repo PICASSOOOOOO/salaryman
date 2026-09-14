@@ -37,9 +37,9 @@ vi.mock("@/lib/world-servers", () => ({
 }));
 vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));
 
-import Immigration, { getPostOnboardingDestination } from "./Immigration";
+import Onboarding, { getPostOnboardingDestination } from "./Onboarding";
 
-describe("Immigration", () => {
+describe("Onboarding", () => {
   beforeEach(() => {
     navigate.mockReset();
     isTutorialDone.mockReturnValue(false);
@@ -52,7 +52,7 @@ describe("Immigration", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(<Immigration />);
+      root.render(<Onboarding />);
       await Promise.resolve();
     });
 
@@ -78,7 +78,7 @@ describe("Immigration", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(<Immigration />);
+      root.render(<Onboarding />);
       await Promise.resolve();
     });
 

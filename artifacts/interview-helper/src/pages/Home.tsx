@@ -401,7 +401,7 @@ export default function Home() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   // Auto-funnel: the Tower lobby is the open home for a fresh visitor;
-  // immigration is not part of normal entry. Returning users land in their
+  // onboarding is not part of normal entry. Returning users land in their
   // office. Session flag prevents an infinite loop if the user back-navigates
   // to `/`.
   useEffect(() => {

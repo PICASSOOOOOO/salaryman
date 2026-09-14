@@ -168,12 +168,12 @@ describe("Pablo front-door admittance flow", () => {
     expect(spokenTts).not.toContain("Cleared, RETURNING RITA. Heading in.");
   });
 
-  it("admits a returning visitor saying 'show me your papers' without re-asking name/email", async () => {
-    window.localStorage.setItem("salaryman_name", "Paper Pete");
+  it("admits a returning visitor saying 'I'm ready' without re-asking name/email", async () => {
+    window.localStorage.setItem("salaryman_name", "Ready Rita");
     window.localStorage.setItem("salaryman_email", "pete@example.com");
 
     await mount();
-    await typeAndSend("show me your papers");
+    await typeAndSend("I'm ready");
 
     expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
     const input = qs("pablo-text-input") as HTMLInputElement | null;

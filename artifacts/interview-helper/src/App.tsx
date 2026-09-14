@@ -33,7 +33,7 @@ import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
-const Onboarding = lazy(() => import("@/pages/Immigration"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const Console = lazy(() => import("@/pages/Console"));

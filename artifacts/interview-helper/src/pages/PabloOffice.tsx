@@ -133,7 +133,7 @@ export default function PabloOffice() {
   const [bots, setBots] = useState<MonitorBot[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
   // Read the user's onboarding office tier once on mount. localStorage
-  // is the source of truth here — Immigration writes it after the user
+  // is the source of truth here — Onboarding writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier, setTier] = useState<SalarymanOfficeTier>(() => getSalarymanOfficeTier() ?? 'capsule');
   useEffect(() => startPendingHousingAssessmentRetry(), []);
