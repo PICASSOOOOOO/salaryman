@@ -121,4 +121,12 @@ describe("apiFetch session-expiry redirect", () => {
     await settle(apiFetch("/api/business/summary"));
     expect(replaceMock).not.toHaveBeenCalled();
   });
+
+  it("does NOT redirect when a bootstrap read explicitly suppresses expiry handling", async () => {
+    setLocation("/business");
+    global.fetch = vi.fn(() => Promise.resolve(status401()));
+    const apiFetch = await freshApiFetch();
+    await settle(apiFetch("/api/salaryman/saves", { skipSessionExpiryRedirect: true }));
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
 });

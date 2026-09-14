@@ -27,6 +27,19 @@ import { useSyncExternalStore } from "react";
 let resolved = false;
 let inFlight: Promise<void> | null = null;
 const listeners = new Set<() => void>();
+const AUTH_BOOTSTRAP_RETRY_MS = 250;
+
+async function readOnboardingState(path: string): Promise<Response> {
+  let response = await apiFetch(path, { skipSessionExpiryRedirect: true });
+  // Clerk can finish the browser sign-in before the API middleware sees the
+  // newly established session. Retry that narrow bootstrap race instead of
+  // letting apiFetch redirect the user back to the sign-in form.
+  if (response.status === 401) {
+    await new Promise((resolve) => setTimeout(resolve, AUTH_BOOTSTRAP_RETRY_MS));
+    response = await apiFetch(path, { skipSessionExpiryRedirect: true });
+  }
+  return response;
+}
 
 function emit(): void {
   for (const l of listeners) l();
@@ -88,9 +101,9 @@ export function hydrateOnboardingStatus(): Promise<void> {
     let authoritativeSavesRead = false;
     try {
       const [businessResult, homeCityResult, savesResult] = await Promise.allSettled([
-        apiFetch("/api/world/my-business"),
-        apiFetch("/api/world/home-city"),
-        apiFetch("/api/salaryman/saves"),
+        readOnboardingState("/api/world/my-business"),
+        readOnboardingState("/api/world/home-city"),
+        readOnboardingState("/api/salaryman/saves"),
       ]);
       if (savesResult.status === "fulfilled" && savesResult.value.ok) {
         const data = (await savesResult.value.json()) as { saves?: unknown };
@@ -103,6 +116,19 @@ export function hydrateOnboardingStatus(): Promise<void> {
             resetBuildingOnboarding();
           }
         }
+      }
+      // A brand-new account has no local completion marker yet. If the only
+      // bootstrap failure is the transient auth 401, let it enter onboarding
+      // rather than trapping it on the loading screen forever. Returning users
+      // with a completion marker remain fail-closed until their server state is
+      // available.
+      if (
+        !authoritativeSavesRead &&
+        !isTutorialDone() &&
+        savesResult.status === "fulfilled" &&
+        savesResult.value.status === 401
+      ) {
+        markResolved();
       }
       if (businessResult.status === "fulfilled" && businessResult.value.ok) {
         const data = (await businessResult.value.json()) as { businesses?: unknown };

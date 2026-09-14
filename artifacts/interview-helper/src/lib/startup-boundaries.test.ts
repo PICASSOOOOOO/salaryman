@@ -49,7 +49,7 @@ describe("frontend startup boundaries", () => {
 
   it("forces successful sign-in into the requested work route", () => {
     const app = source("App.tsx");
-    expect(app).toContain("forceRedirectUrl={returnTo}");
+    expect(app).toContain("forceRedirectUrl={`${basePath}${returnTo}`}");
     expect(app).toContain('?? "/business"');
   });
 

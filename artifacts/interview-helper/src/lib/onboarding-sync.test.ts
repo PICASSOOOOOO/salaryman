@@ -60,7 +60,10 @@ describe("hydrateOnboardingStatus", () => {
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await hydrateOnboardingStatus();
 
-    expect(apiFetch).toHaveBeenCalledWith("/api/world/my-business");
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/world/my-business",
+      { skipSessionExpiryRedirect: true },
+    );
     expect(localStorage.getItem(TUTORIAL_KEY)).toBe("1");
     expect(getOnboardingResolved()).toBe(true);
   });
@@ -89,7 +92,10 @@ describe("hydrateOnboardingStatus", () => {
     const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
     await hydrateOnboardingStatus();
 
-    expect(apiFetch).toHaveBeenCalledWith("/api/world/home-city");
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/world/home-city",
+      { skipSessionExpiryRedirect: true },
+    );
     expect(JSON.parse(localStorage.getItem("sm_save") ?? "{}")).toMatchObject({
       cityId: "minx_city",
       homeCityId: "huda_city",
@@ -132,6 +138,16 @@ describe("hydrateOnboardingStatus", () => {
 
     expect(localStorage.getItem(TUTORIAL_KEY)).toBe("1");
     expect(getOnboardingResolved()).toBe(false);
+  });
+
+  it("lets a brand-new account enter onboarding after a transient auth bootstrap 401", async () => {
+    apiFetch.mockResolvedValue({ ok: false, status: 401 } as Response);
+
+    const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
+    await hydrateOnboardingStatus();
+
+    expect(getOnboardingResolved()).toBe(true);
+    expect(apiFetch).toHaveBeenCalledTimes(6);
   });
 
   it("coalesces concurrent calls into a single network request", async () => {

@@ -815,7 +815,7 @@ function ClerkSignUpPage() {
       routing="path"
       path={`${basePath}/sign-up`}
       signInUrl={`${basePath}/sign-in`}
-      fallbackRedirectUrl="/business"
+      fallbackRedirectUrl={`${basePath}/business`}
     />
   </div>;
 }
@@ -829,8 +829,8 @@ function ClerkSignInPage() {
       routing="path"
       path={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
-      fallbackRedirectUrl={returnTo}
-      forceRedirectUrl={returnTo}
+      fallbackRedirectUrl={`${basePath}${returnTo}`}
+      forceRedirectUrl={`${basePath}${returnTo}`}
     />
   </div>;
 }

@@ -121,15 +121,25 @@ function isSessionExpiryPublicRoute(currentPath: string): boolean {
   );
 }
 
-export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
+export type ApiFetchOptions = RequestInit & {
+  /**
+   * Auth/bootstrap reads can briefly receive a 401 while Clerk's browser
+   * session is becoming available to the API. Those reads should retry or
+   * resolve their own state instead of redirecting the whole app mid-login.
+   */
+  skipSessionExpiryRedirect?: boolean;
+};
+
+export function apiFetch(path: string, opts?: ApiFetchOptions): Promise<Response> {
   const fullPath = path.startsWith('/api/')
     ? `${BASE}${path.slice(1)}`
     : path.startsWith('api/')
     ? `${BASE}${path}`
     : path;
-  const method = (opts?.method ?? 'GET').toUpperCase();
+  const { skipSessionExpiryRedirect, ...requestInit } = opts ?? {};
+  const method = (requestInit.method ?? 'GET').toUpperCase();
   const isMutating = method !== 'GET' && method !== 'HEAD';
-  const p = fetch(fullPath, { ...opts, credentials: 'include' });
+  const p = fetch(fullPath, { ...requestInit, credentials: 'include' });
 
   // Session-expiry redirect: when any API call comes back 401 it means the
   // session has lapsed. Send the user directly to the compact sign-in screen
@@ -138,6 +148,7 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
     if (
       r.status === 401 &&
       !_sessionExpiredRedirecting &&
+      !skipSessionExpiryRedirect &&
       typeof window !== "undefined" &&
       !SESSION_EXPIRY_SKIP_PATHS.test(path)
     ) {
@@ -149,7 +160,7 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
         _sessionExpiredRedirecting = true;
         const safePath = currentPath + window.location.search;
         const returnTo = encodeURIComponent(safePath);
-        window.location.replace(`/sign-in?returnTo=${returnTo}`);
+        window.location.replace(`${BASE}sign-in?returnTo=${returnTo}`);
       }
     }
   }).catch(() => {});

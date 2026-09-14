@@ -19,6 +19,7 @@
 - [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
 - [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
 - [Plan/auth gate loading race](auth-plan-gate-loading-race.md) — usePlan/gates must wait on useAuth().isLoading; isAuthenticated starts false (not undefined), so cold-load gated routes bounce paid users to /upgrade.
+- [Clerk auth bootstrap 401 race](auth-bootstrap-401-race.md) — immediate post-sign-in onboarding reads can 401 before the API sees Clerk; retry without global session redirect.
 - [Keep-alive ErrorBoundary + HMR](keepalive-errorboundary-hmr.md) — always-mounted hidden subtrees (Console "terminal", home) get stuck on fallback after a transient Fast-Refresh hook-order crash; ErrorBoundary now auto-resets on vite:afterUpdate. Don't re-chase as a runtime bug.
 - [Browser auth routing](newuser-funnel-gate.md) — public homepage stays at `/`; missing/expired sessions go directly to compact sign-in with returnTo, never through Pablo.
 - [Pablo nebula canonical](pablo-nebula-canonical.md) — approved /pablo nebula is the shader purple "emotion/wavy orb" (659-line PabloNebula3D w/ variants), NOT the 7f0d717 starfield (which full-bleed = broken white blob). Match the `Published your App` commit, not "older = original".
