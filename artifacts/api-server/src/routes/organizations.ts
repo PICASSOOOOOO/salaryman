@@ -647,8 +647,15 @@ router.get("/orgs/:orgId", async (req, res) => {
   }));
 
   const featureGrants = await db.select().from(orgFeatureGrantsTable).where(eq(orgFeatureGrantsTable.orgId, orgId));
+  const membersManageRole = (await getOrgPermissionPolicy(orgId))["members.manage"];
 
-  res.json({ org, members, featureGrants, callerRole: caller.role });
+  res.json({
+    org,
+    members,
+    featureGrants,
+    callerRole: caller.role,
+    canManageMembers: hasRoleAccess(caller.role as OrgRole, membersManageRole),
+  });
 });
 
 router.put("/orgs/:orgId", async (req, res) => {
@@ -1155,6 +1162,8 @@ router.get("/orgs/:orgId/members", async (req, res) => {
   const caller = await getCallerMembership(userId, orgId);
   if (!caller) { res.status(403).json({ error: "Not authorized" }); return; }
 
+  const membersManageRole = (await getOrgPermissionPolicy(orgId))["members.manage"];
+  const canManageMembers = hasRoleAccess(caller.role as OrgRole, membersManageRole);
   const isCallerManager = hasRoleAccess(caller.role as OrgRole, "manager");
 
   const membersRaw = await db
@@ -1218,7 +1227,7 @@ router.get("/orgs/:orgId/members", async (req, res) => {
         .where(and(eq(orgInvitesTable.orgId, orgId), eq(orgInvitesTable.status, "pending")))
     : [];
 
-  res.json({ members, pendingInvites, callerRole: caller.role, hiddenCount });
+  res.json({ members, pendingInvites, callerRole: caller.role, hiddenCount, canManageMembers });
 });
 
 router.post("/orgs/:orgId/members", async (req, res) => {

@@ -61,6 +61,7 @@ interface OrgData {
   member: Member | null;
   members: Member[];
   allOrgs: { membership: Member; organization: Org | null }[];
+  canManageMembers?: boolean;
 }
 
 interface Summary {
@@ -261,6 +262,7 @@ export default function BusinessHub() {
                 data.org = target.organization;
                 data.member = target.membership;
                 data.members = detail.members ?? [];
+                data.canManageMembers = detail.canManageMembers;
               }
             } catch {}
           }
@@ -270,6 +272,7 @@ export default function BusinessHub() {
             if (detailRes.ok) {
               const detail = await detailRes.json();
               data.members = detail.members ?? [];
+              data.canManageMembers = detail.canManageMembers;
             }
           } catch {}
         }
@@ -315,6 +318,7 @@ export default function BusinessHub() {
   const activeMembers = members.filter(m => m.status === 'active');
   const isManager = canManageOrg;
   const isOwner = activeMember?.role === 'owner';
+  const canManageMembers = orgData?.canManageMembers ?? isManager;
   const netProfit = summary?.financials?.netProfit ?? 0;
   const isPositive = netProfit >= 0;
 
@@ -344,17 +348,16 @@ export default function BusinessHub() {
     setInviting(true);
     setInviteError('');
     setInviteUrl('');
-    const isEmail = inviteInput.includes('@');
     try {
-      const res = await apiFetch(`/api/orgs/${activeOrg.id}/invite`, {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isEmail ? { email: inviteInput.trim() } : { username: inviteInput.trim() }),
+        body: JSON.stringify({ email: inviteInput.trim(), role: 'specialist', memberType: 'employee' }),
       });
       const data = await res.json();
-      if (!res.ok) { setInviteError(data.error || 'INVITE FAILED'); setInviting(false); return; }
-      setInviteUrl(data.inviteUrl || '');
+      if (!res.ok) { setInviteError(data.error || 'MEMBER COULD NOT BE ADDED'); setInviting(false); return; }
       setInviteInput('');
+      await loadData();
     } catch { setInviteError('NETWORK ERROR'); }
     setInviting(false);
   };
@@ -688,7 +691,7 @@ export default function BusinessHub() {
                       <Building2 className="w-4 h-4" />
                       <h2 className="text-xs font-bold uppercase tracking-widest">DETAILS</h2>
                     </div>
-                    {isManager && (
+                    {canManageMembers && (
                       <button onClick={() => { setEditingOrg(!editingOrg); if(!editingOrg) openEditOrg(); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
                         {editingOrg ? 'CANCEL' : 'EDIT'}
                       </button>
@@ -760,12 +763,12 @@ export default function BusinessHub() {
                     <div className="p-3 border-b border-border bg-muted/20 space-y-2">
                       <div className="flex gap-2">
                         <input
-                          value={inviteInput} onChange={e => setInviteInput(e.target.value)} placeholder="EMAIL OR USERNAME"
+                          value={inviteInput} onChange={e => setInviteInput(e.target.value)} placeholder="EMAIL ADDRESS"
                           className="flex-1 bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary transition-colors"
                           onKeyDown={e => e.key === 'Enter' && handleInvite()}
                         />
                         <button onClick={handleInvite} disabled={inviting || !inviteInput.trim()} className="px-3 py-1.5 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-[9px] rounded-sm disabled:opacity-50 hover:bg-primary/90 transition-colors">
-                          {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'SEND'}
+                          {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'ADD'}
                         </button>
                       </div>
                       {inviteError && <p className="text-[9px] text-destructive font-bold uppercase tracking-widest">{inviteError}</p>}
@@ -789,7 +792,7 @@ export default function BusinessHub() {
                     {activeMembers.map(m => {
                       const isEditing = editingMember === m.userId;
                       const isSelf = m.userId === user?.id;
-                      const canEdit = isManager && m.role !== 'owner' && !isSelf;
+                      const canEdit = canManageMembers && m.role !== 'owner' && !isSelf;
 
                       return (
                         <div key={m.userId} className="p-3 text-xs hover:bg-muted/5 transition-colors">

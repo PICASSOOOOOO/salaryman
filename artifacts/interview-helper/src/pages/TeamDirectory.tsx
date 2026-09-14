@@ -1,192 +1,387 @@
 import { apiFetch } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { resolveAvatarUrl } from '@/lib/avatar';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import {
-  Users, Loader2, Search, Building2, Mail, Phone,
-  Briefcase, UserCheck, UserX, ChevronDown,
+  Users, Loader2, Search, Building2, Briefcase, UserCheck, UserPlus,
+  RefreshCw, AlertTriangle, Mail, ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 
-interface StaffMember {
+interface Organization {
   id: number;
   name: string;
-  role: string;
-  department: string;
-  salary: number | null;
-  status: string;
-  startDate: string;
+  businessId: string;
 }
 
-interface Employee {
-  id: number;
-  name: string;
+interface OrganizationMembership {
+  userId: string;
   role: string;
-  payRate: string;
-  payFrequency: string;
   status: string;
-  notes: string;
+  title: string | null;
+  department: string | null;
+  salary: string | null;
+  memberType: string | null;
+  joinedAt: string | null;
+  createdAt: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  inviteEmail: string | null;
+  profileImageUrl: string | null;
 }
 
-function fmt$(v: number | string | null) {
-  const n = Number(v);
-  return isFinite(n) && n > 0 ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '—';
+interface OrganizationResponse {
+  org: Organization | null;
+  allOrgs: { organization: Organization | null; membership: { role: string } }[];
+}
+
+interface MembersResponse {
+  members: OrganizationMembership[];
+  callerRole: string;
+  canManageMembers: boolean;
+  hiddenCount?: number;
+}
+
+const ROLE_OPTIONS = [
+  { value: 'specialist', label: 'Specialist' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'director', label: 'Director' },
+  { value: 'executive', label: 'Executive' },
+] as const;
+
+const MEMBER_TYPES = [
+  { value: 'employee', label: 'Employee' },
+  { value: 'contractor', label: 'Contractor' },
+] as const;
+
+function displayName(member: OrganizationMembership) {
+  const name = [member.firstName, member.lastName].filter(Boolean).join(' ');
+  return name || member.email || member.inviteEmail || member.userId.slice(0, 14);
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase() || '?';
+}
+
+function formatSalary(value: string | null) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0
+    ? `$${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+    : '—';
 }
 
 export default function TeamDirectory() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useState(() => getDefaultBoomerMode());
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [deptFilter, setDeptFilter] = useState('all');
-
-  const fetchAll = useCallback(async () => {
-    if (!isAuthenticated) { setLoading(false); return; }
-    setLoading(true);
+  const [organizationData, setOrganizationData] = useState<OrganizationResponse | null>(null);
+  const [membersData, setMembersData] = useState<MembersResponse | null>(null);
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(() => {
     try {
-      const [staffRes, empRes] = await Promise.all([
-        apiFetch('/api/tools/hiring/staff'),
-        apiFetch('/api/enterprise/employees'),
-      ]);
-      if (staffRes.ok) { const d = await staffRes.json(); setStaff(d.staff || []); }
-      if (empRes.ok) { const d = await empRes.json(); setEmployees(d.employees || []); }
-    } finally { setLoading(false); }
-  }, [isAuthenticated]);
-
-  useEffect(() => { fetchAll(); }, [fetchAll]);
-
-  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to view your team." />;
-
-  const combined = [
-    ...staff.map(s => ({
-      id: `staff-${s.id}`,
-      name: s.name,
-      role: s.role || 'Team Member',
-      department: s.department || 'General',
-      pay: s.salary ? fmt$(s.salary) : '—',
-      status: s.status || 'active',
-      source: 'HIRING',
-      startDate: s.startDate || '',
-    })),
-    ...employees.filter(e => !staff.some(s => s.name.toLowerCase() === e.name.toLowerCase())).map(e => ({
-      id: `emp-${e.id}`,
-      name: e.name,
-      role: e.role || 'Team Member',
-      department: 'Payroll',
-      pay: e.payRate ? `${fmt$(e.payRate)}/${e.payFrequency}` : '—',
-      status: e.status || 'active',
-      source: 'PAYROLL',
-      startDate: '',
-    })),
-  ];
-
-  const departments = ['all', ...new Set(combined.map(m => m.department))];
-  const filtered = combined.filter(m => {
-    if (deptFilter !== 'all' && m.department !== deptFilter) return false;
-    if (search && !m.name.toLowerCase().includes(search.toLowerCase()) && !m.role.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
+      const stored = localStorage.getItem('sm_active_org');
+      return stored ? Number(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [addForm, setAddForm] = useState({
+    email: '',
+    role: 'specialist',
+    department: '',
+    title: '',
+    memberType: 'employee',
   });
 
-  const activeCount = combined.filter(m => m.status === 'active').length;
-  const deptCount = new Set(combined.map(m => m.department)).size;
+  const activeOrg = organizationData?.allOrgs.find(
+    item => item.organization?.id === selectedOrgId,
+  )?.organization ?? organizationData?.org;
+  const activeOrgId = activeOrg?.id ?? null;
+
+  const loadMembers = useCallback(async (orgId: number) => {
+    const response = await apiFetch(`/api/orgs/${orgId}/members`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'TEAM ROSTER COULD NOT BE LOADED');
+    setMembersData(data);
+  }, []);
+
+  const loadOrganizations = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await apiFetch('/api/orgs/me');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'ORGANIZATIONS COULD NOT BE LOADED');
+      setOrganizationData(data);
+      const organizations = (data.allOrgs ?? []).filter(
+        (item: { organization: Organization | null }) => item.organization,
+      ) as OrganizationResponse['allOrgs'];
+      const nextOrgId = organizations.some(item => item.organization?.id === selectedOrgId)
+        ? selectedOrgId
+        : data.org?.id ?? organizations[0]?.organization?.id ?? null;
+      setSelectedOrgId(nextOrgId);
+      if (nextOrgId) await loadMembers(nextOrgId);
+      else setMembersData(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'TEAM ROSTER COULD NOT BE LOADED');
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, loadMembers, selectedOrgId]);
+
+  useEffect(() => { void loadOrganizations(); }, [loadOrganizations]);
+
+  const changeOrganization = async (value: string) => {
+    const orgId = Number(value);
+    setSelectedOrgId(orgId);
+    try { localStorage.setItem('sm_active_org', String(orgId)); } catch {}
+    setLoading(true);
+    setError('');
+    try {
+      await loadMembers(orgId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'TEAM ROSTER COULD NOT BE LOADED');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddMember = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!activeOrgId || !addForm.email.trim()) return;
+    setAdding(true);
+    setAddError('');
+    try {
+      const response = await apiFetch(`/api/orgs/${activeOrgId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: addForm.email.trim(),
+          role: addForm.role,
+          department: addForm.department.trim() || undefined,
+          title: addForm.title.trim() || undefined,
+          memberType: addForm.memberType,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setAddError(data.error || 'MEMBER COULD NOT BE ADDED');
+        return;
+      }
+      setAddForm({ email: '', role: 'specialist', department: '', title: '', memberType: 'employee' });
+      setShowAddMember(false);
+      await loadMembers(activeOrgId);
+    } catch {
+      setAddError('NETWORK ERROR — TRY AGAIN');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to view your organization team." />;
+
+  const members = membersData?.members ?? [];
+  const departments = ['all', ...new Set(members.map(member => member.department).filter(Boolean) as string[])];
+  const query = search.trim().toLowerCase();
+  const filteredMembers = members.filter(member => {
+    if (departmentFilter !== 'all' && member.department !== departmentFilter) return false;
+    if (!query) return true;
+    return [displayName(member), member.role, member.title, member.department, member.email, member.inviteEmail]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(query));
+  });
+  const activeCount = members.filter(member => member.status === 'active').length;
+  const pendingCount = members.filter(member => member.status !== 'active').length;
+  const canManageMembers = membersData?.canManageMembers === true;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full relative z-10">
-
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-indigo-400" />
+      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full">
+        <header className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground uppercase tracking-wider truncate">
+                  {boomerMode ? 'Organization Team' : 'TEAM ROSTER'}
+                </h1>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate">
+                  {activeOrg ? `${activeOrg.name} · ${activeOrg.businessId}` : 'ORGANIZATION MEMBERSHIP'}
+                </p>
+              </div>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-foreground">
-              {boomerMode ? 'Team Directory' : 'TEAM ROSTER — PERSONNEL'}
-            </h2>
+            {activeOrg && (
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  value={activeOrg.id}
+                  onChange={event => void changeOrganization(event.target.value)}
+                  className="max-w-[220px] bg-card border border-border rounded-sm px-2 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground outline-none focus:border-primary"
+                  aria-label="Select organization"
+                >
+                  {organizationData?.allOrgs.filter(item => item.organization).map(item => (
+                    <option key={item.organization!.id} value={item.organization!.id}>{item.organization!.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void loadOrganizations()}
+                  className="p-2 border border-border rounded-sm text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+                  aria-label="Refresh team"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground ml-12">
-            {boomerMode ? 'View your entire team with roles and departments.' : 'COMPLETE ORG VIEW — ROLES, DEPARTMENTS, COMPENSATION.'}
-          </p>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-6">
-          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03] p-4">
-            <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">TOTAL MEMBERS</div>
-            <div className="text-2xl font-bold text-indigo-400">{combined.length}</div>
-          </div>
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
-            <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">ACTIVE</div>
-            <div className="text-2xl font-bold text-emerald-400">{activeCount}</div>
-          </div>
-          <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-4">
-            <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">DEPARTMENTS</div>
-            <div className="text-2xl font-bold text-sky-400">{deptCount}</div>
-          </div>
-        </div>
+          {activeOrg && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+              <span><strong className="text-foreground">{activeCount}</strong> ACTIVE</span>
+              <span><strong className="text-foreground">{pendingCount}</strong> PENDING</span>
+              {membersData?.hiddenCount ? <span>{membersData.hiddenCount} HIDDEN BY ROLE POLICY</span> : null}
+              {canManageMembers && (
+                <button
+                  type="button"
+                  onClick={() => { setShowAddMember(value => !value); setAddError(''); }}
+                  className="inline-flex items-center gap-1.5 text-primary font-bold hover:underline"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  {showAddMember ? 'CANCEL' : 'ADD MEMBER'}
+                </button>
+              )}
+            </div>
+          )}
+        </header>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or role..."
-              className="w-full bg-muted/30 border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
-          </div>
-          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-            className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 transition-colors shrink-0">
-            {departments.map(d => <option key={d} value={d}>{d === 'all' ? 'ALL DEPARTMENTS' : d.toUpperCase()}</option>)}
-          </select>
-        </div>
+        {showAddMember && canManageMembers && (
+          <form onSubmit={handleAddMember} className="mb-5 p-4 border border-primary/30 bg-primary/5 rounded-md space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <UserPlus className="w-4 h-4 text-primary" />
+              Add to {activeOrg?.name}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <label className="space-y-1 lg:col-span-2">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Email</span>
+                <input required type="email" value={addForm.email} onChange={event => setAddForm(form => ({ ...form, email: event.target.value }))} placeholder="person@company.com"
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary" />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Member type</span>
+                <select value={addForm.memberType} onChange={event => setAddForm(form => ({ ...form, memberType: event.target.value }))}
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary">
+                  {MEMBER_TYPES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Role</span>
+                <select value={addForm.role} onChange={event => setAddForm(form => ({ ...form, role: event.target.value }))}
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary">
+                  {ROLE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Department</span>
+                <input value={addForm.department} onChange={event => setAddForm(form => ({ ...form, department: event.target.value }))} placeholder="Operations"
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary" />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Title</span>
+                <input value={addForm.title} onChange={event => setAddForm(form => ({ ...form, title: event.target.value }))} placeholder="Operations lead"
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary" />
+              </label>
+            </div>
+            {addError && <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">{addError}</p>}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] text-muted-foreground">Registered users become active immediately. New users appear as pending invitations.</p>
+              <button type="submit" disabled={adding || !activeOrgId} className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-sm text-[10px] font-bold uppercase tracking-widest disabled:opacity-50">
+                {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                Add member
+              </button>
+            </div>
+          </form>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-white/[0.015] p-12 text-center">
-            <Users className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm text-zinc-500">{combined.length === 0 ? (boomerMode ? 'No team members yet. Add staff in Hiring or employees in Payroll.' : 'NO PERSONNEL RECORDS. ADD STAFF VIA HIRING OR PAYROLL MODULE.') : 'No results match your search.'}</p>
+        ) : error ? (
+          <div className="border border-destructive/30 bg-destructive/5 rounded-md p-8 text-center">
+            <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-3" />
+            <p className="text-xs font-bold uppercase tracking-widest text-destructive">{error}</p>
+            <button type="button" onClick={() => void loadOrganizations()} className="mt-4 inline-flex items-center gap-2 px-3 py-2 border border-border rounded-sm text-[10px] font-bold uppercase tracking-widest hover:border-primary hover:text-primary">
+              <RefreshCw className="w-3.5 h-3.5" /> Retry
+            </button>
+          </div>
+        ) : !activeOrg ? (
+          <div className="border border-border rounded-md p-12 text-center">
+            <Building2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm font-bold uppercase tracking-widest">No organization yet</p>
+            <p className="text-xs text-muted-foreground mt-2">Create an organization in the Business hub before adding team members.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.map(m => (
-              <div key={m.id} className="rounded-xl border border-zinc-800 bg-white/[0.015] p-4 hover:border-indigo-500/20 transition-colors">
-                <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
-                    m.status === 'active' ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
-                  }`}>
-                    {m.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-foreground truncate">{m.name}</div>
-                    <div className="text-xs text-zinc-400">{m.role}</div>
-                  </div>
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-[8px] font-bold ${
-                    m.status === 'active' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
-                  }`}>
-                    {m.status.toUpperCase()}
-                  </span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-zinc-800/50 space-y-1">
-                  <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                    <Building2 className="w-3 h-3" />
-                    <span>{m.department}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                    <Briefcase className="w-3 h-3" />
-                    <span>{m.pay}</span>
-                  </div>
-                  {m.startDate && (
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                      <UserCheck className="w-3 h-3" />
-                      <span>Since {m.startDate}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2 flex items-center gap-1">
-                  <span className="px-1.5 py-0.5 rounded text-[8px] font-mono text-zinc-600 bg-zinc-800/50">{m.source}</span>
-                </div>
+          <>
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search name, role, department..."
+                  className="w-full bg-card border border-border rounded-sm pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary" />
               </div>
-            ))}
-          </div>
+              <select value={departmentFilter} onChange={event => setDepartmentFilter(event.target.value)}
+                className="bg-card border border-border rounded-sm px-3 py-2 text-xs text-foreground outline-none focus:border-primary">
+                {departments.map(department => <option key={department} value={department}>{department === 'all' ? 'ALL DEPARTMENTS' : department.toUpperCase()}</option>)}
+              </select>
+            </div>
+
+            {filteredMembers.length === 0 ? (
+              <div className="border border-border rounded-md p-12 text-center">
+                <Users className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm font-bold uppercase tracking-widest">{members.length ? 'No matching members' : 'No members yet'}</p>
+                <p className="text-xs text-muted-foreground mt-2">{members.length ? 'Try a different search or department.' : 'Use Add member to build this organization roster.'}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredMembers.map(member => {
+                  const name = displayName(member);
+                  const avatar = resolveAvatarUrl(member.profileImageUrl);
+                  return (
+                    <article key={member.userId} className="border border-border rounded-md bg-card p-4 hover:border-primary/40 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0 overflow-hidden">
+                          {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : initials(name)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="text-sm font-bold truncate">{name}</h2>
+                          <p className="text-xs text-muted-foreground truncate">{member.title || member.role}</p>
+                        </div>
+                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[8px] font-bold ${member.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                          {member.status.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border space-y-1.5">
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground"><ShieldCheck className="w-3 h-3" /><span>{member.role.toUpperCase()} · {member.memberType || 'MEMBER'}</span></div>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground"><Building2 className="w-3 h-3" /><span>{member.department || 'General'}</span></div>
+                        {member.email || member.inviteEmail ? <div className="flex items-center gap-2 text-[10px] text-muted-foreground truncate"><Mail className="w-3 h-3 shrink-0" /><span className="truncate">{member.email || member.inviteEmail}</span></div> : null}
+                        {member.salary ? <div className="flex items-center gap-2 text-[10px] text-muted-foreground"><Briefcase className="w-3 h-3" /><span>{formatSalary(member.salary)}</span></div> : null}
+                        {member.joinedAt ? <div className="flex items-center gap-2 text-[10px] text-muted-foreground"><UserCheck className="w-3 h-3" /><span>Joined {new Date(member.joinedAt).toLocaleDateString()}</span></div> : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
