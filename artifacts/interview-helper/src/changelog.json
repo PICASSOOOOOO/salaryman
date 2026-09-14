@@ -2041,5 +2041,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.24.1.2498",
+    "date": "2026-09-14",
+    "commitHash": "1dc64b01dd5b3ac899f9231b9fa374f59f46d925",
+    "changes": [
+      "Remove obsolete browser compatibility test artifacts",
+      "Update test results and add audit screenshot",
+      "Implement organization invitation functionality and update business hub UI",
+      "Update organization routes and team directory UI components",
+      "Update main client logic and UI elements"
+    ]
   }
 ]
