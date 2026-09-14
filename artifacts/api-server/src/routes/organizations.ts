@@ -38,6 +38,7 @@ import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 import { getOrgPermissionPolicy, canDoInOrg } from "../lib/org-permissions";
+import { getUncachableResendClient } from "../lib/resend";
 import { removeAdminDiscordRole } from "../lib/seed-picasso";
 import {
   decryptProtectedRecord,
@@ -969,9 +970,11 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
   }
 
   const validRoles = new Set(["specialist", "manager", "director", "executive"]);
-  const validMemberTypes = new Set(["individual", "company"]);
+  const validMemberTypes = new Set(ORG_MEMBER_TYPES);
   const cleanRole = offeredRole && validRoles.has(offeredRole) ? offeredRole : null;
-  const cleanMemberType = offeredMemberType && validMemberTypes.has(offeredMemberType) ? offeredMemberType : null;
+  const cleanMemberType = offeredMemberType && validMemberTypes.has(offeredMemberType as typeof ORG_MEMBER_TYPES[number])
+    ? offeredMemberType as typeof ORG_MEMBER_TYPES[number]
+    : null;
   const cleanSalary = offeredSalary !== undefined && offeredSalary !== null && offeredSalary !== ""
     ? Math.max(0, Math.floor(Number(offeredSalary))) || null
     : null;
@@ -1000,6 +1003,7 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
 
   const baseUrl = process.env.APP_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`;
   const inviteUrl = `${baseUrl}/world?org_invite=${token}`;
+  let emailSent = false;
 
   try {
     const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
@@ -1024,11 +1028,38 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
         link: `/world?org_invite=${token}`,
       });
     }
+
+    if (lookupEmail) {
+      const safeOrgName = orgName.replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[character] ?? character));
+      const { client, fromEmail } = await getUncachableResendClient();
+      const { error: emailError } = await client.emails.send({
+        from: fromEmail,
+        to: [lookupEmail],
+        subject: `Invitation to join ${orgName} on SALARYMAN`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#171717">
+            <h1 style="font-size:22px">You're invited to join ${safeOrgName}</h1>
+            <p>Your organization invitation is ready. Accept it to join the team and access its shared workspace and communications.</p>
+            <p><a href="${inviteUrl}" style="display:inline-block;background:#171717;color:#fff;padding:12px 18px;text-decoration:none;border-radius:4px">Accept invitation</a></p>
+            <p style="font-size:12px;color:#666">This invitation expires in 7 days. If you did not expect it, you can ignore this email.</p>
+          </div>
+        `,
+        text: `You are invited to join ${orgName} on SALARYMAN.\n\nAccept the invitation: ${inviteUrl}\n\nThis invitation expires in 7 days.`,
+      });
+      if (emailError) throw emailError;
+      emailSent = true;
+    }
   } catch (err) {
-    console.error("[Org Invite] Failed to create notification:", err);
+    console.error("[Org Invite] Failed to notify or email invite recipient:", err);
   }
 
-  res.json({ invite, inviteUrl });
+  res.json({ invite, inviteUrl, emailSent });
 });
 
 router.post("/orgs/invite/accept", async (req, res) => {
@@ -1083,11 +1114,14 @@ router.post("/orgs/invite/accept", async (req, res) => {
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
 
+  const acceptedMemberType = invite.offeredMemberType && (ORG_MEMBER_TYPES as readonly string[]).includes(invite.offeredMemberType)
+    ? invite.offeredMemberType
+    : null;
   const offeredOverrides = {
     ...(invite.offeredRole ? { role: invite.offeredRole } : {}),
     ...(invite.offeredTitle ? { title: invite.offeredTitle } : {}),
     ...(invite.offeredDepartment ? { department: invite.offeredDepartment } : {}),
-    ...(invite.offeredMemberType ? { featureBilling: invite.offeredMemberType } : {}),
+    ...(acceptedMemberType ? { memberType: acceptedMemberType } : {}),
     ...(invite.offeredSalary != null ? { salary: String(invite.offeredSalary) } : {}),
   };
 
@@ -1101,7 +1135,8 @@ router.post("/orgs/invite/accept", async (req, res) => {
       orgId: invite.orgId,
       userId,
       role: invite.offeredRole ?? "specialist",
-      featureBilling: invite.offeredMemberType ?? "individual",
+      featureBilling: "individual",
+      memberType: acceptedMemberType ?? "employee",
       status: "active",
       invitedByUserId: invite.invitedByUserId,
       inviteEmail: invite.inviteEmail,

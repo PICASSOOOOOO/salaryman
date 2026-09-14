@@ -39,9 +39,21 @@ interface OrganizationResponse {
 
 interface MembersResponse {
   members: OrganizationMembership[];
+  pendingInvites?: PendingInvite[];
   callerRole: string;
   canManageMembers: boolean;
   hiddenCount?: number;
+}
+
+interface PendingInvite {
+  id: number;
+  inviteEmail: string | null;
+  offeredRole: string | null;
+  offeredTitle: string | null;
+  offeredDepartment: string | null;
+  offeredMemberType: string | null;
+  expiresAt: string;
+  createdAt: string;
 }
 
 const ROLE_OPTIONS = [
@@ -92,6 +104,8 @@ export default function TeamDirectory() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
+  const [inviteNotice, setInviteNotice] = useState('');
+  const [inviteUrl, setInviteUrl] = useState('');
   const [addForm, setAddForm] = useState({
     email: '',
     role: 'specialist',
@@ -162,16 +176,18 @@ export default function TeamDirectory() {
     if (!activeOrgId || !addForm.email.trim()) return;
     setAdding(true);
     setAddError('');
+    setInviteNotice('');
+    setInviteUrl('');
     try {
-      const response = await apiFetch(`/api/orgs/${activeOrgId}/members`, {
+      const response = await apiFetch(`/api/orgs/${activeOrgId}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: addForm.email.trim(),
-          role: addForm.role,
-          department: addForm.department.trim() || undefined,
-          title: addForm.title.trim() || undefined,
-          memberType: addForm.memberType,
+          offeredRole: addForm.role,
+          offeredDepartment: addForm.department.trim() || undefined,
+          offeredTitle: addForm.title.trim() || undefined,
+          offeredMemberType: addForm.memberType,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -180,7 +196,8 @@ export default function TeamDirectory() {
         return;
       }
       setAddForm({ email: '', role: 'specialist', department: '', title: '', memberType: 'employee' });
-      setShowAddMember(false);
+      setInviteNotice(data.emailSent ? 'INVITATION EMAIL SENT' : 'INVITATION CREATED — EMAIL DELIVERY NEEDS ATTENTION');
+      setInviteUrl(data.inviteUrl || '');
       await loadMembers(activeOrgId);
     } catch {
       setAddError('NETWORK ERROR — TRY AGAIN');
@@ -202,7 +219,8 @@ export default function TeamDirectory() {
       .some(value => String(value).toLowerCase().includes(query));
   });
   const activeCount = members.filter(member => member.status === 'active').length;
-  const pendingCount = members.filter(member => member.status !== 'active').length;
+  const pendingInvites = membersData?.pendingInvites ?? [];
+  const pendingCount = members.filter(member => member.status !== 'active').length + pendingInvites.length;
   const canManageMembers = membersData?.canManageMembers === true;
 
   return (
@@ -305,12 +323,29 @@ export default function TeamDirectory() {
             </div>
             {addError && <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">{addError}</p>}
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] text-muted-foreground">Registered users become active immediately. New users appear as pending invitations.</p>
+              <p className="text-[10px] text-muted-foreground">An email invitation is sent. The recipient joins after accepting it.</p>
               <button type="submit" disabled={adding || !activeOrgId} className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-sm text-[10px] font-bold uppercase tracking-widest disabled:opacity-50">
                 {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
                 Add member
               </button>
             </div>
+            {inviteNotice && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                <span>{inviteNotice}</span>
+                {inviteUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!navigator.clipboard) return;
+                      void navigator.clipboard.writeText(inviteUrl);
+                    }}
+                    className="self-start text-primary hover:underline"
+                  >
+                    COPY FALLBACK LINK
+                  </button>
+                )}
+              </div>
+            )}
           </form>
         )}
 
@@ -380,6 +415,29 @@ export default function TeamDirectory() {
                   );
                 })}
               </div>
+            )}
+            {pendingInvites.length > 0 && (
+              <section className="mt-6 border border-border rounded-md bg-card">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-primary" />
+                  <h2 className="text-xs font-bold uppercase tracking-widest">PENDING EMAIL INVITATIONS ({pendingInvites.length})</h2>
+                </div>
+                <div className="divide-y divide-border">
+                  {pendingInvites.map(invite => (
+                    <div key={invite.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate">{invite.inviteEmail || 'Email invitation'}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                          {[invite.offeredRole, invite.offeredDepartment, invite.offeredTitle].filter(Boolean).join(' · ') || 'SPECIALIST'}
+                        </p>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-widest shrink-0">
+                        Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
           </>
         )}

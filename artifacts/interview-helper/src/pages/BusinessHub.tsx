@@ -349,13 +349,19 @@ export default function BusinessHub() {
     setInviteError('');
     setInviteUrl('');
     try {
-      const res = await apiFetch(`/api/orgs/${activeOrg.id}/members`, {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteInput.trim(), role: 'specialist', memberType: 'employee' }),
+        body: JSON.stringify({
+          email: inviteInput.trim(),
+          offeredRole: 'specialist',
+          offeredMemberType: 'employee',
+        }),
       });
       const data = await res.json();
-      if (!res.ok) { setInviteError(data.error || 'MEMBER COULD NOT BE ADDED'); setInviting(false); return; }
+      if (!res.ok) { setInviteError(data.error || 'INVITATION FAILED'); setInviting(false); return; }
+      setInviteUrl(data.inviteUrl || '');
+      if (!data.emailSent) setInviteError('INVITATION CREATED — EMAIL DELIVERY FAILED. COPY THE LINK BELOW.');
       setInviteInput('');
       await loadData();
     } catch { setInviteError('NETWORK ERROR'); }
@@ -525,7 +531,11 @@ export default function BusinessHub() {
   };
 
   const copyInviteUrl = () => {
-    navigator.clipboard.writeText(inviteUrl);
+    if (!navigator.clipboard) {
+      setInviteError('COPY IS NOT AVAILABLE IN THIS BROWSER');
+      return;
+    }
+    void navigator.clipboard.writeText(inviteUrl).catch(() => setInviteError('COPY FAILED — USE THE INVITE EMAIL'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -540,7 +550,13 @@ export default function BusinessHub() {
         const detailRes = await apiFetch(`/api/orgs/${orgId}`);
         if (detailRes.ok) {
           const detail = await detailRes.json();
-          setOrgData(prev => prev ? { ...prev, org: target.organization, member: target.membership, members: detail.members ?? [] } : prev);
+          setOrgData(prev => prev ? {
+            ...prev,
+            org: target.organization,
+            member: target.membership,
+            members: detail.members ?? [],
+            canManageMembers: detail.canManageMembers,
+          } : prev);
         }
       } catch {}
     }
