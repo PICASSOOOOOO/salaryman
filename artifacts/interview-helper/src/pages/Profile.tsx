@@ -536,7 +536,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-base truncate">{displayName}</div>
                   <div className="text-[10px] font-mono text-black/60 truncate">{user?.email}</div>
-                  <button onClick={logout} className="mt-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-600 hover:bg-red-600/10 border border-red-600/20 px-2.5 py-1 transition-colors">
+                  <button onClick={() => logout()} className="mt-2 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-600 hover:bg-red-600/10 border border-red-600/20 px-2.5 py-1 transition-colors">
                     <LogOut className="w-3 h-3" /> Terminate Session
                   </button>
                 </div>

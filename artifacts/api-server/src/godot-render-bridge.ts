@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket, type RawData } from "ws";
 import type { IncomingMessage, Server } from "http";
-import { resolveClerkWebSocketUser } from "./lib/clerk-websocket-auth";
+import { resolveWebSocketUser } from "./lib/replit-websocket-auth";
 
 export const GODOT_RENDER_PATH = "/ws/godot/render";
 const MAX_FRAME_BYTES = 12 * 1024 * 1024;
@@ -157,7 +157,7 @@ export function setupGodotRenderBridge(server: Server): void {
       return;
     }
 
-    const user = await resolveClerkWebSocketUser(req);
+    const user = await resolveWebSocketUser(req);
     if (!user && !hasBridgeToken(req) && !allowUnauthenticatedDevelopmentClient()) {
       sendJson(ws, { type: "error", error: "Viewer authentication required" });
       ws.close(1008, "Viewer authentication required");

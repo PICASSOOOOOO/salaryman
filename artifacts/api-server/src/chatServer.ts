@@ -3,9 +3,9 @@ import type { IncomingMessage, Server } from 'http';
 import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
 import { eq, and, sql } from 'drizzle-orm';
 import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
-import { resolveClerkWebSocketUser } from './lib/clerk-websocket-auth';
+import { resolveWebSocketUser } from './lib/replit-websocket-auth';
 async function resolveSessionUserId(req: IncomingMessage): Promise<string | null> {
-  return (await resolveClerkWebSocketUser(req))?.id ?? null;
+  return (await resolveWebSocketUser(req))?.id ?? null;
 }
 
 interface ChatClient {

@@ -57,11 +57,11 @@ describe("GET /api/auth/providers", () => {
     }
   });
 
-  it("reports Clerk and explicitly does not report Replit Auth", async () => {
+  it("reports Replit Auth and explicitly disables the retired Clerk provider", async () => {
     const res = await getProviders(DEV_HOST);
     expect(res.status).toBe(200);
-    expect(res.body.clerk).toBe(true);
-    expect(res.body.replit).toBe(false);
+    expect(res.body.clerk).toBe(false);
+    expect(res.body.replit).toBe(true);
   });
 
   it("reports github=false when no GitHub OAuth App resolves for the host", async () => {
@@ -132,6 +132,6 @@ describe("GET /api/auth/providers", () => {
 
     const res = await getProviders(DEV_HOST);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ replit: false, clerk: true, discord: true, github: true });
+    expect(res.body).toEqual({ replit: true, clerk: false, discord: true, github: true });
   });
 });

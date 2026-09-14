@@ -3,26 +3,6 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const clerk = vi.hoisted(() => ({
-  isLoaded: false,
-  isSignedIn: false,
-  user: null as null | {
-    id: string;
-    externalId: string | null;
-    primaryEmailAddress: { emailAddress: string } | null;
-    firstName: string | null;
-    lastName: string | null;
-    imageUrl: string;
-  },
-  signOut: vi.fn(),
-}));
-
-vi.mock("@clerk/react", () => ({
-  useUser: () => ({ user: clerk.user, isLoaded: clerk.isLoaded }),
-  useAuth: () => ({ isSignedIn: clerk.isSignedIn }),
-  useClerk: () => ({ signOut: clerk.signOut }),
-}));
-
 import { useAuth } from "./use-auth";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -30,6 +10,7 @@ import { useAuth } from "./use-auth";
 let latest: ReturnType<typeof useAuth>;
 let root: Root;
 let container: HTMLDivElement;
+let fetchMock: ReturnType<typeof vi.fn>;
 
 function Probe() {
   latest = useAuth();
@@ -41,10 +22,8 @@ function render() {
 }
 
 beforeEach(() => {
-  clerk.isLoaded = false;
-  clerk.isSignedIn = false;
-  clerk.user = null;
-  clerk.signOut.mockReset();
+  fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ user: null }) });
+  vi.stubGlobal("fetch", fetchMock);
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -56,32 +35,37 @@ afterEach(() => {
 });
 
 describe("Clerk-backed useAuth adapter", () => {
-  it("uses Clerk's loading and signed-out state without an auth probe", () => {
+  it("starts loading and resolves signed-out state from the session endpoint", async () => {
     render();
     expect(latest.isLoading).toBe(true);
     expect(latest.isAuthenticated).toBe(false);
     expect(latest.user).toBeNull();
+    await act(async () => {});
+    expect(latest.isLoading).toBe(false);
+    expect(fetchMock).toHaveBeenCalledWith("/api/auth/user", { credentials: "include" });
   });
 
-  it("exposes the migrated external ID as the local application ID", () => {
-    clerk.isLoaded = true;
-    clerk.isSignedIn = true;
-    clerk.user = {
-      id: "user_clerk_native",
-      externalId: "legacy-local-id",
-      primaryEmailAddress: { emailAddress: "clerk@example.com" },
-      firstName: "Clerk",
-      lastName: "Bridge",
-      imageUrl: "https://example.com/avatar.png",
-    };
+  it("exposes the Replit session user and redirects through the API", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        user: {
+          id: "legacy-local-id",
+          email: "user@example.com",
+          firstName: "Salary",
+          lastName: "Person",
+          profileImageUrl: "https://example.com/avatar.png",
+        },
+      }),
+    });
     render();
-    expect(latest.isLoading).toBe(false);
+    await act(async () => {});
     expect(latest.isAuthenticated).toBe(true);
     expect(latest.user).toMatchObject({
       id: "legacy-local-id",
-      email: "clerk@example.com",
-      firstName: "Clerk",
-      lastName: "Bridge",
+      email: "user@example.com",
+      firstName: "Salary",
+      lastName: "Person",
     });
   });
 });

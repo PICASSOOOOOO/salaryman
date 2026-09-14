@@ -1,11 +1,10 @@
 /**
  * Destructive development reset.
  *
- * This intentionally refuses live Clerk keys and requires an explicit command
- * guard. It deletes every development Clerk identity first, then clears local
- * application data while preserving boot catalogs and security configuration.
+ * This intentionally requires an explicit command guard. Replit-managed
+ * identities remain with the provider; clearing local sessions and application
+ * data makes the next login provision a fresh local account.
  */
-import { createClerkClient } from "@clerk/backend";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -26,32 +25,10 @@ const PRESERVED_TABLES = new Set([
   "system_config",
 ]);
 
-function requireDevelopmentReset(): string {
+function requireDevelopmentReset(): void {
   if (process.env.RESET_DEVELOPMENT !== "CONFIRM") {
     throw new Error("Refusing reset: set RESET_DEVELOPMENT=CONFIRM explicitly.");
   }
-  const secretKey = process.env.CLERK_SECRET_KEY ?? "";
-  if (!secretKey.startsWith("sk_test_")) {
-    throw new Error("Refusing reset: development reset requires a Clerk sk_test_ key.");
-  }
-  return secretKey;
-}
-
-async function deleteDevelopmentClerkUsers(secretKey: string): Promise<number> {
-  const clerk = createClerkClient({ secretKey });
-  let deleted = 0;
-
-  // Always read page zero because deleting the current page shifts the next
-  // users into its place.
-  for (;;) {
-    const page = await clerk.users.getUserList({ limit: 100, offset: 0 });
-    if (page.data.length === 0) break;
-    for (const user of page.data) {
-      await clerk.users.deleteUser(user.id);
-      deleted++;
-    }
-  }
-  return deleted;
 }
 
 async function clearApplicationTables(): Promise<{ tables: number; rows: number }> {
@@ -84,12 +61,10 @@ async function clearApplicationTables(): Promise<{ tables: number; rows: number 
 }
 
 async function main(): Promise<void> {
-  const secretKey = requireDevelopmentReset();
-  const clerkUsers = await deleteDevelopmentClerkUsers(secretKey);
+  requireDevelopmentReset();
   const database = await clearApplicationTables();
   console.log(JSON.stringify({
     ok: true,
-    clerkUsersDeleted: clerkUsers,
     applicationTablesCleared: database.tables,
     estimatedRowsCleared: database.rows,
     preservedCatalogs: [...PRESERVED_TABLES].sort(),

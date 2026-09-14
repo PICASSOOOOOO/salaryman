@@ -114,7 +114,7 @@
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.
 - [Paid custom phone numbers](paid-custom-phone-numbers.md) — custom Twilio numbers are $10 one-time; only settled Stripe webhooks may provision, while active-number routing falls back to the platform toll-free line.
-- [Clerk local identity bridge](clerk-local-identity-bridge.md) — browser auth is Clerk cookies, but app ownership remains keyed by the signed sessionClaims.userId; never bridge sessions to local users by email.
+- [Replit session identity bridge](replit-session-identity-bridge.md) — OIDC sessions use the database-backed sid cookie; callback matches existing local users by email before creating a new app identity.
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
 - [Shadow Tower named art](shadow-tower-named-art.md) — finished Tower spaces use a named asset manifest; procedural shapes are interaction scaffolding, not final art.
 - [VendKing utility rule](vendking-utility-rule.md) — vending stock must provide authoritative stamina, work-income, skill, protection, or low-cost automation value; never sell decorative dead items.
@@ -134,7 +134,6 @@
 - [Pygame solar-punk decay arc](pygame-solarpunk-decay.md) — desktop gameplay starts bright, lively, and gamified; darkness and deterioration emerge only as the office/world decays.
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
 - [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
-- [Complete Clerk account reset](clerk-account-reset.md) — clearing Postgres does not remove Clerk identities; a true dev reset must delete dev Clerk users and then clear local rows recreated by active sessions.
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.
 - [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is a cream/black floating terminal widget; its live socket drives Pablo working/offline status.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.

@@ -1,9 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
-import { Suspense, lazy, memo, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, memo, useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
-import { publishableKeyFromHost } from "@clerk/react/internal";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
@@ -185,10 +183,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in"];
 
@@ -501,8 +495,8 @@ function AppShell() {
         <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>
           <Switch>
-            <Route path="/sign-in/*?" component={ClerkSignInPage} />
-            <Route path="/sign-up/*?" component={ClerkSignUpPage} />
+            <Route path="/sign-in/*?" component={ReplitAuthPage} />
+            <Route path="/sign-up/*?" component={ReplitAuthPage} />
             {/* Standalone routes */}
             <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/pablo/deck" component={PabloDeck} />
@@ -766,144 +760,49 @@ function App() {
   return (
     <ErrorBoundary fallbackTitle="APP CRASHED">
       <WouterRouter base={basePath}>
-        <ClerkProviderWithRoutes />
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <TwilioDeviceProvider>
+              <ActiveCallProvider>
+                <MusicPlayerProvider>
+                  <NavBarVisibilityProvider>
+                    <FeatureStateProvider>
+                      <PledgeStorePopupProvider>
+                        <AppShell />
+                      </PledgeStorePopupProvider>
+                    </FeatureStateProvider>
+                  </NavBarVisibilityProvider>
+                  <Toaster />
+                </MusicPlayerProvider>
+              </ActiveCallProvider>
+            </TwilioDeviceProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
       </WouterRouter>
     </ErrorBoundary>
   );
 }
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
-
-  return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: { start: { title: "Welcome back to SALARYMAN", subtitle: "Sign in to continue" } },
-        signUp: { start: { title: "Join SALARYMAN", subtitle: "Create your account" } },
-      }}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
-        <TooltipProvider>
-          <TwilioDeviceProvider>
-            <ActiveCallProvider>
-              <MusicPlayerProvider>
-                <NavBarVisibilityProvider>
-                  <FeatureStateProvider>
-                    <PledgeStorePopupProvider>
-                      <AppShell />
-                    </PledgeStorePopupProvider>
-                  </FeatureStateProvider>
-                </NavBarVisibilityProvider>
-                <Toaster />
-              </MusicPlayerProvider>
-            </ActiveCallProvider>
-          </TwilioDeviceProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
-  );
-}
 export default App;
 
-function ClerkSignUpPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FFFAF0] px-4">
-    <SignUp
-      routing="path"
-      path={`${basePath}/sign-up`}
-      signInUrl={`${basePath}/sign-in`}
-      fallbackRedirectUrl={`${basePath}/business`}
-    />
-  </div>;
-}
-
-function ClerkSignInPage() {
+function ReplitAuthPage() {
+  const { isAuthenticated, isLoading, login } = useAuth();
   const returnTo = sanitizeReturnPath(
     new URLSearchParams(window.location.search).get("returnTo"),
   ) ?? "/business";
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) login(returnTo);
+  }, [isLoading, isAuthenticated, login, returnTo]);
   return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FFFAF0] px-4">
-    <SignIn
-      routing="path"
-      path={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      fallbackRedirectUrl={`${basePath}${returnTo}`}
-      forceRedirectUrl={`${basePath}${returnTo}`}
-    />
+    <div className="w-full max-w-md border border-black/10 bg-[#FFFCF5] p-8 text-center">
+      <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em]">SALARYMAN ACCESS</p>
+      <p className="mb-6 text-sm text-black/60">Redirecting to secure sign-in…</p>
+      <a
+        href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
+        className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"
+      >
+        Continue
+      </a>
+    </div>
   </div>;
-}
-
-const clerkAppearance = {
-  cssLayerName: "clerk",
-  options: {
-    logoLinkUrl: basePath || "/",
-  },
-  variables: {
-    colorPrimary: "#000000",
-    colorForeground: "#000000",
-    colorMutedForeground: "#666666",
-    colorDanger: "#000000",
-    colorBackground: "#FFFAF0",
-    colorInput: "#FFFAF0",
-    colorInputForeground: "#000000",
-    colorNeutral: "#CCCCCC",
-    fontFamily: "var(--font-sans)",
-    borderRadius: "0px",
-  },
-  elements: {
-    rootBox: "w-full flex justify-center",
-    cardBox: "!bg-transparent w-[400px] max-w-full !overflow-visible !border-0 !shadow-none",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    logoBox: "!hidden",
-    headerTitle: "text-black font-bold uppercase tracking-widest text-xl",
-    headerSubtitle: "text-black/60 font-sans",
-    socialButtonsBlockButtonText: "text-black uppercase tracking-widest font-bold text-xs",
-    socialButtonsBlockButton: "border border-black/10 hover:bg-black/5 rounded-none",
-    formFieldLabel: "text-black uppercase tracking-widest font-bold text-xs",
-    formFieldInput: "border border-black/20 rounded-none focus:ring-0 focus:border-black",
-    formButtonPrimary: "bg-black text-white hover:bg-black/80 rounded-none uppercase tracking-widest font-bold text-xs",
-    footerActionLink: "text-black uppercase tracking-widest font-bold text-xs hover:text-black/60",
-    footerActionText: "text-black/60",
-    dividerText: "text-black/60",
-    identityPreviewText: "text-black font-sans text-sm",
-    identityPreviewEditButton: "text-black uppercase tracking-widest font-bold text-xs hover:text-black/60",
-    formFieldSuccessText: "text-black",
-    alertText: "text-black",
-    footerAction: "border-black/10",
-    dividerLine: "bg-black/10",
-    alert: "bg-black/5 border-black/10",
-    otpCodeFieldInput: "border-black/20 text-black",
-    formFieldRow: "gap-2",
-    main: "gap-4",
-  },
-};
-
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const previousUserId = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => addListener(({ user }) => {
-    const userId = user?.externalId ?? user?.id ?? null;
-    if (previousUserId.current !== undefined && previousUserId.current !== userId) {
-      queryClient.clear();
-    }
-    previousUserId.current = userId;
-  }), [addListener]);
-
-  return null;
-}
-
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
 }

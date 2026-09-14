@@ -11,7 +11,7 @@ import { resolveClassroomLiveAccess } from './routes/education';
 // server; the cap keeps a single instance healthy and hosting cost predictable.
 // Default 50; raise per deployment (SERVER_MAX_PLAYERS) once a realm's economy
 // justifies more compute, or spin up a second city in the same continent.
-import { resolveClerkWebSocketUser } from "./lib/clerk-websocket-auth";
+import { resolveWebSocketUser } from "./lib/replit-websocket-auth";
 export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 50;
 
 // Which realm this (identical) deployment IS. Both servers run the same build;
@@ -1450,12 +1450,12 @@ const markIdlePlayersSleeping = () => {
 // raw upgrade request (req.cookies isn't populated for WS handshakes, so parse
 // the cookie header ourselves). Returns null when unauthenticated.
 const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null> => {
-  return (await resolveClerkWebSocketUser(req))?.profileImageUrl ?? null;
+  return (await resolveWebSocketUser(req))?.profileImageUrl ?? null;
 };
 
 // Resolve the authenticated user id from a raw upgrade request's session cookie.
 const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null> => {
-  return (await resolveClerkWebSocketUser(req))?.id ?? null;
+  return (await resolveWebSocketUser(req))?.id ?? null;
 };
 
 // Live WebSocket population, compared against MAX_PLAYERS for the capacity gate.
