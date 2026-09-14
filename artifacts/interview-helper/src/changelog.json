@@ -2053,5 +2053,16 @@
       "Update organization routes and team directory UI components",
       "Update main client logic and UI elements"
     ]
+  },
+  {
+    "version": "v.24.2.2506",
+    "date": "2026-09-14",
+    "commitHash": "eb9b1a9a2daa967c9a820ed201c116fc39eee318",
+    "changes": [
+      "Update session management and organization schema logic",
+      "Update immigration page content",
+      "Update immigration intake flow and associated tests",
+      "Update version and changelog files"
+    ]
   }
 ]
