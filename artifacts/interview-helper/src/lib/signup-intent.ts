@@ -35,9 +35,8 @@ export function isCostCurious(text: string): boolean {
   return COST_CURIOUS_RE.test(text.trim());
 }
 
-// "Show me your papers" admittance — the city-state immigration framing.
-// A visitor offering / presenting their papers (or mirroring the guard's
-// "show me your papers" line) is signalling they want to be processed in.
+// Legacy readiness language detector. Keep the detector for existing scripted
+// conversations, but do not expose immigration framing in the browser UI.
 // Treated the same as readiness: pivot to intake, or — for a returning
 // visitor we already have on file — straight to the sign-in choice.
 export const SHOW_PAPERS_RE =
@@ -51,8 +50,7 @@ const NEGATED_PAPERS_RE =
 export function isShowPapers(text: string): boolean {
   const t = text.trim();
   if (NEGATED_PAPERS_RE.test(t)) return false;
-  // Bare "papers" / "my papers" typed alone at the front door is a strong
-  // admittance signal in this immigration framing.
+  // Bare "papers" / "my papers" typed alone remains a legacy readiness signal.
   if (/^(my\s+)?papers[!.?]*$/i.test(t)) return true;
   return SHOW_PAPERS_RE.test(t);
 }

@@ -94,8 +94,8 @@ const SESSION_EXPIRY_SKIP_PATHS =
 // Public / anonymous-allowed routes where a 401 from a background API call is
 // EXPECTED (the visitor simply isn't signed in) and must NOT hijack navigation
 // to the sign-in funnel. The root "/" is the public scroll cinematic landing
-// (ScrollLanding); /pablo is the sign-in funnel itself; /immigration is the
-// post-sign-in intake desk. This mirrors the anonymous-allowed route set in
+// (ScrollLanding); /pablo is the sign-in funnel itself; /onboarding is the
+// post-sign-in onboarding desk. This mirrors the anonymous-allowed route set in
 // App.tsx — keep it in sync if more public routes are added. A 401 on any other
 // (genuinely protected) page still triggers the return-to-sign-in bounce.
 const SESSION_EXPIRY_PUBLIC_ROUTES = [
@@ -103,7 +103,7 @@ const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/desktop",
   "/phone",
   "/pablo",
-  "/immigration",
+  "/onboarding",
   "/device-link",
   "/sms-opt-in",
   // Auth routes are deliberately anonymous. Background metadata requests may
@@ -143,7 +143,7 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
     ) {
       const currentPath = window.location.pathname;
       // Don't redirect on public/anonymous routes (the root landing cinematic,
-      // the /pablo sign-in funnel, or the /immigration intake desk) — a 401
+      // the /pablo sign-in funnel, or the /onboarding desk) — a 401
       // there is expected for a logged-out visitor and must not hijack nav.
       if (!isSessionExpiryPublicRoute(currentPath)) {
         _sessionExpiredRedirecting = true;

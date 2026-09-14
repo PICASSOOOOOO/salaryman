@@ -3,10 +3,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 
-export const RESERVED_ORG_NAMES = ["picasso", "picassoo", "picasso ai", "picasso ai llc", "picassoo.ai"];
+// Business names are user-selectable. Normalization and the existing
+// case-insensitive uniqueness check prevent accidental duplicates without
+// maintaining a hidden allow/deny list.
+export const RESERVED_ORG_NAMES: string[] = [];
 
-export function isReservedOrgName(name: string): boolean {
-  return RESERVED_ORG_NAMES.includes(normalizeOrgName(name).toLowerCase());
+/** @deprecated Kept as a compatibility export; no business name is reserved. */
+export function isReservedOrgName(_name: string): boolean {
+  return false;
 }
 
 export function normalizeOrgName(name: string): string {

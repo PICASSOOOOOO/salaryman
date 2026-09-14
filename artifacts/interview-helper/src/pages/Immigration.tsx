@@ -404,7 +404,7 @@ export default function Onboarding() {
       background: 'radial-gradient(ellipse at center, rgba(20,12,30,.55) 0%, #03060c 75%)',
       overflow: 'hidden',
     }}>
-      <ImmigrationBackdrop phase={phase} />
+      <OnboardingBackdrop phase={phase} />
       {phase === 'intake' && (
         <QuickOnboarding
           charName={charName}

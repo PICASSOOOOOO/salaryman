@@ -10,7 +10,7 @@
 // Contract:
 //   1. A 401 on a genuinely protected page (e.g. /office, /business) →
 //      redirect to /sign-in?returnTo=<encoded path+search>.
-//   2. A 401 on a public route ("/", "/pablo", "/immigration", "/sms-opt-in",
+//   2. A 401 on a public route ("/", "/pablo", "/onboarding", "/sms-opt-in",
 //      auth pages and their
 //      subpaths) → NO redirect.
 //   3. A 401 on the auth-polling skip paths (/auth/user, /auth/providers) →
@@ -87,8 +87,8 @@ describe("apiFetch session-expiry redirect", () => {
   it("does NOT redirect on a 401 while already on a public or auth route", async () => {
     for (const path of [
       "/pablo",
-      "/immigration",
-      "/immigration/legal",
+      "/onboarding",
+      "/onboarding/legal",
       "/sms-opt-in",
       "/sms-opt-in/consent",
       "/sign-in",
