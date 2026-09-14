@@ -1333,6 +1333,16 @@ body.workspace-light #root {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+  .abandonment-banner {
+    position: static !important;
+    z-index: auto !important;
+    margin: 0 8px 8px;
+    border-width: 1px;
+    border-radius: 4px;
+  }
+  .mobile-active-call-bar {
+    margin-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
   .desktop-app-nav {
     display: none !important;
   }

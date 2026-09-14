@@ -472,7 +472,7 @@ export default function Hiring() {
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
 
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full relative z-10">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
             <Briefcase className="w-5 h-5 text-teal-400" />
@@ -592,14 +592,14 @@ export default function Hiring() {
                 <p className="text-xs text-muted-foreground mb-2">{jobs.length} position{jobs.length !== 1 ? 's' : ''}</p>
                 {jobs.map(job => (
                   <motion.div key={job.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500/30 to-sky-500/30 border border-border flex items-center justify-center text-sm font-bold text-foreground">
+                    <div className="flex flex-col gap-3 px-4 sm:px-5 py-4 cursor-pointer hover:bg-muted/20 transition-colors sm:flex-row sm:items-center sm:justify-between" onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500/30 to-sky-500/30 border border-border flex items-center justify-center text-sm font-bold text-foreground shrink-0">
                           {job.title.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <p className="font-semibold text-sm text-foreground">{job.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-foreground break-words">{job.title}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
                             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${JOB_STATUS_COLORS[job.status] ?? JOB_STATUS_COLORS.open} uppercase font-bold`}>{job.status}</span>
                             {(job.salaryMin || job.salaryMax) && (
                               <span className="text-[10px] text-muted-foreground">
@@ -612,8 +612,8 @@ export default function Hiring() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground/40">{new Date(job.createdAt).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <span className="hidden sm:inline text-[10px] text-muted-foreground/40">{new Date(job.createdAt).toLocaleDateString()}</span>
                         <button onClick={e => { e.stopPropagation(); startEditJob(job); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                         <button onClick={e => { e.stopPropagation(); deleteJob(job.id); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                         {expandedJob === job.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -921,7 +921,7 @@ export default function Hiring() {
                   </div>
 
                   {/* Sub-tabs */}
-                  <div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-muted/5">
+                  <div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-muted/5 overflow-x-auto scrollbar-hide">
                     {([
                       { id: 'directory' as const, label: 'Details', icon: Users },
                       { id: 'perf' as const, label: boomerMode ? 'Performance' : 'Notes', icon: StickyNote },
@@ -929,7 +929,7 @@ export default function Hiring() {
                       { id: 'offboard' as const, label: 'Offboarding', icon: UserX },
                     ]).map(({ id, label, icon: Icon }) => (
                       <button key={id} onClick={() => setStaffPanel(id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${staffPanel === id ? 'bg-card border border-border text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                        className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${staffPanel === id ? 'bg-card border border-border text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                         <Icon className="w-3.5 h-3.5" /> {label}
                       </button>
                     ))}
@@ -1154,8 +1154,8 @@ export default function Hiring() {
         {/* ── Departments tab ── */}
         {!loading && isAuthenticated && tab === 'depts' && (
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+            <div className="flex flex-col items-start gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <h2 className="text-lg font-bold text-foreground">{boomerMode ? 'DEPARTMENTS' : 'Departments'}</h2>
                 <p className="text-xs text-muted-foreground">Organize your staff into departments. Renaming or deleting updates all assigned staff.</p>
               </div>

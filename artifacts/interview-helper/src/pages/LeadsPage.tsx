@@ -525,27 +525,27 @@ export default function LeadsPage() {
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               {/* Properties Grid */}
               <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Phone</span>
-                  <span className="text-[11px] font-mono font-bold mt-0.5">{selectedLead.phone || '-'}</span>
+                  <span className="text-[11px] font-mono font-bold mt-0.5 break-all">{selectedLead.phone || '-'}</span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Email</span>
-                  <span className="text-[11px] font-bold mt-0.5">{selectedLead.email || '-'}</span>
+                  <span className="text-[11px] font-bold mt-0.5 break-all">{selectedLead.email || '-'}</span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Company</span>
-                  <span className="text-[11px] font-bold uppercase mt-0.5">{selectedLead.company || '-'}</span>
+                  <span className="text-[11px] font-bold uppercase mt-0.5 break-words">{selectedLead.company || '-'}</span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Job Title</span>
-                  <span className="text-[11px] font-bold uppercase mt-0.5">{selectedLead.jobTitle || '-'}</span>
+                  <span className="text-[11px] font-bold uppercase mt-0.5 break-words">{selectedLead.jobTitle || '-'}</span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Source</span>
                   <span className="text-[11px] font-bold uppercase mt-0.5">{selectedLead.source || '-'}</span>
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-black/40">Assigned To</span>
                   <span className="text-[11px] font-bold uppercase mt-0.5 text-black/80">{selectedLead.assignedUserId ? (memberMap[selectedLead.assignedUserId] || 'ASSIGNED') : 'UNASSIGNED'}</span>
                 </div>
@@ -668,7 +668,7 @@ export default function LeadsPage() {
       {/* Modals */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#FAFAF7] border border-black w-[400px] flex flex-col shadow-2xl">
+          <div className="bg-[#FAFAF7] border border-black w-full max-w-[400px] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
               <h3 className="font-bold uppercase tracking-widest text-[10px]">Add New Lead</h3>
               <button onClick={() => setShowAddForm(false)} className="hover:text-white transition-colors p-1"><X size={14}/></button>
@@ -690,7 +690,7 @@ export default function LeadsPage() {
 
       {editingLead && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#FAFAF7] border border-black w-[400px] flex flex-col shadow-2xl">
+          <div className="bg-[#FAFAF7] border border-black w-full max-w-[400px] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
               <h3 className="font-bold uppercase tracking-widest text-[10px]">Edit Lead</h3>
               <button onClick={() => setEditingLead(null)} className="hover:text-white transition-colors p-1"><X size={14}/></button>
@@ -716,7 +716,7 @@ export default function LeadsPage() {
 
       {showImport && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#FAFAF7] border border-black w-[400px] flex flex-col shadow-2xl">
+          <div className="bg-[#FAFAF7] border border-black w-full max-w-[400px] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-3 border-b border-black bg-black text-[#00ff41]">
               <h3 className="font-bold uppercase tracking-widest text-[10px]">Import Data</h3>
               <button onClick={() => { setShowImport(false); setImportResult(null); }} className="hover:text-white transition-colors p-1"><X size={14}/></button>

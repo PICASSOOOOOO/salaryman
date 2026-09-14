@@ -1,5 +1,5 @@
 import { useLocation } from 'wouter';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, X, Menu, MoreHorizontal } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
@@ -49,7 +49,12 @@ export function MobileModuleNav() {
       {/* One stable top bar: back, brand, and menu. Account actions live in the menu. */}
       <div
         className="mobile-app-nav-top fixed top-0 left-0 right-0 border-b border-[#E5E5E5] flex items-center justify-between px-2 z-50"
-        style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 'calc(0.5rem + env(safe-area-inset-left, 0px))',
+          paddingRight: 'calc(0.5rem + env(safe-area-inset-right, 0px))',
+          minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
+        }}
       >
         <div className="flex items-center gap-1 overflow-hidden pr-2 min-w-0">
           <button
@@ -201,7 +206,7 @@ export function MobileSubNav() {
   const { label: featureLabel } = useFeatureLabel();
   const { t } = useTranslation();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (currentModule && shouldShowModuleSubnav(currentModule.id, currentModule.subs.length, pathname)) {
       document.body.classList.add('has-subnav');
     } else {

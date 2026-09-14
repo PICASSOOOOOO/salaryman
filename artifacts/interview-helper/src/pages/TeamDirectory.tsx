@@ -322,9 +322,9 @@ export default function TeamDirectory() {
               </label>
             </div>
             {addError && <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">{addError}</p>}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[10px] text-muted-foreground">An email invitation is sent. The recipient joins after accepting it.</p>
-              <button type="submit" disabled={adding || !activeOrgId} className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-sm text-[10px] font-bold uppercase tracking-widest disabled:opacity-50">
+              <button type="submit" disabled={adding || !activeOrgId} className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-sm text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 shrink-0">
                 {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
                 Add member
               </button>

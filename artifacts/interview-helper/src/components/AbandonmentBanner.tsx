@@ -43,17 +43,17 @@ export default function AbandonmentBanner() {
     : "bg-fuchsia-950/95 border-fuchsia-500 text-fuchsia-100";
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-[60] border-b-2 ${tone} shadow-[0_0_30px_rgba(217,70,239,0.4)]`}>
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3 text-sm font-mono">
-        <span className="font-bold uppercase tracking-wider">[Pablo]</span>
-        <span className="flex-1">
+    <div className={`abandonment-banner fixed top-0 left-0 right-0 z-[60] border-b-2 ${tone} shadow-[0_0_30px_rgba(217,70,239,0.4)]`}>
+      <div className="relative max-w-7xl mx-auto px-3 sm:px-4 py-2 flex items-start sm:items-center gap-2 sm:gap-3 text-xs sm:text-sm font-mono">
+        <span className="font-bold uppercase tracking-wider shrink-0">[Pablo]</span>
+        <span className="flex-1 min-w-0 break-words pr-6 sm:pr-0">
           {status.seizureImminent
             ? `Final notice. ${status.daysIdle} days dark. Pablo Corp absorbs your assets at ${status.seizureThresholdDays} days. Sleep in your bed, touch your terminal, do something — now.`
             : `Idle ${status.daysIdle} days. ${status.daysUntilSeizure} days until Pablo Corp absorbs everything you own. Show up.`}
         </span>
         <button
           onClick={() => setDismissed(true)}
-          className="px-2 py-0.5 text-xs uppercase border border-current/40 hover:bg-current/10 rounded"
+          className="absolute right-2 top-1.5 sm:static px-2 py-0.5 text-xs uppercase border border-current/40 hover:bg-current/10 rounded shrink-0"
           aria-label="Dismiss"
         >
           ×

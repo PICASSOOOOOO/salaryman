@@ -207,12 +207,12 @@ function RevenueFlowPanel({ orgId }: { orgId: number }) {
 
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.02] p-6">
-      <div className="flex items-center justify-between mb-5">
-        <div>
+      <div className="flex flex-col items-start gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">Revenue Flow</div>
           <div className="text-xs font-mono text-zinc-400">{data.monthLabel}</div>
         </div>
-        <div className="flex items-center gap-4 text-right">
+        <div className="flex flex-wrap items-center gap-4 text-right">
           <div>
             <div className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">Gross</div>
             <div className="text-sm font-bold font-mono text-sky-400">{fmt(data.grossRevenue)}</div>
@@ -478,10 +478,10 @@ export default function OrgAccounts() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-sky-500/4 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex flex-col items-start gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
                 <Landmark className="w-5 h-5 text-sky-400" />
@@ -542,9 +542,9 @@ export default function OrgAccounts() {
             </div>
 
             <div className="rounded-xl border border-white/8 bg-white/[0.02] p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Transaction History</div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 shrink-0">
                   {(['checking', 'savings'] as const).map((t) => (
                     <button
                       key={t}

@@ -741,21 +741,21 @@ export default function BusinessHub() {
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">NAME</div>
-                          <div className="text-xs font-bold uppercase tracking-wider">{activeOrg.name}</div>
+                          <div className="text-xs font-bold uppercase tracking-wider break-words [overflow-wrap:anywhere]">{activeOrg.name}</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
+                        <div className="grid grid-cols-2 gap-4 min-w-0">
+                          <div className="space-y-1 min-w-0">
                             <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">INDUSTRY</div>
-                            <div className="text-xs font-bold uppercase tracking-wider">{activeOrg.industry || '—'}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider break-words">{activeOrg.industry || '—'}</div>
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1 min-w-0">
                             <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">SIZE</div>
-                            <div className="text-xs font-bold uppercase tracking-wider">{activeOrg.size || '—'}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider break-words">{activeOrg.size || '—'}</div>
                           </div>
                         </div>
                         <div className="space-y-1">
                           <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">YOUR ROLE</div>
-                          <div className="text-xs font-bold uppercase tracking-wider text-primary">{activeMember?.role} {activeMember?.title ? `(${activeMember.title})` : ''}</div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-primary break-words [overflow-wrap:anywhere]">{activeMember?.role} {activeMember?.title ? `(${activeMember.title})` : ''}</div>
                         </div>
                       </div>
                     )}
@@ -768,7 +768,7 @@ export default function BusinessHub() {
                       <Users className="w-4 h-4" />
                       <h2 className="text-xs font-bold uppercase tracking-widest">TEAM ({activeMembers.length})</h2>
                     </div>
-                    {isManager && (
+                    {canManageMembers && (
                       <button onClick={() => { setShowInvite(!showInvite); setInviteUrl(''); setInviteError(''); }} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
                         {showInvite ? 'CANCEL' : '+ INVITE'}
                       </button>
@@ -859,7 +859,7 @@ export default function BusinessHub() {
                       );
                     })}
                   </div>
-                  <div className="p-3 border-t border-border flex justify-between items-center bg-muted/5">
+                  <div className="p-3 border-t border-border flex flex-wrap justify-between items-center gap-2 bg-muted/5">
                     <Link href="/business/team" className="text-[9px] font-bold uppercase tracking-widest text-foreground hover:text-primary transition-colors">MANAGE FULL TEAM</Link>
                     {!isOwner && (
                       <button onClick={() => { if (confirm('Are you sure you want to leave this organization?')) handleRemoveMember(user?.id ?? ''); }} className="text-[9px] font-bold uppercase tracking-widest text-destructive hover:underline">LEAVE ORG</button>

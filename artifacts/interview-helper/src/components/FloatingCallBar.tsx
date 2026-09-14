@@ -42,7 +42,7 @@ function TransferInput({
         onKeyDown={e => { if (e.key === 'Enter' && val.trim()) onConfirm(val); if (e.key === 'Escape') onCancel(); }}
         autoFocus
         style={{
-          flex: 1, background: slate(0.5), border: `1px solid ${primary(0.25)}`, borderRadius: 4,
+          flex: 1, minWidth: 0, background: slate(0.5), border: `1px solid ${primary(0.25)}`, borderRadius: 4,
            color: '#050505', fontSize: '16px', padding: '10px 12px', minHeight: 44, outline: 'none',
           fontFamily: boomer ? undefined : FONT }}
       />
@@ -122,7 +122,7 @@ function CallRow({
         <div style={{ fontSize: '0.65rem', color: slate(0.9), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {call.name || formatPhone(call.phone)}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, minWidth: 0, overflow: 'hidden' }}>
           <span style={{ fontSize: '0.48rem', color: isLive ? slate(0.5) : isRinging ? warning(0.6) : slate(0.3), letterSpacing: '0.1em' }}>
             {isLive ? 'LIVE' : isRinging ? 'RING' : call.status.toUpperCase().slice(0, 6)}
           </span>
@@ -184,7 +184,7 @@ export function ActiveCallBar() {
   const hasMultiple = liveCalls.length > 1;
 
   return (
-    <div
+    <div className="mobile-active-call-bar"
       style={{
         width: '100%',
         background: slate(0.02),

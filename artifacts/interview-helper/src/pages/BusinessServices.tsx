@@ -396,9 +396,9 @@ function MyGigsTab({ listings, onComplete, onDispute, onCancel, busy, setRatingT
       {listings.map((l) => (
         <div key={l.id} className="rounded-xl border border-zinc-700/40 bg-zinc-900/30 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <div>
+            <div className="min-w-0">
               <span className={`text-[9px] tracking-[0.3em] px-1.5 py-0.5 rounded mr-2 ${statusColor(l.status)}`}>{l.status.toUpperCase()}</span>
-              <span className="text-zinc-100 text-sm">{l.title}</span>
+              <span className="text-zinc-100 text-sm min-w-0 break-words">{l.title}</span>
             </div>
              <span className="text-cyan-200 text-xs shrink-0">{cityMarket.currencySymbol}{Math.round(l.payFiat * cityMarket.laborMultiplier).toLocaleString("en-US")}{l.payType === "hourly" ? "/hr" : ""}</span>
           </div>
@@ -466,7 +466,7 @@ function BountyTab({ bounties, onAccept, onCollect, onCancel, busy }: {
       {bounties.map((b) => (
         <div key={b.id} className="rounded-xl border border-red-700/30 bg-red-950/10 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <div>
+            <div className="min-w-0">
               <span className="text-red-300 font-bold text-sm tracking-wide" style={{ fontFamily: "var(--font-sans)" }}>
                 TARGET: {b.targetName}
               </span>
@@ -578,7 +578,7 @@ function ServiceCard({ listing, cityMarket, children }: { listing: ServiceListin
   return (
     <div className="rounded-xl border border-zinc-700/40 bg-zinc-900/30 p-3 flex flex-col">
       <div className="flex items-start justify-between gap-2 mb-1">
-        <span className="text-zinc-100 text-sm font-medium">{listing.title}</span>
+        <span className="text-zinc-100 text-sm font-medium min-w-0 break-words">{listing.title}</span>
         <span className="text-cyan-200 text-xs shrink-0 font-bold">{cityMarket.currencySymbol}{displayedPay.toLocaleString("en-US")}{listing.payType === "hourly" ? "/hr" : ""}</span>
       </div>
       <div className="text-[10px] text-zinc-500 mb-1">

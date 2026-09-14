@@ -396,6 +396,8 @@ function AttachPicker({
       style={{
         position: "absolute",
         inset: 0,
+        paddingBottom: "var(--app-safe-bottom)",
+        boxSizing: "border-box",
         background: BG,
         zIndex: 5,
         display: "flex",
