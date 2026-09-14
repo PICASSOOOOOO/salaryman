@@ -48,7 +48,7 @@ const desktopFeatures = [
   ["AGENTS", "Put repeatable work into motion with automation.", Bot, "/bots", null],
   ["BUSINESS", "Run daily operations, teams, and company workflows.", BriefcaseBusiness, "/business", null],
   ["KNOWLEDGE", "Keep working files and company context in one place.", FileText, "/console/vault", null],
-  ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/economy", null],
+  ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/business/accounts", null],
   ["SETTINGS", "Control identity, devices, audio, and desktop preferences.", Settings, "/settings", null],
 ] as const;
 
