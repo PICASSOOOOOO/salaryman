@@ -1,16 +1,9 @@
-/**
- * E2E: legacy browser Tower bookmarks hand off to the native client.
- */
+/** E2E: signed-out legacy Tower bookmarks go through login. */
 
 import { test, expect } from "@playwright/test";
 
-test("anonymous /tower access lands on the desktop client surface", async ({ page }) => {
+test("anonymous /tower access lands on login", async ({ page }) => {
   await page.goto("/tower");
 
-  await expect(page).toHaveURL(/\/desktop(?:$|[?#])/);
-  await expect(
-    page.getByRole("heading", { name: "Run the office where you work." }),
-  ).toBeVisible();
-  await expect(page.getByTestId("tower-entry")).not.toBeAttached();
-  await expect(page.getByTestId("lobby-map")).not.toBeAttached();
+  await expect(page).toHaveURL(/\/sign-in\?returnTo=%2Ftower/);
 });
