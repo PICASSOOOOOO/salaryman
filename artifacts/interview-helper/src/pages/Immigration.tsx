@@ -112,11 +112,11 @@ interface StampLine {
 
 // A feature deep-link can survive the sign-in boundary as returnTo. Keep that
 // explicit user intent, but never let it turn the completed-intake handoff into
-// another trip through immigration. Ordinary arrivals begin office discovery.
+// another trip through onboarding. Ordinary arrivals begin office discovery.
 export function getPostOnboardingDestination(search: string): string {
   const requested = new URLSearchParams(search).get('returnTo');
   const safeDestination = sanitizeReturnPath(requested);
-  return safeDestination && safeDestination !== '/immigration'
+  return safeDestination && safeDestination !== '/onboarding'
     ? safeDestination
     : '/office';
 }
@@ -393,7 +393,7 @@ export default function Immigration() {
         background: '#04060a', color: 'rgba(56,189,248,.55)',
         fontFamily: "var(--font-sans)", fontSize: '.7rem', letterSpacing: '.2em',
       }}>
-        &gt; CONNECTING TO IMMIGRATION DESK...
+        &gt; CONNECTING TO ONBOARDING...
       </div>
     );
   }
@@ -475,7 +475,7 @@ function StampingPanel({
           {lines.map((line, i) => (
             <div
               key={i}
-              data-testid="immigration-stamp-line"
+      data-testid="onboarding-stamp-line"
               style={{
                 color: line.color ?? 'rgba(125,211,252,.8)',
                 fontWeight: line.emphasis ? 'bold' : 'normal',
@@ -513,7 +513,7 @@ function StampingPanel({
             type="button"
             onClick={onContinue}
             disabled={!showContinue}
-            data-testid="immigration-enter-city"
+            data-testid="onboarding-enter-city"
             style={{
               padding: '.55rem 1.1rem',
               border: `1px solid ${showContinue ? 'rgba(56,189,248,.7)' : 'rgba(56,189,248,.2)'}`,

@@ -33,7 +33,7 @@ import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
-const Immigration = lazy(() => import("@/pages/Immigration"));
+const Onboarding = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const Console = lazy(() => import("@/pages/Console"));
@@ -190,7 +190,7 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
+const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in"];
 
 function LoadingFallback() {
   return (
@@ -335,9 +335,9 @@ function AppShell() {
   // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // A freshly authenticated account must complete the one-screen registry
-  // choice before it can reach the workspace. Immigration itself provides the
-  // two valid exits: register a business or skip business setup for now.
-  const NEW_USER_ALLOWED_PREFIXES = ["/immigration", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  // choice before it can reach the workspace. Onboarding provides the two
+  // valid exits: register a business or skip business setup for now.
+  const NEW_USER_ALLOWED_PREFIXES = ["/onboarding", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -384,12 +384,14 @@ function AppShell() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!newUserBlocked) return;
-    // Send authed-but-uncleared users to the desktop client handoff. The
-    // browser now contains practical tools only; office simulation lives in
-    // the native client.
     const requested = `${window.location.pathname}${window.location.search}`;
-    const returnTo = requested === "/immigration" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
-    navigate(`/immigration${returnTo}`, { replace: true });
+    if (!isAuthenticated) {
+      const returnTo = requested === "/" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
+      navigate(`/sign-in${returnTo}`, { replace: true });
+      return;
+    }
+    const returnTo = requested === "/onboarding" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
+    navigate(`/onboarding${returnTo}`, { replace: true });
   }, [newUserBlocked, isAuthenticated, location, navigate]);
 
   // Cross-device settings sync: once signed in, pull the player's saved display
@@ -445,7 +447,7 @@ function AppShell() {
   // updates browser history. Mounting it can start authenticated API requests;
   // their expected 401 would otherwise win the race and send the visitor to
   // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked) return <Redirect to="/immigration" />;
+  if (newUserBlocked) return <LoadingFallback />;
 
   return (
     <>
@@ -502,7 +504,7 @@ function AppShell() {
             <Route path="/pablo/deck" component={PabloDeck} />
             <Route path="/pablo" component={PabloTerminal} />
             <Route path="/sms-opt-in" component={SmsOptIn} />
-            <Route path="/immigration" component={Immigration} />
+            <Route path="/onboarding" component={Onboarding} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
@@ -747,7 +749,7 @@ function AppShell() {
           authenticated page; it was too small to be useful and partly
           covered the music indicator and other corner widgets. The full
           legal section now lives at /legal (linked from the pledge store
-          and the immigration desk). */}
+          and the onboarding desk). */}
       </div>
     </>
   );

@@ -14,7 +14,7 @@ vi.mock("@/hooks/use-auth", () => ({
 }));
 const navigate = vi.fn();
 const isTutorialDone = vi.fn(() => false);
-vi.mock("wouter", () => ({ useLocation: () => ["/immigration", navigate] }));
+vi.mock("wouter", () => ({ useLocation: () => ["/onboarding", navigate] }));
 vi.mock("@/lib/tutorial-progress", () => ({
   isTutorialDone: () => isTutorialDone(),
   markTutorialDone: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock("@/lib/tutorial-progress", () => ({
 }));
 vi.mock("@/lib/onboarding-sync", () => ({ useOnboardingResolved: () => true }));
 vi.mock("@/components/QuickOnboarding", () => ({
-  QuickOnboarding: () => <div data-testid="immigration-intake" />,
+  QuickOnboarding: () => <div data-testid="onboarding-intake" />,
 }));
 vi.mock("@/components/PostOnboardingIntro", () => ({ PostOnboardingIntro: () => null }));
 vi.mock("@/components/PabloNebula3D", () => ({ PabloNebula3D: () => null }));
@@ -43,7 +43,7 @@ describe("Immigration", () => {
   beforeEach(() => {
     navigate.mockReset();
     isTutorialDone.mockReturnValue(false);
-    window.history.replaceState({}, "", "/immigration");
+    window.history.replaceState({}, "", "/onboarding");
   });
 
   it("opens the registry intake immediately for a new authenticated arrival", async () => {
@@ -56,14 +56,14 @@ describe("Immigration", () => {
       await Promise.resolve();
     });
 
-    expect(container.querySelector('[data-testid="immigration-intake"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="onboarding-intake"]')).not.toBeNull();
     root.unmount();
     container.remove();
   });
 
   it("defaults a completed intake handoff to office", () => {
     expect(getPostOnboardingDestination("")).toBe("/office");
-    expect(getPostOnboardingDestination("?returnTo=/immigration")).toBe("/office");
+    expect(getPostOnboardingDestination("?returnTo=/onboarding")).toBe("/office");
   });
 
   it("preserves a safe sign-in destination while rejecting unsafe ones", () => {
@@ -82,7 +82,7 @@ describe("Immigration", () => {
       await Promise.resolve();
     });
 
-    expect(container.querySelector('[data-testid="immigration-intake"]')).toBeNull();
+    expect(container.querySelector('[data-testid="onboarding-intake"]')).toBeNull();
     expect(navigate).toHaveBeenCalledWith("/", { replace: true });
     root.unmount();
     container.remove();
