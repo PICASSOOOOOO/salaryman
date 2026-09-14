@@ -53,6 +53,14 @@ describe("frontend startup boundaries", () => {
     expect(app).toContain('?? "/business"');
   });
 
+  it("holds background auth requests until onboarding session hydration resolves", () => {
+    const app = source("App.tsx");
+    const heartbeat = source("hooks/use-heartbeat.ts");
+    expect(app).toContain("useHeartbeat(isAuthenticated && onboardingResolved && !isLoading)");
+    expect(app).toContain("if (!isAuthenticated || !onboardingResolved) return;");
+    expect(heartbeat).toContain("if (!enabled || !user) return;");
+  });
+
   it("lets route chunks own charts and syntax libraries", () => {
     const vite = source("../vite.config.ts");
     expect(vite).not.toContain('return "vendor-syntax"');

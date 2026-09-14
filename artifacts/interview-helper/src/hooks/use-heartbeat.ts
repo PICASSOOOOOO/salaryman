@@ -6,11 +6,11 @@ const HEARTBEAT_MS = 5 * 60 * 1000; // every 5 minutes when active
 
 // Pings /api/lifecycle/heartbeat so the server knows the user is still around.
 // Drives Pablo's 3-day warning + 28-day asset seizure.
-export function useHeartbeat() {
+export function useHeartbeat(enabled = true) {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
+    if (!enabled || !user) return;
 
     let cancelled = false;
     const ping = async () => {
@@ -32,5 +32,5 @@ export function useHeartbeat() {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [user?.id]);
+  }, [enabled, user?.id]);
 }

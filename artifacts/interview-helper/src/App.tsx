@@ -238,12 +238,12 @@ const FLOATING_BAR_ROUTES = [
 
 function AppShell() {
   useUndoShortcut();
-  useHeartbeat();
+  const { isAuthenticated, isLoading } = useAuth();
+  const onboardingResolved = useOnboardingResolved();
+  useHeartbeat(isAuthenticated && onboardingResolved && !isLoading);
   usePageMeta();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
-  const { isAuthenticated, isLoading } = useAuth();
-  const onboardingResolved = useOnboardingResolved();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -394,33 +394,34 @@ function AppShell() {
     navigate(`/onboarding${returnTo}`, { replace: true });
   }, [newUserBlocked, isAuthenticated, location, navigate]);
 
-  // Cross-device settings sync: once signed in, pull the player's saved display
-  // / visual-quality preferences down to this device, then mirror any further
-  // local changes back up. Logged-out players never run this and keep their
-  // local-only settings blob.
+  // Server-authoritative onboarding skip: resolve the server state as soon as
+  // Clerk reports a signed-in user. Background API work is kept below until
+  // this handshake completes.
   useEffect(() => {
     if (!isAuthenticated) return;
-    // Server-authoritative onboarding skip: if the server says this user already
-    // onboarded (has a world business row) but the local flag is missing (fresh
-    // device / cleared browser), flip salaryman_tutorial_done so every gate
-    // treats them as cleared and they land on the practical tools instead of
-    // re-running
-    // intake. Resolves instantly when the local flag is already set.
     void hydrateOnboardingStatus();
+  }, [isAuthenticated]);
+
+  // Cross-device settings sync: once the server-authoritative onboarding read
+  // finishes, pull the player's saved display / visual-quality preferences down
+  // to this device and mirror further local changes back up. This deliberately
+  // avoids the Clerk-to-API bootstrap 401 window.
+  useEffect(() => {
+    if (!isAuthenticated || !onboardingResolved) return;
     void hydrateSettingsFromServer();
     const teardown = initSettingsSync();
     return teardown;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, onboardingResolved]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !onboardingResolved) return;
     const sendHeartbeat = () => {
       apiFetch('/api/world/heartbeat', { method: 'POST', credentials: 'include' }).catch(() => {});
     };
     sendHeartbeat();
     const hbInterval = setInterval(sendHeartbeat, 30000);
     return () => clearInterval(hbInterval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, onboardingResolved]);
 
   useEffect(() => {
     if (isGameRoute) {
