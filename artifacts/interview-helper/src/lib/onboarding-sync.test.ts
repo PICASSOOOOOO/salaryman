@@ -147,6 +147,18 @@ describe("hydrateOnboardingStatus", () => {
     await hydrateOnboardingStatus();
 
     expect(getOnboardingResolved()).toBe(true);
+    expect(apiFetch).toHaveBeenCalledTimes(12);
+  });
+
+  it("starts a fresh handshake when the authenticated user changes", async () => {
+    apiFetch.mockImplementation((path: string) => successfulResponseFor(path, [{ id: "biz-1" }]));
+
+    const { hydrateOnboardingStatus, getOnboardingResolved } = await loadModule();
+    await hydrateOnboardingStatus("user-a");
+    expect(getOnboardingResolved()).toBe(true);
+
+    await hydrateOnboardingStatus("user-b");
+    expect(getOnboardingResolved()).toBe(true);
     expect(apiFetch).toHaveBeenCalledTimes(6);
   });
 

@@ -20,7 +20,7 @@ import { PledgeStorePopupProvider } from "@/components/PledgeStorePopup";
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
-import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
+import { hydrateOnboardingStatus, resetOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
@@ -238,7 +238,7 @@ const FLOATING_BAR_ROUTES = [
 
 function AppShell() {
   useUndoShortcut();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const onboardingResolved = useOnboardingResolved();
   useHeartbeat(isAuthenticated && onboardingResolved && !isLoading);
   usePageMeta();
@@ -398,9 +398,12 @@ function AppShell() {
   // Clerk reports a signed-in user. Background API work is kept below until
   // this handshake completes.
   useEffect(() => {
-    if (!isAuthenticated) return;
-    void hydrateOnboardingStatus();
-  }, [isAuthenticated]);
+    if (!isAuthenticated || !user?.id) {
+      resetOnboardingStatus();
+      return;
+    }
+    void hydrateOnboardingStatus(user.id);
+  }, [isAuthenticated, user?.id]);
 
   // Cross-device settings sync: once the server-authoritative onboarding read
   // finishes, pull the player's saved display / visual-quality preferences down

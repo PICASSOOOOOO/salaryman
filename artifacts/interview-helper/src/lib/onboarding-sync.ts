@@ -26,16 +26,20 @@ import { useSyncExternalStore } from "react";
 
 let resolved = false;
 let inFlight: Promise<void> | null = null;
+let activeSessionKey: string | null = null;
+let generation = 0;
 const listeners = new Set<() => void>();
-const AUTH_BOOTSTRAP_RETRY_MS = 250;
+const AUTH_BOOTSTRAP_MAX_ATTEMPTS = 4;
 
 async function readOnboardingState(path: string): Promise<Response> {
   let response = await apiFetch(path, { skipSessionExpiryRedirect: true });
   // Clerk can finish the browser sign-in before the API middleware sees the
   // newly established session. Retry that narrow bootstrap race instead of
-  // letting apiFetch redirect the user back to the sign-in form.
-  if (response.status === 401) {
-    await new Promise((resolve) => setTimeout(resolve, AUTH_BOOTSTRAP_RETRY_MS));
+  // letting apiFetch redirect the user back to the sign-in form. JIT user
+  // provisioning can take longer than one render tick, so use a bounded
+  // backoff rather than a single 250ms retry.
+  for (let attempt = 1; response.status === 401 && attempt < AUTH_BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
     response = await apiFetch(path, { skipSessionExpiryRedirect: true });
   }
   return response;
@@ -59,6 +63,14 @@ export function getOnboardingResolved(): boolean {
 function markResolved(): void {
   if (resolved) return;
   resolved = true;
+  emit();
+}
+
+export function resetOnboardingStatus(): void {
+  generation += 1;
+  activeSessionKey = null;
+  resolved = false;
+  inFlight = null;
   emit();
 }
 
@@ -93,10 +105,18 @@ function applyServerHomeCity(value: unknown): void {
 //   across devices and is available before office/HUD/world routes mount.
 // - The gate resolves only after an authoritative saves response. On a network,
 //   non-OK, or malformed saves response, keep protected surfaces fail-closed.
-export function hydrateOnboardingStatus(): Promise<void> {
+export function hydrateOnboardingStatus(sessionKey = "default"): Promise<void> {
+  if (activeSessionKey !== sessionKey) {
+    generation += 1;
+    activeSessionKey = sessionKey;
+    resolved = false;
+    inFlight = null;
+    emit();
+  }
   if (resolved) return Promise.resolve();
   if (inFlight) return inFlight;
 
+  const requestGeneration = generation;
   inFlight = (async () => {
     let authoritativeSavesRead = false;
     try {
@@ -105,6 +125,10 @@ export function hydrateOnboardingStatus(): Promise<void> {
         readOnboardingState("/api/world/home-city"),
         readOnboardingState("/api/salaryman/saves"),
       ]);
+      // A logout/login transition can finish an older request after a new
+      // session has started. Never apply old user's onboarding data to the
+      // current browser session.
+      if (requestGeneration !== generation || activeSessionKey !== sessionKey) return;
       if (savesResult.status === "fulfilled" && savesResult.value.ok) {
         const data = (await savesResult.value.json()) as { saves?: unknown };
         if (Array.isArray(data.saves)) {
@@ -145,8 +169,10 @@ export function hydrateOnboardingStatus(): Promise<void> {
     } catch {
       // Keep protected routes held until a future load can verify server state.
     } finally {
-      if (authoritativeSavesRead) markResolved();
-      inFlight = null;
+      if (requestGeneration === generation && activeSessionKey === sessionKey) {
+        if (authoritativeSavesRead) markResolved();
+        inFlight = null;
+      }
     }
   })();
 
