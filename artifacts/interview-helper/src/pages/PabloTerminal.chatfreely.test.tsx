@@ -165,7 +165,7 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     expect(qs("canonical-pablo-nebula")).not.toBeNull();
   });
 
-  it("keeps chat reachable after switching to voice mode", async () => {
+  it("routes the header chat action into COMMS", async () => {
     await mount();
 
     const modeToggle = qs("pablo-mode-toggle") as HTMLButtonElement;
@@ -181,7 +181,7 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     await act(async () => {
       chatButton.click();
     });
-    expect(qs("pablo-text-input")).not.toBeNull();
+    expect(window.location.pathname).toBe("/comms");
   });
 
   it("greets a returning visitor on mount WITHOUT opening the auth-choice modal", async () => {

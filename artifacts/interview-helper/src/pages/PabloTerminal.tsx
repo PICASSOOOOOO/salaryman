@@ -2127,14 +2127,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           )}
            <button
              type="button"
-             onClick={(e) => { e.stopPropagation(); switchToText(); }}
+              onClick={(e) => { e.stopPropagation(); navigate("/comms"); }}
              data-testid="pablo-ai-choice"
-             aria-label="Open Pablo chat"
+              aria-label="Open COMMS"
              className="pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-             title="Open Pablo chat"
+              title="Open COMMS"
            >
              <MessageCircle className="w-3 h-3" />
-             <span className="pablo-chat-label">CHAT</span>
+              <span className="pablo-chat-label">COMMS</span>
            </button>
           {/* TEXT/VOICE toggle is now visible during the intro too. The
               session defaults to voice (autoListen on), but a user who

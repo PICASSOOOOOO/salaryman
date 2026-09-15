@@ -28,10 +28,11 @@ import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 import Console from "@/pages/Console";
-import PabloTerminal from "@/pages/PabloTerminal";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
+const loadPabloTerminal = () => import("@/pages/PabloTerminal");
+const PabloTerminal = lazy(loadPabloTerminal);
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
@@ -263,6 +264,13 @@ function AppShell() {
   }, []);
 
   const pathname = location.split("?")[0];
+  useEffect(() => {
+    // Keep Pablo out of the initial homepage bundle, but warm its route chunk
+    // after the landing surface has painted so opening it does not feel slow.
+    if (pathname !== "/") return;
+    const timer = window.setTimeout(() => { void loadPabloTerminal(); }, 250);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
   // ── Route-change audio backstop ────────────────────────────────────────────
   // Pages own starting their background audio and stopping it on unmount, but a
   // page that forgets to clean up would leak its procedural score/bed (module

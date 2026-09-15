@@ -22,13 +22,14 @@ describe("frontend startup boundaries", () => {
     expect(main).toContain("new MutationObserver(removeReplitInjectedUi)");
   });
 
-  it("keeps heavy optional modules on demand while loading the front door eagerly", () => {
+  it("keeps heavy optional modules on demand while warming Pablo after first paint", () => {
     const app = source("App.tsx");
     const twilio = source("contexts/TwilioDeviceContext.tsx");
     const music = source("contexts/MusicPlayerContext.tsx");
     const chat = source("components/DeferredChatPanel.tsx");
 
-    expect(app).toContain('import PabloTerminal from "@/pages/PabloTerminal";');
+    expect(app).toContain('const PabloTerminal = lazy(loadPabloTerminal);');
+    expect(app).toContain("void loadPabloTerminal()");
     expect(twilio).toContain("await import('@twilio/voice-sdk')");
     expect(twilio).not.toMatch(/^import \\{ Device, Call \\}/m);
     expect(music).toContain('await import("@/lib/audioConvert")');

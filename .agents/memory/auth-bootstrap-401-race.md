@@ -16,6 +16,8 @@ stuck on the route-handshake screen even though the login callback succeeded.
 
 **How to apply:** Keep special handling limited to onboarding/bootstrap reads, let
 protected pages perform their own auth check, and defer background requests until
-hydration resolves. Eager-load the public `/pablo` and explicit `/console`
-handoff surfaces so a lazy route chunk cannot hide the auth UI or nebula. Do not
-remove the normal 401 redirect behavior from ordinary protected API requests.
+hydration resolves. Eager-load or idle-prefetch the public `/pablo` route without
+putting its heavy Three bundle in the homepage path. When the app is embedded in
+the Replit preview iframe, open the OIDC handoff in a new tab; Replit auth refuses
+to render inside that iframe. Do not remove the normal 401 redirect behavior from
+ordinary protected API requests.

@@ -27,6 +27,21 @@ function safeReturnTo(value: string | undefined): string {
   return value;
 }
 
+function navigateTopLevel(url: string): void {
+  // The app preview is rendered inside an iframe. Replit's auth pages refuse
+  // to render when they are navigated inside that frame. Open the OAuth
+  // handoff in a normal browser tab so the workspace preview stays intact.
+  if (window.top && window.top !== window) {
+    const authWindow = window.open(url, "_blank", "noopener,noreferrer");
+    if (authWindow) return;
+    // A popup blocker may reject the new tab. Preserve the handoff as a
+    // last-resort same-window navigation rather than leaving a dead button.
+    window.location.assign(url);
+    return;
+  }
+  window.location.assign(url);
+}
+
 export function useAuth(): AuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,13 +71,13 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback((returnTo?: string) => {
-    window.location.assign(
+    navigateTopLevel(
       `${apiPath("/api/login")}?returnTo=${encodeURIComponent(safeReturnTo(returnTo))}`,
     );
   }, []);
 
   const logout = useCallback((returnTo?: string) => {
-    window.location.assign(
+    navigateTopLevel(
       `${apiPath("/api/logout")}?returnTo=${encodeURIComponent(safeReturnTo(returnTo))}`,
     );
   }, []);
