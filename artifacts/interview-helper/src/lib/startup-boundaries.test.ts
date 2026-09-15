@@ -51,7 +51,7 @@ describe("frontend startup boundaries", () => {
   it("forces successful sign-in into the requested work route", () => {
     const app = source("App.tsx");
     expect(app).toContain("window.location.replace(returnTo)");
-    expect(app).toContain('?? "/business"');
+    expect(app).toContain('?? "/onboarding"');
   });
 
   it("holds background auth requests until onboarding session hydration resolves", () => {

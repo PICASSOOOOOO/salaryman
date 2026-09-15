@@ -567,7 +567,7 @@ export default function BusinessHub() {
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-border">
         <div>
-          <h1 className="text-xl font-bold tracking-widest uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'HUB // COMMAND'}</h1>
+          <h1 className="text-xl font-bold tracking-widest uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'BUSINESS WORKSPACE'}</h1>
           <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-widest mt-1 truncate">
             {activeOrg ? `${activeOrg.name} · ${activeOrg.businessId}` : 'YOUR BUSINESS HEADQUARTERS'}
           </p>

@@ -61,14 +61,15 @@ describe("Onboarding", () => {
     container.remove();
   });
 
-  it("defaults a completed intake handoff to office", () => {
-    expect(getPostOnboardingDestination("")).toBe("/office");
-    expect(getPostOnboardingDestination("?returnTo=/onboarding")).toBe("/office");
+  it("defaults completed onboarding to the job board for job seekers", () => {
+    expect(getPostOnboardingDestination("")).toBe("/business/jobs");
+    expect(getPostOnboardingDestination("?returnTo=/onboarding")).toBe("/business/jobs");
+    expect(getPostOnboardingDestination("", "business")).toBe("/business");
   });
 
   it("preserves a safe sign-in destination while rejecting unsafe ones", () => {
     expect(getPostOnboardingDestination("?returnTo=%2Fdashboard%3Ftab%3Dtoday")).toBe("/dashboard?tab=today");
-    expect(getPostOnboardingDestination("?returnTo=https%3A%2F%2Fevil.example")).toBe("/office");
+    expect(getPostOnboardingDestination("?returnTo=https%3A%2F%2Fevil.example")).toBe("/business/jobs");
   });
 
   it("continues to skip intake for a returning onboarded user", async () => {

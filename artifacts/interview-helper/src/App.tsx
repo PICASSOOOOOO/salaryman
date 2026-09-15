@@ -804,7 +804,7 @@ function ReplitAuthPage() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const returnTo = sanitizeReturnPath(
     new URLSearchParams(window.location.search).get("returnTo"),
-  ) ?? "/business";
+  ) ?? "/onboarding";
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       window.location.replace(returnTo);
