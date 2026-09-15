@@ -8,6 +8,7 @@ import {
   autopilotConfigsTable,
   botsTable,
   userFeaturesTable,
+  worldBusinessesTable,
   type OrgRole,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
@@ -34,6 +35,7 @@ export function setAuthed(authed: boolean) {
 const createdUserIds: string[] = [];
 const createdOrgIds: number[] = [];
 const createdBotIds: number[] = [];
+const createdBusinessIds: number[] = [];
 
 // Build an Express app that mirrors the real mount: the autopilot router lives
 // under "/api" (its own paths are "/autopilot/..."). A middleware injects the
@@ -65,6 +67,17 @@ export async function createUser(): Promise<{ id: string; email: string }> {
     grantedBy: "stripe-test",
     stripeSubscriptionId: `sub_test_${suffix}`,
   });
+  const [onboarding] = await db.insert(worldBusinessesTable).values({
+    userId: row.id,
+    playerName: `autopilot-${suffix}`,
+    businessType: "unemployed",
+    contactEmail: row.email ?? email,
+    meta: {
+      source: "browser_onboarding",
+      contactPhone: "+15550001111",
+    },
+  }).returning({ id: worldBusinessesTable.id });
+  createdBusinessIds.push(onboarding.id);
   return { id: row.id, email: row.email ?? email };
 }
 
@@ -144,7 +157,11 @@ export async function cleanupTestData() {
     await db.delete(orgMembersTable).where(inArray(orgMembersTable.userId, createdUserIds));
     await db.delete(usersTable).where(inArray(usersTable.id, createdUserIds));
   }
+  if (createdBusinessIds.length) {
+    await db.delete(worldBusinessesTable).where(inArray(worldBusinessesTable.id, createdBusinessIds));
+  }
   createdUserIds.length = 0;
   createdOrgIds.length = 0;
   createdBotIds.length = 0;
+  createdBusinessIds.length = 0;
 }

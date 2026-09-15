@@ -18,6 +18,7 @@
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — add art via SALARYMAN_ART_KIT, served lazily at /api/art/asset/:key + useArtAsset; per-entry `fullPrompt` bypasses pixel style (realistic intake templates) — must be honored in ALL 4 prompt sites incl boot seeder; Nano Banana Pro ignores outputFormat & only does LANDSCAPE/PORTRAIT.
 - [Stripe feature-price reuse](stripe-price-reuse.md) — getPriceIdForFeature reuses the FIRST active price; bumping catalog price in code won't change a live PRIME subscription, archive the old Stripe price.
 - [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
+- [Onboarding-aware test fixtures](onboarding-test-fixtures.md) — protected-route integration users need the same completed browser-onboarding signal as real users, or guards mask downstream assertions.
 - [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
 - [Plan/auth gate loading race](auth-plan-gate-loading-race.md) — usePlan/gates must wait on useAuth().isLoading; isAuthenticated starts false (not undefined), so cold-load gated routes bounce paid users to /upgrade.
 - [Clerk auth bootstrap 401 race](auth-bootstrap-401-race.md) — immediate post-sign-in onboarding reads can 401 before the API sees Clerk; retry without global session redirect.

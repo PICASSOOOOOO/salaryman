@@ -10,6 +10,7 @@ import {
   conferenceRoomsTable,
   callCenterAgentsTable,
   pabloOutboundCampaignsTable,
+  worldBusinessesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import twilioRouter from "../../routes/twilio";
@@ -29,6 +30,24 @@ export const authState: { authed: boolean; user: { id: string; email: string } }
   user: TEST_USER,
 };
 
+let onboardingSeed: Promise<void> | null = null;
+
+function ensureOnboardingSeeded(): Promise<void> {
+  if (!onboardingSeed) {
+    onboardingSeed = db.insert(worldBusinessesTable).values({
+      userId: TEST_USER.id,
+      playerName: `twilio-test-${randomUUID().slice(0, 20)}`,
+      businessType: "unemployed",
+      contactEmail: TEST_USER.email,
+      meta: {
+        source: "browser_onboarding",
+        contactPhone: "+15550001111",
+      },
+    }).then(() => undefined);
+  }
+  return onboardingSeed;
+}
+
 export function resetAuthState() {
   authState.authed = true;
   authState.user = TEST_USER;
@@ -41,9 +60,10 @@ export function resetAuthState() {
 export function buildApp(): Express {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => {
+  app.use(async (req, _res, next) => {
     (req as any).isAuthenticated = () => authState.authed;
     (req as any).user = authState.user;
+    if (authState.authed) await ensureOnboardingSeeded();
     next();
   });
   app.use("/api", twilioRouter);
@@ -62,7 +82,9 @@ export async function cleanupTestData() {
     db.delete(conferenceRoomsTable).where(eq(conferenceRoomsTable.userId, id)),
     db.delete(callCenterAgentsTable).where(eq(callCenterAgentsTable.userId, id)),
     db.delete(pabloOutboundCampaignsTable).where(eq(pabloOutboundCampaignsTable.userId, id)),
+    db.delete(worldBusinessesTable).where(eq(worldBusinessesTable.userId, id)),
   ]);
+  onboardingSeed = null;
 }
 
 // Seed an owned call so call-control routes (mute/hold/transfer/hangup) pass
