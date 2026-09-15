@@ -165,6 +165,25 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     expect(qs("canonical-pablo-nebula")).not.toBeNull();
   });
 
+  it("keeps chat reachable after switching to voice mode", async () => {
+    await mount();
+
+    const modeToggle = qs("pablo-mode-toggle") as HTMLButtonElement;
+    const chatButton = qs("pablo-ai-choice") as HTMLButtonElement;
+    expect(modeToggle).not.toBeNull();
+    expect(chatButton).not.toBeNull();
+
+    await act(async () => {
+      modeToggle.click();
+    });
+    expect(qs("pablo-text-input")).toBeNull();
+
+    await act(async () => {
+      chatButton.click();
+    });
+    expect(qs("pablo-text-input")).not.toBeNull();
+  });
+
   it("greets a returning visitor on mount WITHOUT opening the auth-choice modal", async () => {
     seedReturningVisitor("Returning Rita", "rita@example.com");
 

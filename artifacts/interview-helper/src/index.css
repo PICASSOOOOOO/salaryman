@@ -265,9 +265,6 @@ body:not(.game-route) .rounded-lg {
       min-width: 36px;
       padding-inline: 0.4rem;
     }
-    .pablo-mobile-secondary {
-      display: none !important;
-    }
     .pablo-download-label {
       display: none;
     }
@@ -309,7 +306,8 @@ body:not(.game-route) .rounded-lg {
 
     .pablo-brand-wordmark,
     .pablo-start-work-label,
-    .pablo-mode-label {
+    .pablo-mode-label,
+    .pablo-chat-label {
       display: none;
     }
 
@@ -324,6 +322,12 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-controls-menu > .pablo-header-action {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-chat-control {
       width: 36px;
       min-width: 36px;
       padding-inline: 0;

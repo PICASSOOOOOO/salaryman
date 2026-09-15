@@ -31,6 +31,10 @@ and intercept taps. Reply bubble offset is mode-split (`mode === "text" ? 96 : 1
 Text mode has its own separate input form; voice and text controls are mutually
 exclusive by `mode`.
 
+The header must keep a visible chat escape hatch on mobile. The chat control
+switches directly to text mode; it must not call the voice/orb handler, and it
+must not be hidden behind a desktop-only secondary-control rule.
+
 TTS output is NOT gated to voice mode (replies speak in text mode too); only
 auto-listen is mode-gated. See pablo-voice-output-gating.md.
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Download } from "lucide-react";
+import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Download } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
@@ -2127,13 +2127,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           )}
            <button
              type="button"
-             onClick={(e) => { e.stopPropagation(); if (mode === "text") setMode("text"); else onOrbClick(); }}
+             onClick={(e) => { e.stopPropagation(); switchToText(); }}
              data-testid="pablo-ai-choice"
-              className="pablo-mobile-secondary app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-             title="Open Pablo AI"
+             aria-label="Open Pablo chat"
+             className="pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+             title="Open Pablo chat"
            >
-             <Sparkles className="w-3 h-3" />
-             PABLO AI
+             <MessageCircle className="w-3 h-3" />
+             <span className="pablo-chat-label">CHAT</span>
            </button>
           {/* TEXT/VOICE toggle is now visible during the intro too. The
               session defaults to voice (autoListen on), but a user who
@@ -2299,8 +2300,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {mode === "text" && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
-          className="pablo-text-form absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+           className="pablo-text-form absolute left-1/2 z-30 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
+           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)" }}
           data-testid="pablo-text-form"
         >
           <input
