@@ -27,6 +27,7 @@ import { isEmbedMode } from "@/lib/embed-mode";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
+import Console from "@/pages/Console";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
@@ -34,7 +35,6 @@ const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
-const Console = lazy(() => import("@/pages/Console"));
 const DesktopDownload = lazy(() => import("@/pages/DesktopDownload"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
@@ -367,7 +367,12 @@ function AppShell() {
   // still deciding whether this browser is stale after a development reset.
   // Once an authenticated empty list is observed, hydration clears the local
   // tutorial flag and this rerenders into the Tower reception redirect.
-  const holdForOnboarding = onboardingPending && isAuthenticated && !allowedForAuthedNew;
+  // /console is the explicit post-login handoff destination. Let its own
+  // auth-aware surface render while the background onboarding check catches up;
+  // otherwise a returning user can be trapped on the sync screen immediately
+  // after the callback even though the session is already valid.
+  const holdForOnboarding =
+    onboardingPending && isAuthenticated && !allowedForAuthedNew && !isConsoleTerminal;
   const newUserBlocked = !isLoading && !onboardingPending && !tutorialDone && !isAllowedForNewUser;
   // Close the hydration window: while auth is still resolving, hold any path an
   // anonymous visitor may NOT see behind a loading screen instead of rendering

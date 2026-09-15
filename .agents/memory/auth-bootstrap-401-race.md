@@ -1,19 +1,20 @@
 ---
-name: Clerk auth bootstrap 401 race
-description: Clerk may finish browser sign-in before the API middleware sees the new session.
+name: Auth bootstrap 401 race
+description: Browser sign-in can complete before the API onboarding bridge catches up.
 ---
 
-On the immediate post-sign-in onboarding read, a 401 can be a short-lived Clerk/API
+On the immediate post-sign-in onboarding read, a 401 can be a short-lived browser/API
 handoff race rather than an expired session. Bootstrap reads must retry without
-triggering the global session-expiry redirect, and global heartbeat/settings
-requests must wait for that handshake; otherwise users can bounce back to sign-in
-or remain on an empty loading surface.
+triggering the global session-expiry redirect. The explicit `/console` post-login
+handoff must not be held behind that optional onboarding read, and the handshake must
+have a bounded fallback so a slow or unavailable API cannot leave a blank loading
+surface forever.
 
-**Why:** The browser auth state can become signed-in before the server-side Clerk
-middleware/JIT user bridge is ready, especially on a fresh development account.
+**Why:** The browser auth state can become signed-in before server-side session
+middleware or just-in-time user provisioning is ready. Returning users otherwise get
+stuck on the route-handshake screen even though the login callback succeeded.
 
-**How to apply:** Keep the special handling limited to onboarding/bootstrap reads
-and defer background requests until hydration resolves. Protected app requests
-should continue to use the normal 401 redirect behavior, and returning users with a
-completion marker should remain fail-closed when authoritative onboarding state
-cannot be read.
+**How to apply:** Keep special handling limited to onboarding/bootstrap reads, let
+protected pages perform their own auth check, and defer background requests until
+hydration resolves. Do not remove the normal 401 redirect behavior from ordinary
+protected API requests.

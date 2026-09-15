@@ -394,9 +394,9 @@ export function PabloNebula3D({
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
   const [lowGfx] = useLowGfx();
   // Latched once the GPU drops the WebGL context. Without this we used to just
-  // preventDefault() and warn — the canvas stayed black and the user lost the
-  // entire intro screen ("screen goes black" bug). Now we permanently swap in
-  // the 2D fallback so the page is never blank.
+  // preventDefault() and warn — the canvas stayed black forever and the user
+  // lost the entire intro screen ("screen goes black" bug). Now we permanently
+  // swap in the 2D fallback so the page is never blank.
   const [contextLost, setContextLost] = useState(false);
   // Honour the OS-level "reduce motion" preference: a fullscreen animated
   // shader is a textbook offender. Static 2D pulse is the friendlier default
@@ -409,9 +409,9 @@ export function PabloNebula3D({
     setReduceMotion(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
     // Modern browsers expose addEventListener; older Safari (<14) only has the
-    // deprecated addListener / removeListener pair. We honor OS setting on both
-    // so reduce-motion users on legacy iOS still get the static fallback when
-    // they toggle it during a session.
+    // deprecated addListener / removeListener pair. We honor the OS setting on
+    // both so reduce-motion users on legacy iOS still get the static fallback
+    // when they toggle it during a session.
     if (typeof mq.addEventListener === "function") {
       mq.addEventListener("change", onChange);
       return () => mq.removeEventListener("change", onChange);
@@ -451,8 +451,8 @@ export function PabloNebula3D({
             event, no boundary trip, the canvas just stays blank. Reported as
             "Pablo nebula is a black screen on mobile". The 2D orb sits below
             the canvas: when WebGL paints, the canvas covers this layer; when
-            WebGL doesn't paint, the user still sees a glowing orb instead of
-            a void. */}
+            WebGL doesn't paint, the user still sees a glowing orb instead of a
+            void. */}
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
           <NebulaFallback2D status={status} size={size} variant={variant} />
         </div>
@@ -460,19 +460,19 @@ export function PabloNebula3D({
           dpr={dprRange}
           orthographic
           camera={{ position: [0, 0, 1], near: 0, far: 2 }}
-          // No `powerPreference: "high-performance"` — that flag forces
-          // discrete GPUs on hybrid laptops, which causes the OS to swap
-          // GPUs when battery saver kicks in and drops the WebGL context.
-          // Default lets the browser pick the integrated GPU, which is plenty
-          // for this shader and far more stable.
+          // No `powerPreference: "high-performance"` — that flag forces discrete
+          // GPUs on hybrid laptops, which causes the OS to swap GPUs when
+          // battery saver kicks in and drops the WebGL context. Default lets the
+          // browser pick the integrated GPU, which is plenty for this shader and
+          // far more stable.
           gl={{ antialias: false, alpha: true, failIfMajorPerformanceCaveat: false }}
           style={{ background: "transparent" }}
           onCreated={({ gl }) => {
             const canvas = gl.domElement;
-            // When the GPU yanks the context (mobile background, low memory,
-            // tab switch, even just HMR thrash in dev), preventDefault keeps
-            // the browser from auto-swapping in a corrupted canvas, and we
-            // promote the 2D fallback for the rest of the session.
+            // When the GPU yanks the context (mobile background, low memory, tab
+            // switch, even just HMR thrash in dev), preventDefault keeps the
+            // browser from auto-swapping in a corrupted canvas, and we promote
+            // the 2D fallback for the rest of the session.
             const onLost = (e: Event) => {
               e.preventDefault();
               console.warn("[PabloNebula3D] WebGL context lost — falling back to 2D nebula");

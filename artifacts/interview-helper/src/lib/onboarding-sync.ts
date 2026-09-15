@@ -30,6 +30,7 @@ let activeSessionKey: string | null = null;
 let generation = 0;
 const listeners = new Set<() => void>();
 const AUTH_BOOTSTRAP_MAX_ATTEMPTS = 4;
+const ONBOARDING_BOOTSTRAP_TIMEOUT_MS = 7000;
 
 async function readOnboardingState(path: string): Promise<Response> {
   let response = await apiFetch(path, { skipSessionExpiryRedirect: true });
@@ -119,12 +120,23 @@ export function hydrateOnboardingStatus(sessionKey = "default"): Promise<void> {
   const requestGeneration = generation;
   inFlight = (async () => {
     let authoritativeSavesRead = false;
+    let timedOut = false;
     try {
-      const [businessResult, homeCityResult, savesResult] = await Promise.allSettled([
-        readOnboardingState("/api/world/my-business"),
-        readOnboardingState("/api/world/home-city"),
-        readOnboardingState("/api/salaryman/saves"),
+      const results = await Promise.race([
+        Promise.allSettled([
+          readOnboardingState("/api/world/my-business"),
+          readOnboardingState("/api/world/home-city"),
+          readOnboardingState("/api/salaryman/saves"),
+        ]),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), ONBOARDING_BOOTSTRAP_TIMEOUT_MS);
+        }),
       ]);
+      if (results === null) {
+        timedOut = true;
+        return;
+      }
+      const [businessResult, homeCityResult, savesResult] = results;
       // A logout/login transition can finish an older request after a new
       // session has started. Never apply old user's onboarding data to the
       // current browser session.
@@ -148,10 +160,13 @@ export function hydrateOnboardingStatus(sessionKey = "default"): Promise<void> {
       // available.
       if (
         !authoritativeSavesRead &&
-        !isTutorialDone() &&
         savesResult.status === "fulfilled" &&
         savesResult.value.status === 401
       ) {
+        // A returning user may still have a valid browser auth result while
+        // the API middleware is one step behind during callback bootstrap.
+        // Do not trap that user on the route-handshake screen; protected
+        // pages will perform their own auth check and the next load retries.
         markResolved();
       }
       if (businessResult.status === "fulfilled" && businessResult.value.ok) {
@@ -170,7 +185,11 @@ export function hydrateOnboardingStatus(sessionKey = "default"): Promise<void> {
       // Keep protected routes held until a future load can verify server state.
     } finally {
       if (requestGeneration === generation && activeSessionKey === sessionKey) {
-        if (authoritativeSavesRead) markResolved();
+        // Never leave a signed-in user on the blank/syncing gate forever. A
+        // successful saves read is authoritative; a bounded timeout is the
+        // safe fallback because the route can still perform its own auth check
+        // and a new session will retry this bootstrap on the next load.
+        if (authoritativeSavesRead || timedOut) markResolved();
         inFlight = null;
       }
     }
