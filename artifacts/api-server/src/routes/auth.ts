@@ -34,8 +34,20 @@ const OAUTH_COOKIE_TTL = 10 * 60 * 1000;
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
 function getOrigin(req: Request): string {
+  // The local preview proxy presents the API with a loopback forwarded host
+  // even though the browser entered through the public *.replit.dev domain.
+  // OIDC requires the callback URL to be browser-reachable, so prefer the
+  // configured dev domain only for loopback requests. Production and public
+  // preview requests continue to honor the forwarded/custom host.
+  const forwardedHost = ((req.headers["x-forwarded-host"] as string) || "").split(",")[0].trim();
+  const requestHost = (req.headers.host || "").split(",")[0].trim();
+  const visibleHost = forwardedHost || requestHost;
+  const isLoopbackHost = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i.test(visibleHost);
+  if (isLoopbackHost && process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
   const proto = ((req.headers["x-forwarded-proto"] as string) || "https").split(",")[0].trim();
-  const host = ((req.headers["x-forwarded-host"] as string) || req.headers.host || "localhost").split(",")[0].trim();
+  const host = visibleHost || "localhost";
   return `${proto}://${host}`;
 }
 
