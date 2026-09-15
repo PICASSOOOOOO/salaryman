@@ -284,7 +284,7 @@ const WAVE_FRAGMENT = /* glsl */ `
   }
 `;
 
-function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaVariant }) {
+function WaveField({ status, variant, animate = true }: { status: NebulaStatus; variant: NebulaVariant; animate?: boolean }) {
   const { size, set, invalidate } = useThree();
   const palette = variant.palette[status] ?? variant.palette.idle;
   const dyn = STATUS_DYNAMICS[status];
@@ -301,7 +301,7 @@ function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaV
     if (typeof document === "undefined") return;
     const apply = () => {
       const hidden = document.hidden;
-      set({ frameloop: hidden ? "never" : "always" });
+      set({ frameloop: hidden || !animate ? "never" : "always" });
       if (!hidden) invalidate();
     };
     apply(); // sync to current state at mount
@@ -311,7 +311,7 @@ function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaV
       // Restore the default in case some other consumer takes over.
       set({ frameloop: "always" });
     };
-  }, [set, invalidate]);
+  }, [set, invalidate, animate]);
 
   // Targets we lerp the uniforms toward so emotion (and persona) changes glide
   // instead of popping. Refs so we don't re-allocate the vector each frame.
@@ -360,6 +360,7 @@ function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaV
   }, [size.width, size.height, material]);
 
   useFrame((_, delta) => {
+    if (!animate) return;
     // No need to gate on visibility here — the visibilitychange effect above
     // flips R3F's frameloop to 'never' when the tab is hidden, so useFrame
     // doesn't fire at all in that case.
@@ -433,7 +434,7 @@ export function PabloNebula3D({
     return window.innerWidth < 640 ? [1, 1.25] : [1, 2];
   }, []);
 
-  if (hasWebGL === false || contextLost || reduceMotion || lowGfx) {
+  if (hasWebGL === false || contextLost || lowGfx) {
     // When the user has prefers-reduced-motion the fallback orb stops pulsing
     // entirely — otherwise we'd be replacing one moving thing with another,
     // which doesn't actually honor the OS preference.
@@ -485,7 +486,7 @@ export function PabloNebula3D({
           }}
         >
           <Suspense fallback={null}>
-            <WaveField status={status} variant={variant} />
+            <WaveField status={status} variant={variant} animate={!reduceMotion} />
           </Suspense>
         </Canvas>
       </div>
