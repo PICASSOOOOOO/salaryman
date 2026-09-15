@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 import { getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 import { BG_OWNERS, claimBackgroundAudio, registerBackgroundAudio } from "@/lib/audio-bus";
@@ -130,6 +131,7 @@ function probeDuration(file: File): Promise<number> {
 }
 
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -504,6 +506,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [current?.id]);
 
   const refresh = useCallback(async () => {
+    if (authLoading || !isAuthenticated) {
+      setTracks([]);
+      return;
+    }
     try {
       const r = await apiFetch("/api/music/tracks");
       if (!r.ok) { setTracks([]); return; }
@@ -514,9 +520,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     } catch {
       setTracks([]);
     }
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!authLoading) void refresh();
+  }, [authLoading, refresh]);
 
   const playIdx = useCallback((i: number) => {
     if (i < 0 || i >= queue.length) return;

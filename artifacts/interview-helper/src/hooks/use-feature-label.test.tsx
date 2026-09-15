@@ -20,6 +20,14 @@ import { createRoot, type Root } from "react-dom/client";
 
 const h = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetch: h.apiFetch }));
+const auth = vi.hoisted(() => ({
+  state: {
+    isAuthenticated: true,
+    isLoading: false,
+    user: { id: "label-test-user" },
+  } as { isAuthenticated: boolean; isLoading: boolean; user: { id: string } | null },
+}));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => auth.state }));
 
 function ok(body: any) {
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
@@ -50,6 +58,11 @@ async function mount() {
 beforeEach(() => {
   vi.resetModules(); // drop the hook's module-level cache between cases
   h.apiFetch.mockReset();
+  auth.state = {
+    isAuthenticated: true,
+    isLoading: false,
+    user: { id: "label-test-user" },
+  };
   label = "";
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -62,6 +75,14 @@ afterEach(() => {
 });
 
 describe("useFeatureLabel", () => {
+  it("uses the local default without calling the protected endpoint when logged out", async () => {
+    auth.state = { isAuthenticated: false, isLoading: false, user: null };
+    h.apiFetch.mockImplementation(() => ok({ label: "Classroom", isEducation: true }));
+    await mount();
+    expect(label).toBe("Conference");
+    expect(h.apiFetch).not.toHaveBeenCalled();
+  });
+
   it("defaults to Conference for a non-education org", async () => {
     h.apiFetch.mockImplementation(() => ok({ label: "Conference", isEducation: false }));
     await mount();

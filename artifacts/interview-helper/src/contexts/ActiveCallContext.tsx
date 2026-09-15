@@ -4,6 +4,7 @@ import {
   type ActiveCall, ENDED_STATUSES, callStatusToSignalLevel,
 } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 import { disconnectLocalDeviceCalls } from '@/lib/twilio-device-bridge';
 import { reconcilePolledCalls } from '@/lib/phone-outbound';
 import { setPhoneBusy } from '@/lib/phone-busy';
@@ -33,6 +34,7 @@ export function useActiveCallContext() {
 }
 
 export function ActiveCallProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(() => loadActiveCalls());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -102,6 +104,15 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;
 
+  // A browser can retain stale call metadata after a session ends. Never poll
+  // protected Twilio endpoints for that anonymous state, and clear the stale
+  // local snapshot so it cannot leak into the next account on this device.
+  useEffect(() => {
+    if (authLoading || isAuthenticated) return;
+    stopPolling();
+    setActiveCalls([]);
+  }, [authLoading, isAuthenticated, stopPolling]);
+
   // Phone takes precedence over the media player. Whenever any call is live,
   // tell the global phone-busy bus so the music player pauses.
   useEffect(() => {
@@ -110,12 +121,12 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
   }, [liveCount]);
 
   useEffect(() => {
-    if (liveCount > 0 && !timerRef.current) {
+    if (!authLoading && isAuthenticated && liveCount > 0 && !timerRef.current) {
       startPolling();
-    } else if (liveCount === 0 && timerRef.current) {
+    } else if ((!isAuthenticated || liveCount === 0) && timerRef.current) {
       stopPolling();
     }
-  }, [liveCount, startPolling, stopPolling]);
+  }, [authLoading, isAuthenticated, liveCount, startPolling, stopPolling]);
 
   useEffect(() => {
     return stopPolling;

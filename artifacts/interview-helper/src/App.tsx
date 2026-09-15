@@ -792,18 +792,38 @@ function ReplitAuthPage() {
     new URLSearchParams(window.location.search).get("returnTo"),
   ) ?? "/business";
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) login(returnTo);
-  }, [isLoading, isAuthenticated, login, returnTo]);
+    if (!isLoading && isAuthenticated) {
+      window.location.replace(returnTo);
+    }
+  }, [isLoading, isAuthenticated, returnTo]);
   return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FFFAF0] px-4">
     <div className="w-full max-w-md border border-black/10 bg-[#FFFCF5] p-8 text-center">
       <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em]">SALARYMAN ACCESS</p>
-      <p className="mb-6 text-sm text-black/60">Redirecting to secure sign-in…</p>
-      <a
-        href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
+      <p className="mb-6 text-sm text-black/60">
+        {isLoading
+          ? "Checking your session…"
+          : isAuthenticated
+            ? "Returning you to your destination…"
+            : "Continue to secure sign-in when you’re ready."}
+      </p>
+      {!isLoading && !isAuthenticated && (
+        <button
+          type="button"
+          onClick={() => login(returnTo)}
+          data-testid="sign-in-continue"
+          className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800"
+        >
+          Continue
+        </button>
+      )}
+      <noscript>
+        <a
+          href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
         className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"
-      >
-        Continue
-      </a>
+        >
+          Continue
+        </a>
+      </noscript>
     </div>
   </div>;
 }
