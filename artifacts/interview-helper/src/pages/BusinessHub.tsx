@@ -8,7 +8,7 @@ import {
   Megaphone, Target, Search, BarChart2, LayoutDashboard, Bot,
   Plus, X, Edit2, Trash2, Check, Copy, Crown,
   ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
-  Eye, EyeOff, LockKeyhole, BookOpen
+  Eye, EyeOff, LockKeyhole, BookOpen, PhoneCall, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -76,6 +76,17 @@ interface Summary {
 const ROLES = ['ceo', 'executive', 'director', 'manager', 'specialist'] as const;
 const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'Insurance', 'Legal', 'Real Estate', 'Marketing', 'Consulting', 'Education', 'Retail', 'Manufacturing', 'Media', 'Other'];
 const SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
+
+const QUICK_ACCESS = [
+  { path: '/business/team', label: 'EMPLOYEES', icon: Users },
+  { path: '/business/tasks', label: 'TASKS', icon: ClipboardList },
+  { path: '/business/jobs', label: 'JOBS', icon: Briefcase },
+  { path: '/marketing/leads', label: 'LEADS', icon: Target },
+  { path: '/business/contacts', label: 'DATA', icon: LayoutDashboard },
+  { path: '/business/autopilot', label: 'PIXEL AGENTS', icon: Bot },
+  { path: '/phone', label: 'CALLL HOME', icon: PhoneCall },
+  { path: '/comms', label: 'COMMS', icon: MessageSquare },
+];
 
 const SECTIONS = [
   {
@@ -567,7 +578,7 @@ export default function BusinessHub() {
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-border">
         <div>
-          <h1 className="text-xl font-bold tracking-widest uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : 'BUSINESS WORKSPACE'}</h1>
+          <h1 className="text-xl font-medium tracking-widest uppercase">{boomerMode ? 'ORGANIZATION SETTINGS' : (activeOrg?.name || 'YOUR COMPANY')}</h1>
           <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-widest mt-1 truncate">
             {activeOrg ? `${activeOrg.name} · ${activeOrg.businessId}` : 'YOUR BUSINESS HEADQUARTERS'}
           </p>
@@ -620,6 +631,21 @@ export default function BusinessHub() {
 
               {/* LEFT COLUMN: Main Hub & Matrix */}
               <div className="lg:col-span-8 space-y-6">
+                 <div className="border border-border rounded-md bg-card p-3">
+                   <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">QUICK ACCESS</div>
+                   <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                     {QUICK_ACCESS.map(item => (
+                       <Link
+                         key={item.path}
+                         href={item.path}
+                         className="flex min-h-9 items-center gap-1.5 border border-border px-2 py-2 text-[9px] uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:bg-primary/5"
+                       >
+                         <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                         <span className="min-w-0 truncate">{item.label}</span>
+                       </Link>
+                     ))}
+                   </div>
+                 </div>
 
                 {summary && (summary.bills.overdue > 0 || summary.invoices.overdue > 0 || summary.invoices.open > 0) && (
                   <div className="p-4 border border-primary bg-primary/5 rounded-md flex flex-col gap-3">

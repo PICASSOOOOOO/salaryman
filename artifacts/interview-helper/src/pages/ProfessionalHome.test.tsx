@@ -37,7 +37,7 @@ describe("ProfessionalHome header", () => {
     act(() => root.render(<ProfessionalHome />));
 
     expect(container.querySelector(".home-start-link")).toBeNull();
-    const startWorkButton = container.querySelector(".home-start-work-button");
+    const startWorkButton = container.querySelector(".start-work-button");
     expect(startWorkButton).toBeNull();
     const loginLink = container.querySelector(".home-login-link") as HTMLAnchorElement;
     expect(loginLink?.textContent).toBe("LOG IN");
@@ -51,7 +51,7 @@ describe("ProfessionalHome header", () => {
     authState.isAuthenticated = true;
     act(() => root.render(<ProfessionalHome />));
 
-    const startWorkButton = container.querySelector(".home-start-work-button") as HTMLButtonElement;
+    const startWorkButton = container.querySelector(".start-work-button") as HTMLButtonElement;
     expect(startWorkButton).not.toBeNull();
     expect(startWorkButton.textContent).toContain("START WORK");
     expect(container.querySelector(".home-login-link")).toBeNull();
@@ -69,7 +69,7 @@ describe("ProfessionalHome header", () => {
     act(() => root.render(<ProfessionalHome />));
 
     expect(container.querySelector(".home-start-link")).toBeNull();
-    expect(container.querySelector(".home-start-work-button")).not.toBeNull();
+    expect(container.querySelector(".start-work-button")).not.toBeNull();
     expect(container.textContent).not.toContain("LOG IN");
   });
 });
