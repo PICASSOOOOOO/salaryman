@@ -292,6 +292,7 @@ function AppShell() {
   }, [pathname]);
 
   const isRootRoute = pathname === "/";
+  const isAuthRoute = pathname === "/sign-in" || pathname === "/sign-up";
   const isDeviceLinkRoute = pathname === "/device-link";
   const isPabloRoute = pathname === "/pablo";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
@@ -300,7 +301,7 @@ function AppShell() {
   const isLightWorkspace = true;
   // ProfessionalHome owns the root header. Keep the global workspace chrome
   // off / so the homepage does not render two navigation systems.
-  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
+  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute && !isAuthRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
   // (alpha banner, audio control, toaster) so the iframe reads as one clean
@@ -809,34 +810,49 @@ function ReplitAuthPage() {
       window.location.replace(returnTo);
     }
   }, [isLoading, isAuthenticated, returnTo]);
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-[#FFFAF0] px-4">
-    <div className="w-full max-w-md border border-black/10 bg-[#FFFCF5] p-8 text-center">
-      <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em]">SALARYMAN ACCESS</p>
-      <p className="mb-6 text-sm text-black/60">
-        {isLoading
-          ? "Checking your session…"
-          : isAuthenticated
-            ? "Returning you to your destination…"
-            : "Continue to secure sign-in when you’re ready."}
-      </p>
-      {!isLoading && !isAuthenticated && (
-        <button
-          type="button"
-          onClick={() => login(returnTo)}
-          data-testid="sign-in-continue"
-          className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800"
-        >
-           SIGN IN
-        </button>
-      )}
-      <noscript>
-        <a
-          href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
-        className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"
-        >
-           SIGN IN
-        </a>
-      </noscript>
+  return <div className="min-h-[100dvh] bg-[#FFFAF0] px-4 pt-20">
+    <header className="fixed inset-x-0 top-0 z-10 border-b border-[#D8D1C3] bg-[#FAF7EF]">
+      <div className="flex h-14 items-center gap-2.5 px-4 sm:px-8">
+        <img
+          src={`${basePath}/icon-192.png`}
+          alt=""
+          className="h-7 w-7 rounded-md"
+        />
+        <span className="font-mono text-sm tracking-[0.2em] text-black">SALARYMAN</span>
+        <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] text-black">
+          ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'DEV'}
+        </span>
+      </div>
+    </header>
+    <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center">
+      <div className="w-full max-w-md border border-black/10 bg-[#FFFCF5] p-8 text-center">
+        <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em]">SALARYMAN ACCESS</p>
+        <p className="mb-6 text-sm text-black/60">
+          {isLoading
+            ? "Checking your session…"
+            : isAuthenticated
+              ? "Returning you to your destination…"
+              : "Continue to secure sign-in when you’re ready."}
+        </p>
+        {!isLoading && !isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => login(returnTo)}
+            data-testid="sign-in-continue"
+            className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800"
+          >
+            SIGN IN
+          </button>
+        )}
+        <noscript>
+          <a
+            href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
+            className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"
+          >
+            SIGN IN
+          </a>
+        </noscript>
+      </div>
     </div>
   </div>;
 }
