@@ -779,15 +779,15 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // (wantsTool match) — never as the default opener anymore.
 const NAME_PROMPT_LINE = "What should I call you?";
 
-export default function PabloTerminal() {
+export default function PabloTerminal({ home = false }: { home?: boolean } = {}) {
   // The public terminal is safe to paint while auth resolves. Waiting here
   // used to flash a black BOOTING screen before the canonical nebula, defeating
   // its role as the immediate front door. Auth-dependent actions remain gated
   // by PabloTerminalAuthed's own isLoading checks.
-  return <PabloTerminalAuthed />;
+  return <PabloTerminalAuthed home={home} />;
 }
 
-function PabloTerminalAuthed() {
+function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   const [, navigate] = useLocation();
   const { logout, isAuthenticated, user, isLoading } = useAuth();
   // The front door uses one verified platform-auth flow. Provider-specific
@@ -1981,7 +1981,7 @@ function PabloTerminalAuthed() {
 
   return (
     <div
-      className={`pablo-terminal fixed left-0 top-0 z-50 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}`}
+      className={`pablo-terminal fixed left-0 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}${home ? " pablo-home-terminal" : ""}`}
       style={{
         // Brand-toned base. Used to be near-black (#0a0a14 → #000), which
         // turned the whole page into a "black screen" on iOS Safari whenever
@@ -1992,8 +1992,12 @@ function PabloTerminalAuthed() {
           "radial-gradient(ellipse at 50% 35%, #1a0a2e 0%, #0a0418 55%, #000 100%)",
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingTop: "env(safe-area-inset-top)",
-        height: "var(--app-viewport-height, 100dvh)",
+         top: home ? "3.5rem" : 0,
+         height: home
+           ? "calc(var(--app-viewport-height, 100dvh) - 3.5rem)"
+           : "var(--app-viewport-height, 100dvh)",
         transform: "translateY(var(--app-viewport-top, 0px))",
+         zIndex: home ? 0 : 50,
       }}
     >
       {/* Free-flowing nebula — full-bleed living background. Sized to the
@@ -2039,7 +2043,7 @@ function PabloTerminalAuthed() {
            GFX/status pills row instead of fighting them for the top edge.
            On desktop, the global alpha warning occupies the top strip, so
            reserve that strip here rather than hiding the controls behind it. */}
-      <header
+      {!home && <header
          className="pablo-header relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:mt-12 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
@@ -2152,7 +2156,7 @@ function PabloTerminalAuthed() {
           {/* No exit X — the SALARYMAN logo is the only authenticated exit,
               and the primary work handoff goes through the physical Tower. */}
         </div>
-      </header>
+      </header>}
 
       {/* Spacer so the rest of the column lays out at the bottom of the
           page even though the nebula is now an absolutely-positioned

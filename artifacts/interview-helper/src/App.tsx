@@ -29,7 +29,6 @@ import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 
 const Home = lazy(() => import("@/pages/Home"));
-const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
@@ -217,10 +216,9 @@ function HomeOrCover() {
   // on non-home routes). Guard on the actual path so the homepage terminal does
   // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
-  // Keep the public door focused on finished browser capabilities. The
-  // downloadable gameplay client is still in development and should not be
-  // marketed from the homepage until its visual slice is complete.
-  return <ProfessionalHome />;
+  // The browser homepage is Pablo's actual conversation surface. The
+  // downloadable gameplay client remains a separate destination in the header.
+  return <PabloTerminal home />;
 }
 
 const FLOATING_BAR_ROUTES = [
@@ -291,7 +289,7 @@ function AppShell() {
   // The browser product has one visual contract: cream/white surfaces and
   // black ink. The downloadable game owns the cyberpunk palette.
   const isLightWorkspace = true;
-  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
+  const showNavBar = !isFullscreenRoute && !hideNavBar;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
   // (alpha banner, audio control, toaster) so the iframe reads as one clean
@@ -451,7 +449,7 @@ function AppShell() {
     <>
       <DeviceControlBridge />
       {showNavBar && (
-        <div className="app-chrome">
+          <div className={`app-chrome${isRootRoute ? " app-chrome--home" : ""}`}>
           <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />
@@ -500,7 +498,7 @@ function AppShell() {
             {/* Standalone routes */}
             <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/pablo/deck" component={PabloDeck} />
-            <Route path="/pablo" component={PabloTerminal} />
+            <Route path="/pablo">{() => <PabloTerminal />}</Route>
             <Route path="/sms-opt-in" component={SmsOptIn} />
             <Route path="/onboarding" component={Onboarding} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
