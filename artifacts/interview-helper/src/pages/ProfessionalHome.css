@@ -69,7 +69,8 @@
   overflow-y: auto;
   padding: 0.65rem;
   border: 1px solid #000;
-  background: #fffdf7;
+  background: #fffdf7 !important;
+  isolation: isolate;
   box-shadow: 6px 6px 0 #000;
 }
 
