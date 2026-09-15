@@ -44,7 +44,8 @@ describe("frontend startup boundaries", () => {
     expect(landing).not.toContain("<video");
     expect(landing).not.toContain(".mp4");
     expect(landing).toContain("Make work possible.");
-    expect(landing).toContain("PIXEL AGENT AUTOMATION");
+    expect(landing).toContain("PIXEL AGENTS");
+    expect(landing).not.toContain("PIXEL AGENT AUTOMATION");
     expect(landing).toContain('href: "/business/autopilot"');
   });
 

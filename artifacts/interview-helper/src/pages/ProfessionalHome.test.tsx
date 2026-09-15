@@ -43,11 +43,13 @@ describe("ProfessionalHome header", () => {
     act(() => menuButton.click());
     const links = Array.from(container.querySelectorAll("a"));
     const login = links.find(link => link.textContent?.trim() === "LOG IN");
-    const automation = container.querySelector(".home-module--automation") as HTMLAnchorElement | null;
+    const agents = container.querySelector(".home-module--pixel-agents") as HTMLAnchorElement | null;
 
     expect(login?.getAttribute("href")).toContain("/sign-in?returnTo=%2Fbusiness");
-    expect(automation?.getAttribute("href")).toContain("/business/autopilot");
-    expect(automation?.className).toContain("home-module--automation");
+    expect(agents?.getAttribute("href")).toContain("/business/autopilot");
+    expect(agents?.className).toContain("home-module--pixel-agents");
+    expect(agents?.textContent).toContain("PIXEL AGENTS");
+    expect(agents?.textContent).not.toContain("AUTOMATION");
   });
 
   it("keeps the authenticated header to one menu control", () => {

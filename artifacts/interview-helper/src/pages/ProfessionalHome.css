@@ -128,8 +128,14 @@
 
 .home-modules {
   display: grid;
+  width: min(100%, 52rem);
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #000;
+  border-radius: 3px;
+  background: #000;
+  box-shadow: 8px 8px 0 #000;
 }
 
 .home-module {
@@ -141,33 +147,33 @@
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
-  border: 1px solid rgb(0 0 0 / 16%);
+  border: 0;
   background: #FFFCF5;
   color: #000;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
-.home-module--automation {
+.home-module--pixel-agents {
   border-color: #000;
   background: #000;
   color: #FAFAF7;
 }
 
-body.workspace-light .home-module--automation {
+body.workspace-light .home-module--pixel-agents {
   background-color: #000 !important;
   color: #FAFAF7 !important;
 }
 
-.home-module--automation:hover,
-.home-module--automation:focus-visible,
-.home-module--automation:active {
+.home-module--pixel-agents:hover,
+.home-module--pixel-agents:focus-visible,
+.home-module--pixel-agents:active {
   background: #FFFCF5;
   color: #000;
 }
 
-body.workspace-light .home-module--automation:hover,
-body.workspace-light .home-module--automation:focus-visible,
-body.workspace-light .home-module--automation:active {
+body.workspace-light .home-module--pixel-agents:hover,
+body.workspace-light .home-module--pixel-agents:focus-visible,
+body.workspace-light .home-module--pixel-agents:active {
   background-color: #FFFCF5 !important;
   color: #000 !important;
 }
@@ -218,7 +224,7 @@ body.workspace-light .home-module--automation:active {
   animation: home-float 3.2s ease-in-out infinite;
 }
 
-.home-module--automation .home-module-logo {
+.home-module--pixel-agents .home-module-logo {
   filter: none;
 }
 
@@ -298,16 +304,11 @@ body.workspace-light .home-module--automation:active {
 
 @media (min-width: 640px) {
   .home-modules {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .home-module--automation {
-    grid-column: span 2;
+    gap: 1px;
   }
 
   .home-module {
-    min-height: 14rem;
+    min-height: 12rem;
     padding: 1.25rem;
   }
 }
