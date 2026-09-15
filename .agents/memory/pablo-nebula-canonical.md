@@ -13,6 +13,7 @@ The wave-field shader art lives at commit `465de13` (the last change before the 
 
 **How to apply:**
 - Restore the wave-field shader (base it on `465de13`), keep it as a fullscreen quad, NOT a particle orb.
+- Keep the full Pablo nebula/chat surface at `/pablo`; the root `/` route is the normal SALARYMAN Home surface and must not be replaced with Pablo.
 - Preserve the Pablo/Mila persona variant feature additively: keep exports `PabloNebula3D`, `NebulaStatus`, `NebulaVariant`, `PABLO_VARIANT`, `MILA_VARIANT`, and PabloNebula3D's optional `variant` prop (default Pablo). Variant carries a per-status `palette` (primary/secondary/accent THREE.Vector3 for the shader) + `fallback` (2D CSS colors). Pablo = violet/magenta, Mila = aqua/teal. Wave dynamics are shared.
 - PabloTerminal wires `variant={persona==="mila"?MILA_VARIANT:PABLO_VARIANT}`; other consumers (MiniNebula, PabloNavButton, PabloDeck, PledgeStore, Immigration, PixelAgents) pass no variant and must keep working on the default.
 - **You CANNOT screenshot the real shader in the agent sandbox**: the headless browser can't even create a WebGL context ("A WebGL context could not be created"), so /pablo always renders the 2D CSS fallback, NEVER the real shader. Do not mistake that fallback for the orb art. Verify via typecheck + matching the wave-field shader to the reference image, not via screenshot.

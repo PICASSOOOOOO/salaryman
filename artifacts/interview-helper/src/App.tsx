@@ -29,6 +29,7 @@ import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 
 const Home = lazy(() => import("@/pages/Home"));
+const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
@@ -213,12 +214,12 @@ const MemoConsole = memo(Console as React.ComponentType);
 function HomeOrCover() {
   const [location] = useLocation();
   // This component is kept-alive (always mounted, just hidden via display:none
-  // on non-home routes). Guard on the actual path so the homepage terminal does
+  // on non-home routes). Guard on the actual path so the homepage surface does
   // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
-  // The browser homepage is Pablo's actual conversation surface. The
-  // downloadable gameplay client remains a separate destination in the header.
-  return <PabloTerminal home />;
+  // The homepage is the browser product index. Pablo's full nebula/chat
+  // experience remains a dedicated destination at /pablo.
+  return <ProfessionalHome />;
 }
 
 const FLOATING_BAR_ROUTES = [
@@ -289,7 +290,9 @@ function AppShell() {
   // The browser product has one visual contract: cream/white surfaces and
   // black ink. The downloadable game owns the cyberpunk palette.
   const isLightWorkspace = true;
-  const showNavBar = !isFullscreenRoute && !hideNavBar;
+  // ProfessionalHome owns the root header. Keep the global workspace chrome
+  // off / so the homepage does not render two navigation systems.
+  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
   // (alpha banner, audio control, toaster) so the iframe reads as one clean
