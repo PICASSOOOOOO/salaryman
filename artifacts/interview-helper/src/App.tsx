@@ -818,7 +818,7 @@ function ReplitAuthPage() {
           data-testid="sign-in-continue"
           className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800"
         >
-          Continue
+           SIGN IN
         </button>
       )}
       <noscript>
@@ -826,7 +826,7 @@ function ReplitAuthPage() {
           href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
         className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"
         >
-          Continue
+           SIGN IN
         </a>
       </noscript>
     </div>
