@@ -37,27 +37,39 @@ describe("ProfessionalHome header", () => {
     act(() => root.render(<ProfessionalHome />));
 
     expect(container.querySelector(".home-start-link")).toBeNull();
-    const menuButton = container.querySelector(".home-menu-button") as HTMLButtonElement;
-    expect(menuButton).not.toBeNull();
+    const startWorkButton = container.querySelector(".home-start-work-button");
+    expect(startWorkButton).toBeNull();
+    const loginLink = container.querySelector(".home-login-link") as HTMLAnchorElement;
+    expect(loginLink?.textContent).toBe("LOG IN");
+    expect(loginLink?.getAttribute("href")).toContain("/sign-in?returnTo=%2F");
 
-    act(() => menuButton.click());
-    const links = Array.from(container.querySelectorAll("a"));
-    const login = links.find(link => link.textContent?.trim() === "LOG IN");
-    const agents = container.querySelector(".home-module--pixel-agents") as HTMLAnchorElement | null;
-
-    expect(login?.getAttribute("href")).toContain("/sign-in?returnTo=%2Fbusiness");
-    expect(agents?.getAttribute("href")).toContain("/business/autopilot");
-    expect(agents?.className).toContain("home-module--pixel-agents");
-    expect(agents?.textContent).toContain("PIXEL AGENTS");
-    expect(agents?.textContent).not.toContain("AUTOMATION");
+    act(() => root.render(<ProfessionalHome />));
+    expect(container.querySelector("#home-start-work-panel")).toBeNull();
   });
 
-  it("keeps the authenticated header to one menu control", () => {
+  it("shows the start-work panel only after authentication", () => {
+    authState.isAuthenticated = true;
+    act(() => root.render(<ProfessionalHome />));
+
+    const startWorkButton = container.querySelector(".home-start-work-button") as HTMLButtonElement;
+    expect(startWorkButton).not.toBeNull();
+    expect(startWorkButton.textContent).toContain("START WORK");
+    expect(container.querySelector(".home-login-link")).toBeNull();
+
+    act(() => startWorkButton.click());
+    expect(container.querySelector("#home-start-work-panel")).not.toBeNull();
+    expect(container.textContent).toContain("PABLO PRIME");
+    expect(container.textContent).toContain("PIXEL AGENTS");
+    expect(container.textContent).toContain("CALLL HOME");
+    expect(container.textContent).toContain("SALARYMAN OS");
+  });
+
+  it("keeps the authenticated header to one start-work control", () => {
     authState.isAuthenticated = true;
     act(() => root.render(<ProfessionalHome />));
 
     expect(container.querySelector(".home-start-link")).toBeNull();
-    expect(container.querySelector(".home-menu-button")).not.toBeNull();
+    expect(container.querySelector(".home-start-work-button")).not.toBeNull();
     expect(container.textContent).not.toContain("LOG IN");
   });
 });

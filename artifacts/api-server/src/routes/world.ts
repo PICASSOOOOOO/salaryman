@@ -267,7 +267,7 @@ router.post("/world/register", async (req, res) => {
       res.status(401).json({ error: "Login required" });
       return;
     }
-    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation, homeCityId, locationConsent } = req.body;
+    const { playerName, businessType, companyName, industry, companySize, contactEmail, contactPhone, source, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation, homeCityId, locationConsent } = req.body;
     if (!playerName || !businessType) {
       res.status(400).json({ error: "playerName and businessType required" });
       return;
@@ -279,6 +279,14 @@ router.post("/world/register", async (req, res) => {
     if (finalBizType !== "unemployed" && (!companyName || !String(companyName).trim())) {
       res.status(400).json({ error: "companyName required for business registration" });
       return;
+    }
+    if (source === "browser_onboarding") {
+      const email = typeof contactEmail === "string" ? contactEmail.trim() : "";
+      const phoneDigits = typeof contactPhone === "string" ? contactPhone.replace(/\D/g, "") : "";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phoneDigits.length < 7) {
+        res.status(400).json({ error: "A valid email and phone number are required to complete onboarding" });
+        return;
+      }
     }
 
     if (finalBizType === "minx" && companyName) {
@@ -332,6 +340,10 @@ router.post("/world/register", async (req, res) => {
       homeCityId: selectedCityId,
       locationConsent: Boolean(locationConsent),
       coarseLocation,
+      source: source === "browser_onboarding" ? "browser_onboarding" : null,
+      contactPhone: source === "browser_onboarding" && typeof contactPhone === "string"
+        ? contactPhone.replace(/[^\d+().\s-]/g, "").slice(0, 40)
+        : null,
     };
     // Unemployed arrivals still need a registry row: it is the server's
     // onboarding-complete signal and carries the selected home city. Employment
@@ -345,7 +357,7 @@ router.post("/world/register", async (req, res) => {
         companyName: finalBizType === "unemployed" ? null : (companyName ? String(companyName).trim().toUpperCase().slice(0, 80) : null),
         industry: finalBizType === "unemployed" ? null : (industry ? String(industry).slice(0, 60) : null),
         companySize: finalBizType === "unemployed" ? null : (companySize ? String(companySize).slice(0, 30) : null),
-        contactEmail: finalBizType === "unemployed" ? null : (contactEmail ? String(contactEmail).slice(0, 120) : null),
+         contactEmail: contactEmail ? String(contactEmail).trim().slice(0, 120) : null,
         payrollProvider: hasAutomatedPayroll ? String(payrollProvider).slice(0, 40) : null,
         declaredMonthlyIncome: safeDeclared,
         incomeVerified: willBeVerified,

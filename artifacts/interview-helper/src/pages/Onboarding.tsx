@@ -53,7 +53,9 @@ export default function Onboarding() {
         companyName: business ? answers.companyName : null,
         industry: business ? 'GENERAL SERVICES' : null,
         companySize: business ? 'SOLO OPERATOR' : null,
-        contactEmail: business ? ((user as { email?: string | null } | null)?.email ?? null) : null,
+        contactEmail: answers.contactEmail,
+        contactPhone: answers.contactPhone,
+        source: 'browser_onboarding',
         isPaid: false,
         payrollProvider: 'NONE',
         declaredMonthlyIncome: 0,
@@ -109,7 +111,11 @@ export default function Onboarding() {
             Set up your work path. Business setup is optional.
           </div>
         </header>
-        <QuickOnboarding charName={charName} onComplete={completeOnboarding} />
+        <QuickOnboarding
+          charName={charName}
+          contactEmail={(user as { email?: string | null } | null)?.email ?? ''}
+          onComplete={completeOnboarding}
+        />
       </div>
     </main>
   );

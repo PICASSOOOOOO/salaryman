@@ -15,6 +15,15 @@
   gap: 0.5rem;
 }
 
+.home-alpha-badge {
+  border: 1px solid #000;
+  padding: 0.2rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.48rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
 .home-start-work-button,
 .home-login-link {
   display: inline-flex;

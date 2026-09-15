@@ -780,7 +780,7 @@ export default function Autopilot() {
         return;
       }
       if (res.status === 403) {
-        setError('You need owner or manager access to manage Pixel Agent Automation.');
+        setError('You need owner or manager access to manage Pixel Agents.');
         setData(null);
         return;
       }
@@ -790,7 +790,7 @@ export default function Autopilot() {
         return;
       }
       if (!res.ok) {
-        setError('Failed to load Pixel Agent Automation.');
+        setError('Failed to load Pixel Agents.');
         setData(null);
         return;
       }
@@ -957,7 +957,7 @@ export default function Autopilot() {
     };
   }, []);
 
-  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage Pixel Agent Automation." />;
+  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage Pixel Agents." />;
 
   if (loading) {
     return (
@@ -972,7 +972,7 @@ export default function Autopilot() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-mono text-base text-cyan-300 tracking-widest flex items-center gap-2">
-            <Bot className="w-5 h-5" /> PIXEL AGENT AUTOMATION
+            <Bot className="w-5 h-5" /> PIXEL AGENTS
           </h1>
           <p className="font-mono text-[10px] text-cyan-500/40 tracking-wider mt-1">
             Assign a Pixel Agent to run a business domain on its own. OFF = fully manual, exactly as today.
@@ -996,7 +996,7 @@ export default function Autopilot() {
         <>
           <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-[10px] font-mono leading-relaxed">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400/60" />
-            Pixel Agent Automation only does what a human in the same seat could do, and respects entitlement, credit, and
+            Pixel Agents only do what a human in the same seat could do, and respect entitlement, credit, and
             per-tick limits. Automated behavior for each domain is being rolled out — toggling ON now just arms the
             scheduler and logs activity below.
           </div>
@@ -1253,7 +1253,7 @@ export default function Autopilot() {
               {activity.length === 0 && (
                 <div className="px-4 py-6 text-center font-mono text-[10px] text-cyan-500/30">
                   {activityFilter === 'all'
-                    ? 'No Pixel Agent Automation activity yet.'
+                    ? 'No Pixel Agents activity yet.'
                     : `No ${(data.meta[activityFilter]?.label ?? activityFilter)} activity yet.`}
                 </div>
               )}

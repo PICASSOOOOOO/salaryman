@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, worldBusinessesTable } from "@workspace/db";
 
 type OnboardingMeta = {
@@ -38,10 +38,8 @@ export async function getCompletedOnboarding(userId: string) {
       meta: worldBusinessesTable.meta,
     })
     .from(worldBusinessesTable)
-    .where(and(
-      eq(worldBusinessesTable.userId, userId),
-    ))
-    .orderBy(worldBusinessesTable.createdAt)
+    .where(eq(worldBusinessesTable.userId, userId))
+    .orderBy(desc(worldBusinessesTable.createdAt))
     .limit(1);
   return isCompletedOnboardingRow(row) ? row : null;
 }

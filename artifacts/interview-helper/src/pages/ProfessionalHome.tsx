@@ -60,6 +60,9 @@ export default function ProfessionalHome() {
             className="h-7 w-7 rounded-md"
           />
           <span className="font-mono text-xs font-bold tracking-[0.2em] uppercase">SALARYMAN</span>
+          <span className="home-alpha-badge">
+            ALPHA {typeof __BUILD_VERSION__ !== "undefined" ? __BUILD_VERSION__ : "DEV"}
+          </span>
         </Link>
         <div className="home-header-actions">
           {isAuthenticated ? (

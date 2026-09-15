@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { db, worldBusinessesTable, type FeatureKey } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import type { FeatureKey } from "@workspace/db";
 import { hasFeature, FEATURE_CATALOG, isUsdPaidFeature } from "../lib/plan";
 import { getCompletedOnboarding } from "./requireOnboarding";
 

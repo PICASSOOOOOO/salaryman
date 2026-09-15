@@ -7,6 +7,7 @@ import type { OnboardingAnswers } from './PabloOnboarding';
 
 interface QuickOnboardingProps {
   charName: string;
+  contactEmail?: string;
   onComplete: (answers: OnboardingAnswers) => void | Promise<void>;
 }
 
@@ -17,13 +18,15 @@ type WorkPath = 'business' | 'unemployed';
  * path without creating a fictional company or pulling them into the
  * downloadable game's immigration flow.
  */
-export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) {
+export function QuickOnboarding({ charName, contactEmail: initialEmail, onComplete }: QuickOnboardingProps) {
   const cities = useMemo(() => getOperationalCities(), []);
   const suggestedCity = useMemo(
     () => resolveHomeCity(getLocalTimezone())?.city.cityId ?? cities[0]?.cityId ?? 'minx_city',
     [cities],
   );
   const [name, setName] = useState(charName.trim() || 'SALARYMAN');
+  const [email, setEmail] = useState(initialEmail?.trim() || getSalarymanEmail() || '');
+  const [phone, setPhone] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [path, setPath] = useState<WorkPath>('unemployed');
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +34,8 @@ export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) 
 
   const canEnter =
     name.trim().length >= 2 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    phone.replace(/\D/g, '').length >= 7 &&
     (path === 'unemployed' || companyName.trim().length >= 2) &&
     !submitting;
 
@@ -46,7 +51,8 @@ export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) 
         businessType: path === 'business' ? 'real' : 'unemployed',
         companyName: path === 'business' ? companyName.trim() : '',
         industry: path === 'business' ? 'GENERAL SERVICES' : '',
-        contactEmail: getSalarymanEmail() ?? '',
+        contactEmail: email.trim(),
+        contactPhone: phone.trim(),
         playerName: name.trim().slice(0, 80),
         perception: 5,
         combatStyle: '',
@@ -141,6 +147,33 @@ export function QuickOnboarding({ charName, onComplete }: QuickOnboardingProps) 
             style={inputStyle}
           />
         </label>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <label>
+            <span style={labelStyle}>EMAIL</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              maxLength={120}
+              placeholder="you@example.com"
+              style={inputStyle}
+            />
+          </label>
+          <label>
+            <span style={labelStyle}>PHONE NUMBER</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              autoComplete="tel"
+              maxLength={40}
+              placeholder="+1 555 000 0000"
+              style={inputStyle}
+            />
+          </label>
+        </div>
 
         <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
           <legend style={labelStyle}>I WANT TO</legend>

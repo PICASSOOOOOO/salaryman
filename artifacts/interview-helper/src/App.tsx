@@ -338,10 +338,8 @@ function AppShell() {
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
   const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  // A freshly authenticated account must complete the one-screen registry
-  // choice before it can reach the workspace. Onboarding provides the two
-  // valid exits: register a business or skip business setup for now.
-  const NEW_USER_ALLOWED_PREFIXES = ["/onboarding", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  // Onboarding is optional for basic job-seeking and browsing. Mutations and
+  // paid/managed capabilities enforce the server-side onboarding record.
   // Powering on the landing cinematic's terminal sends visitors to /console
    // so an anonymous visitor must be allowed to reach EXACTLY
   // /console and see the console's own sign-in screen there — without being
@@ -360,7 +358,7 @@ function AppShell() {
   const matchesPrefix = (list: string[]) =>
     list.some(p => pathname === p || pathname.startsWith(p + "/"));
   const allowedForAnon = pathname === "/" || matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
-  const allowedForAuthedNew = matchesPrefix(NEW_USER_ALLOWED_PREFIXES);
+  const allowedForAuthedNew = true;
   const tutorialDone = isTutorialDone();
   const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
   // Wait for auth to resolve before bouncing: isAuthenticated starts false on
@@ -804,7 +802,7 @@ function ReplitAuthPage() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const returnTo = sanitizeReturnPath(
     new URLSearchParams(window.location.search).get("returnTo"),
-  ) ?? "/onboarding";
+  ) ?? "/";
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       window.location.replace(returnTo);

@@ -6,8 +6,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
 
-// Paid services are deliberately separate: Automation Pixel Agents and the
-// Twilio-backed CALLL HOME and Pixel Agent Automation each require their own USD subscription.
+// Paid services are deliberately separate: Pixel Agents and the
+// Twilio-backed CALLL HOME each require their own USD subscription.
 const BOT_CATEGORIES = [
   { name: "CORE COMMAND", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
   { name: "THE ACADEMY", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
@@ -149,7 +149,7 @@ export default function Pricing() {
                     AUTOMATION PIXEL AGENTS
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
-                    A curated nine-agent automation workforce managed across four teams. Includes automation tools, bot chaining, and business workflows. CALLL HOME is billed separately.
+                    A curated nine-agent workforce managed across four teams. Includes bot chaining and business workflows. CALLL HOME is billed separately.
                   </p>
                 </div>
               </div>

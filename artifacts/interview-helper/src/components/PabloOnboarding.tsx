@@ -45,6 +45,7 @@ export interface OnboardingAnswers {
   companyName: string;
   industry: string;
   contactEmail: string;
+  contactPhone?: string;
   playerName: string;
   perception: number;
   combatStyle: string;
