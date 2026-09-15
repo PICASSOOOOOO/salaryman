@@ -1,19 +1,15 @@
 import {
   ChevronDown,
-  Download,
   Globe,
   LogIn,
   LogOut,
   Menu,
-  Phone,
-  Sparkles,
   User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { HISTORIC_MODULES } from '@/lib/historic-navigation';
-import { FeedbackLauncher } from './FeedbackLauncher';
 import { MiniNebula } from './MiniNebula';
 
 const MENU_MODULES = HISTORIC_MODULES.filter(
@@ -21,10 +17,9 @@ const MENU_MODULES = HISTORIC_MODULES.filter(
 );
 
 export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) {
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const { isAuthenticated, login, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(previewMode);
-  const pathname = location.split('?')[0];
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -40,23 +35,11 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
     setMenuOpen(false);
   };
 
-  const directLinks = [
-    { label: 'PABLO AI', path: '/pablo', icon: Sparkles },
-    {
-      label: 'CALLL HOME',
-      path: '/phone',
-      icon: Phone,
-      logoSrc: `${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`,
-    },
-    { label: 'APP DOWNLOAD', path: '/desktop', icon: Download },
-  ];
-
   return (
     <header className="app-header desktop-app-nav relative z-50 shrink-0 border-b border-[#D8D1C3] bg-[#FAF7EF]">
       <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-4">
-        <button
-          type="button"
-          onClick={() => go('/')}
+        <a
+          href="/"
           className="flex shrink-0 items-center gap-2.5"
           aria-label="SALARYMAN home"
         >
@@ -69,7 +52,7 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
           <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] text-black">
             ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'DEV'}
           </span>
-        </button>
+        </a>
 
         <nav className="hidden items-center gap-1 sm:flex" aria-label="Main navigation">
           <div className="relative">
@@ -84,7 +67,7 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
               aria-expanded={menuOpen}
             >
               <Menu className="h-3.5 w-3.5" />
-              MORE
+              START WORK
               <ChevronDown className={`h-3 w-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -107,7 +90,6 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
                       OPEN THE HIGH-RES NEBULA
                     </span>
                   </span>
-                  <Sparkles className="ml-auto h-4 w-4 shrink-0 text-fuchsia-300" />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   {MENU_MODULES.map(module => {
@@ -192,34 +174,6 @@ export function NavBar({ previewMode = false }: { previewMode?: boolean } = {}) 
             )}
           </div>
 
-          {directLinks.map(item => {
-            const Icon = item.icon;
-            const active = pathname === item.path || pathname.startsWith(`${item.path}/`);
-            return (
-              <button
-                type="button"
-                key={item.path}
-                onClick={() => go(item.path)}
-                className={`flex items-center gap-1.5 rounded-md border px-3 py-2 font-mono text-[11px] tracking-widest ${
-                  active
-                    ? 'border-black bg-black text-[#FAF7EF]'
-                    : 'border-[#CFC6B7] bg-[#FFFCF5] text-black hover:bg-[#EEE8DC]'
-                }`}
-              >
-                {item.logoSrc ? (
-                  <img
-                    src={item.logoSrc}
-                    alt=""
-                    className="h-5 w-[4.25rem] object-contain object-left invert"
-                  />
-                ) : (
-                  <Icon className="h-3.5 w-3.5" />
-                )}
-                {item.label}
-              </button>
-            );
-          })}
-          {isAuthenticated && <FeedbackLauncher />}
         </nav>
       </div>
     </header>

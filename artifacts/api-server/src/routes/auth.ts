@@ -33,17 +33,23 @@ const router: IRouter = Router();
 const OAUTH_COOKIE_TTL = 10 * 60 * 1000;
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
+function getVisibleHost(req: Request): string {
+  const forwardedHost = ((req.headers["x-forwarded-host"] as string) || "").split(",")[0].trim();
+  return forwardedHost || (req.headers.host || "").split(",")[0].trim();
+}
+
+function isLoopbackHost(host: string): boolean {
+  return /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i.test(host);
+}
+
 function getOrigin(req: Request): string {
   // The local preview proxy presents the API with a loopback forwarded host
   // even though the browser entered through the public *.replit.dev domain.
   // OIDC requires the callback URL to be browser-reachable, so prefer the
   // configured dev domain only for loopback requests. Production and public
   // preview requests continue to honor the forwarded/custom host.
-  const forwardedHost = ((req.headers["x-forwarded-host"] as string) || "").split(",")[0].trim();
-  const requestHost = (req.headers.host || "").split(",")[0].trim();
-  const visibleHost = forwardedHost || requestHost;
-  const isLoopbackHost = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i.test(visibleHost);
-  if (isLoopbackHost && process.env.REPLIT_DEV_DOMAIN) {
+  const visibleHost = getVisibleHost(req);
+  if (isLoopbackHost(visibleHost) && process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
   const proto = ((req.headers["x-forwarded-proto"] as string) || "https").split(",")[0].trim();
@@ -135,6 +141,17 @@ router.get("/auth/user", (req, res) => {
 
 router.get("/login", async (req: Request, res: Response) => {
   try {
+    // The local preview proxy can serve the iframe from loopback while the
+    // browser-reachable OIDC callback is the public *.replit.dev host. Start
+    // the flow on that public host so the PKCE cookies and callback share a
+    // cookie origin. Without this hop, the callback cannot see state and
+    // repeatedly sends the user back to login.
+    if (isLoopbackHost(getVisibleHost(req)) && process.env.REPLIT_DEV_DOMAIN) {
+      const publicLogin = new URL("/api/login", `https://${process.env.REPLIT_DEV_DOMAIN}`);
+      publicLogin.searchParams.set("returnTo", getSafeOidcReturnTo(req.query.returnTo));
+      res.redirect(publicLogin.href);
+      return;
+    }
     const config = await getOidcConfig();
     const callbackUrl = `${getOrigin(req)}/api/callback`;
     const state = oidc.randomState();
