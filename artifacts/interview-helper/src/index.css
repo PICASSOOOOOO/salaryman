@@ -269,9 +269,19 @@ body:not(.game-route) .rounded-lg {
       display: none;
     }
     .pablo-download-control {
-      min-width: 36px !important;
-      width: 36px;
+      min-width: 48px !important;
+      width: 48px;
       padding-inline: 0.4rem;
+    }
+    .pablo-brand-wordmark {
+      display: block;
+      max-width: 64px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pablo-header {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 48px) !important;
     }
     .pablo-vision-trigger {
       display: none !important;
