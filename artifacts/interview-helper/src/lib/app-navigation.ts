@@ -30,11 +30,11 @@ export type AppNavItem = {
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { id: "pablo", path: "/pablo", label: "PABLO AI", icon: Terminal },
   { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone },
-  { id: "office", path: "/desktop", label: "APP DOWNLOAD", icon: Building2, accent: "green" },
+  { id: "office", path: "/desktop", label: "SALARYMAN OS", icon: Building2, accent: "green" },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "bots", path: "/business/autopilot", label: "PIXEL AGENT AUTOMATION", icon: Bot },
+  { id: "bots", path: "/business/autopilot", label: "PIXEL AGENTS", icon: Bot },
   { id: "org", path: "/organizations", label: "ORG", icon: Network, authOnly: true },
   { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
   { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase, authOnly: true },

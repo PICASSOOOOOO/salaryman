@@ -15,7 +15,8 @@
   gap: 0.5rem;
 }
 
-.home-menu-button {
+.home-start-work-button,
+.home-login-link {
   display: inline-flex;
   min-height: 2rem;
   flex: 0 0 auto;
@@ -28,19 +29,20 @@
   text-transform: uppercase;
 }
 
-.home-menu-button {
+.home-start-work-button,
+.home-login-link {
   gap: 0.35rem;
   padding: 0.45rem 0.6rem;
   border: 1px solid rgb(0 0 0 / 18%);
   background: #fff;
 }
 
-.home-menu-button svg {
+.home-start-work-button svg {
   width: 0.9rem;
   height: 0.9rem;
 }
 
-.home-menu-button.is-open {
+.home-start-work-button.is-open {
   color: #fff;
   background: #000;
   border-color: #000;
@@ -71,6 +73,15 @@
   letter-spacing: 0.14em;
 }
 
+.home-features-section-label {
+  padding: 0.55rem 0.45rem 0.25rem;
+  color: #777066;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
 .home-feature-link {
   display: flex;
   min-width: 0;
@@ -81,6 +92,18 @@
   font-size: 0.62rem;
   letter-spacing: 0.05em;
   line-height: 1.25;
+}
+
+.home-feature-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.home-feature-copy small {
+  color: #777066;
+  font-size: 0.48rem;
+  letter-spacing: 0.08em;
 }
 
 .home-feature-link svg {
@@ -345,12 +368,12 @@ body.workspace-light .home-module--pixel-agents:active {
     gap: 0.2rem;
   }
 
-  .home-menu-button {
+  .home-start-work-button {
     width: 2rem;
     padding-inline: 0;
   }
 
-  .home-menu-button span {
+  .home-start-work-button span {
     position: absolute;
     width: 1px;
     height: 1px;

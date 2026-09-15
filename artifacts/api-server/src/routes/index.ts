@@ -115,12 +115,14 @@ import deviceLinksRouter from "./device-links";
 import desktopWorkRouter from "./desktop-work";
 import businessDataRouter from "./business-data";
 import desktopDownloadRouter from "./desktop-download";
+import { requireOnboardingForMutation } from "../middlewares/requireOnboarding";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(versionRouter);
 router.use(authRouter);
+router.use(requireOnboardingForMutation);
 router.use(openaiRouter);
 router.use(interviewRouter);
 router.use(toolsRouter);

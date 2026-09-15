@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { db, worldBusinessesTable, type FeatureKey } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hasFeature, FEATURE_CATALOG, isUsdPaidFeature } from "../lib/plan";
+import { getCompletedOnboarding } from "./requireOnboarding";
 
 export function requireFeature(featureKey: FeatureKey) {
   const catalog = FEATURE_CATALOG[featureKey];
@@ -14,12 +15,7 @@ export function requireFeature(featureKey: FeatureKey) {
     // The registry row is the server-authoritative completion signal, so this
     // cannot be bypassed with a local tutorial flag or a paid feature grant.
     if (isUsdPaidFeature(featureKey)) {
-      const [onboarding] = await db
-        .select({ id: worldBusinessesTable.id })
-        .from(worldBusinessesTable)
-        .where(eq(worldBusinessesTable.userId, String(req.user.id)))
-        .limit(1);
-      if (!onboarding) {
+      if (!await getCompletedOnboarding(String(req.user.id))) {
         res.status(403).json({
           error: "Complete onboarding before using paid features",
           feature: featureKey,

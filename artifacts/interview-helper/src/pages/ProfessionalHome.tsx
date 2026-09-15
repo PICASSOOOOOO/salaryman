@@ -2,7 +2,7 @@ import { ArrowUpRight, Bot, Download, Menu, Phone, Workflow, X } from "lucide-re
 import { Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { MORE_NAV_ITEMS } from "@/lib/app-navigation";
+import { MORE_NAV_ITEMS, PRIMARY_NAV_ITEMS, type AppNavItem } from "@/lib/app-navigation";
 import "./ProfessionalHome.css";
 
 const MODULES = [
@@ -29,12 +29,22 @@ const MODULES = [
   },
   {
     id: "desktop",
-    title: "APP DOWNLOAD",
+    title: "SALARYMAN OS",
     href: "/desktop",
     icon: Download,
     logoSrc: undefined,
   },
 ] as const;
+
+const pabloPrimeItems: AppNavItem[] = [
+  PRIMARY_NAV_ITEMS.find(item => item.id === "pablo")!,
+  MORE_NAV_ITEMS.find(item => item.id === "bots")!,
+];
+
+const standaloneProductItems: AppNavItem[] = [
+  PRIMARY_NAV_ITEMS.find(item => item.id === "phone")!,
+  PRIMARY_NAV_ITEMS.find(item => item.id === "office")!,
+];
 
 export default function ProfessionalHome() {
   const { isAuthenticated } = useAuth();
@@ -52,33 +62,68 @@ export default function ProfessionalHome() {
           <span className="font-mono text-xs font-bold tracking-[0.2em] uppercase">SALARYMAN</span>
         </Link>
         <div className="home-header-actions">
-          <button
-            type="button"
-            className={`home-menu-button${menuOpen ? " is-open" : ""}`}
-            onClick={() => setMenuOpen(open => !open)}
-            aria-expanded={menuOpen}
-            aria-controls="home-features-menu"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-          >
-            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-            <span>MENU</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              className={`home-start-work-button${menuOpen ? " is-open" : ""}`}
+              onClick={() => setMenuOpen(open => !open)}
+              aria-expanded={menuOpen}
+              aria-controls="home-start-work-panel"
+              aria-label={menuOpen ? "Close start work" : "Open start work"}
+            >
+              {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+              <span>START WORK</span>
+            </button>
+          ) : (
+            <Link
+              href="/sign-in?returnTo=%2F"
+              className="home-login-link"
+            >
+              LOG IN
+            </Link>
+          )}
         </div>
-        {menuOpen && (
-          <div id="home-features-menu" className="home-features-menu" role="menu">
-            <div className="home-features-heading">MENU</div>
-            {!isAuthenticated && (
-              <Link
-                href="/sign-in?returnTo=%2Fbusiness"
-                role="menuitem"
-                className="home-feature-link home-feature-link--primary"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span>LOG IN</span>
-              </Link>
-            )}
+        {isAuthenticated && menuOpen && (
+          <div id="home-start-work-panel" className="home-features-menu" role="menu">
+            <div className="home-features-heading">START WORK</div>
+            <div className="home-features-section-label">PABLO PRIME</div>
+            {pabloPrimeItems.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.id}
+                  href={item.path}
+                  role="menuitem"
+                  className="home-feature-link"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Icon aria-hidden="true" />
+                  <span className="home-feature-copy">
+                    <span>{item.label}</span>
+                    <small>{index === 0 ? "UPGRADED PABLO AI" : "PABLO PRIME"}</small>
+                  </span>
+                </Link>
+              );
+            })}
+            <div className="home-features-section-label">PRODUCTS</div>
+            {standaloneProductItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.id}
+                  href={item.path}
+                  role="menuitem"
+                  className="home-feature-link"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+            <div className="home-features-section-label">WORKSPACE</div>
             {MORE_NAV_ITEMS
-              .filter(item => !item.authOnly || isAuthenticated)
+              .filter(item => item.id !== "bots" && (!item.authOnly || isAuthenticated))
               .map(item => {
                 const Icon = item.icon;
                 return (
