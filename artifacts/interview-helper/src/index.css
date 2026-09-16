@@ -1032,17 +1032,6 @@ header {
   }
 }
 
-/* Short landscape phone/PWA viewports need the icon-first chrome even when
-   their CSS width crosses Tailwind's tablet breakpoint. */
-@media (min-width: 640px) and (min-height: 501px) {
-  .desktop-app-nav {
-    display: block;
-  }
-  .mobile-app-nav {
-    display: none;
-  }
-}
-
 /* Keep compact landscape phones on the same readable, single-column canvas.
    The PWA manifest requests portrait; this is the safe browser fallback when
    the device has not honored that request yet. */
@@ -1320,65 +1309,43 @@ body.workspace-light #root {
   color: #000000 !important;
 }
 
-/* Adjust Chrome for Desktop */
-@media (min-width: 640px) {
-  .app-chrome {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: rgba(250, 250, 247, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .desktop-app-nav {
-    display: flex;
-  }
-  .mobile-app-nav-top, .mobile-app-nav-bottom, .mobile-app-subnav {
-    display: none !important;
-  }
+/* One navigation contract at every viewport size. The phone composition is the
+   canonical browser chrome; desktop must not silently switch to a second nav
+   component or hide the primary tabs behind a different START WORK menu. */
+.desktop-app-nav {
+  display: none !important;
 }
-
-/* Adjust Chrome for Mobile */
-@media (max-width: 639px) {
-  .app-chrome {
-    display: block;
-    position: static;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  .abandonment-banner {
-    position: static !important;
-    z-index: auto !important;
-    margin: 0 8px 8px;
-    border-width: 1px;
-    border-radius: 4px;
-  }
-  .mobile-active-call-bar {
-    margin-top: calc(3.5rem + env(safe-area-inset-top, 0px));
-  }
-  .desktop-app-nav {
-    display: none !important;
-  }
-  body.workspace-light #root {
-    padding-top: calc(56px + env(safe-area-inset-top, 0px));
-    padding-bottom: 0;
-  }
-  body.workspace-light:has(.alpha-wipe-banner) #root {
-    padding-top: 0;
-  }
-  body.workspace-light.has-subnav #root {
-    padding-top: calc(96px + env(safe-area-inset-top, 0px)); /* 56px top + 40px subnav */
-  }
-  .mobile-app-nav-top {
-    display: flex;
-  }
-  .mobile-app-nav-bottom {
-    display: none !important;
-  }
-  .mobile-app-subnav {
-    display: flex;
-  }
+.mobile-app-nav-top {
+  display: flex !important;
+}
+.mobile-app-nav-bottom {
+  display: block !important;
+}
+.mobile-app-subnav {
+  display: flex !important;
+}
+.app-chrome {
+  position: static;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body.workspace-light #root {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+body.workspace-light.has-subnav #root {
+  padding-top: calc(96px + env(safe-area-inset-top, 0px));
+}
+.abandonment-banner {
+  position: static !important;
+  z-index: auto !important;
+  margin: 0 8px 8px;
+  border-width: 1px;
+  border-radius: 4px;
+}
+.mobile-active-call-bar {
+  margin-top: calc(3.5rem + env(safe-area-inset-top, 0px));
 }
 
 .hide-scrollbar::-webkit-scrollbar {

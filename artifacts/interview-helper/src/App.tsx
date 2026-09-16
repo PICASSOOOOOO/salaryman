@@ -4,7 +4,6 @@ import { Switch, Route, Router as WouterRouter, useLocation, Redirect, Link } fr
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { NavBar } from "@/components/NavBar";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileModuleNav } from "@/components/MobileBottomBar";
@@ -466,7 +465,6 @@ function AppShell() {
       {showNavBar && (
           <div className={`app-chrome${isRootRoute ? " app-chrome--home" : ""}`}>
           <AbandonmentBanner />
-          <NavBar />
           <MobileModuleNav />
         </div>
       )}

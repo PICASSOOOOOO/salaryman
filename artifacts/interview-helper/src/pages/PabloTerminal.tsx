@@ -2044,7 +2044,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
            On desktop, the global alpha warning occupies the top strip, so
            reserve that strip here rather than hiding the controls behind it. */}
       {!home && <header
-         className="pablo-header relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:mt-12 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
+         className="pablo-header relative z-10 w-full flex items-center justify-start gap-1 px-2 pb-2.5 shrink-0"
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
           // header below that so its logo + buttons don't collide with them.
@@ -2063,7 +2063,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             title="Return to Tower"
           >
             <PicassoLogo size={20} gap={2} glow />
-            <span className="pablo-brand-wordmark font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+             <span className="pablo-brand-wordmark sr-only font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
           </Link>
@@ -2074,7 +2074,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             data-testid="link-logo-loop"
           >
             <PicassoLogo size={20} gap={2} glow />
-            <span className="pablo-brand-wordmark font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+             <span className="pablo-brand-wordmark sr-only font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
           </Link>
@@ -2097,7 +2097,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               aria-label="Download SALARYMAN desktop client"
             >
               <Download className="w-3 h-3" />
-              <span className="pablo-download-label">DOWNLOAD</span>
+               <span className="sr-only">DOWNLOAD</span>
             </button>
           {!isLoading && !isAuthenticated && (
             <button
