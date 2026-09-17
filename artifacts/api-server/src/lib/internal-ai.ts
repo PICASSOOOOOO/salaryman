@@ -86,11 +86,25 @@ export async function completeInternalText(
     try {
       if (provider === "gpt") {
         const { openai } = await import("@workspace/integrations-openai-ai-server");
+        // The active GPT proxy does not consistently accept response_format
+        // alongside every internal model. The command prompt already requires
+        // one JSON object, so keep that instruction in-band and let the same
+        // provider path answer instead of forcing a 400 into the fallback
+        // cascade.
+        const gptMessages = options.json
+          ? messages.map((message, index) =>
+              index === 0 && message.role === "system"
+                ? {
+                    ...message,
+                    content: `${message.content}\n\nReturn one valid JSON object only, with no markdown fence or surrounding prose.`,
+                  }
+                : message,
+            )
+          : messages;
         const result = await openai.chat.completions.create({
           model: await getInternalOpenAiModel(),
-          messages,
+          messages: gptMessages,
           max_completion_tokens: maxTokens,
-          ...(options.json ? { response_format: { type: "json_object" as const } } : {}),
         });
         const content = result.choices[0]?.message?.content?.trim();
         if (!content) throw new Error("empty response");

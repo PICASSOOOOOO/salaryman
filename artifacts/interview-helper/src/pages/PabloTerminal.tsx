@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Download } from "lucide-react";
+import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
@@ -1710,11 +1710,19 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     setStatus("thinking");
     setReply("");
     try {
-      const res = await apiFetch("api/chat/pablo/command", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: text, history: history.slice(-10) }),
-      });
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 12000);
+      let res: Response;
+      try {
+        res = await apiFetch("api/chat/pablo/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: text, history: history.slice(-10) }),
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeout);
+      }
       if (!res.ok) {
         const detail = await res.text().catch(() => "");
         throw new Error(`pablo ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
@@ -1827,9 +1835,54 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Pablo] command failed:", msg);
-      setError(`Pablo hit a snag: ${msg}`);
-      setStatus("idle");
-      if (mode === "voice") autoListenRef.current = true;
+      // Command mode adds navigation/tool policy on top of ordinary chat. If
+      // that specialized path is unavailable, do not strand the user with an
+      // "unavailable" error: the same server's regular Pablo message route is
+      // the reliable conversational path and returns the actual reply shape.
+      try {
+        const fallbackRes = await apiFetch("api/chat/pablo/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: text,
+            context: history.slice(-10),
+          }),
+        });
+        const fallbackBody = await fallbackRes.json().catch(() => null) as {
+          pabloMessage?: { content?: unknown };
+          message?: unknown;
+          error?: unknown;
+        } | null;
+        if (!fallbackRes.ok) {
+          const fallbackDetail =
+            typeof fallbackBody?.message === "string"
+              ? fallbackBody.message
+              : typeof fallbackBody?.error === "string"
+                ? fallbackBody.error
+                : `fallback ${fallbackRes.status}`;
+          throw new Error(fallbackDetail);
+        }
+        const fallbackSay =
+          typeof fallbackBody?.pabloMessage?.content === "string"
+            ? fallbackBody.pabloMessage.content.trim()
+            : "";
+        if (!fallbackSay) throw new Error("empty fallback response");
+        setReply(fallbackSay);
+        setHistory((h) => [
+          ...h,
+          { role: "user", content: text },
+          { role: "assistant", content: fallbackSay },
+        ]);
+        await speak(fallbackSay);
+        setStatus("idle");
+        if (mode === "voice") autoListenRef.current = true;
+      } catch (fallbackErr) {
+        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+        console.error("[Pablo] chat fallback failed:", fallbackMsg);
+        setError("Pablo is unavailable right now. Try again.");
+        setStatus("idle");
+        if (mode === "voice") autoListenRef.current = true;
+      }
     }
   }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated, hasFinishedOnboarding, enterFromHomepage]);
 
@@ -2044,7 +2097,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
            On desktop, the global alpha warning occupies the top strip, so
            reserve that strip here rather than hiding the controls behind it. */}
       {!home && <header
-         className="pablo-header relative z-10 w-full flex items-center justify-start gap-1 px-2 pb-2.5 shrink-0"
+         className="pablo-header relative z-10 w-full flex items-center justify-between gap-2 px-3 pb-2.5 shrink-0"
         style={{
           // GFX/status pills already eat ~32px below the inset. Push the
           // header below that so its logo + buttons don't collide with them.
@@ -2063,7 +2116,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             title="Return to Tower"
           >
             <PicassoLogo size={20} gap={2} glow />
-             <span className="pablo-brand-wordmark sr-only font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+             <span className="pablo-brand-wordmark font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
           </Link>
@@ -2074,31 +2127,13 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             data-testid="link-logo-loop"
           >
             <PicassoLogo size={20} gap={2} glow />
-             <span className="pablo-brand-wordmark sr-only font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
+              <span className="pablo-brand-wordmark font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
               SALARYMAN
             </span>
           </Link>
         )}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+         <div className="ml-auto flex min-w-0 items-center justify-end gap-1 sm:gap-2 shrink-0">
           <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-           <button
-              type="button"
-              data-testid="pablo-download-salaryman"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.matchMedia("(max-width: 640px)").matches) {
-                  window.alert("DOWNLOAD is available on desktop only. Open SALARYMAN on a desktop browser to continue.");
-                  return;
-                }
-                navigate("/desktop");
-              }}
-              className="pablo-download-control app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
-              title="Download SALARYMAN desktop client"
-              aria-label="Download SALARYMAN desktop client"
-            >
-              <Download className="w-3 h-3" />
-               <span className="sr-only">DOWNLOAD</span>
-            </button>
           {!isLoading && !isAuthenticated && (
             <button
               type="button"

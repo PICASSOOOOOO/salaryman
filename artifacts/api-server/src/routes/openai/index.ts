@@ -256,17 +256,13 @@ async function handleTts(req: any, res: any) {
     }
   }
 
-  // Pablo and Mila are voice-bound characters. A generic OpenAI fallback
-  // silently recasts them and discards their assigned ElevenLabs accent,
-  // making a credential/configuration problem sound like a creative choice.
-  // Fail explicitly instead; the client keeps the written reply visible.
+  // Pablo and Mila prefer their assigned ElevenLabs voices, but a provider
+  // rejection must not make the assistants silent. Continue through the
+  // managed speech fallback below so the written reply still has audible
+  // output. The fallback is intentionally only reached after ElevenLabs has
+  // had the first attempt.
   if (isSignatureVoice(character)) {
-    res.status(503).json({
-      error: "Assigned character voice is temporarily unavailable",
-      provider: "elevenlabs",
-      character,
-    });
-    return;
+    console.warn(`Assigned ${character} voice unavailable; using managed speech fallback`);
   }
 
   try {

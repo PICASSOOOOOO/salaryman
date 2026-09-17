@@ -355,7 +355,32 @@ body:not(.game-route) .rounded-lg {
 
   @media (max-width: 420px) {
     .pablo-brand-wordmark {
+      display: inline;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Keep the same controls available as desktop, but use the shared compact
+       icon treatment before the phone keyboard and safe-area margins consume
+       the header lane. */
+    .pablo-start-work-label,
+    .pablo-mode-label,
+    .pablo-chat-label {
       display: none;
+    }
+
+    .pablo-header > .flex.items-center.gap-1\.5 {
+      gap: 0.25rem;
+    }
+
+    .pablo-header-action.mobile-tap-target,
+    .pablo-controls-menu > .pablo-header-action,
+    .pablo-chat-control {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
     }
   }
 
