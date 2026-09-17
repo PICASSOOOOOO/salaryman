@@ -60,6 +60,7 @@ export default function PhoneDialerPage() {
   const [callStarting, setCallStarting] = useState(false);
   const [dialingMode, setDialingMode] = useState<DialMode>('power');
   const audioCtx = useRef<AudioContext | null>(null);
+  const actionInFlightRef = useRef<'call' | 'session' | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
@@ -84,6 +85,7 @@ export default function PhoneDialerPage() {
   }, [navigate]);
 
   useEffect(() => {
+    if (!userId) return;
     apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
         if (r.status === 403) { rawNavigate('/pricing'); return null; }
@@ -105,6 +107,25 @@ export default function PhoneDialerPage() {
       .then(d => { if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); })
       .catch(() => { setError('Failed to load recent calls'); });
   }, [userId, apiUrl, rawNavigate]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditable = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isEditable || loading) return;
+      if (/^[0-9*#]$/.test(event.key)) {
+        event.preventDefault();
+        pressKey(event.key);
+      } else if (event.key === 'Backspace') {
+        event.preventDefault();
+        setManualNumber(prev => prev.slice(0, -1));
+      } else if (event.key === 'Escape') {
+        setManualNumber('');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [loading]);
 
   const playDTMF = (key: string) => {
     setDtmfTone(key);
@@ -134,7 +155,9 @@ export default function PhoneDialerPage() {
   };
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
+    if (actionInFlightRef.current) return;
     if (!validatePhoneNumber(phone, dialCountry)) { setError('Invalid phone number format'); return; }
+    actionInFlightRef.current = 'call';
     setError('');
     setLoading(true);
     setCallStarting(true);
@@ -154,15 +177,18 @@ export default function PhoneDialerPage() {
       navigate('/phone/active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error — check your connection and try again');
+    } finally {
+      actionInFlightRef.current = null;
+      setLoading(false);
       setCallStarting(false);
     }
-    setLoading(false);
-    setCallStarting(false);
   };
 
   const launchDialingSession = async () => {
+    if (actionInFlightRef.current) return;
     const nums = recentContacts.map(c => ({ phone: c.phone, name: c.name }));
     if (nums.length === 0) { navigate('/phone/sessions'); return; }
+    actionInFlightRef.current = 'session';
     setLoading(true);
     setError('');
     try {
@@ -185,8 +211,10 @@ export default function PhoneDialerPage() {
       navigate('/phone/active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      actionInFlightRef.current = null;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const dialKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];

@@ -20,6 +20,8 @@ export interface ChatMessage {
   attachmentMimeType?: string | null;
   attachmentSizeBytes?: number | null;
   createdAt: string;
+  /** Local-only marker used while the HTTP send is being persisted. */
+  pending?: boolean;
 }
 
 interface ChannelMeta {
@@ -85,19 +87,49 @@ export function useChatSocket(): UseChatSocket {
   const MAX_RETRIES = 10;
   const BASE_DELAY = 2000;
 
-  const appendMessage = useCallback((msg: ChatMessage) => {
+  const appendMessage = useCallback((msg: ChatMessage, countUnread = true) => {
     setState(prev => {
       const channelMsgs = prev.messages[msg.channelId] ?? [];
       if (channelMsgs.find(m => m.id === msg.id)) return prev;
+      // The sender gets an optimistic local bubble before the POST completes.
+      // Replace that bubble with the authoritative server row when either the
+      // POST response or the WebSocket broadcast arrives. This prevents a
+      // duplicate when both transports deliver the same persisted message.
+      const pendingIndex = !msg.pending && msg.senderUserId === user?.id
+        ? channelMsgs.findIndex(m =>
+            m.pending &&
+            m.senderUserId === msg.senderUserId &&
+            m.content === msg.content &&
+            (m.attachmentFileId ?? null) === (msg.attachmentFileId ?? null)
+          )
+        : -1;
+      if (pendingIndex >= 0) {
+        const updated = [...channelMsgs];
+        updated[pendingIndex] = msg;
+        return { ...prev, messages: { ...prev.messages, [msg.channelId]: updated } };
+      }
       const updated = [...channelMsgs, msg];
       const newUnread = { ...prev.unreadCounts };
-      newUnread[msg.channelId] = (newUnread[msg.channelId] ?? 0) + 1;
+      if (countUnread) {
+        newUnread[msg.channelId] = (newUnread[msg.channelId] ?? 0) + 1;
+      }
       return {
         ...prev,
         messages: { ...prev.messages, [msg.channelId]: updated },
         unreadCounts: newUnread,
         totalUnread: Object.values(newUnread).reduce((a, b) => a + b, 0),
       };
+    });
+  }, [user?.id]);
+
+  const removePendingMessage = useCallback((channelId: number, content: string, attachmentFileId?: number) => {
+    setState(prev => {
+      const existing = prev.messages[channelId] ?? [];
+      const updated = existing.filter(msg =>
+        !(msg.pending && msg.content === content && (msg.attachmentFileId ?? null) === (attachmentFileId ?? null))
+      );
+      if (updated.length === existing.length) return prev;
+      return { ...prev, messages: { ...prev.messages, [channelId]: updated } };
     });
   }, []);
 
@@ -224,25 +256,58 @@ export function useChatSocket(): UseChatSocket {
     ws.send(JSON.stringify({ type: "subscribe", channelId }));
   }, [state.connected, state.channelMeta?.pabloChannelId]);
 
+  // Private channels are returned in the metadata snapshot, but the server
+  // only auto-subscribes the global/company channels during connection. Join
+  // every known DM here so an open Comms screen receives messages immediately,
+  // even before the user clicks that particular thread.
+  useEffect(() => {
+    const ws = wsRef.current;
+    const privateChannels = state.channelMeta?.privateChannels ?? [];
+    if (!state.connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    for (const channel of privateChannels) {
+      ws.send(JSON.stringify({ type: "subscribe", channelId: channel.channelId }));
+    }
+  }, [state.connected, state.channelMeta?.privateChannels]);
+
   const send: SendFn = useCallback((channelId, content, attachmentFileId) => {
     const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
-    const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "send_message", channelId, content, ...(hasAttachment ? { attachmentFileId } : {}) }));
-      return;
-    }
+    const trimmed = content.trim();
+    if (!trimmed && !hasAttachment) return;
+
+    const optimistic: ChatMessage = {
+      id: -Date.now(),
+      channelId,
+      senderUserId: user?.id ?? null,
+      senderName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || (user as any)?.username || "You",
+      senderProfileImageUrl: (user as any)?.profileImageUrl ?? null,
+      isBot: false,
+      content: trimmed,
+      attachmentFileId: hasAttachment ? attachmentFileId : null,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
+    appendMessage(optimistic, false);
+
+    // Use the request/response transport for outgoing messages. The previous
+    // WebSocket-only path had no acknowledgement, so a slow insert looked like
+    // a dropped message and the composer cleared before delivery was known.
     apiFetch(`/api/chat/channels/${channelId}/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ content, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
+      body: JSON.stringify({ content: trimmed, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
     }).then(async res => {
       if (res.ok) {
         const data = await res.json();
         if (data.message) appendMessage(data.message);
+        else removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
+      } else {
+        removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
       }
-    }).catch(() => {});
-  }, [appendMessage]);
+    }).catch(() => {
+      removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
+    });
+  }, [appendMessage, removePendingMessage, user]);
 
   const markRead: MarkReadFn = useCallback((channelId, lastMessageId) => {
     const ws = wsRef.current;

@@ -9,6 +9,7 @@
 - [Pablo persona prompts](pablo-persona-prompts.md) — which Pablo system-prompt is LIVE per /chat/pablo/* route; PABLO_TERMINAL_PROMPT is dead, edit PABLO_SYSTEM_PROMPT (chat.ts) / PABLO_GATEKEEPER_PROMPT. Persona: PABLO CORP CEO + Mayor, Pixel Agents = prized replicants. Privacy/memory model.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.
+- [Comms outgoing delivery](comms-outgoing-delivery.md) — send ordinary chat over acknowledged HTTP with an optimistic local bubble; keep WebSocket for incoming delivery and private-channel subscriptions.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Twilio phone tests](twilio-phone-tests.md) — vitest+supertest in api-server; async vi.mock factory + shared mockState; twilio mocked (no real calls); real dev DB scoped by synthetic userId, serial files.
 - [Telephony callback owner resolution](telephony-owner-resolution.md) — active persisted destination-number ownership outranks legacy Twilio user hints; ambiguous/inactive mappings fail closed.
