@@ -229,9 +229,7 @@ body:not(.game-route) .rounded-lg {
     text-transform: uppercase;
   }
 
-  /* Pablo's fullscreen header has several compact actions sharing one phone
-     row. Keep their visual footprint small; the control lane still remains
-     easy to tap through the dedicated mobile target class. */
+  /* Pablo's header shares the same fixed app chrome footprint. */
   .pablo-header-action {
     min-height: 30px;
     min-width: 30px;
@@ -281,7 +279,9 @@ body:not(.game-route) .rounded-lg {
       white-space: nowrap;
     }
     .pablo-header {
-      padding-top: calc(env(safe-area-inset-top, 0px) + 48px) !important;
+      min-height: 44px;
+      padding-top: 0 !important;
+      padding-bottom: 0.25rem !important;
     }
     .pablo-vision-trigger {
       display: none !important;
@@ -305,9 +305,41 @@ body:not(.game-route) .rounded-lg {
     }
   }
 
-  /* Very small phones cannot fit the Pablo wordmark plus four controls with
-     readable labels. Keep every action available and discoverable through its
-     title/aria-label, but use the icons as the compact visual language. */
+  /* The terminal sits between the shared fixed top and bottom app bars. */
+  .pablo-terminal {
+    --pablo-bottom-space: 5.25rem;
+  }
+
+  .pablo-text-form {
+    bottom: 1rem !important;
+    width: min(100%, 44rem);
+    padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+  }
+
+  .pablo-text-form input {
+    min-height: 48px;
+    padding-block: 0.75rem;
+  }
+
+  .pablo-text-form button {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .pablo-voice-controls {
+    bottom: 1rem !important;
+  }
+
+  .pablo-idle {
+    bottom: 5.25rem;
+  }
+
+  .pablo-conversation {
+    bottom: 6.25rem !important;
+  }
+
+  /* Very small phones keep the full action set available without letting the
+     wordmark squeeze the tap targets. */
   @media (max-width: 359px) {
     .pablo-header {
       gap: 0.25rem;
@@ -348,8 +380,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-text-form {
-      width: calc(100% - 1rem);
-      padding-inline: 0.5rem;
+      padding-inline: 0.75rem;
     }
   }
 
@@ -360,6 +391,10 @@ body:not(.game-route) .rounded-lg {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .pablo-header {
+      padding-inline: max(0.75rem, var(--app-safe-left)) max(0.75rem, var(--app-safe-right));
     }
 
     /* Keep the same controls available as desktop, but use the shared compact
@@ -381,6 +416,117 @@ body:not(.game-route) .rounded-lg {
       width: 36px;
       min-width: 36px;
       padding-inline: 0;
+    }
+
+    .pablo-terminal {
+      --pablo-bottom-space: 5.5rem;
+    }
+
+    .pablo-text-form {
+      bottom: 1.25rem !important;
+      gap: 0.625rem;
+      padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+    }
+
+    .pablo-text-form input {
+      min-height: 52px;
+      border-radius: 0.875rem;
+      padding-inline: 1rem;
+    }
+
+    .pablo-text-form button {
+      min-height: 52px;
+      min-width: 52px;
+      border-radius: 0.875rem;
+    }
+
+    .pablo-voice-controls {
+      bottom: 1.25rem !important;
+      padding-inline: 1.25rem;
+    }
+
+    .pablo-voice-controls button {
+      min-height: 48px;
+      padding-inline: 1.25rem;
+    }
+
+    .pablo-idle {
+      bottom: 5.75rem;
+      padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+    }
+
+    .pablo-conversation {
+      bottom: 6.75rem !important;
+      max-height: 38dvh;
+      padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+    }
+  }
+
+  @media (max-width: 639px) and (orientation: landscape) {
+    .pablo-terminal {
+      --pablo-bottom-space: 4.5rem;
+    }
+
+    .pablo-header {
+      min-height: 40px;
+    }
+
+    .pablo-text-form {
+      bottom: 0.625rem !important;
+    }
+
+    .pablo-text-form input,
+    .pablo-text-form button {
+      min-height: 42px;
+    }
+
+    .pablo-voice-controls {
+      bottom: 0.625rem !important;
+    }
+
+    .pablo-voice-controls button {
+      min-height: 42px;
+      padding-block: 0.5rem;
+    }
+
+    .pablo-idle {
+      bottom: 4.75rem;
+    }
+
+    .pablo-conversation {
+      bottom: 5.5rem !important;
+      max-height: 32dvh;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .pablo-header {
+      min-height: 48px;
+      padding-inline: 1.25rem;
+    }
+
+    .pablo-header-action {
+      min-height: 36px;
+      min-width: 36px;
+      padding-inline: 0.75rem;
+    }
+
+    .pablo-text-form {
+      bottom: 1.5rem !important;
+      padding-inline: 1.5rem;
+    }
+
+    .pablo-voice-controls {
+      bottom: 1.5rem !important;
+    }
+
+    .pablo-idle {
+      bottom: 6rem;
+    }
+
+    .pablo-conversation {
+      bottom: 7rem !important;
+      max-height: 44dvh;
     }
   }
 

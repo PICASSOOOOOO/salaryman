@@ -2043,14 +2043,19 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         // alive even if the shader never lights up.
         background:
           "radial-gradient(ellipse at 50% 35%, #1a0a2e 0%, #0a0418 55%, #000 100%)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        paddingTop: "env(safe-area-inset-top)",
-         top: home ? "3.5rem" : 0,
-         height: home
-           ? "calc(var(--app-viewport-height, 100dvh) - 3.5rem)"
-           : "var(--app-viewport-height, 100dvh)",
+        paddingBottom: 0,
+        paddingTop: 0,
+        // /pablo uses the shared fixed app chrome. Start below the top bar and
+        // end above the bottom bar so controls never sit underneath either.
+        // The app root already reserves the shared top bar's 3.5rem. Adding
+        // another offset here created a blank band and pushed the composer
+        // under the fixed bottom bar.
+        top: home ? "3.5rem" : 0,
+        height: home
+          ? "calc(var(--app-viewport-height, 100dvh) - 3.5rem)"
+          : "calc(var(--app-viewport-height, 100dvh) - 7rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))",
         transform: "translateY(var(--app-viewport-top, 0px))",
-         zIndex: home ? 0 : 50,
+        zIndex: home ? 0 : 30,
       }}
     >
       {/* Free-flowing nebula — full-bleed living background. Sized to the
@@ -2097,11 +2102,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
            On desktop, the global alpha warning occupies the top strip, so
            reserve that strip here rather than hiding the controls behind it. */}
       {!home && <header
-         className="pablo-header relative z-10 w-full flex items-center justify-between gap-2 px-3 pb-2.5 shrink-0"
+         className="pablo-header absolute inset-x-0 top-0 z-20 w-full flex items-center justify-between gap-2 px-3 pb-2.5 shrink-0"
         style={{
-          // GFX/status pills already eat ~32px below the inset. Push the
-          // header below that so its logo + buttons don't collide with them.
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
+           paddingTop: "12px",
         }}
       >
          {/* Pablo is the homepage. The three explicit choices are the only
@@ -2229,8 +2232,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {/* Shared conversation surface for visitors and returning users. */}
       {(transcript || reply || status === "thinking") && (
         <div
-          className="mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
-          style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 140}px)` }}
+          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
+          style={{ bottom: `calc(${mode === "text" ? 104 : 124}px)` }}
         >
           {transcript && (
             <div
@@ -2272,7 +2275,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           two cheeky clickable reply tokens; tapping one fires it back as a
           normal Pablo message. */}
       {!reply && !transcript && idleLine && mode !== "text" && (
-        <div className="absolute inset-x-0 bottom-44 sm:bottom-48 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
+        <div className="pablo-idle absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
           <div className={`pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
             <div className="flex items-center justify-between mb-0.5">
               <div className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-300/80" : "text-purple-300/80"}`}>{personaLabel}</div>
@@ -2306,8 +2309,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {/* Voice control is available from the first frame. */}
       {mode !== "text" && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full pointer-events-none z-20"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)" }}
+          className="pablo-voice-controls absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full pointer-events-none z-20"
+          style={{ bottom: "24px" }}
         >
           <button
             type="button"
@@ -2335,8 +2338,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {mode === "text" && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
-           className="pablo-text-form absolute left-1/2 z-30 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
-           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)" }}
+           className="pablo-text-form absolute left-1/2 z-30 -translate-x-1/2 w-full max-w-2xl px-4 sm:px-6 flex items-center gap-2"
+           style={{ bottom: "20px" }}
           data-testid="pablo-text-form"
         >
           <input
@@ -2369,9 +2372,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         <div
           className="pointer-events-none absolute left-1/2 z-30 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[10px] font-mono tracking-wider text-red-300/80 backdrop-blur"
           style={{
-            bottom: mode === "text"
-              ? "calc(env(safe-area-inset-bottom, 0px) + 82px)"
-              : "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+             bottom: mode === "text" ? "82px" : "12px",
           }}
         >
           {error}

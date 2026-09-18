@@ -35,6 +35,19 @@ The header must keep a visible chat escape hatch on mobile. The chat control
 switches directly to text mode; it must not call the voice/orb handler, and it
 must not be hidden behind a desktop-only secondary-control rule.
 
+The `/pablo` route is the intentional fullscreen exception to the normal page
+chrome rule: it must render the shared fixed app top/bottom navigation and size
+its terminal between those bars. Its own composer and voice controls stay above
+the shared bottom bar, with safe-area and compact-landscape spacing.
+
+**Why:** Pablo previously used a second viewport coordinate system, which made
+the mobile composer bottom-flush, let the menu drift during orientation changes,
+and pushed controls under the shared navigation.
+
+**How to apply:** when changing `/pablo` layout, keep the global navigation
+visible, keep the terminal below the top bar, and verify portrait, landscape,
+and desktop together.
+
 TTS output is NOT gated to voice mode (replies speak in text mode too); only
 auto-listen is mode-gated. See pablo-voice-output-gating.md.
 

@@ -60,10 +60,16 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
 
     positionPopover();
     window.addEventListener('resize', positionPopover);
+    window.addEventListener('orientationchange', positionPopover);
     window.addEventListener('scroll', positionPopover, true);
+    window.visualViewport?.addEventListener('resize', positionPopover);
+    window.visualViewport?.addEventListener('scroll', positionPopover);
     return () => {
       window.removeEventListener('resize', positionPopover);
+      window.removeEventListener('orientationchange', positionPopover);
       window.removeEventListener('scroll', positionPopover, true);
+      window.visualViewport?.removeEventListener('resize', positionPopover);
+      window.visualViewport?.removeEventListener('scroll', positionPopover);
     };
   }, [open]);
 

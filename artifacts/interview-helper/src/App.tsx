@@ -300,7 +300,9 @@ function AppShell() {
   const isLightWorkspace = true;
   // ProfessionalHome owns the root header. Keep the global workspace chrome
   // off / so the homepage does not render two navigation systems.
-  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute && !isAuthRoute;
+  // Pablo is immersive, but it still uses the same frozen app chrome as every
+  // other browser surface. The terminal owns the space between those bars.
+  const showNavBar = (!isFullscreenRoute || isPabloRoute) && !hideNavBar && !isRootRoute && !isAuthRoute;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
   // (alpha banner, audio control, toaster) so the iframe reads as one clean
