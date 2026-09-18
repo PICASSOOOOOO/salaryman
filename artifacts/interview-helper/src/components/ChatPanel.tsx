@@ -464,7 +464,7 @@ function InputBar({
   allowAttach = false,
   boomer = false,
 }: {
-  onSend: (text: string, attachmentFileId?: number) => void;
+  onSend: (text: string, attachmentFileId?: number) => Promise<boolean>;
   disabled?: boolean;
   allowAttach?: boolean;
   boomer?: boolean;
@@ -472,15 +472,24 @@ function InputBar({
   const [value, setValue] = useState("");
   const [attachment, setAttachment] = useState<MediaItem | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  const submit = () => {
+  const submit = async () => {
+    if (sending || disabled) return;
     const text = value.trim();
     if (!text && !attachment) return;
-    onSend(text, attachment?.id);
-    setValue("");
-    setAttachment(null);
-    ref.current?.focus();
+    setSending(true);
+    try {
+      const sent = await onSend(text, attachment?.id);
+      if (sent) {
+        setValue("");
+        setAttachment(null);
+      }
+    } finally {
+      setSending(false);
+      ref.current?.focus();
+    }
   };
 
   return (
@@ -520,14 +529,14 @@ function InputBar({
       {allowAttach && (
         <button
           onClick={() => setPickerOpen(true)}
-          disabled={disabled}
+           disabled={disabled || sending}
           title="Attach from library"
           style={{
             background: "transparent",
-            border: `1px solid ${CRT(disabled ? 0.1 : 0.25)}`,
+             border: `1px solid ${CRT(disabled || sending ? 0.1 : 0.25)}`,
             borderRadius: 6,
-            color: CRT(disabled ? 0.2 : 0.7),
-            cursor: disabled ? "default" : "pointer",
+             color: CRT(disabled || sending ? 0.2 : 0.7),
+             cursor: disabled || sending ? "default" : "pointer",
             padding: "7px 9px",
             display: "flex",
             alignItems: "center",
@@ -548,7 +557,7 @@ function InputBar({
           }
         }}
         placeholder={disabled ? "Select a channel to chat" : "Message... (Enter to send)"}
-        disabled={disabled}
+         disabled={disabled || sending}
         rows={1}
         style={{
           flex: 1,
@@ -564,18 +573,18 @@ function InputBar({
           lineHeight: 1.4,
           maxHeight: 80,
           overflowY: "auto",
-          opacity: disabled ? 0.4 : 1,
+           opacity: disabled || sending ? 0.4 : 1,
         }}
       />
       <button
         onClick={submit}
-        disabled={disabled || (!value.trim() && !attachment)}
+         disabled={disabled || sending || (!value.trim() && !attachment)}
         style={{
-          background: disabled || (!value.trim() && !attachment) ? "transparent" : CRT(0.1),
-          border: `1px solid ${CRT(disabled || (!value.trim() && !attachment) ? 0.1 : 0.35)}`,
+           background: disabled || sending || (!value.trim() && !attachment) ? "transparent" : CRT(0.1),
+           border: `1px solid ${CRT(disabled || sending || (!value.trim() && !attachment) ? 0.1 : 0.35)}`,
           borderRadius: 6,
-          color: CRT(disabled || (!value.trim() && !attachment) ? 0.2 : 0.9),
-          cursor: disabled || (!value.trim() && !attachment) ? "default" : "pointer",
+           color: CRT(disabled || sending || (!value.trim() && !attachment) ? 0.2 : 0.9),
+           cursor: disabled || sending || (!value.trim() && !attachment) ? "default" : "pointer",
           padding: "7px 9px",
           display: "flex",
           alignItems: "center",
@@ -928,18 +937,17 @@ export function ChatPanel({
     markAllRead().finally(() => invalidateCommsSummary());
   }, [open, markAllRead]);
 
-  const handleSend = async (text: string, attachmentFileId?: number) => {
+  const handleSend = async (text: string, attachmentFileId?: number): Promise<boolean> => {
     if (activeTab === "pablo") {
       setPabloLoading(true);
       try {
-        await sendToPablo(text);
+        return await sendToPablo(text);
       } finally {
         setPabloLoading(false);
       }
-      return;
     }
-    if (activeChannelId == null) return;
-    send(activeChannelId, text, attachmentFileId);
+    if (activeChannelId == null) return false;
+    return send(activeChannelId, text, attachmentFileId);
   };
 
   const handleLoadMore = useCallback(() => {

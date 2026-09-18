@@ -51,12 +51,12 @@ interface ChatState {
   totalUnread: number;
 }
 
-type SendFn = (channelId: number, content: string, attachmentFileId?: number) => void;
+type SendFn = (channelId: number, content: string, attachmentFileId?: number) => Promise<boolean>;
 type MarkReadFn = (channelId: number, lastMessageId: number) => void;
 type MarkAllReadFn = () => Promise<void>;
 type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
-type SendToPabloFn = (content: string) => Promise<void>;
+type SendToPabloFn = (content: string) => Promise<boolean>;
 
 interface UseChatSocket extends ChatState {
   send: SendFn;
@@ -66,6 +66,16 @@ interface UseChatSocket extends ChatState {
   startPrivateChat: StartPrivateFn;
   sendToPablo: SendToPabloFn;
   refreshChannels: () => Promise<void>;
+}
+
+async function chatFetch(path: string, options: Parameters<typeof apiFetch>[1] = {}): Promise<Response> {
+  // Clerk can report an authenticated browser a moment before the API session
+  // cookie is visible to the server. Keep the first request from redirecting,
+  // then retry once before treating the send/read as a real failure.
+  const first = await apiFetch(path, { ...options, skipSessionExpiryRedirect: true });
+  if (first.status !== 401) return first;
+  await new Promise(resolve => setTimeout(resolve, 250));
+  return apiFetch(path, options);
 }
 
 export function useChatSocket(): UseChatSocket {
@@ -136,7 +146,7 @@ export function useChatSocket(): UseChatSocket {
   const refreshChannels = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const res = await apiFetch('/api/chat/channels', { credentials: "include" });
+      const res = await chatFetch('/api/chat/channels', { credentials: "include" });
       if (!res.ok) return;
       const data: ChannelMeta = await res.json();
       setState(prev => ({
@@ -269,10 +279,10 @@ export function useChatSocket(): UseChatSocket {
     }
   }, [state.connected, state.channelMeta?.privateChannels]);
 
-  const send: SendFn = useCallback((channelId, content, attachmentFileId) => {
+  const send: SendFn = useCallback(async (channelId, content, attachmentFileId) => {
     const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
     const trimmed = content.trim();
-    if (!trimmed && !hasAttachment) return;
+    if (!trimmed && !hasAttachment) return false;
 
     const optimistic: ChatMessage = {
       id: -Date.now(),
@@ -291,22 +301,27 @@ export function useChatSocket(): UseChatSocket {
     // Use the request/response transport for outgoing messages. The previous
     // WebSocket-only path had no acknowledgement, so a slow insert looked like
     // a dropped message and the composer cleared before delivery was known.
-    apiFetch(`/api/chat/channels/${channelId}/send`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ content: trimmed, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
-    }).then(async res => {
+    try {
+      const res = await chatFetch(`/api/chat/channels/${channelId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ content: trimmed, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
+      });
       if (res.ok) {
         const data = await res.json();
-        if (data.message) appendMessage(data.message);
-        else removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
+        if (data.message) {
+          appendMessage(data.message);
+          return true;
+        }
+        removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
       } else {
         removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
       }
-    }).catch(() => {
+    } catch {
       removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
-    });
+    }
+    return false;
   }, [appendMessage, removePendingMessage, user]);
 
   const markRead: MarkReadFn = useCallback((channelId, lastMessageId) => {
@@ -359,7 +374,7 @@ export function useChatSocket(): UseChatSocket {
     try {
       const params = new URLSearchParams({ limit: "50" });
       if (before) params.set("before", String(before));
-      const res = await apiFetch(
+      const res = await chatFetch(
         `/api/chat/channels/${channelId}/messages?${params}`,
         { credentials: "include" }
       );
@@ -381,7 +396,7 @@ export function useChatSocket(): UseChatSocket {
 
   const startPrivateChat: StartPrivateFn = useCallback(async (targetUserId) => {
     try {
-      const res = await apiFetch('/api/chat/private', {
+      const res = await chatFetch('/api/chat/private', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -410,13 +425,13 @@ export function useChatSocket(): UseChatSocket {
         isBot: m.isBot,
       }));
 
-      const res = await apiFetch('/api/chat/pablo/message', {
+      const res = await chatFetch('/api/chat/pablo/message', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ content, context }),
       });
-      if (!res.ok) return;
+      if (!res.ok) return false;
       // This raw fetch bypasses apiFetch, so trigger the delayed HUD refresh
       // ourselves: Pablo chat is billed via the fire-and-forget Pablo-Tax meter,
       // whose ƒ draw commits just after this response.
@@ -424,7 +439,10 @@ export function useChatSocket(): UseChatSocket {
       const data = await res.json();
       if (data.userMessage) appendMessage(data.userMessage);
       if (data.pabloMessage) appendMessage(data.pabloMessage);
-    } catch {}
+      return Boolean(data.userMessage || data.pabloMessage);
+    } catch {
+      return false;
+    }
   }, [appendMessage, state.channelMeta, state.messages]);
 
   return { ...state, send, markRead, markAllRead, loadHistory, startPrivateChat, sendToPablo, refreshChannels };
