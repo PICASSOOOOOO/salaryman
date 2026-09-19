@@ -2425,6 +2425,166 @@ html.low-gfx .bg-gradient-to-bl {
 html.low-gfx canvas[data-gfx="heavy"] {
   display: none !important;
 }
+
+/* ─── Responsive shell contract ────────────────────────────────────────────
+   Mobile keeps the compact top + bottom route controls. Desktop uses the same
+   destinations in one top row so a phone-sized fixed footer never consumes
+   usable workspace height or covers page actions. This block intentionally
+   stays at the end of the file because the workspace-light compatibility rules
+   above normalize the same selectors. */
+:root {
+  --pablo-shell-bottom-space: 7rem;
+}
+
+@media (max-width: 767px) {
+  body.workspace-light #root {
+    padding-bottom: 0;
+  }
+
+  .desktop-app-nav {
+    display: none !important;
+  }
+
+  .mobile-app-nav-bottom {
+    display: none !important;
+  }
+
+  :root {
+    --pablo-shell-bottom-space: 3.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  body.workspace-light #root {
+    padding-bottom: 0;
+  }
+
+  .mobile-app-nav-top,
+  .mobile-app-nav-bottom {
+    display: none !important;
+  }
+
+  .desktop-app-nav {
+    display: flex !important;
+    min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
+
+  :root {
+    --pablo-shell-bottom-space: 3.5rem;
+  }
+}
+
+/* workspace-light intentionally normalizes legacy dark controls. Pablo is an
+   immersive exception, so these semantic hooks keep its interactive surfaces
+   dark, legible, and visually grouped with the nebula on every viewport. */
+body.workspace-light .pablo-terminal {
+  isolation: isolate;
+}
+
+body.workspace-light .pablo-terminal .pablo-brand-wordmark {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-action {
+  color: rgba(248, 244, 255, 0.96) !important;
+  background-color: rgba(10, 7, 22, 0.74) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-action:hover,
+body.workspace-light .pablo-terminal .pablo-action:focus-visible {
+  color: #ffffff !important;
+  background-color: rgba(36, 19, 67, 0.9) !important;
+  border-color: rgba(216, 180, 254, 0.75) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-overlay {
+  color: #f8fafc !important;
+  background-color: rgba(8, 5, 18, 0.78) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-100,
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-200 {
+  color: #f8fafc !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-500,
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-600 {
+  color: rgba(226, 232, 240, 0.62) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-input {
+  color: #17111f !important;
+  background-color: rgba(255, 252, 245, 0.97) !important;
+  border-color: rgba(23, 17, 31, 0.7) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-input::placeholder {
+  color: rgba(23, 17, 31, 0.52) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-send-button {
+  color: #ffffff !important;
+  background-color: #7c3aed !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-send-button:hover,
+body.workspace-light .pablo-terminal .pablo-send-button:focus-visible {
+  background-color: #6d28d9 !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-talk-button {
+  color: #fff7ff !important;
+  background-color: rgba(157, 23, 77, 0.52) !important;
+}
+
+body.workspace-light .pablo-popover {
+  color: #f8fafc !important;
+  background-color: rgba(9, 8, 18, 0.97) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.workspace-light .pablo-popover * {
+  color: inherit;
+}
+
+/* Landscape phones can report a desktop-sized CSS width. Their short
+   viewport still needs the mobile bottom controls and the shorter spacing
+   contract, otherwise the top nav consumes the whole useful height. */
+@media (min-width: 768px) and (max-height: 600px) {
+  body.workspace-light #root {
+    padding-bottom: 0;
+  }
+
+  .desktop-app-nav {
+    display: none !important;
+  }
+
+  .mobile-app-nav-top,
+  .mobile-app-nav-bottom {
+    display: none !important;
+  }
+
+  :root {
+    --pablo-shell-bottom-space: 3.5rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .desktop-app-nav .desktop-primary-label {
+    display: none;
+  }
+
+  .desktop-app-nav nav {
+    gap: 0.25rem;
+  }
+
+  .desktop-app-nav nav > button {
+    min-width: 2.75rem;
+    padding-inline: 0.65rem;
+  }
+}
 /* ── Large-text terminal mode ─────────────────────────────────────────────── */
 .boomer-terminal {
   font-family: var(--font-sans) !important;

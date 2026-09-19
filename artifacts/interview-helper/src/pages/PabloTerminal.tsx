@@ -2051,9 +2051,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         // another offset here created a blank band and pushed the composer
         // under the fixed bottom bar.
         top: home ? "3.5rem" : 0,
-        height: home
-          ? "calc(var(--app-viewport-height, 100dvh) - 3.5rem)"
-          : "calc(var(--app-viewport-height, 100dvh) - 7rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))",
+         height: home
+           ? "calc(var(--app-viewport-height, 100dvh) - 3.5rem)"
+           : "calc(var(--app-viewport-height, 100dvh) - var(--pablo-shell-bottom-space, 7rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))",
         transform: "translateY(var(--app-viewport-top, 0px))",
         zIndex: home ? 0 : 30,
       }}
@@ -2142,7 +2142,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               type="button"
                onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-sign-in"
-                className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work in the terminal"
                 aria-label="Start work in the terminal"
             >
@@ -2155,7 +2155,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               type="button"
               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
               data-testid="pablo-enter-tower"
-              className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+              className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
                title="Start work in the terminal"
                aria-label="Start work in the terminal"
             >
@@ -2168,7 +2168,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               onClick={(e) => { e.stopPropagation(); navigate("/comms"); }}
              data-testid="pablo-ai-choice"
               aria-label="Open COMMS"
-             className="pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+             className="pablo-action pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
               title="Open COMMS"
            >
              <MessageCircle className="w-3 h-3" />
@@ -2185,7 +2185,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             type="button"
             onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
             data-testid="pablo-mode-toggle"
-              className="app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
+              className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
             title={mode === "text" ? "Switch to voice" : "Switch to text"}
              aria-label={mode === "text" ? "Switch to voice" : "Switch to text"}
           >
@@ -2232,12 +2232,12 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {/* Shared conversation surface for visitors and returning users. */}
       {(transcript || reply || status === "thinking") && (
         <div
-          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
+          className="pablo-conversation pablo-overlay mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
           style={{ bottom: `calc(${mode === "text" ? 104 : 124}px)` }}
         >
           {transcript && (
             <div
-              className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/60 backdrop-blur px-3 py-2 border border-cyan-400/25"
+              className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/60 backdrop-blur px-3 py-2 border border-cyan-400/25"
               data-testid="pablo-user-transcript"
             >
               <div className="text-cyan-300/80 text-[9px] font-mono tracking-[0.3em] mb-0.5">YOU</div>
@@ -2246,7 +2246,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           )}
           {(reply || status === "thinking") && (
             <div
-              className={`pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border ${persona === "mila" ? "border-teal-400/55" : "border-pink-400/55"}`}
+              className={`pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border ${persona === "mila" ? "border-teal-400/55" : "border-pink-400/55"}`}
               style={{ boxShadow: persona === "mila" ? "0 0 32px rgba(45,212,191,0.30)" : "0 0 32px rgba(236,72,153,0.32)" }}
               data-testid="pablo-reply-bubble"
             >
@@ -2276,7 +2276,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           normal Pablo message. */}
       {!reply && !transcript && idleLine && mode !== "text" && (
         <div className="pablo-idle absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
-          <div className={`pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
+          <div className={`pablo-overlay pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
             <div className="flex items-center justify-between mb-0.5">
               <div className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-300/80" : "text-purple-300/80"}`}>{personaLabel}</div>
               <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE</div>
@@ -2317,7 +2317,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             onClick={(e) => { e.stopPropagation(); onOrbClick(); }}
             data-testid="pablo-talk-button-main"
             aria-label="Tap to talk to Pablo"
-            className="pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-sm sm:text-base font-semibold transition-colors"
+            className="pablo-talk-button pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-sm sm:text-base font-semibold transition-colors"
             style={{
               borderColor: status === "listening" ? "rgba(103,232,249,0.85)" : "rgba(236,72,153,0.75)",
               boxShadow: status === "listening" ? "0 0 26px rgba(103,232,249,0.40)" : "0 0 18px rgba(236,72,153,0.25)",
@@ -2351,14 +2351,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
                 : interviewPhaseRef.current === 'asking-email' ? "Type your email"
                 : "Type a message…"
             }
-            className="min-w-0 flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+             className="pablo-input min-w-0 flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
             autoFocus
             data-testid="pablo-text-input"
           />
           <button
             type="submit"
             disabled={!textInput.trim() || status === "thinking"}
-            className="mobile-tap-target w-11 shrink-0 px-2 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
+            className="pablo-send-button mobile-tap-target w-11 shrink-0 px-2 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
             aria-label="Send"
             data-testid="pablo-text-send"
           >
@@ -2370,7 +2370,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {/* Silent error indicator — tiny, doesn't interrupt the nebula */}
       {error && (
         <div
-          className="pointer-events-none absolute left-1/2 z-30 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[10px] font-mono tracking-wider text-red-300/80 backdrop-blur"
+          className="pablo-overlay pointer-events-none absolute left-1/2 z-30 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[10px] font-mono tracking-wider text-red-300/80 backdrop-blur"
           style={{
              bottom: mode === "text" ? "82px" : "12px",
           }}

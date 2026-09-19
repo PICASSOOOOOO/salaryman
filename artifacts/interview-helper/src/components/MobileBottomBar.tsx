@@ -42,7 +42,9 @@ export function MobileModuleNav() {
   };
 
   const visibleTabs = PRIMARY_NAV_ITEMS.filter(tab => !tab.authOnly || isAuthenticated);
-  const dropdownItems = MORE_NAV_ITEMS.filter(item => !item.authOnly || isAuthenticated);
+  const dropdownItems = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS]
+    .filter(item => !item.authOnly || isAuthenticated)
+    .filter((item, index, items) => items.findIndex(candidate => candidate.id === item.id) === index);
 
   return (
     <>
@@ -94,6 +96,89 @@ export function MobileModuleNav() {
             <span>MENU</span>
           </button>
         </div>
+      </div>
+
+      {/* Desktop keeps the same destination model, but uses the available
+          horizontal space instead of placing a phone-sized bar over the
+          bottom of the page. The mobile and desktop variants share the same
+          active-route logic and overflow menu state. */}
+      <div
+        className="desktop-app-nav fixed top-0 left-0 right-0 z-50 items-center gap-4 border-b border-[#D8D1C3] bg-[#FAF7EF]"
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+        }}
+      >
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Go back"
+          title="Go back"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="flex min-w-0 shrink-0 items-center gap-2 rounded-sm px-1 py-1 text-left"
+          aria-label="SALARYMAN home"
+        >
+          <img
+            src={`${import.meta.env.BASE_URL}icon-192.png`}
+            alt=""
+            className="h-6 w-6 shrink-0 rounded"
+          />
+          <span className="truncate text-xs font-bold uppercase tracking-[0.18em] text-slate-900">SALARYMAN</span>
+        </button>
+        <nav className="flex min-w-0 flex-1 items-center justify-end gap-1" aria-label="Main navigation">
+          {visibleTabs.map(tab => {
+            const active = isAppNavItemActive(tab, pathname);
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  navigate(tab.path);
+                }}
+                aria-label={tab.label}
+                title={tab.label}
+                className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+                  active
+                    ? 'bg-[#EAF8EF] text-[#0B6B3A]'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="desktop-primary-label whitespace-nowrap">{tab.label}</span>
+                {tab.id === 'comms' && commsCount > 0 && (
+                  <span className="flex min-w-[17px] items-center justify-center rounded-full bg-[#D9534F] px-1 text-[9px] leading-[17px] text-white">
+                    {commsCount > 99 ? '99+' : commsCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(open => !open)}
+            className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+              dropdownOpen
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+            aria-expanded={dropdownOpen}
+            aria-controls="mobile-features-menu"
+            aria-label="Features"
+            title="Features"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="desktop-primary-label whitespace-nowrap">FEATURES</span>
+          </button>
+        </nav>
       </div>
 
       {/* Bottom Bar for Primary Navigation */}
@@ -149,7 +234,7 @@ export function MobileModuleNav() {
         >
           <div
             id="mobile-features-menu"
-            className="bg-white rounded-t-xl pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] pt-2 px-4 shadow-xl"
+            className="max-h-[min(82svh,42rem)] overflow-y-auto bg-white rounded-t-xl pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-2 px-4 shadow-xl"
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">

@@ -13,6 +13,19 @@ matching, making mobile and desktop behave like different applications.
 **How to apply:** add or change desktop/overflow destinations in the shared model.
 Keep mobile page chrome limited to Back, SALARYMAN, and login/account.
 
+The current shared shell uses the same primary destinations in a desktop top row;
+mobile exposes those destinations inside the existing MENU overlay instead of
+using a fixed footer. Keep the responsive shell overrides at the end of
+index.css, after the broad workspace-light compatibility rules.
+
+**Why:** the workspace-light rules are intentionally broad and can repaint or
+re-display legacy controls later in the cascade, which previously restored a
+phone-sized desktop footer and overrode Pablo's dark controls.
+
+**How to apply:** when changing global shell or Pablo styling, verify 402x874,
+874x402, 768x900, and 1440x900. Treat short landscape viewports as mobile even
+when their CSS width is above the desktop breakpoint.
+
 Back navigation may follow history only when the current entry was pushed during
 the current app document session. A direct document entry or reload must use the
 authenticated Office fallback (`/` when signed out), never arbitrary browser

@@ -82,7 +82,7 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="pablo-header-action app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
+         className="pablo-action pablo-header-action app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
       >
         <SlidersHorizontal className="app-control-icon" aria-hidden />
         <span className="sr-only">SETTINGS</span>
@@ -94,7 +94,7 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
           role="dialog"
           aria-label="Pablo settings"
           data-testid="pablo-controls-popover"
-          className="fixed z-[80] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
+           className="pablo-popover fixed z-[80] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
           style={{
             top: popoverPosition.top,
             left: popoverPosition.left,
