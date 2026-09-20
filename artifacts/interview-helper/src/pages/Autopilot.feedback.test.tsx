@@ -28,21 +28,21 @@ vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 let putMode: "ok" | "fail" | "throw" = "ok";
 
 const apiFetch = vi.fn(async (path: string, opts?: any) => {
-  if (typeof path === "string" && path.startsWith("/autopilot/") && opts?.method === "PUT") {
+  if (typeof path === "string" && path.startsWith("/api/autopilot/") && opts?.method === "PUT") {
     if (putMode === "throw") throw new Error("network down");
     if (putMode === "fail") {
       return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
     }
-    const domain = path.slice("/autopilot/".length);
+    const domain = path.slice("/api/autopilot/".length);
     const body = JSON.parse(opts.body);
     const cfg = payload.domains.find((d: any) => d.domain === domain);
     if (cfg) Object.assign(cfg, body);
     return { ok: true, status: 200, json: async () => ({ ok: true }) } as unknown as Response;
   }
-  if (path === "/autopilot") {
+  if (path === "/api/autopilot") {
     return { ok: true, status: 200, json: async () => payload } as unknown as Response;
   }
-  if (String(path).startsWith("/autopilot/activity")) {
+  if (String(path).startsWith("/api/autopilot/activity")) {
     return { ok: true, status: 200, json: async () => ({ activity: [], hasMore: false }) } as unknown as Response;
   }
   return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;

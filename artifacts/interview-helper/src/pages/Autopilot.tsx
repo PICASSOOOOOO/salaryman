@@ -773,7 +773,7 @@ export default function Autopilot() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch('/autopilot');
+      const res = await apiFetch('/api/autopilot');
       if (res.status === 401) {
         setError('Sign in required.');
         setData(null);
@@ -816,7 +816,7 @@ export default function Autopilot() {
       try {
         const params = new URLSearchParams({ limit: String(ACTIVITY_PAGE_SIZE) });
         if (filter !== 'all') params.set('domain', filter);
-        const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
+        const res = await apiFetch(`/api/autopilot/activity?${params.toString()}`);
         if (!res.ok) {
           setActivityError(true);
           return;
@@ -850,7 +850,7 @@ export default function Autopilot() {
         before: String(oldest.id),
       });
       if (activityFilter !== 'all') params.set('domain', activityFilter);
-      const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
+      const res = await apiFetch(`/api/autopilot/activity?${params.toString()}`);
       if (!res.ok) return;
       const payload: { activity?: ActivityRow[]; hasMore?: boolean } = await res.json();
       const rows = payload.activity ?? [];
@@ -917,7 +917,7 @@ export default function Autopilot() {
         delete savedTimers.current[domain];
       }
       try {
-        const res = await apiFetch(`/autopilot/${domain}`, {
+        const res = await apiFetch(`/api/autopilot/${domain}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),

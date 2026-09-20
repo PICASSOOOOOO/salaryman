@@ -37,11 +37,11 @@ interface ActivityRow {
   createdAt: string;
 }
 
-// Per-test seed feed (served inside GET /autopilot) and the responder that
-// answers GET /autopilot/activity?<params>. Both are reset in beforeEach.
+// Per-test seed feed (served inside GET /api/autopilot) and the responder that
+// answers GET /api/autopilot/activity?<params>. Both are reset in beforeEach.
 let seedActivity: ActivityRow[] = [];
 let onActivityRequest: (params: URLSearchParams) => { activity: ActivityRow[]; hasMore: boolean };
-// Lets a test force the NEXT /autopilot/activity calls to fail, exercising the
+// Lets a test force the NEXT /api/autopilot/activity calls to fail, exercising the
 // silent error handling in loadActivity / loadMoreActivity. Reset each test.
 let activityFailure: "none" | "non-ok" | "throw" = "none";
 
@@ -49,10 +49,10 @@ const jsonRes = (body: unknown) =>
   ({ ok: true, status: 200, json: async () => body } as unknown as Response);
 
 const apiFetch = vi.fn(async (path: string) => {
-  if (path === "/autopilot") {
+  if (path === "/api/autopilot") {
     return jsonRes({ ...basePayload(), activity: seedActivity });
   }
-  if (String(path).startsWith("/autopilot/activity")) {
+  if (String(path).startsWith("/api/autopilot/activity")) {
     if (activityFailure === "throw") throw new Error("network down");
     if (activityFailure === "non-ok") {
       return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
@@ -286,7 +286,7 @@ describe("Autopilot activity feed", () => {
     // Refetched the feed scoped to the marketing domain.
     const activityCalls = apiFetch.mock.calls
       .map((c) => String(c[0]))
-      .filter((p) => p.startsWith("/autopilot/activity"));
+      .filter((p) => p.startsWith("/api/autopilot/activity"));
     expect(activityCalls.length).toBeGreaterThan(0);
     expect(activityCalls.every((p) => p.includes("domain=marketing"))).toBe(true);
 
@@ -364,7 +364,7 @@ describe("Autopilot activity feed", () => {
     expect(renderedRowOutcomes()).toHaveLength(3);
     expect(pageError()).toBeNull();
 
-    // A non-ok GET /autopilot/activity (triggered by the filter switch) is
+    // A non-ok GET /api/autopilot/activity (triggered by the filter switch) is
     // swallowed: the feed keeps its rows and no page-level error appears.
     activityFailure = "non-ok";
     await click(findButton("MARKETING"));
@@ -424,7 +424,7 @@ describe("Autopilot activity feed", () => {
 
     const activityCalls = apiFetch.mock.calls
       .map((c) => String(c[0]))
-      .filter((p) => p.startsWith("/autopilot/activity"));
+      .filter((p) => p.startsWith("/api/autopilot/activity"));
     expect(activityCalls.length).toBeGreaterThan(0);
 
     // The feed snapped to the fresher window and re-rendered the new row.
@@ -459,7 +459,7 @@ describe("Autopilot activity feed", () => {
 
     const activityCalls = apiFetch.mock.calls
       .map((c) => String(c[0]))
-      .filter((p) => p.startsWith("/autopilot/activity"));
+      .filter((p) => p.startsWith("/api/autopilot/activity"));
     expect(activityCalls).toHaveLength(0);
     // The paged-in feed is left intact.
     expect(renderedRowOutcomes().length).toBeGreaterThan(ACTIVITY_PAGE_SIZE);
@@ -479,7 +479,7 @@ describe("Autopilot activity feed", () => {
     await advance(ACTIVITY_POLL_MS * 2);
     let activityCalls = apiFetch.mock.calls
       .map((c) => String(c[0]))
-      .filter((p) => p.startsWith("/autopilot/activity"));
+      .filter((p) => p.startsWith("/api/autopilot/activity"));
     expect(activityCalls).toHaveLength(0);
 
     // Becoming visible again lets the very next tick refetch.
@@ -487,7 +487,7 @@ describe("Autopilot activity feed", () => {
     await advance(ACTIVITY_POLL_MS);
     activityCalls = apiFetch.mock.calls
       .map((c) => String(c[0]))
-      .filter((p) => p.startsWith("/autopilot/activity"));
+      .filter((p) => p.startsWith("/api/autopilot/activity"));
     expect(activityCalls.length).toBeGreaterThan(0);
   });
 });

@@ -158,7 +158,7 @@ export default function PhoneSmsPage() {
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
       height: isMobile ? 'calc(var(--app-viewport-height, 100dvh) - 180px)' : 600,
-      minHeight: isMobile ? 480 : undefined,
+      minHeight: isMobile ? 0 : undefined,
       border: `1px solid ${slate(0.1)}`,
       borderRadius: 8,
       overflow: 'hidden',
@@ -168,7 +168,7 @@ export default function PhoneSmsPage() {
       {/* Conversation list */}
       <div style={{
         width: isMobile ? '100%' : 260,
-        height: isMobile ? 220 : 'auto',
+        height: isMobile ? 'min(220px, 28dvh)' : 'auto',
         borderRight: isMobile ? 'none' : `1px solid ${slate(0.1)}`,
         borderBottom: isMobile ? `1px solid ${slate(0.1)}` : 'none',
         display: 'flex',

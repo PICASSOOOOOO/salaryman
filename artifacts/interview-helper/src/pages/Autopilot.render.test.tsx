@@ -29,13 +29,13 @@ import { createRoot, type Root } from "react-dom/client";
 vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 
-// apiFetch double: serve the saved control surface for GET /autopilot and an
+// apiFetch double: serve the saved control surface for GET /api/autopilot and an
 // empty feed for the activity poll. No real network happens.
 const apiFetch = vi.fn(async (path: string) => {
-  if (path === "/autopilot") {
+  if (path === "/api/autopilot") {
     return { ok: true, status: 200, json: async () => payload } as unknown as Response;
   }
-  if (String(path).startsWith("/autopilot/activity")) {
+  if (String(path).startsWith("/api/autopilot/activity")) {
     return { ok: true, status: 200, json: async () => ({ activity: [], hasMore: false }) } as unknown as Response;
   }
   return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
