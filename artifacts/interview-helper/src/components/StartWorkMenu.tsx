@@ -50,7 +50,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
           aria-label={menuOpen ? "Close start work" : "Open start work"}
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-           <span>WORKSPACE</span>
+           <span>START WORK</span>
           <ChevronDown className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
       ) : (

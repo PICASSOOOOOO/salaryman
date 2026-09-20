@@ -539,12 +539,13 @@ function useNebulaSize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const d = Math.hypot(w, h);
-    // The 2D fallback fades to transparent before its own edge, so it must
-    // exceed the viewport diagonal or its circular boundary becomes visible.
     const isMobile = w < 640;
-    const mult = 1.35;
-    const min = isMobile ? 520 : 900;
-    return Math.max(min, Math.floor(d * mult));
+    // Keep the orb clearly present without letting it swallow the composer on
+    // small screens. It is clipped by the terminal shell, so the old
+    // viewport-diagonal sizing was unnecessary and made mobile feel like a
+    // full-screen visualizer instead of a usable conversation.
+    if (isMobile) return Math.min(520, Math.max(360, Math.floor(Math.min(w, h) * 0.82)));
+    return Math.min(900, Math.max(620, Math.floor(d * 0.78)));
   };
   const [size, setSize] = useState(compute);
   useEffect(() => {
@@ -1787,7 +1788,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
 
       setReply(say);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
-      // Speak Pablo's (or Mila's) reply on EVERY device. Voice OUTPUT is
+        // Speak Pablo's (or Mila's) reply on EVERY device. Voice OUTPUT is
       // decoupled from voice INPUT here: the mic / auto-listen stays gated to
       // voice mode (see the autoListen flags below), but the spoken reply must
       // play even in text mode. Phones default to text mode, so gating speech
@@ -1879,7 +1880,16 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       } catch (fallbackErr) {
         const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error("[Pablo] chat fallback failed:", fallbackMsg);
-        setError("Pablo is unavailable right now. Try again.");
+        // Keep ordinary conversation usable when the network is unavailable.
+        // This is intentionally a local, honest response rather than a fake AI
+        // answer; the user can still see that their message was received and
+        // retry when connectivity returns.
+        const offlineSay = typeof navigator !== "undefined" && !navigator.onLine
+          ? "I’m offline right now. Your message is here — reconnect and I’ll answer it."
+          : "I couldn’t reach the conversation service. Your message is here — try again in a moment.";
+        setReply(offlineSay);
+        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: offlineSay }]);
+        await speak(offlineSay);
         setStatus("idle");
         if (mode === "voice") autoListenRef.current = true;
       }
@@ -2111,7 +2121,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       <button
         type="button"
         onClick={onOrbClick}
-        className="fixed inset-0 z-0 outline-none select-none cursor-pointer"
+          className="absolute inset-0 z-0 outline-none select-none cursor-pointer"
         aria-label={STATUS_LABEL[status]}
         data-testid="pablo-orb"
       >

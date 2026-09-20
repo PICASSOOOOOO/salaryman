@@ -984,7 +984,7 @@ export default function Autopilot() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-cyan-100 px-4 py-6 max-w-5xl mx-auto">
+    <div className="salaryman-workspace autopilot-page min-h-screen bg-[#FFFAF0] text-[#111111] px-4 py-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-mono text-base text-cyan-300 tracking-widest flex items-center gap-2">

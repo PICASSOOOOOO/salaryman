@@ -47,7 +47,7 @@ export default function PhoneDialerPage() {
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
-  useTwilioDeviceContext();
+  const { deviceState, deviceError } = useTwilioDeviceContext();
 
   const [manualNumber, setManualNumber] = useState('');
   const [dialCountry, setDialCountry] = useState<CountryCode>('US');
@@ -220,6 +220,10 @@ export default function PhoneDialerPage() {
   const dialKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
   const formattedDisplay = manualNumber ? formatPhone(manualNumber) : '';
+  const systemStatus =
+    deviceState === 'ready' ? 'READY' :
+      deviceState === 'initializing' ? 'CONNECTING' :
+        deviceState === 'error' ? 'OFFLINE' : 'STARTING';
 
   return (
     <PhonePageLayout
@@ -369,7 +373,12 @@ export default function PhoneDialerPage() {
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
             <StatBlock label="CONTACTS" value={recentContacts.length} sub="with phone" />
             <StatBlock label="CALLS TODAY" value={recentCalls.filter(c => new Date(c.startedAt).toDateString() === new Date().toDateString()).length} sub="outbound" color={primary} />
-            <StatBlock label="SYSTEM" value="READY" sub="all lines open" color={slate} />
+            <StatBlock
+              label="SYSTEM"
+              value={systemStatus}
+              sub={deviceError ? 'reconnect required' : deviceState === 'ready' ? 'browser phone connected' : 'browser phone not connected'}
+              color={deviceState === 'ready' ? primary : deviceState === 'error' ? destructive : warning}
+            />
           </div>
 
           <PhoneCard>

@@ -359,7 +359,19 @@ function AppShell() {
   const matchesPrefix = (list: string[]) =>
     list.some(p => pathname === p || pathname.startsWith(p + "/"));
   const allowedForAnon = pathname === "/" || matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
-  const allowedForAuthedNew = true;
+  // A newly authenticated account must complete the small browser onboarding
+  // form before entering workspace routes. Pablo and the billing/legal surfaces
+  // remain available so a user can recover their session or review access
+  // without being sent through a loop.
+  const allowedForAuthedNew =
+    pathname === "/pablo" ||
+    pathname === "/onboarding" ||
+    pathname === "/upgrade" ||
+    pathname === "/pledge" ||
+    pathname === "/sign-in" ||
+    pathname === "/sign-up" ||
+    pathname === "/legal" ||
+    pathname.startsWith("/legal/");
   const tutorialDone = isTutorialDone();
   const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
   // Wait for auth to resolve before bouncing: isAuthenticated starts false on

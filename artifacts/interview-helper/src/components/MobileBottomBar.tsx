@@ -42,9 +42,16 @@ export function MobileModuleNav() {
     else navigate(consumeAppReturnPath() ?? getAppBackPath(isAuthenticated), { replace: true });
   };
 
-  const visibleTabs = PRIMARY_NAV_ITEMS.filter(tab => !tab.authOnly || isAuthenticated);
+  // The shared chrome is visible on public pages, but its workspace destinations
+  // are not. Before sign-in, showing links that immediately bounce or expose
+  // protected product areas makes the shell look broken and leaks navigation
+  // structure. Pablo owns the public entry point; the rest of the workspace
+  // becomes available after authentication.
+  const visibleTabs = isAuthenticated
+    ? PRIMARY_NAV_ITEMS.filter(tab => !tab.authOnly || isAuthenticated)
+    : [];
   const dropdownItems = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS]
-    .filter(item => !item.authOnly || isAuthenticated)
+    .filter(item => isAuthenticated && (!item.authOnly || isAuthenticated))
     .filter((item, index, items) => items.findIndex(candidate => candidate.id === item.id) === index);
 
   return (
@@ -84,18 +91,30 @@ export function MobileModuleNav() {
           </button>
         </div>
         <div className="mobile-header-actions flex items-center shrink-0">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen(open => !open)}
-            className={`mobile-menu-trigger${dropdownOpen ? ' is-open' : ''}`}
-            aria-expanded={dropdownOpen}
-            aria-controls="mobile-features-menu"
-            aria-label={dropdownOpen ? 'Close menu' : 'Open menu'}
-            title={dropdownOpen ? 'Close menu' : 'Open menu'}
-          >
-            {dropdownOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            <span>MENU</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(open => !open)}
+              className={`mobile-menu-trigger${dropdownOpen ? ' is-open' : ''}`}
+              aria-expanded={dropdownOpen}
+              aria-controls="mobile-features-menu"
+              aria-label={dropdownOpen ? 'Close menu' : 'Open menu'}
+              title={dropdownOpen ? 'Close menu' : 'Open menu'}
+            >
+              {dropdownOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              <span>MENU</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate(`/sign-in?returnTo=${encodeURIComponent(pathname)}`)}
+              className="mobile-menu-trigger"
+              aria-label="Sign in"
+              title="Sign in"
+            >
+              <span>SIGN IN</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -163,22 +182,34 @@ export function MobileModuleNav() {
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => setDropdownOpen(open => !open)}
-            className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-              dropdownOpen
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-            aria-expanded={dropdownOpen}
-            aria-controls="mobile-features-menu"
-            aria-label="Features"
-            title="Features"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="desktop-primary-label whitespace-nowrap">MENU</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(open => !open)}
+              className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+                dropdownOpen
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+              aria-expanded={dropdownOpen}
+              aria-controls="mobile-features-menu"
+              aria-label="Features"
+              title="Features"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="desktop-primary-label whitespace-nowrap">MENU</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate(`/sign-in?returnTo=${encodeURIComponent(pathname)}`)}
+              className="flex min-h-10 items-center rounded-md px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              aria-label="Sign in"
+              title="Sign in"
+            >
+              SIGN IN
+            </button>
+          )}
         </nav>
       </div>
 
@@ -230,15 +261,18 @@ export function MobileModuleNav() {
             );
           })}
 
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-              dropdownOpen ? 'text-black' : 'text-gray-400'
-            }`}
-          >
-            <MoreHorizontal className="w-5 h-5" />
-            <span className="text-[8px] font-bold uppercase tracking-wider">MENU</span>
-          </button>
+          {isAuthenticated && (
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
+                dropdownOpen ? 'text-black' : 'text-gray-400'
+              }`}
+              aria-label="Open menu"
+            >
+              <MoreHorizontal className="w-5 h-5" />
+              <span className="text-[8px] font-bold uppercase tracking-wider">MENU</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -2654,3 +2654,69 @@ body.workspace-light .pablo-control-rail .pablo-action:focus-visible {
 .boomer-terminal * {
   -webkit-backdrop-filter: none !important;
 }
+
+/* Pixel Agents is a browser control-plane surface, not a downloadable-game
+   screen. Keep its existing component structure and behavior, but normalize
+   the visual language to the same cream/black workspace shell. */
+.autopilot-page {
+  border-left: 1px solid #e5ded2;
+  border-right: 1px solid #e5ded2;
+}
+
+.autopilot-page .bg-black,
+.autopilot-page .bg-\[\#0c1018\],
+.autopilot-page .bg-\[\#080c12\] {
+  background-color: #fffdf8 !important;
+}
+
+.autopilot-page .bg-cyan-500\/\[0\.04\],
+.autopilot-page .bg-cyan-500\/10,
+.autopilot-page .bg-green-500\/10,
+.autopilot-page .bg-red-500\/10,
+.autopilot-page .bg-amber-500\/10,
+.autopilot-page .bg-cyan-500\/20 {
+  background-color: #f4efe5 !important;
+}
+
+.autopilot-page [class*="border-cyan-500"],
+.autopilot-page [class*="border-green-500"],
+.autopilot-page [class*="border-red-500"],
+.autopilot-page [class*="border-amber-500"] {
+  border-color: #d8d0c3 !important;
+}
+
+.autopilot-page [class*="text-cyan-"],
+.autopilot-page [class*="text-violet-"],
+.autopilot-page [class*="text-green-"],
+.autopilot-page [class*="text-red-"],
+.autopilot-page [class*="text-amber-"] {
+  color: #5f594f !important;
+}
+
+.autopilot-page h1,
+.autopilot-page h2,
+.autopilot-page h3 {
+  color: #111111 !important;
+  text-shadow: none !important;
+}
+
+.autopilot-page p,
+.autopilot-page label,
+.autopilot-page span {
+  text-shadow: none !important;
+}
+
+.autopilot-page select,
+.autopilot-page input {
+  background: #fffdf8 !important;
+  border-color: #cfc6b7 !important;
+  color: #111111 !important;
+}
+
+.autopilot-page button:hover {
+  background-color: #f0eadf !important;
+}
+
+.autopilot-page .animate-pulse {
+  animation-duration: 2.5s;
+}
