@@ -441,7 +441,9 @@ export function PabloNebula3D({
     return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion} />;
   }
   if (hasWebGL === null) {
-    return <div style={{ width: size, height: size }} />;
+    // Capability detection is asynchronous. Keep the visible fallback mounted
+    // during that frame instead of presenting a blank square on slower devices.
+    return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion} />;
   }
 
   return (

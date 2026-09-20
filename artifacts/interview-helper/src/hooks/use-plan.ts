@@ -109,6 +109,9 @@ export function usePlan(): PlanData {
     if (authChanged) {
       _cachedPlan = null;
       _cachedForAuth = undefined;
+      // Do not let the previous account's entitlements decide a gate while the
+      // new identity's /api/plan request is still in flight.
+      setPlan({ ...DEFAULT_PLAN, features: new Set(), trials: [], loading: true });
     }
 
     if (_cachedPlan && _cachedForAuth === isAuthenticated) {

@@ -31,8 +31,10 @@ vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 
 // apiFetch double: serve the saved control surface for GET /api/autopilot and an
 // empty feed for the activity poll. No real network happens.
+let autopilotResponse: Response | null = null;
 const apiFetch = vi.fn(async (path: string) => {
   if (path === "/api/autopilot") {
+    if (autopilotResponse) return autopilotResponse;
     return { ok: true, status: 200, json: async () => payload } as unknown as Response;
   }
   if (String(path).startsWith("/api/autopilot/activity")) {
@@ -181,6 +183,7 @@ function toggleState(card: HTMLElement): string | null {
 
 beforeEach(() => {
   payload = freshPayload();
+  autopilotResponse = null;
   apiFetch.mockClear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -198,6 +201,24 @@ describe("Autopilot dashboard renders saved config", () => {
   it("identifies the dashboard as PIXEL AGENTS", async () => {
     await mount();
     expect(container.textContent).toContain("PIXEL AGENTS");
+  });
+
+  it("routes a missing Prime entitlement to the Prime checkout instead of mislabeling it as a role error", async () => {
+    autopilotResponse = {
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: "Automation Pixel Agents subscription required",
+        feature: "claw_bot",
+        paymentRequired: true,
+      }),
+    } as unknown as Response;
+
+    await mount();
+
+    expect(container.textContent).toContain("PABLO PRIME is required");
+    const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent?.includes("VIEW PABLO PRIME"));
+    expect(link?.getAttribute("href")).toBe("/pledge?view=prime");
   });
 
   it("renders all four domains from the loaded control surface", async () => {

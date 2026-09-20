@@ -42,20 +42,52 @@ function navigateTopLevel(url: string): void {
   window.location.assign(url);
 }
 
+let authBootstrap: Promise<AuthUser | null> | null = null;
+
+async function loadAuthUser(): Promise<AuthUser | null> {
+  if (authBootstrap) return authBootstrap;
+
+  const request = (async () => {
+    const retryDelays = [0, 250, 750];
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+      if (retryDelays[attempt] > 0) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
+      }
+      try {
+        const res = await fetch(apiPath("/api/auth/user"), { credentials: "include" });
+        if (res.ok) {
+          const data = (await res.json()) as { user: AuthUser | null };
+          return data.user ?? null;
+        }
+        lastError = new Error(`HTTP ${res.status}`);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError ?? new Error("Auth bootstrap failed");
+  })();
+
+  authBootstrap = request;
+  try {
+    return await request;
+  } finally {
+    if (authBootstrap === request) authBootstrap = null;
+  }
+}
+
 export function useAuth(): AuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(apiPath("/api/auth/user"), { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ user: AuthUser | null }>;
-      })
-      .then((data) => {
+    loadAuthUser()
+      .then((nextUser) => {
         if (!cancelled) {
-          setUser(data.user ?? null);
+          setUser(nextUser);
           setIsLoading(false);
         }
       })

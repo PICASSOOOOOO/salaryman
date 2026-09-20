@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Loader2, Sparkles, Bot, Phone } from "lucide-react";
+import { Check, ChevronRight, Loader2, Sparkles, Bot, Phone, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
@@ -32,6 +32,7 @@ export default function Pricing() {
   const { features, isOwner, loading } = usePlan();
   const [location, navigate] = useLocation();
   const [checkoutFeature, setCheckoutFeature] = useState<"claw_bot" | "phone_system" | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -42,6 +43,7 @@ export default function Pricing() {
   }, [location]);
 
   const checkoutSuccess = new URLSearchParams(window.location.search).get("checkout") === "success";
+  const checkoutCancelled = new URLSearchParams(window.location.search).get("checkout") === "cancel";
 
   if (loading) {
     return (
@@ -57,6 +59,7 @@ export default function Pricing() {
   const startCheckout = async (feature: "claw_bot" | "phone_system") => {
     if (!isAuthenticated) { login(); return; }
     setCheckoutFeature(feature);
+    setCheckoutError(null);
     try {
       const response = await apiFetch('/api/stripe/create-checkout-session', {
         method: "POST",
@@ -67,6 +70,8 @@ export default function Pricing() {
       const body = await response.json().catch(() => ({})) as { url?: string; error?: string };
       if (!response.ok || !body.url) throw new Error(body.error || "Checkout unavailable");
       window.location.assign(body.url);
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout unavailable. Please try again.");
     } finally {
       setCheckoutFeature(null);
     }
@@ -115,6 +120,31 @@ export default function Pricing() {
             <div>
               <p className="text-sm font-bold text-white">SUBSCRIPTION ACTIVATED</p>
               <p style={{ fontSize: 11, color: "#94a3b8" }}>Your bots are being deployed. This may take a moment.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {checkoutCancelled && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="mb-8 rounded-xl border border-white/15 px-6 py-4 flex items-center gap-3"
+            style={{ background: "rgba(148,163,184,0.08)" }}>
+            <AlertCircle className="w-5 h-5 text-slate-400" />
+            <div>
+              <p className="text-sm font-bold text-white">CHECKOUT CANCELLED</p>
+              <p style={{ fontSize: 11, color: "#94a3b8" }}>No charge was made. You can subscribe whenever you are ready.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {checkoutError && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            role="alert"
+            className="mb-8 rounded-xl border border-red-500/30 px-6 py-4 flex items-center gap-3"
+            style={{ background: "rgba(239,68,68,0.08)" }}>
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-white">CHECKOUT UNAVAILABLE</p>
+              <p style={{ fontSize: 11, color: "#fca5a5" }}>{checkoutError}</p>
             </div>
           </motion.div>
         )}

@@ -732,6 +732,7 @@ export default function Autopilot() {
   const [data, setData] = useState<AutopilotPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorAction, setErrorAction] = useState<{ href: string; label: string } | null>(null);
   const [savingDomain, setSavingDomain] = useState<AutopilotDomain | null>(null);
   // Per-domain inline save feedback: which change failed (and why) or just saved,
   // shown on the affected card instead of one shared page-level banner.
@@ -772,6 +773,7 @@ export default function Autopilot() {
     const silent = opts?.silent ?? false;
     if (!silent) setLoading(true);
     setError(null);
+    setErrorAction(null);
     try {
       const res = await apiFetch('/api/autopilot');
       if (res.status === 401) {
@@ -780,7 +782,21 @@ export default function Autopilot() {
         return;
       }
       if (res.status === 403) {
-        setError('You need owner or manager access to manage Pixel Agents.');
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          feature?: string;
+          onboardingRequired?: boolean;
+          paymentRequired?: boolean;
+        };
+        if (body.onboardingRequired) {
+          setError('Complete onboarding before using Pixel Agents.');
+          setErrorAction({ href: '/onboarding', label: 'OPEN ONBOARDING' });
+        } else if (body.feature === 'claw_bot' || body.paymentRequired) {
+          setError('PABLO PRIME is required to activate Pixel Agents.');
+          setErrorAction({ href: '/pledge?view=prime', label: 'VIEW PABLO PRIME' });
+        } else {
+          setError('You need owner or manager access to manage Pixel Agents.');
+        }
         setData(null);
         return;
       }
@@ -988,7 +1004,16 @@ export default function Autopilot() {
 
       {error && (
         <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400 text-xs font-mono">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+          {errorAction && (
+            <a
+              href={errorAction.href}
+              className="ml-auto shrink-0 border border-amber-400/30 px-2 py-1 text-[9px] tracking-wider hover:bg-amber-400/10"
+            >
+              {errorAction.label}
+            </a>
+          )}
         </div>
       )}
 

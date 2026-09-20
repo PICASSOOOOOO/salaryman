@@ -1807,7 +1807,7 @@ INTERACTION STYLE:
 router.get("/chat/pablo/persona", async (req, res) => {
   const isGuest = !req.isAuthenticated();
   const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
-  res.json({ persona: "pablo" });
+  res.json({ persona: storyDefected ? "mila" : "pablo" });
 });
 
 // Server-side in-app path sanitizer for navigation actions. Mirrors the web

@@ -10,6 +10,11 @@ handoff must not be held behind that optional onboarding read, and the handshake
 have a bounded fallback so a slow or unavailable API cannot leave a blank loading
 surface forever.
 
+The shared browser auth hook is also a bootstrap read: multiple mounted consumers
+must share its in-flight request and retry transient failures before settling on a
+logged-out state. Otherwise one failed consumer can redirect or unmount Comms while
+another consumer is still recovering.
+
 **Why:** The browser auth state can become signed-in before server-side session
 middleware or just-in-time user provisioning is ready. Returning users otherwise get
 stuck on the route-handshake screen even though the login callback succeeded.
