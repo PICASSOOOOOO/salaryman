@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from "lucide-react";
-import { PicassoLogo } from "@/components/PicassoLogo";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
@@ -2032,6 +2032,52 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     autoListenRef.current = true;
   }, []);
 
+  const pabloControlsTarget = !home && typeof document !== "undefined"
+    ? document.getElementById("pablo-controls-rail")
+    : null;
+  const pabloHeader = !home ? (
+    <div className="pablo-header w-full flex items-center justify-end gap-2 px-3 py-1.5 sm:px-5">
+      <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2 shrink-0">
+        <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
+        {!isLoading && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
+            data-testid={isAuthenticated ? "pablo-enter-tower" : "pablo-sign-in"}
+            className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+            title="Start work in the terminal"
+            aria-label="Start work in the terminal"
+          >
+            <LogIn className="w-3 h-3" />
+            <span className="pablo-start-work-label">START WORK</span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); navigate("/comms"); }}
+          data-testid="pablo-ai-choice"
+          aria-label="Open COMMS"
+          className="pablo-action pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
+          title="Open COMMS"
+        >
+          <MessageCircle className="w-3 h-3" />
+          <span className="pablo-chat-label">COMMS</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
+          data-testid="pablo-mode-toggle"
+          className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
+          title={mode === "text" ? "Switch to voice" : "Switch to text"}
+          aria-label={mode === "text" ? "Switch to voice" : "Switch to text"}
+        >
+          {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+          <span className="pablo-mode-label">{mode === "text" ? "VOICE" : "TEXT"}</span>
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div
       className={`pablo-terminal fixed left-0 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}${home ? " pablo-home-terminal" : ""}`}
@@ -2092,110 +2138,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         )}
       </button>
 
-      {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
-          above the nebula via z-10 so it stays clickable. The header itself
-          gets extra horizontal padding on mobile so the logo + buttons clear
-          the curved corners + camera bumps of modern phones, and the
-          GFX/status pills (which are fixed) get their own safe-area padding
-           above. We also push the whole header down so it sits BELOW the
-           GFX/status pills row instead of fighting them for the top edge.
-           On desktop, the global alpha warning occupies the top strip, so
-           reserve that strip here rather than hiding the controls behind it. */}
-      {!home && <header
-         className="pablo-header absolute inset-x-0 top-0 z-20 w-full flex items-center justify-between gap-2 px-3 pb-2.5 shrink-0"
-        style={{
-           paddingTop: "12px",
-        }}
-      >
-         {/* Pablo is the homepage. The three explicit choices are the only
-             front-door destinations: download the native world, enter the
-             practical terminal, or stay with Pablo AI. */}
-        {hasFinishedOnboarding ? (
-          <Link
-            href={pendingDestinationRef.current ?? "/"}
-            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
-            data-testid="link-logo-loop"
-            aria-label="Back to previous location"
-            title="Return to Tower"
-          >
-            <PicassoLogo size={20} gap={2} glow />
-             <span className="pablo-brand-wordmark font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
-              SALARYMAN
-            </span>
-          </Link>
-        ) : (
-          <Link
-            href="/pablo"
-            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
-            data-testid="link-logo-loop"
-          >
-            <PicassoLogo size={20} gap={2} glow />
-              <span className="pablo-brand-wordmark font-mono text-[10px] tracking-[0.2em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
-              SALARYMAN
-            </span>
-          </Link>
-        )}
-         <div className="ml-auto flex min-w-0 items-center justify-end gap-1 sm:gap-2 shrink-0">
-          <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-          {!isLoading && !isAuthenticated && (
-            <button
-              type="button"
-               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
-              data-testid="pablo-sign-in"
-                className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-               title="Start work in the terminal"
-                aria-label="Start work in the terminal"
-            >
-              <LogIn className="w-3 h-3" />
-                <span className="pablo-start-work-label">START WORK</span>
-            </button>
-          )}
-          {!isLoading && isAuthenticated && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
-              data-testid="pablo-enter-tower"
-              className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-               title="Start work in the terminal"
-               aria-label="Start work in the terminal"
-            >
-              <LogIn className="w-3 h-3" />
-               <span className="pablo-start-work-label">START WORK</span>
-            </button>
-          )}
-           <button
-             type="button"
-              onClick={(e) => { e.stopPropagation(); navigate("/comms"); }}
-             data-testid="pablo-ai-choice"
-              aria-label="Open COMMS"
-             className="pablo-action pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-              title="Open COMMS"
-           >
-             <MessageCircle className="w-3 h-3" />
-              <span className="pablo-chat-label">COMMS</span>
-           </button>
-          {/* TEXT/VOICE toggle is now visible during the intro too. The
-              session defaults to voice (autoListen on), but a user who
-              prefers typing — or whose mic is dead — needs the button up
-              here so they can flip without having to first unlock the
-              door. The audio attach strip stays hidden during the intro
-              because tapping it surfaces an unrelated file picker
-              mid-story; that's a post-onboarding tool. */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
-            data-testid="pablo-mode-toggle"
-              className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
-            title={mode === "text" ? "Switch to voice" : "Switch to text"}
-             aria-label={mode === "text" ? "Switch to voice" : "Switch to text"}
-          >
-            {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-             <span className="pablo-mode-label">{mode === "text" ? "VOICE" : "TEXT"}</span>
-          </button>
-          {/* No exit X — the SALARYMAN logo is the only authenticated exit,
-              and the primary work handoff goes through the physical Tower. */}
-        </div>
-      </header>}
+      {/* Controls live in the cream app-shell rail, not over the nebula. */}
+      {!home && (pabloControlsTarget ? createPortal(pabloHeader, pabloControlsTarget) : pabloHeader)}
 
       {/* Spacer so the rest of the column lays out at the bottom of the
           page even though the nebula is now an absolutely-positioned

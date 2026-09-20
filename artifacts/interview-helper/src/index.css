@@ -2549,6 +2549,63 @@ body.workspace-light .pablo-popover * {
   color: inherit;
 }
 
+/* Pablo's controls belong to the browser chrome, not the nebula. The rail is
+   intentionally a single shared target for phone and desktop so the action
+   order never changes with viewport size. */
+.pablo-control-rail {
+  min-height: 3rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+}
+
+.pablo-control-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.pablo-control-rail .pablo-header {
+  min-height: 3rem;
+  flex: 0 0 auto;
+}
+
+body.workspace-light .pablo-control-rail .pablo-action {
+  color: #17111f !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(23, 17, 31, 0.22) !important;
+  box-shadow: 0 1px 2px rgba(23, 17, 31, 0.08);
+}
+
+body.workspace-light .pablo-control-rail .pablo-action:hover,
+body.workspace-light .pablo-control-rail .pablo-action:focus-visible {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  border-color: rgba(23, 17, 31, 0.52) !important;
+}
+
+.pablo-control-rail .pablo-popover {
+  color: #f8fafc !important;
+  background-color: rgba(9, 8, 18, 0.98) !important;
+}
+
+@media (max-width: 420px) {
+  .pablo-control-rail {
+    min-height: 3.25rem;
+  }
+
+  .pablo-control-rail .pablo-header {
+    min-height: 3.25rem;
+    padding-inline: 0.5rem;
+  }
+
+  .pablo-control-rail .pablo-header-action.mobile-tap-target,
+  .pablo-control-rail .pablo-controls-menu > .pablo-header-action {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding-inline: 0;
+  }
+}
+
 /* Landscape phones can report a desktop-sized CSS width. Their short
    viewport still needs the mobile bottom controls and the shorter spacing
    contract, otherwise the top nav consumes the whole useful height. */

@@ -181,6 +181,22 @@ export function MobileModuleNav() {
         </nav>
       </div>
 
+      {pathname === '/pablo' && (
+        <div
+          className="pablo-control-rail fixed left-0 right-0 z-[55] flex items-center justify-end border-b border-[#D8D1C3] bg-[#FAF7EF]"
+          aria-label="Pablo controls"
+          style={{
+            top: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
+            minHeight: '3rem',
+            backgroundColor: '#FAF7EF',
+            paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+            paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+          }}
+        >
+          <div id="pablo-controls-rail" className="flex min-w-0 items-center justify-end gap-1.5" />
+        </div>
+      )}
+
       {/* Bottom Bar for Primary Navigation */}
       <div
         className="mobile-app-nav-bottom fixed bottom-0 left-0 right-0 border-t border-[#E5E5E5] z-50 bg-[#FAFAF7]"
