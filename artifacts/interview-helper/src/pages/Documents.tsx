@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { useUpload } from '@workspace/object-storage-web';
 import { SignInPage } from '@/components/SignInPrompt';
 
@@ -885,14 +885,7 @@ export default function Documents() {
   const { isAuthenticated } = useAuth();
   usePlan();
   const [tab, setTab] = useState<ActiveTab>('invoices');
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
+  const boomerMode = BOOMER_MODE_ENABLED;
 
   const pageTitle = boomerMode ? 'DOCUMENTS' : 'ARCHIVE-X VAULT';
   const pageSubtitle = boomerMode ? 'Invoices, Contracts & File Storage' : 'SECURE DOCUMENT FABRICATION & FILE STORAGE UNIT';

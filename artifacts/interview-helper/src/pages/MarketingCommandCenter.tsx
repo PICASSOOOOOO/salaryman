@@ -151,9 +151,9 @@ export default function MarketingCommandCenter() {
           <div style={{ width: 56, height: 56, margin: "0 auto 16px", borderRadius: 14, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", display: "grid", placeItems: "center" }}>
             <Lock className="w-7 h-7" style={{ color: "#f59e0b" }} />
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fbbf24", marginBottom: 8, letterSpacing: 1 }}>MARKETING COMMAND CENTER</h1>
+           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fbbf24", marginBottom: 8, letterSpacing: 1 }}>MARKETING</h1>
           <p style={{ fontSize: 13, color: "rgba(228,228,231,0.7)", marginBottom: 20, lineHeight: 1.6 }}>
-            Connect live social accounts and post for real across 9 platforms. This is a PABLO PRIME module.
+             Connect social accounts and publish across 9 platforms. This is included with PABLO PRIME.
           </p>
           <button
             onClick={() => navigate("/upgrade")}
@@ -177,7 +177,7 @@ export default function MarketingCommandCenter() {
             <Megaphone className="w-6 h-6" style={{ color: CRT }} />
           </div>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, color: CRT }}>MARKETING COMMAND CENTER</h1>
+           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, color: CRT }}>MARKETING</h1>
             <p style={{ fontSize: 12, color: "rgba(228,228,231,0.55)" }}>
               {connected} of {connections.length} channels connected
             </p>
@@ -185,7 +185,7 @@ export default function MarketingCommandCenter() {
         </div>
 
         {/* Connections */}
-        <h2 style={{ fontSize: 13, letterSpacing: 2, color: "rgba(56,189,248,0.7)", margin: "26px 0 12px" }}>CHANNELS</h2>
+         <h2 style={{ fontSize: 13, letterSpacing: 2, color: "rgba(56,189,248,0.7)", margin: "26px 0 12px" }}>SOCIAL ACCOUNTS</h2>
         {loading ? (
           <div style={{ display: "grid", placeItems: "center", padding: 40 }}>
             <Loader2 className="w-6 h-6 animate-spin" style={{ color: CRT }} />

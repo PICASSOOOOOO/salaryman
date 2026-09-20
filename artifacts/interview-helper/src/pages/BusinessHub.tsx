@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { invalidateOrgCache } from '@/hooks/use-org';
 import { Link } from 'wouter';
 import { OrgLaborRequests } from '@/components/OrgLaborRequests';
@@ -203,7 +203,7 @@ function StatBox({ label, value, prefix, color }: { label: string; value: string
 
 export default function BusinessHub() {
   const { isAuthenticated, user } = useAuth();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [orgData, setOrgData] = useState<OrgData | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -245,13 +245,6 @@ export default function BusinessHub() {
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(() => {
     try { const v = localStorage.getItem('sm_active_org'); return v ? parseInt(v) : null; } catch { return null; }
   });
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const loadData = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }

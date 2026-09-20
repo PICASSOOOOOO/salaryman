@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Zap, Brain, Activity, Cpu, Shield, AlertCircle } from 'lucide-react';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
@@ -72,14 +72,7 @@ function StatusDot({ status }: { status: 'online' | 'offline' | 'unknown' }) {
 
 export default function AgentTeam({ embedded = false }: { embedded?: boolean } = {}) {
   const { agents, loading, error } = useAgentTeam();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
+  const boomerMode = BOOMER_MODE_ENABLED;
 
   const { isAuthenticated } = useAuth();
 

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 
 interface BrandKitData {
   companyName: string;
@@ -58,18 +58,11 @@ function CrtInput({ label, value, onChange, type = 'text', placeholder = '', tex
 
 export default function BrandKit() {
   const { isAuthenticated } = useAuth();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [kit, setKit] = useState<BrandKitData>({ ...DEFAULT_KIT });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const loadKit = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }

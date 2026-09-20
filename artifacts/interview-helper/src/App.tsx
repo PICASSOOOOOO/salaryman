@@ -201,8 +201,8 @@ function LoadingFallback() {
           <span />
           <span />
         </div>
-        <p className="app-loading-label">PABLO // SYNCING</p>
-        <p className="app-loading-detail">ROUTE HANDSHAKE</p>
+         <p className="app-loading-label">LOADING PABLO</p>
+         <p className="app-loading-detail">LOADING YOUR WORKSPACE</p>
       </div>
     </div>
   );

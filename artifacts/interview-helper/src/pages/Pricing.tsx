@@ -9,18 +9,18 @@ import { useLocation } from "wouter";
 // Paid services are deliberately separate: Pixel Agents and the
 // Twilio-backed CALLL HOME each require their own USD subscription.
 const BOT_CATEGORIES = [
-  { name: "CORE COMMAND", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
-  { name: "THE ACADEMY", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
-  { name: "FINANCE DESK", count: 1, agents: "Viktor Prime", color: "#a3e635" },
-  { name: "CREATIVE STUDIO", count: 4, agents: "Terrence · Vivian · Regina · Deepa", color: "#f472b6" },
+  { name: "ASSISTANTS", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
+  { name: "LEARNING", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
+  { name: "FINANCE", count: 1, agents: "Viktor Prime", color: "#a3e635" },
+  { name: "CREATIVE", count: 4, agents: "Terrence · Vivian · Regina · Deepa", color: "#f472b6" },
 ];
 
 const PRIME_FEATURES = [
-  "ECHO-7 · LIVE LISTEN — REAL-TIME AUDIO INTERCEPT",
-  "OPTIC-9 · SCREEN SCAN — READS YOUR SCREEN",
-  "VOX-4 · SAY THIS — LIVE SPEECH COACHING",
+  "LIVE LISTEN — REAL-TIME AUDIO HELP",
+  "SCREEN SCAN — READS YOUR SCREEN",
+  "SAY THIS — LIVE SPEECH COACHING",
   "PIXEL AGENTS · 9 CURATED AGENTS · 4 TEAMS",
-  "BOT-TO-BOT CHAINING · COMMAND CENTER",
+  "AGENT WORKFLOWS · ONE CONTROL CENTER",
   "ALL FUTURE BOTS & TOOLS INCLUDED",
   "CUSTOMIZE OFFICE · BUSINESS · DIGITAL LIFE",
   "PRIORITY PROCESSING · UNLIMITED TASKS",
@@ -176,7 +176,7 @@ export default function Pricing() {
                 </div>
                 <div>
                   <h2 style={{ fontFamily: "var(--font-sans)", fontSize: 32, letterSpacing: "0.06em", color: "#ef4444", lineHeight: 1 }}>
-                    AUTOMATION PIXEL AGENTS
+                    PIXEL AGENTS
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
                     A curated nine-agent workforce managed across four teams. Includes bot chaining and business workflows. CALLL HOME is billed separately.

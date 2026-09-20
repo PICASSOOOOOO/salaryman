@@ -12,7 +12,7 @@ import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { usePlan } from '@/hooks/use-plan';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 
 const ACCENT_CYAN = '#22d3ee';
 const MUTED_CYAN = 'rgba(34,211,238,0.6)';
@@ -916,14 +916,7 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
   const { isAuthenticated } = useAuth();
   usePlan();
   const [tab, setTab] = useState<StudioTab>(initialTab ?? 'graphics');
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
+  const boomerMode = BOOMER_MODE_ENABLED;
 
   if (!isAuthenticated && !embedded) {
     return <SignInPage context={boomerMode ? 'Sign in to access the content studio.' : 'Salaryman credentials required. CONTENT STUDIO access locked.'} />;

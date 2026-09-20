@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 
 interface Milestone {
   id: number;
@@ -59,7 +59,7 @@ function Field({ label, value, onChange, type = 'text', placeholder = '' }: {
 
 export default function Goals() {
   const { isAuthenticated } = useAuth();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -68,13 +68,6 @@ export default function Goals() {
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [milestoneInputs, setMilestoneInputs] = useState<Record<number, string>>({});
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const loadGoals = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }

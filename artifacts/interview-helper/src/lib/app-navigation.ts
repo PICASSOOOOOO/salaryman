@@ -21,6 +21,7 @@ export type AppNavItem = {
   id: string;
   path: string;
   label: string;
+  boomerLabel?: string;
   icon: LucideIcon;
   authOnly?: boolean;
   staffOnly?: boolean;
@@ -28,24 +29,24 @@ export type AppNavItem = {
 };
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
-  { id: "pablo", path: "/pablo", label: "PABLO AI", icon: Terminal },
-  { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone },
-  { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
-  { id: "office", path: "/desktop", label: "SALARYMAN OS", icon: Building2, accent: "green" },
+  { id: "pablo", path: "/pablo", label: "PABLO AI", boomerLabel: "PABLO AI", icon: Terminal },
+  { id: "phone", path: "/phone", label: "CALLL HOME", boomerLabel: "CALLL HOME", icon: Phone },
+  { id: "comms", path: "/comms", label: "COMMS", boomerLabel: "MESSAGES", icon: MessageSquare, authOnly: true },
+  { id: "office", path: "/desktop", label: "SALARYMAN OS", boomerLabel: "SALARYMAN OS", icon: Building2, accent: "green" },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "bots", path: "/business/autopilot", label: "PIXEL AGENTS", icon: Bot },
-  { id: "org", path: "/organizations", label: "ORG", icon: Network, authOnly: true },
-  { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase, authOnly: true },
-  { id: "contacts", path: "/contacts", label: "CONTACTS", icon: Contact, authOnly: true },
-  { id: "leads", path: "/leads", label: "LEADS", icon: ListChecks, authOnly: true },
-  { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
-  { id: "marketing", path: "/marketing", label: "MARKETING", icon: Megaphone },
-  { id: "pledge", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
-  { id: "settings", path: "/settings", label: "SETTINGS", icon: Settings, authOnly: true },
-  { id: "profile", path: "/profile", label: "PROFILE", icon: User, authOnly: true },
-  { id: "admin", path: "/profile/admin", label: "ADMIN", icon: ShieldCheck, authOnly: true, staffOnly: true },
+  { id: "bots", path: "/business/autopilot", label: "PIXEL AGENTS", boomerLabel: "PIXEL AGENTS", icon: Bot },
+  { id: "org", path: "/organizations", label: "ORG", boomerLabel: "ORGANIZATION", icon: Network, authOnly: true },
+  { id: "business", path: "/business", label: "BUSINESS", boomerLabel: "BUSINESS", icon: Briefcase, authOnly: true },
+  { id: "contacts", path: "/contacts", label: "CONTACTS", boomerLabel: "CONTACTS", icon: Contact, authOnly: true },
+  { id: "leads", path: "/leads", label: "LEADS", boomerLabel: "LEADS", icon: ListChecks, authOnly: true },
+  { id: "creative", path: "/creative/music", label: "CREATIVE", boomerLabel: "CREATIVE STUDIO", icon: Layers },
+  { id: "marketing", path: "/marketing", label: "MARKETING", boomerLabel: "MARKETING", icon: Megaphone },
+  { id: "pledge", path: "/pledge", label: "PLEDGE STORE", boomerLabel: "PLEDGE STORE", icon: ShoppingBag },
+  { id: "settings", path: "/settings", label: "SETTINGS", boomerLabel: "SETTINGS", icon: Settings, authOnly: true },
+  { id: "profile", path: "/profile", label: "PROFILE", boomerLabel: "PROFILE", icon: User, authOnly: true },
+  { id: "admin", path: "/profile/admin", label: "ADMIN", boomerLabel: "ADMIN", icon: ShieldCheck, authOnly: true, staffOnly: true },
 ];
 
 export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean {

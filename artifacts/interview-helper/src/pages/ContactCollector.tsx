@@ -14,7 +14,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 
 interface Contact {
   id: number;
@@ -112,14 +112,7 @@ export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
   usePlan();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
-
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
 

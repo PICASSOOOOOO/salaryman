@@ -870,7 +870,7 @@ function useNotificationAlarms(appointments: Appointment[]) {
         if (now >= reminderAt && now <= reminderAt + 60000 && !notifiedRef.current.has(key)) {
           notifiedRef.current.add(key);
           if (Notification.permission === "granted") {
-            new Notification(`[ CHRONO-4 ALARM ] ${appt.title}`, {
+            new Notification(`[ CALENDAR ALERT ] ${appt.title}`, {
               body: `Starting in ${appt.reminderMinutes} min${appt.location ? ` @ ${appt.location}` : ""}`,
               tag: key,
             });

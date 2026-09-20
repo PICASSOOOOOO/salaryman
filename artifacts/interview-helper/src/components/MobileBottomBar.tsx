@@ -18,6 +18,7 @@ import {
   rememberAppReturnPath,
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
+import { getBoomerAppLabel } from '@/lib/vocabulary';
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
@@ -144,8 +145,8 @@ export function MobileModuleNav() {
                   setDropdownOpen(false);
                   navigate(tab.path);
                 }}
-                aria-label={tab.label}
-                title={tab.label}
+                 aria-label={getBoomerAppLabel(tab.id, tab.boomerLabel ?? tab.label)}
+                 title={getBoomerAppLabel(tab.id, tab.boomerLabel ?? tab.label)}
                 className={`flex min-h-10 items-center gap-2 rounded-md px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
                   active
                     ? 'bg-[#EAF8EF] text-[#0B6B3A]'
@@ -153,7 +154,7 @@ export function MobileModuleNav() {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                <span className="desktop-primary-label whitespace-nowrap">{tab.label}</span>
+                 <span className="desktop-primary-label whitespace-nowrap">{getBoomerAppLabel(tab.id, tab.boomerLabel ?? tab.label)}</span>
                 {tab.id === 'comms' && commsCount > 0 && (
                   <span className="flex min-w-[17px] items-center justify-center rounded-full bg-[#D9534F] px-1 text-[9px] leading-[17px] text-white">
                     {commsCount > 99 ? '99+' : commsCount}
@@ -176,7 +177,7 @@ export function MobileModuleNav() {
             title="Features"
           >
             <MoreHorizontal className="h-4 w-4" />
-            <span className="desktop-primary-label whitespace-nowrap">FEATURES</span>
+            <span className="desktop-primary-label whitespace-nowrap">MENU</span>
           </button>
         </nav>
       </div>
@@ -219,7 +220,7 @@ export function MobileModuleNav() {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[8px] font-bold uppercase tracking-wider">{tab.label}</span>
+                 <span className="text-[8px] font-bold uppercase tracking-wider">{getBoomerAppLabel(tab.id, tab.boomerLabel ?? tab.label)}</span>
                 {tab.id === 'comms' && commsCount > 0 && (
                   <span className="absolute top-1 right-2 min-w-[14px] h-[14px] flex items-center justify-center text-[8px] font-bold bg-[#00FF41] text-black rounded-full shadow-sm">
                     {commsCount > 99 ? '99+' : commsCount}
@@ -236,7 +237,7 @@ export function MobileModuleNav() {
             }`}
           >
             <MoreHorizontal className="w-5 h-5" />
-            <span className="text-[8px] font-bold uppercase tracking-wider">FEATURES</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider">MENU</span>
           </button>
         </div>
       </div>
@@ -254,7 +255,7 @@ export function MobileModuleNav() {
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Menu</span>
+               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Workspace</span>
               <button onClick={() => setDropdownOpen(false)} className="p-2"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div
@@ -286,7 +287,7 @@ export function MobileModuleNav() {
                     className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-black hover:bg-gray-100"
                   >
                     <Icon className="w-5 h-5 text-gray-500" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest">{getBoomerAppLabel(item.id, item.boomerLabel ?? item.label)}</span>
                   </button>
                 );
               })}

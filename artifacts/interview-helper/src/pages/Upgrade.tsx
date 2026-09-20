@@ -10,7 +10,7 @@ import {
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
-import { getDefaultBoomerMode } from "@/hooks/use-mobile";
+import { BOOMER_MODE_ENABLED } from "@/lib/vocabulary";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 
@@ -62,21 +62,21 @@ const FEATURE_CARDS: FeatureCard[] = [
     borderColor: "border-emerald-500/30",
     bgColor: "bg-emerald-500/10",
     skills: [
-      { name: 'ECHO-7 · Live Listen', desc: 'Real-time audio intercept on meetings & interviews. Feeds you answers as people talk.' },
-      { name: 'OPTIC-9 · Screen Scan', desc: 'Military-grade screen capture. Identifies code, content, and context — no copy/paste.' },
-      { name: 'VOX-4 · Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
-      { name: 'TTC · CALLL HOME', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform toll-free number. Custom numbers are $10 one-time each.' },
+      { name: 'Live Listen', desc: 'Real-time audio help during meetings and interviews. Feeds you answers as people talk.' },
+      { name: 'Screen Scan', desc: 'Reads your screen and identifies code, content, and context.' },
+      { name: 'Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
+      { name: 'CALLL HOME', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform toll-free number. Custom numbers are $10 one-time each.' },
       { name: 'Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
       { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
-      { name: 'CORE COMMAND · PABLO', desc: 'Your all-purpose AI business operative for email, schedules, CRM, documents, and Q&A.' },
-      { name: 'CORE COMMAND · JEAN CLAW', desc: 'The Bot Factory manager who routes work to the right specialist.' },
-      { name: 'CORE COMMAND · RICK', desc: 'Jean Claw’s underboss for scheduling, escalations, and day-to-day operations.' },
-      { name: 'THE ACADEMY · KENJI PRIME', desc: 'Prompt engineering coach who helps you get more from Claude and Pablo.' },
-      { name: 'FINANCE DESK · VIKTOR PRIME', desc: 'AI CFO for accounting, banking, payroll, tax prep, and Sheets sync.' },
-      { name: 'CREATIVE STUDIO · TERRENCE PRIME', desc: 'Music factory for beats, songs, lyrics, and instrumentals.' },
-      { name: 'CREATIVE STUDIO · VIVIAN PRIME', desc: 'Social media manager for content, scheduling, engagement, and analytics.' },
-      { name: 'CREATIVE STUDIO · REGINA PRIME', desc: 'Content production factory for scripts, shorts, reels, and full productions.' },
-      { name: 'CREATIVE STUDIO · DEEPA PRIME', desc: 'Autonomous research engine for intelligence reports, trends, and due diligence.' },
+      { name: 'Pablo', desc: 'Your all-purpose AI business assistant for email, schedules, CRM, documents, and Q&A.' },
+      { name: 'Jean Claw', desc: 'The Pixel Agents manager who routes work to the right specialist.' },
+      { name: 'Rick', desc: 'Handles scheduling, escalations, and day-to-day operations.' },
+      { name: 'Kenji Prime', desc: 'Prompt engineering coach who helps you get more from Claude and Pablo.' },
+      { name: 'Viktor Prime', desc: 'AI CFO for accounting, banking, payroll, tax prep, and Sheets sync.' },
+      { name: 'Terrence Prime', desc: 'Music factory for beats, songs, lyrics, and instrumentals.' },
+      { name: 'Vivian Prime', desc: 'Social media manager for content, scheduling, engagement, and analytics.' },
+      { name: 'Regina Prime', desc: 'Content production factory for scripts, shorts, reels, and full productions.' },
+      { name: 'Deepa Prime', desc: 'Autonomous research engine for intelligence reports, trends, and due diligence.' },
     ],
     channels: ['Telegram', 'WhatsApp', 'Discord', 'Facebook', 'Email', 'LinkedIn', 'Web Chat'],
   },
@@ -88,34 +88,18 @@ const FREE_PERKS = [
   "Contacts & CRM — save and manage your network",
   "Workspace — projects, notes, and brand settings",
   "Content studio, calendar, documents, and invoices",
-  "CIPHER-X — code understanding, problem solving, and interview prep",
+  "Code help — code understanding, problem solving, and interview prep",
   "Hints, approach explanations, and complexity analysis",
   "Hiring tools — job descriptions, interview kits, scorecards",
 ];
 
 export default function Upgrade({ embedded = false, onPrimeCheckout, primeCheckoutLoading = false }: UpgradeProps) {
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [error] = useState<string | null>(null);
   const { isAuthenticated, login } = useAuth();
   const { features, isOwner, loading: planLoading } = usePlan();
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "sm_boomer") setBoomerMode(e.newValue === "1");
-    };
-    window.addEventListener("storage", onStorage);
-    const id = setInterval(() => {
-      try {
-        setBoomerMode(localStorage.getItem("sm_boomer") === "1");
-      } catch {}
-    }, 2000);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      clearInterval(id);
-    };
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

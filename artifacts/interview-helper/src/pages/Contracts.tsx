@@ -166,7 +166,7 @@ export default function Contracts() {
           <div>
             <div className="flex items-center gap-2 text-amber-400/80 text-[10px] font-mono tracking-[0.3em] mb-1">
               <ScrollText className="w-3.5 h-3.5" />
-              <span>OPS-CORE / LEGAL</span>
+              <span>BUSINESS / LEGAL</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               {boomerMode ? "CONTRACTS" : "Contracts"}

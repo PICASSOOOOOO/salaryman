@@ -5,17 +5,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { HISTORIC_MODULES } from "@/lib/historic-navigation";
 import { MiniNebula } from "./MiniNebula";
 import "./AppHeader.css";
+import { getBoomerAppLabel, getBoomerModuleLabel } from "@/lib/vocabulary";
 
 const MENU_MODULES = HISTORIC_MODULES.filter(
   module => module.id !== "pablo" && module.id !== "phone",
 );
 
 const PRODUCT_SHORTCUTS = [
-  { label: "PABLO AI", path: "/pablo" },
-  { label: "PIXEL AGENTS", path: "/business/autopilot" },
-  { label: "CALLL HOME", path: "/phone" },
-  { label: "SALARYMAN OS", path: "/desktop" },
-  { label: "COMMS", path: "/comms" },
+  { id: "pablo", label: "PABLO AI", path: "/pablo" },
+  { id: "bots", label: "PIXEL AGENTS", path: "/business/autopilot" },
+  { id: "phone", label: "CALLL HOME", path: "/phone" },
+  { id: "office", label: "SALARYMAN OS", path: "/desktop" },
+  { id: "comms", label: "MESSAGES", path: "/comms" },
 ];
 
 export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }) {
@@ -49,7 +50,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
           aria-label={menuOpen ? "Close start work" : "Open start work"}
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-          <span>START WORK</span>
+           <span>WORKSPACE</span>
           <ChevronDown className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
       ) : (
@@ -61,7 +62,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
 
       {isAuthenticated && menuOpen && (
         <div id="home-start-work-panel" className="start-work-panel" role="menu">
-          <div className="start-work-heading">START WORK</div>
+          <div className="start-work-heading">WORKSPACE</div>
           <div
             role="button"
             tabIndex={0}
@@ -81,7 +82,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
             </span>
           </div>
 
-          <div className="start-work-section-label">PRODUCTS</div>
+          <div className="start-work-section-label">TOOLS</div>
           <div className="start-work-shortcuts">
             {PRODUCT_SHORTCUTS.map(item => (
               <button
@@ -91,13 +92,13 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
                 className="start-work-shortcut"
                 role="menuitem"
               >
-                {item.label}
+                 {getBoomerAppLabel(item.id, item.label)}
                 <span aria-hidden="true">↗</span>
               </button>
             ))}
           </div>
 
-          <div className="start-work-section-label">WORKSPACE</div>
+          <div className="start-work-section-label">WORK AREAS</div>
           <div className="start-work-module-list">
             {MENU_MODULES.map(module => {
               const ModuleIcon = module.icon;
@@ -105,7 +106,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
                 <section key={module.id}>
                   <button type="button" onClick={() => go(module.defaultPath)} className="start-work-module-title">
                     <ModuleIcon className="h-3.5 w-3.5" />
-                    {module.label}
+                     {getBoomerModuleLabel(module.id, module.label)}
                   </button>
                   <div className="start-work-module-links">
                     {module.subs.map(sub => {
@@ -119,7 +120,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
                           role="menuitem"
                         >
                           <SubIcon aria-hidden="true" />
-                          {sub.boomerLabel}
+                           {sub.boomerLabel || sub.codename}
                         </button>
                       );
                     })}
@@ -132,11 +133,11 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
           <div className="start-work-footer">
             <button type="button" onClick={() => go("/world")}>
               <Globe className="h-3 w-3" />
-              EXPLORE
+               BROWSE
             </button>
             <button type="button" onClick={() => go("/profile")}>
               <User className="h-3 w-3" />
-              ACCOUNT
+               ACCOUNT
             </button>
             <button
               type="button"
@@ -147,7 +148,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
               }}
             >
               <LogOut className="h-3 w-3" />
-              LOG OUT
+               SIGN OUT
             </button>
           </div>
         </div>

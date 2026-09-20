@@ -10,7 +10,7 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
@@ -30,15 +30,8 @@ export default function Console() {
   const [typeMode, setTypeMode] = useState(false);
   const [showTowerLife, setShowTowerLife] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const { t } = useTranslation();
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
@@ -267,30 +260,6 @@ export default function Console() {
         <span className="hidden xl:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>
-        <button
-          className="hidden md:inline-flex"
-          onClick={() => {
-            const nb = !boomerMode;
-            setBoomerMode(nb);
-            try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-          }}
-          style={{
-            fontFamily: "'Fira Code', monospace",
-            fontSize: '0.5rem',
-            letterSpacing: '0.08em',
-            padding: '2px 8px',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            transition: 'all .15s',
-            whiteSpace: 'nowrap',
-            background: boomerMode ? 'rgba(255,176,0,0.08)' : 'transparent',
-            border: boomerMode ? '1px solid rgba(255,176,0,0.4)' : '1px solid rgba(52,211,153,0.2)',
-            color: boomerMode ? 'rgba(255,176,0,0.9)' : 'rgba(52,211,153,0.4)',
-          }}
-          title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
-        >
-          {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
-        </button>
         </div>
         {showMobileActions && (
           <div
@@ -321,18 +290,6 @@ export default function Console() {
               className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-violet-300 hover:bg-violet-500/10"
             >
               TOWER CLASSIFIEDS
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const nb = !boomerMode;
-                setBoomerMode(nb);
-                setShowMobileActions(false);
-                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-              }}
-              className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-amber-300 hover:bg-amber-500/10"
-            >
-              <Settings2 className="h-3 w-3" /> {boomerMode ? 'MODERN MODE' : 'BOOMER MODE'}
             </button>
           </div>
         )}

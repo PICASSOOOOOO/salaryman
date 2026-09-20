@@ -16,7 +16,7 @@ import { OrgConstructionOverview } from '@/components/ConstructionOverview';
 const MANAGEMENT_SECTIONS = [
   {
     path: '/business/team',
-    label: 'EMPLOYEES',
+    label: 'TEAM',
     desc: 'Complete team roster — names, roles, departments, and compensation.',
     icon: Users,
     color: 'text-black',
@@ -25,7 +25,7 @@ const MANAGEMENT_SECTIONS = [
   },
   {
     path: '/business/hiring',
-    label: 'HIRING & FIRING',
+    label: 'HIRING',
     desc: 'Post jobs, review applicants, make offers, and manage offboarding.',
     icon: Briefcase,
     color: 'text-black',
@@ -46,7 +46,7 @@ const MANAGEMENT_SECTIONS = [
 const SETTINGS_SECTIONS = [
   {
     path: '/business',
-    label: 'ORG SETTINGS',
+    label: 'ORGANIZATION SETTINGS',
     desc: 'Identity, roles and permissions, public presence, protected paperwork, and ownership controls.',
     icon: Settings,
     color: 'text-black',
@@ -55,7 +55,7 @@ const SETTINGS_SECTIONS = [
   },
   {
     path: '/tower',
-    label: 'LAND & CONSTRUCTION',
+    label: 'PROPERTY & BUILDING',
     desc: 'Claim land, review plot status, and submit approved construction designs.',
     icon: Building2,
     color: 'text-black',
@@ -121,7 +121,7 @@ export default function OrgHub() {
       {org ? (
         <>
           <p className="font-mono text-xs text-zinc-500 tracking-widest uppercase mb-3">
-            Team management · people and daily operations
+             Team · people and daily operations
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {MANAGEMENT_SECTIONS.map((s, i) => {
@@ -153,7 +153,7 @@ export default function OrgHub() {
           </div>
 
           <p className="font-mono text-xs text-zinc-500 tracking-widest uppercase mb-3 mt-7">
-            Organization settings · identity, permissions and ownership
+             Settings · identity, permissions and ownership
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
             {SETTINGS_SECTIONS.map((s, i) => {

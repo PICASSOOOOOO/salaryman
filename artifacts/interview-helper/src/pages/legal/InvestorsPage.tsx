@@ -237,9 +237,9 @@ export default function InvestorsPage() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { label: "ECHO-7", desc: "Live AI listening & real-time coaching during calls and interviews" },
-                { label: "OPTIC-9", desc: "Screen scanner that reads context and delivers instant insights" },
-                { label: "VOX-4", desc: "Speech analysis and real-time coaching for cadence and clarity" },
+                 { label: "LIVE LISTEN", desc: "Live AI listening and real-time coaching during calls and interviews" },
+                 { label: "SCREEN SCAN", desc: "Screen scanner that reads context and delivers instant insights" },
+                 { label: "SAY THIS", desc: "Speech analysis and real-time coaching for cadence and clarity" },
                 { label: "CALLL HOME", desc: "AI-powered phone & SMS with call coaching and transcription" },
                 { label: "CRM & Contacts", desc: "Intelligent contact management with AI-enhanced relationship context" },
                 { label: "Agent Team", desc: "Deployable AI agents for research, outreach, and intelligence tasks" },
@@ -271,9 +271,9 @@ export default function InvestorsPage() {
                   border: "border-sky-500/20",
                   bg: "bg-sky-500/5",
                   items: [
-                    "Live AI listening (ECHO-7)",
-                    "Screen scanner (OPTIC-9)",
-                    "Real-time speech coaching (VOX-4)",
+                    "Live AI listening",
+                    "Screen scanner",
+                    "Real-time speech coaching",
                     "Phone & SMS system (TTC)",
                     "CRM & contact manager",
                     "Content studio & calendar",

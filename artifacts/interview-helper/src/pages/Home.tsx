@@ -14,7 +14,7 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { PrimeAdInterstitial } from '@/components/PrimeAdInterstitial';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { WebsiteAnalyzer } from '@/components/WebsiteAnalyzer';
 import { ProGate } from '@/components/ProGate';
@@ -377,7 +377,7 @@ export default function Home() {
   usePlan();
   const [trialPopup] = useState(false);
   const dismissTrialPopup = () => {};
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   // Hide the "LATE FOR WORK" intro hook for users who've already completed
   // onboarding — they don't need to be invited back through the front door.
   const [onboardingDone, setOnboardingDone] = useState<boolean>(() => {
@@ -416,13 +416,6 @@ export default function Home() {
     } catch { /* private mode — fall through and redirect once */ }
     navigate(onboardingDone ? '/office' : '/tower', { replace: true });
   }, [onboardingDone, navigate, homeLocation]);
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
-
   const { current: musicCurrent, playing: musicPlaying } = useMusicPlayer();
   const musicActive = Boolean(musicCurrent) && musicPlaying;
 
