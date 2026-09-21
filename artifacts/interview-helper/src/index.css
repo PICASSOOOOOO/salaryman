@@ -311,9 +311,9 @@ body:not(.game-route) .rounded-lg {
   }
 
   .pablo-text-form {
-    bottom: 1rem !important;
+    bottom: 2rem !important;
     width: min(100%, 44rem);
-    padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+    padding-inline: max(1.25rem, var(--app-safe-left)) max(1.25rem, var(--app-safe-right));
   }
 
   .pablo-text-form input {
@@ -327,7 +327,7 @@ body:not(.game-route) .rounded-lg {
   }
 
   .pablo-voice-controls {
-    bottom: 1rem !important;
+    bottom: 2rem !important;
   }
 
   .pablo-idle {
@@ -423,9 +423,9 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-text-form {
-      bottom: 1.25rem !important;
+      bottom: 2.25rem !important;
       gap: 0.625rem;
-      padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+      padding-inline: max(1.25rem, var(--app-safe-left)) max(1.25rem, var(--app-safe-right));
     }
 
     .pablo-text-form input {
@@ -441,7 +441,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-voice-controls {
-      bottom: 1.25rem !important;
+      bottom: 2.25rem !important;
       padding-inline: 1.25rem;
     }
 
@@ -472,7 +472,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-text-form {
-      bottom: 0.625rem !important;
+      bottom: 1.5rem !important;
     }
 
     .pablo-text-form input,
@@ -481,7 +481,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-voice-controls {
-      bottom: 0.625rem !important;
+      bottom: 1.5rem !important;
     }
 
     .pablo-voice-controls button {
@@ -512,12 +512,12 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-text-form {
-      bottom: 1.5rem !important;
-      padding-inline: 1.5rem;
+      bottom: 2rem !important;
+      padding-inline: 1.75rem;
     }
 
     .pablo-voice-controls {
-      bottom: 1.5rem !important;
+      bottom: 2rem !important;
     }
 
     .pablo-idle {
@@ -1337,18 +1337,18 @@ iframe[src*="feedback"] {
 
 .mobile-menu-trigger {
   display: inline-flex;
-  min-width: 36px;
-  min-height: 34px;
+  min-width: 72px;
+  min-height: 40px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0 6px;
+  gap: 6px;
+  padding: 0 12px;
   color: #111;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
-  font: 700 8px/1 var(--font-sans);
+  font: 700 9px/1 var(--font-sans);
   letter-spacing: .08em;
 }
 
@@ -1399,8 +1399,8 @@ iframe[src*="feedback"] {
   }
 
   .mobile-menu-trigger {
-    min-width: 32px;
-    padding-inline: 4px;
+    min-width: 44px;
+    padding-inline: 8px;
   }
 
   .mobile-menu-trigger span {
