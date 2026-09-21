@@ -530,9 +530,9 @@ async function transcribe(blob: Blob): Promise<string> {
   return (data.text ?? "").trim();
 }
 
-// Keep the nebula present but pulled back from the camera so the terminal
-// controls and practical workspace remain readable around it. Resize updates
-// as the user rotates / changes window size.
+// The nebula is a full-page living background. Size the canvas beyond the
+// viewport diagonal so its circular field bleeds past every edge instead of
+// appearing as a centered boxed orb.
 function useNebulaSize() {
   const compute = () => {
     if (typeof window === "undefined") return 1200;
@@ -540,12 +540,9 @@ function useNebulaSize() {
     const h = window.innerHeight;
     const d = Math.hypot(w, h);
     const isMobile = w < 640;
-    // Keep the orb clearly present without letting it swallow the composer on
-    // small screens. It is clipped by the terminal shell, so the old
-    // viewport-diagonal sizing was unnecessary and made mobile feel like a
-    // full-screen visualizer instead of a usable conversation.
-    if (isMobile) return Math.min(520, Math.max(360, Math.floor(Math.min(w, h) * 0.82)));
-    return Math.min(900, Math.max(620, Math.floor(d * 0.78)));
+    const mult = 1.35;
+    const min = isMobile ? 520 : 900;
+    return Math.max(min, Math.floor(d * mult));
   };
   const [size, setSize] = useState(compute);
   useEffect(() => {
@@ -2121,7 +2118,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       <button
         type="button"
         onClick={onOrbClick}
-          className="absolute inset-0 z-0 outline-none select-none cursor-pointer"
+        className="fixed inset-0 z-0 outline-none select-none cursor-pointer"
         aria-label={STATUS_LABEL[status]}
         data-testid="pablo-orb"
       >
