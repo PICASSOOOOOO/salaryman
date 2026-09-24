@@ -56,3 +56,14 @@ path (moved `getAudioCtx()`/`ensureResumed()` into `playViaWebAudio` only).
 **How to apply:** any new audio playback that must be audible on iPhone must use an
 `HTMLAudioElement`, not WebAudio. The unlock (`unlockAudio`) already primes a silent
 `<audio>` element on first gesture, so element playback works after any tap.
+
+**iOS gesture timing:** Do not call `unlockAudio()` from a non-gesture mount
+effect. If that asynchronous attempt is still pending when the user taps, the
+gesture handler can reuse it, leaving the silent HTMLAudio prime outside the
+user activation and preventing unlock waiters from draining.
+
+**Why:** iOS Safari can reject `HTMLAudioElement.play()` when its unlock attempt
+was started before the actual tap, leaving later ElevenLabs playback silent.
+
+**How to apply:** On mount, arm `armAudioAutoUnlock()` only. Let the first real
+pointer, touch, mouse, or key gesture start the unlock attempt.

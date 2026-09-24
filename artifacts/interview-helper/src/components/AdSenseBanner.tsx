@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 const PUBLISHER_ID = "ca-pub-5927169933397652";
+const ADSENSE_SCRIPT_SELECTOR = 'script[data-salaryman-adsense="true"]';
 
 declare global {
   interface Window {
@@ -8,11 +9,20 @@ declare global {
   }
 }
 
-function isContentPage(pathname: string): boolean {
+function isPabloNebulaRoute(pathname: string): boolean {
+  return pathname === "/pablo" || pathname.startsWith("/pablo/");
+}
+
+export function isAdEligiblePath(pathname: string): boolean {
+  if (isPabloNebulaRoute(pathname)) return false;
   return pathname === "/"
     || pathname === "/desktop"
     || pathname === "/legal"
     || pathname.startsWith("/legal/");
+}
+
+export function shouldReloadToKeepPabloAdFree(pathname: string, adsenseScriptPresent: boolean): boolean {
+  return isPabloNebulaRoute(pathname) && adsenseScriptPresent;
 }
 
 type AdSenseBannerProps = {
@@ -30,13 +40,22 @@ export default function AdSenseBanner({
 }: AdSenseBannerProps) {
   const slotId = (import.meta.env.VITE_ADSENSE_SLOT_ID ?? "").trim();
   const adRef = useRef<HTMLModElement | null>(null);
-  const eligible = !isAuthLoading && !isAuthenticated && !isEmbed && isContentPage(pathname) && Boolean(slotId);
+  const eligible = !isAuthLoading && !isAuthenticated && !isEmbed && isAdEligiblePath(pathname) && Boolean(slotId);
+
+  useLayoutEffect(() => {
+    const scriptPresent = Boolean(document.querySelector(ADSENSE_SCRIPT_SELECTOR));
+    if (!shouldReloadToKeepPabloAdFree(pathname, scriptPresent)) return;
+
+    // The AdSense library is document-scoped and can persist after SPA route
+    // changes. Reload into a clean /pablo document so page-level ads from an
+    // eligible page cannot sit behind the nebula conversation.
+    window.location.replace(window.location.href);
+  }, [pathname]);
 
   useEffect(() => {
     if (!eligible) return;
 
-    const selector = 'script[data-salaryman-adsense="true"]';
-    let script = document.querySelector<HTMLScriptElement>(selector);
+    let script = document.querySelector<HTMLScriptElement>(ADSENSE_SCRIPT_SELECTOR);
     let active = true;
 
     const requestAd = () => {

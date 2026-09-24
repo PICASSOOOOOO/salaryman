@@ -29,7 +29,7 @@
 - [Public route auth gating](public-route-auth-gating.md) — shared providers must wait for resolved auth before protected reads, polling, or user-scoped metadata caching.
 - [Preview OIDC callback origin](replit-auth-preview-origin.md) — loopback preview requests must build Replit OIDC callbacks from REPLIT_DEV_DOMAIN; forwarded 127.0.0.1 is not browser-reachable.
 - [Pablo nebula canonical](pablo-nebula-canonical.md) — approved /pablo nebula is the shader purple "emotion/wavy orb" (659-line PabloNebula3D w/ variants), NOT the 7f0d717 starfield (which full-bleed = broken white blob). Match the `Published your App` commit, not "older = original".
-- [Pablo voice output gating](pablo-voice-output-gating.md) — "replies in text but no sound": voice OUTPUT was gated to voice-mode INPUT, and voice mode needs a mic; speak replies in ALL modes, gate only the mic.
+- [Pablo voice output gating](pablo-voice-output-gating.md) — speak replies in every mode; on iOS, never start audio unlock before a real gesture or the first tap can be consumed.
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — /pablo: voice needs an explicit labeled "Tap to talk" button (orb-tap is invisible); bottom controls share a safe lane — keep reply/idle bubbles well above the talk button + give it higher z, or they overlap/intercept taps.
 - [Tester program](tester-program.md) — 20-slot cap (owners exempt), advisory-lock atomic approval, 3-day inactivity sweep (max(lastActive,decidedAt)), GENTLE dismissible Discord banner (not hard-gated), auto-mod on approve; Discord login breaks only on missing DISCORD_* env.
 - [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — Pablo Prime is the sole helpful assistant; Mila/Pixel Agents are not assistant choices; Mr. Shadow is the antagonist.
@@ -146,5 +146,5 @@
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
 - [Pygame lobby room resolution](pygame-lobby-room-resolution.md) — lobby is a whole-world fallback; room detection must prefer the smallest playable room or movement snaps back to the empty lobby.
 - [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.
-- [AdSense verification](adsense-verification.md) — keep ownership verification static, ad loading eligibility-gated, and responsive units in normal flow so they cannot cover links.
+- [AdSense verification](adsense-verification.md) — keep ownership static, gate scripts by route, and use a clean document for strict ad-free routes after SPA AdSense loading.
 - [Deployment build history](deployment-build-history.md) — inspect recent build attempts separately from the still-active version; failed readiness candidates may have no runtime logs.

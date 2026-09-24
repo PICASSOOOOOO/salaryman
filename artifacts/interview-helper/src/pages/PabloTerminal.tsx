@@ -6,7 +6,7 @@ import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
-import { speakWithTTS, unlockAudio, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
+import { speakWithTTS, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@/hooks/use-auth";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
@@ -937,7 +937,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   // browsers only allow its audio after a user gesture.
   useEffect(() => {
     armAudioAutoUnlock();
-    void unlockAudio();
+    // Do not start an unlock attempt here: a mount-time promise can be reused by
+    // the first iOS tap, so HTMLAudioElement.play() no longer has that gesture.
   }, []);
 
   useEffect(() => {

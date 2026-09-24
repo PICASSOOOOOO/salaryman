@@ -14,3 +14,14 @@ Keep responsive ad units in normal document flow after page content; do not pin 
 **Why:** Auto-sized creatives can be taller than the familiar 50px/90px banner sizes, so a fixed bottom slot can intercept clicks on nearby links and controls.
 
 **How to apply:** Let the ad container grow with its creative and add visual spacing around it. Do not use pointer-events tricks or raise page controls over the ad.
+
+For an immersive ad-free SPA route such as Pablo's nebula, unmounting the manual
+slot is not enough after the document-scoped AdSense library has loaded on an
+eligible page. Keep the route outside the ad allowlist and enter a clean
+document if the library is already present.
+
+**Why:** The loaded library can persist across SPA navigation and expose
+page-level ads over a route that renders no manual slot.
+
+**How to apply:** Keep the AdSense loader route-gated; on transitions into a
+strictly ad-free route, hard-navigate only when the existing loader is present.
