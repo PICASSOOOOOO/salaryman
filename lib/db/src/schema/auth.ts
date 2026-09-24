@@ -24,6 +24,9 @@ export const usersTable = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   stripeConnectAccountId: varchar("stripe_connect_account_id", { length: 255 }),
   stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").notNull().default(false),
+  // Durable protection signal: unlike a live subscription row, this survives
+  // cancellation so retention jobs never treat a former paying account as free.
+  hasPaidHistory: boolean("has_paid_history").notNull().default(false),
   // Account-level public handle (without the leading "@"). Globally unique
   // (case-insensitive via a lower() unique index). Distinct from the
   // per-profile playerName used as the world data join key — do not conflate.

@@ -37,6 +37,8 @@ export const organizationsTable = pgTable("organizations", {
   entityType: varchar("entity_type", { length: 80 }),
   ownerUserId: varchar("owner_user_id").notNull(),
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
+  // Keep paid organization data protected even after its Stripe subscription ends.
+  hasPaidHistory: boolean("has_paid_history").notNull().default(false),
   isDeveloper: boolean("is_developer").notNull().default(false),
   adultContentEnabled: boolean("adult_content_enabled").notNull().default(false),
   isEducation: boolean("is_education").notNull().default(false),
