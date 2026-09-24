@@ -45,7 +45,7 @@ vi.mock("@/hooks/use-auth", () => ({
 // Public Pablo endpoint answers free chat (no auth, no modal). The persona
 // probe and any other stray call resolve cleanly. We assert below that a
 // plain chat message routes here — proof the visitor was NOT pushed to login.
-const { apiFetchMock } = vi.hoisted(() => ({
+const { apiFetchMock, speakWithTTSMock } = vi.hoisted(() => ({
   apiFetchMock: vi.fn(async (url: string) => {
     if (typeof url === "string" && url.includes("pablo/public")) {
       return {
@@ -56,15 +56,21 @@ const { apiFetchMock } = vi.hoisted(() => ({
     }
     return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
   }),
+  speakWithTTSMock: vi.fn(),
 }));
 vi.mock("@/lib/api-client", () => ({ apiFetch: apiFetchMock }));
 
 // TTS double: fire the done callback synchronously so any admit redirect
 // (which opens the auth-choice modal) runs without needing fake timers.
 vi.mock("@/lib/tts", () => ({
-  speakWithTTS: (_text: string, onDone?: () => void) => {
+  speakWithTTS: (text: string, onDone?: () => void, _onError?: () => void, options?: unknown) => {
+    speakWithTTSMock(text, options);
     if (onDone) onDone();
     return { cancel: () => {} };
+  },
+  whenAudioUnlocked: (callback: () => void) => {
+    callback();
+    return () => {};
   },
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},
@@ -134,8 +140,10 @@ function seedReturningVisitor(name: string, email: string) {
 
 beforeEach(() => {
   apiFetchMock.mockClear();
+  speakWithTTSMock.mockClear();
   try {
     window.localStorage.clear();
+    window.sessionStorage.clear();
   } catch {}
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -149,12 +157,25 @@ afterEach(() => {
   container.remove();
   try {
     window.localStorage.clear();
+    window.sessionStorage.clear();
   } catch {}
   // Reset the URL so a ?returnTo= param from one test doesn't leak into the next.
   window.history.pushState({}, "", "/");
 });
 
 describe("Pablo front-door: returning visitors aren't pushed to log in unless they ask", () => {
+  it("greets immediately and speaks with Pablo's assigned voice", async () => {
+    await mount();
+
+    expect(qs("pablo-reply-bubble")?.textContent).toContain(
+      "Hey, I'm Pablo. What can I help you with?",
+    );
+    expect(speakWithTTSMock).toHaveBeenCalledWith(
+      "Hey, I'm Pablo. What can I help you with?",
+      { character: "PABLO" },
+    );
+  });
+
   it("opens directly on the canonical nebula and keeps it present while chatting", async () => {
     await mount();
     expect(qs("canonical-pablo-nebula")).not.toBeNull();
@@ -189,9 +210,7 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
 
     await mount();
 
-    // beginIntake ran on mount (cached name+email, no pending destination)
-    // and dropped Rita into the free chatting phase — it must NOT have
-    // auto-redirected her to the sign-in modal.
+    // The normal welcome must not push a returning visitor to sign in.
     expect(qs("pablo-auth-choice"), "mount must not push a returning visitor to login").toBeNull();
   });
 

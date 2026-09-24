@@ -6,7 +6,7 @@ import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
-import { speakWithTTS, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
+import { speakWithTTS, unlockAudio, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@/hooks/use-auth";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
@@ -118,42 +118,16 @@ class NebulaErrorBoundary extends ReactComponent<{ children: RNode; fallback: RN
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-// Idle one-liners Pablo cycles through for returning users. The point is
-// presence — Pablo always feels like he's
-// in the chat, watching, joking, occasionally trying to upsell PABLO PRIME.
-// We pick a line at random on each mount and keep a tiny "recently said"
-// queue in localStorage so the same line never repeats two visits in a row.
-const IDLE_LINES: string[] = [
-  "Welcome back. I'm Pablo — your host here. What do you need?",
-  "Still with us? Good. This city eats the idle alive. What's on your mind?",
-  "You came back. Smart. In here you work, or you die trying. Where do we start?",
-  "I keep an eye on everyone who walks in. Glad it's you. How can I help?",
-  "Your host, at your service. Lost, curious, or ready to work — tell me.",
-  "The position's still open if you want it. First — what can I do for you?",
-  "I worry about the ones who wander off. Stay close. What do you need?",
-  "Talk to me. I've watched a thousand careers rise and fall. Yours can rise.",
-  "Quick question, big question, all welcome. I'm here to keep you alive in this town.",
-  "Ready when you are. Just remember — in this city, standing still is how you lose.",
-  "Speak or type, I'll keep up. Your host doesn't miss much.",
-  "What do you want to figure out? The clock's always running in here.",
-];
+const PABLO_INITIAL_GREETING = "Hey, I'm Pablo. What can I help you with?";
+const PABLO_GREETING_SESSION_KEY = "pablo.direct-greeting.v1";
 
-// Persisted ring of recently-shown indices so we don't repeat in a row.
-const IDLE_RECENT_KEY = "pablo.idle.recent";
-const IDLE_RECENT_MAX = 8;
-function pickIdleLine(): string {
-  if (typeof window === "undefined") return IDLE_LINES[0];
-  let recent: number[] = [];
+function shouldShowPabloGreeting(): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    const raw = window.localStorage.getItem(IDLE_RECENT_KEY);
-    if (raw) recent = (JSON.parse(raw) as number[]).filter(n => Number.isInteger(n));
-  } catch {}
-  const candidates = IDLE_LINES.map((_, i) => i).filter(i => !recent.includes(i));
-  const pool = candidates.length > 0 ? candidates : IDLE_LINES.map((_, i) => i);
-  const idx = pool[Math.floor(Math.random() * pool.length)];
-  const next = [idx, ...recent].slice(0, IDLE_RECENT_MAX);
-  try { window.localStorage.setItem(IDLE_RECENT_KEY, JSON.stringify(next)); } catch {}
-  return IDLE_LINES[idx];
+    return window.sessionStorage.getItem(PABLO_GREETING_SESSION_KEY) !== "1";
+  } catch {
+    return true;
+  }
 }
 
 type Mode = "voice" | "text";
@@ -802,7 +776,10 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   const [boomerMode] = useBoomerMode();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
-  const [reply, setReply] = useState<string>("");
+  const [reply, setReply] = useState<string>(() =>
+    shouldShowPabloGreeting() ? PABLO_INITIAL_GREETING : "",
+  );
+  const shouldSpeakInitialGreetingRef = useRef(reply === PABLO_INITIAL_GREETING);
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   // Default to TEXT on EVERY device. The nebula opens quiet — Pablo waits
@@ -822,53 +799,6 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   // from the intro question to the inline employment / name / email
   // intake. Deeper biz registration (company name, industry, type) is
   // captured by the post-OAuth PabloOnboarding modal in WorldPlay.)
-  // Idle dialogue, two-stage:
-  //   1. ONE greeting per session, picked from IDLE_LINES. No looping. Stored
-  //      in sessionStorage so navigating around doesn't re-greet.
-  //   2. After the greeting, Pablo slow-drips AI-generated world lore. First
-  //      drip ~5 min in; each subsequent drip waits DOUBLE the previous gap
-  //      (5 → 10 → 20 → 40…). Each drip carries two cheeky clickable reply
-  //      tokens — when tapped, they're sent to Pablo as a normal message.
-  const SESSION_GREETED_KEY = "pablo.greeted_v2";
-  const [idleLine, setIdleLine] = useState<string>(() => {
-    if (typeof window === "undefined" || !isTutorialDone()) return "";
-    try {
-      if (window.sessionStorage.getItem(SESSION_GREETED_KEY)) return ""; // greeted earlier this session
-      window.sessionStorage.setItem(SESSION_GREETED_KEY, "1");
-    } catch {}
-    return pickIdleLine();
-  });
-  const [idleOptions, setIdleOptions] = useState<string[]>([]);
-  const idleDelayRef = useRef<number>(5 * 60_000); // 5 min, doubles each fire
-  const idleTimerRef = useRef<number | null>(null);
-
-  const fetchLoreDrip = useCallback(async () => {
-    try {
-      const r = await apiFetch("/api/chat/pablo/lore", { method: "POST", body: JSON.stringify({}) });
-      if (!r.ok) return;
-      const data = await r.json() as { line?: string; options?: string[] };
-      if (data?.line) {
-        setIdleLine(data.line);
-        setIdleOptions(Array.isArray(data.options) ? data.options.slice(0, 2) : []);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (!isTutorialDone()) return;
-    // Schedule the first lore drip 5 min after mount; each subsequent
-    // drip doubles the wait so an idle tab gets quieter the longer it sits.
-    const scheduleNext = () => {
-      if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = window.setTimeout(async () => {
-        await fetchLoreDrip();
-        idleDelayRef.current = Math.min(idleDelayRef.current * 2, 24 * 60 * 60_000); // cap at 24h
-        scheduleNext();
-      }, idleDelayRef.current) as unknown as number;
-    };
-    scheduleNext();
-    return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
-  }, [fetchLoreDrip]);
   // Audio unlocks itself the moment the user touches anything (handled by
   // the global armAudioAutoUnlock listener wired in App.tsx). Pablo's voice
   // is on by default and stays on; no manual unlock affordance needed.
@@ -1003,11 +933,33 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     navigate(`/sign-in?returnTo=${encodeURIComponent("/console")}`);
   }, [enterFromHomepage, isAuthenticated, navigate]);
 
-  // Keep the existing global audio unlock path alive for reply speech and
-  // explicit voice input. There is no automatic greeting to start here.
+  // Keep the global unlock path alive. The welcome is visible immediately;
+  // browsers only allow its audio after a user gesture.
   useEffect(() => {
     armAudioAutoUnlock();
     void unlockAudio();
+  }, []);
+
+  useEffect(() => {
+    if (!shouldSpeakInitialGreetingRef.current) return;
+    try {
+      window.sessionStorage.setItem(PABLO_GREETING_SESSION_KEY, "1");
+    } catch {}
+    let cancelled = false;
+    const cancelWait = whenAudioUnlocked(() => {
+      if (cancelled) return;
+      setStatus("speaking");
+      const done = () => {
+        ttsRef.current = null;
+        setStatus("idle");
+      };
+      ttsRef.current?.cancel();
+      ttsRef.current = speakWithTTS(PABLO_INITIAL_GREETING, done, done, PABLO_TTS_OPTIONS);
+    });
+    return () => {
+      cancelled = true;
+      cancelWait();
+    };
   }, []);
 
   const speakLine = useCallback((text: string, after?: () => void) => {
@@ -2218,42 +2170,6 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               </p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Idle Pablo bubble — one greeting per session, then slow lore drips
-          on a doubling cadence (5→10→20→40 min…). Each lore drip carries
-          two cheeky clickable reply tokens; tapping one fires it back as a
-          normal Pablo message. */}
-      {!reply && !transcript && idleLine && mode !== "text" && (
-        <div className="pablo-idle absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
-          <div className={`pablo-overlay pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
-            <div className="flex items-center justify-between mb-0.5">
-              <div className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-300/80" : "text-purple-300/80"}`}>{personaLabel}</div>
-              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE</div>
-            </div>
-            <p className="text-zinc-200 text-sm leading-snug">{idleLine}</p>
-            {idleOptions.length === 2 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {idleOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setIdleOptions([]); sendToPablo(opt); }}
-                    className="mobile-tap-target px-3 py-2 rounded border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 text-[10px] font-mono tracking-[0.14em]"
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Removed: persistent "UPGRADE TO PABLO PRIME" button.
-              On mobile it sat directly over the text input box, and it
-              shouldn't be the very first thing a brand-new arrival sees
-              before they've completed onboarding. The Prime upsell
-              is now delivered as a one-shot TV-ad interstitial on /
-              after onboarding (see PrimeAdInterstitial). */}
         </div>
       )}
 
