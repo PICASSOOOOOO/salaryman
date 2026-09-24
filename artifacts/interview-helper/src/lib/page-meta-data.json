@@ -1,6 +1,6 @@
 {
-  "baseUrl": "https://salaryman.replit.app",
-  "defaultOgImage": "https://salaryman.replit.app/og-salaryman.png",
+  "baseUrl": "https://salaryman.io",
+  "defaultOgImage": "https://salaryman.io/og-salaryman.png",
   "routes": {
     "/": {
       "title": "Salaryman by Picasso AI - AI Business Operating System",

@@ -29,4 +29,4 @@ Disallow: /insurance
 Disallow: /mobile
 Disallow: /admin
 
-Sitemap: https://salaryman.replit.app/sitemap.xml
+Sitemap: https://salaryman.io/sitemap.xml
