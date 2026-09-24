@@ -9,14 +9,16 @@ describe("Pablo ElevenLabs voice", () => {
     expect(PABLO_VOICE_ID).toBe("FMgBdHe1YV2Xi0B9anXW");
   });
 
-  it("never silently recasts Pablo through a generic TTS fallback", () => {
+  it("suppresses generic speech when Pablo's assigned voice is unavailable", () => {
     const route = readFileSync(
       resolve(process.cwd(), "src/routes/openai/index.ts"),
       "utf8",
     );
     expect(route).toContain('return key === "PABLO" || key === "MILA"');
     expect(route).toContain('if (isSignatureVoice(character))');
-    expect(route.indexOf('if (isSignatureVoice(character))')).toBeLessThan(
+    expect(route).toContain("function isPabloCharacter(character?: string)");
+    expect(route).toContain('res.status(502).json({ error: "Pablo\\'s assigned voice is unavailable" })');
+    expect(route.indexOf('if (isPabloCharacter(character))')).toBeLessThan(
       route.indexOf('const openaiKey = process.env.OPENAI_API_KEY'),
     );
     expect(route).toContain('res.setHeader("X-TTS-Provider", "elevenlabs")');

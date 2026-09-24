@@ -205,6 +205,11 @@ function isSignatureVoice(character?: string): boolean {
   return key === "PABLO" || key === "MILA";
 }
 
+function isPabloCharacter(character?: string): boolean {
+  const key = character?.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  return key === "PABLO";
+}
+
 async function handleTts(req: any, res: any) {
   const { text, character, voiceId: voiceIdOverride } = req.body as {
     text?: string;
@@ -256,11 +261,17 @@ async function handleTts(req: any, res: any) {
     }
   }
 
-  // Pablo and Mila prefer their assigned ElevenLabs voices, but a provider
-  // rejection must not make the assistants silent. Continue through the
-  // managed speech fallback below so the written reply still has audible
-  // output. The fallback is intentionally only reached after ElevenLabs has
-  // had the first attempt.
+  // Pablo's voice is part of his identity. If ElevenLabs rejects the assigned
+  // voice (or is not configured), fail closed rather than speaking in Onyx.
+  // The browser keeps Pablo's written reply visible when this endpoint fails.
+  if (isPabloCharacter(character)) {
+    console.warn("Pablo's assigned ElevenLabs voice unavailable; suppressing generic TTS fallback");
+    res.status(502).json({ error: "Pablo's assigned voice is unavailable" });
+    return;
+  }
+
+  // Other signature voices may continue through the managed fallback when
+  // their assigned ElevenLabs voice is unavailable.
   if (isSignatureVoice(character)) {
     console.warn(`Assigned ${character} voice unavailable; using managed speech fallback`);
   }
