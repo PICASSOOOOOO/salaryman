@@ -54,8 +54,9 @@ run when a real speaker is chosen; keep WebAudio context creation OUT of the iOS
 path (moved `getAudioCtx()`/`ensureResumed()` into `playViaWebAudio` only).
 
 **How to apply:** any new audio playback that must be audible on iPhone must use an
-`HTMLAudioElement`, not WebAudio. The unlock (`unlockAudio`) already primes a silent
-`<audio>` element on first gesture, so element playback works after any tap.
+`HTMLAudioElement`, not WebAudio. `unlockAudio()` must call the silent element's
+`play()` synchronously from the real gesture and count success only when that
+element is actually unlocked; WebAudio success alone does not unlock iOS playback.
 
 **iOS gesture timing:** Do not call `unlockAudio()` from a non-gesture mount
 effect. If that asynchronous attempt is still pending when the user taps, the
@@ -67,3 +68,21 @@ was started before the actual tap, leaving later ElevenLabs playback silent.
 
 **How to apply:** On mount, arm `armAudioAutoUnlock()` only. Let the first real
 pointer, touch, mouse, or key gesture start the unlock attempt.
+
+## Paid voice access
+
+Pablo's resolved voice is available only to authenticated users with an active
+Stripe-backed `claw_bot` (Pablo Prime) or `phone_system` (CALLL HOME) grant, a
+completed custom-number purchase matching an active owned number, or an approved
+`alpha_tester` account (the tester/moderator role). Written replies and speech
+input remain free. Gate the resolved Pablo voice ID before any provider call;
+checking only the character label misses the default voice and client-supplied
+voice-ID paths. Do not use `hasFeature()` or client plan flags for this policy,
+because those include non-payment owner/developer and Pledge Store grants.
+
+**Why:** Pablo text remains part of the free conversation, while ElevenLabs output
+must not incur costs for unpaid accounts; approved testers still need it for QA.
+
+**How to apply:** use the server-side Stripe grant ledger, the settled custom
+number purchase/active ownership join, or the approved tester record. Keep the
+check before ElevenLabs and fail closed if the access lookup is unavailable.

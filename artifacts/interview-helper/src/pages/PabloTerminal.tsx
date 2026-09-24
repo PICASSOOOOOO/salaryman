@@ -943,12 +943,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
 
   useEffect(() => {
     if (!shouldSpeakInitialGreetingRef.current) return;
-    try {
-      window.sessionStorage.setItem(PABLO_GREETING_SESSION_KEY, "1");
-    } catch {}
     let cancelled = false;
     const cancelWait = whenAudioUnlocked(() => {
       if (cancelled) return;
+      // Do not consume the one-time greeting merely because the component
+      // mounted. Wait until the user's gesture has actually unlocked playback.
+      try {
+        window.sessionStorage.setItem(PABLO_GREETING_SESSION_KEY, "1");
+      } catch {}
       setStatus("speaking");
       const done = () => {
         ttsRef.current = null;

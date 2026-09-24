@@ -44,6 +44,9 @@ async function fetchAudioWithRetry(sentence: string, signal: AbortSignal, endpoi
         signal,
       });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw Object.assign(new Error('Pablo voice access required'), { noRetry: true });
+        }
         if (res.status === 502) {
           throw Object.assign(new Error('TTS server unavailable'), { noRetry: true });
         }
@@ -104,16 +107,48 @@ function isIOS(): boolean {
 let audioUnlocked = false;
 let unlockInFlight: Promise<boolean> | null = null;
 export function isAudioUnlocked(): boolean { return audioUnlocked; }
+
+export function playbackPathUnlocked(options: {
+  usesHtmlAudio: boolean;
+  htmlAudioOk: boolean;
+  audioContextRunning: boolean;
+}): boolean {
+  return options.usesHtmlAudio ? options.htmlAudioOk : options.audioContextRunning;
+}
+
+function primeSilentHtmlAudio(): Promise<boolean> {
+  return (async () => {
+    try {
+      const SILENT_WAV =
+        'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+      const audio = new Audio(SILENT_WAV);
+      audio.muted = true;
+      audio.volume = 0;
+      // Call play immediately: on iOS this function is invoked by the real
+      // user-gesture handler, and awaiting anything first loses activation.
+      await audio.play();
+      audio.pause();
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+}
+
 export function unlockAudio(): Promise<boolean> {
   if (audioUnlocked) return Promise.resolve(true);
   if (unlockInFlight) return unlockInFlight;
   unlockInFlight = (async () => {
+    const speakerId = getPreferredSpeakerId();
+    const usesHtmlAudio = isIOS() || (!!speakerId && supportsSinkId());
+    // Start the HTMLAudio prime before any asynchronous WebAudio resume. A
+    // successful AudioContext alone does not unlock iOS's actual playback path.
+    const htmlAudioPrime = primeSilentHtmlAudio();
     try {
       const ctx = getAudioCtx();
       if (ctx.state === 'suspended') {
         try { await ctx.resume(); } catch { /* ignore — try anyway */ }
       }
-      // Web Audio context is running if the browser allowed the resume.
       const ctxRunning = ctx.state === 'running';
       // Silent 1-frame buffer through WebAudio.
       try {
@@ -123,29 +158,18 @@ export function unlockAudio(): Promise<boolean> {
         src.connect(ctx.destination);
         src.start(0);
       } catch { /* non-fatal */ }
-      // Prime an HTMLAudioElement too (the setSinkId path uses one). Use a
-      // tiny inline silent wav so iOS treats *that* element type as unlocked.
-      // Do NOT swallow the NotAllowedError — let it reach our outer catch so
-      // we can return false when autoplay is genuinely blocked.
-      let htmlAudioOk = false;
-      try {
-        const SILENT_WAV =
-          'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
-        const a = new Audio(SILENT_WAV);
-        a.muted = true;
-        a.volume = 0;
-        await a.play();
-        a.pause();
-        htmlAudioOk = true;
-      } catch { /* autoplay blocked — htmlAudioOk stays false */ }
+      const htmlAudioOk = await htmlAudioPrime;
       // (No SpeechSynthesis priming. The whole app uses ElevenLabs voices
       // via /api/tts — we never fall back to the browser's robotic
       // SpeechSynthesis voices, per product mandate.)
-      const ok = ctxRunning || htmlAudioOk;
+      const ok = playbackPathUnlocked({ usesHtmlAudio, htmlAudioOk, audioContextRunning: ctxRunning });
       if (ok) audioUnlocked = true;
       return ok;
     } catch {
-      return false;
+      const htmlAudioOk = await htmlAudioPrime;
+      const ok = playbackPathUnlocked({ usesHtmlAudio, htmlAudioOk, audioContextRunning: false });
+      if (ok) audioUnlocked = true;
+      return ok;
     } finally {
       unlockInFlight = null;
     }

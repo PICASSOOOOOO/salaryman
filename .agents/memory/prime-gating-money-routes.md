@@ -30,7 +30,9 @@ and solvent users pass. Returns 402 with `{error, owedCents, upgrade:"/upgrade"}
 call `canUseApiFeatures` up front, or it re-opens the same leak.
 
 ## Deliberately NOT gated (gating these breaks the funnel)
-- Story chat (openai conversations), guest TTS + transcribe, twilio Mila voice token — these are
-  intentionally OPEN for the logged-out new-user funnel / onboarding / public Twilio playback.
+- Story chat and transcription remain open for the logged-out conversation/onboarding funnel.
+- Pablo's resolved TTS voice is paid-gated with an approved tester exception (see
+  [Pablo voice output gating](pablo-voice-output-gating.md)); other-character TTS remains separate.
+- Twilio Mila voice token remains open for public Twilio playback.
 - scraper.ts (/scraper/extract, /scraper/batch) — uses only free oEmbed fetch + cheerio, no paid
   API key, so it is NOT a money-costing feature despite "scraping" sounding expensive.

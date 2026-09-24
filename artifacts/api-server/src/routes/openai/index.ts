@@ -15,6 +15,7 @@ import {
 import { requireFeature } from "../../middlewares/requirePro";
 import { MILA_VOICE_ID } from "../../lib/mila-voice";
 import { PABLO_VOICE_ID } from "../../lib/pablo-voice";
+import { hasPabloVoiceAccess } from "../../lib/pablo-voice-access";
 import {
   isSonioxConfigured,
   transcribeWithSoniox,
@@ -221,10 +222,36 @@ async function handleTts(req: any, res: any) {
     return;
   }
 
+  const voiceId = resolveVoiceId(character, voiceIdOverride);
+  // The default resolver can select Pablo even when the caller omits a
+  // character, and voiceIdOverride is client-controlled. Gate the resolved
+  // voice as well as the character label so neither path bypasses payment.
+  const requestsPabloVoice = isPabloCharacter(character) || voiceId === PABLO_VOICE_ID;
+  if (requestsPabloVoice) {
+    const userId =
+      typeof req.isAuthenticated === "function" && req.isAuthenticated()
+        ? req.user?.id
+        : undefined;
+    if (typeof userId !== "string" || !userId) {
+      res.status(401).json({ error: "Sign in to use Pablo's voice" });
+      return;
+    }
+
+    try {
+      if (!(await hasPabloVoiceAccess(userId))) {
+        res.status(403).json({ error: "An active paid product is required for Pablo's voice" });
+        return;
+      }
+    } catch (err) {
+      console.error("[Pablo TTS] Could not verify voice access:", err);
+      res.status(503).json({ error: "Pablo's voice access could not be verified" });
+      return;
+    }
+  }
+
   const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
   if (elevenLabsKey) {
     try {
-      const voiceId = resolveVoiceId(character, voiceIdOverride);
       const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
@@ -317,23 +344,17 @@ async function handleTts(req: any, res: any) {
   }
 }
 
-// TTS is intentionally OPEN to guests — let Pablo's voice ring through on
-// first visit so the storyteller intro has its full premium-voice impact.
-// Per user direction: cost is recouped by the PABLO TAX markup applied
-// elsewhere in the economy, so we don't meter the voice itself.
+// Pablo's resolved voice is protected inside handleTts by active paid-product
+// access or an approved tester record. Other character voices keep their
+// existing access policy.
 router.post("/tts", handleTts);
 
 router.post("/game-tts", async (req, res) => {
   return handleTts(req, res);
 });
 
-// Transcription is intentionally NOT gated by requireClaw. The Pablo intro
-// (and the unauthenticated landing flow generally) needs the user to be able
-// to *speak* to Pablo so they can say the passcode and respond to his
-// greeting. Locking STT behind a paid subscription means brand-new visitors
-// hit a silent 403 the first time they try to talk — which surfaces in
-// support as "Pablo can't hear me". Whisper is cheap; the auth gates that
-// matter (TTS spend, model usage) stay in place on other endpoints.
+// Transcription remains open to guests so visitors can speak to Pablo and
+// receive free written replies. Spoken output is checked separately above.
 router.post("/transcribe", async (req, res) => {
   // Defensive: same crash class as /interview/listen — if the proxy or a
   // bad client posts an empty body, destructuring an undefined req.body
