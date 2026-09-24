@@ -17,7 +17,7 @@ describe("Pablo ElevenLabs voice", () => {
     expect(route).toContain('return key === "PABLO" || key === "MILA"');
     expect(route).toContain('if (isSignatureVoice(character))');
     expect(route).toContain("function isPabloCharacter(character?: string)");
-    expect(route).toContain('res.status(502).json({ error: "Pablo\\'s assigned voice is unavailable" })');
+    expect(route).toContain(`res.status(502).json({ error: "Pablo's assigned voice is unavailable" })`);
     expect(route.indexOf('if (isPabloCharacter(character))')).toBeLessThan(
       route.indexOf('const openaiKey = process.env.OPENAI_API_KEY'),
     );
