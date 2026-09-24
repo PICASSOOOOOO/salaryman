@@ -2136,7 +2136,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {/* Shared conversation surface for visitors and returning users. */}
       {(transcript || reply || status === "thinking") && (
         <div
-          className="pablo-conversation pablo-overlay mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
+          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
           style={{ bottom: `calc(${mode === "text" ? 104 : 124}px)` }}
         >
           {transcript && (
