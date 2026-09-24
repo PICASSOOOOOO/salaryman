@@ -35,7 +35,6 @@ export default function AdSenseBanner({
   useEffect(() => {
     if (!eligible) return;
 
-    document.body.classList.add("has-adsense-banner");
     const selector = 'script[data-salaryman-adsense="true"]';
     let script = document.querySelector<HTMLScriptElement>(selector);
     let active = true;
@@ -74,7 +73,6 @@ export default function AdSenseBanner({
 
     return () => {
       active = false;
-      document.body.classList.remove("has-adsense-banner");
       script?.removeEventListener("load", onLoad);
       script?.removeEventListener("error", onError);
       // A failed script is removed above; successful scripts remain cached so

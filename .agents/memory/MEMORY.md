@@ -146,5 +146,5 @@
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
 - [Pygame lobby room resolution](pygame-lobby-room-resolution.md) — lobby is a whole-world fallback; room detection must prefer the smallest playable room or movement snaps back to the empty lobby.
 - [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.
-- [AdSense verification](adsense-verification.md) — keep ownership verification in static markup; load ad JS only for an eligible, configured slot to avoid unintended Auto ads.
+- [AdSense verification](adsense-verification.md) — keep ownership verification static, ad loading eligibility-gated, and responsive units in normal flow so they cannot cover links.
 - [Deployment build history](deployment-build-history.md) — inspect recent build attempts separately from the still-active version; failed readiness candidates may have no runtime logs.

@@ -526,12 +526,6 @@ function AppShell() {
   return (
     <>
       <DeviceControlBridge />
-      <AdSenseBanner
-        pathname={pathname}
-        isAuthenticated={isAuthenticated}
-        isAuthLoading={isLoading}
-        isEmbed={isEmbed}
-      />
       {showNavBar && (
           <div className={`app-chrome${isRootRoute ? " app-chrome--home" : ""}`}>
           <AbandonmentBanner />
@@ -830,6 +824,12 @@ function AppShell() {
           legal section now lives at /legal (linked from the pledge store
           and the onboarding desk). */}
       </div>
+      <AdSenseBanner
+        pathname={pathname}
+        isAuthenticated={isAuthenticated}
+        isAuthLoading={isLoading}
+        isEmbed={isEmbed}
+      />
     </>
   );
 }
