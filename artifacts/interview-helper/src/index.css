@@ -1505,6 +1505,9 @@ body.workspace-light #root {
   padding-top: calc(56px + env(safe-area-inset-top, 0px));
   padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
 }
+body.workspace-light.has-adsense-banner #root {
+  padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
+}
 body.workspace-light.has-subnav #root {
   padding-top: calc(96px + env(safe-area-inset-top, 0px));
 }
@@ -1514,6 +1517,41 @@ body.workspace-light.has-subnav #root {
   margin: 0 8px 8px;
   border-width: 1px;
   border-radius: 4px;
+}
+.adsense-banner {
+  position: fixed;
+  z-index: 45;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 50px;
+  padding: 4px 8px max(4px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fff;
+  border-top: 1px solid #dedbd4;
+  color: #77736c;
+}
+.adsense-banner ins {
+  max-width: 100%;
+}
+.adsense-banner-label {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font: 8px/1 sans-serif;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+@media (min-width: 768px) {
+  body.workspace-light.has-adsense-banner #root {
+    padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px));
+  }
+  .adsense-banner {
+    min-height: 90px;
+  }
 }
 .mobile-active-call-bar {
   margin-top: calc(3.5rem + env(safe-area-inset-top, 0px));

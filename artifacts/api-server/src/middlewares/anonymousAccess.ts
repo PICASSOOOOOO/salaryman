@@ -42,6 +42,33 @@ function readStartedAt(value: unknown): number | null {
   return startedAt;
 }
 
+export function getAnonymousAccessCookieStatus(
+  cookieHeader: string | string[] | undefined,
+  now = Date.now(),
+): { valid: boolean; startedAt: number | null; expiresAt: number | null; expired: boolean } {
+  const headers = Array.isArray(cookieHeader) ? cookieHeader : [cookieHeader ?? ""];
+  let value: string | undefined;
+  for (const header of headers) {
+    for (const part of header.split(";")) {
+      const separator = part.indexOf("=");
+      if (separator < 0) continue;
+      if (part.slice(0, separator).trim() === ANONYMOUS_ACCESS_COOKIE) {
+        value = part.slice(separator + 1).trim();
+        break;
+      }
+    }
+    if (value !== undefined) break;
+  }
+  const startedAt = readStartedAt(value);
+  if (startedAt === null) return { valid: false, startedAt: null, expiresAt: null, expired: true };
+  const expiresAt = startedAt + ANONYMOUS_ACCESS_MS;
+  return { valid: true, startedAt, expiresAt, expired: now >= expiresAt };
+}
+
+function normalizePath(path: string): string {
+  return path.startsWith("/api/") ? path.slice(4) : path;
+}
+
 function isAlwaysAllowed(path: string): boolean {
   return path === "/visitor-access"
     || path === "/healthz"
@@ -58,7 +85,14 @@ function isAlwaysAllowed(path: string): boolean {
 }
 
 export function anonymousAccessMiddleware(req: Request, res: Response, next: NextFunction): void {
-  if (req.isAuthenticated?.() || isAlwaysAllowed(req.path)) {
+  if (req.isAuthenticated?.()) {
+    next();
+    return;
+  }
+
+  const path = normalizePath(req.path);
+  const alwaysAllowed = isAlwaysAllowed(path);
+  if (alwaysAllowed && path !== "/visitor-access") {
     next();
     return;
   }
@@ -81,7 +115,7 @@ export function anonymousAccessMiddleware(req: Request, res: Response, next: Nex
   }
 
   req.anonymousAccess = { startedAt, expiresAt, expired: now >= expiresAt };
-  if (req.anonymousAccess.expired) {
+  if (req.anonymousAccess.expired && !alwaysAllowed) {
     res.status(403).json({
       error: "ANONYMOUS_ACCESS_EXPIRED",
       message: "Sign in to continue using SALARYMAN.",

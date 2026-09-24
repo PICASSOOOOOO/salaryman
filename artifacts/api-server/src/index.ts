@@ -27,6 +27,7 @@ import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 import { expireOverdueRentals } from './routes/fleet';
+import { isUserDataRetentionEnabled, runUserDataRetentionSweep } from './routes/lifecycle';
 import { purgeOutsideWorldState } from './lib/outside-world';
 import { setupGodotRenderBridge } from './godot-render-bridge';
 import { setupDeviceControlBridge } from './device-control-bridge';
@@ -266,3 +267,22 @@ function runFleetExpiry(): void {
 }
 setTimeout(runFleetExpiry, 120_000); // 2 min after boot
 setInterval(runFleetExpiry, FLEET_CRON_MS);
+
+// Warn inactive unpaid accounts after 23 days and remove eligible app data
+// only after the full 30-day idle period and seven-day notice have elapsed.
+const USER_DATA_RETENTION_SWEEP_MS = 24 * 60 * 60 * 1000;
+if (isUserDataRetentionEnabled()) {
+  function runUserDataRetention(): void {
+    runUserDataRetentionSweep()
+      .then((result) => {
+        if (result.warned || result.deletedUsers) {
+          console.log(`[User Data Retention] warned=${result.warned} deleted=${result.deletedUsers}`);
+        }
+      })
+      .catch((error) => console.error("[User Data Retention] sweep failed:", error instanceof Error ? error.message : error));
+  }
+  setTimeout(runUserDataRetention, 75_000);
+  setInterval(runUserDataRetention, USER_DATA_RETENTION_SWEEP_MS);
+} else {
+  console.log("[User Data Retention] scheduled sweep disabled pending verified paid-history protection.");
+}

@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { authMiddleware } from "./middlewares/authMiddleware";
+import { anonymousAccessMiddleware } from "./middlewares/anonymousAccess";
 import router from "./routes";
 import sitesProxyRouter from "./sites-proxy";
 
@@ -57,7 +58,22 @@ app.get("/ws", (_req, res) => {
 
 app.use(authMiddleware);
 
-app.use("/api", router);
+app.get("/api/visitor-access", anonymousAccessMiddleware, (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.isAuthenticated?.()) {
+    res.json({ authenticated: true, expired: false });
+    return;
+  }
+  res.json({
+    authenticated: false,
+    startedAt: req.anonymousAccess?.startedAt ?? Date.now(),
+    expiresAt: req.anonymousAccess?.expiresAt ?? Date.now(),
+    expired: req.anonymousAccess?.expired ?? false,
+    limitDays: 5,
+  });
+});
+
+app.use("/api", anonymousAccessMiddleware, router);
 
 // Public reverse-proxy for org Framer sites at /sites/<slug>. Must sit ABOVE the
 // production static middleware + SPA splat so it isn't swallowed by index.html.

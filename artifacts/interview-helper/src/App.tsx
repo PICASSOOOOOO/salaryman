@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
+import AdSenseBanner from "@/components/AdSenseBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileModuleNav } from "@/components/MobileBottomBar";
 import { installAppHistoryTracking } from "@/lib/app-navigation";
@@ -232,11 +233,40 @@ const FLOATING_BAR_ROUTES = [
 function AppShell() {
   useUndoShortcut();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [anonymousAccessResolved, setAnonymousAccessResolved] = useState(false);
+  const [anonymousAccessExpired, setAnonymousAccessExpired] = useState(false);
   const onboardingResolved = useOnboardingResolved();
   useHeartbeat(isAuthenticated && onboardingResolved && !isLoading);
   usePageMeta();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (isAuthenticated) {
+      setAnonymousAccessExpired(false);
+      setAnonymousAccessResolved(true);
+      return;
+    }
+
+    let active = true;
+    setAnonymousAccessResolved(false);
+    apiFetch("/api/visitor-access", { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Anonymous access status unavailable");
+        const status = await response.json() as { expired?: boolean };
+        if (!active) return;
+        setAnonymousAccessExpired(status.expired === true);
+        setAnonymousAccessResolved(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        // The API middleware still enforces the limit. Keep the public entry
+        // usable during a temporary status-check outage.
+        setAnonymousAccessResolved(true);
+      });
+    return () => { active = false; };
+  }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -402,6 +432,26 @@ function AppShell() {
   // are never held.
   const holdForAuth = isLoading && !tutorialDone && !allowedForAnon;
   const [, navigate] = useLocation();
+  const anonymousExpiryExempt =
+    pathname === "/" ||
+    pathname === "/sign-in" ||
+    pathname === "/sign-up" ||
+    pathname === "/device-link" ||
+    pathname === "/legal" ||
+    pathname.startsWith("/legal/") ||
+    pathname === "/auth" ||
+    pathname.startsWith("/auth/");
+  const anonymousAccessPending =
+    !isAuthenticated && !isLoading && !anonymousAccessResolved && !anonymousExpiryExempt;
+  const anonymousAccessBlocked =
+    !isAuthenticated && !isLoading && anonymousAccessResolved && anonymousAccessExpired && !anonymousExpiryExempt;
+
+  useEffect(() => {
+    if (!anonymousAccessBlocked) return;
+    const requested = `${window.location.pathname}${window.location.search}`;
+    navigate(`/sign-in?returnTo=${encodeURIComponent(requested)}`, { replace: true });
+  }, [anonymousAccessBlocked, location, navigate]);
+
   useEffect(() => {
     if (!newUserBlocked) return;
     const requested = `${window.location.pathname}${window.location.search}`;
@@ -466,16 +516,22 @@ function AppShell() {
 
   // Hold protected paths behind a loading screen until auth resolves (see
   // holdForAuth above) so a logged-out deep link can never flash the page.
-  if (holdForAuth || holdForOnboarding) return <LoadingFallback />;
+  if (holdForAuth || holdForOnboarding || anonymousAccessPending) return <LoadingFallback />;
   // Do not mount a protected route for even one frame while the effect above
   // updates browser history. Mounting it can start authenticated API requests;
   // their expected 401 would otherwise win the race and send the visitor to
   // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked) return <LoadingFallback />;
+  if (newUserBlocked || anonymousAccessBlocked) return <LoadingFallback />;
 
   return (
     <>
       <DeviceControlBridge />
+      <AdSenseBanner
+        pathname={pathname}
+        isAuthenticated={isAuthenticated}
+        isAuthLoading={isLoading}
+        isEmbed={isEmbed}
+      />
       {showNavBar && (
           <div className={`app-chrome${isRootRoute ? " app-chrome--home" : ""}`}>
           <AbandonmentBanner />

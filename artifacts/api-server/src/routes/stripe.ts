@@ -11,6 +11,7 @@ import { ensureFiatAccounts, spendFiat } from "../lib/fiat-wallet";
 import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { isSupportedCountry } from "../lib/phone";
+import { markOrganizationAsPaid, markUserAsPaid } from "../lib/payment-protection";
 
 const router = Router();
 
@@ -1063,6 +1064,18 @@ router.post(
         const userId = session.client_reference_id || session.metadata?.userId;
         const type = session.metadata?.type;
         const feature = session.metadata?.feature as FeatureKey | undefined;
+        const organizationIdMeta = session.metadata?.orgId;
+        const parsedOrganizationId = organizationIdMeta ? Number(organizationIdMeta) : NaN;
+        // Persist the first settled, non-zero checkout before any product
+        // fulfillment. This flag survives later cancellation/revocation.
+        if (session.payment_status === "paid" && Number(session.amount_total ?? 0) > 0) {
+          await db.transaction(async (tx) => {
+            if (userId) await markUserAsPaid(tx, userId);
+            if (Number.isInteger(parsedOrganizationId) && parsedOrganizationId > 0) {
+              await markOrganizationAsPaid(tx, parsedOrganizationId);
+            }
+          });
+        }
         const subscriptionId = typeof (session as any).subscription === "string"
           ? (session as any).subscription
           : (session as any).subscription?.id;
@@ -1188,8 +1201,29 @@ router.post(
         const subId = typeof (invoice as any).subscription === "string"
           ? (invoice as any).subscription
           : (invoice as any).subscription?.id;
-        if (subId && (invoice.billing_reason === "subscription_cycle" || invoice.billing_reason === "subscription_create")) {
-          console.log(`[Stripe] Payment succeeded for subscription ${subId}`);
+        if (subId && Number(invoice.amount_paid ?? 0) > 0) {
+          await db.transaction(async (tx) => {
+            await tx.execute(sql`
+              UPDATE users
+              SET has_paid_history = true, updated_at = now()
+              WHERE id IN (
+                SELECT user_id FROM user_features WHERE stripe_subscription_id = ${subId}
+                UNION
+                SELECT user_id FROM bot_subscriptions WHERE stripe_subscription_id = ${subId}
+              )
+            `);
+            await tx.execute(sql`
+              UPDATE organizations
+              SET has_paid_history = true, updated_at = now()
+              WHERE id IN (
+                SELECT org_id FROM org_feature_grants WHERE stripe_subscription_id = ${subId}
+                UNION
+                SELECT org_id FROM bot_subscriptions
+                WHERE stripe_subscription_id = ${subId} AND org_id IS NOT NULL
+              )
+            `);
+          });
+          console.log(`[Stripe] Paid history recorded for subscription ${subId}`);
         }
         break;
       }

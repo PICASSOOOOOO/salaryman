@@ -78,6 +78,11 @@ function affected(result: unknown): number {
   return (result as RowCountResult).rowCount ?? 0;
 }
 
+function textValues(values: readonly string[]) {
+  if (values.length === 0) return sql`(NULL)`;
+  return sql`(${sql.join(values.map((value) => sql`${value}`), sql`, `)})`;
+}
+
 async function collectPrivateObjectPaths(
   tx: Tx,
   userIds: string[],
@@ -86,17 +91,17 @@ async function collectPrivateObjectPaths(
   const result = await tx.execute(sql`
     SELECT object_path AS path
     FROM files_folders
-    WHERE user_id::text = ANY(${userIds}::text[])
+    WHERE user_id::text IN ${textValues(userIds)}
       AND object_path IS NOT NULL
     UNION
     SELECT object_path AS path
     FROM business_files
     WHERE object_path IS NOT NULL
       AND (
-        org_id::text = ANY(${organizationIds}::text[])
+        org_id::text IN ${textValues(organizationIds)}
         OR (
-          uploaded_by_user_id::text = ANY(${userIds}::text[])
-          AND (org_id IS NULL OR org_id::text = ANY(${organizationIds}::text[]))
+          uploaded_by_user_id::text IN ${textValues(userIds)}
+          AND (org_id IS NULL OR org_id::text IN ${textValues(organizationIds)})
         )
       )
     UNION
@@ -104,10 +109,10 @@ async function collectPrivateObjectPaths(
     FROM shared_media
     WHERE object_path IS NOT NULL
       AND (
-        org_id::text = ANY(${organizationIds}::text[])
+        org_id::text IN ${textValues(organizationIds)}
         OR (
-          from_user_id::text = ANY(${userIds}::text[])
-          AND (to_user_id IS NULL OR to_user_id::text = ANY(${userIds}::text[]))
+          from_user_id::text IN ${textValues(userIds)}
+          AND (to_user_id IS NULL OR to_user_id::text IN ${textValues(userIds)})
         )
       )
   `);
@@ -137,20 +142,20 @@ async function deleteSharedRows(tx: Tx, userIds: string[], organizationIds: stri
   const counts: Record<string, number> = {};
   const media = await tx.execute(sql`
     DELETE FROM shared_media
-    WHERE org_id::text = ANY(${organizationIds}::text[])
+    WHERE org_id::text IN ${textValues(organizationIds)}
        OR (
-         from_user_id::text = ANY(${userIds}::text[])
-         AND (to_user_id IS NULL OR to_user_id::text = ANY(${userIds}::text[]))
+         from_user_id::text IN ${textValues(userIds)}
+         AND (to_user_id IS NULL OR to_user_id::text IN ${textValues(userIds)})
        )
   `);
   counts.shared_media = affected(media);
 
   const files = await tx.execute(sql`
     DELETE FROM business_files
-    WHERE org_id::text = ANY(${organizationIds}::text[])
+    WHERE org_id::text IN ${textValues(organizationIds)}
        OR (
-         uploaded_by_user_id::text = ANY(${userIds}::text[])
-         AND (org_id IS NULL OR org_id::text = ANY(${organizationIds}::text[]))
+         uploaded_by_user_id::text IN ${textValues(userIds)}
+         AND (org_id IS NULL OR org_id::text IN ${textValues(organizationIds)})
        )
   `);
   counts.business_files = affected(files);
@@ -167,7 +172,7 @@ async function deleteNonForeignOrganizationRows(tx: Tx, organizationIds: string[
       ON t.table_schema = c.table_schema AND t.table_name = c.table_name
     WHERE c.table_schema = 'public'
       AND t.table_type = 'BASE TABLE'
-      AND c.column_name = ANY(${[...ORGANIZATION_COLUMNS]}::text[])
+      AND c.column_name IN ${textValues(ORGANIZATION_COLUMNS)}
       AND NOT EXISTS (
         SELECT 1
         FROM information_schema.key_column_usage k
@@ -192,12 +197,16 @@ async function deleteNonForeignOrganizationRows(tx: Tx, organizationIds: string[
 
   const counts: Record<string, number> = {};
   for (const [tableName, tableColumns] of byTable) {
+    const belongsToResetOrganization = [...tableColumns].map((column) => sql`
+      ${sql.identifier(column)}::text IN ${textValues(organizationIds)}
+    `);
     const guards = [...tableColumns].map((column) => sql`
-      (${sql.identifier(column)} IS NULL OR ${sql.identifier(column)}::text = ANY(${organizationIds}::text[]))
+      (${sql.identifier(column)} IS NULL OR ${sql.identifier(column)}::text IN ${textValues(organizationIds)})
     `);
     const result = await tx.execute(sql`
       DELETE FROM ${sql.identifier("public")}.${sql.identifier(tableName)}
-      WHERE ${sql.join(guards, sql` AND `)}
+      WHERE (${sql.join(belongsToResetOrganization, sql` OR `)})
+        AND ${sql.join(guards, sql` AND `)}
     `);
     counts[`org:${tableName}`] = affected(result);
   }
@@ -207,6 +216,15 @@ async function deleteNonForeignOrganizationRows(tx: Tx, organizationIds: string[
 async function deleteUserRows(tx: Tx, userIds: string[], organizationIds: string[]): Promise<Record<string, number>> {
   if (userIds.length === 0) return {};
 
+  // Capture the profile-to-world join keys before player_profiles itself is
+  // removed from the user-owned table set below.
+  const profileNamesResult = await tx.execute(sql`
+    SELECT player_name
+    FROM player_profiles
+    WHERE user_id::text IN ${textValues(userIds)}
+  `);
+  const profileNames = rowsOf<{ player_name: string }>(profileNamesResult).map((row) => row.player_name);
+
   const metadata = await tx.execute(sql`
     SELECT c.table_name, c.column_name
     FROM information_schema.columns c
@@ -214,7 +232,7 @@ async function deleteUserRows(tx: Tx, userIds: string[], organizationIds: string
       ON t.table_schema = c.table_schema AND t.table_name = c.table_name
     WHERE c.table_schema = 'public'
       AND t.table_type = 'BASE TABLE'
-      AND c.column_name = ANY(${[...OWNER_COLUMNS]}::text[])
+      AND c.column_name IN ${textValues([...OWNER_COLUMNS, ...ORGANIZATION_COLUMNS])}
   `);
   const columns = rowsOf<{ table_name: string; column_name: string }>(metadata);
   const ownerByTable = new Map<string, Set<string>>();
@@ -237,10 +255,10 @@ async function deleteUserRows(tx: Tx, userIds: string[], organizationIds: string
       .filter((row) => row.table_name === tableName && ORGANIZATION_COLUMNS.includes(row.column_name as typeof ORGANIZATION_COLUMNS[number]))
       .map((row) => row.column_name);
     const organizationGuards = [...new Set(tableOrgColumns)].map((column) => sql`
-      (${sql.identifier(column)} IS NULL OR ${sql.identifier(column)}::text = ANY(${organizationIds}::text[]))
+      (${sql.identifier(column)} IS NULL OR ${sql.identifier(column)}::text IN ${textValues(organizationIds)})
     `);
     const where = [
-      sql`${sql.identifier(ownerColumn)}::text = ANY(${userIds}::text[])`,
+      sql`${sql.identifier(ownerColumn)}::text IN ${textValues(userIds)}`,
       ...organizationGuards,
     ];
     const result = await tx.execute(sql`
@@ -250,16 +268,10 @@ async function deleteUserRows(tx: Tx, userIds: string[], organizationIds: string
     counts[tableName] = affected(result);
   }
 
-  const profileNames = await tx.execute(sql`
-    SELECT player_name
-    FROM player_profiles
-    WHERE user_id::text = ANY(${userIds}::text[])
-  `);
-  const names = rowsOf<{ player_name: string }>(profileNames).map((row) => row.player_name);
-  if (names.length > 0) {
+  if (profileNames.length > 0) {
     const transactions = await tx.execute(sql`
       DELETE FROM business_transactions bt
-      WHERE bt.player_name = ANY(${names}::text[])
+      WHERE bt.player_name IN ${textValues(profileNames)}
         AND NOT EXISTS (
           SELECT 1 FROM player_profiles pp
           WHERE pp.player_name = bt.player_name
@@ -271,19 +283,19 @@ async function deleteUserRows(tx: Tx, userIds: string[], organizationIds: string
 
   const legacyEvents = await tx.execute(sql`
     DELETE FROM legacy_recovery_events
-    WHERE source_user_id::text = ANY(${userIds}::text[])
+    WHERE source_user_id::text IN ${textValues(userIds)}
   `);
   counts.legacy_recovery_events = affected(legacyEvents);
   const legacySnapshots = await tx.execute(sql`
     DELETE FROM legacy_recovery_snapshots
-    WHERE source_user_id::text = ANY(${userIds}::text[])
+    WHERE source_user_id::text IN ${textValues(userIds)}
   `);
   counts.legacy_recovery_snapshots = affected(legacySnapshots);
 
   const colleagues = await tx.execute(sql`
     DELETE FROM colleagues
-    WHERE user_a_id::text = ANY(${userIds}::text[])
-      AND user_b_id::text = ANY(${userIds}::text[])
+    WHERE user_a_id::text IN ${textValues(userIds)}
+      AND user_b_id::text IN ${textValues(userIds)}
   `);
   counts.colleagues = affected(colleagues);
 
@@ -294,7 +306,7 @@ async function resetUsersInTransaction(
   tx: Tx,
   userIds: string[],
   organizationIds: string[],
-  options: { revokeSessions: boolean },
+  options: { revokeSessions: boolean; markDataDeleted?: boolean },
 ): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   if (userIds.length === 0) return counts;
@@ -311,7 +323,7 @@ async function resetUsersInTransaction(
   if (organizationIds.length > 0) {
     const organizations = await tx.execute(sql`
       DELETE FROM organizations
-      WHERE id::text = ANY(${organizationIds}::text[])
+      WHERE id::text IN ${textValues(organizationIds)}
         AND has_paid_history = false
         AND stripe_customer_id IS NULL
         AND is_developer = false
@@ -322,20 +334,23 @@ async function resetUsersInTransaction(
   if (options.revokeSessions) {
     const sessions = await tx.execute(sql`
       DELETE FROM sessions
-      WHERE sess->'user'->>'id' = ANY(${userIds}::text[])
+      WHERE sess->'user'->>'id' IN ${textValues(userIds)}
     `);
     counts.sessions = affected(sessions);
   }
 
+  const now = new Date();
   await tx.update(usersTable)
     .set({
       activeProfileId: null,
       currentOrgId: null,
-      lastActiveAt: new Date(),
       abandonmentWarnedAt: null,
-      updatedAt: new Date(),
+      ...(options.markDataDeleted
+        ? { dataDeletedAt: now }
+        : { lastActiveAt: now, dataDeletedAt: null }),
+      updatedAt: now,
     })
-    .where(sql`${usersTable.id} = ANY(${userIds}::text[])`);
+    .where(sql`${usersTable.id} IN ${textValues(userIds)}`);
 
   return counts;
 }
@@ -366,7 +381,7 @@ export async function getUnpaidOrganizationCandidates(
   const result = await tx.execute(sql`
     SELECT o.id::text AS id
     FROM organizations o
-    WHERE o.owner_user_id::text = ANY(${userIds}::text[])
+    WHERE o.owner_user_id::text IN ${textValues(userIds)}
       AND o.has_paid_history = false
       AND o.stripe_customer_id IS NULL
       AND o.is_developer = false
@@ -382,7 +397,7 @@ export async function getUnpaidOrganizationCandidates(
       AND NOT EXISTS (
         SELECT 1 FROM org_members m
         WHERE m.org_id = o.id
-          AND m.user_id::text <> ALL(${userIds}::text[])
+          AND m.user_id::text NOT IN ${textValues(userIds)}
       )
   `);
   return rowsOf<{ id: string }>(result)
@@ -391,22 +406,34 @@ export async function getUnpaidOrganizationCandidates(
 }
 
 export async function runUnpaidAlphaReset(): Promise<{
-  userIds: string[];
+  userCount: number;
   protectedUserCount: number;
   counts: Record<string, number>;
 }> {
   return db.transaction(async (tx) => {
-    const [candidates, protection] = await Promise.all([
-      getUnpaidResetCandidates(),
-      getAccountProtection(tx),
-    ]);
+    const allUsers = await tx.select({ id: usersTable.id, email: usersTable.email }).from(usersTable);
+    const protection = await getAccountProtection(tx);
+    const ownerEmails = new Set(
+      (process.env.OWNER_EMAILS ?? "")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const candidates = allUsers
+      .filter((user) => !protection.userIds.has(user.id))
+      .filter((user) => !user.email || !ownerEmails.has(user.email.toLowerCase()))
+      .map((user) => user.id);
+    if (candidates.length > 0) {
+      await tx.execute(sql`SELECT id FROM users WHERE id IN ${textValues(candidates)} FOR UPDATE`);
+    }
     // Re-check every candidate against the same transaction snapshot as the
     // deletes, so Stripe history added after the initial lookup wins.
-    const userIds = candidates.filter((id) => !protection.userIds.has(id));
-    const organizationIds = await getUnpaidOrganizationCandidates(tx, userIds, protection.organizationIds);
+    const currentProtection = await getAccountProtection(tx);
+    const userIds = candidates.filter((id) => !currentProtection.userIds.has(id));
+    const organizationIds = await getUnpaidOrganizationCandidates(tx, userIds, currentProtection.organizationIds);
     const counts = await resetUsersInTransaction(tx, userIds, organizationIds, { revokeSessions: false });
     return {
-      userIds,
+      userCount: userIds.length,
       protectedUserCount: protection.userIds.size,
       counts,
     };
@@ -415,12 +442,38 @@ export async function runUnpaidAlphaReset(): Promise<{
 
 export async function deleteInactiveUnpaidUserData(
   userIds: string[],
-): Promise<Record<string, number>> {
-  if (userIds.length === 0) return {};
+  thresholds: { inactiveBefore: Date; warnedBefore: Date },
+): Promise<{ userIds: string[]; counts: Record<string, number> }> {
+  if (userIds.length === 0) return { userIds: [], counts: {} };
   return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT id FROM users WHERE id IN ${textValues(userIds)} FOR UPDATE`);
     const protection = await getAccountProtection(tx);
-    const eligible = userIds.filter((id) => !protection.userIds.has(id));
+    const ownerEmails = new Set(
+      (process.env.OWNER_EMAILS ?? "")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const selectedUsers = await tx.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      lastActiveAt: usersTable.lastActiveAt,
+      abandonmentWarnedAt: usersTable.abandonmentWarnedAt,
+      dataDeletedAt: usersTable.dataDeletedAt,
+    })
+      .from(usersTable)
+      .where(sql`${usersTable.id} IN ${textValues(userIds)}`);
+    const eligible = selectedUsers
+      .filter((user) => !protection.userIds.has(user.id))
+      .filter((user) => !user.email || !ownerEmails.has(user.email.toLowerCase()))
+      .filter((user) => !user.dataDeletedAt && new Date(user.lastActiveAt) < thresholds.inactiveBefore)
+      .filter((user) => Boolean(user.abandonmentWarnedAt) && new Date(user.abandonmentWarnedAt!) < thresholds.warnedBefore)
+      .map((user) => user.id);
     const organizationIds = await getUnpaidOrganizationCandidates(tx, eligible, protection.organizationIds);
-    return resetUsersInTransaction(tx, eligible, organizationIds, { revokeSessions: true });
+    const counts = await resetUsersInTransaction(tx, eligible, organizationIds, {
+      revokeSessions: true,
+      markDataDeleted: true,
+    });
+    return { userIds: eligible, counts };
   });
 }

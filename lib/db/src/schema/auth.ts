@@ -46,9 +46,10 @@ export const usersTable = pgTable("users", {
   // user-id rather than via this column). Null = no profile selected, fall
   // back to the legacy name-derivation path in derivePlayerName().
   activeProfileId: varchar("active_profile_id"),
-  // Lifecycle: drives the 3-day Pablo warning + 28-day asset seizure.
+  // Lifecycle: tracks activity and the 23-day warning / 30-day data cleanup.
   lastActiveAt: timestamp("last_active_at", { withTimezone: true }).notNull().defaultNow(),
   abandonmentWarnedAt: timestamp("abandonment_warned_at", { withTimezone: true }),
+  dataDeletedAt: timestamp("data_deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

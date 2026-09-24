@@ -36,6 +36,7 @@ import { isOwnerEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 import { captureLegacyRecoverySnapshots } from "../lib/legacy-recovery";
 import { SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getOnlinePlayers } from "../worldServer";
+import { runUnpaidAlphaReset } from "../lib/user-data-retention";
 
 // Estimated USD unit cost of each metered, money-costing action. These are
 // deliberate estimates (Twilio voice/SMS + LLM/TTS spend) surfaced to Picasso
@@ -421,75 +422,24 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "target must be 'saves' | 'features' | 'all' | 'world'" });
   }
 
-  // FULL FRESH START — wipe ALL game progress so the entire player base
-  // (admins included) replays onboarding from the very start.
-  // Logins (users, user_google_links), billing/subscriptions (user_tiers,
-  // user_features, feature_trials, pledge_purchases, usage_meters, pablo_tax_*),
-  // moderation (bans, flagged_users), the tester program, and all world
-  // catalog/seed tables are intentionally preserved so nobody is locked out
-  // and the world still exists to be re-onboarded into.
-  // The founding Picasso org (and any developer org) is PRESERVED — owner
-  // instruction: never delete Picasso. Every OTHER org is deleted, which
-  // cascades to its org_members/invites/partnerships/feature_grants/door_locks/
-  // chat_channels/tickets (+ticket_comments). The Picasso org keeps its members,
-  // grants, and locks.
-  // Every other table here keys players by a plain varchar user_id (no FK),
-  // so order is unconstrained; run as one transaction for all-or-nothing.
+  // The development Alpha reset clears unpaid player/workspace data only.
+  // Payment history, identity, login, billing, moderation, support, and audit
+  // records are retained. Paid accounts and any organization connected to a
+  // paid account are excluded; the founding Picasso/developer orgs are kept.
   if (target === "world") {
-    const FRESH_START_TABLES = [
-      "salaryman_saves",
-      "world_businesses",
-      "business_transactions",
-      "business_snapshots",
-      "player_profiles",
-      "player_inventory",
-      "player_loadout",
-      "player_ledger",
-      "player_cosmetics",
-      "player_crypto_balance",
-      "crypto_purchases",
-      "player_exploration",
-      "user_discovered_subway_stations",
-      "subway_trips",
-      "salaryman_player_pass",
-      "salaryman_player_missions",
-      "bank_accounts",
-      "bank_transactions",
-      "addresses",
-      "world_build_contributions",
-      "world_build_plans",
-      "colleagues",
-      "pablo_memories",
-      "pablo_commands",
-      "user_memory",
-    ] as const;
-    const counts: Record<string, number> = {};
-    await db.transaction(async (tx) => {
-      await captureLegacyRecoverySnapshots(tx, `world:${randomUUID()}`);
-      for (const t of FRESH_START_TABLES) {
-        const r = await tx.execute(sql.raw(`DELETE FROM "${t}"`));
-        counts[t] = (r as { rowCount?: number }).rowCount ?? 0;
-      }
-      // Delete every org EXCEPT the founding Picasso org / any developer org.
-      // Cascades clean up the deleted orgs' members/grants/locks/chat/tickets.
-      const orgRes = await tx.execute(sql.raw(
-        `DELETE FROM "organizations" WHERE "is_developer" = false ` +
-        `AND lower("name") NOT IN ('picasso','picassoo','picasso ai','picasso ai llc','picassoo.ai')`,
-      ));
-      counts["organizations"] = (orgRes as { rowCount?: number }).rowCount ?? 0;
-      // Clear dangling profile pointers — player_profiles is wiped above, so any
-      // surviving users.active_profile_id would make derivePlayerName() fail-closed.
-      await tx.execute(sql.raw(`UPDATE "users" SET "active_profile_id" = NULL`));
-    });
+    if (isPublishedProduction()) {
+      return res.status(403).json({ error: "The Alpha world reset is available only in the development deployment" });
+    }
+    const { userCount, protectedUserCount, counts } = await runUnpaidAlphaReset();
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     await logAudit(
       req.user!.id,
       "bulk_reset",
       "system",
       "world",
-      `FULL FRESH START — ${total} rows wiped across ${FRESH_START_TABLES.length} tables (all game progress + every org). Logins/billing/catalog preserved.`,
+      `Development Alpha reset — ${total} data rows cleared for ${userCount} unpaid accounts; ${protectedUserCount} paid or paid-org accounts preserved.`,
     );
-    return res.json({ ok: true, target, total, counts });
+    return res.json({ ok: true, target, total, resetUserCount: userCount, protectedUserCount, counts });
   }
 
   // Resolve owner user IDs so we never wipe the admins doing the testing.
@@ -570,7 +520,7 @@ const USER_OWNER_COLUMNS = [
 const ORG_OWNER_COLUMNS = ["org_id", "organization_id"];
 
 function isPublishedProduction(): boolean {
-  return process.env.NODE_ENV === "production" && Boolean(process.env.REPLIT_DEPLOYMENT_URL);
+  return process.env.NODE_ENV === "production" || Boolean(process.env.REPLIT_DEPLOYMENT_URL);
 }
 
 function pgLiteral(value: string): string {

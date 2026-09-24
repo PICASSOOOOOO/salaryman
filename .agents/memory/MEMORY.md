@@ -145,3 +145,4 @@
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
 - [Pygame lobby room resolution](pygame-lobby-room-resolution.md) — lobby is a whole-world fallback; room detection must prefer the smallest playable room or movement snaps back to the empty lobby.
+- [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.
