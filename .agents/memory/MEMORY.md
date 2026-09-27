@@ -5,6 +5,7 @@
 - [Phone-system daily testing](phone-system-daily-test.md) — mocked `test:phone` + LIVE `health:phone` (real Twilio probe+email, DB-free, timeouts); daily = user-published Scheduled Deployment running health:phone (agent can't set cron).
 - [Browser phone bridge invariant](browser-phone-bridge.md) — outbound PSTN calls are transactional: Voice ready first, every conference joined before active UI, all legs rolled back on any join failure.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
+- [Scoped package installs](scoped-package-installs.md) — the generic installer targets the pnpm workspace root and is rejected; after that failure, use a package-filtered install for the intended workspace.
 - [DB migration mechanism](db-migration-mechanism.md) — dev schema uses push-force; production schema is applied by Publish, never a deployment post-build hook. Drizzle generate is broken.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
 - [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.

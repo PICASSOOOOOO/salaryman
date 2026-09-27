@@ -46,7 +46,7 @@ vi.mock("@/hooks/use-auth", () => ({
 // probe and any other stray call resolve cleanly. We assert below that a
 // plain chat message routes here — proof the visitor was NOT pushed to login.
 const { apiFetchMock, speakWithTTSMock, playbackFailure } = vi.hoisted(() => ({
-  apiFetchMock: vi.fn(async (url: string) => {
+  apiFetchMock: vi.fn(async (url: string, _init?: unknown) => {
     if (typeof url === "string" && url.includes("pablo/public")) {
       return {
         ok: true,
@@ -233,6 +233,9 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
       (c) => typeof c[0] === "string" && (c[0] as string).includes("pablo/public"),
     );
     expect(publicCalls.length, "plain chat should be answered by the public Pablo endpoint").toBeGreaterThan(0);
+    const publicInit = publicCalls[0]?.[1] as RequestInit | undefined;
+    const requestId = new Headers(publicInit?.headers).get("x-request-id");
+    expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 
   it("offers a visible replay control for Pablo's current reply", async () => {

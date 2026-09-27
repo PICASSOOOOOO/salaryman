@@ -49,8 +49,29 @@ function isAbortError(error: unknown): boolean {
 async function fetchPabloWithTimeout(path: string, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), PABLO_CHAT_TIMEOUT_MS);
+  const requestId = crypto.randomUUID();
+  const route = path.split("/").filter(Boolean).at(-1) ?? "unknown";
+  const headers = new Headers(init.headers);
+  headers.set("X-Request-Id", requestId);
   try {
-    return await apiFetch(path, { ...init, signal: controller.signal });
+    const response = await apiFetch(path, { ...init, headers, signal: controller.signal });
+    if (!response.ok) {
+      console.warn("[Pablo] chat request returned non-OK", {
+        requestId: response.headers?.get?.("x-request-id") ?? requestId,
+        route,
+        status: response.status,
+      });
+    }
+    return response;
+  } catch (error) {
+    console.error("[Pablo] chat request failed", {
+      requestId,
+      route,
+      errorName: error && typeof error === "object" && "name" in error
+        ? String((error as { name?: unknown }).name)
+        : "UnknownError",
+    });
+    throw error;
   } finally {
     window.clearTimeout(timeout);
   }
@@ -1539,7 +1560,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       setStatus("thinking");
       setReply("");
       try {
-        const res = await apiFetch("api/chat/pablo/public", {
+        const res = await fetchPabloWithTimeout("api/chat/pablo/public", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

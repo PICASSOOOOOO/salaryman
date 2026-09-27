@@ -4,6 +4,8 @@ import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { screenEmail, logLoginAttempt } from "../lib/email-security";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { completeInternalText } from "../lib/internal-ai";
+import { logger } from "../lib/logger";
+import { safePabloErrorFields } from "../lib/pablo-chat-diagnostics";
 
 // ─── IP rate limiter for the anonymously-callable public endpoint ────────────
 // In-memory window per IP: max 30 requests per 60-second rolling window.
@@ -359,7 +361,10 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
     const reply = choice?.message?.content?.trim() || "I'm here.";
     res.json({ say: reply, action: null });
   } catch (err) {
-    console.error("[Pablo Command] Error:", err instanceof Error ? err.message : err);
+    (req.log ?? logger).error(
+      { phase: "command-generation-duplicate", ...safePabloErrorFields(err) },
+      "Pablo command failed",
+    );
     res.status(500).json({ error: "Pablo is offline" });
   }
 });
@@ -561,7 +566,10 @@ router.post("/chat/pablo/public", async (req: Request, res: Response) => {
     const reply = completion.content.trim() || "I'm here.";
     res.json({ say: reply });
   } catch (err) {
-    console.error("[Pablo Public] Error:", err instanceof Error ? err.message : err);
+    (req.log ?? logger).error(
+      { phase: "public-chat-generation", ...safePabloErrorFields(err) },
+      "Pablo public chat failed",
+    );
     res.status(500).json({ error: "Pablo is offline" });
   }
 });

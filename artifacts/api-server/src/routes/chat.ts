@@ -29,8 +29,11 @@ import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { completeInternalText, getInternalOpenAiModel, selectClaudeTools } from "../lib/internal-ai";
 import { isPabloNavPath } from "../lib/pablo-navigation";
 import { getOpenAiTextModel, isAstraRequested, isAstraVerified } from "../lib/openai-models";
+import { logger } from "../lib/logger";
+import { safePabloErrorFields } from "../lib/pablo-chat-diagnostics";
 
 const router = Router();
+type PabloRequestLogger = NonNullable<Request["log"]>;
 const objectStorage = new ObjectStorageService();
 
 // Safe, credential-free capability surface shared by browser and desktop
@@ -144,7 +147,7 @@ async function getUnreadCountsByChannel(userId: string, channelIds: number[]): P
 // `data.story.active === true` they've triggered the story (a one-way door,
 // see salaryman-saves.ts), so Pablo pulls his faction loyalty perks for them.
 // We NEVER read a client flag for this — gameplay state is the source of truth.
-async function userHasActiveStory(userId: string): Promise<boolean> {
+async function userHasActiveStory(userId: string, requestLog: PabloRequestLogger): Promise<boolean> {
   try {
     const rows = await db
       .select({ data: salarymanSavesTable.data })
@@ -160,7 +163,10 @@ async function userHasActiveStory(userId: string): Promise<boolean> {
   } catch (err) {
     // Fail closed to "loyal" (ally) — a read error must not silently
     // strip a player's perks; defection is a deliberate, committed state.
-    console.error("[Pablo] story-state read failed:", err instanceof Error ? err.message : err);
+    requestLog.warn(
+      { phase: "story-state-read", ...safePabloErrorFields(err) },
+      "Pablo story state could not be read",
+    );
     return false;
   }
 }
@@ -198,7 +204,11 @@ export function formatServerStoryContext(
   return `\n\nCURRENT STORY STATE — server-authoritative. Continue from this state; never reset or contradict completed beats:\n${JSON.stringify(safeState)}`;
 }
 
-async function buildServerStoryContext(userId: string, includeIdentity: boolean): Promise<string> {
+async function buildServerStoryContext(
+  userId: string,
+  includeIdentity: boolean,
+  requestLog: PabloRequestLogger,
+): Promise<string> {
   try {
     const rows = await db
       .select({ slot: salarymanSavesTable.slotIndex, data: salarymanSavesTable.data })
@@ -211,7 +221,10 @@ async function buildServerStoryContext(userId: string, includeIdentity: boolean)
     if (!active) return "";
     return formatServerStoryContext(active.slot, active.data ?? {}, includeIdentity);
   } catch (err) {
-    console.error("[Pablo] story-context read failed:", err instanceof Error ? err.message : err);
+    requestLog.warn(
+      { phase: "story-context-read", ...safePabloErrorFields(err) },
+      "Pablo story context could not be read",
+    );
     return "";
   }
 }
@@ -1239,7 +1252,10 @@ Return strict JSON only: {"line": "...", "options": ["X","Y"]}.`;
     const options = opts.length >= 2 ? opts.slice(0, 2) : ["TELL ME MORE", "MOVE ALONG"];
     res.json({ line, options });
   } catch (err) {
-    console.error("[Pablo Lore] Error:", err instanceof Error ? err.message : err);
+    (req.log ?? logger).error(
+      { phase: "lore-generation", ...safePabloErrorFields(err) },
+      "Pablo lore generation failed",
+    );
     res.json({ line: "Reception's spotty in the penthouse. Try me again in a minute.", options: ["WAIT", "BOUNCE"] });
   }
 });
@@ -1314,7 +1330,9 @@ const PABLO_IMAGE_TOOL = {
 async function runPabloCompletion(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   userId?: string,
+  requestLog?: PabloRequestLogger,
 ): Promise<{ reply: string; usages: Array<{ prompt_tokens: number; completion_tokens: number }>; imageCount: number }> {
+  const log = requestLog ?? logger;
   const usages: Array<{ prompt_tokens: number; completion_tokens: number }> = [];
   // The finance tool only makes sense for a signed-in user (it reads their books).
   const tools: any[] = [PABLO_IMAGE_TOOL];
@@ -1330,7 +1348,10 @@ async function runPabloCompletion(
       tool_choice: "auto",
     });
   } catch (gptError) {
-    console.warn("[Pablo Chat] GPT failed before tool selection; using Claude tool selection:", gptError instanceof Error ? gptError.message : gptError);
+    log.warn(
+      { phase: "primary-provider-tool-selection", ...safePabloErrorFields(gptError) },
+      "Pablo primary provider failed; using Claude tool selection",
+    );
     firstProvider = "claude";
     const claude = await selectClaudeTools(
       messages,
@@ -1413,7 +1434,10 @@ async function runPabloCompletion(
             toolResult = `Image generation did not finish (${result.state}); apologize briefly and offer to try again.`;
           }
         } catch (err) {
-          console.error("[Pablo Image] generate failed:", err instanceof Error ? err.message : err);
+          log.warn(
+            { phase: "image-generation", ...safePabloErrorFields(err) },
+            "Pablo image generation failed",
+          );
           toolResult = "Image generation errored; apologize briefly and offer to try again.";
         }
       }
@@ -1428,7 +1452,10 @@ async function runPabloCompletion(
           const report = await getAccountingReport(userId);
           toolResult = formatFinancialSummary(report);
         } catch (err) {
-          console.error("[Pablo Finance] report failed:", err instanceof Error ? err.message : err);
+          log.warn(
+            { phase: "finance-report", ...safePabloErrorFields(err) },
+            "Pablo finance report failed",
+          );
           toolResult = "Could not load the books right now; apologize briefly and offer to try again.";
         }
       }
@@ -1449,7 +1476,10 @@ async function runPabloCompletion(
     if (second.usage) usages.push({ prompt_tokens: second.usage.prompt_tokens, completion_tokens: second.usage.completion_tokens });
     reply = second.choices[0]?.message?.content ?? (imageMarkdown.length ? "Here you go." : "I'm here. How can I help?");
   } catch (gptError) {
-    console.warn("[Pablo Chat] GPT failed after tools; using internal Claude fallback:", gptError instanceof Error ? gptError.message : gptError);
+    log.warn(
+      { phase: "primary-provider-after-tools", ...safePabloErrorFields(gptError) },
+      "Pablo primary provider failed after tools; using Claude fallback",
+    );
     const fallbackMessages = messages.slice();
     const toolSummary = followMessages
       .filter((message) => message.role === "tool")
@@ -1508,7 +1538,7 @@ router.post("/chat/pablo/message", async (req, res) => {
         }
       }
       messages.push({ role: "user", content: content.slice(0, 2000) });
-      const { reply } = await runPabloCompletion(messages);
+      const { reply } = await runPabloCompletion(messages, undefined, req.log ?? logger);
       const now = new Date();
       res.json({
         privacyMode: true,
@@ -1518,7 +1548,10 @@ router.post("/chat/pablo/message", async (req, res) => {
         pabloMessage: { id: -Date.now() - 1, channelId: 0, senderUserId: null, senderName: "PABLO", isBot: true, content: reply, createdAt: new Date(), senderProfileImageUrl: null, ephemeral: true },
       });
     } catch (err) {
-      console.error("[Pablo Chat Guest] Error:", err instanceof Error ? err.message : err);
+      (req.log ?? logger).error(
+        { phase: "guest-message-generation", ...safePabloErrorFields(err) },
+        "Pablo guest chat failed",
+      );
       res.status(500).json({ error: "Pablo is temporarily unavailable" });
     }
     return;
@@ -1531,7 +1564,12 @@ router.post("/chat/pablo/message", async (req, res) => {
     res.status(429).json(throttleResponse("ai_messages", gate.used, gate.limit));
     return;
   }
-  recordUsage(userId, "ai_messages", 1).catch(err => console.error("[usage] ai_messages record failed", err));
+  recordUsage(userId, "ai_messages", 1).catch(err => {
+    (req.log ?? logger).error(
+      { phase: "usage-recording", ...safePabloErrorFields(err) },
+      "Pablo message usage could not be recorded",
+    );
+  });
 
   try {
     const [userRow] = await db
@@ -1589,8 +1627,11 @@ router.post("/chat/pablo/message", async (req, res) => {
     // Loyalty consequence: triggering Story Mode pulls Pablo's perks. Read the
     // player's own server-side story state (gameplay, not personal data, so it
     // applies regardless of privacy mode) and flip him ally → adversary.
-    const storyDefected = await userHasActiveStory(userId);
-    const storyContext = storyDefected ? await buildServerStoryContext(userId, !privacyMode) : "";
+    const requestLog = req.log ?? logger;
+    const storyDefected = await userHasActiveStory(userId, requestLog);
+    const storyContext = storyDefected
+      ? await buildServerStoryContext(userId, !privacyMode, requestLog)
+      : "";
     // Once the story is live, the assistant IS Mila, not Pablo — her persona,
     // her voice, her name. Pre-story players still get Pablo, untouched.
     const botSenderName = storyDefected ? "MILA" : "PABLO";
@@ -1644,7 +1685,7 @@ router.post("/chat/pablo/message", async (req, res) => {
       }
     }
 
-    const { reply, usages, imageCount } = await runPabloCompletion(messages, userId);
+    const { reply, usages, imageCount } = await runPabloCompletion(messages, userId, requestLog);
 
     // AI metering via battery burn: gpt-5 ≈ $1.25 / 1M input + $10 / 1M output.
     // A draw request runs two completions, so sum every usage; bill generated
@@ -1665,7 +1706,12 @@ router.post("/chat/pablo/message", async (req, res) => {
         costBasisCents: cents,
         metadata: { in: inTok, out: outTok },
         allowSeed: true,
-      }).catch((e) => console.error("[battery/chat]", e?.message || e));
+      }).catch((error) => {
+        requestLog.error(
+          { phase: "battery-chat-settlement", ...safePabloErrorFields(error) },
+          "Pablo chat battery settlement failed",
+        );
+      });
       if (imageCount > 0) {
         void burnAiCharge({
           userId,
@@ -1676,7 +1722,12 @@ router.post("/chat/pablo/message", async (req, res) => {
           costBasisCents: imageCount * 4,
           metadata: { count: imageCount },
           allowSeed: true,
-        }).catch((e) => console.error("[battery/image]", e?.message || e));
+        }).catch((error) => {
+          requestLog.error(
+            { phase: "battery-image-settlement", ...safePabloErrorFields(error) },
+            "Pablo image battery settlement failed",
+          );
+        });
       }
     }
 
@@ -1732,7 +1783,10 @@ router.post("/chat/pablo/message", async (req, res) => {
       },
     });
   } catch (err: unknown) {
-    console.error("[Pablo Chat] Error:", err instanceof Error ? err.message : err);
+    (req.log ?? logger).error(
+      { phase: "authenticated-message-generation", ...safePabloErrorFields(err) },
+      "Pablo chat failed",
+    );
     res.status(500).json({ error: "Pablo is temporarily unavailable" });
   }
 });
@@ -1802,7 +1856,7 @@ INTERACTION STYLE:
 // message/command routes. Guests are always Pablo.
 router.get("/chat/pablo/persona", async (req, res) => {
   const isGuest = !req.isAuthenticated();
-  const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
+  const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id, req.log ?? logger);
   res.json({ persona: storyDefected ? "mila" : "pablo" });
 });
 
@@ -1958,8 +2012,11 @@ ${known.join("\n")}`;
   // Loyalty consequence: if this player triggered Story Mode, pull Pablo's
   // perks. Server-authoritative (their own save state), so it applies even in
   // privacy mode — story progression is gameplay, not personal chat data.
-  const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
-  const storyContext = storyDefected ? await buildServerStoryContext(req.user!.id, !privacyMode) : "";
+  const requestLog = req.log ?? logger;
+  const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id, requestLog);
+  const storyContext = storyDefected
+    ? await buildServerStoryContext(req.user!.id, !privacyMode, requestLog)
+    : "";
   // Story players are answered by Mila (her own persona, voice, name); everyone
   // else still gets Pablo exactly as before.
   const activePersona: "mila" | "pablo" = storyDefected ? "mila" : "pablo";
@@ -2057,7 +2114,10 @@ ${await buildLiveContext(transcript)}`;
         },
       ]);
     } catch (err) {
-      console.error("[Pablo Command] persist failed:", err instanceof Error ? err.message : err);
+      (req.log ?? logger).warn(
+        { phase: "command-persist", ...safePabloErrorFields(err) },
+        "Pablo command exchange could not be persisted",
+      );
     }
   };
 
@@ -2122,7 +2182,10 @@ ${await buildLiveContext(transcript)}`;
     const intrusion = activePersona === "mila" ? maybePabloIntrusion() : null;
     res.json({ say, action, persona: activePersona, ...(intrusion ? { intrusion } : {}) });
   } catch (err) {
-    console.error("[Pablo Command] Error:", err instanceof Error ? err.message : err);
+    (req.log ?? logger).error(
+      { phase: "command-generation", ...safePabloErrorFields(err) },
+      "Pablo command failed",
+    );
     res.status(500).json({ error: "pablo_unavailable", say: "My line dropped — say that again?" });
   }
 });
