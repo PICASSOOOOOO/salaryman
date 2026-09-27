@@ -53,6 +53,10 @@ vi.mock("@/lib/tts", () => ({
     if (onDone) onDone();
     return { cancel: () => {} };
   },
+  whenAudioUnlocked: (callback: () => void) => {
+    callback();
+    return () => {};
+  },
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},
 }));

@@ -7,6 +7,7 @@
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
 - [DB migration mechanism](db-migration-mechanism.md) — dev schema uses push-force; production schema is applied by Publish, never a deployment post-build hook. Drizzle generate is broken.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
+- [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
 - [Pablo persona prompts](pablo-persona-prompts.md) — which Pablo system-prompt is LIVE per /chat/pablo/* route; PABLO_TERMINAL_PROMPT is dead, edit PABLO_SYSTEM_PROMPT (chat.ts) / PABLO_GATEKEEPER_PROMPT. Persona: PABLO CORP CEO + Mayor, Pixel Agents = prized replicants. Privacy/memory model.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.

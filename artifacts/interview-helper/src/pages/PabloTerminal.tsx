@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn } from "lucide-react";
+import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Volume2, RotateCcw } from "lucide-react";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
@@ -21,6 +21,40 @@ import { formatSpeechName } from "@/lib/speech-name";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
 const PABLO_TTS_OPTIONS = { character: "PABLO" } as const;
+const PABLO_CHAT_TIMEOUT_MS = 45_000;
+
+function pabloApiErrorMessage(payload: unknown, status: number): string {
+  const body = payload && typeof payload === "object"
+    ? payload as Record<string, unknown>
+    : {};
+  for (const value of [body.say, body.message, body.error]) {
+    if (typeof value !== "string" || !value.trim()) continue;
+    // Do not expose machine-readable error slugs as if they were user guidance.
+    if (/^[a-z0-9_.-]+$/i.test(value.trim())) continue;
+    return value.trim();
+  }
+  if (status === 401) return "Your sign-in expired. Sign in again to keep chatting.";
+  if (status === 402 || status === 403) return "Pablo can't continue this request on the current account.";
+  if (status === 429) return "Pablo needs a short pause. Try again shortly.";
+  return "Pablo couldn't process that request. Please try again.";
+}
+
+function isAbortError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && "name" in error
+    && (error as { name?: unknown }).name === "AbortError";
+}
+
+async function fetchPabloWithTimeout(path: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), PABLO_CHAT_TIMEOUT_MS);
+  try {
+    return await apiFetch(path, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 // Map the visitor's IANA timezone (e.g. "America/Los_Angeles") to one
 // of the in-platform city labels by matching the current UTC offset to
@@ -791,6 +825,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   // voice anytime with the pablo-mode-toggle button.
   const [mode, setMode] = useState<Mode>("text");
   const [textInput, setTextInput] = useState("");
+  const [retryPrompt, setRetryPrompt] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState("");
+  const [isReplyReplaying, setIsReplyReplaying] = useState(false);
   // Cached server-authoritative assistant persona, so the terminal paints the
   // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
   const PERSONA_CACHE_KEY = "salaryman.persona";
@@ -1186,7 +1223,49 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     ttsRef.current = speakWithTTS(text, done, done, voice ? { character: voice } : undefined);
   }), []);
 
+  const replayReply = useCallback(() => {
+    const text = reply.trim();
+    if (!text) return;
+
+    setVoiceNotice("");
+    setIsReplyReplaying(true);
+    setStatus("speaking");
+    ttsRef.current?.cancel();
+
+    const character = personaRef.current === "mila" ? "MILA" : "PABLO";
+    const speaker = character === "MILA" ? "Mila" : "Pablo";
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      ttsRef.current = null;
+      setIsReplyReplaying(false);
+      setStatus("idle");
+      if (mode === "voice") autoListenRef.current = true;
+    };
+    const handleError = (err: Error) => {
+      if (err.message === "Pablo voice access required") {
+        const eligibility = "Voice access is available with active Pablo Prime or CALLL HOME, an active purchased phone number, or an approved tester/moderator account.";
+        setVoiceNotice(isAuthenticated
+          ? eligibility
+          : `Sign in to check voice access. ${eligibility}`);
+      } else {
+        setVoiceNotice(`${speaker}'s voice couldn't play. Tap Hear reply to try again.`);
+      }
+    };
+
+    try {
+      ttsRef.current = speakWithTTS(text, finish, handleError, { character });
+    } catch {
+      handleError(new Error("voice playback failed"));
+      finish();
+    }
+  }, [reply, isAuthenticated, mode]);
+
   const sendToPablo = useCallback(async (text: string) => {
+    setRetryPrompt(null);
+    setVoiceNotice("");
+    setIsReplyReplaying(false);
     // Returning visitor whose name + email are already on file: ANY
     // admittance intent ("let me in", "show you my papers", "open my
     // dashboard") should hand them STRAIGHT to the sign-in choice — we
@@ -1388,7 +1467,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         setStatus("thinking");
         setReply("");
         try {
-          const res = await apiFetch("api/chat/pablo/public", {
+          const res = await fetchPabloWithTimeout("api/chat/pablo/public", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1407,10 +1486,18 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               },
             }),
           });
-          if (!res.ok) throw new Error(`pablo ${res.status}`);
+          if (!res.ok) {
+            if (res.status >= 500) throw new Error(`pablo ${res.status}`);
+            const errorBody = await res.json().catch(() => null);
+            setReply(pabloApiErrorMessage(errorBody, res.status));
+            setStatus("idle");
+            return;
+          }
           const data = (await res.json()) as { say: string };
           const said = (data.say ?? "I'm here.").trim() || "I'm here.";
           setReply(said);
+          setVoiceNotice("");
+          setRetryPrompt(null);
           setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: said }]);
           setStatus("speaking");
           ttsRef.current?.cancel();
@@ -1419,8 +1506,16 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error("[Pablo] public chat failed:", msg);
-          // Soft re-prompt — don't strand them on a network blip.
-          await speak("Lost you for a second — try again?");
+          const timedOut = isAbortError(err);
+          const failedReply = timedOut
+            ? "Pablo's taking longer than usual. Your message is still here — try again in a moment."
+            : typeof navigator !== "undefined" && !navigator.onLine
+              ? "I’m offline right now. Your message is here — reconnect and try again."
+              : "I couldn’t reach the conversation service. Your message is here — try again in a moment.";
+          setReply(failedReply);
+          setRetryPrompt(text);
+          setStatus("idle");
+          if (mode === "voice") autoListenRef.current = true;
         }
         return;
       }
@@ -1663,20 +1758,19 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     setStatus("thinking");
     setReply("");
     try {
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 12000);
-      let res: Response;
-      try {
-        res = await apiFetch("api/chat/pablo/command", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: text, history: history.slice(-10) }),
-          signal: controller.signal,
-        });
-      } finally {
-        window.clearTimeout(timeout);
-      }
+      const res = await fetchPabloWithTimeout("api/chat/pablo/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: text, history: history.slice(-10) }),
+      });
       if (!res.ok) {
+        if ([401, 402, 403, 429].includes(res.status)) {
+          const errorBody = await res.json().catch(() => null);
+          setReply(pabloApiErrorMessage(errorBody, res.status));
+          setStatus("idle");
+          if (mode === "voice") autoListenRef.current = true;
+          return;
+        }
         const detail = await res.text().catch(() => "");
         throw new Error(`pablo ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
       }
@@ -1739,6 +1833,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       }
 
       setReply(say);
+      setVoiceNotice("");
+      setRetryPrompt(null);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
         // Speak Pablo's (or Mila's) reply on EVERY device. Voice OUTPUT is
       // decoupled from voice INPUT here: the mic / auto-listen stays gated to
@@ -1788,12 +1884,18 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Pablo] command failed:", msg);
+      if (isAbortError(err)) {
+        setReply("Pablo's taking longer than usual. Your message may still be processing — wait a moment before sending it again.");
+        setStatus("idle");
+        if (mode === "voice") autoListenRef.current = true;
+        return;
+      }
       // Command mode adds navigation/tool policy on top of ordinary chat. If
       // that specialized path is unavailable, do not strand the user with an
       // "unavailable" error: the same server's regular Pablo message route is
       // the reliable conversational path and returns the actual reply shape.
       try {
-        const fallbackRes = await apiFetch("api/chat/pablo/message", {
+        const fallbackRes = await fetchPabloWithTimeout("api/chat/pablo/message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1803,10 +1905,18 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         });
         const fallbackBody = await fallbackRes.json().catch(() => null) as {
           pabloMessage?: { content?: unknown };
+          say?: unknown;
           message?: unknown;
           error?: unknown;
         } | null;
         if (!fallbackRes.ok) {
+          if ([401, 402, 403, 429].includes(fallbackRes.status)) {
+            setReply(pabloApiErrorMessage(fallbackBody, fallbackRes.status));
+            setRetryPrompt(null);
+            setStatus("idle");
+            if (mode === "voice") autoListenRef.current = true;
+            return;
+          }
           const fallbackDetail =
             typeof fallbackBody?.message === "string"
               ? fallbackBody.message
@@ -1821,6 +1931,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             : "";
         if (!fallbackSay) throw new Error("empty fallback response");
         setReply(fallbackSay);
+        setVoiceNotice("");
+        setRetryPrompt(null);
         setHistory((h) => [
           ...h,
           { role: "user", content: text },
@@ -1832,21 +1944,25 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       } catch (fallbackErr) {
         const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
         console.error("[Pablo] chat fallback failed:", fallbackMsg);
-        // Keep ordinary conversation usable when the network is unavailable.
-        // This is intentionally a local, honest response rather than a fake AI
-        // answer; the user can still see that their message was received and
-        // retry when connectivity returns.
-        const offlineSay = typeof navigator !== "undefined" && !navigator.onLine
-          ? "I’m offline right now. Your message is here — reconnect and I’ll answer it."
-          : "I couldn’t reach the conversation service. Your message is here — try again in a moment.";
+        const timedOut = isAbortError(fallbackErr);
+        const offlineSay = timedOut
+          ? "Pablo's taking longer than usual. Your message may still be processing — wait a moment before sending it again."
+          : typeof navigator !== "undefined" && !navigator.onLine
+            ? "I’m offline right now. Your message is here — reconnect and try again."
+            : "I couldn’t reach the conversation service. Your message is here — try again in a moment.";
         setReply(offlineSay);
-        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: offlineSay }]);
-        await speak(offlineSay);
         setStatus("idle");
         if (mode === "voice") autoListenRef.current = true;
       }
     }
   }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated, hasFinishedOnboarding, enterFromHomepage]);
+
+  const retryLastMessage = useCallback(() => {
+    const text = retryPrompt;
+    if (!text) return;
+    setRetryPrompt(null);
+    void sendToPablo(text);
+  }, [retryPrompt, sendToPablo]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
@@ -2156,14 +2272,40 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               style={{ boxShadow: persona === "mila" ? "0 0 32px rgba(45,212,191,0.30)" : "0 0 32px rgba(236,72,153,0.32)" }}
               data-testid="pablo-reply-bubble"
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between gap-2 mb-1">
                 <span className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-200" : "text-pink-200"}`}>{personaLabel}</span>
-                {status === "thinking" && (
-                  <span className={`text-[9px] font-mono tracking-[0.3em] animate-pulse ${persona === "mila" ? "text-teal-300/60" : "text-pink-300/60"}`}>THINKING</span>
-                )}
-                {status === "speaking" && (
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full animate-pulse ${persona === "mila" ? "bg-teal-400" : "bg-pink-400"}`} style={{ boxShadow: persona === "mila" ? "0 0 6px #2dd4bf" : "0 0 6px #ec4899" }} aria-hidden="true" />
-                )}
+                <div className="flex items-center justify-end gap-2">
+                  {reply && (
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); replayReply(); }}
+                      disabled={isReplyReplaying}
+                      data-testid="pablo-replay-button"
+                      aria-label={`Hear ${personaLabel}'s reply`}
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-sans tracking-normal transition-colors disabled:opacity-60 ${persona === "mila" ? "border-teal-200/30 text-teal-100 hover:bg-teal-400/10" : "border-pink-200/30 text-pink-100 hover:bg-pink-400/10"}`}
+                    >
+                      <Volume2 className="h-3 w-3" aria-hidden="true" />
+                      {isReplyReplaying ? "Playing…" : "Hear reply"}
+                    </button>
+                  )}
+                  {retryPrompt && (
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); retryLastMessage(); }}
+                      data-testid="pablo-chat-retry-button"
+                      className="inline-flex items-center gap-1 rounded border border-white/20 px-2 py-1 text-[10px] font-sans tracking-normal text-zinc-200 transition-colors hover:bg-white/10"
+                    >
+                      <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                      Try again
+                    </button>
+                  )}
+                  {status === "thinking" && (
+                    <span className={`text-[9px] font-mono tracking-[0.3em] animate-pulse ${persona === "mila" ? "text-teal-300/60" : "text-pink-300/60"}`}>THINKING</span>
+                  )}
+                  {status === "speaking" && (
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full animate-pulse ${persona === "mila" ? "bg-teal-400" : "bg-pink-400"}`} style={{ boxShadow: persona === "mila" ? "0 0 6px #2dd4bf" : "0 0 6px #ec4899" }} aria-hidden="true" />
+                  )}
+                </div>
               </div>
               <p
                 className="text-zinc-100 text-sm sm:text-base leading-snug sm:leading-relaxed"
@@ -2171,6 +2313,16 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               >
                 {reply || "…"}
               </p>
+              {voiceNotice && (
+                <p
+                  className="mt-2 text-[11px] leading-snug text-amber-100/85"
+                  role="status"
+                  aria-live="polite"
+                  data-testid="pablo-voice-notice"
+                >
+                  {voiceNotice}
+                </p>
+              )}
             </div>
           )}
         </div>

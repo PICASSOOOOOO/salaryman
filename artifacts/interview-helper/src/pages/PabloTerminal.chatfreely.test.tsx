@@ -45,7 +45,7 @@ vi.mock("@/hooks/use-auth", () => ({
 // Public Pablo endpoint answers free chat (no auth, no modal). The persona
 // probe and any other stray call resolve cleanly. We assert below that a
 // plain chat message routes here — proof the visitor was NOT pushed to login.
-const { apiFetchMock, speakWithTTSMock } = vi.hoisted(() => ({
+const { apiFetchMock, speakWithTTSMock, playbackFailure } = vi.hoisted(() => ({
   apiFetchMock: vi.fn(async (url: string) => {
     if (typeof url === "string" && url.includes("pablo/public")) {
       return {
@@ -57,14 +57,16 @@ const { apiFetchMock, speakWithTTSMock } = vi.hoisted(() => ({
     return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
   }),
   speakWithTTSMock: vi.fn(),
+  playbackFailure: { current: null as unknown },
 }));
 vi.mock("@/lib/api-client", () => ({ apiFetch: apiFetchMock }));
 
 // TTS double: fire the done callback synchronously so any admit redirect
 // (which opens the auth-choice modal) runs without needing fake timers.
 vi.mock("@/lib/tts", () => ({
-  speakWithTTS: (text: string, onDone?: () => void, _onError?: () => void, options?: unknown) => {
+  speakWithTTS: (text: string, onDone?: () => void, onError?: (err: Error) => void, options?: unknown) => {
     speakWithTTSMock(text, options);
+    if (playbackFailure.current) onError?.(playbackFailure.current as Error);
     if (onDone) onDone();
     return { cancel: () => {} };
   },
@@ -141,6 +143,7 @@ function seedReturningVisitor(name: string, email: string) {
 beforeEach(() => {
   apiFetchMock.mockClear();
   speakWithTTSMock.mockClear();
+  playbackFailure.current = null;
   try {
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -230,6 +233,75 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
       (c) => typeof c[0] === "string" && (c[0] as string).includes("pablo/public"),
     );
     expect(publicCalls.length, "plain chat should be answered by the public Pablo endpoint").toBeGreaterThan(0);
+  });
+
+  it("offers a visible replay control for Pablo's current reply", async () => {
+    seedReturningVisitor("Returning Rita", "rita@example.com");
+    await mount();
+    await typeAndSend("what is a salaryman?");
+
+    const replay = qs("pablo-replay-button") as HTMLButtonElement | null;
+    expect(replay?.textContent).toContain("Hear reply");
+
+    await act(async () => {
+      replay?.click();
+    });
+
+    expect(speakWithTTSMock).toHaveBeenCalledWith(
+      "A salaryman is a corporate worker grinding the daily shift.",
+      { character: "PABLO" },
+    );
+  });
+
+  it("explains when voice replay is unavailable to a logged-out visitor", async () => {
+    await mount();
+    playbackFailure.current = new Error("Pablo voice access required");
+
+    await act(async () => {
+      (qs("pablo-replay-button") as HTMLButtonElement)?.click();
+    });
+
+    expect(qs("pablo-voice-notice")?.textContent).toContain("Sign in to check voice access.");
+    expect(qs("pablo-voice-notice")?.textContent).toContain("Pablo Prime or CALLL HOME");
+  });
+
+  it("shows a retry control after a temporary chat failure and retries the message", async () => {
+    seedReturningVisitor("Returning Rita", "rita@example.com");
+    let publicRequests = 0;
+    apiFetchMock.mockImplementation(async (url: string) => {
+      if (url.includes("pablo/public")) {
+        publicRequests += 1;
+        if (publicRequests === 1) {
+          return {
+            ok: false,
+            status: 503,
+            json: async () => ({ error: "Pablo is offline" }),
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ say: "Here is the answer." }),
+        } as unknown as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
+    });
+
+    await mount();
+    await typeAndSend("Can you help me?");
+
+    expect(qs("pablo-reply-bubble")?.textContent).toContain("couldn’t reach the conversation service");
+    const retry = qs("pablo-chat-retry-button") as HTMLButtonElement | null;
+    expect(retry?.textContent).toContain("Try again");
+
+    await act(async () => {
+      retry?.click();
+    });
+    await flush();
+
+    expect(publicRequests).toBe(2);
+    expect(qs("pablo-reply-bubble")?.textContent).toContain("Here is the answer.");
+    expect(qs("pablo-chat-retry-button")).toBeNull();
   });
 
   it("DOES hand the returning visitor to the modal when they ask for a gated destination", async () => {
