@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 const PUBLISHER_ID = "ca-pub-5927169933397652";
-const ADSENSE_SCRIPT_SELECTOR = 'script[data-salaryman-adsense="true"]';
+const ADSENSE_SCRIPT_ID = "salaryman-adsense-script";
+const ADSENSE_SCRIPT_SELECTOR = `script#${ADSENSE_SCRIPT_ID}`;
+const loadedAdsenseScripts = new WeakSet<HTMLScriptElement>();
 
 declare global {
   interface Window {
@@ -67,7 +69,7 @@ export default function AdSenseBanner({
       }
     };
     const onLoad = () => {
-      if (script) script.dataset.loaded = "true";
+      if (script) loadedAdsenseScripts.add(script);
       requestAd();
     };
     const onError = () => {
@@ -79,11 +81,11 @@ export default function AdSenseBanner({
       script.async = true;
       script.crossOrigin = "anonymous";
       script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${PUBLISHER_ID}`;
-      script.dataset.salarymanAdsense = "true";
+      script.id = ADSENSE_SCRIPT_ID;
       script.addEventListener("load", onLoad, { once: true });
       script.addEventListener("error", onError, { once: true });
       document.head.appendChild(script);
-    } else if (script.dataset.loaded === "true") {
+    } else if (loadedAdsenseScripts.has(script)) {
       requestAd();
     } else {
       script.addEventListener("load", onLoad, { once: true });

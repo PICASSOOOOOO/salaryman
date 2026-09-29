@@ -9,6 +9,12 @@ Keep AdSense ownership verification separate from ad delivery. Prefer Google's s
 
 **How to apply:** For verification failures, inspect the published HTML source and crawler access first. If using the meta-tag method, make sure the user selects that method in AdSense; do not enable the ad loader globally just to verify ownership.
 
+Serve `ads.txt` as a real public plain-text file at the domain root; an SPA fallback returning `index.html` is not a valid ads.txt response. Keep Google’s loader script free of custom `data-*` attributes; identify it with a normal `id` and track load state outside the HTML attributes.
+
+**Why:** AdSense warned on the custom loader attribute, and the published `/ads.txt` path returned the SPA shell rather than the required seller declaration.
+
+**How to apply:** Use the exact publisher line supplied by AdSense, deploy it to `/ads.txt`, then verify the production response is `text/plain` and contains only the intended seller entries.
+
 Keep responsive ad units in normal document flow after page content; do not pin them over the viewport.
 
 **Why:** Auto-sized creatives can be taller than the familiar 50px/90px banner sizes, so a fixed bottom slot can intercept clicks on nearby links and controls.
