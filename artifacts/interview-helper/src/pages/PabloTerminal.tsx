@@ -1905,76 +1905,19 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Pablo] command failed:", msg);
-      if (isAbortError(err)) {
-        setReply("Pablo's taking longer than usual. Your message may still be processing — wait a moment before sending it again.");
-        setStatus("idle");
-        if (mode === "voice") autoListenRef.current = true;
-        return;
-      }
-      // Command mode adds navigation/tool policy on top of ordinary chat. If
-      // that specialized path is unavailable, do not strand the user with an
-      // "unavailable" error: the same server's regular Pablo message route is
-      // the reliable conversational path and returns the actual reply shape.
-      try {
-        const fallbackRes = await fetchPabloWithTimeout("api/chat/pablo/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: text,
-            context: history.slice(-10),
-          }),
-        });
-        const fallbackBody = await fallbackRes.json().catch(() => null) as {
-          pabloMessage?: { content?: unknown };
-          say?: unknown;
-          message?: unknown;
-          error?: unknown;
-        } | null;
-        if (!fallbackRes.ok) {
-          if ([401, 402, 403, 429].includes(fallbackRes.status)) {
-            setReply(pabloApiErrorMessage(fallbackBody, fallbackRes.status));
-            setRetryPrompt(null);
-            setStatus("idle");
-            if (mode === "voice") autoListenRef.current = true;
-            return;
-          }
-          const fallbackDetail =
-            typeof fallbackBody?.message === "string"
-              ? fallbackBody.message
-              : typeof fallbackBody?.error === "string"
-                ? fallbackBody.error
-                : `fallback ${fallbackRes.status}`;
-          throw new Error(fallbackDetail);
-        }
-        const fallbackSay =
-          typeof fallbackBody?.pabloMessage?.content === "string"
-            ? fallbackBody.pabloMessage.content.trim()
-            : "";
-        if (!fallbackSay) throw new Error("empty fallback response");
-        setReply(fallbackSay);
-        setVoiceNotice("");
-        setRetryPrompt(null);
-        setHistory((h) => [
-          ...h,
-          { role: "user", content: text },
-          { role: "assistant", content: fallbackSay },
-        ]);
-        await speak(fallbackSay);
-        setStatus("idle");
-        if (mode === "voice") autoListenRef.current = true;
-      } catch (fallbackErr) {
-        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-        console.error("[Pablo] chat fallback failed:", fallbackMsg);
-        const timedOut = isAbortError(fallbackErr);
-        const offlineSay = timedOut
-          ? "Pablo's taking longer than usual. Your message may still be processing — wait a moment before sending it again."
-          : typeof navigator !== "undefined" && !navigator.onLine
-            ? "I’m offline right now. Your message is here — reconnect and try again."
-            : "I couldn’t reach the conversation service. Your message is here — try again in a moment.";
-        setReply(offlineSay);
-        setStatus("idle");
-        if (mode === "voice") autoListenRef.current = true;
-      }
+      // The command route may already have consumed usage or FIAT before a
+      // failure reaches the browser. Do not replay it through the ordinary
+      // chat route: the client cannot know whether those side effects landed.
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      const failedReply = offline
+        ? "I’m offline, so I can’t confirm whether Pablo received that request. Check before sending it again."
+        : isAbortError(err)
+          ? "Pablo took too long to confirm. The request may still be processing—check before sending it again."
+          : "I couldn’t confirm whether that request completed. It may have been processed, so check before sending it again.";
+      setReply(failedReply);
+      setRetryPrompt(null);
+      setStatus("idle");
+      if (mode === "voice") autoListenRef.current = true;
     }
   }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated, hasFinishedOnboarding, enterFromHomepage]);
 

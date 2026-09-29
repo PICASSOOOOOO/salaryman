@@ -35,7 +35,7 @@ import { createRoot, type Root } from "react-dom/client";
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     isLoading: false,
-    isAuthenticated: false,
+    isAuthenticated: authState.isAuthenticated,
     logout: vi.fn(),
     loginWithDiscord: vi.fn(),
     user: null,
@@ -45,7 +45,8 @@ vi.mock("@/hooks/use-auth", () => ({
 // Public Pablo endpoint answers free chat (no auth, no modal). The persona
 // probe and any other stray call resolve cleanly. We assert below that a
 // plain chat message routes here — proof the visitor was NOT pushed to login.
-const { apiFetchMock, speakWithTTSMock, playbackFailure } = vi.hoisted(() => ({
+const { authState, apiFetchMock, speakWithTTSMock, playbackFailure } = vi.hoisted(() => ({
+  authState: { isAuthenticated: false },
   apiFetchMock: vi.fn(async (url: string, _init?: unknown) => {
     if (typeof url === "string" && url.includes("pablo/public")) {
       return {
@@ -141,6 +142,7 @@ function seedReturningVisitor(name: string, email: string) {
 }
 
 beforeEach(() => {
+  authState.isAuthenticated = false;
   apiFetchMock.mockClear();
   speakWithTTSMock.mockClear();
   playbackFailure.current = null;
@@ -304,6 +306,34 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
 
     expect(publicRequests).toBe(2);
     expect(qs("pablo-reply-bubble")?.textContent).toContain("Here is the answer.");
+    expect(qs("pablo-chat-retry-button")).toBeNull();
+  });
+
+  it("does not replay an ambiguous command failure through the regular chat route", async () => {
+    authState.isAuthenticated = true;
+    apiFetchMock.mockImplementation(async (url: string) => {
+      if (url.includes("pablo/command")) {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => "temporary server failure",
+        } as unknown as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
+    });
+
+    await mount();
+    await typeAndSend("What is my dashboard?");
+
+    expect(apiFetchMock.mock.calls.some(([url]) =>
+      typeof url === "string" && url.includes("pablo/command"),
+    )).toBe(true);
+    expect(apiFetchMock.mock.calls.some(([url]) =>
+      typeof url === "string" && url.includes("pablo/message"),
+    )).toBe(false);
+    expect(qs("pablo-reply-bubble")?.textContent).toContain(
+      "I couldn’t confirm whether that request completed",
+    );
     expect(qs("pablo-chat-retry-button")).toBeNull();
   });
 
