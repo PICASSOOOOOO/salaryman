@@ -24,3 +24,4 @@ export {
   type SolveInterviewQuestionBody as SolveInterviewQuestionBodyType,
   SolveInterviewQuestionBodyMode,
 } from "./generated/types";
+export * from './generated/types';

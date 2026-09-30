@@ -114,6 +114,7 @@ import godotRenderRouter from "./godot-render";
 import deviceLinksRouter from "./device-links";
 import desktopWorkRouter from "./desktop-work";
 import businessDataRouter from "./business-data";
+import crmAdaptiveRouter from "./crm-adaptive";
 import desktopDownloadRouter from "./desktop-download";
 import { requireOnboardingForMutation } from "../middlewares/requireOnboarding";
 
@@ -235,6 +236,7 @@ router.use(godotRenderRouter);
   router.use(deviceLinksRouter);
   router.use(desktopWorkRouter);
   router.use(businessDataRouter);
+  router.use(crmAdaptiveRouter);
   router.use(marketplaceRouter);
   router.use(desktopDownloadRouter);
 

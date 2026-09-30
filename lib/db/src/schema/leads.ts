@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, text, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, text, boolean, index, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -36,6 +36,7 @@ export const leadRecordsTable = pgTable("lead_records", {
   status: varchar("status", { length: 32 }).notNull().default("new"),
   assignedUserId: varchar("assigned_user_id", { length: 256 }),
   pabloNotesJson: text("pablo_notes_json"),
+  customFieldsJson: jsonb("custom_fields_json").$type<Record<string, unknown>>().notNull().default({}),
   lastCalledAt: timestamp("last_called_at", { withTimezone: true }),
   callCount: integer("call_count").notNull().default(0),
   createdByUserId: varchar("created_by_user_id", { length: 256 }).notNull(),

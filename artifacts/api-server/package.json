@@ -48,7 +48,8 @@
     "stripe": "^20.4.1",
     "twilio": "^5.13.0",
     "undici": "^8.10.0",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",

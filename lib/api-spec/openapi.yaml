@@ -182,8 +182,154 @@ paths:
       responses:
         "302":
           description: Redirect to the returnTo path on success.
+  /crm/custom-fields:
+    get:
+      operationId: listCrmCustomFields
+      tags: [crm]
+      responses:
+        "200":
+          description: Organization CRM field definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CrmCustomField" }
+    post:
+      operationId: createCrmCustomField
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmCustomFieldInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmCustomField" }
+  /crm/custom-fields/{fieldKey}:
+    patch:
+      operationId: updateCrmCustomField
+      tags: [crm]
+      parameters:
+        - name: fieldKey
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmCustomFieldUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmCustomField" }
+  /crm/leads/import/preview:
+    post:
+      operationId: previewCrmLeadImport
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/CrmImportPreviewInput" }
+      responses:
+        "200":
+          description: Import preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmImportPreview" }
+  /crm/leads/import/apply:
+    post:
+      operationId: applyCrmLeadImport
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmImportApplyInput" }
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmImportResult" }
+  /crm/archive/export:
+    get:
+      operationId: exportCrmArchive
+      tags: [crm]
+      responses:
+        "200":
+          description: Full organization CRM archive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmArchive" }
 components:
   schemas:
+    CrmCustomField:
+      type: object
+      required: [id, orgId, fieldKey, label, fieldType, optionsJson, required, archived, position]
+      properties:
+        id: { type: integer }
+        orgId: { type: integer }
+        fieldKey: { type: string }
+        label: { type: string }
+        fieldType: { type: string, enum: [text, number, boolean, date, select] }
+        optionsJson: { type: array, items: { type: string } }
+        required: { type: boolean }
+        archived: { type: boolean }
+        position: { type: integer }
+    CrmCustomFieldInput:
+      type: object
+      required: [fieldKey, label, fieldType]
+      properties:
+        fieldKey: { type: string }
+        label: { type: string }
+        fieldType: { type: string, enum: [text, number, boolean, date, select] }
+        optionsJson: { type: array, items: { type: string } }
+        required: { type: boolean }
+        position: { type: integer }
+    CrmCustomFieldUpdate:
+      type: object
+      properties:
+        label: { type: string }
+        optionsJson: { type: array, items: { type: string } }
+        required: { type: boolean }
+        archived: { type: boolean }
+        position: { type: integer }
+    CrmImportPreview:
+      type: object
+      required: [headers, sampleRows, rowCount, candidates]
+      properties:
+        headers: { type: array, items: { type: string } }
+        sampleRows: { type: array, items: { type: array, items: { type: string } } }
+        rowCount: { type: integer }
+        candidates: { type: array, items: { type: object, additionalProperties: true } }
+        rows: { type: array, items: { type: array, items: { type: string } } }
+    CrmImportPreviewInput:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+    CrmImportApplyInput:
+      type: object
+      required: [headers, rows, mapping, existingRowPolicy, authority]
+      properties:
+        headers: { type: array, items: { type: string } }
+        rows: { type: array, items: { type: array, items: {} } }
+        mapping: { type: object, additionalProperties: { type: string } }
+        existingRowPolicy: { type: string, enum: [skip, update] }
+        authority: { type: string, enum: [import, crm] }
+    CrmImportResult:
+      type: object
+      additionalProperties: true
+    CrmArchive:
+      type: object
+      additionalProperties: true
     HealthStatus:
       type: object
       properties:
