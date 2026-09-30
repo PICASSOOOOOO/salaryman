@@ -132,6 +132,25 @@ export const BeginDiscordLoginResponse = zod.void()
 export const HandleDiscordLoginCallbackResponse = zod.void()
 
 
+export const GetMyOrganizationsResponse = zod.object({
+  "org": zod.record(zod.string(), zod.unknown()).nullable(),
+  "member": zod.record(zod.string(), zod.unknown()).nullable(),
+  "members": zod.array(zod.record(zod.string(), zod.unknown())),
+  "featureGrants": zod.array(zod.record(zod.string(), zod.unknown())),
+  "allOrgs": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+
+export const SwitchOrganizationBody = zod.object({
+  "orgId": zod.int().nullable()
+})
+
+export const SwitchOrganizationResponse = zod.object({
+  "ok": zod.boolean(),
+  "currentOrgId": zod.string().nullable()
+})
+
+
 export const ListCrmCustomFieldsResponseItem = zod.object({
   "id": zod.int(),
   "orgId": zod.int(),

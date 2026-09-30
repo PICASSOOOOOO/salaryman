@@ -36,7 +36,7 @@ import { eq, and, or, sql, inArray, desc } from "drizzle-orm";
 import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
-import { getOrgPermissionPolicy, canDoInOrg } from "../lib/org-permissions";
+import { getOrgPermissionPolicy, canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getUncachableResendClient } from "../lib/resend";
 import { removeAdminDiscordRole } from "../lib/seed-picasso";
 import {
@@ -134,7 +134,8 @@ router.get("/orgs/me", async (req, res) => {
     return;
   }
 
-  const primaryMember = allMemberships[0];
+  const currentOrgId = await resolveCurrentOrgId(userId);
+  const primaryMember = allMemberships.find((m) => m.orgId === currentOrgId) ?? allMemberships[0];
   const [primaryOrg] = await db
     .select()
     .from(organizationsTable)

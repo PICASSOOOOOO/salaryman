@@ -5,6 +5,43 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * @nullable
+ */
+export type MyOrganizationsOrg = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type MyOrganizationsMember = { [key: string]: unknown } | null;
+
+export type MyOrganizationsMembersItem = { [key: string]: unknown };
+
+export type MyOrganizationsFeatureGrantsItem = { [key: string]: unknown };
+
+export type MyOrganizationsAllOrgsItem = { [key: string]: unknown };
+
+export interface MyOrganizations {
+  /** @nullable */
+  org: MyOrganizationsOrg;
+  /** @nullable */
+  member: MyOrganizationsMember;
+  members: MyOrganizationsMembersItem[];
+  featureGrants: MyOrganizationsFeatureGrantsItem[];
+  allOrgs: MyOrganizationsAllOrgsItem[];
+}
+
+export interface SwitchOrganizationInput {
+  /** @nullable */
+  orgId: number | null;
+}
+
+export interface SwitchOrganizationResult {
+  ok: boolean;
+  /** @nullable */
+  currentOrgId: string | null;
+}
+
 export type CrmCustomFieldFieldType = typeof CrmCustomFieldFieldType[keyof typeof CrmCustomFieldFieldType];
 
 

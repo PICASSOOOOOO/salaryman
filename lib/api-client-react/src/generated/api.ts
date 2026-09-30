@@ -31,12 +31,15 @@ import type {
   CrmImportPreviewInput,
   CrmImportResult,
   HealthStatus,
+  MyOrganizations,
   OpenaiConversation,
   OpenaiConversationWithMessages,
   OpenaiError,
   OpenaiMessage,
   SendOpenaiMessageBody,
-  SolveInterviewQuestionBody
+  SolveInterviewQuestionBody,
+  SwitchOrganizationInput,
+  SwitchOrganizationResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -850,6 +853,151 @@ export function useHandleDiscordLoginCallback<TData = Awaited<ReturnType<typeof 
 
 
 
+
+export const getGetMyOrganizationsUrl = () => {
+
+
+
+
+  return `/api/orgs/me`
+}
+
+export const getMyOrganizations = async ( options?: Parameters<typeof customFetch>[1]): Promise<MyOrganizations> => {
+
+  return customFetch<MyOrganizations>(getGetMyOrganizationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyOrganizationsQueryKey = () => {
+    return [
+    `/api/orgs/me`
+    ] as const;
+    }
+
+
+export const getGetMyOrganizationsQueryOptions = <TData = Awaited<ReturnType<typeof getMyOrganizations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyOrganizations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyOrganizationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyOrganizations>>> = ({ signal }) => getMyOrganizations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyOrganizations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyOrganizationsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyOrganizations>>>
+export type GetMyOrganizationsQueryError = ErrorType<unknown>
+
+
+
+export function useGetMyOrganizations<TData = Awaited<ReturnType<typeof getMyOrganizations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyOrganizations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyOrganizationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSwitchOrganizationUrl = () => {
+
+
+
+
+  return `/api/orgs/switch`
+}
+
+export const switchOrganization = async (switchOrganizationInput: SwitchOrganizationInput, options?: Parameters<typeof customFetch>[1]): Promise<SwitchOrganizationResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<SwitchOrganizationResult>(getSwitchOrganizationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(switchOrganizationInput)
+  }
+);}
+
+
+
+
+
+export const getSwitchOrganizationMutationKey = () => ['switchOrganization'] as const;
+
+export const getSwitchOrganizationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchOrganization>>, TError,SwitchOrganizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof switchOrganization>>, TError,SwitchOrganizationMutationVariables, TContext> => {
+
+const mutationKey = getSwitchOrganizationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof switchOrganization>>, SwitchOrganizationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  switchOrganization(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SwitchOrganizationMutationResult = NonNullable<Awaited<ReturnType<typeof switchOrganization>>>
+    export type SwitchOrganizationMutationBody = BodyType<SwitchOrganizationInput>
+    export type SwitchOrganizationMutationError = ErrorType<unknown>
+    export type SwitchOrganizationMutationVariables = {data: BodyType<SwitchOrganizationInput>}
+
+    export const useSwitchOrganization = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchOrganization>>, TError,SwitchOrganizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof switchOrganization>>,
+        TError,
+        SwitchOrganizationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSwitchOrganizationMutationOptions(options));
+    }
 
 export const getListCrmCustomFieldsUrl = () => {
 
