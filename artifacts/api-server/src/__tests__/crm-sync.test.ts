@@ -5,6 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   db,
+  crmCustomFieldsTable,
   crmSourceConnectionsTable,
   crmSyncChangesTable,
   crmSyncConflictsTable,
@@ -131,6 +132,7 @@ afterAll(async () => {
     await db.delete(crmSyncConflictsTable).where(inArray(crmSyncConflictsTable.orgId, orgIds));
     await db.delete(crmSyncChangesTable).where(inArray(crmSyncChangesTable.orgId, orgIds));
     await db.delete(crmSyncRunsTable).where(inArray(crmSyncRunsTable.orgId, orgIds));
+    await db.delete(crmCustomFieldsTable).where(inArray(crmCustomFieldsTable.orgId, orgIds));
     await db.delete(leadRecordsTable).where(inArray(leadRecordsTable.orgId, orgIds));
     await db.delete(crmSourceConnectionsTable).where(inArray(crmSourceConnectionsTable.orgId, orgIds));
     await db.delete(orgMembersTable).where(inArray(orgMembersTable.orgId, orgIds));
@@ -190,6 +192,78 @@ describe("organization CRM source sync", () => {
     expect(response.status).toBe(200);
     expect(response.body.sources.map((source: any) => source.name)).toEqual(["Secondary org source"]);
     await setCurrentOrg(ownerUserId, primaryOrgId);
+  });
+
+  it("validates mixed core/custom imports per row and keeps imported contacts as leads", async () => {
+    const fieldResponse = await request(app).post("/api/crm/custom-fields").send({
+      fieldKey: "segment",
+      label: "Segment",
+      fieldType: "select",
+      optionsJson: ["Tech", "Finance"],
+      required: true,
+    });
+    expect(fieldResponse.status).toBe(201);
+
+    const existing = await insertLead({ name: "Existing Contact", email: "existing-import@example.test" });
+    const membersBefore = await db.select().from(orgMembersTable).where(eq(orgMembersTable.orgId, primaryOrgId));
+    const response = await request(app).post("/api/crm/leads/import/apply").send({
+      headers: ["Name", "Email", "Segment", "Status"],
+      rows: [
+        ["Bad status", "bad-status-import@example.test", "Tech", "pipeline"],
+        ["Bad segment", "bad-segment-import@example.test", "Retail", "qualified"],
+        ["Valid contact", "valid-import@example.test", "Tech", "qualified"],
+        ["Duplicate contact", "valid-import@example.test", "Finance", "contacted"],
+        ["Invalid update", existing.email, "Retail", "closed_won"],
+      ],
+      mapping: { Name: "name", Email: "email", Segment: "segment", Status: "status" },
+      existingRowPolicy: "skip",
+      authority: "import",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ created: 1, updated: 0, skipped: 1 });
+    expect(response.body.errors.map((entry: any) => entry.row)).toEqual([1, 2, 5]);
+    expect(response.body.errors[0].error).toContain("status");
+    expect(response.body.errors[1].error).toContain("segment");
+
+    const imported = await db.select().from(leadRecordsTable).where(and(
+      eq(leadRecordsTable.orgId, primaryOrgId),
+      inArray(leadRecordsTable.email, [
+        "bad-status-import@example.test",
+        "bad-segment-import@example.test",
+        "valid-import@example.test",
+      ]),
+    ));
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({
+      email: "valid-import@example.test",
+      name: "Valid contact",
+      status: "qualified",
+      customFieldsJson: { segment: "Tech" },
+    });
+
+    const [unchangedExisting] = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.id, existing.id));
+    expect(unchangedExisting).toMatchObject({ name: "Existing Contact", status: "new", customFieldsJson: {} });
+
+    const update = await request(app).post("/api/crm/leads/import/apply").send({
+      headers: ["Name", "Email", "Segment", "Status"],
+      rows: [["Updated Contact", existing.email, "Finance", "closed_won"]],
+      mapping: { Name: "name", Email: "email", Segment: "segment", Status: "status" },
+      existingRowPolicy: "update",
+      authority: "import",
+    });
+    expect(update.status).toBe(200);
+    expect(update.body).toMatchObject({ created: 0, updated: 1 });
+
+    const [updatedExisting] = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.id, existing.id));
+    expect(updatedExisting).toMatchObject({
+      name: "Updated Contact",
+      status: "closed_won",
+      customFieldsJson: { segment: "Finance" },
+    });
+
+    const membersAfter = await db.select().from(orgMembersTable).where(eq(orgMembersTable.orgId, primaryOrgId));
+    expect(membersAfter).toHaveLength(membersBefore.length);
   });
 
   it("pulls REST contacts into the organization and records a baseline snapshot", async () => {

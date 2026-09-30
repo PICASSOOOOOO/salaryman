@@ -7,7 +7,7 @@ import { and, desc, eq, or } from "drizzle-orm";
 import {
   db, leadRecordsTable, leadNotesTable, crmActivitiesTable, crmCustomFieldsTable,
   crmSourceConnectionsTable, crmSyncRunsTable, crmSyncChangesTable, crmSyncConflictsTable,
-  CRM_CUSTOM_FIELD_TYPES,
+  CRM_CUSTOM_FIELD_TYPES, LEAD_STATUSES,
 } from "@workspace/db";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { publicCrmSource } from "../lib/crm-source-public";
@@ -15,6 +15,7 @@ import { publicCrmSource } from "../lib/crm-source-public";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const CORE_KEYS = new Set(["id", "orgId", "name", "phone", "email", "company", "business", "jobTitle", "source", "status", "assignedUserId", "callCount", "createdAt", "updatedAt"]);
+const IMPORTABLE_CORE_FIELDS = new Set(["name", "phone", "email", "company", "jobTitle", "status"]);
 const CORE_ALIASES: Record<string, string> = { fullname: "name", full_name: "name", mobile: "phone", phonenumber: "phone", mail: "email", business: "company", organization: "company", title: "jobTitle" };
 const normalize = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
 
@@ -128,25 +129,53 @@ router.post("/crm/leads/import/apply", async (req, res) => {
   const mapping = b.mapping && typeof b.mapping === "object" ? b.mapping : {};
   if (!headers.length || !rows.length || !["skip", "update"].includes(b.existingRowPolicy) || !["import", "crm"].includes(b.authority)) { res.status(400).json({ error: "headers, rows, explicit mapping, existingRowPolicy, and authority are required" }); return; }
   const destinations = Object.values(mapping).map(String).map(k => k === "business" ? "company" : k);
-  if (new Set(destinations).size !== destinations.length || destinations.some(protectedDestination) && destinations.some(k => !CORE_KEYS.has(k) && !CORE_ALIASES[k])) { res.status(400).json({ error: "Mapping contains duplicate or protected destinations" }); return; }
+  if (new Set(destinations).size !== destinations.length || destinations.some(k => k.startsWith("_") || (CORE_KEYS.has(k) && !IMPORTABLE_CORE_FIELDS.has(k)))) { res.status(400).json({ error: "Mapping contains duplicate or protected destinations" }); return; }
   const fields = await db.select().from(crmCustomFieldsTable).where(and(eq(crmCustomFieldsTable.orgId, a.orgId), eq(crmCustomFieldsTable.archived, false)));
   const byKey = new Map(fields.map(f => [f.fieldKey, f]));
-  for (const d of destinations) if (!CORE_KEYS.has(d) && !byKey.has(d)) { res.status(400).json({ error: `Unknown destination: ${d}` }); return; }
+  for (const d of destinations) if (!IMPORTABLE_CORE_FIELDS.has(d) && !byKey.has(d)) { res.status(400).json({ error: `Unknown destination: ${d}` }); return; }
   const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, a.orgId));
   const result = { created: 0, updated: 0, skipped: 0, conflicts: [] as any[], errors: [] as any[] };
   for (let ri = 0; ri < rows.length; ri++) {
-    const row = Array.isArray(rows[ri]) ? rows[ri] : []; const data: any = {}; const custom: Record<string, unknown> = {};
+    const row = Array.isArray(rows[ri]) ? rows[ri] : [];
+    const data: any = {};
+    const custom: Record<string, unknown> = {};
+    const rowErrors: Array<{ row: number; error: string }> = [];
+    const invalidCustomFields = new Set<string>();
     for (const [header, destination] of Object.entries(mapping)) {
       const destinationKey = String(destination) === "business" ? "company" : String(destination);
       const value = row[headers.indexOf(header)]; if (CORE_KEYS.has(destinationKey)) data[destinationKey] = value == null ? "" : String(value).trim();
-      else { const valid = validateValue(byKey.get(String(destination)), value); if (!valid.ok) { result.errors.push({ row: ri + 1, error: valid.error }); continue; } custom[String(destination)] = valid.value; }
-    }
-    for (const field of fields) {
-      if (field.required && (custom[field.fieldKey] === undefined || custom[field.fieldKey] === null || custom[field.fieldKey] === "")) {
-        result.errors.push({ row: ri + 1, error: `${field.fieldKey} is required` });
+      if (IMPORTABLE_CORE_FIELDS.has(destinationKey)) {
+        const coreValue = value == null ? "" : String(value).trim();
+        if (destinationKey === "status") {
+          if (coreValue && !(LEAD_STATUSES as readonly string[]).includes(coreValue)) {
+            rowErrors.push({ row: ri + 1, error: `status must be one of: ${LEAD_STATUSES.join(", ")}` });
+          } else if (coreValue) {
+            data.status = coreValue;
+          } else {
+            delete data.status;
+          }
+        } else {
+          data[destinationKey] = coreValue;
+        }
+      } else {
+        const fieldKey = String(destination);
+        const valid = validateValue(byKey.get(fieldKey), value);
+        if (!valid.ok) {
+          rowErrors.push({ row: ri + 1, error: valid.error });
+          invalidCustomFields.add(fieldKey);
+        } else {
+          custom[fieldKey] = valid.value;
+        }
       }
     }
-    if (!data.name) { result.errors.push({ row: ri + 1, error: "Name is required" }); continue; }
+    for (const field of fields) {
+      if (field.required && !invalidCustomFields.has(field.fieldKey) &&
+          (custom[field.fieldKey] === undefined || custom[field.fieldKey] === null || custom[field.fieldKey] === "")) {
+        rowErrors.push({ row: ri + 1, error: `${field.fieldKey} is required` });
+      }
+    }
+    if (!data.name) rowErrors.push({ row: ri + 1, error: "Name is required" });
+    if (rowErrors.length) { result.errors.push(...rowErrors); continue; }
     const email = String(data.email ?? "").trim().toLowerCase(), phone = String(data.phone ?? "").replace(/\D/g, "");
     const matches = leads.filter(l => (email && l.email.toLowerCase() === email) || (phone && l.phone.replace(/\D/g, "").slice(-10) === phone.slice(-10)));
     if (matches.length > 1) { result.conflicts.push({ row: ri + 1, reason: "ambiguous_match", leadIds: matches.map(x => x.id) }); continue; }
@@ -154,11 +183,14 @@ router.post("/crm/leads/import/apply", async (req, res) => {
       if (b.existingRowPolicy === "skip") { result.skipped++; continue; }
       if (b.authority === "crm") { result.skipped++; continue; }
       const existing = matches[0], updates: any = { customFieldsJson: { ...(existing.customFieldsJson ?? {}), ...custom } };
-      for (const k of ["name", "phone", "email", "company", "jobTitle"]) if (data[k] !== undefined) updates[k] = data[k];
-      await db.update(leadRecordsTable).set(updates).where(and(eq(leadRecordsTable.id, existing.id), eq(leadRecordsTable.orgId, a.orgId))); result.updated++; continue;
+      for (const k of ["name", "phone", "email", "company", "jobTitle", "status"]) if (data[k] !== undefined) updates[k] = data[k];
+      const [updated] = await db.update(leadRecordsTable).set(updates).where(and(eq(leadRecordsTable.id, existing.id), eq(leadRecordsTable.orgId, a.orgId))).returning();
+      if (updated) Object.assign(existing, updated);
+      result.updated++;
+      continue;
     }
     const [created] = await db.insert(leadRecordsTable).values({ orgId: a.orgId, name: data.name, phone: data.phone ?? "", email: data.email ?? "", company: data.company ?? "", jobTitle: data.jobTitle ?? "", source: "crm_import", status: data.status ?? "new", createdByUserId: a.id, customFieldsJson: custom }).returning();
-    if (created) result.created++;
+    if (created) { result.created++; leads.push(created); }
   }
   res.json(result);
 });
