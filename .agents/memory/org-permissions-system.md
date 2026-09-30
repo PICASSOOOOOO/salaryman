@@ -36,9 +36,11 @@ data inside an org. It generalizes the pre-existing door-lock `minRole` pattern.
 - Defaults are behavior-preserving: `crm.view`=specialist (== old "any member"),
   `members.manage`=manager (== old hardcoded `hasRoleAccess(manager)`), so a fresh
   org behaves identically until an admin customizes the matrix.
-- `crm.edit` / `members.view` / `billing.manage` are catalog entries with NO live
-  enforcement point yet (e.g. CRM has no user-facing write route — leads come from
-  the telephony engine). They are reserved; the matrix still lets orgs set policy.
+- `crm.edit` is enforced by CRM source sync/conflict resolution and Pablo's
+  Google Sheets append/exact-key update tools. Pablo's Sheets list/read tools use
+  `crm.view`; writes require both view and edit, and row deletion is unavailable.
+  `members.view` / `billing.manage` / `autopilot.manage` / `website.manage` remain
+  policy declarations without a corresponding live enforcement point.
 
 ## Owner-override pitfall when resolving org context (important)
 **Why:** `canDoInOrg` has an owner fallback for missing/odd member rows, but a

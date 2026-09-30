@@ -449,4 +449,46 @@ describe("organization CRM source sync", () => {
     expect(batchCall[1].body).toContain("Contacts!B2");
     expect(batchCall[1].body).toContain("Keep this CRM value");
   });
+
+  it("returns actionable Google Sheets sync errors without storing provider payloads", async () => {
+    const googleSource = await request(app).post("/api/crm/sources").send({
+      provider: "google_sheets",
+      name: "Permission diagnostic sheet",
+      direction: "pull",
+      config: {
+        spreadsheetId: "spreadsheet_diagnostic_123",
+        range: "Contacts!A1:Z",
+        mapping: { email: "Email", name: "Name" },
+        keyField: "email",
+      },
+    });
+    expect(googleSource.status).toBe(201);
+
+    const connect = await request(app).get("/api/crm/google/connect").query({ sourceId: googleSource.body.id });
+    const state = new URL(connect.body.authorizationUrl).searchParams.get("state");
+    safeFetchMock.mockResolvedValueOnce({
+      status: 200,
+      body: Buffer.from(JSON.stringify({ access_token: "diagnostic-access", refresh_token: "diagnostic-refresh", expires_in: 3600 })),
+    });
+    const callback = await request(app).get("/api/crm/google/callback").query({ code: "diagnostic-code", state });
+    expect(callback.status).toBe(303);
+
+    safeFetchMock.mockReset();
+    safeFetchMock.mockResolvedValue({
+      status: 403,
+      body: Buffer.from(JSON.stringify({
+        error: { message: "provider-private-detail", access_token: "provider-private-token" },
+      })),
+    });
+    const sync = await request(app).post(`/api/crm/sources/${googleSource.body.id}/sync`);
+    expect(sync.status).toBe(502);
+    expect(sync.body.error).toContain("Google denied access");
+    expect(JSON.stringify(sync.body)).not.toContain("provider-private-detail");
+    expect(JSON.stringify(sync.body)).not.toContain("provider-private-token");
+
+    const [run] = await db.select().from(crmSyncRunsTable).where(eq(crmSyncRunsTable.connectionId, googleSource.body.id));
+    expect(run.status).toBe("failed");
+    expect(run.summaryJson.error).toBe(sync.body.error);
+    expect(JSON.stringify(run.summaryJson)).not.toContain("provider-private-detail");
+  });
 });

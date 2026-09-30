@@ -25,6 +25,40 @@ function googleConfig() {
   const { GOOGLE_SHEETS_CLIENT_ID: clientId, GOOGLE_SHEETS_CLIENT_SECRET: clientSecret, GOOGLE_SHEETS_REDIRECT_URI: redirectUri } = process.env;
   return clientId && clientSecret && redirectUri ? { clientId, clientSecret, redirectUri } : null;
 }
+class SafeGoogleSheetsError extends Error {}
+function googleStatusMessage(status: number, target: "sheets" | "oauth" = "sheets"): string {
+  if (target === "oauth") {
+    return "Google authorization could not be refreshed. Reconnect this Sheets source and retry.";
+  }
+  if (status === 401) return "Google Sheets authorization expired. Reconnect this source and retry.";
+  if (status === 403) return "Google denied access to this spreadsheet. Confirm the connected account has access, then reconnect or share the sheet.";
+  if (status === 404) return "The configured spreadsheet or worksheet was not found. Verify the spreadsheet and range.";
+  if (status === 400) return "Google Sheets rejected the request. Check the configured range and mapped columns.";
+  if (status === 429) return "Google Sheets rate limit reached. Wait a few minutes, then retry.";
+  if (status >= 500) return "Google Sheets is temporarily unavailable. Retry shortly.";
+  return "Google Sheets returned an unexpected response. Check the source configuration and retry.";
+}
+async function fetchGoogleResponse(url: string, options: Parameters<typeof safeFetch>[1], target: "sheets" | "oauth" = "sheets") {
+  try {
+    return await safeFetch(url, options);
+  } catch {
+    throw new SafeGoogleSheetsError(target === "oauth"
+      ? "Could not reach Google's authorization service. Reconnect this Sheets source and retry."
+      : "Could not reach Google Sheets. Check the connection and retry.");
+  }
+}
+function parseGoogleJson<T = any>(body: Buffer, target: "sheets" | "oauth" = "sheets"): T {
+  try {
+    return JSON.parse(body.toString("utf8")) as T;
+  } catch {
+    throw new SafeGoogleSheetsError(target === "oauth"
+      ? "Google authorization returned an unreadable response. Reconnect this Sheets source."
+      : "Google Sheets returned unreadable data. Check the configured source and retry.");
+  }
+}
+function safeGoogleSyncError(error: unknown, fallback: string): string {
+  return error instanceof SafeGoogleSheetsError ? error.message : fallback;
+}
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -206,28 +240,28 @@ router.post("/crm/sources/:id/sync", async (req, res) => {
     const [sheetRun] = await db.insert(crmSyncRunsTable).values({ orgId: a.orgId, connectionId: source.id, direction: source.direction }).returning();
     const requestSheets = async (method: string, url: string, body?: string) => {
       let accessToken = String(token.access_token ?? "");
-      let result = await safeFetch(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${accessToken}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
+      let result = await fetchGoogleResponse(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${accessToken}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
       if (result.status === 401 && token.refresh_token) {
-        const refreshed = await safeFetch("https://oauth2.googleapis.com/token", { method: "POST", maxRedirects: 0, maxResponseBytes: 64 * 1024, headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: cfg.clientId, client_secret: cfg.clientSecret, refresh_token: token.refresh_token, grant_type: "refresh_token" }).toString(), timeoutMs: 15000 });
-        if (refreshed.status < 200 || refreshed.status >= 300) throw new Error("Google Sheets authorization expired or revoked");
-        const next = JSON.parse(refreshed.body.toString("utf8")); token = { ...token, ...next };
+        const refreshed = await fetchGoogleResponse("https://oauth2.googleapis.com/token", { method: "POST", maxRedirects: 0, maxResponseBytes: 64 * 1024, headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: cfg.clientId, client_secret: cfg.clientSecret, refresh_token: token.refresh_token, grant_type: "refresh_token" }).toString(), timeoutMs: 15000 }, "oauth");
+        if (refreshed.status < 200 || refreshed.status >= 300) throw new SafeGoogleSheetsError(googleStatusMessage(refreshed.status, "oauth"));
+        const next = parseGoogleJson<Record<string, unknown>>(refreshed.body, "oauth"); token = { ...token, ...next };
         await db.update(crmSourceConnectionsTable).set({ encryptedAuth: encryptProtectedRecord(JSON.stringify(token), a.orgId), updatedAt: new Date() }).where(and(eq(crmSourceConnectionsTable.id, source.id), eq(crmSourceConnectionsTable.orgId, a.orgId)));
         accessToken = String(token.access_token);
-        result = await safeFetch(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${accessToken}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
+        result = await fetchGoogleResponse(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${accessToken}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
       }
-      if (result.status < 200 || result.status >= 300) throw new Error("Google Sheets request failed");
+      if (result.status < 200 || result.status >= 300) throw new SafeGoogleSheetsError(googleStatusMessage(result.status));
       return result;
     };
     try {
       const mapping = sheetCfg.mapping as Record<string, string>;
       const response = await requestSheets("GET", `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetCfg.spreadsheetId)}/values/${encodeURIComponent(sheetCfg.range)}`);
-      const values = JSON.parse(response.body.toString("utf8")).values;
-      if (!Array.isArray(values) || values.length > 5001 || values.some((row: unknown) => !Array.isArray(row) || row.length > 100)) throw new Error("Google Sheets range exceeds the supported row or column limit");
+      const values = parseGoogleJson<Record<string, unknown>>(response.body).values;
+      if (!Array.isArray(values) || values.length > 5001 || values.some((row: unknown) => !Array.isArray(row) || row.length > 100)) throw new SafeGoogleSheetsError("Google Sheets range exceeds the supported row or column limit. Narrow the configured range and retry.");
       const headers = (values[0] ?? []).map((cell: unknown) => String(cell ?? "").trim());
-      if (!headers.length) throw new Error("Google Sheets range is missing its header row");
+      if (!headers.length) throw new SafeGoogleSheetsError("Google Sheets range is missing its header row. Include a header row in the configured range.");
       const offsets = new Map<string, number>();
       headers.forEach((header: string, index: number) => { if (header && !offsets.has(header)) offsets.set(header, index); });
-      for (const header of Object.values(mapping)) if (!offsets.has(String(header))) throw new Error("A mapped Google Sheets header was not found");
+      for (const header of Object.values(mapping)) if (!offsets.has(String(header))) throw new SafeGoogleSheetsError("A mapped Google Sheets header was not found. Update the CRM source's field mapping.");
       const remoteRows: Array<{ mapped: Record<string, unknown>; key: string; rowNumber: number }> = [];
       const remoteByKey = new Map<string, { mapped: Record<string, unknown>; key: string; rowNumber: number }>();
       for (const [index, row] of values.slice(1).entries()) {
@@ -382,13 +416,13 @@ router.post("/crm/sources/:id/sync", async (req, res) => {
           return { range: `${rangeInfo.sheet}!${columnLetters(column)}${row}`, majorDimension: "ROWS", values: [[value ?? ""]] };
         });
         const body = JSON.stringify({ valueInputOption: "RAW", data });
-        if (Buffer.byteLength(body, "utf8") > 2 * 1024 * 1024) throw new Error("Google Sheets update exceeds the 2 MB limit");
+        if (Buffer.byteLength(body, "utf8") > 2 * 1024 * 1024) throw new SafeGoogleSheetsError("Google Sheets update exceeds the 2 MB limit. Reduce the number or size of changed fields.");
         await requestSheets("POST", `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetCfg.spreadsheetId)}/values:batchUpdate`, body);
         pushed += data.length;
       }
       if (appendRows.length) {
         const body = JSON.stringify({ majorDimension: "ROWS", values: appendRows });
-        if (Buffer.byteLength(body, "utf8") > 2 * 1024 * 1024) throw new Error("Google Sheets append exceeds the 2 MB limit");
+        if (Buffer.byteLength(body, "utf8") > 2 * 1024 * 1024) throw new SafeGoogleSheetsError("Google Sheets append exceeds the 2 MB limit. Reduce the number or size of rows.");
         await requestSheets("POST", `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetCfg.spreadsheetId)}/values/${encodeURIComponent(sheetCfg.range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, body);
       }
       for (const item of snapshots) await snapshot(item.leadId, item.key, item.source, item.crm);
@@ -397,8 +431,9 @@ router.post("/crm/sources/:id/sync", async (req, res) => {
       res.json({ runId: sheetRun.id, created, conflicts, pulled, pushed });
       return;
     } catch (error) {
-      await db.update(crmSyncRunsTable).set({ status: "failed", completedAt: new Date(), summaryJson: { error: "Google Sheets sync failed" } }).where(and(eq(crmSyncRunsTable.id, sheetRun.id), eq(crmSyncRunsTable.orgId, a.orgId)));
-      res.status(502).json({ error: "Google Sheets sync failed. Check authorization and source configuration, then retry." });
+      const safeMessage = safeGoogleSyncError(error, "Google Sheets sync failed while processing the configured source. Check the range, headers, and field mappings, then retry.");
+      await db.update(crmSyncRunsTable).set({ status: "failed", completedAt: new Date(), summaryJson: { error: safeMessage } }).where(and(eq(crmSyncRunsTable.id, sheetRun.id), eq(crmSyncRunsTable.orgId, a.orgId)));
+      res.status(502).json({ error: safeMessage });
       return;
     }
   }
@@ -625,24 +660,24 @@ router.post("/crm/sync/conflicts/:id/resolve", async (req, res) => {
         if (!rangeInfo || !config.spreadsheetId) throw new Error("Google Sheets configuration is invalid");
         let token = JSON.parse(decryptProtectedRecord(source.encryptedAuth, a.orgId)) as Record<string, unknown>;
         const requestSheets = async (url: string, method = "GET", body?: string) => {
-          let response = await safeFetch(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${String(token.access_token ?? "")}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
+          let response = await fetchGoogleResponse(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${String(token.access_token ?? "")}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
           if (response.status === 401 && token.refresh_token) {
-            const refreshed = await safeFetch("https://oauth2.googleapis.com/token", { method: "POST", maxRedirects: 0, maxResponseBytes: 64 * 1024, headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: cfg.clientId, client_secret: cfg.clientSecret, refresh_token: String(token.refresh_token), grant_type: "refresh_token" }).toString(), timeoutMs: 15000 });
-            if (refreshed.status < 200 || refreshed.status >= 300) throw new Error("Google Sheets authorization expired");
-            token = { ...token, ...JSON.parse(refreshed.body.toString("utf8")) };
+            const refreshed = await fetchGoogleResponse("https://oauth2.googleapis.com/token", { method: "POST", maxRedirects: 0, maxResponseBytes: 64 * 1024, headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: cfg.clientId, client_secret: cfg.clientSecret, refresh_token: String(token.refresh_token), grant_type: "refresh_token" }).toString(), timeoutMs: 15000 }, "oauth");
+            if (refreshed.status < 200 || refreshed.status >= 300) throw new SafeGoogleSheetsError(googleStatusMessage(refreshed.status, "oauth"));
+            token = { ...token, ...parseGoogleJson<Record<string, unknown>>(refreshed.body, "oauth") };
             await db.update(crmSourceConnectionsTable).set({ encryptedAuth: encryptProtectedRecord(JSON.stringify(token), a.orgId), updatedAt: new Date() }).where(and(eq(crmSourceConnectionsTable.id, source.id), eq(crmSourceConnectionsTable.orgId, a.orgId)));
-            response = await safeFetch(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${String(token.access_token ?? "")}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
+            response = await fetchGoogleResponse(url, { method, maxRedirects: 0, maxResponseBytes: 2 * 1024 * 1024, headers: { authorization: `Bearer ${String(token.access_token ?? "")}`, ...(body ? { "content-type": "application/json" } : {}) }, body, timeoutMs: 15000 });
           }
-          if (response.status < 200 || response.status >= 300) throw new Error("Google Sheets request failed");
+          if (response.status < 200 || response.status >= 300) throw new SafeGoogleSheetsError(googleStatusMessage(response.status));
           return response;
         };
         const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(config.spreadsheetId)}/values/${encodeURIComponent(config.range)}`;
-        const values = JSON.parse((await requestSheets(sheetUrl)).body.toString("utf8")).values;
-        if (!Array.isArray(values) || values.length > 5001 || !Array.isArray(values[0])) throw new Error("Google Sheets data is invalid");
+        const values = parseGoogleJson<Record<string, unknown>>((await requestSheets(sheetUrl)).body).values;
+        if (!Array.isArray(values) || values.length > 5001 || !Array.isArray(values[0])) throw new SafeGoogleSheetsError("Google Sheets data is invalid. Check the configured range and retry.");
         const headers = values[0].map((cell: unknown) => String(cell ?? "").trim());
         const offsets = new Map<string, number>();
         headers.forEach((header: string, index: number) => { if (header && !offsets.has(header)) offsets.set(header, index); });
-        for (const header of Object.values(mapping)) if (!offsets.has(header)) throw new Error("Mapped Google Sheets header is missing");
+        for (const header of Object.values(mapping)) if (!offsets.has(header)) throw new SafeGoogleSheetsError("A mapped Google Sheets header was not found. Update the CRM source's field mapping.");
         const keyField: "email" | "phone" = config.keyField === "phone" ? "phone" : "email";
         const wantedKey = rowKey(keyField, sourceValues[keyField]);
         let rowNumber = 0;
@@ -657,7 +692,7 @@ router.post("/crm/sync/conflicts/:id/resolve", async (req, res) => {
             if (offset !== undefined) data.push({ range: `${rangeInfo.sheet}!${columnLetters(rangeInfo.startColumn + offset)}${rowNumber}`, majorDimension: "ROWS", values: [[value ?? ""]] });
           }
           const body = JSON.stringify({ valueInputOption: "RAW", data });
-          if (Buffer.byteLength(body, "utf8") > 2 * 1024 * 1024) throw new Error("Google Sheets update exceeds limit");
+          if (Buffer.byteLength(body, "utf8") > 2 * 1024 * 1024) throw new SafeGoogleSheetsError("Google Sheets update exceeds the 2 MB limit. Reduce the number or size of changed fields.");
           await requestSheets(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(config.spreadsheetId)}/values:batchUpdate`, "POST", body);
         } else {
           const row = Array(Math.max(headers.length, ...Array.from(offsets.values(), (offset) => offset + 1))).fill("");
@@ -682,9 +717,12 @@ router.post("/crm/sync/conflicts/:id/resolve", async (req, res) => {
     if (!resolved) throw new Error("Conflict was already resolved");
     await db.update(crmSyncRunsTable).set({ status: "completed", completedAt: new Date(), summaryJson: { resolution, conflictId: conflict.id } }).where(and(eq(crmSyncRunsTable.id, run.id), eq(crmSyncRunsTable.orgId, a.orgId)));
     res.json({ ok: true, resolution });
-  } catch {
-    await db.update(crmSyncRunsTable).set({ status: "failed", completedAt: new Date(), summaryJson: { error: "Conflict resolution failed" } }).where(and(eq(crmSyncRunsTable.id, run.id), eq(crmSyncRunsTable.orgId, a.orgId)));
-    res.status(502).json({ error: "Could not apply this conflict choice to CRM and its source. Retry after checking source access." });
+  } catch (error) {
+    const safeMessage = error instanceof SafeGoogleSheetsError
+      ? error.message
+      : "Could not apply this conflict choice to CRM and its source. Retry after checking source access.";
+    await db.update(crmSyncRunsTable).set({ status: "failed", completedAt: new Date(), summaryJson: { error: safeMessage } }).where(and(eq(crmSyncRunsTable.id, run.id), eq(crmSyncRunsTable.orgId, a.orgId)));
+    res.status(502).json({ error: safeMessage });
   }
 });
 export default router;
