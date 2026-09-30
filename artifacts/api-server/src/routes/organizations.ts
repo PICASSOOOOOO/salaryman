@@ -104,7 +104,11 @@ router.post("/orgs/switch", async (req, res) => {
           eq(orgMembersTable.orgId, targetOrgIdNum),
           eq(orgMembersTable.status, "active"),
         )).limit(1);
-      if (!membership) { res.status(403).json({ error: "Not a member of that organization" }); return; }
+      const [ownedOrg] = await db.select({ id: organizationsTable.id })
+        .from(organizationsTable)
+        .where(and(eq(organizationsTable.id, targetOrgIdNum), eq(organizationsTable.ownerUserId, userId)))
+        .limit(1);
+      if (!membership && !ownedOrg) { res.status(403).json({ error: "Not a member of that organization" }); return; }
       await db.update(usersTable).set({ currentOrgId: String(targetOrgIdNum), updatedAt: new Date() })
         .where(eq(usersTable.id, userId));
       res.json({ ok: true, currentOrgId: String(targetOrgIdNum) });
@@ -129,17 +133,24 @@ router.get("/orgs/me", async (req, res) => {
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
 
-  if (allMemberships.length === 0) {
+  const ownedOrgs = await db.select().from(organizationsTable).where(eq(organizationsTable.ownerUserId, userId));
+  if (allMemberships.length === 0 && ownedOrgs.length === 0) {
     res.json({ org: null, member: null, allOrgs: [] });
     return;
   }
 
   const currentOrgId = await resolveCurrentOrgId(userId);
-  const primaryMember = allMemberships.find((m) => m.orgId === currentOrgId) ?? allMemberships[0];
+  const primaryMember = allMemberships.find((m) => m.orgId === currentOrgId) ?? allMemberships[0] ?? {
+    orgId: currentOrgId ?? ownedOrgs[0].id,
+    userId,
+    role: "owner",
+    status: "active",
+  } as OrgMember;
+  const selectedOrgId = primaryMember.orgId;
   const [primaryOrg] = await db
     .select()
     .from(organizationsTable)
-    .where(eq(organizationsTable.id, primaryMember.orgId));
+    .where(eq(organizationsTable.id, selectedOrgId));
 
   if (!primaryOrg) {
     res.json({ org: null, member: null, allOrgs: [] });
@@ -161,15 +172,20 @@ router.get("/orgs/me", async (req, res) => {
       .where(eq(orgMembersTable.orgId, primaryOrg.id));
   }
 
-  const allOrgIds = allMemberships.map((m) => m.orgId);
+  const allOrgIds = [...new Set([...allMemberships.map((m) => m.orgId), ...ownedOrgs.map((o) => o.id)])];
   const allOrgs = allOrgIds.length > 0
     ? await db.select().from(organizationsTable).where(inArray(organizationsTable.id, allOrgIds))
     : [];
   const orgMap = new Map(allOrgs.map((o) => [o.id, o]));
 
-  const allOrgsWithMembership = allMemberships.map((m) => ({
-    membership: m,
-    organization: orgMap.get(m.orgId) ?? null,
+  const allOrgsWithMembership = allOrgIds.map((orgId) => ({
+    membership: allMemberships.find((m) => m.orgId === orgId) ?? {
+      orgId,
+      userId,
+      role: "owner",
+      status: "active",
+    },
+    organization: orgMap.get(orgId) ?? null,
   }));
 
   res.json({

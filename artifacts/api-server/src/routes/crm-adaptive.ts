@@ -6,9 +6,11 @@ import { Readable } from "node:stream";
 import { and, desc, eq, or } from "drizzle-orm";
 import {
   db, leadRecordsTable, leadNotesTable, crmActivitiesTable, crmCustomFieldsTable,
+  crmSourceConnectionsTable, crmSyncRunsTable, crmSyncChangesTable, crmSyncConflictsTable,
   CRM_CUSTOM_FIELD_TYPES,
 } from "@workspace/db";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
+import { publicCrmSource } from "../lib/crm-source-public";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -139,6 +141,11 @@ router.post("/crm/leads/import/apply", async (req, res) => {
       const value = row[headers.indexOf(header)]; if (CORE_KEYS.has(destinationKey)) data[destinationKey] = value == null ? "" : String(value).trim();
       else { const valid = validateValue(byKey.get(String(destination)), value); if (!valid.ok) { result.errors.push({ row: ri + 1, error: valid.error }); continue; } custom[String(destination)] = valid.value; }
     }
+    for (const field of fields) {
+      if (field.required && (custom[field.fieldKey] === undefined || custom[field.fieldKey] === null || custom[field.fieldKey] === "")) {
+        result.errors.push({ row: ri + 1, error: `${field.fieldKey} is required` });
+      }
+    }
     if (!data.name) { result.errors.push({ row: ri + 1, error: "Name is required" }); continue; }
     const email = String(data.email ?? "").trim().toLowerCase(), phone = String(data.phone ?? "").replace(/\D/g, "");
     const matches = leads.filter(l => (email && l.email.toLowerCase() === email) || (phone && l.phone.replace(/\D/g, "").slice(-10) === phone.slice(-10)));
@@ -158,13 +165,17 @@ router.post("/crm/leads/import/apply", async (req, res) => {
 
 router.get("/crm/archive/export", async (req, res) => {
   const a = await access(req, res, "crm.edit"); if (!a) return;
-  const [leads, notes, activities, fields] = await Promise.all([
+  const [leads, notes, activities, fields, sources, runs, changes, conflicts] = await Promise.all([
     db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, a.orgId)).orderBy(desc(leadRecordsTable.id)),
     db.select().from(leadNotesTable).innerJoin(leadRecordsTable, eq(leadNotesTable.leadId, leadRecordsTable.id)).where(eq(leadRecordsTable.orgId, a.orgId)),
     db.select().from(crmActivitiesTable).where(eq(crmActivitiesTable.orgId, a.orgId)).orderBy(desc(crmActivitiesTable.id)),
     db.select().from(crmCustomFieldsTable).where(eq(crmCustomFieldsTable.orgId, a.orgId)),
+    db.select().from(crmSourceConnectionsTable).where(eq(crmSourceConnectionsTable.orgId, a.orgId)),
+    db.select().from(crmSyncRunsTable).where(eq(crmSyncRunsTable.orgId, a.orgId)),
+    db.select().from(crmSyncChangesTable).where(eq(crmSyncChangesTable.orgId, a.orgId)),
+    db.select().from(crmSyncConflictsTable).where(eq(crmSyncConflictsTable.orgId, a.orgId)),
   ]);
   const serial = (v: any): any => v instanceof Date ? v.toISOString() : Array.isArray(v) ? v.map(serial) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, serial(x)])) : v;
-  res.json(serial({ format: "calll-home-crm-archive-v1", exportedAt: new Date(), orgId: a.orgId, leads, notes: notes.map(n => n.lead_notes), activities: activities.map(({ recordingUrl, ...x }) => x), customFields: fields }));
+  res.json(serial({ format: "calll-home-crm-archive-v2", exportedAt: new Date(), orgId: a.orgId, leads, notes: notes.map(n => n.lead_notes), activities: activities.map(({ recordingUrl, ...x }) => x), customFields: fields, sources: sources.map(publicCrmSource), syncRuns: runs, syncChanges: changes, syncConflicts: conflicts }));
 });
 export default router;

@@ -246,3 +246,41 @@ export type BeginDiscordLoginParams = {
 returnTo?: string;
 };
 
+export type ListCrmSources200 = { [key: string]: unknown };
+
+export type CreateCrmSourceBody = { [key: string]: unknown };
+
+export type CreateCrmSource201 = { [key: string]: unknown };
+
+export type DeleteCrmSource200 = { [key: string]: unknown };
+
+export type ConnectCrmGoogleSheetsParams = {
+sourceId: number;
+};
+
+export type ConnectCrmGoogleSheets200 = { [key: string]: unknown };
+
+export type CompleteCrmGoogleSheetsParams = {
+error?: string;
+code?: string;
+state: string;
+};
+
+export type SyncCrmSource200 = { [key: string]: unknown };
+
+export type ListCrmSyncConflicts200 = { [key: string]: unknown };
+
+export type ResolveCrmSyncConflictBodyResolution = typeof ResolveCrmSyncConflictBodyResolution[keyof typeof ResolveCrmSyncConflictBodyResolution];
+
+
+export const ResolveCrmSyncConflictBodyResolution = {
+  crm: 'crm',
+  source: 'source',
+} as const;
+
+export type ResolveCrmSyncConflictBody = {
+  resolution: ResolveCrmSyncConflictBodyResolution;
+};
+
+export type ResolveCrmSyncConflict200 = { [key: string]: unknown };
+

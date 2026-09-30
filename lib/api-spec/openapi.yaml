@@ -293,6 +293,77 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CrmArchive" }
+  /crm/sources:
+    get:
+      operationId: listCrmSources
+      tags: [crm]
+      responses:
+        "200": { description: Sources, content: { application/json: { schema: { type: object } } } }
+    post:
+      operationId: createCrmSource
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, additionalProperties: true } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+  /crm/sources/{id}:
+    delete:
+      operationId: deleteCrmSource
+      tags: [crm]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { type: object } } } }
+  /crm/google/connect:
+    get:
+      operationId: connectCrmGoogleSheets
+      tags: [crm]
+      parameters:
+        - { name: sourceId, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: OAuth authorization URL, content: { application/json: { schema: { type: object } } } }
+        "503": { description: Google OAuth configuration is missing }
+  /crm/google/callback:
+    get:
+      operationId: completeCrmGoogleSheets
+      tags: [crm]
+      parameters:
+        - { name: error, in: query, required: false, schema: { type: string } }
+        - { name: code, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "303":
+          description: Redirect to Leads after authorization completes
+          headers:
+            Location: { schema: { type: string } }
+  /crm/sources/{id}/sync:
+    post:
+      operationId: syncCrmSource
+      tags: [crm]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Sync result, content: { application/json: { schema: { type: object } } } }
+  /crm/sync/conflicts:
+    get:
+      operationId: listCrmSyncConflicts
+      tags: [crm]
+      responses:
+        "200": { description: Conflicts, content: { application/json: { schema: { type: object } } } }
+  /crm/sync/conflicts/{id}/resolve:
+    post:
+      operationId: resolveCrmSyncConflict
+      tags: [crm]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object, required: [resolution], properties: { resolution: { type: string, enum: [crm, source] } } } }
+      responses:
+        "200": { description: Resolved, content: { application/json: { schema: { type: object } } } }
 components:
   schemas:
     MyOrganizations:

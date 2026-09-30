@@ -70,6 +70,7 @@ export * from "./dev-tasks";
 export * from "./chat";
 export * from "./leads";
 export * from "./crm-custom-fields";
+export * from "./crm-sync";
 export * from "./server-regions";
 export * from "./insurance";
 export * from "./platform-api";

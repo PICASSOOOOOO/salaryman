@@ -21,6 +21,11 @@ import type {
 
 import type {
   BeginDiscordLoginParams,
+  CompleteCrmGoogleSheetsParams,
+  ConnectCrmGoogleSheets200,
+  ConnectCrmGoogleSheetsParams,
+  CreateCrmSource201,
+  CreateCrmSourceBody,
   CreateOpenaiConversationBody,
   CrmArchive,
   CrmCustomField,
@@ -30,16 +35,22 @@ import type {
   CrmImportPreview,
   CrmImportPreviewInput,
   CrmImportResult,
+  DeleteCrmSource200,
   HealthStatus,
+  ListCrmSources200,
+  ListCrmSyncConflicts200,
   MyOrganizations,
   OpenaiConversation,
   OpenaiConversationWithMessages,
   OpenaiError,
   OpenaiMessage,
+  ResolveCrmSyncConflict200,
+  ResolveCrmSyncConflictBody,
   SendOpenaiMessageBody,
   SolveInterviewQuestionBody,
   SwitchOrganizationInput,
-  SwitchOrganizationResult
+  SwitchOrganizationResult,
+  SyncCrmSource200
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1433,4 +1444,587 @@ export function useExportCrmArchive<TData = Awaited<ReturnType<typeof exportCrmA
 
 
 
+
+export const getListCrmSourcesUrl = () => {
+
+
+
+
+  return `/api/crm/sources`
+}
+
+export const listCrmSources = async ( options?: Parameters<typeof customFetch>[1]): Promise<ListCrmSources200> => {
+
+  return customFetch<ListCrmSources200>(getListCrmSourcesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCrmSourcesQueryKey = () => {
+    return [
+    `/api/crm/sources`
+    ] as const;
+    }
+
+
+export const getListCrmSourcesQueryOptions = <TData = Awaited<ReturnType<typeof listCrmSources>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCrmSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCrmSourcesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCrmSources>>> = ({ signal }) => listCrmSources({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCrmSources>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCrmSourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listCrmSources>>>
+export type ListCrmSourcesQueryError = ErrorType<unknown>
+
+
+
+export function useListCrmSources<TData = Awaited<ReturnType<typeof listCrmSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCrmSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCrmSourcesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCrmSourceUrl = () => {
+
+
+
+
+  return `/api/crm/sources`
+}
+
+export const createCrmSource = async (createCrmSourceBody: CreateCrmSourceBody, options?: Parameters<typeof customFetch>[1]): Promise<CreateCrmSource201> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<CreateCrmSource201>(getCreateCrmSourceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createCrmSourceBody)
+  }
+);}
+
+
+
+
+
+export const getCreateCrmSourceMutationKey = () => ['createCrmSource'] as const;
+
+export const getCreateCrmSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCrmSource>>, TError,CreateCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCrmSource>>, TError,CreateCrmSourceMutationVariables, TContext> => {
+
+const mutationKey = getCreateCrmSourceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCrmSource>>, CreateCrmSourceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCrmSource(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCrmSourceMutationResult = NonNullable<Awaited<ReturnType<typeof createCrmSource>>>
+    export type CreateCrmSourceMutationBody = BodyType<CreateCrmSourceBody>
+    export type CreateCrmSourceMutationError = ErrorType<unknown>
+    export type CreateCrmSourceMutationVariables = {data: BodyType<CreateCrmSourceBody>}
+
+    export const useCreateCrmSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCrmSource>>, TError,CreateCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCrmSource>>,
+        TError,
+        CreateCrmSourceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCrmSourceMutationOptions(options));
+    }
+
+export const getDeleteCrmSourceUrl = (id: number,) => {
+
+
+
+
+  return `/api/crm/sources/${id}`
+}
+
+export const deleteCrmSource = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DeleteCrmSource200> => {
+
+  return customFetch<DeleteCrmSource200>(getDeleteCrmSourceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCrmSourceMutationKey = () => ['deleteCrmSource'] as const;
+
+export const getDeleteCrmSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCrmSource>>, TError,DeleteCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCrmSource>>, TError,DeleteCrmSourceMutationVariables, TContext> => {
+
+const mutationKey = getDeleteCrmSourceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCrmSource>>, DeleteCrmSourceMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCrmSource(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCrmSourceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCrmSource>>>
+
+    export type DeleteCrmSourceMutationError = ErrorType<unknown>
+    export type DeleteCrmSourceMutationVariables = {id: number}
+
+    export const useDeleteCrmSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCrmSource>>, TError,DeleteCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCrmSource>>,
+        TError,
+        DeleteCrmSourceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteCrmSourceMutationOptions(options));
+    }
+
+export const getConnectCrmGoogleSheetsUrl = (params: ConnectCrmGoogleSheetsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/crm/google/connect?${stringifiedParams}` : `/api/crm/google/connect`
+}
+
+export const connectCrmGoogleSheets = async (params: ConnectCrmGoogleSheetsParams, options?: Parameters<typeof customFetch>[1]): Promise<ConnectCrmGoogleSheets200> => {
+
+  return customFetch<ConnectCrmGoogleSheets200>(getConnectCrmGoogleSheetsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getConnectCrmGoogleSheetsQueryKey = (params?: ConnectCrmGoogleSheetsParams,) => {
+    return [
+    `/api/crm/google/connect`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getConnectCrmGoogleSheetsQueryOptions = <TData = Awaited<ReturnType<typeof connectCrmGoogleSheets>>, TError = ErrorType<void>>(params: ConnectCrmGoogleSheetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof connectCrmGoogleSheets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getConnectCrmGoogleSheetsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof connectCrmGoogleSheets>>> = ({ signal }) => connectCrmGoogleSheets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof connectCrmGoogleSheets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ConnectCrmGoogleSheetsQueryResult = NonNullable<Awaited<ReturnType<typeof connectCrmGoogleSheets>>>
+export type ConnectCrmGoogleSheetsQueryError = ErrorType<void>
+
+
+
+export function useConnectCrmGoogleSheets<TData = Awaited<ReturnType<typeof connectCrmGoogleSheets>>, TError = ErrorType<void>>(
+ params: ConnectCrmGoogleSheetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof connectCrmGoogleSheets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getConnectCrmGoogleSheetsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCompleteCrmGoogleSheetsUrl = (params: CompleteCrmGoogleSheetsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/crm/google/callback?${stringifiedParams}` : `/api/crm/google/callback`
+}
+
+export const completeCrmGoogleSheets = async (params: CompleteCrmGoogleSheetsParams, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getCompleteCrmGoogleSheetsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompleteCrmGoogleSheetsQueryKey = (params?: CompleteCrmGoogleSheetsParams,) => {
+    return [
+    `/api/crm/google/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCompleteCrmGoogleSheetsQueryOptions = <TData = Awaited<ReturnType<typeof completeCrmGoogleSheets>>, TError = ErrorType<void>>(params: CompleteCrmGoogleSheetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof completeCrmGoogleSheets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCompleteCrmGoogleSheetsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof completeCrmGoogleSheets>>> = ({ signal }) => completeCrmGoogleSheets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof completeCrmGoogleSheets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CompleteCrmGoogleSheetsQueryResult = NonNullable<Awaited<ReturnType<typeof completeCrmGoogleSheets>>>
+export type CompleteCrmGoogleSheetsQueryError = ErrorType<void>
+
+
+
+export function useCompleteCrmGoogleSheets<TData = Awaited<ReturnType<typeof completeCrmGoogleSheets>>, TError = ErrorType<void>>(
+ params: CompleteCrmGoogleSheetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof completeCrmGoogleSheets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCompleteCrmGoogleSheetsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSyncCrmSourceUrl = (id: number,) => {
+
+
+
+
+  return `/api/crm/sources/${id}/sync`
+}
+
+export const syncCrmSource = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SyncCrmSource200> => {
+
+  return customFetch<SyncCrmSource200>(getSyncCrmSourceUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncCrmSourceMutationKey = () => ['syncCrmSource'] as const;
+
+export const getSyncCrmSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncCrmSource>>, TError,SyncCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncCrmSource>>, TError,SyncCrmSourceMutationVariables, TContext> => {
+
+const mutationKey = getSyncCrmSourceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncCrmSource>>, SyncCrmSourceMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  syncCrmSource(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncCrmSourceMutationResult = NonNullable<Awaited<ReturnType<typeof syncCrmSource>>>
+
+    export type SyncCrmSourceMutationError = ErrorType<unknown>
+    export type SyncCrmSourceMutationVariables = {id: number}
+
+    export const useSyncCrmSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncCrmSource>>, TError,SyncCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncCrmSource>>,
+        TError,
+        SyncCrmSourceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSyncCrmSourceMutationOptions(options));
+    }
+
+export const getListCrmSyncConflictsUrl = () => {
+
+
+
+
+  return `/api/crm/sync/conflicts`
+}
+
+export const listCrmSyncConflicts = async ( options?: Parameters<typeof customFetch>[1]): Promise<ListCrmSyncConflicts200> => {
+
+  return customFetch<ListCrmSyncConflicts200>(getListCrmSyncConflictsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCrmSyncConflictsQueryKey = () => {
+    return [
+    `/api/crm/sync/conflicts`
+    ] as const;
+    }
+
+
+export const getListCrmSyncConflictsQueryOptions = <TData = Awaited<ReturnType<typeof listCrmSyncConflicts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCrmSyncConflicts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCrmSyncConflictsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCrmSyncConflicts>>> = ({ signal }) => listCrmSyncConflicts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCrmSyncConflicts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCrmSyncConflictsQueryResult = NonNullable<Awaited<ReturnType<typeof listCrmSyncConflicts>>>
+export type ListCrmSyncConflictsQueryError = ErrorType<unknown>
+
+
+
+export function useListCrmSyncConflicts<TData = Awaited<ReturnType<typeof listCrmSyncConflicts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCrmSyncConflicts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCrmSyncConflictsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResolveCrmSyncConflictUrl = (id: number,) => {
+
+
+
+
+  return `/api/crm/sync/conflicts/${id}/resolve`
+}
+
+export const resolveCrmSyncConflict = async (id: number,
+    resolveCrmSyncConflictBody: ResolveCrmSyncConflictBody, options?: Parameters<typeof customFetch>[1]): Promise<ResolveCrmSyncConflict200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<ResolveCrmSyncConflict200>(getResolveCrmSyncConflictUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(resolveCrmSyncConflictBody)
+  }
+);}
+
+
+
+
+
+export const getResolveCrmSyncConflictMutationKey = () => ['resolveCrmSyncConflict'] as const;
+
+export const getResolveCrmSyncConflictMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveCrmSyncConflict>>, TError,ResolveCrmSyncConflictMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveCrmSyncConflict>>, TError,ResolveCrmSyncConflictMutationVariables, TContext> => {
+
+const mutationKey = getResolveCrmSyncConflictMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveCrmSyncConflict>>, ResolveCrmSyncConflictMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  resolveCrmSyncConflict(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveCrmSyncConflictMutationResult = NonNullable<Awaited<ReturnType<typeof resolveCrmSyncConflict>>>
+    export type ResolveCrmSyncConflictMutationBody = BodyType<ResolveCrmSyncConflictBody>
+    export type ResolveCrmSyncConflictMutationError = ErrorType<unknown>
+    export type ResolveCrmSyncConflictMutationVariables = {id: number;data: BodyType<ResolveCrmSyncConflictBody>}
+
+    export const useResolveCrmSyncConflict = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveCrmSyncConflict>>, TError,ResolveCrmSyncConflictMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveCrmSyncConflict>>,
+        TError,
+        ResolveCrmSyncConflictMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResolveCrmSyncConflictMutationOptions(options));
+    }
 

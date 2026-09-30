@@ -21,7 +21,7 @@ export const HealthCheckResponse = zod.object({
  * @summary List all conversations
  */
 export const ListOpenaiConversationsResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "createdAt": zod.date()
 })
@@ -36,7 +36,7 @@ export const CreateOpenaiConversationBody = zod.object({
 })
 
 export const CreateOpenaiConversationResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "createdAt": zod.date()
 })
@@ -50,12 +50,12 @@ export const GetOpenaiConversationParams = zod.object({
 })
 
 export const GetOpenaiConversationResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "createdAt": zod.date(),
   "messages": zod.array(zod.object({
-  "id": zod.int(),
-  "conversationId": zod.int(),
+  "id": zod.number().int(),
+  "conversationId": zod.number().int(),
   "role": zod.string(),
   "content": zod.string(),
   "createdAt": zod.date()
@@ -81,8 +81,8 @@ export const ListOpenaiMessagesParams = zod.object({
 })
 
 export const ListOpenaiMessagesResponseItem = zod.object({
-  "id": zod.int(),
-  "conversationId": zod.int(),
+  "id": zod.number().int(),
+  "conversationId": zod.number().int(),
   "role": zod.string(),
   "content": zod.string(),
   "createdAt": zod.date()
@@ -142,7 +142,7 @@ export const GetMyOrganizationsResponse = zod.object({
 
 
 export const SwitchOrganizationBody = zod.object({
-  "orgId": zod.int().nullable()
+  "orgId": zod.number().int().nullable()
 })
 
 export const SwitchOrganizationResponse = zod.object({
@@ -152,15 +152,15 @@ export const SwitchOrganizationResponse = zod.object({
 
 
 export const ListCrmCustomFieldsResponseItem = zod.object({
-  "id": zod.int(),
-  "orgId": zod.int(),
+  "id": zod.number().int(),
+  "orgId": zod.number().int(),
   "fieldKey": zod.string(),
   "label": zod.string(),
   "fieldType": zod.enum(['text', 'number', 'boolean', 'date', 'select']),
   "optionsJson": zod.array(zod.string()),
   "required": zod.boolean(),
   "archived": zod.boolean(),
-  "position": zod.int()
+  "position": zod.number().int()
 })
 export const ListCrmCustomFieldsResponse = zod.array(ListCrmCustomFieldsResponseItem)
 
@@ -171,19 +171,19 @@ export const CreateCrmCustomFieldBody = zod.object({
   "fieldType": zod.enum(['text', 'number', 'boolean', 'date', 'select']),
   "optionsJson": zod.array(zod.string()).optional(),
   "required": zod.boolean().optional(),
-  "position": zod.int().optional()
+  "position": zod.number().int().optional()
 })
 
 export const CreateCrmCustomFieldResponse = zod.object({
-  "id": zod.int(),
-  "orgId": zod.int(),
+  "id": zod.number().int(),
+  "orgId": zod.number().int(),
   "fieldKey": zod.string(),
   "label": zod.string(),
   "fieldType": zod.enum(['text', 'number', 'boolean', 'date', 'select']),
   "optionsJson": zod.array(zod.string()),
   "required": zod.boolean(),
   "archived": zod.boolean(),
-  "position": zod.int()
+  "position": zod.number().int()
 })
 
 
@@ -196,19 +196,19 @@ export const UpdateCrmCustomFieldBody = zod.object({
   "optionsJson": zod.array(zod.string()).optional(),
   "required": zod.boolean().optional(),
   "archived": zod.boolean().optional(),
-  "position": zod.int().optional()
+  "position": zod.number().int().optional()
 })
 
 export const UpdateCrmCustomFieldResponse = zod.object({
-  "id": zod.int(),
-  "orgId": zod.int(),
+  "id": zod.number().int(),
+  "orgId": zod.number().int(),
   "fieldKey": zod.string(),
   "label": zod.string(),
   "fieldType": zod.enum(['text', 'number', 'boolean', 'date', 'select']),
   "optionsJson": zod.array(zod.string()),
   "required": zod.boolean(),
   "archived": zod.boolean(),
-  "position": zod.int()
+  "position": zod.number().int()
 })
 
 
@@ -219,7 +219,7 @@ export const PreviewCrmLeadImportBody = zod.object({
 export const PreviewCrmLeadImportResponse = zod.object({
   "headers": zod.array(zod.string()),
   "sampleRows": zod.array(zod.array(zod.string())),
-  "rowCount": zod.int(),
+  "rowCount": zod.number().int(),
   "candidates": zod.array(zod.record(zod.string(), zod.unknown())),
   "rows": zod.array(zod.array(zod.string())).optional()
 })
@@ -237,5 +237,71 @@ export const ApplyCrmLeadImportResponse = zod.record(zod.string(), zod.unknown()
 
 
 export const ExportCrmArchiveResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const ListCrmSourcesResponse = zod.object({
+
+}).passthrough()
+
+
+export const CreateCrmSourceBody = zod.record(zod.string(), zod.unknown())
+
+export const CreateCrmSourceResponse = zod.object({
+
+}).passthrough()
+
+
+export const DeleteCrmSourceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteCrmSourceResponse = zod.object({
+
+}).passthrough()
+
+
+export const ConnectCrmGoogleSheetsQueryParams = zod.object({
+  "sourceId": zod.coerce.number().int()
+})
+
+export const ConnectCrmGoogleSheetsResponse = zod.object({
+
+}).passthrough()
+
+
+export const CompleteCrmGoogleSheetsQueryParams = zod.object({
+  "error": zod.coerce.string().optional(),
+  "code": zod.coerce.string().optional(),
+  "state": zod.coerce.string()
+})
+
+export const CompleteCrmGoogleSheetsResponse = zod.void()
+
+
+export const SyncCrmSourceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const SyncCrmSourceResponse = zod.object({
+
+}).passthrough()
+
+
+export const ListCrmSyncConflictsResponse = zod.object({
+
+}).passthrough()
+
+
+export const ResolveCrmSyncConflictParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ResolveCrmSyncConflictBody = zod.object({
+  "resolution": zod.enum(['crm', 'source'])
+})
+
+export const ResolveCrmSyncConflictResponse = zod.object({
+
+}).passthrough()
 
 

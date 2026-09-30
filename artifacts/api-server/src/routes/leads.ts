@@ -5,8 +5,10 @@ import {
   leadNotesTable,
   leadImportsTable,
   orgMembersTable,
+  organizationsTable,
   callHistoryTable,
   usersTable,
+  crmCustomFieldsTable,
   type LeadRecord,
 } from "@workspace/db";
 import { eq, and, or, ilike, desc } from "drizzle-orm";
@@ -160,13 +162,43 @@ async function getCallerOrgRole(userId: string): Promise<{ orgId: number; role: 
     .select()
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")));
-  if (rows.length === 0) return null;
+  if (rows.length === 0) {
+    const [owned] = await db.select({ id: organizationsTable.id })
+      .from(organizationsTable)
+      .where(and(eq(organizationsTable.id, orgId), eq(organizationsTable.ownerUserId, userId))).limit(1);
+    if (owned) return { orgId: owned.id, role: "owner" };
+    return null;
+  }
   return { orgId: rows[0].orgId, role: rows[0].role };
 }
 
 async function requireCrmAccess(userId: string, permission: "crm.view" | "crm.edit"): Promise<boolean> {
   const membership = await getCallerOrgRole(userId);
   return !!membership && (await canDoInOrg(userId, membership.orgId, permission)).allowed;
+}
+
+async function validateCustomFields(orgId: number, input: unknown): Promise<{ value?: Record<string, unknown>; error?: string }> {
+  if (input === undefined) return { value: undefined };
+  if (!input || typeof input !== "object" || Array.isArray(input)) return { error: "customFieldsJson must be an object" };
+  const fields = await db.select().from(crmCustomFieldsTable).where(and(eq(crmCustomFieldsTable.orgId, orgId), eq(crmCustomFieldsTable.archived, false)));
+  const allowed = new Map(fields.map((f) => [f.fieldKey, f]));
+  const value = input as Record<string, unknown>;
+  for (const field of fields) {
+    if (field.required && (value[field.fieldKey] === undefined || value[field.fieldKey] === null || value[field.fieldKey] === "")) {
+      return { error: `Required custom field missing: ${field.fieldKey}` };
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const field = allowed.get(key);
+    if (!field) return { error: `Unknown or archived custom field: ${key}` };
+    const v = value[key];
+    if (v === null || v === "") continue;
+    if (field.fieldType === "number" && !Number.isFinite(Number(v))) return { error: `${key} must be a number` };
+    if (field.fieldType === "boolean" && !["true", "false", true, false].includes(v as any)) return { error: `${key} must be boolean` };
+    if (field.fieldType === "date" && Number.isNaN(new Date(String(v)).getTime())) return { error: `${key} must be a date` };
+    if (field.fieldType === "select" && !(field.optionsJson ?? []).includes(String(v))) return { error: `${key} must be one of the configured options` };
+  }
+  return { value };
 }
 
 function isAdmin(role: string): boolean {
@@ -509,11 +541,13 @@ router.post("/leads", async (req: Request, res: Response) => {
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
   if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
 
-  const { name, phone, email, company, jobTitle, source, status, assignedUserId } = req.body ?? {};
+  const { name, phone, email, company, jobTitle, source, status, assignedUserId, customFieldsJson } = req.body ?? {};
   if (!name || typeof name !== "string" || name.trim().length < 1) {
     res.status(400).json({ error: "Lead name is required" }); return;
   }
 
+  const customFields = await validateCustomFields(membership.orgId, customFieldsJson);
+  if (customFields.error) { res.status(400).json({ error: customFields.error }); return; }
   const [lead] = await db.insert(leadRecordsTable).values({
     orgId: membership.orgId,
     name: String(name).trim(),
@@ -526,6 +560,7 @@ router.post("/leads", async (req: Request, res: Response) => {
     assignedUserId: assignedUserId || null,
     createdByUserId: userId,
     isLocked: false,
+    customFieldsJson: customFields.value,
   }).returning();
 
   broadcastLeadEvent(membership.orgId, { type: 'lead_created', lead });
@@ -550,7 +585,7 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
   const admin = isAdmin(membership.role);
 
   if (!admin) {
-    const allowedFields = ["status"];
+    const allowedFields = ["status", "customFieldsJson"];
     const attempted = Object.keys(body).filter(k => !allowedFields.includes(k));
     if (attempted.length > 0) {
       res.status(403).json({ error: "Regular users can only update lead status. Use notes to add updates." });
@@ -559,6 +594,11 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
   }
 
   const updates: Partial<LeadRecord> = {};
+  if (body.customFieldsJson !== undefined || existing.customFieldsJson) {
+    const customFields = await validateCustomFields(membership.orgId, { ...(existing.customFieldsJson ?? {}), ...(body.customFieldsJson ?? {}) });
+    if (customFields.error) { res.status(400).json({ error: customFields.error }); return; }
+    updates.customFieldsJson = customFields.value;
+  }
   if (admin) {
     if (body.name !== undefined) updates.name = String(body.name).trim();
     if (body.phone !== undefined) updates.phone = String(body.phone).trim();

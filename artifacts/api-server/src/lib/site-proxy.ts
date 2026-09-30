@@ -159,7 +159,8 @@ export class SafeFetchError extends Error {
       | "private_host"
       | "too_many_redirects"
       | "fetch_failed"
-      | "timeout",
+       | "timeout"
+       | "response_too_large",
     message?: string,
   ) {
     super(message ?? code);
@@ -178,7 +179,9 @@ export interface SafeFetchOptions {
   headers?: Record<string, string>;
   timeoutMs?: number;
   maxRedirects?: number;
+  maxResponseBytes?: number;
   method?: string;
+  body?: string;
 }
 
 /**
@@ -232,6 +235,7 @@ export async function safeFetch(
         method: opts.method ?? "GET",
         redirect: "manual",
         headers: opts.headers,
+        body: opts.body,
         signal: AbortSignal.timeout(timeoutMs),
         dispatcher,
       });
@@ -260,7 +264,29 @@ export async function safeFetch(
       continue;
     }
 
-    const body = Buffer.from(await resp.arrayBuffer());
+    const maxResponseBytes = opts.maxResponseBytes ?? Number.POSITIVE_INFINITY;
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+    const reader = resp.body?.getReader();
+    if (reader) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          totalBytes += value.byteLength;
+          if (totalBytes > maxResponseBytes) {
+            await reader.cancel().catch(() => {});
+            await dispatcher.destroy().catch(() => {});
+            throw new SafeFetchError("response_too_large");
+          }
+          chunks.push(Buffer.from(value));
+        }
+      } catch (err) {
+        await dispatcher.destroy().catch(() => {});
+        throw err;
+      }
+    }
+    const body = Buffer.concat(chunks, totalBytes);
     const headers = resp.headers;
     await dispatcher.destroy().catch(() => {});
     return { status: resp.status, headers, body, finalUrl: url };

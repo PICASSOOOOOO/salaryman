@@ -91,6 +91,12 @@ export async function resolveCurrentOrgId(userId: string): Promise<number | null
         .where(and(eq(orgMembersTable.orgId, n), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
         .limit(1);
       if (m) return n;
+      const [owned] = await db
+        .select({ id: organizationsTable.id })
+        .from(organizationsTable)
+        .where(and(eq(organizationsTable.id, n), eq(organizationsTable.ownerUserId, userId)))
+        .limit(1);
+      if (owned) return n;
     }
   }
   const [first] = await db
@@ -98,7 +104,14 @@ export async function resolveCurrentOrgId(userId: string): Promise<number | null
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
     .limit(1);
-  return first?.orgId ?? null;
+  if (first) return first.orgId;
+  const [owned] = await db
+    .select({ id: organizationsTable.id })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.ownerUserId, userId))
+    .orderBy(organizationsTable.id)
+    .limit(1);
+  return owned?.id ?? null;
 }
 
 /** Active member userIds for an org (used to aggregate cross-user org data). */

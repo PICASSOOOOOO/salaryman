@@ -150,3 +150,4 @@
 - [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.
 - [AdSense verification](adsense-verification.md) — keep ownership static, gate scripts by route, and use a clean document for strict ad-free routes after SPA AdSense loading.
 - [Deployment build history](deployment-build-history.md) — inspect recent build attempts separately from the still-active version; failed readiness candidates may have no runtime logs.
+- [Orval Zod output target](orval-zod-output-target.md) — Keep generated validators on Zod 3; Orval's automatic Zod 4 output crashes API startup.
