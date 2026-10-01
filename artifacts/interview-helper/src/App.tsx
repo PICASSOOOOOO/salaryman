@@ -385,6 +385,7 @@ function AppShell() {
     "/bots",
     "/agents",
     "/intel/agents",
+    "/landing",
   ];
   const matchesPrefix = (list: string[]) =>
     list.some(p => pathname === p || pathname.startsWith(p + "/"));
@@ -395,6 +396,7 @@ function AppShell() {
   // without being sent through a loop.
   const allowedForAuthedNew =
     pathname === "/pablo" ||
+    pathname === "/landing" ||
     pathname === "/onboarding" ||
     pathname === "/upgrade" ||
     pathname === "/pledge" ||
@@ -434,6 +436,7 @@ function AppShell() {
   const [, navigate] = useLocation();
   const anonymousExpiryExempt =
     pathname === "/" ||
+    pathname === "/landing" ||
     pathname === "/sign-in" ||
     pathname === "/sign-up" ||
     pathname === "/device-link" ||
@@ -573,6 +576,7 @@ function AppShell() {
             <Route path="/sign-in/*?" component={ReplitAuthPage} />
             <Route path="/sign-up/*?" component={ReplitAuthPage} />
             {/* Standalone routes */}
+            <Route path="/landing">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/pablo/deck" component={PabloDeck} />
             <Route path="/pablo">{() => <PabloTerminal />}</Route>
