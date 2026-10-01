@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
+import { trackEvent } from "@/lib/analytics";
 
 // Paid services are deliberately separate: Pixel Agents and the
 // Twilio-backed CALLL HOME each require their own USD subscription.
@@ -69,6 +70,7 @@ export default function Pricing() {
       });
       const body = await response.json().catch(() => ({})) as { url?: string; error?: string };
       if (!response.ok || !body.url) throw new Error(body.error || "Checkout unavailable");
+      trackEvent("paid_service_checkout_started", { feature });
       window.location.assign(body.url);
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : "Checkout unavailable. Please try again.");

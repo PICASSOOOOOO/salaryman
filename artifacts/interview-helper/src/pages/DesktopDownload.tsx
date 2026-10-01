@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Bot, BriefcaseBusiness, CircleDollarSign, Download, FileText, Laptop, Phone, Settings, Users, X } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
+import { trackEvent } from "@/lib/analytics";
 import "./desktop-download.css";
 
 type DesktopPlatform = "windows" | "macos" | "linux" | "other";
@@ -142,7 +143,7 @@ export default function DesktopDownload() {
           </p>
           <div className="desktop-download-actions">
             {clientBuildAvailable && clientRelease ? (
-              <a className="desktop-download-primary" href={downloadHref} download={clientRelease.archiveName} data-testid="link-download-detected-desktop-client">
+              <a className="desktop-download-primary" href={downloadHref} download={clientRelease.archiveName} data-testid="link-download-detected-desktop-client" onClick={() => trackEvent("desktop_download_started", { platform: clientRelease.id })}>
                 <Download size={16} aria-hidden /> Download {clientRelease.name} desktop alpha <ArrowRight size={15} aria-hidden />
               </a>
             ) : downloadAllowed ? (
@@ -310,7 +311,7 @@ export default function DesktopDownload() {
                     <p>{platform.detail}</p>
                   </div>
                   {downloadAllowed && availablePlatforms.includes(platform.id) ? (
-                    <a href={apiUrl(`/api/desktop/download?platform=${platform.id}`)} download={platform.archiveName} data-testid={`link-download-${platform.id}-desktop-client`}>
+                    <a href={apiUrl(`/api/desktop/download?platform=${platform.id}`)} download={platform.archiveName} data-testid={`link-download-${platform.id}-desktop-client`} onClick={() => trackEvent("desktop_download_started", { platform: platform.id })}>
                       Download <ArrowRight size={14} aria-hidden />
                     </a>
                   ) : (

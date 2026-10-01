@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Volume2, RotateCcw } from "lucide-react";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
+import { trackEvent } from "@/lib/analytics";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@/hooks/use-auth";
@@ -1516,6 +1517,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           }
           const data = (await res.json()) as { say: string };
           const said = (data.say ?? "I'm here.").trim() || "I'm here.";
+          trackEvent("pablo_message_replied", { surface: "terminal", response_route: "public" });
           setReply(said);
           setVoiceNotice("");
           setRetryPrompt(null);
@@ -1576,6 +1578,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         });
         if (!res.ok) throw new Error(`pablo ${res.status}`);
         const data = (await res.json()) as { say: string };
+        trackEvent("pablo_message_replied", { surface: "terminal", response_route: "public" });
         const combined = `${(data.say ?? '').trim()} ${reprompt}`.trim();
         setReply(combined);
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: combined }]);
@@ -1801,6 +1804,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         | { kind: "search"; query: string }
         | { kind: "external"; url: string };
       const data = (await res.json()) as { say: string; action: PabloAction | null; persona?: "pablo" | "mila"; intrusion?: string };
+      trackEvent("pablo_message_replied", { surface: "terminal", response_route: "authenticated_command" });
       let action = data.action;
       let say = data.say;
 

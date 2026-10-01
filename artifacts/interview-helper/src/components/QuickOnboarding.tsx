@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { getLocalTimezone, getOperationalCities, resolveHomeCity } from '@/lib/world-servers';
 import { getSalarymanEmail } from '@/lib/tutorial-progress';
 import { defaultAppearance } from '@/lib/character-identity';
+import { trackEvent } from '@/lib/analytics';
 import type { OnboardingAnswers } from './PabloOnboarding';
 
 interface QuickOnboardingProps {
@@ -72,6 +73,7 @@ export function QuickOnboarding({ charName, contactEmail: initialEmail, onComple
         locationConsent: false,
         coarseLocation: null,
       });
+      trackEvent('onboarding_completed', { work_path: path });
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Could not save onboarding.');
       setSubmitting(false);
