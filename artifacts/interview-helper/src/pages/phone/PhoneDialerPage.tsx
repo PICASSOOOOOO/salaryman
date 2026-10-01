@@ -197,7 +197,7 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }) });
+          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {}, countryCode: dialCountry }) });
         if (await handleFetchError(r)) throw new Error('Dialing session request failed');
         return r.json();
       }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));

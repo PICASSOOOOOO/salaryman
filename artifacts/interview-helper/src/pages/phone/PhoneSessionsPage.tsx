@@ -11,6 +11,8 @@ import {
   type CRMContact, type BatchResult, type ActiveCall } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import type { CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 type DialMode = 'power' | 'auto' | 'predictive';
 
@@ -37,6 +39,7 @@ export default function PhoneSessionsPage() {
   const [contacts, setContacts] = useState<CRMContact[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [dialingMode, setDialingMode] = useState<DialMode>('power');
+  const [dialCountry, setDialCountry] = useState<CountryCode>('US');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -102,6 +105,7 @@ export default function PhoneSessionsPage() {
             mode: dialingMode,
             numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })),
             settings: { concurrency, delayBetweenCalls },
+            countryCode: dialCountry,
           }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
@@ -311,6 +315,10 @@ export default function PhoneSessionsPage() {
           <PhoneCard>
             <PhoneCardHeader accent={selected.size > 0 ? warning(0.5) : undefined}>SESSION CONTROLS</PhoneCardHeader>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
+                LOCAL NUMBER COUNTRY
+                <PhoneCountrySelect value={dialCountry} onChange={setDialCountry} />
+              </label>
               <div style={{ fontSize: '0.52rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 4 }}>
                 {selected.size === 0 ? 'Select contacts from the list to build a dialing queue.' : `${selected.size} contact${selected.size !== 1 ? 's' : ''} ready in queue.`}
               </div>

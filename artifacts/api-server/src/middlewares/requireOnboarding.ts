@@ -64,7 +64,13 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
 const ONBOARDING_MUTATION_EXEMPTIONS = new Set([
   "/world/register",
   "/world/employment/unemployment",
+  "/chat/pablo/message",
+  "/chat/pablo/command",
 ]);
+
+export function isOnboardingMutationExempt(method: string, path: string): boolean {
+  return method === "POST" && ONBOARDING_MUTATION_EXEMPTIONS.has(path);
+}
 
 /**
  * Authenticated mutations are data-management operations by default. Keep
@@ -80,7 +86,7 @@ export async function requireOnboardingForMutation(
     next();
     return;
   }
-  if (!req.isAuthenticated?.() || ONBOARDING_MUTATION_EXEMPTIONS.has(req.path)) {
+  if (!req.isAuthenticated?.() || isOnboardingMutationExempt(req.method, req.path)) {
     next();
     return;
   }

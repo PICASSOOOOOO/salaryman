@@ -611,7 +611,7 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   const e164 = toE164(phone, outboundCountry);
   if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
 
-  const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+  const { checkAndEnforce, throttleResponse } = await import("../lib/usage-meter");
   const gate = await checkAndEnforce(userId, req.user?.email, "sms_count", 1);
   if (!gate.allowed) {
     res.status(429).json(throttleResponse("sms_count", gate.used, gate.limit));
@@ -630,7 +630,6 @@ router.post("/sms/send", async (req: Request, res: Response) => {
       contactName,
       defaultCountry: outboundCountry,
     });
-    await recordUsage(userId, "sms_count", 1);
     res.json({ ok: true, message, conversation });
   } catch (err: any) {
     console.error("[sms] send error:", err.message);

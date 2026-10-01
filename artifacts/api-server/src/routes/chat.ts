@@ -1587,19 +1587,12 @@ router.post("/chat/pablo/message", async (req, res) => {
   }
 
   const userId = req.user.id;
-  const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+  const { checkAndEnforce, throttleResponse } = await import("../lib/usage-meter");
   const gate = await checkAndEnforce(userId, req.user?.email, "ai_messages", 1);
   if (!gate.allowed) {
     res.status(429).json(throttleResponse("ai_messages", gate.used, gate.limit));
     return;
   }
-  recordUsage(userId, "ai_messages", 1).catch(err => {
-    (req.log ?? logger).error(
-      { phase: "usage-recording", ...safePabloErrorFields(err) },
-      "Pablo message usage could not be recorded",
-    );
-  });
-
   try {
     const [userRow] = await db
       .select({ pabloPrivacyMode: usersTable.pabloPrivacyMode })

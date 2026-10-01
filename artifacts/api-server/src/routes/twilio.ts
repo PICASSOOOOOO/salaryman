@@ -641,14 +641,13 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
       res.status(400).json({ error: "Invalid phone number format" });
       return;
     }
-    const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+    const { checkAndEnforce, throttleResponse } = await import("../lib/usage-meter");
     const gate = await checkAndEnforce(userId, req.user?.email, "voice_minutes", 1);
     if (!gate.allowed) {
       res.status(429).json(throttleResponse("voice_minutes", gate.used, gate.limit));
       return;
     }
-    // Optimistically charge 1 minute on dial; webhook reconciliation can true-up later.
-    await recordUsage(userId, "voice_minutes", 1);
+    // checkAndEnforce atomically consumes one usage unit before dialing.
     const client = getTwilioClient();
     const fromNumber = await getUserOutboundNumber(userId);
 

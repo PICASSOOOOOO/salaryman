@@ -11,6 +11,8 @@ import {
   type CRMContact, type BatchResult, type ActiveCall } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import type { CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 export default function PhoneContactsPage() {
   const isMobile = useIsMobile();
@@ -32,6 +34,7 @@ export default function PhoneContactsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [sortBy, setSortBy] = useState<'name' | 'company'>('name');
   const [contactFilter, setContactFilter] = useState<'all' | 'nums'>('all');
+  const [dialCountry, setDialCountry] = useState<CountryCode>('US');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
@@ -86,7 +89,7 @@ export default function PhoneContactsPage() {
       const d = await bridgeOutbound(async () => {
         const r = await apiFetch(apiUrl('twilio/call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
+          body: JSON.stringify({ recipientNumber: phone, countryCode: dialCountry, userId, callerName, contactName: name, contactId }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Call failed');
@@ -111,7 +114,7 @@ export default function PhoneContactsPage() {
       const d = await bridgeOutbound(async () => {
         const r = await apiFetch(apiUrl('twilio/batch-call'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ numbers, userId, callerName }) });
+          body: JSON.stringify({ numbers, countryCode: dialCountry, userId, callerName }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Batch call failed');
@@ -161,6 +164,11 @@ export default function PhoneContactsPage() {
           <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: destructive(0.55), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, maxWidth: 360 }}>
+        <span style={{ fontSize: '0.48rem', color: slate(0.55), letterSpacing: '0.12em' }}>LOCAL NUMBER COUNTRY</span>
+        <PhoneCountrySelect value={dialCountry} onChange={setDialCountry} compact />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="TOTAL CONTACTS" value={contacts.length} />

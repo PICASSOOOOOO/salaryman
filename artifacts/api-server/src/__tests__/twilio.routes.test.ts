@@ -22,6 +22,7 @@ import twilio from "twilio";
 import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable, conferenceRoomsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
+import { checkAndEnforce, recordUsage } from "../lib/usage-meter";
 import {
   buildApp,
   resetAuthState,
@@ -72,6 +73,8 @@ describe("POST /twilio/call", () => {
     expect(res.body.to).toBe("+15551234567");
     expect(res.body.conferenceName).toMatch(/^conf-/);
     expect(spies.callsCreate).toHaveBeenCalledTimes(1);
+    expect(checkAndEnforce).toHaveBeenCalledTimes(1);
+    expect(recordUsage).not.toHaveBeenCalled();
     const rows = await db
       .select()
       .from(callHistoryTable)
@@ -267,6 +270,18 @@ describe("dialing sessions", () => {
       .from(dialingSessionsTable)
       .where(eq(dialingSessionsTable.id, res.body.sessionId));
     expect(session.status).toBe("stopped");
+  });
+
+  it("start: normalizes local numbers with the explicitly selected country", async () => {
+    const res = await request(app)
+      .post("/api/twilio/dialing/start")
+      .send({ mode: "power", countryCode: "VN", numbers: [{ phone: "0912345678", name: "VN lead" }] });
+    expect(res.status).toBe(200);
+    expect(spies.callsCreate).toHaveBeenCalledWith(expect.objectContaining({ to: "+84912345678" }));
+    const [session] = await db.select().from(dialingSessionsTable)
+      .where(eq(dialingSessionsTable.id, res.body.sessionId));
+    expect(JSON.parse(session.queueJson ?? "[]")[0].phone).toBe("+84912345678");
+    await request(app).post(`/api/twilio/dialing/${res.body.sessionId}/stop`).send();
   });
 
   it("next: dials the next queued number", async () => {
