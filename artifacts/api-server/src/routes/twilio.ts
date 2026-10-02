@@ -23,8 +23,19 @@ import {
   smsConversationsTable,
   smsMessagesTable,
   contactChannelPrefsTable,
+  organizationsTable,
+  chatChannelsTable,
+  chatMessagesTable,
   type InsertSecretaryConfig,
 } from "@workspace/db";
+import {
+  GetPhoneInternalDirectoryResponse,
+  AssignPhoneInternalLineParams,
+  AssignPhoneInternalLineBody,
+  AssignPhoneInternalLineResponse,
+  SendPabloInternalDeliveryBody,
+  SendPabloInternalDeliveryResponse,
+} from "@workspace/api-zod";
 import twilio from "twilio";
 import { randomBytes } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -48,6 +59,7 @@ import { getUserOutboundNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { resolveTelephonyOwner } from "../lib/telephony-owner";
+import { broadcastChatMessage } from "../chatServer";
 
 const router = Router();
 
@@ -224,6 +236,68 @@ async function getUserOrgId(userId: string): Promise<number | null> {
       .limit(1);
     return rows[0]?.orgId ?? null;
   } catch { return null; }
+}
+
+async function getCurrentPhoneOrgId(userId: string): Promise<number | null> {
+  const [user] = await db.select({ currentOrgId: usersTable.currentOrgId })
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const currentOrgId = user?.currentOrgId ? Number(user.currentOrgId) : null;
+  if (Number.isFinite(currentOrgId) && currentOrgId) {
+    const [membership] = await db.select({ orgId: orgMembersTable.orgId })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.orgId, currentOrgId),
+        eq(orgMembersTable.status, "active"),
+      )).limit(1);
+    const [ownedOrg] = await db.select({ id: organizationsTable.id })
+      .from(organizationsTable)
+      .where(and(eq(organizationsTable.id, currentOrgId), eq(organizationsTable.ownerUserId, userId)))
+      .limit(1);
+    if (membership || ownedOrg) return currentOrgId;
+  }
+  const memberOrgId = await getUserOrgId(userId);
+  if (memberOrgId) return memberOrgId;
+  const [ownedOrg] = await db.select({ id: organizationsTable.id })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.ownerUserId, userId))
+    .limit(1);
+  return ownedOrg?.id ?? null;
+}
+
+type InternalPhoneEmployee = {
+  userId: string;
+  orgId: number;
+  role: string;
+  title: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  email: string | null;
+};
+
+async function getActivePhoneEmployee(orgId: number, userId: string): Promise<InternalPhoneEmployee | null> {
+  const [member] = await db.select({
+    userId: orgMembersTable.userId,
+    orgId: orgMembersTable.orgId,
+    role: orgMembersTable.role,
+    title: orgMembersTable.title,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+    username: usersTable.username,
+    email: usersTable.email,
+  })
+    .from(orgMembersTable)
+    .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(and(
+      eq(orgMembersTable.orgId, orgId),
+      eq(orgMembersTable.userId, userId),
+      eq(orgMembersTable.status, "active"),
+      eq(orgMembersTable.memberType, "employee"),
+    ))
+    .limit(1);
+  if (!member || !await hasFeature(userId, member.email ?? "", "phone_system")) return null;
+  return member;
 }
 
 const PHONE_ROLE_RANK: Record<string, number> = {
@@ -567,6 +641,86 @@ router.post("/twilio/twiml/client-voice", async (req, res) => {
   const from = (req.body?.From ?? req.query?.From ?? "") as string;
   const identity = from.startsWith("client:") ? from.slice("client:".length) : "";
   res.set("Content-Type", "text/xml");
+
+  if (String(req.query.event ?? "") === "internal-result") {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const callerUserId = String(req.query.callerUserId ?? "");
+    const callSid = String(req.body?.CallSid ?? "");
+    const dialStatus = String(req.body?.DialCallStatus ?? "failed");
+    const duration = Number(req.body?.DialCallDuration);
+    if (callerUserId && callSid) {
+      await db.update(callHistoryTable).set({
+        status: dialStatus,
+        ...(Number.isFinite(duration) && duration >= 0 ? { durationSeconds: Math.floor(duration) } : {}),
+        endedAt: new Date(),
+      }).where(and(
+        eq(callHistoryTable.userId, callerUserId),
+        eq(callHistoryTable.twilioCallSid, callSid),
+        eq(callHistoryTable.callType, "internal_employee"),
+      ));
+    }
+    if (dialStatus === "completed") {
+      res.send("<Response><Hangup/></Response>");
+    } else {
+      res.send("<Response><Say>The employee is unavailable right now. Please try again later.</Say><Hangup/></Response>");
+    }
+    return;
+  }
+
+  if (identity && confName.startsWith("employee:")) {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const targetUserId = confName.slice("employee:".length);
+    const callSid = String(req.body?.CallSid ?? "");
+    try {
+      const orgId = await getCurrentPhoneOrgId(identity);
+      const [caller, target] = orgId
+        ? await Promise.all([
+            getActivePhoneEmployee(orgId, identity),
+            getActivePhoneEmployee(orgId, targetUserId),
+          ])
+        : [null, null];
+      const [callerCanUseTwilio, targetCanUseTwilio] = caller && target
+        ? await Promise.all([
+            canUsePlatformTwilio(identity, caller.email ?? ""),
+            canUsePlatformTwilio(targetUserId, target.email ?? ""),
+          ])
+        : [false, false];
+      if (!orgId || !callSid || identity === targetUserId || !caller || !target
+        || !callerCanUseTwilio || !targetCanUseTwilio) {
+        res.send("<Response><Say>This employee is unavailable on your CALLL HOME plan.</Say><Hangup/></Response>");
+        return;
+      }
+
+      const host = getAppHost(req);
+      const base = host ? `https://${host}/api` : "/api";
+      const actionUrl = `${base}/twilio/twiml/client-voice?event=internal-result&amp;callerUserId=${encodeURIComponent(identity)}`;
+      const targetName = `${target.firstName ?? ""} ${target.lastName ?? ""}`.trim() || target.username || "CALLL HOME employee";
+      await db.insert(callHistoryTable).values({
+        userId: identity,
+        orgId,
+        callerName: targetName,
+        recipientNumber: "CALLL HOME employee",
+        twilioCallSid: callSid,
+        status: "initiated",
+        direction: "outbound",
+        callType: "internal_employee",
+        consentGiven: true,
+      }).onConflictDoNothing();
+      res.send(`<Response><Dial action="${actionUrl}" method="POST" timeout="25"><Client>${escapeTwiml(targetUserId)}</Client></Dial></Response>`);
+      return;
+    } catch (err) {
+      req.log.error({ err }, "CALLL HOME internal call could not be started");
+      res.send("<Response><Say>Unable to connect this call. Please try again later.</Say><Hangup/></Response>");
+      return;
+    }
+  }
+
   if (identity && confName.startsWith(`conf-${identity}-`)) {
     res.send(`<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`);
   } else {
@@ -2232,6 +2386,69 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
 
       const branch = node[answer];
       const branchResponse = interpolatePabloScript(branch.response, leadName, company);
+      if (branch.transferToUserId) {
+        const orgId = await getCurrentPhoneOrgId(userId);
+        const target = orgId ? await getActivePhoneEmployee(orgId, branch.transferToUserId) : null;
+        const [caller] = await db.select({
+          email: usersTable.email,
+        }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+        const [callerCanUseTwilio, targetCanUseTwilio] = orgId && target
+          ? await Promise.all([
+              canUsePlatformTwilio(userId, caller?.email ?? ""),
+              canUsePlatformTwilio(target.userId, target.email ?? ""),
+            ])
+          : [false, false];
+        const safeCallSid = typeof CallSid === "string" ? CallSid.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) : "";
+        if (!orgId || !target || !callerCanUseTwilio || !targetCanUseTwilio || !safeCallSid) {
+          res.type("text/xml").send(`<Response>${milaVoice(`${branchResponse} ${interpolatePabloScript(script.closing, leadName, company)}`, req)}<Hangup/></Response>`);
+          return;
+        }
+
+        const transferRoom = `calll-home-transfer-${safeCallSid}`;
+        const host = getAppHost(req);
+        const base = host ? `https://${host}/api` : "/api";
+        try {
+          const transferCall = await getTwilioClient().calls.create({
+            to: `client:${target.userId}`,
+            from: await getUserOutboundNumber(userId),
+            timeout: 25,
+            twiml: `<Response><Dial><Conference startConferenceOnEnter="false" endConferenceOnExit="true" beep="false">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`,
+            statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(target.userId)}&transferCallerUserId=${encodeURIComponent(userId)}&transferCallerSid=${encodeURIComponent(CallSid)}&transferOrgId=${orgId}`,
+            statusCallbackMethod: "POST",
+            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+          });
+          const transferLabel = `${script.businessName} via Pablo PRIME`;
+          await db.insert(callHistoryTable).values({
+            userId: target.userId,
+            orgId,
+            callerName: transferLabel,
+            recipientNumber: "CALLL HOME employee",
+            twilioCallSid: transferCall.sid,
+            status: transferCall.status ?? "initiated",
+            direction: "inbound",
+            callType: "pablo_internal_transfer",
+            conferenceName: transferRoom,
+            consentGiven: true,
+          }).onConflictDoNothing();
+          await recordTelephonyActivity({
+            userId: target.userId,
+            orgId,
+            channel: "call",
+            direction: "inbound",
+            phone: "CALLL HOME employee",
+            contactName: transferLabel,
+            status: transferCall.status ?? "initiated",
+            twilioSid: transferCall.sid,
+          }).catch(() => {});
+
+          res.type("text/xml").send(`<Response>${milaVoice(branchResponse, req)}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`);
+        } catch (err) {
+          req.log.error({ err, orgId }, "Pablo PRIME employee transfer could not be started");
+          res.type("text/xml").send(`<Response>${milaVoice(`${branchResponse} ${interpolatePabloScript(script.closing, leadName, company)}`, req)}<Hangup/></Response>`);
+        }
+        return;
+      }
+
       if (branch.nextNodeId) {
         const nextNode = script.nodes.find((item) => item.id === branch.nextNodeId);
         if (!nextNode) {
@@ -2914,6 +3131,230 @@ router.post("/twilio/secretary/config", requireAuth, requireFeature("phone_syste
   }
 });
 
+router.get("/twilio/internal-directory", requireAuth, requireFeature("phone_system"), async (req, res): Promise<void> => {
+  try {
+    const userId = getAuthUserId(req);
+    const orgId = await getCurrentPhoneOrgId(userId);
+    if (!orgId) {
+      res.json(GetPhoneInternalDirectoryResponse.parse({
+        organizationId: null, canManageLines: false, members: [], lines: [],
+      }));
+      return;
+    }
+
+    const [organization] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+      .from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+    const [actorMembership] = await db.select({ role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, orgId),
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.status, "active"),
+      )).limit(1);
+    const canManageLines = organization?.ownerUserId === userId
+      || (PHONE_ROLE_RANK[actorMembership?.role ?? ""] ?? 0) >= PHONE_ROLE_RANK.manager;
+
+    const employeeRows = await db.select({
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      title: orgMembersTable.title,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      username: usersTable.username,
+      email: usersTable.email,
+    })
+      .from(orgMembersTable)
+      .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+      .where(and(
+        eq(orgMembersTable.orgId, orgId),
+        eq(orgMembersTable.status, "active"),
+        eq(orgMembersTable.memberType, "employee"),
+      ));
+
+    const eligibleEmployees = (await Promise.all(employeeRows.map(async (member) => {
+      const [phonePaid, twilioAllowed] = await Promise.all([
+        hasFeature(member.userId, member.email ?? "", "phone_system"),
+        canUsePlatformTwilio(member.userId, member.email ?? ""),
+      ]);
+      return phonePaid && twilioAllowed ? member : null;
+    }))).filter((member): member is NonNullable<typeof member> => member !== null);
+
+    const orgLines = await db.select({
+      id: phoneNumbersTable.id,
+      number: phoneNumbersTable.number,
+      label: phoneNumbersTable.label,
+      friendlyName: phoneNumbersTable.friendlyName,
+      userId: phoneNumbersTable.userId,
+      isActive: phoneNumbersTable.isActive,
+    })
+      .from(phoneNumbersTable)
+      .where(eq(phoneNumbersTable.orgId, orgId))
+      .orderBy(desc(phoneNumbersTable.isActive), asc(phoneNumbersTable.id));
+
+    const displayNames = new Map(eligibleEmployees.map((member) => [
+      member.userId,
+      `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim() || member.username || "Team member",
+    ]));
+    const assignedLineByUser = new Map<string, string>();
+    for (const line of orgLines) {
+      if (line.isActive && !assignedLineByUser.has(line.userId)) {
+        assignedLineByUser.set(line.userId, line.number);
+      }
+    }
+
+    res.json(GetPhoneInternalDirectoryResponse.parse({
+      organizationId: orgId,
+      canManageLines,
+      members: eligibleEmployees.map((member) => ({
+        userId: member.userId,
+        displayName: displayNames.get(member.userId)!,
+        title: member.title,
+        role: member.role,
+        phoneNumber: assignedLineByUser.get(member.userId) ?? null,
+        isSelf: member.userId === userId,
+      })),
+      lines: canManageLines ? orgLines.map((line) => ({
+        id: line.id,
+        number: line.number,
+        label: line.label || line.friendlyName || line.number,
+        assignedUserId: line.userId || null,
+        assignedName: displayNames.get(line.userId) ?? null,
+        isActive: line.isActive,
+      })) : [],
+    }));
+  } catch (err) {
+    req.log.error({ err }, "Failed to load CALLL HOME internal directory");
+    res.status(500).json({ error: "Failed to load employee directory" });
+  }
+});
+
+router.put("/twilio/internal-directory/lines/:id", requireAuth, requireFeature("phone_system"), async (req, res): Promise<void> => {
+  const params = AssignPhoneInternalLineParams.safeParse(req.params);
+  const body = AssignPhoneInternalLineBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "A valid line and employee are required" });
+    return;
+  }
+
+  const userId = getAuthUserId(req);
+  const orgId = await getCurrentPhoneOrgId(userId);
+  if (!orgId) {
+    res.status(403).json({ error: "An active organization is required" });
+    return;
+  }
+  const [line] = await db.select({
+    id: phoneNumbersTable.id,
+    orgId: phoneNumbersTable.orgId,
+    isActive: phoneNumbersTable.isActive,
+  }).from(phoneNumbersTable)
+    .where(eq(phoneNumbersTable.id, params.data.id))
+    .limit(1);
+  if (!line || line.orgId !== orgId) {
+    res.status(404).json({ error: "Organization phone line not found" });
+    return;
+  }
+
+  const [organization] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+    .from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+  const [actorMembership] = await db.select({ role: orgMembersTable.role })
+    .from(orgMembersTable)
+    .where(and(
+      eq(orgMembersTable.orgId, orgId),
+      eq(orgMembersTable.userId, userId),
+      eq(orgMembersTable.status, "active"),
+    )).limit(1);
+  if (organization?.ownerUserId !== userId
+    && (PHONE_ROLE_RANK[actorMembership?.role ?? ""] ?? 0) < PHONE_ROLE_RANK.manager) {
+    res.status(403).json({ error: "Only organization managers can assign office lines" });
+    return;
+  }
+
+  const target = await getActivePhoneEmployee(orgId, body.data.assignedUserId);
+  if (!target) {
+    res.status(400).json({ error: "The employee must be active and have paid CALLL HOME access" });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.update(phoneNumbersTable)
+      .set({ userId: target.userId })
+      .where(and(eq(phoneNumbersTable.id, line.id), eq(phoneNumbersTable.orgId, orgId)));
+  });
+  res.json(AssignPhoneInternalLineResponse.parse({ ok: true }));
+});
+
+router.post("/twilio/pablo/internal-delivery", requireAuth, requireFeature("phone_system"), requireFeature("claw_bot"), async (req, res): Promise<void> => {
+  const parsed = SendPabloInternalDeliveryBody.safeParse(req.body);
+  if (!parsed.success || !parsed.data.title.trim() || !parsed.data.body.trim()) {
+    res.status(400).json({ error: parsed.success ? "Title and message are required" : parsed.error.message });
+    return;
+  }
+  const senderId = getAuthUserId(req);
+  const orgId = await getCurrentPhoneOrgId(senderId);
+  if (!orgId || parsed.data.targetUserId === senderId
+    || !await getActivePhoneEmployee(orgId, parsed.data.targetUserId)) {
+    res.status(404).json({ error: "Eligible employee not found in the active organization" });
+    return;
+  }
+
+  const [sender] = await db.select({
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+    username: usersTable.username,
+  }).from(usersTable).where(eq(usersTable.id, senderId)).limit(1);
+  const [user1Id, user2Id] = [senderId, parsed.data.targetUserId].sort();
+  const channelId = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${"pablo-prime-dm:" + user1Id + ":" + user2Id}))`);
+    const [existing] = await tx.select({ id: chatChannelsTable.id })
+      .from(chatChannelsTable)
+      .where(and(
+        eq(chatChannelsTable.type, "private"),
+        eq(chatChannelsTable.user1Id, user1Id),
+        eq(chatChannelsTable.user2Id, user2Id),
+      )).limit(1);
+    if (existing) return existing.id;
+    const [created] = await tx.insert(chatChannelsTable)
+      .values({ type: "private", user1Id, user2Id })
+      .returning({ id: chatChannelsTable.id });
+    return created.id;
+  });
+
+  const title = parsed.data.title.trim();
+  const content = `[${parsed.data.category.toUpperCase()}] ${title}\n\n${parsed.data.body.trim()}`;
+  const [message] = await db.insert(chatMessagesTable).values({
+    channelId,
+    senderUserId: senderId,
+    senderName: "Pablo PRIME",
+    senderUsername: sender?.username ?? null,
+    isBot: true,
+    content,
+  }).returning();
+  broadcastChatMessage(channelId, {
+    id: message.id,
+    channelId: message.channelId,
+    senderUserId: message.senderUserId,
+    senderName: "Pablo PRIME",
+    senderUsername: sender?.username ?? null,
+    senderProfileImageUrl: null,
+    isBot: true,
+    content: message.content,
+    createdAt: message.createdAt,
+  });
+  const label = parsed.data.category === "report" ? "report" : "message";
+  const [notification] = await db.insert(notificationsTable).values({
+    userId: parsed.data.targetUserId,
+    type: "dm",
+    title: `Pablo PRIME sent you a ${label}`,
+    body: `${title}\n\n${parsed.data.body.trim().slice(0, 500)}`,
+    link: "/comms",
+  }).returning({ id: notificationsTable.id });
+
+  res.status(201).json(SendPabloInternalDeliveryResponse.parse({
+    ok: true,
+    notificationId: notification.id,
+  }));
+});
+
 router.get("/twilio/phone-numbers", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
@@ -2977,16 +3418,39 @@ router.delete("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_sy
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
     const [owned] = await db.select().from(phoneNumbersTable)
-      .where(and(eq(phoneNumbersTable.id, id), eq(phoneNumbersTable.userId, userId))).limit(1);
+      .where(eq(phoneNumbersTable.id, id)).limit(1);
     if (!owned) {
       res.status(404).json({ error: "Phone number not found" });
       return;
+    }
+    if (owned.orgId === null) {
+      if (owned.userId !== userId) {
+        res.status(404).json({ error: "Phone number not found" });
+        return;
+      }
+    } else {
+      const actorOrgId = await getCurrentPhoneOrgId(userId);
+      const [organization] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+        .from(organizationsTable).where(eq(organizationsTable.id, owned.orgId)).limit(1);
+      const [actorMembership] = actorOrgId === owned.orgId
+        ? await db.select({ role: orgMembersTable.role }).from(orgMembersTable).where(and(
+            eq(orgMembersTable.orgId, owned.orgId),
+            eq(orgMembersTable.userId, userId),
+            eq(orgMembersTable.status, "active"),
+          )).limit(1)
+        : [];
+      const canManagePool = actorOrgId === owned.orgId
+        && (organization?.ownerUserId === userId
+          || (PHONE_ROLE_RANK[actorMembership?.role ?? ""] ?? 0) >= PHONE_ROLE_RANK.manager);
+      if (!canManagePool) {
+        res.status(404).json({ error: "Phone number not found" });
+        return;
+      }
     }
     if (owned.twilioSid) {
       const [paidOwnership] = await db.select({ id: phoneNumberPurchasesTable.id })
         .from(phoneNumberPurchasesTable)
         .where(and(
-          eq(phoneNumberPurchasesTable.userId, userId),
           eq(phoneNumberPurchasesTable.phoneNumber, owned.number),
           eq(phoneNumberPurchasesTable.twilioSid, owned.twilioSid),
           eq(phoneNumberPurchasesTable.status, "completed"),
@@ -2996,7 +3460,7 @@ router.delete("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_sy
         await getTwilioClient().incomingPhoneNumbers(owned.twilioSid).remove();
       }
     }
-    await db.delete(phoneNumbersTable).where(and(eq(phoneNumbersTable.id, id), eq(phoneNumbersTable.userId, userId)));
+    await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.id, id));
     res.json({ ok: true });
   } catch (err: unknown) {
     res.status(500).json({ error: "Failed to delete phone number" });
@@ -3837,6 +4301,29 @@ router.post("/twilio/webhook/status", async (req, res) => {
         status: CallStatus,
         twilioSid: CallSid,
       }).catch(() => {});
+    }
+
+    const transferCallerSid = String(req.query.transferCallerSid ?? "");
+    const transferCallerUserId = String(req.query.transferCallerUserId ?? "");
+    const transferOrgId = Number(req.query.transferOrgId);
+    if (isTerminal && ["failed", "busy", "no-answer", "canceled"].includes(CallStatus)
+      && transferCallerSid && transferCallerUserId && Number.isInteger(transferOrgId)) {
+      const [originatingCall] = await db.select({ id: callHistoryTable.id })
+        .from(callHistoryTable)
+        .where(and(
+          eq(callHistoryTable.twilioCallSid, transferCallerSid),
+          eq(callHistoryTable.userId, transferCallerUserId),
+          eq(callHistoryTable.orgId, transferOrgId),
+        )).limit(1);
+      if (originatingCall) {
+        try {
+          await getTwilioClient().calls(transferCallerSid).update({
+            twiml: "<Response><Say>The employee is unavailable right now. Please try again later.</Say><Hangup/></Response>",
+          });
+        } catch (err) {
+          req.log.warn({ err, transferOrgId }, "Could not return caller from an unanswered employee transfer");
+        }
+      }
     }
 
     if (updated.length === 0 && Direction === "inbound") {

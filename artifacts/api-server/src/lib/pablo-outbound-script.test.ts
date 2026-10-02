@@ -16,14 +16,14 @@ const validFlow: PabloOutboundScript = {
     {
       id: "intro",
       question: "Would you like to hear more?",
-      yes: { response: "Great, I'll explain.", nextNodeId: "details" },
-      no: { response: "No problem.", nextNodeId: null },
+      yes: { response: "Great, I'll explain.", nextNodeId: "details", transferToUserId: null },
+      no: { response: "No problem.", nextNodeId: null, transferToUserId: null },
     },
     {
       id: "details",
       question: "Would you like to schedule a follow-up?",
-      yes: { response: "I'll note that you are interested.", nextNodeId: null },
-      no: { response: "Understood. Thanks for your time.", nextNodeId: null },
+      yes: { response: "I'll note that you are interested.", nextNodeId: null, transferToUserId: null },
+      no: { response: "Understood. Thanks for your time.", nextNodeId: null, transferToUserId: null },
     },
   ],
 };
@@ -31,6 +31,17 @@ const validFlow: PabloOutboundScript = {
 describe("Pablo outbound script matrix", () => {
   it("accepts a reachable yes/no follow-up matrix", () => {
     expect(parsePabloOutboundScript(JSON.stringify(validFlow))).toEqual(validFlow);
+  });
+
+  it("accepts employee transfer branches and rejects conflicting follow-ups", () => {
+    const transfer = structuredClone(validFlow);
+    transfer.nodes[0].yes.nextNodeId = null;
+    transfer.nodes[0].yes.transferToUserId = "employee_123";
+    transfer.nodes[0].no.nextNodeId = "details";
+    expect(parsePabloOutboundScript(JSON.stringify(transfer))).toEqual(transfer);
+
+    transfer.nodes[0].yes.nextNodeId = "details";
+    expect(() => parsePabloOutboundScript(JSON.stringify(transfer))).toThrow(/both continue.*transfer/i);
   });
 
   it("rejects missing branches, cycles, and unreachable questions", () => {

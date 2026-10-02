@@ -9,8 +9,12 @@ export type DeviceState = 'uninitialized' | 'initializing' | 'ready' | 'error';
 interface TwilioDeviceContextValue {
   deviceState: DeviceState;
   deviceError: string | null;
+  incomingCall: Call | null;
   ensureDeviceReady: () => Promise<void>;
   connectToConference: (conferenceName: string) => Promise<Call>;
+  connectToEmployee: (employeeUserId: string) => Promise<Call>;
+  acceptIncomingCall: () => void;
+  rejectIncomingCall: () => void;
   disconnect: () => void;
   /**
    * Force a fresh init right now, bypassing the auto-retry backoff.
@@ -33,6 +37,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   const deviceRef = useRef<Device | null>(null);
   const [deviceState, setDeviceState] = useState<DeviceState>('uninitialized');
   const [deviceError, setDeviceError] = useState<string | null>(null);
+  const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const initPromiseRef = useRef<Promise<void> | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -141,8 +146,15 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
         // phone-busy bus so the music player pauses.
         device.on('incoming', (call: Call) => {
           setPhoneBusy('twilio-incoming', true);
-          const clear = () => setPhoneBusy('twilio-incoming', false);
-          call.on('accept', () => setPhoneBusy('twilio-incoming', true));
+          setIncomingCall(call);
+          const clear = () => {
+            setIncomingCall((current) => current === call ? null : current);
+            setPhoneBusy('twilio-incoming', false);
+          };
+          call.on('accept', () => {
+            setIncomingCall((current) => current === call ? null : current);
+            setPhoneBusy('twilio-incoming', true);
+          });
           call.on('disconnect', clear);
           call.on('cancel', clear);
           call.on('reject', clear);
@@ -324,6 +336,37 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     return connection;
   }, [ensureDeviceReady]);
 
+  const connectToEmployee = useCallback(async (employeeUserId: string): Promise<Call> => {
+    if (!/^[a-zA-Z0-9._:-]{1,256}$/.test(employeeUserId)) {
+      throw new Error('Invalid employee identity');
+    }
+    await ensureDeviceReady();
+    if (!deviceRef.current) throw new Error('Phone device is offline');
+    const call = await deviceRef.current.connect({
+      params: { To: `employee:${employeeUserId}` },
+    });
+    setPhoneBusy('twilio-employee-call', true);
+    const clear = () => setPhoneBusy('twilio-employee-call', false);
+    call.on('disconnect', clear);
+    call.on('cancel', clear);
+    call.on('reject', clear);
+    call.on('error', clear);
+    return call;
+  }, [ensureDeviceReady]);
+
+  const acceptIncomingCall = useCallback(() => {
+    if (!incomingCall) return;
+    incomingCall.accept();
+    setIncomingCall(null);
+  }, [incomingCall]);
+
+  const rejectIncomingCall = useCallback(() => {
+    if (!incomingCall) return;
+    incomingCall.reject();
+    setIncomingCall(null);
+    setPhoneBusy('twilio-incoming', false);
+  }, [incomingCall]);
+
   const disconnect = useCallback(() => {
     if (deviceRef.current) {
       try { deviceRef.current.disconnectAll(); } catch { }
@@ -342,7 +385,10 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TwilioDeviceContext.Provider value={{ deviceState, deviceError, ensureDeviceReady, connectToConference, disconnect, reconnect }}>
+    <TwilioDeviceContext.Provider value={{
+      deviceState, deviceError, incomingCall, ensureDeviceReady, connectToConference,
+      connectToEmployee, acceptIncomingCall, rejectIncomingCall, disconnect, reconnect,
+    }}>
       {children}
     </TwilioDeviceContext.Provider>
   );

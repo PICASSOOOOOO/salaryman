@@ -305,3 +305,70 @@ export const ResolveCrmSyncConflictResponse = zod.object({
 }).passthrough()
 
 
+/**
+ * @summary List eligible CALLL HOME employees and office lines in the active organization
+ */
+export const GetPhoneInternalDirectoryResponse = zod.object({
+  "organizationId": zod.number().int().nullable(),
+  "canManageLines": zod.boolean(),
+  "members": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "title": zod.string().nullish(),
+  "role": zod.string(),
+  "phoneNumber": zod.string().nullable(),
+  "isSelf": zod.boolean()
+})),
+  "lines": zod.array(zod.object({
+  "id": zod.number().int(),
+  "number": zod.string(),
+  "label": zod.string(),
+  "assignedUserId": zod.string().nullable(),
+  "assignedName": zod.string().nullable(),
+  "isActive": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Assign an organization-owned office line to an eligible employee
+ */
+export const AssignPhoneInternalLineParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const AssignPhoneInternalLineBody = zod.object({
+  "assignedUserId": zod.string().min(1)
+})
+
+export const AssignPhoneInternalLineResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Deliver a message or report to an eligible employee through Pablo PRIME
+ */
+
+export const sendPabloInternalDeliveryBodyTitleMax = 120;
+
+export const sendPabloInternalDeliveryBodyBodyMax = 1800;
+
+
+
+export const SendPabloInternalDeliveryBody = zod.object({
+  "targetUserId": zod.string().min(1),
+  "category": zod.enum(['message', 'report']),
+  "title": zod.string().min(1).max(sendPabloInternalDeliveryBodyTitleMax),
+  "body": zod.string().min(1).max(sendPabloInternalDeliveryBodyBodyMax)
+})
+
+export const SendPabloInternalDeliveryResponse = zod.object({
+  "ok": zod.boolean(),
+  "notificationId": zod.number().int()
+})
+
+

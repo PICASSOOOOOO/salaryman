@@ -5,6 +5,70 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PhoneInternalDirectoryMember {
+  userId: string;
+  displayName: string;
+  /** @nullable */
+  title?: string | null;
+  role: string;
+  /** @nullable */
+  phoneNumber: string | null;
+  isSelf: boolean;
+}
+
+export interface PhoneInternalDirectoryLine {
+  id: number;
+  number: string;
+  label: string;
+  /** @nullable */
+  assignedUserId: string | null;
+  /** @nullable */
+  assignedName: string | null;
+  isActive: boolean;
+}
+
+export interface PhoneInternalDirectory {
+  /** @nullable */
+  organizationId: number | null;
+  canManageLines: boolean;
+  members: PhoneInternalDirectoryMember[];
+  lines: PhoneInternalDirectoryLine[];
+}
+
+export interface PhoneInternalLineAssignment {
+  /** @minLength 1 */
+  assignedUserId: string;
+}
+
+export type PabloInternalDeliveryCategory = typeof PabloInternalDeliveryCategory[keyof typeof PabloInternalDeliveryCategory];
+
+
+export const PabloInternalDeliveryCategory = {
+  message: 'message',
+  report: 'report',
+} as const;
+
+export interface PabloInternalDelivery {
+  /** @minLength 1 */
+  targetUserId: string;
+  category: PabloInternalDeliveryCategory;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 1800
+     */
+  body: string;
+}
+
+export interface PabloInternalDeliveryResult {
+  ok: boolean;
+  notificationId: number;
+}
+
 /**
  * @nullable
  */
@@ -283,4 +347,8 @@ export type ResolveCrmSyncConflictBody = {
 };
 
 export type ResolveCrmSyncConflict200 = { [key: string]: unknown };
+
+export type AssignPhoneInternalLine200 = {
+  ok: boolean;
+};
 

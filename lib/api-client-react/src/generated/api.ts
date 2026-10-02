@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssignPhoneInternalLine200,
   BeginDiscordLoginParams,
   CompleteCrmGoogleSheetsParams,
   ConnectCrmGoogleSheets200,
@@ -44,6 +45,10 @@ import type {
   OpenaiConversationWithMessages,
   OpenaiError,
   OpenaiMessage,
+  PabloInternalDelivery,
+  PabloInternalDeliveryResult,
+  PhoneInternalDirectory,
+  PhoneInternalLineAssignment,
   ResolveCrmSyncConflict200,
   ResolveCrmSyncConflictBody,
   SendOpenaiMessageBody,
@@ -2026,5 +2031,243 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getResolveCrmSyncConflictMutationOptions(options));
+    }
+
+export const getGetPhoneInternalDirectoryUrl = () => {
+
+
+
+
+  return `/api/twilio/internal-directory`
+}
+
+/**
+ * @summary List eligible CALLL HOME employees and office lines in the active organization
+ */
+export const getPhoneInternalDirectory = async ( options?: Parameters<typeof customFetch>[1]): Promise<PhoneInternalDirectory> => {
+
+  return customFetch<PhoneInternalDirectory>(getGetPhoneInternalDirectoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPhoneInternalDirectoryQueryKey = () => {
+    return [
+    `/api/twilio/internal-directory`
+    ] as const;
+    }
+
+
+export const getGetPhoneInternalDirectoryQueryOptions = <TData = Awaited<ReturnType<typeof getPhoneInternalDirectory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPhoneInternalDirectory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPhoneInternalDirectoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPhoneInternalDirectory>>> = ({ signal }) => getPhoneInternalDirectory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPhoneInternalDirectory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPhoneInternalDirectoryQueryResult = NonNullable<Awaited<ReturnType<typeof getPhoneInternalDirectory>>>
+export type GetPhoneInternalDirectoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List eligible CALLL HOME employees and office lines in the active organization
+ */
+
+export function useGetPhoneInternalDirectory<TData = Awaited<ReturnType<typeof getPhoneInternalDirectory>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPhoneInternalDirectory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPhoneInternalDirectoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignPhoneInternalLineUrl = (id: number,) => {
+
+
+
+
+  return `/api/twilio/internal-directory/lines/${id}`
+}
+
+/**
+ * @summary Assign an organization-owned office line to an eligible employee
+ */
+export const assignPhoneInternalLine = async (id: number,
+    phoneInternalLineAssignment: PhoneInternalLineAssignment, options?: Parameters<typeof customFetch>[1]): Promise<AssignPhoneInternalLine200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AssignPhoneInternalLine200>(getAssignPhoneInternalLineUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(phoneInternalLineAssignment)
+  }
+);}
+
+
+
+
+
+export const getAssignPhoneInternalLineMutationKey = () => ['assignPhoneInternalLine'] as const;
+
+export const getAssignPhoneInternalLineMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignPhoneInternalLine>>, TError,AssignPhoneInternalLineMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignPhoneInternalLine>>, TError,AssignPhoneInternalLineMutationVariables, TContext> => {
+
+const mutationKey = getAssignPhoneInternalLineMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignPhoneInternalLine>>, AssignPhoneInternalLineMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  assignPhoneInternalLine(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignPhoneInternalLineMutationResult = NonNullable<Awaited<ReturnType<typeof assignPhoneInternalLine>>>
+    export type AssignPhoneInternalLineMutationBody = BodyType<PhoneInternalLineAssignment>
+    export type AssignPhoneInternalLineMutationError = ErrorType<void>
+    export type AssignPhoneInternalLineMutationVariables = {id: number;data: BodyType<PhoneInternalLineAssignment>}
+
+    /**
+ * @summary Assign an organization-owned office line to an eligible employee
+ */
+export const useAssignPhoneInternalLine = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignPhoneInternalLine>>, TError,AssignPhoneInternalLineMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignPhoneInternalLine>>,
+        TError,
+        AssignPhoneInternalLineMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignPhoneInternalLineMutationOptions(options));
+    }
+
+export const getSendPabloInternalDeliveryUrl = () => {
+
+
+
+
+  return `/api/twilio/pablo/internal-delivery`
+}
+
+/**
+ * @summary Deliver a message or report to an eligible employee through Pablo PRIME
+ */
+export const sendPabloInternalDelivery = async (pabloInternalDelivery: PabloInternalDelivery, options?: Parameters<typeof customFetch>[1]): Promise<PabloInternalDeliveryResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<PabloInternalDeliveryResult>(getSendPabloInternalDeliveryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pabloInternalDelivery)
+  }
+);}
+
+
+
+
+
+export const getSendPabloInternalDeliveryMutationKey = () => ['sendPabloInternalDelivery'] as const;
+
+export const getSendPabloInternalDeliveryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPabloInternalDelivery>>, TError,SendPabloInternalDeliveryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendPabloInternalDelivery>>, TError,SendPabloInternalDeliveryMutationVariables, TContext> => {
+
+const mutationKey = getSendPabloInternalDeliveryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendPabloInternalDelivery>>, SendPabloInternalDeliveryMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendPabloInternalDelivery(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendPabloInternalDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof sendPabloInternalDelivery>>>
+    export type SendPabloInternalDeliveryMutationBody = BodyType<PabloInternalDelivery>
+    export type SendPabloInternalDeliveryMutationError = ErrorType<void>
+    export type SendPabloInternalDeliveryMutationVariables = {data: BodyType<PabloInternalDelivery>}
+
+    /**
+ * @summary Deliver a message or report to an eligible employee through Pablo PRIME
+ */
+export const useSendPabloInternalDelivery = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPabloInternalDelivery>>, TError,SendPabloInternalDeliveryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendPabloInternalDelivery>>,
+        TError,
+        SendPabloInternalDeliveryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendPabloInternalDeliveryMutationOptions(options));
     }
 

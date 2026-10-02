@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, Settings2, MessageSquare, Hash } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, Settings2, MessageSquare, Hash, PhoneIncoming } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { slate, warning } from '@/lib/phone-utils';
@@ -133,7 +133,7 @@ export default function CalllHomePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
   const { openPledgePopup } = usePledgePopup();
-  const { deviceState, deviceError, ensureDeviceReady, reconnect } = useTwilioDeviceContext();
+  const { deviceState, deviceError, ensureDeviceReady, reconnect, incomingCall, acceptIncomingCall, rejectIncomingCall } = useTwilioDeviceContext();
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
   const telephonyLocked = !hasPhoneAccess;
@@ -241,6 +241,31 @@ export default function CalllHomePage() {
              )}
           </div>
         </div>
+
+        {incomingCall && (
+          <div role="alert" aria-live="assertive" style={{
+            margin: '10px 0', padding: '10px 12px', border: '1px solid rgba(15,15,15,0.18)',
+            borderRadius: 7, background: '#fff', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <PhoneIncoming size={15} />
+              <span style={{ fontSize: '0.58rem', letterSpacing: '0.08em' }}>
+                {incomingCall.parameters?.From?.startsWith('client:') ? 'TEAM CALL INCOMING' : 'INCOMING CALL'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button type="button" onClick={rejectIncomingCall} aria-label="Reject incoming CALLL HOME call"
+                style={{ border: '1px solid #9d3636', borderRadius: 5, padding: '7px 10px', background: '#fff', color: '#8f2929', fontSize: '0.48rem', cursor: 'pointer' }}>
+                DECLINE
+              </button>
+              <button type="button" onClick={acceptIncomingCall} aria-label="Answer incoming CALLL HOME call"
+                style={{ border: '1px solid #111', borderRadius: 5, padding: '7px 10px', background: '#111', color: '#fff', fontSize: '0.48rem', cursor: 'pointer' }}>
+                ANSWER
+              </button>
+            </div>
+          </div>
+        )}
 
         {systemStatus === 'unconfigured' && (
           <div style={{

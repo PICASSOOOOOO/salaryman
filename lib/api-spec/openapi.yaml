@@ -364,8 +364,120 @@ paths:
           application/json: { schema: { type: object, required: [resolution], properties: { resolution: { type: string, enum: [crm, source] } } } }
       responses:
         "200": { description: Resolved, content: { application/json: { schema: { type: object } } } }
+  /twilio/internal-directory:
+    get:
+      operationId: getPhoneInternalDirectory
+      tags: [phone]
+      summary: List eligible CALLL HOME employees and office lines in the active organization
+      responses:
+        "200":
+          description: Internal employee directory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhoneInternalDirectory"
+  /twilio/internal-directory/lines/{id}:
+    put:
+      operationId: assignPhoneInternalLine
+      tags: [phone]
+      summary: Assign an organization-owned office line to an eligible employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneInternalLineAssignment"
+      responses:
+        "200":
+          description: Office line assignment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "400":
+          description: Invalid assignment
+  /twilio/pablo/internal-delivery:
+    post:
+      operationId: sendPabloInternalDelivery
+      tags: [phone]
+      summary: Deliver a message or report to an eligible employee through Pablo PRIME
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PabloInternalDelivery"
+      responses:
+        "201":
+          description: Internal delivery created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PabloInternalDeliveryResult"
+        "403":
+          description: CALLL HOME or Pablo PRIME paid access is required
 components:
   schemas:
+    PhoneInternalDirectory:
+      type: object
+      required: [organizationId, canManageLines, members, lines]
+      properties:
+        organizationId: { type: ["integer", "null"] }
+        canManageLines: { type: boolean }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/PhoneInternalDirectoryMember" }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/PhoneInternalDirectoryLine" }
+    PhoneInternalDirectoryMember:
+      type: object
+      required: [userId, displayName, role, phoneNumber, isSelf]
+      properties:
+        userId: { type: string }
+        displayName: { type: string }
+        title: { type: ["string", "null"] }
+        role: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        isSelf: { type: boolean }
+    PhoneInternalDirectoryLine:
+      type: object
+      required: [id, number, label, assignedUserId, assignedName, isActive]
+      properties:
+        id: { type: integer }
+        number: { type: string }
+        label: { type: string }
+        assignedUserId: { type: ["string", "null"] }
+        assignedName: { type: ["string", "null"] }
+        isActive: { type: boolean }
+    PhoneInternalLineAssignment:
+      type: object
+      required: [assignedUserId]
+      properties:
+        assignedUserId: { type: string, minLength: 1 }
+    PabloInternalDelivery:
+      type: object
+      required: [targetUserId, category, title, body]
+      properties:
+        targetUserId: { type: string, minLength: 1 }
+        category: { type: string, enum: [message, report] }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        body: { type: string, minLength: 1, maxLength: 1800 }
+    PabloInternalDeliveryResult:
+      type: object
+      required: [ok, notificationId]
+      properties:
+        ok: { type: boolean }
+        notificationId: { type: integer }
     MyOrganizations:
       type: object
       required: [org, member, members, featureGrants, allOrgs]

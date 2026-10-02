@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './assignPhoneInternalLine200';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
@@ -48,6 +49,13 @@ export * from './openaiConversation';
 export * from './openaiConversationWithMessages';
 export * from './openaiError';
 export * from './openaiMessage';
+export * from './pabloInternalDelivery';
+export * from './pabloInternalDeliveryCategory';
+export * from './pabloInternalDeliveryResult';
+export * from './phoneInternalDirectory';
+export * from './phoneInternalDirectoryLine';
+export * from './phoneInternalDirectoryMember';
+export * from './phoneInternalLineAssignment';
 export * from './resolveCrmSyncConflict200';
 export * from './resolveCrmSyncConflictBody';
 export * from './resolveCrmSyncConflictBodyResolution';

@@ -122,7 +122,7 @@
 - [Extensible income ecosystem](income-ecosystem.md) — user/org connections unlock verified work and settlement; combine templates, floors, skills, shifts, and providers into many legitimate income paths.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.
-- [Paid custom phone numbers](paid-custom-phone-numbers.md) — custom Twilio numbers are $10 one-time; only settled Stripe webhooks may provision, while active-number routing falls back to the platform toll-free line.
+- [Paid custom phone numbers](paid-custom-phone-numbers.md) — CALLL HOME is fixed; internal employee calls reuse client identities and assigned office lines, never extra numbers.
 - [Replit session identity bridge](replit-session-identity-bridge.md) — OIDC sessions use the database-backed sid cookie; callback matches existing local users by email before creating a new app identity.
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
 - [Shadow Tower named art](shadow-tower-named-art.md) — finished Tower spaces use a named asset manifest; procedural shapes are interaction scaffolding, not final art.

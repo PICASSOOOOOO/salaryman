@@ -82,6 +82,23 @@ export default function PhoneSmsPage() {
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const phone = params.get('to');
+    if (!phone) return;
+    setNewPhone(phone);
+    setNewName(params.get('name') || phone);
+    setShowNewConv(true);
+    params.delete('to');
+    params.delete('name');
+    const query = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+    );
+  }, []);
+
   // Poll for new inbound texts and Pablo's replies so threads stay live.
   useEffect(() => {
     const id = setInterval(loadConversations, 15000);

@@ -1,6 +1,7 @@
 export type PabloScriptBranch = {
   response: string;
   nextNodeId: string | null;
+  transferToUserId: string | null;
 };
 
 export type PabloScriptNode = {
@@ -97,10 +98,23 @@ function parseBranch(value: unknown, label: string): PabloScriptBranch {
   const nextNodeId = branch.nextNodeId == null || branch.nextNodeId === ""
     ? null
     : cleanId(branch.nextNodeId, `${label} follow-up`);
+  const transferToUserId = cleanTransferUserId(branch.transferToUserId, label);
+  if (nextNodeId && transferToUserId) {
+    throw new Error(`${label} cannot both continue to a follow-up and transfer to an employee`);
+  }
   return {
     response: cleanLine(branch.response, label, MAX_LINE_LENGTH),
     nextNodeId,
+    transferToUserId,
   };
+}
+
+function cleanTransferUserId(value: unknown, label: string): string | null {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string" || !/^[a-zA-Z0-9._:-]{1,256}$/.test(value)) {
+    throw new Error(`${label} has an invalid employee transfer target`);
+  }
+  return value;
 }
 
 function assertAcyclicReachable(nodes: PabloScriptNode[], startNodeId: string): void {

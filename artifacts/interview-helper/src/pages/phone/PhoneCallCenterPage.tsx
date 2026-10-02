@@ -1,14 +1,18 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { Headphones, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, X, FileText, Zap, PhoneOutgoing, PhoneIncoming, AlertTriangle, Users } from 'lucide-react';
+import { Headphones, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, X, FileText, Zap, PhoneOutgoing, PhoneIncoming, AlertTriangle, Users, Phone, MessageSquare, Send } from 'lucide-react';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
   slate, warning, primary, destructive, accent, formatPhone,
   type CallCenterAgent, type InboundScreening, type OutboundCampaign } from '@/lib/phone-utils';
+import { usePhoneInternalDirectory } from './usePhoneInternalDirectory';
+import { useCalllHomeNavigate } from './CalllHomeContext';
+import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import { usePlan } from '@/hooks/use-plan';
 
-type Tab = 'inbound' | 'outbound';
+type Tab = 'inbound' | 'outbound' | 'team';
 type CampaignContact = {
   id: number;
   name: string;
@@ -17,7 +21,7 @@ type CampaignContact = {
   phoneCallOptIn: boolean;
   phoneCallConsentedAt: string | null;
 };
-type ScriptBranchDraft = { response: string; nextNodeId: string };
+type ScriptBranchDraft = { response: string; nextNodeId: string; transferToUserId: string };
 type ScriptNodeDraft = {
   id: string;
   question: string;
@@ -28,8 +32,8 @@ type ScriptNodeDraft = {
 const makeScriptNode = (index: number): ScriptNodeDraft => ({
   id: `question-${index}`,
   question: '',
-  yes: { response: '', nextNodeId: '' },
-  no: { response: '', nextNodeId: '' },
+  yes: { response: '', nextNodeId: '', transferToUserId: '' },
+  no: { response: '', nextNodeId: '', transferToUserId: '' },
 });
 
 export default function PhoneCallCenterPage() {
@@ -37,6 +41,11 @@ export default function PhoneCallCenterPage() {
 
   const BASE = import.meta.env.BASE_URL;
   const [, navigate] = useLocation();
+  const navigateInsidePhone = useCalllHomeNavigate();
+  const directory = usePhoneInternalDirectory();
+  const { features, isOwner } = usePlan();
+  const { connectToEmployee, disconnect, deviceState } = useTwilioDeviceContext();
+  const hasPabloPrime = isOwner || features.has('claw_bot');
 
   const [tab, setTab] = useState<Tab>('outbound');
   const [agents, setAgents] = useState<CallCenterAgent[]>([]);
@@ -59,13 +68,22 @@ export default function PhoneCallCenterPage() {
   const [scriptNodes, setScriptNodes] = useState<ScriptNodeDraft[]>([{
     ...makeScriptNode(1),
     question: 'Would you like to hear more?',
-    yes: { response: 'Great, I can tell you more.', nextNodeId: '' },
-    no: { response: 'Understood. Thank you for your time.', nextNodeId: '' },
+    yes: { response: 'Great, I can tell you more.', nextNodeId: '', transferToUserId: '' },
+    no: { response: 'Understood. Thank you for your time.', nextNodeId: '', transferToUserId: '' },
   }]);
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [campaignCreating, setCampaignCreating] = useState(false);
   const [consentSavingId, setConsentSavingId] = useState<number | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'checking' | 'ready' | 'error'>('idle');
+  const [teamCallingUserId, setTeamCallingUserId] = useState<string | null>(null);
+  const [lineSavingId, setLineSavingId] = useState<number | null>(null);
+  const [deliveryTargetUserId, setDeliveryTargetUserId] = useState('');
+  const [deliveryCategory, setDeliveryCategory] = useState<'message' | 'report'>('message');
+  const [deliveryTitle, setDeliveryTitle] = useState('');
+  const [deliveryBody, setDeliveryBody] = useState('');
+  const [deliverySending, setDeliverySending] = useState(false);
+  const [deliverySuccess, setDeliverySuccess] = useState('');
+  const teamCallingUserIdRef = useRef<string | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -254,6 +272,110 @@ export default function PhoneCallCenterPage() {
     } catch { setError('Network error starting campaign'); }
   };
 
+  const teamMembers = directory.data?.members ?? [];
+  const otherEmployees = teamMembers.filter(member => !member.isSelf);
+
+  useEffect(() => {
+    teamCallingUserIdRef.current = teamCallingUserId;
+  }, [teamCallingUserId]);
+
+  useEffect(() => () => {
+    if (teamCallingUserIdRef.current) disconnect();
+  }, [disconnect]);
+
+  const callEmployee = async (userId: string) => {
+    setError('');
+    try {
+      if (teamCallingUserId === userId) {
+        disconnect();
+        setTeamCallingUserId(null);
+        return;
+      }
+      setTeamCallingUserId(userId);
+      const call = await connectToEmployee(userId);
+      const clearCall = () => setTeamCallingUserId(current => current === userId ? null : current);
+      call.on('disconnect', clearCall);
+      call.on('cancel', clearCall);
+      call.on('reject', clearCall);
+      call.on('error', clearCall);
+    } catch (err) {
+      setTeamCallingUserId(null);
+      setError(err instanceof Error ? err.message : 'Could not connect to employee');
+    }
+  };
+
+  const openEmployeeChat = (userId: string) => {
+    window.dispatchEvent(new CustomEvent('salaryman:open-dm', { detail: { userId } }));
+  };
+
+  const openEmployeeSms = (member: (typeof otherEmployees)[number]) => {
+    if (!member.phoneNumber) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('to', member.phoneNumber);
+    url.searchParams.set('name', member.displayName);
+    window.history.replaceState(window.history.state, '', `${url.pathname}?${url.searchParams.toString()}`);
+    if (!navigateInsidePhone('/phone/sms')) {
+      navigate(`/phone/sms?${url.searchParams.toString()}`);
+    }
+  };
+
+  const assignOfficeLine = async (lineId: number, assignedUserId: string) => {
+    setLineSavingId(lineId);
+    setError('');
+    try {
+      const r = await apiFetch(apiUrl(`twilio/internal-directory/lines/${lineId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ assignedUserId }),
+      });
+      if (handleAuthStatus(r)) return;
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(data.error || 'Could not assign office line');
+        return;
+      }
+      await directory.refetch();
+    } catch {
+      setError('Network error assigning office line');
+    } finally {
+      setLineSavingId(null);
+    }
+  };
+
+  const deliverWithPabloPrime = async () => {
+    if (!deliveryTargetUserId || !deliveryTitle.trim() || !deliveryBody.trim()) return;
+    setDeliverySending(true);
+    setDeliverySuccess('');
+    setError('');
+    try {
+      const r = await apiFetch(apiUrl('twilio/pablo/internal-delivery'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          targetUserId: deliveryTargetUserId,
+          category: deliveryCategory,
+          title: deliveryTitle.trim(),
+          body: deliveryBody.trim(),
+        }),
+      });
+      if (handleAuthStatus(r)) return;
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(data.error || 'Pablo PRIME could not deliver the message');
+        return;
+      }
+      setDeliverySuccess(`Delivered to ${teamMembers.find(member => member.userId === deliveryTargetUserId)?.displayName ?? 'employee'} in COMMS.`);
+      setDeliveryTitle('');
+      setDeliveryBody('');
+    } catch {
+      setError('Network error delivering the internal message');
+    } finally {
+      setDeliverySending(false);
+    }
+  };
+
   const outcomeColor = (outcome: string) => {
     if (outcome === 'transferred') return (o: number) => primary(o);
     if (outcome === 'ended') return destructive;
@@ -300,7 +422,11 @@ export default function PhoneCallCenterPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: `1px solid ${slate(0.08)}` }}>
-        {([['inbound', 'INBOUND', <PhoneIncoming key="i" size={12} />], ['outbound', 'OUTBOUND', <PhoneOutgoing key="o" size={12} />]] as const).map(([key, label, icon]) => (
+        {([
+          ['inbound', 'INBOUND', <PhoneIncoming key="i" size={12} />],
+          ['outbound', 'OUTBOUND', <PhoneOutgoing key="o" size={12} />],
+          ['team', 'TEAM', <Users key="team" size={12} />],
+        ] as const).map(([key, label, icon]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -313,6 +439,21 @@ export default function PhoneCallCenterPage() {
           >{icon}{label}</button>
         ))}
       </div>
+
+      {teamCallingUserId && (
+        <div role="status" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          flexWrap: 'wrap', marginBottom: 12, padding: '9px 12px',
+          border: `1px solid ${primary(0.3)}`, borderRadius: 6, background: primary(0.04),
+        }}>
+          <span style={{ fontSize: '0.45rem', color: primary(0.85) }}>
+            CALLL HOME call with {teamMembers.find(member => member.userId === teamCallingUserId)?.displayName ?? 'employee'}
+          </span>
+          <PhoneBtn onClick={() => { disconnect(); setTeamCallingUserId(null); }} color={destructive} size="sm">
+            <Phone size={10} /> END CALL
+          </PhoneBtn>
+        </div>
+      )}
 
       {tab === 'inbound' && (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '380px 1fr', gap: 20, alignItems: 'start' }}>
@@ -480,15 +621,47 @@ export default function PhoneCallCenterPage() {
                             />
                             <select
                               value={node[answer].nextNodeId}
-                              onChange={e => updateScriptNode(node.id, current => ({ ...current, [answer]: { ...current[answer], nextNodeId: e.target.value } }))}
+                              onChange={e => {
+                                const nextNodeId = e.target.value;
+                                updateScriptNode(node.id, current => ({
+                                  ...current,
+                                  [answer]: {
+                                    ...current[answer],
+                                    nextNodeId,
+                                    ...(nextNodeId ? { transferToUserId: '' } : {}),
+                                  },
+                                }));
+                              }}
                               style={{ ...INPUT_STYLE, cursor: 'pointer' }}
                               aria-label={`${answer} follow-up question`}
                             >
-                              <option value="">End call after this response</option>
+                              <option value="">End call or transfer after this response</option>
                               {scriptNodes.filter(candidate => candidate.id !== node.id).map(candidate => (
                                 <option key={candidate.id} value={candidate.id}>
                                   Continue to question {scriptNodes.findIndex(item => item.id === candidate.id) + 1}
                                 </option>
+                              ))}
+                            </select>
+                            <select
+                              value={node[answer].transferToUserId}
+                              disabled={otherEmployees.length === 0}
+                              onChange={e => {
+                                const transferToUserId = e.target.value;
+                                updateScriptNode(node.id, current => ({
+                                  ...current,
+                                  [answer]: {
+                                    ...current[answer],
+                                    transferToUserId,
+                                    ...(transferToUserId ? { nextNodeId: '' } : {}),
+                                  },
+                                }));
+                              }}
+                              style={{ ...INPUT_STYLE, cursor: otherEmployees.length === 0 ? 'not-allowed' : 'pointer' }}
+                              aria-label={`${answer} employee transfer target`}
+                            >
+                              <option value="">No employee transfer</option>
+                              {otherEmployees.map(member => (
+                                <option key={member.userId} value={member.userId}>Transfer to {member.displayName}</option>
                               ))}
                             </select>
                           </div>
@@ -615,6 +788,158 @@ export default function PhoneCallCenterPage() {
                 ))}
               </div>
             )}
+          </PhoneCard>
+        </div>
+      )}
+
+      {tab === 'team' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <PhoneCard>
+            <PhoneCardHeader accent={accent(0.55)}>CALLL HOME TEAM</PhoneCardHeader>
+            <div style={{ padding: 16 }}>
+              <div style={{ fontSize: '0.4rem', color: slate(0.48), marginBottom: 12, lineHeight: 1.5 }}>
+                Active employees in your current organization with paid CALLL HOME access.
+              </div>
+              {directory.isLoading ? (
+                <div style={{ padding: 24, textAlign: 'center', color: slate(0.5) }}><Loader2 size={16} className="animate-spin" /></div>
+              ) : directory.isError ? (
+                <EmptyState message="COULD NOT LOAD THE EMPLOYEE DIRECTORY" icon={<Users size={22} />} />
+              ) : !directory.data?.organizationId ? (
+                <EmptyState message="SELECT AN ACTIVE ORGANIZATION TO SEE TEAM MEMBERS" icon={<Users size={22} />} />
+              ) : teamMembers.length === 0 ? (
+                <EmptyState message="NO ACTIVE EMPLOYEES HAVE CALLL HOME ACCESS" icon={<Users size={22} />} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {teamMembers.map(member => (
+                    <div key={member.userId} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                      flexWrap: 'wrap', padding: '10px 12px', border: `1px solid ${slate(0.08)}`, borderRadius: 6,
+                    }}>
+                      <div style={{ minWidth: 150 }}>
+                        <div style={{ fontSize: '0.55rem', color: slate(0.82) }}>
+                          {member.displayName}{member.isSelf ? ' · YOU' : ''}
+                        </div>
+                        <div style={{ fontSize: '0.39rem', color: slate(0.48), marginTop: 3 }}>
+                          {member.title || member.role}{member.phoneNumber ? ` · ${formatPhone(member.phoneNumber)}` : ''}
+                        </div>
+                      </div>
+                      {!member.isSelf && (
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          <PhoneBtn
+                            onClick={() => void callEmployee(member.userId)}
+                            disabled={Boolean(teamCallingUserId && teamCallingUserId !== member.userId)}
+                            color={teamCallingUserId === member.userId ? destructive : primary}
+                            size="sm"
+                          >
+                            <Phone size={10} />
+                            {teamCallingUserId === member.userId ? 'END CALL' : deviceState === 'ready' ? 'CALL' : 'CONNECT'}
+                          </PhoneBtn>
+                          <PhoneBtn onClick={() => openEmployeeChat(member.userId)} color={slate} size="sm">
+                            <MessageSquare size={10} /> CHAT
+                          </PhoneBtn>
+                          {member.phoneNumber && (
+                            <PhoneBtn onClick={() => openEmployeeSms(member)} color={accent} size="sm">
+                              <Send size={10} /> SMS
+                            </PhoneBtn>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </PhoneCard>
+
+          {directory.data?.canManageLines && (
+            <PhoneCard>
+              <PhoneCardHeader accent={accent(0.45)}>ORGANIZATION OFFICE LINES</PhoneCardHeader>
+              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {directory.data.lines.length === 0 ? (
+                  <EmptyState message="NO ORGANIZATION-OWNED OFFICE LINES" icon={<Phone size={22} />} />
+                ) : directory.data.lines.map(line => (
+                  <div key={line.id} style={{
+                    display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                    alignItems: 'center', gap: 10, padding: '10px 12px',
+                    border: `1px solid ${slate(0.08)}`, borderRadius: 6,
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.52rem', color: slate(0.8) }}>{line.label}</div>
+                      <div style={{ fontSize: '0.4rem', color: slate(0.5), marginTop: 3 }}>
+                        {formatPhone(line.number)} · {line.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      </div>
+                    </div>
+                    <select
+                      value={line.assignedUserId ?? ''}
+                      disabled={lineSavingId === line.id || teamMembers.length === 0}
+                      onChange={event => {
+                        if (event.target.value) void assignOfficeLine(line.id, event.target.value);
+                      }}
+                      aria-label={`Assign ${line.label} to an employee`}
+                      style={{ ...INPUT_STYLE, cursor: lineSavingId === line.id ? 'wait' : 'pointer' }}
+                    >
+                      <option value="">Choose eligible employee</option>
+                      {teamMembers.map(member => (
+                        <option key={member.userId} value={member.userId}>
+                          {member.displayName}{member.isSelf ? ' · YOU' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </PhoneCard>
+          )}
+
+          <PhoneCard>
+            <PhoneCardHeader accent={warning(0.55)}>PABLO PRIME DELIVERY</PhoneCardHeader>
+            <div style={{ padding: 16 }}>
+              {hasPabloPrime ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: '0.4rem', color: slate(0.48), lineHeight: 1.5 }}>
+                    Deliver a private message or report to an eligible coworker through COMMS.
+                  </div>
+                  <select value={deliveryTargetUserId} onChange={event => setDeliveryTargetUserId(event.target.value)} style={INPUT_STYLE}>
+                    <option value="">Choose an employee</option>
+                    {otherEmployees.map(member => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}
+                  </select>
+                  <select value={deliveryCategory} onChange={event => setDeliveryCategory(event.target.value as 'message' | 'report')} style={INPUT_STYLE}>
+                    <option value="message">Internal message</option>
+                    <option value="report">Report</option>
+                  </select>
+                  <input
+                    value={deliveryTitle}
+                    onChange={event => setDeliveryTitle(event.target.value)}
+                    maxLength={120}
+                    placeholder={deliveryCategory === 'report' ? 'Report title' : 'Message title'}
+                    style={INPUT_STYLE}
+                  />
+                  <textarea
+                    value={deliveryBody}
+                    onChange={event => setDeliveryBody(event.target.value)}
+                    maxLength={1800}
+                    placeholder={deliveryCategory === 'report' ? 'Write the report' : 'Write the internal message'}
+                    style={{ ...INPUT_STYLE, minHeight: 110, resize: 'vertical' }}
+                  />
+                  {deliverySuccess && <div role="status" style={{ fontSize: '0.42rem', color: primary(0.85) }}>{deliverySuccess}</div>}
+                  <PhoneBtn
+                    onClick={() => void deliverWithPabloPrime()}
+                    disabled={deliverySending || !deliveryTargetUserId || !deliveryTitle.trim() || !deliveryBody.trim()}
+                    color={warning}
+                  >
+                    {deliverySending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+                    {deliverySending ? 'DELIVERING...' : 'DELIVER WITH PABLO PRIME'}
+                  </PhoneBtn>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: '0.42rem', color: slate(0.58), lineHeight: 1.5 }}>
+                    Internal message and report delivery requires paid Pablo PRIME access.
+                  </div>
+                  <PhoneBtn onClick={() => navigate('/pricing')} color={warning} size="sm">VIEW PLANS</PhoneBtn>
+                </div>
+              )}
+            </div>
           </PhoneCard>
         </div>
       )}
