@@ -5,17 +5,19 @@ description: The canonical assistant and antagonist identities after retiring vi
 
 # Pablo Prime is the sole assistant
 
-Pablo Prime is SALARYMAN's only user-facing assistant. Story state must not swap
-the assistant to Mila, Pixel Agents, or another named personality. Mr. Shadow is
-the antagonist; Pablo is helpful and on the user's side.
+Pablo Prime is SALARYMAN's only user-facing assistant in the browser app; all
+Pixel Agents are consolidated into Pablo Prime. Mila is only available in the
+downloadable app, which the user says currently does not work. Mr. Shadow is the
+antagonist; Pablo is helpful and on the user's side.
 
-**Why:** The prior story-active Mila swap and villainous Pablo prompt directly
-conflicted with the product's consolidated-assistant direction and confused users.
+**Why:** The user stated that Pixel Agents were combined into Pablo and Mila
+belongs only to the currently non-working downloadable app.
 
-**How to apply:** Keep one PABLO PRIME destination at `/pablo`; legacy assistant
-routes may redirect there without deleting their stored records. Prompts, persona
-status, navigation, and assistant links must all agree. Existing Mila/Pixel Agent
-code may remain only as hidden compatibility/lore data.
+**How to apply:** Keep one PABLO PRIME destination at `/pablo`; use Pablo Prime
+for browser-app customer-service, phone, and chat voice options. Do not offer
+Mila or separate Pixel Agents as browser-app or phone-system choices. Mila remains
+downloadable-app-only. Legacy assistant routes may redirect without deleting
+stored records; compatibility code may remain hidden.
 
 Pablo's approved orb and signature voice remain visually and aurally stable unless
 the user explicitly asks to redesign them.
