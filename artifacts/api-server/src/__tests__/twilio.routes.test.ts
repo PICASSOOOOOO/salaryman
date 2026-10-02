@@ -208,6 +208,11 @@ describe("call control (mute / hold / transfer)", () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ ok: true, transferredTo: "+15559998888" });
     expect(spies.callUpdate).toHaveBeenCalled();
+    const updateArgs = spies.callUpdate.mock.calls.at(-1)?.[0] as { twiml: string };
+    expect(updateArgs.twiml).toContain('record="record-from-answer"');
+    expect(updateArgs.twiml).toContain("recordingStatusCallback=");
+    expect(updateArgs.twiml).toContain("<Number url=");
+    expect(updateArgs.twiml).toContain("recording-notice");
   });
 });
 
@@ -666,6 +671,22 @@ describe("webhook/status", () => {
       .where(eq(callHistoryTable.twilioCallSid, sid));
     expect(row.status).toBe("completed");
     expect(row.durationSeconds).toBe(27);
+  });
+});
+
+describe("webhook/recording-notice", () => {
+  it("only returns the disclosure announcement to a valid Twilio callback", async () => {
+    const rejected = await request(app).post("/api/twilio/webhook/recording-notice").send({});
+    expect(rejected.status).toBe(403);
+
+    const accepted = await request(app)
+      .post("/api/twilio/webhook/recording-notice")
+      .set("x-twilio-signature", "sig")
+      .send({});
+    expect(accepted.status).toBe(200);
+    expect(accepted.headers["content-type"]).toMatch(/xml/);
+    expect(accepted.text).toContain("This call may be recorded and transcribed");
+    expect(accepted.text).toContain("If you do not consent, please hang up now");
   });
 });
 

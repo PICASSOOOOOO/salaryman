@@ -1178,11 +1178,14 @@ router.post("/twilio/call/:callSid/transfer", requireAuth, requireFeature("phone
     }
     const client = getTwilioClient();
     const transferHost = getAppHost(req);
-    const transferRecordingCallback = transferHost
-      ? `https://${transferHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=transfer`
-      : "";
+    if (!transferHost) {
+      res.status(503).json({ error: "Call recording is unavailable. Please retry the transfer." });
+      return;
+    }
+    const transferRecordingCallback = `https://${transferHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=transfer`;
+    const transferNoticeCallback = `https://${transferHost}/api/twilio/webhook/recording-notice`;
     await client.calls(callSid).update({
-      twiml: `<Response><Dial record="record-from-answer"${transferRecordingCallback ? ` recordingStatusCallback="${escapeTwiml(transferRecordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${e164}</Dial></Response>`,
+      twiml: `<Response><Dial record="record-from-answer" recordingStatusCallback="${escapeTwiml(transferRecordingCallback)}" recordingStatusCallbackMethod="POST"><Number url="${escapeTwiml(transferNoticeCallback)}" method="POST">${e164}</Number></Dial></Response>`,
     });
 
     await db
@@ -4876,6 +4879,15 @@ router.post("/twilio/webhook/status", async (req, res) => {
     console.error("[CalllHome] webhook/status error:", _msg);
     res.status(500).send("Error");
   }
+});
+
+router.post("/twilio/webhook/recording-notice", async (req, res) => {
+  if (!validateTwilioWebhook(req)) {
+    console.error("[CalllHome] webhook/recording-notice: invalid Twilio signature");
+    res.status(403).send("Forbidden");
+    return;
+  }
+  res.type("text/xml").send(`<Response>${callRecordingNoticeTwiml()}</Response>`);
 });
 
 router.post("/twilio/webhook/recording", async (req, res) => {
