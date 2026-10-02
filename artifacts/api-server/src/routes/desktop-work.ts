@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import {
   db,
   desktopWorkClaimsTable,
@@ -32,8 +32,8 @@ async function requireDesktopLink(req: Request, res: Response) {
     eq(deviceLinksTable.desktopDeviceId, deviceId),
     eq(deviceLinksTable.status, "linked"),
   )).limit(1);
-  if (!link) {
-    res.status(401).json({ error: "Desktop credential is invalid or revoked" });
+  if (!link || !link.scopes.includes("salaryman_app")) {
+    res.status(401).json({ error: "Desktop credential is invalid, revoked, or lacks SALARYMAN access" });
     return null;
   }
   await db.update(deviceLinksTable).set({ lastDesktopSeenAt: new Date(), updatedAt: new Date() })
@@ -41,21 +41,36 @@ async function requireDesktopLink(req: Request, res: Response) {
   return link;
 }
 
-router.post("/desktop-work/lease", async (req, res) => {
+router.post("/desktop-work/lease", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   try {
     const now = new Date();
-    const [lease] = await db.insert(desktopWorkLeasesTable).values({
-      linkId: link.id,
-      userId: link.userId,
-      desktopDeviceId: link.desktopDeviceId,
-      status: "active",
-      issuedAt: now,
-      expiresAt: new Date(now.getTime() + LEASE_TTL_MS),
-      maxMinutes: MAX_LEASE_MINUTES,
-      consumedMinutes: 0,
-    }).returning();
+    const lease = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('desktop-work-lease'), hashtext(${link.id}))`);
+      await tx.update(desktopWorkLeasesTable).set({ status: "expired" }).where(and(
+        eq(desktopWorkLeasesTable.linkId, link.id),
+        eq(desktopWorkLeasesTable.status, "active"),
+        lte(desktopWorkLeasesTable.expiresAt, now),
+      ));
+      const [active] = await tx.select().from(desktopWorkLeasesTable).where(and(
+        eq(desktopWorkLeasesTable.linkId, link.id),
+        eq(desktopWorkLeasesTable.status, "active"),
+        gte(desktopWorkLeasesTable.expiresAt, now),
+      )).for("update").limit(1);
+      if (active) return active;
+      const [created] = await tx.insert(desktopWorkLeasesTable).values({
+        linkId: link.id,
+        userId: link.userId,
+        desktopDeviceId: link.desktopDeviceId,
+        status: "active",
+        issuedAt: now,
+        expiresAt: new Date(now.getTime() + LEASE_TTL_MS),
+        maxMinutes: MAX_LEASE_MINUTES,
+        consumedMinutes: 0,
+      }).returning();
+      return created;
+    });
     res.json({
       leaseId: lease.id,
       workType: WORK_TYPE,
@@ -65,12 +80,12 @@ router.post("/desktop-work/lease", async (req, res) => {
       expiresAt: lease.expiresAt,
     });
   } catch (error) {
-    console.error("[desktop-work] lease failed", error);
+    req.log.error({ err: error }, "Desktop work lease failed");
     res.status(500).json({ error: "Could not issue work lease" });
   }
 });
 
-router.post("/desktop-work/claims", async (req, res) => {
+router.post("/desktop-work/claims", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   const eventId = typeof req.body?.eventId === "string" ? req.body.eventId.trim() : "";
@@ -123,6 +138,11 @@ router.post("/desktop-work/claims", async (req, res) => {
             ? "lease_expired"
             : lease.consumedMinutes + workMinutes > lease.maxMinutes
               ? "lease_minutes_exceeded"
+              : lease.consumedMinutes + workMinutes > Math.min(
+                lease.maxMinutes,
+                Math.max(0, Math.floor((now.getTime() - lease.issuedAt.getTime()) / 60_000)),
+              )
+                ? "work_time_not_elapsed"
               : null;
       if (reason) {
         await tx.insert(desktopWorkClaimsTable).values({
@@ -184,7 +204,7 @@ router.post("/desktop-work/claims", async (req, res) => {
     }
     res.json({ ok: true, status: "accepted", amountFiat: result.amountFiat, balance: result.balance });
   } catch (error) {
-    console.error("[desktop-work] claim failed", error);
+    req.log.error({ err: error }, "Desktop work claim failed");
     res.status(500).json({ error: "Could not settle desktop work" });
   }
 });

@@ -9,10 +9,11 @@ import {
   organizationsTable,
   shadowTowerFloorsTable,
   shadowTowerOfficeUnitsTable,
+  shadowTowerWorkstationAssignmentsTable,
   usersTable,
 } from "@workspace/db";
 import { canAccess } from "./shadow-tower";
-import { resolveCurrentOrgId } from "../lib/org-permissions";
+import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 
 const router = Router();
 const FLOOR_COUNT = 67;
@@ -25,10 +26,10 @@ const ROOM_FOR_UNIT: Record<number, string> = {
   4: "office_04",
 };
 const ROOM_LABEL: Record<string, string> = {
-  lobby: "TOWER LOBBY",
+  lobby: "BUILDING LOBBY",
   hallway: "SHARED HALLWAY",
   elevator: "ELEVATOR",
-  office: "ORG OFFICE",
+  office: "ORGANIZATION OFFICE",
 };
 
 function hashDesktopToken(token: string): string {
@@ -104,11 +105,13 @@ function rowOfficeKey(row: ActiveOfficeRow): string | null {
 async function resolveUserOffice(userId: string, password?: unknown) {
   const orgId = await resolveCurrentOrgId(userId);
   const rows = await activeOfficeRows();
+  const canManageOrgOffice = orgId != null
+    && (await canDoInOrg(userId, orgId, "org.settings")).allowed;
   const candidates = rows.filter((row) => {
     const effectiveOrgId = row.unit.orgId ?? row.floor.orgId;
     const effectiveOwner = row.unit.ownerUserId ?? row.floor.ownerUserId;
     return orgId != null
-      ? effectiveOrgId === orgId || effectiveOwner === userId
+      ? (effectiveOrgId === orgId && canManageOrgOffice) || effectiveOwner === userId
       : effectiveOwner === userId;
   });
   for (const row of candidates) {
@@ -129,6 +132,25 @@ async function resolveUserOffice(userId: string, password?: unknown) {
     };
   }
   return null;
+}
+
+async function resolveUserWorkstation(userId: string, orgId: number | null) {
+  const assignments = await db.select({
+    assignment: shadowTowerWorkstationAssignmentsTable,
+    floor: shadowTowerFloorsTable,
+  }).from(shadowTowerWorkstationAssignmentsTable)
+    .innerJoin(shadowTowerFloorsTable, eq(shadowTowerWorkstationAssignmentsTable.floorId, shadowTowerFloorsTable.id))
+    .where(and(
+      eq(shadowTowerWorkstationAssignmentsTable.assigneeType, "human"),
+      eq(shadowTowerWorkstationAssignmentsTable.assigneeUserId, userId),
+    ));
+  const now = new Date();
+  const eligible = assignments
+    .filter(({ floor }) =>
+      (!floor.leaseExpiresAt || floor.leaseExpiresAt > now)
+      && (floor.ownerUserId === userId || (orgId != null && floor.orgId === orgId)))
+    .sort((a, b) => b.assignment.createdAt.getTime() - a.assignment.createdAt.getTime());
+  return eligible[0] ?? null;
 }
 
 async function getOrgPresence(orgId: number, now: Date) {
@@ -213,11 +235,15 @@ function safeOffice(row: ActiveOfficeRow, currentOfficeKey: string | null) {
   };
 }
 
-router.get("/desktop-building/snapshot", async (req, res) => {
+router.get("/desktop-building/snapshot", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   try {
     const ownOffice = await resolveUserOffice(link.userId, req.header("x-shadow-tower-password"));
+    const orgId = ownOffice?.orgId ?? await resolveCurrentOrgId(link.userId);
+    const assignedWorkstation = ownOffice
+      ? null
+      : await resolveUserWorkstation(link.userId, orgId);
     const requestedFloor = req.query.floorNumber == null
       ? null
       : Number(req.query.floorNumber);
@@ -226,8 +252,8 @@ router.get("/desktop-building/snapshot", async (req, res) => {
       return;
     }
     const initialVisit = requestedFloor == null;
-    const floorNumber = requestedFloor ?? ownOffice?.floor.floorNumber ?? 1;
-    const city = ownOffice?.city ?? "minx_city";
+    const floorNumber = requestedFloor ?? ownOffice?.floor.floorNumber ?? assignedWorkstation?.floor.floorNumber ?? 1;
+    const city = ownOffice?.city ?? assignedWorkstation?.floor.city ?? "minx_city";
     const rows = (await activeOfficeRows()).filter((row) =>
       row.floor.city === city && row.floor.floorNumber === floorNumber);
     const seenKeys = new Set<string>();
@@ -240,16 +266,19 @@ router.get("/desktop-building/snapshot", async (req, res) => {
       })
       .map((row) => safeOffice(row, ownOffice?.key ?? null));
     const now = new Date();
-    const orgId = ownOffice?.orgId ?? await resolveCurrentOrgId(link.userId);
+    const canViewPrivateOffice = orgId != null
+      && (await canDoInOrg(link.userId, orgId, "org.settings")).allowed;
     const teammates = orgId == null ? [] : (await getOrgPresence(orgId, now))
-      .filter((person) => person.userId !== link.userId);
+      .filter((person) => person.userId !== link.userId && (canViewPrivateOffice || person.room !== "office"));
     res.json({
       userId: link.userId,
       city,
       floorNumber,
       start: initialVisit && ownOffice
         ? { room: "office", officeRoom: ownOffice.room, roomKey: ownOffice.key, floorNumber: ownOffice.floor.floorNumber }
-        : { room: floorNumber === 1 ? "lobby" : "hallway", floorNumber },
+        : initialVisit && assignedWorkstation
+          ? { room: "hallway", floorNumber: assignedWorkstation.floor.floorNumber }
+          : { room: floorNumber === 1 ? "lobby" : "hallway", floorNumber },
       office: ownOffice ? {
         roomKey: ownOffice.key,
         room: ownOffice.room,
@@ -260,6 +289,12 @@ router.get("/desktop-building/snapshot", async (req, res) => {
         orgId: ownOffice.orgId,
         label: ownOffice.label,
       } : null,
+      assignedWorkstation: assignedWorkstation ? {
+        floorId: assignedWorkstation.floor.id,
+        floorNumber: assignedWorkstation.floor.floorNumber,
+        city: assignedWorkstation.floor.city,
+        workstationKey: assignedWorkstation.assignment.workstationKey,
+      } : null,
       offices,
       teammates,
       elevator: {
@@ -267,12 +302,12 @@ router.get("/desktop-building/snapshot", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[desktop-building] snapshot failed", error);
+    req.log.error({ err: error }, "Desktop building snapshot failed");
     res.status(500).json({ error: "Could not load the desktop building" });
   }
 });
 
-router.post("/desktop-building/presence", async (req, res) => {
+router.post("/desktop-building/presence", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   const room = req.body?.room;
@@ -293,15 +328,24 @@ router.post("/desktop-building/presence", async (req, res) => {
   try {
     const currentOrgId = await resolveCurrentOrgId(link.userId);
     const ownOffice = await resolveUserOffice(link.userId, req.header("x-shadow-tower-password"));
+    const assignedWorkstation = ownOffice
+      ? null
+      : await resolveUserWorkstation(link.userId, currentOrgId);
     if (room === "office" && (!ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
-      res.status(403).json({ error: "A purchased office assignment is required to enter this room" });
+      res.status(403).json({ error: "An authorized organization office is required to enter this room" });
       return;
     }
     if (room === "lobby" && floorNumber !== 1) {
       res.status(400).json({ error: "The lobby is on floor 1" });
       return;
     }
-    const city = ownOffice?.city ?? "minx_city";
+    if (room === "hallway" && floorNumber > 4
+      && ownOffice?.floor.floorNumber !== floorNumber
+      && assignedWorkstation?.floor.floorNumber !== floorNumber) {
+      res.status(403).json({ error: "An assigned office or workstation is required for this floor" });
+      return;
+    }
+    const city = ownOffice?.city ?? assignedWorkstation?.floor.city ?? "minx_city";
     const roomKey = room === "office"
       ? ownOffice!.key
       : room === "lobby"
@@ -314,7 +358,7 @@ router.post("/desktop-building/presence", async (req, res) => {
       userId: link.userId,
       linkId: link.id,
       orgId: ownOffice?.orgId ?? currentOrgId,
-      floorId: ownOffice?.floor.id ?? null,
+      floorId: ownOffice?.floor.id ?? assignedWorkstation?.floor.id ?? null,
       officeUnitId: ownOffice?.unit.id ?? null,
       city,
       roomKey,
@@ -330,7 +374,7 @@ router.post("/desktop-building/presence", async (req, res) => {
       set: {
         linkId: link.id,
         orgId: ownOffice?.orgId ?? currentOrgId,
-        floorId: ownOffice?.floor.id ?? null,
+        floorId: ownOffice?.floor.id ?? assignedWorkstation?.floor.id ?? null,
         officeUnitId: ownOffice?.unit.id ?? null,
         city,
         roomKey,
@@ -345,12 +389,12 @@ router.post("/desktop-building/presence", async (req, res) => {
     });
     res.json({ ok: true, observedAt: now.toISOString(), roomKey });
   } catch (error) {
-    console.error("[desktop-building] presence update failed", error);
+    req.log.error({ err: error }, "Desktop building presence update failed");
     res.status(500).json({ error: "Could not update desktop presence" });
   }
 });
 
-router.get("/orgs/:orgId/office-activity", async (req, res) => {
+router.get("/orgs/:orgId/office-activity", async (req, res): Promise<void> => {
   if (!req.isAuthenticated?.() || !req.user?.id) {
     res.status(401).json({ error: "Login required" });
     return;
@@ -362,18 +406,15 @@ router.get("/orgs/:orgId/office-activity", async (req, res) => {
   }
   try {
     const userId = String((req.user as { id: string }).id);
-    const [org] = await db.select({ id: organizationsTable.id, name: organizationsTable.name, ownerUserId: organizationsTable.ownerUserId })
+    const [org] = await db.select({ id: organizationsTable.id, name: organizationsTable.name })
       .from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
     if (!org) {
       res.status(404).json({ error: "Organization not found" });
       return;
     }
-    const [member] = await db.select({ status: orgMembersTable.status }).from(orgMembersTable).where(and(
-      eq(orgMembersTable.orgId, orgId),
-      eq(orgMembersTable.userId, userId),
-    )).limit(1);
-    if (org.ownerUserId !== userId && member?.status !== "active") {
-      res.status(403).json({ error: "Active organization membership required" });
+    const officeAccess = await canDoInOrg(userId, orgId, "org.settings");
+    if (!officeAccess.allowed) {
+      res.status(403).json({ error: "Organization office access requires an owner or administrator role" });
       return;
     }
     const orgOffice = (await activeOfficeRows()).find((row) =>
@@ -392,7 +433,7 @@ router.get("/orgs/:orgId/office-activity", async (req, res) => {
       onlineWindowSeconds: ONLINE_WINDOW_MS / 1_000,
     });
   } catch (error) {
-    console.error("[desktop-building] organization activity failed", error);
+    req.log.error({ err: error }, "Organization office activity failed");
     res.status(500).json({ error: "Could not load organization office activity" });
   }
 });

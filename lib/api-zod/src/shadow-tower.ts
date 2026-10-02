@@ -77,7 +77,10 @@ export const SHADOW_TOWER_LISTINGS: Record<ShadowTowerArchetype, ShadowTowerList
 export const SHADOW_TOWER_FLOOR_ENVELOPE = { widthPixels: 100_000, heightPixels: 100_000, squareMeters: 10_000 } as const;
 export const SHADOW_TOWER_MIN_OFFICE_UNITS = 1;
 export const SHADOW_TOWER_MAX_OFFICE_UNITS = 4;
-export const SHADOW_TOWER_RESERVED_FLOORS = [1, 2, 3, 4, 40, 52, 65, 66, 67] as const;
+export const SHADOW_TOWER_RESERVED_FLOORS = [
+  1, 2, 3, 4,
+  55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
+] as const;
 
 export const SHADOW_TOWER_FIAT_PER_SQUARE_METER: Record<ShadowTowerArchetype, Record<"own" | "lease", number>> = {
   founder_team: { own: 24, lease: 1.2 },
@@ -98,7 +101,7 @@ export const shadowTowerHallwaySchema = z.object({
 export type ShadowTowerHallway = z.infer<typeof shadowTowerHallwaySchema>;
 
 export function isCommercialShadowTowerFloor(floorNumber: number) {
-  return Number.isInteger(floorNumber) && floorNumber >= 5 && floorNumber <= 64
+  return Number.isInteger(floorNumber) && floorNumber >= 5 && floorNumber <= 54
     && !(SHADOW_TOWER_RESERVED_FLOORS as readonly number[]).includes(floorNumber);
 }
 

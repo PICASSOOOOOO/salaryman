@@ -3,8 +3,8 @@ name: Tower floor defaults
 description: The commercial Shadow Tower floor contract for initial suites and paid expansion.
 ---
 
-Commercial floors start with exactly one built executive suite: walls, founder desk, and connected terminal. The hallway also contains the elevator, ATM, and vending machine. Additional suites are created and purchased one at a time; desks and terminals are separate fit-outs projected by the canonical plan.
+Each sale floor has four office addresses; adjacent units may be purchased together as one larger suite. The owner/admin office includes a desk, terminal, and chair, with vending and ATM service available on the floor. Employee workstations are separate organization purchases and are assigned during onboarding.
 
-**Why:** The product is meant to show a founder-ready office, not a free four-suite workstation grid. Pre-creating or rendering extra suites makes the real-estate purchase misleading and creates assignments for furniture that was never bought.
+**Why:** The owner set the building inventory at four offices per sale floor, with larger offices made by combining adjacent units; employee workstations remain a separate paid organization benefit.
 
-**How to apply:** Keep the initial floor count at one, let the sequential expansion transaction create the next suite, and route every fixture through the shared plan/layout contract. Preserve legacy upgrade aliases when changing the catalog.
+**How to apply:** Keep the canonical Tower plan aligned with four sale addresses per floor, preserve existing FIAT purchase settlement, and charge employee workstation bundles to organization Credits rather than granting equipment for free.

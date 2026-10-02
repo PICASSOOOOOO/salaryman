@@ -3,10 +3,10 @@ name: Shadow Tower hierarchy
 description: Canonical vertical identity and occupancy rules for the Shadow Tower directory.
 ---
 
-The Shadow Tower is a 67-floor vertical destination: lobby 1, mezzanine 2, Pablo Corp 3–4, public-sale offices 5–62, Picasso-only 63–65 (Medicare Club on 64), penthouse 66, rooftop restaurant 67. Floors 3–65 have hallways.
+The Shadow Tower is a 67-floor vertical destination: floors 1–4 are public, floors 5–54 are the 50 sale floors, and floors 55–67 are reserved rather than sold. Each sale floor has four office units, for 200 offices before adjacent units are combined. The special access and purpose of reserved upper floors remain intact.
 
-Each public-sale floor has four separate offices, each capped at 100 desks. The public inventory is 58 floors × 4 offices = 232 offices. Starting sale price is ƒ2,000 per office pixel.
+Each public-sale floor has four separate offices. Starting sale price and demand-based release behavior continue to use the existing FIAT real-estate market.
 
-**Why:** The elevator directory, access control, geometry, and commercial inventory need one exact hierarchy. Medicare Club overlaps a Picasso-only floor so all categories fit the 67-floor total.
+**Why:** The owner chose exactly 50 sale floors and four offices per floor, while keeping the 67-floor building and reserving all floors above 54.
 
-**How to apply:** Keep elevator destinations, listings, access rules, and playable geometry aligned. The physical elevator car is 1,000 × 1,000 pixels inside its lobby and is the authoritative entrance to each floor hallway.
+**How to apply:** Keep elevator destinations, listings, access rules, and playable geometry aligned with floors 5–54 as sale floors; do not treat reserved floors 55–67 as available inventory.

@@ -117,7 +117,9 @@
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — Pablo must fail closed when ElevenLabs rejects his assigned voice; never substitute generic speech without user approval.
 - [Pablo outbound campaign consent](pablo-outbound-campaign-consent.md) — Campaigns and direct Pablo calls require an owned saved contact with recorded call permission; spoken STOP opts out and the assigned ElevenLabs voice must pass preflight.
 - [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.
-- [Shadow Tower hierarchy](shadow-tower-hierarchy.md) — tower is 67 floors: public commons low, new org space below Picasso, Picasso Org at 66, Shadow Corp restricted at 67; vacant floors show construction/sale with height pricing.
+- [Shadow Tower hierarchy](shadow-tower-hierarchy.md) — 67 floors; floors 5–54 are the 50 sale floors with four office addresses each, while 55–67 remain reserved.
+- [Organization office assignment](organization-office-assignment.md) — qualifying org admins get one shared office; employee workstations are separately funded, with arrival through the lobby and elevator.
+- [Cross-client economy](cross-client-economy.md) — browser Credits are server FIAT; desktop and browser share ledgers, and rewards require server-verified settlement.
 - [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.
 - [Extensible income ecosystem](income-ecosystem.md) — user/org connections unlock verified work and settlement; combine templates, floors, skills, shifts, and providers into many legitimate income paths.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
@@ -127,7 +129,7 @@
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
 - [Shadow Tower named art](shadow-tower-named-art.md) — finished Tower spaces use a named asset manifest; procedural shapes are interaction scaffolding, not final art.
 - [VendKing utility rule](vendking-utility-rule.md) — vending stock must provide authoritative stamina, work-income, skill, protection, or low-cost automation value; never sell decorative dead items.
-- [Tower floor defaults](tower-floor-defaults.md) — commercial floors start with one furnished executive suite; suites, desks, and terminals expand through paid canonical-plan fit-outs.
+- [Tower floor defaults](tower-floor-defaults.md) — sale floors have four office addresses; adjacent units can merge, and employee stations remain paid organization fit-outs.
 - [Tower physical floor shells](tower-floor-physical-shells.md) — every elevator stop renders a physical shell; vacant/sealed/restricted addresses hold access at the boundary instead of disappearing.
 - [Tower service scopes](tower-service-scopes.md) — only fixed-suite tenants have service counters; lobby/every-floor businesses resolve empty instead of falling back to shared listings.
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
