@@ -7,22 +7,29 @@ import {
   bankAccountsTable,
   bankTransactionsTable,
   db,
+  desktopOfficePresenceTable,
   desktopWorkClaimsTable,
   desktopWorkLeasesTable,
   deviceLinksTable,
+  shadowTowerFloorsTable,
+  shadowTowerOfficeUnitsTable,
   usersTable,
 } from "@workspace/db";
+import desktopBuildingRouter from "../routes/desktop-building";
 import desktopWorkRouter from "../routes/desktop-work";
 
 const app = express();
 app.use(express.json());
 app.use("/api", desktopWorkRouter);
+app.use("/api", desktopBuildingRouter);
 
 const userIds: string[] = [];
 const linkIds: string[] = [];
+const floorIds: number[] = [];
 let userId = "";
 let deviceId = "";
 let token = "";
+let officeCity = "";
 
 function desktopPost(path: string) {
   return request(app).post(path)
@@ -44,6 +51,7 @@ beforeAll(async () => {
 
   deviceId = `desktop-${randomUUID()}`;
   token = `test-token-${randomUUID()}`;
+  officeCity = `test-${randomUUID().slice(0, 8)}`;
   const [link] = await db.insert(deviceLinksTable).values({
     userId,
     desktopDeviceId: deviceId,
@@ -54,13 +62,33 @@ beforeAll(async () => {
     scopes: ["salaryman_app"],
   }).returning();
   linkIds.push(link.id);
+
+  const [floor] = await db.insert(shadowTowerFloorsTable).values({
+    city: officeCity,
+    floorNumber: 5,
+    ownerUserId: userId,
+    tenure: "own",
+    archetype: "founder_team",
+  }).returning();
+  floorIds.push(floor.id);
+  await db.insert(shadowTowerOfficeUnitsTable).values({
+    floorId: floor.id,
+    unitNumber: 1,
+    status: "occupied",
+    ownerUserId: userId,
+    tenure: "own",
+  });
 });
 
 afterAll(async () => {
+  await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
   if (linkIds.length) {
     await db.delete(desktopWorkClaimsTable).where(inArray(desktopWorkClaimsTable.linkId, linkIds));
     await db.delete(desktopWorkLeasesTable).where(inArray(desktopWorkLeasesTable.linkId, linkIds));
     await db.delete(deviceLinksTable).where(inArray(deviceLinksTable.id, linkIds));
+  }
+  if (floorIds.length) {
+    await db.delete(shadowTowerFloorsTable).where(inArray(shadowTowerFloorsTable.id, floorIds));
   }
   if (userIds.length) {
     await db.delete(bankTransactionsTable).where(inArray(bankTransactionsTable.userId, userIds));
@@ -69,8 +97,19 @@ afterAll(async () => {
   }
 });
 
+function reportPresence(room: "office" | "lobby" = "office") {
+  const isOffice = room === "office";
+  return desktopPost("/api/desktop-building/presence").send({
+    room,
+    floorNumber: isOffice ? 5 : 1,
+    x: 0,
+    y: 0,
+    action: isOffice ? "sit" : "stand",
+  });
+}
+
 describe("desktop office work settlement", () => {
-  it("reuses one active lease and caps rewards to server elapsed time", async () => {
+  it("reuses one lease and settles only continuous server-observed office presence", async () => {
     const firstLease = await desktopPost("/api/desktop-work/lease").send({});
     expect(firstLease.status).toBe(200);
     const retryLease = await desktopPost("/api/desktop-work/lease").send({});
@@ -90,8 +129,53 @@ describe("desktop office work settlement", () => {
     expect(early.body.reason).toBe("work_time_not_elapsed");
 
     await db.update(desktopWorkLeasesTable)
-      .set({ issuedAt: new Date(Date.now() - 3 * 60_000) })
+      .set({ issuedAt: new Date(Date.now() - 5 * 60_000) })
       .where(eq(desktopWorkLeasesTable.id, leaseId));
+
+    const initialPresence = await reportPresence();
+    expect(initialPresence.status).toBe(200);
+    expect(initialPresence.body.workPresence).toBe(true);
+
+    // A gap beyond the online window starts a new observed interval without
+    // crediting the time the desktop was absent.
+    await db.update(desktopWorkLeasesTable)
+      .set({ presenceLastSeenAt: new Date(Date.now() - 60_000) })
+      .where(eq(desktopWorkLeasesTable.id, leaseId));
+    expect((await reportPresence()).status).toBe(200);
+    let [lease] = await db.select().from(desktopWorkLeasesTable).where(eq(desktopWorkLeasesTable.id, leaseId));
+    expect(lease.verifiedSeconds).toBe(0);
+
+    // A short heartbeat interval accrues time, but leaving the office breaks it.
+    await db.update(desktopWorkLeasesTable)
+      .set({ presenceLastSeenAt: new Date(Date.now() - 30_000) })
+      .where(eq(desktopWorkLeasesTable.id, leaseId));
+    expect((await reportPresence()).status).toBe(200);
+    [lease] = await db.select().from(desktopWorkLeasesTable).where(eq(desktopWorkLeasesTable.id, leaseId));
+    expect(lease.verifiedSeconds).toBe(30);
+    const partialClaim = await desktopPost("/api/desktop-work/claims").send({
+      eventId: `claim-${randomUUID()}`,
+      leaseId,
+      workType: "office_shift",
+      workMinutes: 1,
+      reportedAt: new Date().toISOString(),
+    });
+    expect(partialClaim.status).toBe(422);
+    expect(partialClaim.body.reason).toBe("work_presence_not_verified");
+    const leftOffice = await reportPresence("lobby");
+    expect(leftOffice.status).toBe(200);
+    [lease] = await db.select().from(desktopWorkLeasesTable).where(eq(desktopWorkLeasesTable.id, leaseId));
+    expect(lease.presenceLastSeenAt).toBeNull();
+    expect((await reportPresence()).status).toBe(200);
+
+    // Simulate five more 30-second server heartbeat intervals after returning.
+    for (let beat = 0; beat < 5; beat += 1) {
+      await db.update(desktopWorkLeasesTable)
+        .set({ presenceLastSeenAt: new Date(Date.now() - 30_000) })
+        .where(eq(desktopWorkLeasesTable.id, leaseId));
+      expect((await reportPresence()).status).toBe(200);
+    }
+    [lease] = await db.select().from(desktopWorkLeasesTable).where(eq(desktopWorkLeasesTable.id, leaseId));
+    expect(lease.verifiedSeconds).toBe(180);
 
     const eventId = `claim-${randomUUID()}`;
     const claim = {
@@ -115,7 +199,7 @@ describe("desktop office work settlement", () => {
       workMinutes: 1,
     });
     expect(overClaim.status).toBe(422);
-    expect(overClaim.body.reason).toBe("work_time_not_elapsed");
+    expect(overClaim.body.reason).toBe("work_presence_not_verified");
 
     const [account] = await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
     expect(account.balance).toBe(15);

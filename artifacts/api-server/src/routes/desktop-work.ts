@@ -143,7 +143,9 @@ router.post("/desktop-work/claims", async (req, res): Promise<void> => {
                 Math.max(0, Math.floor((now.getTime() - lease.issuedAt.getTime()) / 60_000)),
               )
                 ? "work_time_not_elapsed"
-              : null;
+                : (lease.consumedMinutes + workMinutes) * 60 > lease.verifiedSeconds
+                  ? "work_presence_not_verified"
+                  : null;
       if (reason) {
         await tx.insert(desktopWorkClaimsTable).values({
           eventId,

@@ -4,6 +4,7 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   db,
   desktopOfficePresenceTable,
+  desktopWorkLeasesTable,
   deviceLinksTable,
   orgMembersTable,
   organizationsTable,
@@ -354,24 +355,12 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
           ? `hallway:${city}:${floorNumber}`
           : `elevator:${city}`;
     const now = new Date();
-    await db.insert(desktopOfficePresenceTable).values({
-      userId: link.userId,
-      linkId: link.id,
-      orgId: ownOffice?.orgId ?? currentOrgId,
-      floorId: ownOffice?.floor.id ?? assignedWorkstation?.floor.id ?? null,
-      officeUnitId: ownOffice?.unit.id ?? null,
-      city,
-      roomKey,
-      room,
-      floorNumber,
-      x,
-      y,
-      action,
-      destinationFloor: room === "elevator" ? destinationFloor : null,
-      lastSeenAt: now,
-    }).onConflictDoUpdate({
-      target: desktopOfficePresenceTable.userId,
-      set: {
+    const isWorkPresence = action === "sit"
+      && ((room === "office" && ownOffice?.floor.floorNumber === floorNumber)
+        || (room === "hallway" && assignedWorkstation?.floor.floorNumber === floorNumber));
+    await db.transaction(async (tx) => {
+      await tx.insert(desktopOfficePresenceTable).values({
+        userId: link.userId,
         linkId: link.id,
         orgId: ownOffice?.orgId ?? currentOrgId,
         floorId: ownOffice?.floor.id ?? assignedWorkstation?.floor.id ?? null,
@@ -385,9 +374,44 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
         action,
         destinationFloor: room === "elevator" ? destinationFloor : null,
         lastSeenAt: now,
-      },
+      }).onConflictDoUpdate({
+        target: desktopOfficePresenceTable.userId,
+        set: {
+          linkId: link.id,
+          orgId: ownOffice?.orgId ?? currentOrgId,
+          floorId: ownOffice?.floor.id ?? assignedWorkstation?.floor.id ?? null,
+          officeUnitId: ownOffice?.unit.id ?? null,
+          city,
+          roomKey,
+          room,
+          floorNumber,
+          x,
+          y,
+          action,
+          destinationFloor: room === "elevator" ? destinationFloor : null,
+          lastSeenAt: now,
+        },
+      });
+
+      const [lease] = await tx.select().from(desktopWorkLeasesTable).where(and(
+        eq(desktopWorkLeasesTable.linkId, link.id),
+        eq(desktopWorkLeasesTable.status, "active"),
+        gte(desktopWorkLeasesTable.expiresAt, now),
+      )).for("update").limit(1);
+      if (!lease) return;
+
+      const gapMs = lease.presenceLastSeenAt
+        ? now.getTime() - lease.presenceLastSeenAt.getTime()
+        : null;
+      const verifiedDeltaSeconds = isWorkPresence && gapMs != null && gapMs > 0 && gapMs <= ONLINE_WINDOW_MS
+        ? Math.floor(gapMs / 1_000)
+        : 0;
+      await tx.update(desktopWorkLeasesTable).set({
+        verifiedSeconds: Math.min(lease.maxMinutes * 60, lease.verifiedSeconds + verifiedDeltaSeconds),
+        presenceLastSeenAt: isWorkPresence ? now : null,
+      }).where(eq(desktopWorkLeasesTable.id, lease.id));
     });
-    res.json({ ok: true, observedAt: now.toISOString(), roomKey });
+    res.json({ ok: true, observedAt: now.toISOString(), roomKey, workPresence: isWorkPresence });
   } catch (error) {
     req.log.error({ err: error }, "Desktop building presence update failed");
     res.status(500).json({ error: "Could not update desktop presence" });

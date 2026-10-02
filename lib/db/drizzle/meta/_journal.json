@@ -477,6 +477,13 @@
       "when": 1790208000000,
       "tag": "0067_user_data_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790940319000,
+      "tag": "0068_desktop_work_presence_verification",
+      "breakpoints": true
     }
   ]
 }
