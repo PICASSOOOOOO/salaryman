@@ -43,15 +43,13 @@ export function makeTwilioMock() {
   const callUpdate = vi.fn().mockResolvedValue({ sid: mockState.callSid, status: "completed" });
   const callsCallable: any = vi.fn(() => ({ fetch: callFetch, update: callUpdate }));
   // A real Twilio account returns a fresh CallSid for every create. Keep the
-  // first value stable for legacy assertions, but make subsequent calls
-  // distinct so the real call_history SID uniqueness constraint is exercised
-  // by route tests. The sequence intentionally spans tests because the test
-  // database is shared across the suite.
+  // latest SID in shared state so webhook tests can exercise the matching call.
   callsCallable.create = vi.fn(async () => {
     const callNumber = ++createdCallSequence;
     const sid = callNumber === 1
       ? mockState.createdCallSid
       : `CAcreated${String(callNumber).padStart(27, "0")}`;
+    mockState.createdCallSid = sid;
     return { sid, status: mockState.createdStatus };
   });
 

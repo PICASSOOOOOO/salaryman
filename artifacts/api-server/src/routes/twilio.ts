@@ -2465,6 +2465,32 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
       return;
     }
 
+    const directContactId = Number(req.query.contactId);
+    if (Number.isInteger(directContactId) && directContactId > 0) {
+      const [contact] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(
+        eq(contactsTable.id, directContactId),
+        eq(contactsTable.userId, userId),
+      )).limit(1);
+      if (!contact || !await hasRecordedPhoneCallConsent(userId, directContactId)) {
+        res.type("text/xml").send(`<Response>${milaVoice("I can't continue this call. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+      const answer = classifyPabloCallAnswer(typeof SpeechResult === "string" ? SpeechResult : "");
+      if (answer === "stop") {
+        const now = new Date();
+        await db.update(contactChannelPrefsTable).set({
+          phoneCallOptIn: false,
+          phoneCallOptedOutAt: now,
+          updatedAt: now,
+        }).where(and(
+          eq(contactChannelPrefsTable.userId, userId),
+          eq(contactChannelPrefsTable.contactId, directContactId),
+        ));
+        res.type("text/xml").send(`<Response>${milaVoice("Understood. I'll remove this number from future calls. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+    }
+
     if (!SpeechResult) {
       res.type("text/xml").send(`<Response>${milaVoice("Thank you for your time. Goodbye.", req)}<Hangup/></Response>`);
       return;
@@ -2498,15 +2524,85 @@ ${milaVoice("Thank you for your time. Goodbye.", req)}
 router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { phoneNumber, leadName, script } = req.body;
-
-    if (!phoneNumber) {
-      res.status(400).json({ error: "Phone number is required" });
+    const { phoneNumber, script } = req.body;
+    const hasContactId = req.body.contactId !== undefined && req.body.contactId !== null;
+    const hasLeadId = req.body.leadId !== undefined && req.body.leadId !== null;
+    if (hasContactId && hasLeadId) {
+      res.status(400).json({ error: "Choose one CRM contact or lead." });
       return;
     }
-    const pabloCrmMatch = await matchContactByPhone(userId, String(phoneNumber));
+    const hasCrmRecord = hasContactId || hasLeadId;
+    if (hasCrmRecord && phoneNumber != null) {
+      res.status(400).json({ error: "The call destination must come from the selected CRM record." });
+      return;
+    }
+
+    let pabloOrgId = await getUserOrgId(userId);
+    let resolvedLeadId: number | undefined;
+    let authoritativeNumber = "";
+    let authoritativeName = "";
+    let pabloCrmMatch: { contactId: number; contactName: string } | null = null;
+
+    if (hasLeadId) {
+      const leadId = Number(req.body.leadId);
+      if (!Number.isInteger(leadId) || leadId <= 0) {
+        res.status(400).json({ error: "Invalid CRM lead." });
+        return;
+      }
+      const [lead] = await db.select({
+        id: leadRecordsTable.id,
+        name: leadRecordsTable.name,
+        phone: leadRecordsTable.phone,
+      }).from(leadRecordsTable).where(and(
+        eq(leadRecordsTable.id, leadId),
+        pabloOrgId ? eq(leadRecordsTable.orgId, pabloOrgId) : sql`false`,
+      )).limit(1);
+      if (!lead) {
+        res.status(404).json({ error: "CRM lead not found in your active organization." });
+        return;
+      }
+      if (!lead.phone?.trim()) {
+        res.status(400).json({ error: "CRM lead has no phone number." });
+        return;
+      }
+      resolvedLeadId = lead.id;
+      authoritativeNumber = lead.phone;
+      authoritativeName = lead.name;
+      pabloCrmMatch = await matchContactByPhone(userId, lead.phone);
+    } else if (hasContactId) {
+      const contactId = Number(req.body.contactId);
+      if (!Number.isInteger(contactId) || contactId <= 0) {
+        res.status(400).json({ error: "Invalid CRM contact." });
+        return;
+      }
+      const [contact] = await db.select({
+        id: contactsTable.id,
+        name: contactsTable.name,
+        phone: contactsTable.phone,
+      }).from(contactsTable).where(and(
+        eq(contactsTable.id, contactId),
+        eq(contactsTable.userId, userId),
+      )).limit(1);
+      if (!contact) {
+        res.status(404).json({ error: "CRM contact not found." });
+        return;
+      }
+      authoritativeNumber = contact.phone;
+      authoritativeName = contact.name;
+      pabloCrmMatch = { contactId: contact.id, contactName: contact.name };
+    } else if (phoneNumber) {
+      // Backward-compatible path: still resolve a saved, user-owned contact;
+      // never dial the caller-provided number directly.
+      pabloCrmMatch = await matchContactByPhone(userId, String(phoneNumber));
+      authoritativeNumber = String(phoneNumber);
+      authoritativeName = typeof req.body.leadName === "string" ? req.body.leadName : "";
+    } else {
+      res.status(400).json({ error: "Choose a CRM record to call." });
+      return;
+    }
+
     if (!pabloCrmMatch || !await hasRecordedPhoneCallConsent(userId, pabloCrmMatch.contactId)) {
-      res.status(403).json({ error: "Pablo can only call a saved contact with recorded phone-call permission." });
+      res.status(403).json({ error: "Pablo can only call a saved contact with recorded phone-call permission. Record permission in Phone Call Center first." });
       return;
     }
     const [contact] = await db.select().from(contactsTable).where(and(
@@ -2517,9 +2613,9 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       res.status(403).json({ error: "Contact must have a saved phone number." });
       return;
     }
-    const callTo = toE164(contact.phone, await resolveUserCountry(userId));
+    const callTo = toE164(authoritativeNumber || contact.phone, await resolveUserCountry(userId));
     if (!callTo) {
-      res.status(400).json({ error: "Contact has an invalid phone number." });
+      res.status(400).json({ error: "CRM record has an invalid phone number." });
       return;
     }
     try {
@@ -2527,6 +2623,22 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
     } catch {
       res.status(503).json({ error: "Pablo's ElevenLabs voice is unavailable. No call was placed.", code: "voice_unavailable" });
       return;
+    }
+    if (!await hasRecordedPhoneCallConsent(userId, pabloCrmMatch.contactId)) {
+      res.status(403).json({ error: "Phone-call permission was withdrawn before Pablo could place the call." });
+      return;
+    }
+    if (resolvedLeadId) {
+      const currentOrgId = await getUserOrgId(userId);
+      const [stillAuthorized] = await db.select({ id: leadRecordsTable.id }).from(leadRecordsTable).where(and(
+        eq(leadRecordsTable.id, resolvedLeadId),
+        currentOrgId ? eq(leadRecordsTable.orgId, currentOrgId) : sql`false`,
+      )).limit(1);
+      if (!stillAuthorized || currentOrgId !== pabloOrgId) {
+        res.status(404).json({ error: "CRM lead is no longer available in your active organization." });
+        return;
+      }
+      pabloOrgId = currentOrgId;
     }
     {
       const { consumeUsage, throttleResponse: tr } = await import("../lib/usage-meter");
@@ -2550,17 +2662,16 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
     const call = await client.calls.create({
       to: callTo,
       from: fromNumber,
-      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice("Thank you for your time. Goodbye.", req)}</Response>`,
+      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;contactId=${pabloCrmMatch.contactId}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice("Thank you for your time. Goodbye.", req)}</Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
     });
 
-    const pabloOrgId = await getUserOrgId(userId);
     await db.insert(callHistoryTable).values({
       userId,
       orgId: pabloOrgId ?? undefined,
-      callerName: leadName || null,
+      callerName: authoritativeName || contact.name || null,
       recipientNumber: callTo,
       twilioCallSid: call.sid,
       status: "initiated",
@@ -2570,21 +2681,30 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       consentGiven: true,
       recordingRetainUntil: getRetentionDate(),
     });
-    await recordTelephonyActivity({
+    const crmActivityId = await recordTelephonyActivity({
       userId,
       orgId: pabloOrgId,
+      leadId: resolvedLeadId,
       channel: "call",
       direction: "outbound",
       phone: callTo,
-      contactName: leadName,
+      contactName: authoritativeName || contact.name,
       contactId: pabloCrmMatch?.contactId,
       status: "initiated",
       twilioSid: call.sid,
     }).catch(() => {});
 
-    res.json({ ok: true, callSid: call.sid });
+    res.json({
+      ok: true,
+      callSid: call.sid,
+      crmActivityId,
+      leadId: resolvedLeadId,
+      contactId: pabloCrmMatch.contactId,
+      to: callTo,
+      status: "initiated",
+    });
   } catch (err: unknown) {
-    console.error("[Pablo] outbound dial error:", err instanceof Error ? err.message : "Unknown");
+    req.log.error({ err }, "Pablo outbound dial error");
     res.status(500).json({ error: "Failed to initiate outbound call" });
   }
 });

@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "crypto";
 
 vi.mock("twilio", async () => (await import("./helpers/twilioMock")).makeTwilioMock());
 vi.mock("../lib/plan", async (importActual) => ({
@@ -23,8 +24,13 @@ import {
   callHistoryTable,
   contactChannelPrefsTable,
   contactsTable,
+  crmActivitiesTable,
   db,
+  leadRecordsTable,
+  orgMembersTable,
+  organizationsTable,
   pabloOutboundCampaignsTable,
+  usersTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
@@ -71,12 +77,13 @@ const validScript = {
 let app: Express;
 let preferencesApp: Express;
 let previousElevenLabsKey: string | undefined;
+let nextTestContactNumber = 1_000_000;
 
 async function createContact(consented = true) {
   const [contact] = await db.insert(contactsTable).values({
     userId: TEST_USER.id,
     name: "Jordan Lee",
-    phone: "+15551234567",
+    phone: `+1555${nextTestContactNumber++}`,
     company: "Acme",
   }).returning();
   const now = new Date();
@@ -116,7 +123,8 @@ beforeAll(() => {
 beforeEach(() => {
   resetAuthState();
   vi.clearAllMocks();
-  mockState.callSid = "CAtest00000000000000000000000000000";
+  mockState.callSid = `CA${randomUUID().replace(/-/g, "")}`;
+  mockState.createdCallSid = `CA${randomUUID().replace(/-/g, "")}`;
 });
 
 afterEach(() => {
@@ -179,6 +187,135 @@ describe("Pablo campaign consent and voice gates", () => {
       leadName: contact.name,
     });
     expect(direct.status).toBe(403);
+    expect(spies.callsCreate).not.toHaveBeenCalled();
+  });
+
+  it("calls the selected saved contact and persists a spoken stop request", async () => {
+    const contact = await createContact(true);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
+      headers: { "content-type": "audio/mpeg" },
+    })));
+
+    const started = await request(app).post("/api/twilio/pablo/outbound/dial")
+      .send({ contactId: contact.id });
+    expect(started.status).toBe(200);
+    expect(started.body.contactId).toBe(contact.id);
+    expect(started.body.to).toBe(contact.phone);
+    expect(spies.callsCreate).toHaveBeenCalledTimes(1);
+    const callOptions = spies.callsCreate.mock.calls[0][0];
+    expect(callOptions.to).toBe(contact.phone);
+    expect(callOptions.twiml).toContain(`contactId=${contact.id}`);
+
+    const stop = await request(app)
+      .post(`/api/twilio/pablo/outbound/gather?userId=${encodeURIComponent(TEST_USER.id)}&contactId=${contact.id}`)
+      .set("x-twilio-signature", "sig")
+      .send({ CallSid: mockState.createdCallSid, To: contact.phone, SpeechResult: "stop" });
+    expect(stop.status).toBe(200);
+    expect(stop.text).toContain("<Hangup/>");
+
+    const [preference] = await db.select().from(contactChannelPrefsTable).where(and(
+      eq(contactChannelPrefsTable.userId, TEST_USER.id),
+      eq(contactChannelPrefsTable.contactId, contact.id),
+    ));
+    expect(preference.phoneCallOptIn).toBe(false);
+    expect(preference.phoneCallOptedOutAt).toBeTruthy();
+  });
+
+  it("resolves a CRM lead within the active organization and records its call activity", async () => {
+    const contact = await createContact(true);
+    const unique = randomUUID().slice(0, 8);
+    const [organization] = await db.insert(organizationsTable).values({
+      name: `Pablo Dial Test ${unique}`,
+      ownerUserId: TEST_USER.id,
+    }).returning();
+    const [existingUser] = await db.select({ currentOrgId: usersTable.currentOrgId })
+      .from(usersTable).where(eq(usersTable.id, TEST_USER.id)).limit(1);
+    if (!existingUser) {
+      await db.insert(usersTable).values({ id: TEST_USER.id, email: TEST_USER.email });
+    }
+    const previousCurrentOrgId = existingUser?.currentOrgId ?? null;
+    let leadId: number | undefined;
+    try {
+      await db.insert(orgMembersTable).values({
+        orgId: organization.id,
+        userId: TEST_USER.id,
+        role: "owner",
+        status: "active",
+      });
+      await db.update(usersTable).set({ currentOrgId: String(organization.id) })
+        .where(eq(usersTable.id, TEST_USER.id));
+      const [lead] = await db.insert(leadRecordsTable).values({
+        orgId: organization.id,
+        name: "Jordan Lee — CRM lead",
+        phone: contact.phone,
+        createdByUserId: TEST_USER.id,
+      }).returning();
+      leadId = lead.id;
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "audio/mpeg" },
+      })));
+
+      const started = await request(app).post("/api/twilio/pablo/outbound/dial")
+        .send({ leadId: lead.id });
+      expect(started.status).toBe(200);
+      expect(started.body.leadId).toBe(lead.id);
+      expect(started.body.contactId).toBe(contact.id);
+      expect(started.body.crmActivityId).toEqual(expect.any(Number));
+      expect(spies.callsCreate.mock.calls[0][0].to).toBe(contact.phone);
+
+      const completed = await request(app)
+        .post(`/api/twilio/webhook/status?userId=${encodeURIComponent(TEST_USER.id)}`)
+        .set("x-twilio-signature", "sig")
+        .send({
+          CallSid: started.body.callSid,
+          CallStatus: "completed",
+          CallDuration: "42",
+          To: contact.phone,
+          Direction: "outbound-api",
+        });
+      expect(completed.status).toBe(204);
+
+      const [activity] = await db.select().from(crmActivitiesTable).where(and(
+        eq(crmActivitiesTable.orgId, organization.id),
+        eq(crmActivitiesTable.twilioSid, started.body.callSid),
+      ));
+      expect(activity?.leadId).toBe(lead.id);
+      expect(activity?.contactId).toBe(contact.id);
+      expect(activity?.channel).toBe("call");
+      expect(activity?.status).toBe("completed");
+      expect(activity?.durationSeconds).toBe(42);
+    } finally {
+      if (leadId) await db.delete(leadRecordsTable).where(eq(leadRecordsTable.id, leadId));
+      await db.delete(crmActivitiesTable).where(eq(crmActivitiesTable.orgId, organization.id));
+      await db.delete(organizationsTable).where(eq(organizationsTable.id, organization.id));
+      if (existingUser) {
+        await db.update(usersTable).set({ currentOrgId: previousCurrentOrgId })
+          .where(eq(usersTable.id, TEST_USER.id));
+      } else {
+        await db.delete(usersTable).where(eq(usersTable.id, TEST_USER.id));
+      }
+    }
+  });
+
+  it("rechecks contact permission after Pablo voice preflight before consuming usage or dialing", async () => {
+    const contact = await createContact(true);
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      await db.update(contactChannelPrefsTable).set({
+        phoneCallOptIn: false,
+        phoneCallOptedOutAt: new Date(),
+        updatedAt: new Date(),
+      }).where(and(
+        eq(contactChannelPrefsTable.userId, TEST_USER.id),
+        eq(contactChannelPrefsTable.contactId, contact.id),
+      ));
+      return new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "audio/mpeg" } });
+    }));
+
+    const started = await request(app).post("/api/twilio/pablo/outbound/dial")
+      .send({ contactId: contact.id });
+    expect(started.status).toBe(403);
+    expect(started.body.error).toMatch(/permission was withdrawn/i);
+    expect(consumeUsage).not.toHaveBeenCalled();
     expect(spies.callsCreate).not.toHaveBeenCalled();
   });
 

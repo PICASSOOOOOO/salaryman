@@ -68,6 +68,7 @@ interface ActivityRecord {
   body?: string | null;
   summary?: string | null;
   status?: string | null;
+  durationSeconds?: number | null;
   occurredAt?: string | null;
   createdAt?: string | null;
 }
@@ -196,10 +197,24 @@ export default function CrmWorkspace() {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [selected, setSelected] = useState<SelectedRecord | null>(null);
   const [callingRecordKey, setCallingRecordKey] = useState<string | null>(null);
+  const [pabloCallingRecordKey, setPabloCallingRecordKey] = useState<string | null>(null);
   const [callError, setCallError] = useState('');
+  const [pabloNotice, setPabloNotice] = useState<{ recordKey: string; message: string } | null>(null);
 
   const apiUrl = useCallback((path: string) => `${import.meta.env.BASE_URL}api/${path}`, []);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
+
+  const refreshActivities = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const response = await apiFetch(apiUrl('crm/activities?limit=25'));
+      if (!response.ok) return;
+      const payload = await readPayload(response);
+      setActivities(arrayValue<ActivityRecord>(payload, 'activities'));
+    } catch {
+      // Keep the last activity snapshot when a background refresh is offline.
+    }
+  }, [apiUrl, isAuthenticated]);
 
   const callRecord = useCallback(async (record: WorkspaceRecord) => {
     if (record.kind === 'deal') return;
@@ -247,6 +262,33 @@ export default function CrmWorkspace() {
     }
   }, [apiUrl, bridgeOutbound, navigate]);
 
+  const callWithPablo = useCallback(async (record: WorkspaceRecord) => {
+    if (record.kind === 'deal') return;
+    const recordKey = `${record.kind}-${record.id}`;
+    setPabloCallingRecordKey(recordKey);
+    setCallError('');
+    setPabloNotice(null);
+    try {
+      const response = await apiFetch(apiUrl('twilio/pablo/outbound/dial'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record.kind === 'lead' ? { leadId: record.id } : { contactId: record.id }),
+      });
+      const body = await readPayload(response);
+      if (!response.ok) throw new Error(stringValue(body.error, 'Pablo call could not be started.'));
+      setPabloNotice({
+        recordKey,
+        message: `Pablo is calling ${record.name}. The call outcome will appear in CRM activity.`,
+      });
+      await refreshActivities();
+    } catch (error) {
+      setCallError(error instanceof Error ? error.message : 'Pablo call could not be started.');
+    } finally {
+      setPabloCallingRecordKey(null);
+    }
+  }, [apiUrl, refreshActivities]);
+
   const loadWorkspace = useCallback(async () => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -283,6 +325,19 @@ export default function CrmWorkspace() {
     if (isAuthenticated) void loadWorkspace();
     else setLoading(false);
   }, [authLoading, isAuthenticated, loadWorkspace]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshActivities();
+    };
+    const interval = window.setInterval(refreshWhenVisible, 15000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [isAuthenticated, refreshActivities]);
 
   const records = useMemo<WorkspaceRecord[]>(() => [
     ...leads.map(lead => ({
@@ -518,6 +573,9 @@ export default function CrmWorkspace() {
                 onClose={() => setSelected(null)}
                 onCall={callRecord}
                 calling={callingRecordKey === `${selectedRecord.kind}-${selectedRecord.id}`}
+                onPabloCall={callWithPablo}
+                pabloCalling={pabloCallingRecordKey === `${selectedRecord.kind}-${selectedRecord.id}`}
+                pabloNotice={pabloNotice?.recordKey === `${selectedRecord.kind}-${selectedRecord.id}` ? pabloNotice.message : ''}
                 callError={callError}
               />
             )}
@@ -534,12 +592,18 @@ function ContextPanel({
   onClose,
   onCall,
   calling,
+  onPabloCall,
+  pabloCalling,
+  pabloNotice,
   callError,
 }: {
   record: WorkspaceRecord;
   onClose: () => void;
   onCall: (record: WorkspaceRecord) => Promise<void>;
   calling: boolean;
+  onPabloCall: (record: WorkspaceRecord) => Promise<void>;
+  pabloCalling: boolean;
+  pabloNotice: string;
   callError: string;
 }) {
   const fields: Array<[string, string]> = [];
@@ -604,16 +668,30 @@ function ContextPanel({
         </div>
 
         {callError && <div className="text-[#00ff41] bg-black text-[9px] font-bold font-mono uppercase p-2 border border-black">{callError}</div>}
+        {pabloNotice && <div role="status" className="text-[#00ff41] bg-black text-[9px] font-bold font-mono p-2 border border-black">{pabloNotice}</div>}
 
         <div className="flex items-center gap-2 pt-1">
           {record.kind !== 'deal' && (
-            <button
-              onClick={() => onCall(record)}
-              disabled={calling}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-black text-white border border-black px-3 py-2 font-bold uppercase text-[10px] hover:text-[#00ff41] disabled:opacity-50 transition-colors"
-            >
-              <Phone size={12} /> {calling ? 'CALLING...' : 'CALL RECORD'}
-            </button>
+            <>
+              <button
+                onClick={() => onCall(record)}
+                disabled={calling || pabloCalling}
+                data-testid="crm-human-call-button"
+                className="flex-1 flex items-center justify-center gap-1 bg-black text-white border border-black px-2 py-2 font-bold uppercase text-[9px] hover:text-[#00ff41] disabled:opacity-50 transition-colors"
+              >
+                <Phone size={12} /> {calling ? 'CALLING...' : 'CALL HUMAN'}
+              </button>
+              <button
+                onClick={() => onPabloCall(record)}
+                disabled={calling || pabloCalling || !Boolean((record.raw as LeadRecord | ContactRecord).phone?.trim())}
+                data-testid="crm-pablo-call-button"
+                aria-label={`Call ${record.name} with Pablo`}
+                title="Requires recorded phone-call permission for the saved contact."
+                className="flex-1 flex items-center justify-center gap-1 bg-white text-black border border-black px-2 py-2 font-bold uppercase text-[9px] hover:bg-black hover:text-[#00ff41] disabled:opacity-50 transition-colors"
+              >
+                <Phone size={12} /> {pabloCalling ? 'CALLING...' : 'CALL PABLO'}
+              </button>
+            </>
           )}
           <Link href={destination} className="flex-1 flex items-center justify-center gap-1.5 border border-black text-black bg-black/5 px-3 py-2 font-bold uppercase text-[10px] hover:bg-black hover:text-white transition-colors">
             OPEN FULL <ArrowUpRight size={12} />
@@ -647,6 +725,7 @@ function ActivityFeed({ activities, loading, error }: {
             const channel = stringValue(activity.channel, 'comms').toLowerCase();
             const subject = stringValue(activity.contactName, activity.phone || 'Workspace activity');
             const body = stringValue(activity.summary, stringValue(activity.body, 'No detail available.'));
+            const durationSeconds = numberValue(activity.durationSeconds);
             return (
               <div key={activity.id} className="flex gap-3 text-xs border-b border-black/10 pb-4 last:border-0 last:pb-0">
                 <div className="mt-1 text-black/30 shrink-0">
@@ -658,6 +737,12 @@ function ActivityFeed({ activities, loading, error }: {
                     <time className="text-[9px] text-black/40 whitespace-nowrap shrink-0">{formatRelative(activity.occurredAt ?? activity.createdAt)}</time>
                   </div>
                   <p className="mt-1.5 leading-tight text-[10px] font-mono text-black/80">{body}</p>
+                  {(activity.status || (channel === 'call' && durationSeconds !== null) ) && (
+                    <div className="mt-1.5 flex items-center gap-2 text-[8px] font-bold uppercase tracking-widest text-black/50">
+                      {activity.status && <span className="border border-black/20 px-1 py-0.5">Outcome: {activity.status}</span>}
+                      {channel === 'call' && durationSeconds !== null && <span>{durationSeconds}s</span>}
+                    </div>
+                  )}
                 </div>
               </div>
             );
