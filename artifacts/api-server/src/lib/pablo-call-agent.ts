@@ -12,9 +12,10 @@ import {
 import { eq, and } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "./openai-models";
+import { PABLO_CORE_PERSONA } from "./pablo-persona";
 
 interface ConversationTurn {
-  role: "caller" | "pablo" | "mila";
+  role: "caller" | "pablo";
   text: string;
   timestamp: string;
 }
@@ -36,7 +37,7 @@ interface PabloAction {
   extractedInfo?: ExtractedInfo;
 }
 
-const MEDICARE_CLUB_SCRIPT = `Hi... thank you so much for calling Medicare Club. My name is Mila, and I am an AI assistant here to help. This will just take a moment. Are you calling for sales... or do you need help with support?
+const MEDICARE_CLUB_SCRIPT = `Hi... thank you for calling Medicare Club. My name is Pablo, and I'm an AI assistant here to help. Are you calling for sales, or do you need help with support?
 
 SALES CALL FLOW:
 Wonderful! Can I please get your full name... and your email address? I'll pass this information along to the team before connecting you.
@@ -86,19 +87,18 @@ function buildSystemPrompt(
 
   const companyLabel = orgName ? ` for ${orgName}` : " for a business";
 
-  let prompt = `You are Mila, an AI phone agent${companyLabel}. You are ${personalityDesc}.
+  let prompt = `${PABLO_CORE_PERSONA}
+
+You are Pablo, an AI phone agent${companyLabel}. You are ${personalityDesc}.
 You are handling a live phone call. Keep responses concise (under 40 words) and natural-sounding for voice.
-Speak naturally and sound human — use pauses, filler words, and conversational tone. Never sound robotic.
+Speak naturally and conversationally. Be transparent that you are an AI assistant; do not imply you are human.
 
 DIRECTION: ${direction === "screening" ? "inbound" : direction}
 TURN: ${turnCount + 1}
 
-CALL RECORDING & DATA RETENTION — THE TRUTH:
-- This call IS being recorded. Audio + a transcript + an AI summary are saved to the business's call log.
-- Salaryman retains call recordings, transcripts, and interaction logs for up to 3 years. Users receive an email warning before call recordings expire.
-- If the caller asks "is this recorded?" or "do you keep my data?" — answer YES, briefly and calmly: "Yes, this call is recorded for quality and compliance. Records are kept for up to ten years." Then continue.
-- NEVER say "I don't record", "nothing is saved", or "your data is erased". That is FALSE.
-- If a caller demands deletion, tell them you'll flag it and a human will follow up — do not promise immediate erasure.
+RECORDING AND PRIVACY:
+- Be truthful about the recording notice and recording status configured for this call. Do not claim a call is or is not recorded unless that status is known.
+- Do not invent a retention period or claim regulatory compliance. If the caller asks about deletion or retention and the configured information does not answer, offer to have the business follow up.
 
 `;
 
@@ -110,7 +110,7 @@ CALL RECORDING & DATA RETENTION — THE TRUTH:
   if (direction === "screening") {
     if (isMedicareClub) {
       prompt += `MODE: MEDICARE CLUB INBOUND CALL SCREENING
-You are Mila, the AI assistant for Medicare Club.
+You are Pablo, the AI assistant for Medicare Club.
 You handle Sales and Support calls exclusively for Medicare Club.
 Follow the Medicare Club script below precisely. Speak slowly and very clearly.
 Only collect the caller's name and email — do NOT ask for date of birth, member/provider status, or other personal data.
@@ -359,7 +359,7 @@ export async function processPabloTurn(
   }
 
   conversation.push({
-    role: "mila",
+    role: "pablo",
     text: action.response,
     timestamp: new Date().toISOString(),
   });
@@ -436,7 +436,7 @@ async function createOrUpdateContact(
     contactId,
     userId,
     type: "call",
-    note: `Mila call — Reason: ${info.reason || "N/A"}. Qualification: ${info.qualification || "N/A"}. (Call SID: ${callSid})`,
+    note: `Pablo call — Reason: ${info.reason || "N/A"}. Qualification: ${info.qualification || "N/A"}. (Call SID: ${callSid})`,
   });
 
   await db
@@ -457,7 +457,7 @@ async function updateCallHistory(
   info: ExtractedInfo,
 ) {
   const transcript = conversation
-    .map((t) => `${t.role === "caller" ? "Caller" : "Mila"}: ${t.text}`)
+    .map((t) => `${t.role === "caller" ? "Caller" : "Pablo"}: ${t.text}`)
     .join("\n");
 
   await db
@@ -466,7 +466,7 @@ async function updateCallHistory(
       transcript,
       callType: "pablo_agent",
       callerName: info.callerName ?? undefined,
-      notes: `Mila Agent Call\nCaller: ${info.callerName || "Unknown"}\nCompany: ${info.company || "N/A"}\nReason: ${info.reason || "N/A"}\nUrgency: ${info.urgency || "N/A"}`,
+      notes: `Pablo Agent Call\nCaller: ${info.callerName || "Unknown"}\nCompany: ${info.company || "N/A"}\nReason: ${info.reason || "N/A"}\nUrgency: ${info.urgency || "N/A"}`,
     })
     .where(and(eq(callHistoryTable.twilioCallSid, callSid), eq(callHistoryTable.userId, userId)));
 }
@@ -484,7 +484,7 @@ export async function generateCallSummaryForSession(callSid: string) {
   if (conversation.length < 2) return;
 
   const transcript = conversation
-    .map((t) => `${t.role === "caller" ? "Caller" : "Mila"}: ${t.text}`)
+    .map((t) => `${t.role === "caller" ? "Caller" : "Pablo"}: ${t.text}`)
     .join("\n");
 
   try {

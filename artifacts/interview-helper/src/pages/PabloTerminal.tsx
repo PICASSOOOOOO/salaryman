@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Volume2, RotateCcw } from "lucide-react";
+import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Volume2, RotateCcw, Paperclip, X } from "lucide-react";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { trackEvent } from "@/lib/analytics";
@@ -10,7 +10,7 @@ import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@/hooks/use-auth";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
-import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
+import { PabloNebula3D, PABLO_VARIANT } from "@/components/PabloNebula3D";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
@@ -847,12 +847,12 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   // voice anytime with the pablo-mode-toggle button.
   const [mode, setMode] = useState<Mode>("text");
   const [textInput, setTextInput] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const uploadRef = useRef<HTMLInputElement>(null);
   const [retryPrompt, setRetryPrompt] = useState<string | null>(null);
   const [voiceNotice, setVoiceNotice] = useState("");
   const [isReplyReplaying, setIsReplyReplaying] = useState(false);
-  // Cached server-authoritative assistant persona, so the terminal paints the
-  // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
-  const PERSONA_CACHE_KEY = "salaryman.persona";
   // (Removed Simon-says puzzle and its state. The puzzle was a guard that
   // ran post-passcode; with the passcode gone, the user goes directly
   // from the intro question to the inline employment / name / email
@@ -951,7 +951,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         if (!res.ok) return true;
         const data = await res.json() as { pass: boolean; pabloLine?: string };
         if (!data.pass) {
-          const line = data.pabloLine ?? "The Bureau is reviewing your file. Check back later.";
+          const line = data.pabloLine ?? "We couldn't accept that email address. Please try another one.";
           localStorage.removeItem("salaryman_email");
           interviewPhaseRef.current = 'asking-email';
           bumpInterview();
@@ -1143,104 +1143,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     setReply("Text mode on. Type what you need.");
   }, [cleanup]);
 
-  // Active assistant identity. Pre-story this is ALWAYS "pablo" (his orb + his
-  // voice, completely untouched). Once a player's story is live the server flips
-  // the answer to Mila and we mirror it here, which drives her distinct nebula
-  // and ElevenLabs voice. We never alter Pablo's look/voice.
-  //
-  // First-frame identity comes from a localStorage cache so a returning story
-  // player paints as Mila on the very first frame (no Pablo flash). The cache is
-  // ACCOUNT-TAGGED ({ uid, persona }) so a different account on the same browser
-  // can never inherit a stale Mila: the sync effect below drops a cache whose uid
-  // doesn't match the resolved user (and clears it for guests), and the server
-  // persona fetch is always the final authority. A normal pre-story player never
-  // has a "mila" cache written for them, so Pablo's path is fully untouched.
-  type PersonaName = "pablo" | "mila";
-  const readCachedPersona = (): PersonaName => {
-    try {
-      const raw = localStorage.getItem(PERSONA_CACHE_KEY);
-      if (!raw) return "pablo";
-      if (raw === "mila") return "mila"; // back-compat: legacy bare-string cache
-      if (raw === "pablo") return "pablo";
-      const parsed = JSON.parse(raw) as { persona?: PersonaName };
-      return parsed?.persona === "mila" ? "mila" : "pablo";
-    } catch { return "pablo"; }
-  };
-  const readCachedPersonaUid = (): string | null => {
-    try {
-      const raw = localStorage.getItem(PERSONA_CACHE_KEY);
-      if (!raw || raw === "mila" || raw === "pablo") return null;
-      const parsed = JSON.parse(raw) as { uid?: string | null };
-      return parsed?.uid ?? null;
-    } catch { return null; }
-  };
-  const writeCachedPersona = (who: PersonaName, uid: string | null) => {
-    try { localStorage.setItem(PERSONA_CACHE_KEY, JSON.stringify({ uid: uid ?? null, persona: who })); } catch { /* ignore */ }
-  };
-  const clearCachedPersona = () => {
-    try { localStorage.removeItem(PERSONA_CACHE_KEY); } catch { /* ignore */ }
-  };
-  const [persona, setPersona] = useState<PersonaName>(readCachedPersona);
-  const personaRef = useRef<PersonaName>(persona);
-  useEffect(() => { personaRef.current = persona; }, [persona]);
-
-  // Resolve WHO is answering (server-authoritative, cookie-scoped). Only mirrors
-  // the value into state; the sync effect below owns all cache writes.
-  const resolvePersona = useCallback(() => {
-    apiFetch("api/chat/pablo/persona")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { persona?: PersonaName } | null) => {
-        const who = d?.persona === "mila" ? "mila" : "pablo";
-        setPersona(who);
-        personaRef.current = who;
-      })
-      .catch(() => { /* leave cached/default persona on failure */ });
-  }, []);
-
-  useEffect(() => { resolvePersona(); }, [resolvePersona]);
-
-  // Cache ownership + cross-account safety. Once auth resolves we make the
-  // persona cache account-correct so the next first paint can't inherit another
-  // user's identity:
-  //   - guest  → never trust a non-pablo cache; force Pablo and clear it.
-  //   - cache owned by a DIFFERENT uid → drop it (server fetch repaints) and fall
-  //     back to Pablo until it does, so a pre-story account never shows Mila.
-  //   - same account (or an owner-unknown handoff seed) → (re)tag the cache with
-  //     the current uid so it's validated on the next load.
-  useEffect(() => {
-    if (isLoading) return;
-    const currentUid = user?.id ?? null;
-    if (!currentUid) {
-      if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
-      clearCachedPersona();
-      return;
-    }
-    const cachedUid = readCachedPersonaUid();
-    if (cachedUid && cachedUid !== currentUid) {
-      // Cache belongs to a different account on this browser. Drop it, fall back
-      // to Pablo, and re-resolve THIS user's authoritative persona immediately so
-      // a story-player switching accounts isn't stranded on Pablo (the persona
-      // fetch may have already resolved against the wrong cache/order).
-      clearCachedPersona();
-      if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
-      resolvePersona();
-      return;
-    }
-    writeCachedPersona(personaRef.current, currentUid);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, user, persona, resolvePersona]);
-
-  // Display name + accent for whoever is currently answering. Pablo keeps his
-  // pink theme untouched; Mila gets her cooler aqua/teal identity.
-  const personaLabel = persona === "mila" ? "MILA" : "PABLO";
+  // Browser Pablo always uses one professional identity; game Story Mode has its
+  // own characters and never changes the browser assistant.
+  const personaLabel = "PABLO";
 
   const speak = useCallback((text: string, character?: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
     ttsRef.current?.cancel();
-    // Explicit character wins (e.g. a Pablo intrusion during Mila mode);
-    // otherwise always select the active assistant explicitly so Pablo cannot
-    // be recast by the generic ELEVENLABS_VOICE_ID setting.
-    const voice = character ?? (personaRef.current === "mila" ? "MILA" : "PABLO");
+    const voice = character ?? "PABLO";
     const done = () => { ttsRef.current = null; resolve(); };
     ttsRef.current = speakWithTTS(text, done, done, voice ? { character: voice } : undefined);
   }), []);
@@ -1254,8 +1164,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     setStatus("speaking");
     ttsRef.current?.cancel();
 
-    const character = personaRef.current === "mila" ? "MILA" : "PABLO";
-    const speaker = character === "MILA" ? "Mila" : "Pablo";
+    const character = "PABLO";
+    const speaker = "Pablo";
     let finished = false;
     const finish = () => {
       if (finished) return;
@@ -1284,10 +1194,53 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     }
   }, [reply, isAuthenticated, mode]);
 
-  const sendToPablo = useCallback(async (text: string) => {
+  const sendToPablo = useCallback(async (text: string, file?: File) => {
     setRetryPrompt(null);
     setVoiceNotice("");
     setIsReplyReplaying(false);
+    if (file) {
+      if (!isAuthenticated) {
+        setReply("Sign in and choose an organization with CRM edit access to import a file.");
+        return;
+      }
+      setStatus("thinking");
+      setReply("");
+      try {
+        const form = new FormData();
+        form.append("content", text);
+        form.append("context", JSON.stringify(history.slice(-20)));
+        form.append("file", file, file.name);
+        const res = await fetchPabloWithTimeout("api/chat/pablo/message", {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+        if (!res.ok) {
+          const errorBody = await res.json().catch(() => null);
+          setReply(pabloApiErrorMessage(errorBody, res.status));
+          return;
+        }
+        const data = await res.json() as { pabloMessage?: { content?: string } };
+        const say = data.pabloMessage?.content?.trim() || "I couldn't complete that request.";
+        const filename = file.name.replace(/[\r\n]/g, " ").slice(0, 180);
+        setReply(say);
+        setHistory((items) => [
+          ...items,
+          { role: "user", content: `${text}\n\n[Attached file: ${filename}]` },
+          { role: "assistant", content: say },
+        ]);
+        setUploadFile(null);
+        setUploadError("");
+        trackEvent("pablo_message_replied", { surface: "terminal", response_route: "crm_attachment" });
+        await speak(say, "PABLO");
+      } catch (err) {
+        setReply("I couldn't send that file. Please try again.");
+        setError(err instanceof Error ? err.message : "File upload failed");
+      } finally {
+        setStatus("idle");
+      }
+      return;
+    }
     // Returning visitor whose name + email are already on file: ANY
     // admittance intent ("let me in", "show you my papers", "open my
     // dashboard") should hand them STRAIGHT to the sign-in choice — we
@@ -1391,7 +1344,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       const crossChat = detectCrosstalk(text);
       if (crossChat) {
         const line = crossChat.reason === 'multiple_emails'
-          ? "Two emails came through. Whoever's the one signing in — just say your name. The rest of you, hold the line."
+          ? "I heard two email addresses. Please share just your name."
           : "Sounded like more than one of you. Whoever wants in — speak up alone. What's your name?";
         await speak(line);
         return;
@@ -1409,7 +1362,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       if (isCostCurious(text)) {
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
-        const line = "Walking in is free — only advantage costs. Let's get you set up. What should I call you?";
+        const line = "SALARYMAN is free to use; some optional features cost extra. What should I call you?";
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
         await speak(line);
         return;
@@ -1420,7 +1373,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         // sign-in choice; a brand-new one pivots to asking-name.
         const known = getSalarymanName();
         const spokenKnown = known ? formatSpeechName(known) : null;
-        if (admitIfKnown(spokenKnown ? `Cleared, ${spokenKnown}. Heading in.` : "Cleared. Heading in.")) return;
+        if (admitIfKnown(spokenKnown ? `Thanks, ${spokenKnown}. Let's continue to sign-in.` : "Let's continue to sign-in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: NAME_PROMPT_LINE }]);
@@ -1438,7 +1391,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         // away rather than re-asking for an account they already created.
         const known = getSalarymanName();
         const spokenKnown = known ? formatSpeechName(known) : null;
-        if (admitIfKnown(spokenKnown ? `On it, ${spokenKnown}. Heading in.` : "On it. Heading in.")) return;
+        if (admitIfKnown(spokenKnown ? `Thanks, ${spokenKnown}. Let's continue to sign-in.` : "Let's continue to sign-in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         const line = "For that I'll need to set you up with an account — what should I call you?";
@@ -1605,9 +1558,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         // what the user explicitly asked for. We address only the one
         // who wants in and keep the door cracked.
         if (cross.reason === 'multiple_emails') {
-          await speak("Two emails came through. Whoever's the one signing in — say your name. Just yours.");
+           await speak("I heard two email addresses. Please share just your name.");
         } else {
-          await speak("More than one of you in there. Whoever wants in — speak alone. Your name?");
+           await speak("Please say your name one at a time.");
         }
         return;
       }
@@ -1647,9 +1600,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           // Lock in the email; we still need a name. Advance to a
           // name-only re-prompt instead of asking for both again.
           setSalarymanEmail(inlineEmail);
-          await speak("Got the email. Now — your name. Just what to call you.");
+          await speak("Thanks. What name should I use?");
         } else {
-          await speak("Try again. Just a name.");
+          await speak("Please say or type your name.");
         }
         return;
       }
@@ -1662,7 +1615,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         setSalarymanEmail(inlineEmail);
         interviewPhaseRef.current = 'idle';
         bumpInterview();
-        const line = `Cleared, ${name}. Heading in.`;
+        const line = `Thanks, ${name}. Let's continue to sign-in.`;
         setReply(line);
         setStatus("speaking");
         ttsRef.current?.cancel();
@@ -1710,7 +1663,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         // Same interested-party framing as asking-name. Address the one
         // who wants in, not the room.
         if (cross.reason === 'multiple_emails') {
-          await speak("Two emails came through. Which one is yours? Just yours.");
+          await speak("I heard two email addresses. Which one should I use?");
         } else {
           await speak("More than one voice in there. Whoever's the one signing in — just your email.");
         }
@@ -1721,7 +1674,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       // email" until they typed it manually.
       const email = (extractEmailFromText(text) ?? text.trim()).toLowerCase();
       if (!isLikelyEmail(email)) {
-        await speak("That's not an email. Real one. user@somewhere.com.");
+        await speak("That doesn't look like a valid email address. Try name@example.com.");
         return;
       }
       // Screen the email before we open the door — blocked domains get
@@ -1731,8 +1684,10 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       setSalarymanEmail(email);
       interviewPhaseRef.current = 'idle';
       bumpInterview();
-      const known = formatSpeechName(getSalarymanName() ?? 'salaryman');
-      const line = `Cleared, ${known}. Heading in.`;
+      const savedName = getSalarymanName();
+      const line = savedName
+        ? `Thanks, ${formatSpeechName(savedName)}. You're ready to sign in.`
+        : "You're ready to sign in.";
       setReply(line);
       setStatus("speaking");
       ttsRef.current?.cancel();
@@ -1803,18 +1758,10 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         | { kind: "logout" }
         | { kind: "search"; query: string }
         | { kind: "external"; url: string };
-      const data = (await res.json()) as { say: string; action: PabloAction | null; persona?: "pablo" | "mila"; intrusion?: string };
+      const data = (await res.json()) as { say: string; action: PabloAction | null };
       trackEvent("pablo_message_replied", { surface: "terminal", response_route: "authenticated_command" });
       let action = data.action;
       let say = data.say;
-
-      // Mirror the server-authoritative persona so the orb + voice match who's
-      // actually answering (Pablo pre-story, Mila once the story is live).
-      const who = data.persona ?? "pablo";
-      setPersona(who);
-      personaRef.current = who;
-      // Cache write-through is owned by the account-tagging sync effect, which
-      // fires on this persona change and stores { uid, persona }.
 
       // PRE-AUTH GATE: if the user hasn't signed in yet and Pablo decided to
       // send them somewhere,
@@ -1861,21 +1808,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       setVoiceNotice("");
       setRetryPrompt(null);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
-        // Speak Pablo's (or Mila's) reply on EVERY device. Voice OUTPUT is
+      // Speak Pablo's reply on EVERY device. Voice OUTPUT is
       // decoupled from voice INPUT here: the mic / auto-listen stays gated to
       // voice mode (see the autoListen flags below), but the spoken reply must
       // play even in text mode. Phones default to text mode, so gating speech
       // on `mode === "voice"` left mobile users with a permanently silent
       // Pablo ("voice response isn't working"). The onboarding intake already
       // speaks regardless of mode — this makes normal chat replies match.
-      {
-        // Pablo occasionally claws back through the channel — a short glitchy
-        // intrusion in HIS voice cuts in before Mila wrestles control back.
-        if (who === "mila" && data.intrusion) {
-          await speak(data.intrusion, "PABLO");
-        }
-        await speak(say);
-      }
+      await speak(say);
       if (action?.kind === "navigate") {
         // Architect-flagged: server already strips /phone* navigations,
         // but defense in depth — gate the immediate navigate too. Use
@@ -1892,9 +1832,6 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         setHistory([]);
         setReply("");
         setTranscript("");
-        // Drop this account's persona cache so the next account on this browser
-        // can never inherit a stale Mila on first paint.
-        clearCachedPersona();
         setTimeout(() => { try { logout(); } catch { window.location.href = "/"; } }, 400);
       } else if (action?.kind === "search") {
         setTimeout(() => navigate(`/?q=${encodeURIComponent(action.query)}`), 300);
@@ -1937,8 +1874,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     if (!t) return;
     setTextInput("");
     setTranscript(t);
-    void sendToPablo(t);
-  }, [textInput, sendToPablo]);
+    void sendToPablo(t, uploadFile ?? undefined);
+  }, [textInput, uploadFile, sendToPablo]);
 
   const startListening = useCallback(async () => {
     setError("");
@@ -2178,7 +2115,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             }}
           >
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-              <PabloNebula3D status={status} size={nebulaSize} variant={persona === "mila" ? MILA_VARIANT : PABLO_VARIANT} />
+              <PabloNebula3D status={status} size={nebulaSize} variant={PABLO_VARIANT} />
             </NebulaErrorBoundary>
           </div>
         )}
@@ -2236,12 +2173,12 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           )}
           {(reply || status === "thinking") && (
             <div
-              className={`pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border ${persona === "mila" ? "border-teal-400/55" : "border-pink-400/55"}`}
-              style={{ boxShadow: persona === "mila" ? "0 0 32px rgba(45,212,191,0.30)" : "0 0 32px rgba(236,72,153,0.32)" }}
+              className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border border-pink-400/55"
+              style={{ boxShadow: "0 0 32px rgba(236,72,153,0.32)" }}
               data-testid="pablo-reply-bubble"
             >
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-200" : "text-pink-200"}`}>{personaLabel}</span>
+                <span className="text-[9px] font-mono tracking-[0.3em] text-pink-200">{personaLabel}</span>
                 <div className="flex items-center justify-end gap-2">
                   {reply && (
                     <button
@@ -2250,7 +2187,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
                       disabled={isReplyReplaying}
                       data-testid="pablo-replay-button"
                       aria-label={`Hear ${personaLabel}'s reply`}
-                      className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-sans tracking-normal transition-colors disabled:opacity-60 ${persona === "mila" ? "border-teal-200/30 text-teal-100 hover:bg-teal-400/10" : "border-pink-200/30 text-pink-100 hover:bg-pink-400/10"}`}
+                      className="inline-flex items-center gap-1 rounded border border-pink-200/30 px-2 py-1 text-[10px] font-sans tracking-normal text-pink-100 transition-colors hover:bg-pink-400/10 disabled:opacity-60"
                     >
                       <Volume2 className="h-3 w-3" aria-hidden="true" />
                       {isReplyReplaying ? "Playing…" : "Hear reply"}
@@ -2268,16 +2205,16 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
                     </button>
                   )}
                   {status === "thinking" && (
-                    <span className={`text-[9px] font-mono tracking-[0.3em] animate-pulse ${persona === "mila" ? "text-teal-300/60" : "text-pink-300/60"}`}>THINKING</span>
+                    <span className="animate-pulse text-[9px] font-mono tracking-[0.3em] text-pink-300/60">THINKING</span>
                   )}
                   {status === "speaking" && (
-                    <span className={`inline-block w-1.5 h-1.5 rounded-full animate-pulse ${persona === "mila" ? "bg-teal-400" : "bg-pink-400"}`} style={{ boxShadow: persona === "mila" ? "0 0 6px #2dd4bf" : "0 0 6px #ec4899" }} aria-hidden="true" />
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-pink-400" style={{ boxShadow: "0 0 6px #ec4899" }} aria-hidden="true" />
                   )}
                 </div>
               </div>
               <p
                 className="text-zinc-100 text-sm sm:text-base leading-snug sm:leading-relaxed"
-                style={{ textShadow: persona === "mila" ? "0 0 14px rgba(45,212,191,0.30)" : "0 0 14px rgba(236,72,153,0.32)" }}
+                style={{ textShadow: "0 0 14px rgba(236,72,153,0.32)" }}
               >
                 {reply || "…"}
               </p>
@@ -2333,12 +2270,67 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           data-testid="pablo-text-form"
         >
           <input
+            ref={uploadRef}
+            type="file"
+            accept=".csv,.xls,.xlsx,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0] ?? null;
+              event.currentTarget.value = "";
+              setUploadError("");
+              if (!file) return;
+              if (file.size > 10 * 1024 * 1024) {
+                setUploadFile(null);
+                setUploadError("CRM files must be 10 MB or smaller.");
+                return;
+              }
+              if (!/\.(csv|xls|xlsx|xlsm)$/i.test(file.name)) {
+                setUploadFile(null);
+                setUploadError("Choose a CSV or Excel spreadsheet.");
+                return;
+              }
+              setUploadFile(file);
+            }}
+            data-testid="pablo-crm-file-input"
+          />
+          {(uploadFile || uploadError) && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 flex items-center justify-between gap-2 rounded-md border border-zinc-700 bg-zinc-950/90 px-3 py-2 text-xs text-zinc-200">
+              <span className="min-w-0 truncate" role={uploadError ? "alert" : undefined}>
+                {uploadError || `CRM file: ${uploadFile?.name}`}
+              </span>
+              {uploadFile && (
+                <button
+                  type="button"
+                  onClick={() => { setUploadFile(null); setUploadError(""); }}
+                  className="shrink-0 text-zinc-400 hover:text-white"
+                  aria-label="Remove attached CRM file"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+          {isAuthenticated && interviewPhaseRef.current === "idle" && (
+            <button
+              type="button"
+              onClick={() => uploadRef.current?.click()}
+              disabled={status === "thinking"}
+              className="pablo-send-button mobile-tap-target w-10 shrink-0 rounded-lg border border-zinc-700 bg-zinc-950/70 px-2 py-2.5 text-zinc-300 transition-colors hover:border-purple-500/60 disabled:opacity-40"
+              aria-label="Attach a CRM spreadsheet"
+              title="Attach a CSV or Excel CRM file"
+              data-testid="pablo-crm-file-button"
+            >
+              <Paperclip className="mx-auto h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+          <input
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder={
               interviewPhaseRef.current === 'asking-name' ? "Type your name"
                 : interviewPhaseRef.current === 'asking-email' ? "Type your email"
+                : uploadFile ? "Ask Pablo explicitly to import this CRM file"
                 : "Type a message…"
             }
              className="pablo-input min-w-0 flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"

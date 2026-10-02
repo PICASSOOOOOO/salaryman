@@ -56,7 +56,7 @@ type MarkReadFn = (channelId: number, lastMessageId: number) => void;
 type MarkAllReadFn = () => Promise<void>;
 type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
-type SendToPabloFn = (content: string) => Promise<boolean>;
+type SendToPabloFn = (content: string, uploadFile?: File) => Promise<boolean>;
 
 interface UseChatSocket extends ChatState {
   send: SendFn;
@@ -415,7 +415,7 @@ export function useChatSocket(): UseChatSocket {
     }
   }, [refreshChannels]);
 
-  const sendToPablo: SendToPabloFn = useCallback(async (content) => {
+  const sendToPablo: SendToPabloFn = useCallback(async (content, uploadFile) => {
     try {
       const pabloChannelId = state.channelMeta?.pabloChannelId ?? null;
       const existingMsgs = pabloChannelId ? state.messages[pabloChannelId] ?? [] : [];
@@ -425,11 +425,20 @@ export function useChatSocket(): UseChatSocket {
         isBot: m.isBot,
       }));
 
+      const body = uploadFile
+        ? (() => {
+            const form = new FormData();
+            form.append("content", content);
+            form.append("context", JSON.stringify(context));
+            form.append("file", uploadFile, uploadFile.name);
+            return form;
+          })()
+        : JSON.stringify({ content, context });
       const res = await chatFetch('/api/chat/pablo/message', {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        ...(uploadFile ? {} : { headers: { "Content-Type": "application/json" } }),
         credentials: "include",
-        body: JSON.stringify({ content, context }),
+        body,
       });
       if (!res.ok) return false;
       // This raw fetch bypasses apiFetch, so trigger the delayed HUD refresh

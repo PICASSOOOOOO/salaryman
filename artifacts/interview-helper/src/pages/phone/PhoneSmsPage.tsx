@@ -82,7 +82,7 @@ export default function PhoneSmsPage() {
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // Poll for new inbound texts (and Mila auto-replies) so threads stay live.
+  // Poll for new inbound texts and Pablo's replies so threads stay live.
   useEffect(() => {
     const id = setInterval(loadConversations, 15000);
     return () => clearInterval(id);
@@ -203,7 +203,7 @@ export default function PhoneSmsPage() {
         ) : conversations.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, textAlign: 'center' }}>
             <MessageSquare size={28} style={{ color: slate(0.55) }} />
-            <p style={{ fontSize: '0.48rem', color: slate(0.55), lineHeight: 1.6 }}>No threads yet. Inbound texts and Mila's replies appear here.</p>
+            <p style={{ fontSize: '0.48rem', color: slate(0.55), lineHeight: 1.6 }}>No threads yet. Inbound texts and Pablo's replies appear here.</p>
           </div>
         ) : (
           <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -316,7 +316,7 @@ export default function PhoneSmsPage() {
                         borderBottomLeftRadius: outbound ? 10 : 2 }}>
                         <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
                         <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 4, textAlign: 'right' }}>
-                          {outbound ? 'MILA · ' : ''}{formatTime(msg.createdAt)}
+                          {outbound ? 'PABLO · ' : ''}{formatTime(msg.createdAt)}
                         </div>
                       </div>
                     </div>

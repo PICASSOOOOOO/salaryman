@@ -462,29 +462,36 @@ function InputBar({
   onSend,
   disabled,
   allowAttach = false,
+  allowUpload = false,
   boomer = false,
 }: {
-  onSend: (text: string, attachmentFileId?: number) => Promise<boolean>;
+  onSend: (text: string, attachmentFileId?: number, uploadFile?: File) => Promise<boolean>;
   disabled?: boolean;
   allowAttach?: boolean;
+  allowUpload?: boolean;
   boomer?: boolean;
 }) {
   const [value, setValue] = useState("");
   const [attachment, setAttachment] = useState<MediaItem | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   const submit = async () => {
     if (sending || disabled) return;
     const text = value.trim();
-    if (!text && !attachment) return;
+    if (!text && !attachment && !uploadFile) return;
     setSending(true);
     try {
-      const sent = await onSend(text, attachment?.id);
+      const sent = await onSend(text, attachment?.id, uploadFile ?? undefined);
       if (sent) {
         setValue("");
         setAttachment(null);
+        setUploadFile(null);
+        setUploadError("");
       }
     } finally {
       setSending(false);
@@ -516,6 +523,42 @@ function InputBar({
           </div>
         </div>
       )}
+      {uploadFile && (
+        <div style={{ padding: "6px 10px 0", display: "flex" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "4px 8px",
+            background: CRT(0.06), border: `1px solid ${CRT(0.2)}`, borderRadius: 6,
+            fontSize: "0.58rem", color: CRT(0.8), fontFamily: fontFor(boomer), maxWidth: "100%",
+          }}>
+            <FileText size={12} style={{ flexShrink: 0 }} />
+            <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{uploadFile.name}</span>
+            <button onClick={() => { setUploadFile(null); setUploadError(""); }} style={{ background: "none", border: "none", color: CRT(0.5), cursor: "pointer", padding: 0, display: "flex", flexShrink: 0 }}>
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
+      {uploadError && <div role="alert" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{uploadError}</div>}
+      {allowUpload && (
+        <input
+          ref={uploadRef}
+          type="file"
+          accept=".csv,.xls,.xlsx,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          style={{ display: "none" }}
+          onChange={event => {
+            const file = event.currentTarget.files?.[0] ?? null;
+            event.currentTarget.value = "";
+            setUploadError("");
+            if (file && file.size > 10 * 1024 * 1024) {
+              setUploadFile(null);
+              setUploadError("CRM import files must be 10 MB or smaller.");
+              return;
+            }
+            setUploadFile(file);
+            setAttachment(null);
+          }}
+        />
+      )}
     <div
       style={{
         borderTop: `1px solid ${BORDER(0.12)}`,
@@ -526,11 +569,11 @@ function InputBar({
         background: "rgba(0,0,0,0.4)",
       }}
     >
-      {allowAttach && (
+      {(allowAttach || allowUpload) && (
         <button
-          onClick={() => setPickerOpen(true)}
+          onClick={() => allowUpload ? uploadRef.current?.click() : setPickerOpen(true)}
            disabled={disabled || sending}
-          title="Attach from library"
+          title={allowUpload ? "Attach a CRM file" : "Attach from library"}
           style={{
             background: "transparent",
              border: `1px solid ${CRT(disabled || sending ? 0.1 : 0.25)}`,
@@ -578,13 +621,13 @@ function InputBar({
       />
       <button
         onClick={submit}
-         disabled={disabled || sending || (!value.trim() && !attachment)}
+         disabled={disabled || sending || (!value.trim() && !attachment && !uploadFile)}
         style={{
-           background: disabled || sending || (!value.trim() && !attachment) ? "transparent" : CRT(0.1),
-           border: `1px solid ${CRT(disabled || sending || (!value.trim() && !attachment) ? 0.1 : 0.35)}`,
+            background: disabled || sending || (!value.trim() && !attachment && !uploadFile) ? "transparent" : CRT(0.1),
+            border: `1px solid ${CRT(disabled || sending || (!value.trim() && !attachment && !uploadFile) ? 0.1 : 0.35)}`,
           borderRadius: 6,
-           color: CRT(disabled || sending || (!value.trim() && !attachment) ? 0.2 : 0.9),
-           cursor: disabled || sending || (!value.trim() && !attachment) ? "default" : "pointer",
+            color: CRT(disabled || sending || (!value.trim() && !attachment && !uploadFile) ? 0.2 : 0.9),
+            cursor: disabled || sending || (!value.trim() && !attachment && !uploadFile) ? "default" : "pointer",
           padding: "7px 9px",
           display: "flex",
           alignItems: "center",
@@ -937,11 +980,11 @@ export function ChatPanel({
     markAllRead().finally(() => invalidateCommsSummary());
   }, [open, markAllRead]);
 
-  const handleSend = async (text: string, attachmentFileId?: number): Promise<boolean> => {
+  const handleSend = async (text: string, attachmentFileId?: number, uploadFile?: File): Promise<boolean> => {
     if (activeTab === "pablo") {
       setPabloLoading(true);
       try {
-        return await sendToPablo(text);
+        return await sendToPablo(text, uploadFile);
       } finally {
         setPabloLoading(false);
       }
@@ -1576,6 +1619,7 @@ export function ChatPanel({
                 onSend={handleSend}
                 disabled={pabloLoading || activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
                 allowAttach={(activeTab === "private" || activeTab === "company") && activeChannelId != null}
+                allowUpload={activeTab === "pablo"}
                 boomer={boomer}
               />
             </>

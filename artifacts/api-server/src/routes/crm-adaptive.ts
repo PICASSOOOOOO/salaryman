@@ -1,23 +1,20 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
-import ExcelJS from "exceljs";
-import XLSX from "xlsx";
-import { Readable } from "node:stream";
 import { and, desc, eq, or } from "drizzle-orm";
 import {
   db, leadRecordsTable, leadNotesTable, crmActivitiesTable, crmCustomFieldsTable,
   crmSourceConnectionsTable, crmSyncRunsTable, crmSyncChangesTable, crmSyncConflictsTable,
-  CRM_CUSTOM_FIELD_TYPES, LEAD_STATUSES,
+  CRM_CUSTOM_FIELD_TYPES,
 } from "@workspace/db";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { publicCrmSource } from "../lib/crm-source-public";
+import { applyCrmLeadImport, normalizeCrmImportHeader, parseCrmImportBuffer } from "../lib/crm-lead-import";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const CORE_KEYS = new Set(["id", "orgId", "name", "phone", "email", "company", "business", "jobTitle", "source", "status", "assignedUserId", "callCount", "createdAt", "updatedAt"]);
-const IMPORTABLE_CORE_FIELDS = new Set(["name", "phone", "email", "company", "jobTitle", "status"]);
 const CORE_ALIASES: Record<string, string> = { fullname: "name", full_name: "name", mobile: "phone", phonenumber: "phone", mail: "email", business: "company", organization: "company", title: "jobTitle" };
-const normalize = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+const normalize = normalizeCrmImportHeader;
 
 function userId(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.() || !req.user?.id) { res.status(401).json({ error: "Login required" }); return null; }
@@ -31,50 +28,6 @@ async function access(req: Request, res: Response, permission: "crm.view" | "crm
   return { id, orgId };
 }
 function protectedDestination(key: string) { return CORE_KEYS.has(key) || key.startsWith("_"); }
-function validateValue(field: any, value: unknown): { ok: true; value: unknown } | { ok: false; error: string } {
-  if (value === null || value === undefined || String(value).trim() === "") {
-    return field.required ? { ok: false, error: `${field.fieldKey} is required` } : { ok: true, value: null };
-  }
-  if (field.fieldType === "number") {
-    const n = Number(value); return Number.isFinite(n) ? { ok: true, value: n } : { ok: false, error: `${field.fieldKey} must be a number` };
-  }
-  if (field.fieldType === "boolean") {
-    const s = normalize(value); if (["true", "yes", "1"].includes(s)) return { ok: true, value: true };
-    if (["false", "no", "0"].includes(s)) return { ok: true, value: false };
-    return { ok: false, error: `${field.fieldKey} must be boolean` };
-  }
-  if (field.fieldType === "date") {
-    const d = new Date(String(value)); return Number.isNaN(d.getTime()) ? { ok: false, error: `${field.fieldKey} must be a date` } : { ok: true, value: d.toISOString().slice(0, 10) };
-  }
-  if (field.fieldType === "select" && !(field.optionsJson ?? []).includes(String(value))) return { ok: false, error: `${field.fieldKey} must be one of the configured options` };
-  return { ok: true, value: String(value).trim() };
-}
-async function parseFile(file: Express.Multer.File) {
-  const wb = new ExcelJS.Workbook();
-  const isSheet = /\.(xlsx|xlsm|xls)$/i.test(file.originalname) || /sheet|excel/.test(file.mimetype);
-  if (isSheet && /\.xls$/i.test(file.originalname)) {
-    const workbook = XLSX.read(file.buffer, { type: "buffer", cellDates: false });
-    const first = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = first ? XLSX.utils.sheet_to_json(first, { header: 1, raw: false }) as unknown[][] : [];
-    const normalized = rows.map(row => (Array.isArray(row) ? row.map(v => String(v ?? "").trim()) : []));
-    return { headers: normalized[0] ?? [], rows: normalized.slice(1).filter(r => r.some(Boolean)) };
-  }
-  if (isSheet) await wb.xlsx.load(file.buffer as any);
-  else await wb.csv.read(Readable.from([file.buffer.toString("utf8").replace(/^\uFEFF/, "")]));
-  const ws = wb.worksheets[0]; if (!ws) return { headers: [], rows: [] as string[][] };
-  const all: string[][] = [];
-  ws.eachRow({ includeEmpty: true }, row => {
-    const values: string[] = [];
-    row.eachCell({ includeEmpty: true }, (cell, col) => { values[col - 1] = cell.text; });
-    all.push(values.map(v => String(v ?? "").trim()));
-  });
-  return { headers: all[0] ?? [], rows: all.slice(1).filter(r => r.some(Boolean)) };
-}
-function coreValue(lead: any, key: string) {
-  if (key === "business") return lead.company;
-  return lead[key];
-}
-
 router.get("/crm/custom-fields", async (req, res) => {
   const a = await access(req, res, "crm.view"); if (!a) return;
   res.json(await db.select().from(crmCustomFieldsTable).where(eq(crmCustomFieldsTable.orgId, a.orgId)).orderBy(crmCustomFieldsTable.position));
@@ -112,7 +65,7 @@ router.post("/crm/leads/import/preview", upload.single("file"), async (req, res)
   const a = await access(req, res, "crm.edit"); if (!a) return;
   if (!req.file) { res.status(400).json({ error: "File is required" }); return; }
   try {
-    const parsed = await parseFile(req.file);
+    const parsed = await parseCrmImportBuffer(req.file.buffer, req.file.originalname);
     const fields = await db.select().from(crmCustomFieldsTable).where(and(eq(crmCustomFieldsTable.orgId, a.orgId), eq(crmCustomFieldsTable.archived, false)));
     const candidates = parsed.headers.map((header, index) => {
       const key = CORE_ALIASES[normalize(header)] ?? [...CORE_KEYS].find(k => normalize(k) === normalize(header));
@@ -126,73 +79,20 @@ router.post("/crm/leads/import/preview", upload.single("file"), async (req, res)
 router.post("/crm/leads/import/apply", async (req, res) => {
   const a = await access(req, res, "crm.edit"); if (!a) return;
   const b = req.body ?? {}, headers = Array.isArray(b.headers) ? b.headers.map(String) : [], rows = Array.isArray(b.rows) ? b.rows : [];
-  const mapping = b.mapping && typeof b.mapping === "object" ? b.mapping : {};
-  if (!headers.length || !rows.length || !["skip", "update"].includes(b.existingRowPolicy) || !["import", "crm"].includes(b.authority)) { res.status(400).json({ error: "headers, rows, explicit mapping, existingRowPolicy, and authority are required" }); return; }
-  const destinations = Object.values(mapping).map(String).map(k => k === "business" ? "company" : k);
-  if (new Set(destinations).size !== destinations.length || destinations.some(k => k.startsWith("_") || (CORE_KEYS.has(k) && !IMPORTABLE_CORE_FIELDS.has(k)))) { res.status(400).json({ error: "Mapping contains duplicate or protected destinations" }); return; }
-  const fields = await db.select().from(crmCustomFieldsTable).where(and(eq(crmCustomFieldsTable.orgId, a.orgId), eq(crmCustomFieldsTable.archived, false)));
-  const byKey = new Map(fields.map(f => [f.fieldKey, f]));
-  for (const d of destinations) if (!IMPORTABLE_CORE_FIELDS.has(d) && !byKey.has(d)) { res.status(400).json({ error: `Unknown destination: ${d}` }); return; }
-  const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, a.orgId));
-  const result = { created: 0, updated: 0, skipped: 0, conflicts: [] as any[], errors: [] as any[] };
-  for (let ri = 0; ri < rows.length; ri++) {
-    const row = Array.isArray(rows[ri]) ? rows[ri] : [];
-    const data: any = {};
-    const custom: Record<string, unknown> = {};
-    const rowErrors: Array<{ row: number; error: string }> = [];
-    const invalidCustomFields = new Set<string>();
-    for (const [header, destination] of Object.entries(mapping)) {
-      const destinationKey = String(destination) === "business" ? "company" : String(destination);
-      const value = row[headers.indexOf(header)]; if (CORE_KEYS.has(destinationKey)) data[destinationKey] = value == null ? "" : String(value).trim();
-      if (IMPORTABLE_CORE_FIELDS.has(destinationKey)) {
-        const coreValue = value == null ? "" : String(value).trim();
-        if (destinationKey === "status") {
-          if (coreValue && !(LEAD_STATUSES as readonly string[]).includes(coreValue)) {
-            rowErrors.push({ row: ri + 1, error: `status must be one of: ${LEAD_STATUSES.join(", ")}` });
-          } else if (coreValue) {
-            data.status = coreValue;
-          } else {
-            delete data.status;
-          }
-        } else {
-          data[destinationKey] = coreValue;
-        }
-      } else {
-        const fieldKey = String(destination);
-        const valid = validateValue(byKey.get(fieldKey), value);
-        if (!valid.ok) {
-          rowErrors.push({ row: ri + 1, error: valid.error });
-          invalidCustomFields.add(fieldKey);
-        } else {
-          custom[fieldKey] = valid.value;
-        }
-      }
-    }
-    for (const field of fields) {
-      if (field.required && !invalidCustomFields.has(field.fieldKey) &&
-          (custom[field.fieldKey] === undefined || custom[field.fieldKey] === null || custom[field.fieldKey] === "")) {
-        rowErrors.push({ row: ri + 1, error: `${field.fieldKey} is required` });
-      }
-    }
-    if (!data.name) rowErrors.push({ row: ri + 1, error: "Name is required" });
-    if (rowErrors.length) { result.errors.push(...rowErrors); continue; }
-    const email = String(data.email ?? "").trim().toLowerCase(), phone = String(data.phone ?? "").replace(/\D/g, "");
-    const matches = leads.filter(l => (email && l.email.toLowerCase() === email) || (phone && l.phone.replace(/\D/g, "").slice(-10) === phone.slice(-10)));
-    if (matches.length > 1) { result.conflicts.push({ row: ri + 1, reason: "ambiguous_match", leadIds: matches.map(x => x.id) }); continue; }
-    if (matches.length === 1) {
-      if (b.existingRowPolicy === "skip") { result.skipped++; continue; }
-      if (b.authority === "crm") { result.skipped++; continue; }
-      const existing = matches[0], updates: any = { customFieldsJson: { ...(existing.customFieldsJson ?? {}), ...custom } };
-      for (const k of ["name", "phone", "email", "company", "jobTitle", "status"]) if (data[k] !== undefined) updates[k] = data[k];
-      const [updated] = await db.update(leadRecordsTable).set(updates).where(and(eq(leadRecordsTable.id, existing.id), eq(leadRecordsTable.orgId, a.orgId))).returning();
-      if (updated) Object.assign(existing, updated);
-      result.updated++;
-      continue;
-    }
-    const [created] = await db.insert(leadRecordsTable).values({ orgId: a.orgId, name: data.name, phone: data.phone ?? "", email: data.email ?? "", company: data.company ?? "", jobTitle: data.jobTitle ?? "", source: "crm_import", status: data.status ?? "new", createdByUserId: a.id, customFieldsJson: custom }).returning();
-    if (created) { result.created++; leads.push(created); }
+  const mapping = b.mapping && typeof b.mapping === "object" ? b.mapping as Record<string, unknown> : {};
+  try {
+    res.json(await applyCrmLeadImport({
+      orgId: a.orgId,
+      userId: a.id,
+      headers,
+      rows,
+      mapping,
+      existingRowPolicy: b.existingRowPolicy,
+      authority: b.authority,
+    }));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "CRM import failed" });
   }
-  res.json(result);
 });
 
 router.get("/crm/archive/export", async (req, res) => {

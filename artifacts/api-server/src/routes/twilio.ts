@@ -28,7 +28,8 @@ import twilio from "twilio";
 import { randomBytes } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
-import { MILA_VOICE_ID } from "../lib/mila-voice";
+import { PABLO_VOICE_ID } from "../lib/pablo-voice";
+import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
 import { requireFeature } from "../middlewares/requirePro";
@@ -132,51 +133,54 @@ function escapeTwiml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
-// ── Mila phone voice (ElevenLabs via <Play>) ────────────────────────────────
+// ── Pablo phone voice (ElevenLabs via <Play>) ───────────────────────────────
 // Twilio can't speak ElevenLabs voices natively, so we cache each spoken line
 // under a random token and serve a freshly-synthesized MP3 from
-// /twilio/voice/mila/:token that Twilio fetches with <Play>. Falls back to a
-// Google neural <Say> when no ElevenLabs key is configured.
+// /twilio/voice/pablo/:token that Twilio fetches with <Play>. If the assigned
+// voice is unavailable, fail closed rather than silently substituting a voice.
 // IMPORTANT: pass RAW (unescaped) text — escaping/encoding is handled here.
-const milaTtsCache = new Map<string, { text: string; expires: number }>();
-const MILA_TTS_TTL_MS = 5 * 60 * 1000;
-const MILA_TTS_MAX_ENTRIES = 500;
+const pabloTtsCache = new Map<string, { text: string; expires: number }>();
+const PABLO_TTS_TTL_MS = 5 * 60 * 1000;
+const PABLO_TTS_MAX_ENTRIES = 500;
 
-function cacheMilaLine(text: string): string {
+function cachePabloLine(text: string): string {
   const now = Date.now();
-  for (const [k, v] of milaTtsCache) {
-    if (v.expires <= now) milaTtsCache.delete(k);
+  for (const [k, v] of pabloTtsCache) {
+    if (v.expires <= now) pabloTtsCache.delete(k);
   }
-  while (milaTtsCache.size >= MILA_TTS_MAX_ENTRIES) {
-    const oldest = milaTtsCache.keys().next().value;
+  while (pabloTtsCache.size >= PABLO_TTS_MAX_ENTRIES) {
+    const oldest = pabloTtsCache.keys().next().value;
     if (oldest === undefined) break;
-    milaTtsCache.delete(oldest);
+    pabloTtsCache.delete(oldest);
   }
   const token = randomBytes(16).toString("hex");
-  milaTtsCache.set(token, { text, expires: now + MILA_TTS_TTL_MS });
+  pabloTtsCache.set(token, { text, expires: now + PABLO_TTS_TTL_MS });
   return token;
 }
 
-function milaVoice(text: string): string {
+function pabloVoice(text: string): string {
   const clean = (text ?? "").trim();
   if (!clean) return "";
   const host = getAppHost();
   if (process.env.ELEVENLABS_API_KEY && host) {
-    const token = cacheMilaLine(clean);
-    return `<Play>https://${host}/api/twilio/voice/mila/${token}</Play>`;
+    const token = cachePabloLine(clean);
+    return `<Play>https://${host}/api/twilio/voice/pablo/${token}</Play>`;
   }
-  return `<Say voice="Google.en-US-Neural2-F">${escapeTwiml(clean)}</Say>`;
+  return "";
 }
+// Existing TwiML builders share this helper name; the rendered voice and token
+// route are Pablo's, backed exclusively by PABLO_VOICE_ID.
+const milaVoice = pabloVoice;
 
-// Public (Twilio-fetched) endpoint that streams Mila's ElevenLabs MP3 for a
+// Public (Twilio-fetched) endpoint that streams Pablo's ElevenLabs MP3 for a
 // previously-cached line. No auth: tokens are random + short-lived; the only
 // thing exposed is the line's own audio.
-router.all("/twilio/voice/mila/:token", async (req, res) => {
+router.all("/twilio/voice/pablo/:token", async (req, res) => {
   try {
     const token = req.params.token;
-    const entry = milaTtsCache.get(token);
+    const entry = pabloTtsCache.get(token);
     if (!entry || entry.expires <= Date.now()) {
-      milaTtsCache.delete(token);
+      pabloTtsCache.delete(token);
       res.status(404).send("expired");
       return;
     }
@@ -185,7 +189,7 @@ router.all("/twilio/voice/mila/:token", async (req, res) => {
       res.status(503).send("tts unavailable");
       return;
     }
-    const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${MILA_VOICE_ID}`, {
+    const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${PABLO_VOICE_ID}`, {
       method: "POST",
       headers: {
         "xi-api-key": key,
@@ -205,7 +209,7 @@ router.all("/twilio/voice/mila/:token", async (req, res) => {
     });
     if (!elRes.ok) {
       const errBody = await elRes.text().catch(() => "");
-      console.warn("[Mila voice] ElevenLabs failed:", elRes.status, errBody.slice(0, 200));
+      console.warn("[Pablo voice] ElevenLabs failed:", elRes.status, errBody.slice(0, 200));
       res.status(502).send("tts failed");
       return;
     }
@@ -215,7 +219,7 @@ router.all("/twilio/voice/mila/:token", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.end(buffer);
   } catch (err: unknown) {
-    console.error("[Mila voice] error:", err instanceof Error ? err.message : "Unknown");
+    console.error("[Pablo voice] error:", err instanceof Error ? err.message : "Unknown");
     res.status(502).send("tts error");
   }
 });
@@ -340,7 +344,7 @@ async function archiveTwilioRecording(recordingUrl: string): Promise<string> {
   return new ObjectStorageService().uploadBuffer(bytes, upstream.headers.get("content-type") ?? "audio/mpeg");
 }
 
-const PABLO_VOICEMAIL_GREETING = "Thank you for calling. This is Mila, your virtual office assistant. The person you are trying to reach is currently unavailable. Your call is important to us. Please leave a detailed message after the tone, including your name, number, and the reason for your call, and we will return your call as soon as possible. This call may be recorded for quality assurance and compliance purposes.";
+const PABLO_VOICEMAIL_GREETING = "Thank you for calling. This is Pablo, your virtual office assistant. The person you are trying to reach is currently unavailable. Your call is important to us. Please leave a detailed message after the tone, including your name, number, and the reason for your call, and we will return your call as soon as possible.";
 
 async function generateCallSummary(transcript: string): Promise<string> {
   if (!transcript || transcript.trim().length < 20) return "";
@@ -1697,7 +1701,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
 
       if (isDuringBusinessHours) {
         if (config.autoAnswer) {
-          const greeting = config.greetingScript ?? "Thank you for calling. This is Mila, your AI assistant. How can I help you today?";
+          const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
@@ -1711,7 +1715,7 @@ ${milaVoice("I didn't catch that. Please leave a message after the tone.")}
         }
 
         const personality = config.personality ?? "professional";
-        const greeting = config.greetingScript ?? `Thank you for calling. This is Mila, your virtual office assistant. How can I help you today?`;
+        const greeting = config.greetingScript ?? `Thank you for calling. This is Pablo, your virtual office assistant. How can I help you today?`;
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
@@ -2222,8 +2226,8 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
 
     const outboundScript = script ?? "";
     const greeting = outboundScript
-      ? `Hello, this is Mila calling on behalf of our team. ${outboundScript.split('.')[0]}.`
-      : `Hello, this is Mila, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
+      ? `Hello, this is Pablo calling on behalf of our team. ${outboundScript.split('.')[0]}.`
+      : `Hello, this is Pablo, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
 
     const call = await client.calls.create({
       to: phoneNumber,
@@ -3389,7 +3393,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
 
     if (isInboundDidCall && config && userId) {
       const screeningGreeting = config.screeningScript
-        ?? "Thank you for calling. This is Mila, I'll be helping to connect you with the right person. May I ask who's calling and what this is regarding?";
+        ?? "Thank you for calling. This is Pablo, I'll be helping to connect you with the right person. May I ask who's calling and what this is regarding?";
       await db.insert(inboundScreeningsTable).values({
         userId,
         twilioCallSid: CallSid,
@@ -3424,7 +3428,7 @@ ${milaVoice("I didn't catch that. Let me transfer you now.")}
 
       if (isDuringBusinessHours) {
         if (config.autoAnswer) {
-          const greeting = config.greetingScript ?? "Thank you for calling. This is Mila, your AI assistant. How can I help you today?";
+          const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
@@ -3438,7 +3442,7 @@ ${milaVoice("I didn't catch that. Please leave a message after the tone.")}
         }
 
         const personality = config.personality ?? "professional";
-        const greeting = config.greetingScript ?? `Thank you for calling. This is Mila, your virtual office assistant. How can I help you today?`;
+        const greeting = config.greetingScript ?? `Thank you for calling. This is Pablo, your virtual office assistant. How can I help you today?`;
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
@@ -4000,19 +4004,13 @@ router.post("/twilio/webhook/sms", async (req, res) => {
       return;
     }
 
-    // MILA auto-reply: warm, sharp AI concierge over SMS. No state, no toggle —
-    // she just chats and is allowed to drop a single binary choice mid-conversation
-    // when it actually fits.
-    const MILA_SMS_PROMPT = `You are MILA — a warm, sharp, slightly playful AI concierge from SALARYMAN by Picasso.AI. You are texting back over SMS.
-Style:
-- Warm but quick-witted. Confident, never cold. You make the user feel looked-after.
-- Short. SMS short. 1-3 lines, hard cap ~280 characters total. No emojis. No markdown.
-- Never glaze. Never start with "Great question" or "Sure thing".
-- When it actually fits the conversation, end with a single binary choice — NEVER as boring "yes/no", and NEVER use the word "text" or "texting". Frame it as a cheeky scenario the user is in, then offer two short reply tokens. Format EXACTLY like: "Reply X or Y." where X and Y are short cheeky words/phrases (1–4 words each, ALL CAPS works well). Riff on framings like: "If you want to keep us a secret — reply ON THE LOW. If you can wave it around — reply CONFETTI.", "Can't talk now? Reply HIDE ME. Got time? Reply COME CLOSER.", "What should I call you? Reply BOSS or reply TROUBLE.", "Reply WHISPER or HOLLER.", "Reply DOUBLE DOWN or FOLD.", "Reply MORE COFFEE or MORE WHISKEY.". Match the user's vibe; be playful, never corporate. Invent new pairs every time. Don't ask one every message — only when it actually fits.
-- If the user's reply matches one of your offered options (case-insensitive, including yes/no/y/n shortcuts), treat it as the answer and push the conversation forward. Don't re-ask the same question.
-Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
+    const PABLO_SMS_PROMPT = `${PABLO_CORE_PERSONA}
 
-    let milaReplyText = "";
+You are replying to an inbound business SMS for the user's organization.
+Keep the response concise, clear, professional, and natural for SMS (under 300 characters).
+Answer the message directly. Ask at most one relevant follow-up question. Do not invent business facts or promise actions you cannot verify.`;
+
+    let pabloReplyText = "";
     try {
       const recent = contactId
         ? await db
@@ -4032,24 +4030,24 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
         model: getOpenAiTextModel(),
         max_completion_tokens: 300,
         messages: [
-          { role: "system", content: MILA_SMS_PROMPT },
+          { role: "system", content: PABLO_SMS_PROMPT },
           ...history,
           { role: "user", content: Body.slice(0, 1000) },
         ],
       });
-      milaReplyText = (completion.choices[0]?.message?.content ?? "").trim().slice(0, 480);
+      pabloReplyText = (completion.choices[0]?.message?.content ?? "").trim().slice(0, 480);
     } catch (e) {
-      console.error("[Mila SMS] LLM error:", e instanceof Error ? e.message : e);
-      milaReplyText = "Mila here. Reception's spotty right now — try me again in a minute.";
+      console.error("[Pablo SMS] LLM error:", e instanceof Error ? e.message : e);
+      pabloReplyText = "Pablo here. I'm having trouble responding right now. Please try again shortly.";
     }
 
-    if (milaReplyText && userId) {
+    if (pabloReplyText && userId) {
       if (contactId) {
         await db.insert(contactInteractionsTable).values({
           contactId,
           userId,
           type: "sms",
-          note: `Mila SMS reply: ${milaReplyText}`,
+          note: `Pablo SMS reply: ${pabloReplyText}`,
         }).catch(() => {});
       }
       if (conversationId) {
@@ -4057,7 +4055,7 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
           conversationId,
           userId,
           direction: "outbound",
-          body: milaReplyText,
+          body: pabloReplyText,
           fromPhone: To ?? getTwilioNumber(),
           toPhone: e164From,
           status: "sent",
@@ -4076,16 +4074,16 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
         phone: e164From,
         contactName: fromName ?? From,
         contactId: contactId ?? undefined,
-        body: milaReplyText,
+        body: pabloReplyText,
       }).catch(() => {});
     }
 
-    const escapedReply = milaReplyText
+    const escapedReply = pabloReplyText
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
     res.type("text/xml").send(
-      milaReplyText
+      pabloReplyText
         ? `<Response><Message>${escapedReply}</Message></Response>`
         : "<Response></Response>"
     );
