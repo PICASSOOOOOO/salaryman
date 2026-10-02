@@ -115,6 +115,7 @@
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
 - [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ100=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — Pablo must fail closed when ElevenLabs rejects his assigned voice; never substitute generic speech without user approval.
+- [Pablo outbound campaign consent](pablo-outbound-campaign-consent.md) — Campaigns and direct Pablo calls require an owned saved contact with recorded call permission; spoken STOP opts out and the assigned ElevenLabs voice must pass preflight.
 - [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.
 - [Shadow Tower hierarchy](shadow-tower-hierarchy.md) — tower is 67 floors: public commons low, new org space below Picasso, Picasso Org at 66, Shadow Corp restricted at 67; vacant floors show construction/sale with height pricing.
 - [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.

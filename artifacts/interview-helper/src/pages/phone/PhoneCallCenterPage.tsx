@@ -1,21 +1,41 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Headphones, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, X, Upload, FileText, Zap, PhoneOutgoing, PhoneIncoming, AlertTriangle, Users } from 'lucide-react';
+import { Headphones, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, X, FileText, Zap, PhoneOutgoing, PhoneIncoming, AlertTriangle, Users } from 'lucide-react';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
   slate, warning, primary, destructive, accent, formatPhone,
   type CallCenterAgent, type InboundScreening, type OutboundCampaign } from '@/lib/phone-utils';
 
 type Tab = 'inbound' | 'outbound';
+type CampaignContact = {
+  id: number;
+  name: string;
+  phone: string;
+  company: string;
+  phoneCallOptIn: boolean;
+  phoneCallConsentedAt: string | null;
+};
+type ScriptBranchDraft = { response: string; nextNodeId: string };
+type ScriptNodeDraft = {
+  id: string;
+  question: string;
+  yes: ScriptBranchDraft;
+  no: ScriptBranchDraft;
+};
+
+const makeScriptNode = (index: number): ScriptNodeDraft => ({
+  id: `question-${index}`,
+  question: '',
+  yes: { response: '', nextNodeId: '' },
+  no: { response: '', nextNodeId: '' },
+});
 
 export default function PhoneCallCenterPage() {
   const isMobile = useIsMobile();
 
   const BASE = import.meta.env.BASE_URL;
-  const { user } = useAuth();
   const [, navigate] = useLocation();
 
   const [tab, setTab] = useState<Tab>('outbound');
@@ -23,6 +43,7 @@ export default function PhoneCallCenterPage() {
   const [screenings, setScreenings] = useState<InboundScreening[]>([]);
   const [metrics, setMetrics] = useState({ activeAgents: 0, totalScreenings: 0, transferred: 0, ended: 0, avgScreenTime: 0 });
   const [campaigns, setCampaigns] = useState<OutboundCampaign[]>([]);
+  const [campaignContacts, setCampaignContacts] = useState<CampaignContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,10 +53,19 @@ export default function PhoneCallCenterPage() {
   const [addingAgent, setAddingAgent] = useState(false);
 
   const [campaignName, setCampaignName] = useState('');
-  const [campaignScript, setCampaignScript] = useState('');
-  const [campaignLeads, setCampaignLeads] = useState('');
+  const [scriptBusinessName, setScriptBusinessName] = useState('');
+  const [scriptOpening, setScriptOpening] = useState('');
+  const [scriptClosing, setScriptClosing] = useState('Thank you for your time. Goodbye.');
+  const [scriptNodes, setScriptNodes] = useState<ScriptNodeDraft[]>([{
+    ...makeScriptNode(1),
+    question: 'Would you like to hear more?',
+    yes: { response: 'Great, I can tell you more.', nextNodeId: '' },
+    no: { response: 'Understood. Thank you for your time.', nextNodeId: '' },
+  }]);
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [campaignCreating, setCampaignCreating] = useState(false);
-  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [consentSavingId, setConsentSavingId] = useState<number | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'checking' | 'ready' | 'error'>('idle');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -56,6 +86,7 @@ export default function PhoneCallCenterPage() {
       safeFetch(apiUrl('twilio/call-center/screenings')).then(d => { if (d) setScreenings(d.screenings ?? []); }),
       safeFetch(apiUrl('twilio/call-center/metrics')).then(d => { if (d) setMetrics(d); }),
       safeFetch(apiUrl('twilio/pablo/campaigns')).then(d => { if (d) setCampaigns(d.campaigns ?? []); }),
+      safeFetch(apiUrl('twilio/pablo/campaign-contacts')).then(d => { if (d) setCampaignContacts(d.contacts ?? []); }),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, [apiUrl, handleAuthStatus]);
 
@@ -94,39 +125,133 @@ export default function PhoneCallCenterPage() {
     } catch {}
   };
 
+  const updateScriptNode = (id: string, update: (node: ScriptNodeDraft) => ScriptNodeDraft) => {
+    setScriptNodes(prev => prev.map(node => node.id === id ? update(node) : node));
+  };
+
+  const addScriptNode = () => {
+    setScriptNodes(prev => prev.length >= 8 ? prev : [...prev, makeScriptNode(Date.now())]);
+  };
+
+  const removeScriptNode = (id: string) => {
+    setScriptNodes(prev => {
+      if (prev.length <= 1) return prev;
+      return prev
+        .filter(node => node.id !== id)
+        .map(node => ({
+          ...node,
+          yes: node.yes.nextNodeId === id ? { ...node.yes, nextNodeId: '' } : node.yes,
+          no: node.no.nextNodeId === id ? { ...node.no, nextNodeId: '' } : node.no,
+        }));
+    });
+  };
+
+  const updateCallConsent = async (contact: CampaignContact, phoneCallOptIn: boolean) => {
+    setConsentSavingId(contact.id);
+    try {
+      const r = await apiFetch(apiUrl(`campaigns/contact-prefs/${contact.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phoneCallOptIn }),
+      });
+      if (handleAuthStatus(r)) return;
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Could not update contact permission');
+        return;
+      }
+      const d = await r.json();
+      const optedIn = Boolean(d.pref?.phoneCallOptIn && d.pref?.phoneCallConsentedAt && !d.pref?.phoneCallOptedOutAt);
+      setCampaignContacts(prev => prev.map(item => item.id === contact.id
+        ? { ...item, phoneCallOptIn: optedIn, phoneCallConsentedAt: d.pref?.phoneCallConsentedAt ?? null }
+        : item));
+      if (!optedIn) setSelectedContactIds(prev => prev.filter(id => id !== contact.id));
+    } catch {
+      setError('Network error updating contact permission');
+    } finally {
+      setConsentSavingId(null);
+    }
+  };
+
+  const checkPabloVoice = async () => {
+    setVoiceStatus('checking');
+    setError('');
+    try {
+      const r = await apiFetch(apiUrl('twilio/pablo/voice-check'), {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (handleAuthStatus(r)) {
+        setVoiceStatus('error');
+        return;
+      }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Pablo voice check failed');
+        setVoiceStatus('error');
+        return;
+      }
+      const objectUrl = URL.createObjectURL(await r.blob());
+      setVoiceStatus('ready');
+      try {
+        const audio = new Audio(objectUrl);
+        audio.onended = () => URL.revokeObjectURL(objectUrl);
+        await audio.play();
+      } catch {
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch {
+      setVoiceStatus('error');
+      setError('Network error checking Pablo voice');
+    }
+  };
+
   const createCampaign = async () => {
-    if (!campaignName || !campaignScript || !campaignLeads) return;
+    if (!campaignName.trim() || selectedContactIds.length === 0) return;
     setCampaignCreating(true);
     try {
-      const leads = campaignLeads.split('\n').filter(l => l.trim()).map(l => {
-        const parts = l.split(',');
-        return { phone: parts[0]?.trim() ?? '', name: parts[1]?.trim() ?? '', company: parts[2]?.trim() ?? '', email: parts[3]?.trim() ?? '' };
-      }).filter(l => l.phone);
+      const script = {
+        version: 1,
+        businessName: scriptBusinessName,
+        opening: scriptOpening,
+        startNodeId: scriptNodes[0]?.id,
+        closing: scriptClosing,
+        nodes: scriptNodes.map(node => ({
+          ...node,
+          yes: { ...node.yes, nextNodeId: node.yes.nextNodeId || null },
+          no: { ...node.no, nextNodeId: node.no.nextNodeId || null },
+        })),
+      };
       const r = await apiFetch(apiUrl('twilio/pablo/campaigns'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }) });
+        body: JSON.stringify({ name: campaignName.trim(), script: JSON.stringify(script), contactIds: selectedContactIds }) });
+      if (handleAuthStatus(r)) return;
       if (r.ok) {
         const d = await r.json();
         setCampaigns(prev => [d.campaign, ...prev]);
-        setCampaignName(''); setCampaignScript(''); setCampaignLeads('');
+        setCampaignName('');
+        setSelectedContactIds([]);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Failed to create campaign');
       }
-    } catch {} finally { setCampaignCreating(false); }
+    } catch { setError('Network error creating campaign'); }
+    finally { setCampaignCreating(false); }
   };
 
   const startCampaign = async (id: number) => {
     try {
       const r = await apiFetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), { method: 'POST', credentials: 'include' });
-      if (r.ok) { setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c)); }
-    } catch {}
-  };
-
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { setCampaignLeads(reader.result as string); };
-    reader.readAsText(file);
+      if (handleAuthStatus(r)) return;
+      if (r.ok) {
+        setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c));
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Campaign could not start');
+      }
+    } catch { setError('Network error starting campaign'); }
   };
 
   const outcomeColor = (outcome: string) => {
@@ -148,7 +273,7 @@ export default function PhoneCallCenterPage() {
   return (
     <PhonePageLayout
       title="TELEMARKETING CENTER"
-      subtitle="Outbound lead campaigns, scripts, lists, and agent routing"
+      subtitle="Saved-contact campaigns with editable yes/no scripts and call-permission checks"
       icon={<Headphones size={24} style={{ color: accent(0.8) }} />}
       statusLine={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -305,37 +430,144 @@ export default function PhoneCallCenterPage() {
                 <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN NAME</label>
                 <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Q1 Lead Follow-up" style={INPUT_STYLE} />
               </div>
+              <div style={{ padding: 12, border: `1px solid ${slate(0.08)}`, borderRadius: 7, background: slate(0.015) }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: '0.48rem', color: slate(0.75), letterSpacing: '0.12em' }}>PABLO VOICE</div>
+                    <div style={{ fontSize: '0.39rem', color: slate(0.45), marginTop: 4 }}>
+                      Tests Pablo's assigned ElevenLabs voice. Campaign start checks it again.
+                    </div>
+                  </div>
+                  <PhoneBtn onClick={checkPabloVoice} disabled={voiceStatus === 'checking'} color={voiceStatus === 'ready' ? primary : warning} size="sm">
+                    {voiceStatus === 'checking' ? <Loader2 size={10} className="animate-spin" /> : <PhoneOutgoing size={10} />}
+                    {voiceStatus === 'checking' ? 'CHECKING...' : 'TEST VOICE'}
+                  </PhoneBtn>
+                </div>
+                <div aria-live="polite" style={{ fontSize: '0.4rem', color: voiceStatus === 'ready' ? primary(0.85) : voiceStatus === 'error' ? destructive(0.85) : slate(0.4), marginTop: 6 }}>
+                  {voiceStatus === 'ready' ? 'VOICE READY' : voiceStatus === 'error' ? 'VOICE UNAVAILABLE' : ''}
+                </div>
+              </div>
               <div>
-                <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>SCRIPT</label>
-                <textarea
-                  value={campaignScript} onChange={e => setCampaignScript(e.target.value)}
-                  placeholder="Hi, I'm calling from [Company] to follow up on your recent inquiry..."
-                  style={{ ...INPUT_STYLE, height: 100, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
-                />
+                <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', marginBottom: 8 }}>YES / NO SCRIPT MATRIX</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input value={scriptBusinessName} onChange={e => setScriptBusinessName(e.target.value)} placeholder="Business name" style={INPUT_STYLE} />
+                  <textarea value={scriptOpening} onChange={e => setScriptOpening(e.target.value)} placeholder="Opening after Pablo introduces himself" style={{ ...INPUT_STYLE, minHeight: 64, resize: 'vertical' }} />
+                  {scriptNodes.map((node, index) => (
+                    <div key={node.id} style={{ padding: 10, border: `1px solid ${slate(0.08)}`, borderRadius: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                        <span style={{ fontSize: '0.42rem', color: warning(0.8), letterSpacing: '0.1em' }}>QUESTION {index + 1}{index === 0 ? ' · START' : ''}</span>
+                        {scriptNodes.length > 1 && (
+                          <button type="button" onClick={() => removeScriptNode(node.id)} aria-label={`Remove question ${index + 1}`} style={{ border: 0, background: 'none', color: destructive(0.75), cursor: 'pointer' }}>
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={node.question}
+                        onChange={e => updateScriptNode(node.id, current => ({ ...current, question: e.target.value }))}
+                        placeholder="Ask one question that can be answered yes or no"
+                        style={{ ...INPUT_STYLE, minHeight: 58, resize: 'vertical', marginBottom: 8 }}
+                      />
+                      {(['yes', 'no'] as const).map(answer => (
+                        <div key={answer} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '52px 1fr', gap: 6, marginBottom: 7, alignItems: 'start' }}>
+                          <div style={{ fontSize: '0.42rem', color: answer === 'yes' ? primary(0.9) : destructive(0.8), letterSpacing: '0.1em', paddingTop: 8 }}>{answer.toUpperCase()}</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <textarea
+                              value={node[answer].response}
+                              onChange={e => updateScriptNode(node.id, current => ({ ...current, [answer]: { ...current[answer], response: e.target.value } }))}
+                              placeholder={`${answer === 'yes' ? 'Response to yes' : 'Response to no'}`}
+                              style={{ ...INPUT_STYLE, minHeight: 54, resize: 'vertical' }}
+                            />
+                            <select
+                              value={node[answer].nextNodeId}
+                              onChange={e => updateScriptNode(node.id, current => ({ ...current, [answer]: { ...current[answer], nextNodeId: e.target.value } }))}
+                              style={{ ...INPUT_STYLE, cursor: 'pointer' }}
+                              aria-label={`${answer} follow-up question`}
+                            >
+                              <option value="">End call after this response</option>
+                              {scriptNodes.filter(candidate => candidate.id !== node.id).map(candidate => (
+                                <option key={candidate.id} value={candidate.id}>
+                                  Continue to question {scriptNodes.findIndex(item => item.id === candidate.id) + 1}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addScriptNode}
+                    disabled={scriptNodes.length >= 8}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start', border: `1px solid ${slate(0.12)}`, borderRadius: 5, padding: '7px 10px', background: 'transparent', color: slate(0.65), cursor: scriptNodes.length >= 8 ? 'not-allowed' : 'pointer', fontSize: '0.42rem' }}
+                  >
+                    <Plus size={11} /> ADD QUESTION ({scriptNodes.length}/8)
+                  </button>
+                  <textarea value={scriptClosing} onChange={e => setScriptClosing(e.target.value)} placeholder="Closing line" style={{ ...INPUT_STYLE, minHeight: 54, resize: 'vertical' }} />
+                  <div style={{ fontSize: '0.38rem', color: slate(0.38), lineHeight: 1.5 }}>
+                    Use {'{{name}}'} or {'{{company}}'} for saved contact details. Unclear answers are clarified once, then the call ends.
+                  </div>
+                </div>
               </div>
               <div>
                 <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
-                  LEAD LIST (CSV: phone,name,company,email)
+                  SAVED CONTACTS · RECORDED PHONE-CALL PERMISSION REQUIRED
                 </label>
-                <textarea
-                  value={campaignLeads} onChange={e => setCampaignLeads(e.target.value)}
-                  placeholder={'+15551234567,John Smith,Acme Corp,john@acme.com\n+15559876543,Jane Doe,Beta Inc,jane@beta.com'}
-                  style={{ ...INPUT_STYLE, height: 100, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <input type="file" accept=".csv,.txt" ref={csvInputRef} onChange={handleCsvUpload} style={{ display: 'none' }} />
-                  <button onClick={() => csvInputRef.current?.click()} style={{
-                    fontSize: '0.45rem', color: slate(0.5), background: slate(0.5),
-                    border: `1px solid ${slate(0.12)}`, padding: '6px 12px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.1em' }}>
-                    <Upload size={10} /> UPLOAD CSV
-                  </button>
-                  <span style={{ fontSize: '0.38rem', color: slate(0.55) }}>
-                    {campaignLeads ? `${campaignLeads.split('\n').filter(l => l.trim()).length} LEADS` : 'OR PASTE ABOVE'}
-                  </span>
+                <div style={{ fontSize: '0.38rem', color: warning(0.7), margin: '0 0 7px', lineHeight: 1.5 }}>
+                  Mark permission only after the contact has explicitly agreed to receive calls.
+                </div>
+                {campaignContacts.length === 0 ? (
+                  <EmptyState message="NO SAVED CONTACTS WITH PHONE NUMBERS — ADD THEM IN CONTACTS" icon={<Users size={22} />} />
+                ) : (
+                  <div style={{ maxHeight: 250, overflowY: 'auto', border: `1px solid ${slate(0.08)}`, borderRadius: 6 }}>
+                    {campaignContacts.map(contact => {
+                      const selected = selectedContactIds.includes(contact.id);
+                      return (
+                        <div key={contact.id} style={{ padding: '9px 10px', borderBottom: `1px solid ${slate(0.04)}`, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, opacity: contact.phoneCallOptIn ? 1 : 0.72 }}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              disabled={!contact.phoneCallOptIn || (!selected && selectedContactIds.length >= 50)}
+                              onChange={e => setSelectedContactIds(prev => e.target.checked
+                                ? [...prev, contact.id]
+                                : prev.filter(id => id !== contact.id))}
+                              aria-label={`Select ${contact.name} for campaign`}
+                            />
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', fontSize: '0.48rem', color: slate(0.8) }}>{contact.name || 'Unnamed contact'}</span>
+                              <span style={{ display: 'block', fontSize: '0.38rem', color: slate(0.45), marginTop: 2 }}>
+                                {formatPhone(contact.phone)}{contact.company ? ` · ${contact.company}` : ''}
+                              </span>
+                            </span>
+                          </label>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 3 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.38rem', color: contact.phoneCallOptIn ? primary(0.8) : slate(0.5), cursor: consentSavingId === contact.id ? 'wait' : 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={contact.phoneCallOptIn}
+                                disabled={consentSavingId === contact.id}
+                                onChange={e => updateCallConsent(contact, e.target.checked)}
+                              />
+                              {consentSavingId === contact.id ? 'SAVING...' : contact.phoneCallOptIn ? 'CALL PERMISSION RECORDED' : 'I HAVE RECORDED PERMISSION'}
+                            </label>
+                            {contact.phoneCallOptIn && contact.phoneCallConsentedAt && (
+                              <span style={{ fontSize: '0.34rem', color: slate(0.4), paddingLeft: 18 }}>
+                                {new Date(contact.phoneCallConsentedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div style={{ fontSize: '0.38rem', color: slate(0.4), marginTop: 6 }}>
+                  {selectedContactIds.length}/50 selected
                 </div>
               </div>
-              <PhoneBtn onClick={createCampaign} disabled={campaignCreating || !campaignName || !campaignScript || !campaignLeads} color={warning}>
+              <PhoneBtn onClick={createCampaign} disabled={campaignCreating || !campaignName.trim() || !scriptBusinessName || !scriptOpening || !scriptClosing || !scriptNodes[0]?.question || selectedContactIds.length === 0} color={warning}>
                 {campaignCreating ? <Loader2 size={12} className="animate-spin" /> : <PhoneOutgoing size={12} />}
                 {campaignCreating ? 'CREATING...' : 'CREATE CAMPAIGN'}
               </PhoneBtn>

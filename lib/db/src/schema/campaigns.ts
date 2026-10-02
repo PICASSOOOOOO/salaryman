@@ -206,6 +206,7 @@ export const contactChannelPrefsTable = pgTable(
     emailOptIn: boolean("email_opt_in").notNull().default(true),
     smsOptIn: boolean("sms_opt_in").notNull().default(true),
     phoneCallOptIn: boolean("phone_call_opt_in").notNull().default(false),
+    phoneCallConsentedAt: timestamp("phone_call_consented_at", { withTimezone: true }),
     emailOptedOutAt: timestamp("email_opted_out_at", { withTimezone: true }),
     smsOptedOutAt: timestamp("sms_opted_out_at", { withTimezone: true }),
     phoneCallOptedOutAt: timestamp("phone_call_opted_out_at", { withTimezone: true }),

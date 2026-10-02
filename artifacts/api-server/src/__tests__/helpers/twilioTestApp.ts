@@ -10,6 +10,8 @@ import {
   conferenceRoomsTable,
   callCenterAgentsTable,
   pabloOutboundCampaignsTable,
+  contactsTable,
+  contactChannelPrefsTable,
   worldBusinessesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -82,6 +84,8 @@ export async function cleanupTestData() {
     db.delete(conferenceRoomsTable).where(eq(conferenceRoomsTable.userId, id)),
     db.delete(callCenterAgentsTable).where(eq(callCenterAgentsTable.userId, id)),
     db.delete(pabloOutboundCampaignsTable).where(eq(pabloOutboundCampaignsTable.userId, id)),
+    db.delete(contactChannelPrefsTable).where(eq(contactChannelPrefsTable.userId, id)),
+    db.delete(contactsTable).where(eq(contactsTable.userId, id)),
     db.delete(worldBusinessesTable).where(eq(worldBusinessesTable.userId, id)),
   ]);
   onboardingSeed = null;

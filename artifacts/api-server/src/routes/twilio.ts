@@ -22,14 +22,20 @@ import {
   systemConfigTable,
   smsConversationsTable,
   smsMessagesTable,
+  contactChannelPrefsTable,
   type InsertSecretaryConfig,
 } from "@workspace/db";
 import twilio from "twilio";
 import { randomBytes } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
-import { PABLO_VOICE_ID } from "../lib/pablo-voice";
+import { synthesizePabloLine } from "../lib/pablo-elevenlabs";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
+import {
+  classifyPabloCallAnswer,
+  interpolatePabloScript,
+  parsePabloOutboundScript,
+} from "../lib/pablo-outbound-script";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
 import { requireFeature } from "../middlewares/requirePro";
@@ -158,10 +164,10 @@ function cachePabloLine(text: string): string {
   return token;
 }
 
-function pabloVoice(text: string): string {
+function pabloVoice(text: string, request?: Request): string {
   const clean = (text ?? "").trim();
   if (!clean) return "";
-  const host = getAppHost();
+  const host = getAppHost(request);
   if (process.env.ELEVENLABS_API_KEY && host) {
     const token = cachePabloLine(clean);
     return `<Play>https://${host}/api/twilio/voice/pablo/${token}</Play>`;
@@ -184,36 +190,7 @@ router.all("/twilio/voice/pablo/:token", async (req, res) => {
       res.status(404).send("expired");
       return;
     }
-    const key = process.env.ELEVENLABS_API_KEY;
-    if (!key) {
-      res.status(503).send("tts unavailable");
-      return;
-    }
-    const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${PABLO_VOICE_ID}`, {
-      method: "POST",
-      headers: {
-        "xi-api-key": key,
-        "Content-Type": "application/json",
-        "Accept": "audio/mpeg",
-      },
-      body: JSON.stringify({
-        text: entry.text,
-        model_id: "eleven_turbo_v2_5",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.8,
-          style: 0.2,
-          use_speaker_boost: true,
-        },
-      }),
-    });
-    if (!elRes.ok) {
-      const errBody = await elRes.text().catch(() => "");
-      console.warn("[Pablo voice] ElevenLabs failed:", elRes.status, errBody.slice(0, 200));
-      res.status(502).send("tts failed");
-      return;
-    }
-    const buffer = Buffer.from(await elRes.arrayBuffer());
+    const buffer = await synthesizePabloLine(entry.text);
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Content-Length", buffer.length);
     res.setHeader("Cache-Control", "no-store");
@@ -321,6 +298,24 @@ async function matchContactByPhone(userId: string, phoneNumber: string, countryO
     if (match) return { contactId: match.id, contactName: match.name };
   } catch {}
   return null;
+}
+
+async function hasRecordedPhoneCallConsent(userId: string, contactId: number): Promise<boolean> {
+  const prefs = await db
+    .select()
+    .from(contactChannelPrefsTable)
+    .where(and(
+      eq(contactChannelPrefsTable.userId, userId),
+      eq(contactChannelPrefsTable.contactId, contactId),
+    ))
+    .orderBy(desc(contactChannelPrefsTable.updatedAt))
+    .limit(1);
+  const pref = prefs[0];
+  return Boolean(
+    pref?.phoneCallOptIn &&
+    pref.phoneCallConsentedAt &&
+    !pref.phoneCallOptedOutAt
+  );
 }
 
 const RECORDING_RETENTION_DAYS = 1095;
@@ -2161,7 +2156,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     const userId = req.query.userId as string;
     const campaignId = req.query.campaignId as string;
 
-    if (!userId || !SpeechResult) {
+    if (!userId) {
       res.type("text/xml").send(`<Response>${milaVoice("Thank you for your time. Goodbye.")}<Hangup/></Response>`);
       return;
     }
@@ -2169,18 +2164,100 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
-    let outboundScript: string | undefined;
-    if (campaignId && userId) {
-      const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(and(eq(pabloOutboundCampaignsTable.id, parseInt(campaignId)), eq(pabloOutboundCampaignsTable.userId, userId))).limit(1);
-      outboundScript = campaigns[0]?.script ?? undefined;
-    }
-    if (!outboundScript) {
-      const configs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
-      outboundScript = configs[0]?.outboundScript ?? undefined;
+    if (campaignId) {
+      const campaignNumber = Number(campaignId);
+      const contactId = Number(req.query.contactId);
+      const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(and(
+        eq(pabloOutboundCampaignsTable.id, campaignNumber),
+        eq(pabloOutboundCampaignsTable.userId, userId),
+      )).limit(1);
+      const campaign = campaigns[0];
+      const contacts = Number.isInteger(contactId) && contactId > 0
+        ? await db.select().from(contactsTable).where(and(
+            eq(contactsTable.id, contactId),
+            eq(contactsTable.userId, userId),
+          )).limit(1)
+        : [];
+      if (!campaign || !contacts[0] || !await hasRecordedPhoneCallConsent(userId, contactId)) {
+        res.type("text/xml").send(`<Response>${milaVoice("I can't continue this call. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+
+      let script;
+      try {
+        script = parsePabloOutboundScript(campaign.script);
+      } catch {
+        res.type("text/xml").send(`<Response>${milaVoice("I can't continue this call. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+
+      const contact = contacts[0];
+      const nodeId = String(req.query.nodeId || script.startNodeId);
+      const node = script.nodes.find((item) => item.id === nodeId);
+      if (!node) {
+        res.type("text/xml").send(`<Response>${milaVoice("I can't continue this call. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+      const leadName = contact.name || "";
+      const company = contact.company || script.businessName;
+      const actionUrl = `${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;campaignId=${campaignNumber}&amp;contactId=${contactId}&amp;nodeId=${encodeURIComponent(node.id)}`;
+      const gather = (spokenText: string, clarify: number) =>
+        `<Gather input="speech" timeout="10" action="${actionUrl}&amp;clarify=${clarify}" method="POST" speechTimeout="auto">${milaVoice(interpolatePabloScript(spokenText, leadName, company), req)}</Gather>`;
+      const answer = classifyPabloCallAnswer(typeof SpeechResult === "string" ? SpeechResult : "");
+
+      if (answer === "stop") {
+        const now = new Date();
+        await db.update(contactChannelPrefsTable).set({
+          phoneCallOptIn: false,
+          phoneCallOptedOutAt: now,
+          updatedAt: now,
+        }).where(and(
+          eq(contactChannelPrefsTable.userId, userId),
+          eq(contactChannelPrefsTable.contactId, contactId),
+        ));
+        res.type("text/xml").send(`<Response>${milaVoice("Understood. I'll remove this number from future calls. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+
+      if (!answer) {
+        const hasClarified = String(req.query.clarify || "0") === "1";
+        if (hasClarified) {
+          res.type("text/xml").send(`<Response>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+          return;
+        }
+        const repeat = `Sorry, I didn't catch that. Please answer yes or no. ${node.question}`;
+        res.type("text/xml").send(`<Response>${gather(repeat, 1)}${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+        return;
+      }
+
+      const branch = node[answer];
+      const branchResponse = interpolatePabloScript(branch.response, leadName, company);
+      if (branch.nextNodeId) {
+        const nextNode = script.nodes.find((item) => item.id === branch.nextNodeId);
+        if (!nextNode) {
+          res.type("text/xml").send(`<Response>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+          return;
+        }
+        const followUpUrl = `${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;campaignId=${campaignNumber}&amp;contactId=${contactId}&amp;nodeId=${encodeURIComponent(nextNode.id)}&amp;clarify=0`;
+        res.type("text/xml").send(`<Response><Gather input="speech" timeout="10" action="${followUpUrl}" method="POST" speechTimeout="auto">${milaVoice(`${branchResponse} ${interpolatePabloScript(nextNode.question, leadName, company)}`, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+        return;
+      }
+
+      res.type("text/xml").send(`<Response>${milaVoice(`${branchResponse} ${interpolatePabloScript(script.closing, leadName, company)}`, req)}<Hangup/></Response>`);
+      generateCallSummaryForSession(CallSid).catch(() => {});
+      return;
     }
 
+    if (!SpeechResult) {
+      res.type("text/xml").send(`<Response>${milaVoice("Thank you for your time. Goodbye.", req)}<Hangup/></Response>`);
+      return;
+    }
+
+    let outboundScript: string | undefined;
+    const configs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
+    outboundScript = configs[0]?.outboundScript ?? undefined;
     const action = await processPabloTurn(userId, CallSid, SpeechResult, To, "outbound", outboundScript);
-    const milaResponse = milaVoice(action.response);
+    const milaResponse = milaVoice(action.response, req);
 
     if (action.type === "end_call" || action.type === "take_message" || action.type === "create_lead") {
       res.type("text/xml").send(`<Response>${milaResponse}</Response>`);
@@ -2190,10 +2267,10 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     }
 
     res.type("text/xml").send(`<Response>
-<Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}" method="POST" speechTimeout="auto">
 ${milaResponse}
 </Gather>
-${milaVoice("Thank you for your time. Goodbye.")}
+${milaVoice("Thank you for your time. Goodbye.", req)}
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] outbound gather error:", err instanceof Error ? err.message : "Unknown");
@@ -2204,10 +2281,34 @@ ${milaVoice("Thank you for your time. Goodbye.")}
 router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { phoneNumber, leadName, campaignId, script } = req.body;
+    const { phoneNumber, leadName, script } = req.body;
 
     if (!phoneNumber) {
       res.status(400).json({ error: "Phone number is required" });
+      return;
+    }
+    const pabloCrmMatch = await matchContactByPhone(userId, String(phoneNumber));
+    if (!pabloCrmMatch || !await hasRecordedPhoneCallConsent(userId, pabloCrmMatch.contactId)) {
+      res.status(403).json({ error: "Pablo can only call a saved contact with recorded phone-call permission." });
+      return;
+    }
+    const [contact] = await db.select().from(contactsTable).where(and(
+      eq(contactsTable.id, pabloCrmMatch.contactId),
+      eq(contactsTable.userId, userId),
+    )).limit(1);
+    if (!contact?.phone) {
+      res.status(403).json({ error: "Contact must have a saved phone number." });
+      return;
+    }
+    const callTo = toE164(contact.phone, await resolveUserCountry(userId));
+    if (!callTo) {
+      res.status(400).json({ error: "Contact has an invalid phone number." });
+      return;
+    }
+    try {
+      await synthesizePabloLine("This is Pablo. Please confirm that my voice is clear.");
+    } catch {
+      res.status(503).json({ error: "Pablo's ElevenLabs voice is unavailable. No call was placed.", code: "voice_unavailable" });
       return;
     }
     {
@@ -2230,21 +2331,20 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       : `Hello, this is Pablo, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
 
     const call = await client.calls.create({
-      to: phoneNumber,
+      to: callTo,
       from: fromNumber,
-      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">${milaVoice(greeting)}</Gather>${milaVoice("Thank you for your time. Goodbye.")}</Response>`,
+      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice("Thank you for your time. Goodbye.", req)}</Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
     });
 
     const pabloOrgId = await getUserOrgId(userId);
-    const pabloCrmMatch = await matchContactByPhone(userId, phoneNumber);
     await db.insert(callHistoryTable).values({
       userId,
       orgId: pabloOrgId ?? undefined,
       callerName: leadName || null,
-      recipientNumber: phoneNumber,
+      recipientNumber: callTo,
       twilioCallSid: call.sid,
       status: "initiated",
       direction: "outbound",
@@ -2258,7 +2358,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       orgId: pabloOrgId,
       channel: "call",
       direction: "outbound",
-      phone: phoneNumber,
+      phone: callTo,
       contactName: leadName,
       contactId: pabloCrmMatch?.contactId,
       status: "initiated",
@@ -2282,24 +2382,126 @@ router.get("/twilio/pablo/campaigns", requireAuth, requireFeature("phone_system"
   }
 });
 
+router.get("/twilio/pablo/campaign-contacts", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const [contacts, prefs] = await Promise.all([
+      db.select().from(contactsTable)
+        .where(eq(contactsTable.userId, userId))
+        .orderBy(desc(contactsTable.createdAt))
+        .limit(500),
+      db.select().from(contactChannelPrefsTable)
+        .where(eq(contactChannelPrefsTable.userId, userId))
+        .orderBy(desc(contactChannelPrefsTable.updatedAt)),
+    ]);
+    const latestPrefs = new Map<number, typeof prefs[number]>();
+    for (const pref of prefs) {
+      if (!latestPrefs.has(pref.contactId)) latestPrefs.set(pref.contactId, pref);
+    }
+    res.json({
+      contacts: contacts
+        .filter((contact) => Boolean(contact.phone?.trim()))
+        .map((contact) => {
+          const pref = latestPrefs.get(contact.id);
+          return {
+            id: contact.id,
+            name: contact.name,
+            phone: contact.phone,
+            company: contact.company,
+            phoneCallOptIn: Boolean(pref?.phoneCallOptIn && pref.phoneCallConsentedAt && !pref.phoneCallOptedOutAt),
+            phoneCallConsentedAt: pref?.phoneCallConsentedAt ?? null,
+          };
+        }),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch campaign contacts" });
+  }
+});
+
+router.post("/twilio/pablo/voice-check", requireAuth, requireFeature("phone_system"), async (_req, res) => {
+  try {
+    const audio = await synthesizePabloLine("This is Pablo. Please confirm that my voice is clear.");
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", audio.length);
+    res.setHeader("Cache-Control", "no-store");
+    res.end(audio);
+  } catch {
+    res.status(503).json({
+      error: "Pablo's assigned ElevenLabs voice is unavailable. Campaigns cannot start until it is working.",
+      code: "voice_unavailable",
+    });
+  }
+});
+
 router.post("/twilio/pablo/campaigns", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { name, script, leadsJson, scheduleJson } = req.body;
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    const contactIds: unknown = req.body.contactIds;
+    if (!name || name.length > 256) {
+      res.status(400).json({ error: "Campaign name is required (maximum 256 characters)." });
+      return;
+    }
+    if (!Array.isArray(contactIds) || contactIds.length < 1 || contactIds.length > 50 ||
+      contactIds.some((id) => !Number.isInteger(id) || id <= 0) ||
+      new Set(contactIds).size !== contactIds.length) {
+      res.status(400).json({ error: "Choose between 1 and 50 unique saved contacts." });
+      return;
+    }
 
-    if (!name || !script || !leadsJson) {
-      res.status(400).json({ error: "Name, script, and leads are required" });
+    let script;
+    try {
+      script = parsePabloOutboundScript(String(req.body.script ?? ""));
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Script matrix is invalid." });
+      return;
+    }
+
+    const ids = contactIds as number[];
+    const contacts = await db.select().from(contactsTable).where(and(
+      eq(contactsTable.userId, userId),
+      inArray(contactsTable.id, ids),
+    ));
+    if (contacts.length !== ids.length) {
+      res.status(400).json({ error: "Campaigns can only use your saved CRM contacts." });
+      return;
+    }
+    const prefs = await db.select().from(contactChannelPrefsTable).where(and(
+      eq(contactChannelPrefsTable.userId, userId),
+      inArray(contactChannelPrefsTable.contactId, ids),
+    )).orderBy(desc(contactChannelPrefsTable.updatedAt));
+    const latestPrefs = new Map<number, typeof prefs[number]>();
+    for (const pref of prefs) {
+      if (!latestPrefs.has(pref.contactId)) latestPrefs.set(pref.contactId, pref);
+    }
+    const notConsented = ids.filter((id) => {
+      const pref = latestPrefs.get(id);
+      return !pref?.phoneCallOptIn || !pref.phoneCallConsentedAt || Boolean(pref.phoneCallOptedOutAt);
+    });
+    if (notConsented.length) {
+      res.status(400).json({ error: "Every selected contact must have recorded phone-call permission." });
+      return;
+    }
+    const country = await resolveUserCountry(userId);
+    const leads = contacts.map((contact) => ({
+      contactId: contact.id,
+      phone: toE164(contact.phone, country),
+      name: contact.name,
+      company: contact.company,
+    }));
+    if (leads.some((lead) => !lead.phone)) {
+      res.status(400).json({ error: "Every selected contact needs a valid saved phone number." });
       return;
     }
 
     const [campaign] = await db.insert(pabloOutboundCampaignsTable).values({
       userId,
       name,
-      script,
-      leadsJson,
-      scheduleJson: scheduleJson ?? null,
+      script: JSON.stringify(script),
+      leadsJson: JSON.stringify(leads),
+      scheduleJson: typeof req.body.scheduleJson === "string" ? req.body.scheduleJson : null,
       status: "draft",
-      totalLeads: JSON.parse(leadsJson).length,
+      totalLeads: leads.length,
     }).returning();
 
     res.json({ ok: true, campaign });
@@ -2312,7 +2514,11 @@ router.post("/twilio/pablo/campaigns", requireAuth, requireFeature("phone_system
 router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const campaignId = parseInt(req.params.id as string);
+    const campaignId = Number(req.params.id);
+    if (!Number.isInteger(campaignId) || campaignId <= 0) {
+      res.status(400).json({ error: "Invalid campaign ID" });
+      return;
+    }
 
     const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(and(eq(pabloOutboundCampaignsTable.id, campaignId), eq(pabloOutboundCampaignsTable.userId, userId))).limit(1);
     if (!campaigns[0]) {
@@ -2320,10 +2526,63 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
       return;
     }
     const campaign = campaigns[0];
-    const leads: Array<{ phone: string; name?: string }> = JSON.parse(campaign.leadsJson ?? "[]");
+    if (campaign.status !== "draft") {
+      res.status(409).json({ error: "This campaign has already been started." });
+      return;
+    }
+    let script;
+    let contactIds: number[];
+    try {
+      script = parsePabloOutboundScript(campaign.script);
+      const savedLeads: unknown = JSON.parse(campaign.leadsJson ?? "[]");
+      if (!Array.isArray(savedLeads) || savedLeads.length < 1 || savedLeads.length > 50 ||
+        savedLeads.some((lead) => !lead || typeof lead !== "object" ||
+          !Number.isInteger((lead as { contactId?: unknown }).contactId) ||
+          (lead as { contactId: number }).contactId <= 0)) {
+        throw new Error("Campaign contacts are invalid.");
+      }
+      contactIds = savedLeads.map((lead) => (lead as { contactId: number }).contactId);
+      if (new Set(contactIds).size !== contactIds.length) throw new Error("Campaign contacts must be unique.");
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Campaign script or contacts are invalid." });
+      return;
+    }
 
-    if (leads.length === 0) {
-      res.status(400).json({ error: "No leads in campaign" });
+    const [contacts, prefs] = await Promise.all([
+      db.select().from(contactsTable).where(and(
+        eq(contactsTable.userId, userId),
+        inArray(contactsTable.id, contactIds),
+      )),
+      db.select().from(contactChannelPrefsTable).where(and(
+        eq(contactChannelPrefsTable.userId, userId),
+        inArray(contactChannelPrefsTable.contactId, contactIds),
+      )).orderBy(desc(contactChannelPrefsTable.updatedAt)),
+    ]);
+    const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+    const prefsById = new Map<number, typeof prefs[number]>();
+    for (const pref of prefs) {
+      if (!prefsById.has(pref.contactId)) prefsById.set(pref.contactId, pref);
+    }
+    const country = await resolveUserCountry(userId);
+    const invalidConsent = contactIds.some((id) => {
+      const pref = prefsById.get(id);
+      return !contactsById.has(id) || !pref?.phoneCallOptIn || !pref.phoneCallConsentedAt || Boolean(pref.phoneCallOptedOutAt);
+    });
+    if (invalidConsent) {
+      res.status(409).json({ error: "A selected contact no longer has recorded phone-call permission. Update the list before starting." });
+      return;
+    }
+    const leads = contactIds.map((contactId) => {
+      const contact = contactsById.get(contactId)!;
+      return {
+        contactId,
+        phone: toE164(contact.phone, country),
+        name: contact.name,
+        company: contact.company,
+      };
+    });
+    if (leads.some((lead) => !lead.phone)) {
+      res.status(409).json({ error: "A selected contact no longer has a valid phone number." });
       return;
     }
 
@@ -2346,7 +2605,28 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
       } catch {}
     }
 
-    await db.update(pabloOutboundCampaignsTable).set({ status: "active", updatedAt: new Date() }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
+    try {
+      await synthesizePabloLine("This is Pablo. Please confirm that my voice is clear.");
+    } catch {
+      res.status(503).json({
+        error: "Pablo's assigned ElevenLabs voice is unavailable. No campaign calls were placed.",
+        code: "voice_unavailable",
+      });
+      return;
+    }
+
+    const [claimedCampaign] = await db.update(pabloOutboundCampaignsTable)
+      .set({ status: "active", updatedAt: new Date() })
+      .where(and(
+        eq(pabloOutboundCampaignsTable.id, campaignId),
+        eq(pabloOutboundCampaignsTable.userId, userId),
+        eq(pabloOutboundCampaignsTable.status, "draft"),
+      ))
+      .returning({ id: pabloOutboundCampaignsTable.id });
+    if (!claimedCampaign) {
+      res.status(409).json({ error: "This campaign has already been started." });
+      return;
+    }
 
     const [dialingSession] = await db.insert(dialingSessionsTable).values({
       userId,
@@ -2354,25 +2634,47 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
       status: "active",
       totalNumbers: leads.length,
       queueJson: JSON.stringify(leads),
-      settingsJson: JSON.stringify({ campaignId, script: campaign.script }),
+      settingsJson: JSON.stringify({ campaignId, script }),
     }).returning();
 
     const client = getTwilioClient();
     const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
-    const greeting = campaign.script.split('.')[0] + ".";
     let dialed = 0;
-    const batchSize = Math.min(leads.length, 50);
 
     const { consumeUsage: _consumeUsage_pc } = await import("../lib/usage-meter");
-    for (const lead of leads.slice(0, batchSize)) {
+    let processed = 0;
+    for (const lead of leads) {
+      const contactBeforeCharge = await db.select().from(contactsTable).where(and(
+        eq(contactsTable.id, lead.contactId),
+        eq(contactsTable.userId, userId),
+      )).limit(1);
+      if (!contactBeforeCharge[0] || !await hasRecordedPhoneCallConsent(userId, lead.contactId)) {
+        processed++;
+        continue;
+      }
       const _g = await _consumeUsage_pc(userId, req.user?.email, "voice_minutes", 1);
       if (!_g.allowed) break;
       try {
+        const [freshContact] = await db.select().from(contactsTable).where(and(
+          eq(contactsTable.id, lead.contactId),
+          eq(contactsTable.userId, userId),
+        )).limit(1);
+        if (!freshContact || !await hasRecordedPhoneCallConsent(userId, lead.contactId)) continue;
+        const freshPhone = toE164(freshContact.phone, country);
+        if (!freshPhone) continue;
+        const opening = interpolatePabloScript(
+          script.opening,
+          freshContact.name,
+          freshContact.company || script.businessName,
+        );
+        const firstQuestion = script.nodes.find((node) => node.id === script.startNodeId)!;
+        const greeting = `Hello${freshContact.name ? `, ${freshContact.name}` : ""}. This is Pablo, an AI assistant calling on behalf of ${freshContact.company || script.businessName}. ${opening} ${interpolatePabloScript(firstQuestion.question, freshContact.name, freshContact.company || script.businessName)}`;
+        const actionUrl = `${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;campaignId=${campaignId}&amp;contactId=${lead.contactId}&amp;nodeId=${encodeURIComponent(script.startNodeId)}&amp;clarify=0`;
         const call = await client.calls.create({
-          to: lead.phone,
+          to: freshPhone,
           from: campaignFromNumber,
-          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto">${milaVoice(`Hello${lead.name ? `, ${lead.name}` : ""}. ${greeting}`)}</Gather>${milaVoice("Thank you for your time. Goodbye.")}</Response>`,
+          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${actionUrl}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, freshContact.name, freshContact.company || script.businessName), req)}<Hangup/></Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
           statusCallbackMethod: "POST",
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -2381,12 +2683,13 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
         await db.insert(callHistoryTable).values({
           userId,
           orgId: campOrgId ?? undefined,
-          callerName: lead.name || null,
-          recipientNumber: lead.phone,
+          callerName: freshContact.name || null,
+          recipientNumber: freshPhone,
           twilioCallSid: call.sid,
           status: "initiated",
           direction: "outbound",
           callType: "pablo_agent",
+          contactId: lead.contactId,
           consentGiven: true,
           recordingRetainUntil: getRetentionDate(),
         });
@@ -2395,21 +2698,24 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
           orgId: campOrgId,
           channel: "call",
           direction: "outbound",
-          phone: lead.phone,
-          contactName: lead.name,
+          phone: freshPhone,
+          contactName: freshContact.name,
+          contactId: lead.contactId,
           status: "initiated",
           twilioSid: call.sid,
         }).catch(() => {});
         dialed++;
       } catch (e: unknown) {
-        console.error(`[Pablo] campaign dial error for ${lead.phone}:`, e instanceof Error ? e.message : "Unknown");
+        console.error(`[Pablo] campaign dial error for contact ${lead.contactId}:`, e instanceof Error ? e.message : "Unknown");
       }
+      processed++;
     }
 
+    const processingComplete = processed >= leads.length;
     await db.update(pabloOutboundCampaignsTable).set({ dialedCount: dialed }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
-    await db.update(dialingSessionsTable).set({ dialedCount: dialed, status: dialed >= leads.length ? "completed" : "active" }).where(eq(dialingSessionsTable.id, dialingSession.id));
+    await db.update(dialingSessionsTable).set({ dialedCount: dialed, status: processingComplete ? "completed" : "active" }).where(eq(dialingSessionsTable.id, dialingSession.id));
 
-    if (dialed >= leads.length) {
+    if (processingComplete) {
       await db.update(pabloOutboundCampaignsTable).set({ status: "completed", updatedAt: new Date() }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
     }
 

@@ -783,13 +783,31 @@ router.get("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
 router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
-  const { emailOptIn, smsOptIn, tags } = req.body;
+  const { emailOptIn, smsOptIn, phoneCallOptIn, tags } = req.body;
   const contactId = Number(req.params.contactId);
+  if (!Number.isInteger(contactId) || contactId <= 0) {
+    res.status(400).json({ error: "Invalid contact ID" });
+    return;
+  }
+  if (phoneCallOptIn !== undefined && typeof phoneCallOptIn !== "boolean") {
+    res.status(400).json({ error: "Phone-call permission must be true or false" });
+    return;
+  }
   try {
-    const [existing] = await db
+    const [contact] = await db
+      .select({ id: contactsTable.id })
+      .from(contactsTable)
+      .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, userId)));
+    if (!contact) {
+      res.status(404).json({ error: "Contact not found" });
+      return;
+    }
+    const existingRows = await db
       .select()
       .from(contactChannelPrefsTable)
-      .where(and(eq(contactChannelPrefsTable.contactId, contactId), eq(contactChannelPrefsTable.userId, userId)));
+      .where(and(eq(contactChannelPrefsTable.contactId, contactId), eq(contactChannelPrefsTable.userId, userId)))
+      .orderBy(desc(contactChannelPrefsTable.updatedAt));
+    const existing = existingRows[0];
 
     const now = new Date();
     if (existing) {
@@ -802,11 +820,23 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
         updates.smsOptIn = smsOptIn;
         if (!smsOptIn && existing.smsOptIn) updates.smsOptedOutAt = now;
       }
+      if (phoneCallOptIn !== undefined) {
+        updates.phoneCallOptIn = phoneCallOptIn;
+        if (phoneCallOptIn) {
+          updates.phoneCallConsentedAt = now;
+          updates.phoneCallOptedOutAt = null;
+        } else {
+          updates.phoneCallOptedOutAt = now;
+        }
+      }
       if (tags !== undefined) updates.tags = tags;
       const [pref] = await db
         .update(contactChannelPrefsTable)
         .set(updates)
-        .where(eq(contactChannelPrefsTable.id, existing.id))
+        .where(and(
+          eq(contactChannelPrefsTable.contactId, contactId),
+          eq(contactChannelPrefsTable.userId, userId),
+        ))
         .returning();
       res.json({ pref });
     } else {
@@ -817,6 +847,9 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
           userId,
           emailOptIn: emailOptIn ?? true,
           smsOptIn: smsOptIn ?? true,
+          phoneCallOptIn: phoneCallOptIn ?? false,
+          phoneCallConsentedAt: phoneCallOptIn ? now : null,
+          phoneCallOptedOutAt: phoneCallOptIn === false ? now : null,
           tags: tags || [],
         })
         .returning();
