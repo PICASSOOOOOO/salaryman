@@ -154,7 +154,7 @@ export default function PhoneHistoryPage() {
         <StatBlock label="INBOUND" value={stats.inbound} color={primary} />
         <StatBlock label="AVG DURATION" value={formatDuration(stats.avgDuration)} color={warning} />
         <StatBlock label="TRANSCRIBED" value={stats.withTranscript} color={accent} />
-        <StatBlock label="RECORDED" value={stats.withRecording} color={slate} sub="HIPAA · 10 YR" />
+        <StatBlock label="RECORDED" value={stats.withRecording} color={slate} sub="UP TO 3 YR" />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -284,7 +284,7 @@ export default function PhoneHistoryPage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Mic size={11} /> CALL RECORDING
-                          <span style={{ color: slate(0.55), letterSpacing: '0.15em' }}>· RETAINED 10 YEARS · HIPAA</span>
+                          <span style={{ color: slate(0.55), letterSpacing: '0.15em' }}>· RETAINED UP TO 3 YEARS</span>
                         </div>
                         <a
                           href={apiUrl(`twilio/recording/${h.id}?download=1`)}

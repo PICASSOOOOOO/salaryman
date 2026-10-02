@@ -169,7 +169,7 @@ export default function PhoneRecordingsPage() {
           <Shield size={18} style={{ color: slate(0.9) }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '0.6rem', color: slate(0.85), letterSpacing: '0.1em' }}>HIPAA-ALIGNED RECORDING ARCHIVE</div>
+          <div style={{ fontSize: '0.6rem', color: slate(0.85), letterSpacing: '0.1em' }}>CALL RECORDING ARCHIVE · UP TO 3 YEARS</div>
           <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 3, letterSpacing: '0.06em' }}>
             Every inbound call, outbound call, conference, and voicemail is recorded and retained for up to three years. We email you before call recordings expire so you can download them.
             Audio, transcripts, and AI summaries are encrypted and only accessible to you.
@@ -306,7 +306,7 @@ export default function PhoneRecordingsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Mic size={11} /> {it.kind === 'vm' ? 'VOICEMAIL RECORDING' : 'CALL RECORDING'}
-                          <span style={{ color: slate(0.55) }}>· RETAINED 10 YEARS · HIPAA</span>
+                          <span style={{ color: slate(0.55) }}>· RETAINED UP TO 3 YEARS</span>
                         </div>
                         <a
                           href={downloadUrlFor(it)}
