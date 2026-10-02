@@ -6,13 +6,28 @@ describe("Pablo grounded navigation safety", () => {
   it.each([
     "/api/users",
     "/API/users",
-    "/phone",
-    "/phone/dialer",
-    "/%70hone",
     "//evil.example/path",
-    "/safe/../phone",
+    "/safe/../api/users",
   ])("rejects unsafe path %s", (path) => {
     expect(sanitizeNavPath(path)).toBeNull();
+  });
+
+  it.each([
+    "/phone",
+    "/phone/dialer",
+    "/phone/contacts",
+    "/phone/voicemail",
+    "/phone?tab=dial",
+  ])("allows an existing phone destination %s", (path) => {
+    const safe = sanitizeNavPath(path);
+    expect(safe).toBe(path);
+    expect(isPabloNavPath(path)).toBe(true);
+  });
+
+  it("allows phone navigation without allowing invented phone routes or encoded aliases", () => {
+    expect(isPabloNavPath("/phone/not-a-real-page")).toBe(false);
+    expect(isPabloNavPath("/%70hone")).toBe(false);
+    expect(isPabloNavPath("/safe/../phone")).toBe(false);
   });
 
   it("preserves safe real routes and query strings", () => {

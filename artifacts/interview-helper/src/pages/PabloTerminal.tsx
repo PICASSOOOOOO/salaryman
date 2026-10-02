@@ -1817,13 +1817,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       // speaks regardless of mode — this makes normal chat replies match.
       await speak(say);
       if (action?.kind === "navigate") {
-        // Architect-flagged: server already strips /phone* navigations,
-        // but defense in depth — gate the immediate navigate too. Use
-        // the same sanitizeReturnPath that handles canonical URL parsing
-        // (drops fragments, dot-segments, encoded variants that would
-        // resolve to /phone). If the path is denied (or any other
-        // disallowed destination like /api/*), drop the nav silently
-        // and let `say` carry the user message.
+        // The server authorizes exact routes before returning a navigation
+        // action. Keep client-side same-origin and /api checks as defense in
+        // depth; phone pages then apply their normal sign-in and entitlement gates.
         const safeNav = sanitizeReturnPath(action.path);
         if (safeNav) setTimeout(() => navigate(safeNav), 300);
         else { setStatus("idle"); if (mode === "voice") autoListenRef.current = true; }

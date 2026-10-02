@@ -8,6 +8,17 @@ export const PABLO_NAV_PATHS = new Set([
   "/business/vendors", "/business/payroll", "/business/accounting",
   "/business/profit-loss", "/business/balance-sheet", "/business/hiring",
   "/business/documents", "/business/time-tracking", "/business/autopilot",
+  // CALLL HOME pages. These allow navigation only; phone APIs keep their
+  // existing authentication, entitlement, and ownership checks.
+  "/phone", "/phone/dialer", "/phone/contacts", "/phone/active", "/phone/cmd",
+  "/phone/history", "/phone/recordings", "/phone/recording", "/phone/voicemail",
+  "/phone/conference", "/phone/sessions", "/phone/coach", "/phone/secretary",
+  "/phone/numbers", "/phone/call-center", "/phone/sms",
+  "/phone?tab=cmd", "/phone?tab=dial", "/phone?tab=auto", "/phone?tab=cc",
+  "/phone?tab=contacts", "/phone?tab=sms", "/phone?tab=numbers",
+  "/phone?tab=log", "/phone?tab=rec", "/phone?tab=vm", "/phone?tab=conf",
+  "/phone?tab=ai", "/phone?tab=live", "/phone?tab=chat",
+  "/phone?tab=associates", "/phone?tab=orgs", "/phone?tab=responders",
   "/marketing", "/marketing/campaigns", "/marketing/seo", "/marketing/leads",
   "/marketing/social", "/intel/dashboard", "/intel/reports", "/intel/goals",
   "/creative/darkroom", "/creative/design", "/creative/brand",

@@ -12,9 +12,8 @@ import { MODULES, PROFILE_MODULES, SETTINGS_MODULES, type Module } from "./modul
 //   2. Server — the palette ships a compact form of it to /chat/pablo/command
 //      so Pablo only ever picks REAL, existing paths (grounding).
 //
-// The phone / call system is OFF-LIMITS (user request), so /phone* pages are
-// intentionally excluded — they never appear as a search result or a Pablo
-// suggestion.
+// Phone destinations are included for navigation. Call actions still happen
+// inside the phone interface and retain their existing auth/entitlement gates.
 
 export type PageEntry = {
   /** In-app path to navigate to. */
@@ -31,6 +30,21 @@ export type PageEntry = {
 // likely to type for a given page. Kept small and high-signal.
 const ALIASES: Record<string, string[]> = {
   "/": ["pablo", "home", "assistant", "ai", "start", "front door"],
+  "/phone": ["phone", "calll home", "phone system", "calls"],
+  "/phone/dialer": ["dialer", "phone dialer", "crm dialer", "outbound calls", "call a lead"],
+  "/phone/contacts": ["phone contacts", "call contacts"],
+  "/phone/active": ["active calls", "live calls"],
+  "/phone/history": ["call history", "call log", "past calls"],
+  "/phone/recordings": ["call recordings", "recordings"],
+  "/phone/recording": ["call recordings", "recordings"],
+  "/phone/voicemail": ["voicemail", "voice messages"],
+  "/phone/conference": ["conference calls"],
+  "/phone/sessions": ["dialing sessions", "power dialer"],
+  "/phone/coach": ["call coach", "phone coach"],
+  "/phone/secretary": ["phone secretary", "call secretary"],
+  "/phone/numbers": ["phone numbers", "business phone lines"],
+  "/phone/call-center": ["call center", "outbound call center"],
+  "/phone/sms": ["phone messages", "sms"],
   "/my-office": ["my office", "office dashboard", "workspace", "my workspace"],
   "/office": ["the office", "office", "surveillance", "cctv", "watch office", "floor"],
   "/comms": ["comms", "messages", "chat", "dm", "colleagues", "inbox"],
@@ -106,6 +120,22 @@ const ALIASES: Record<string, string[]> = {
 // screens users search for.
 const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
   { path: "/", label: "Pablo (AI Assistant)", group: "Pablo" },
+  { path: "/phone", label: "CALLL HOME", group: "Phone" },
+  { path: "/phone/dialer", label: "Phone Dialer", group: "Phone" },
+  { path: "/phone/cmd", label: "Phone Command Center", group: "Phone" },
+  { path: "/phone/contacts", label: "Phone Contacts", group: "Phone" },
+  { path: "/phone/active", label: "Active Calls", group: "Phone" },
+  { path: "/phone/history", label: "Call History", group: "Phone" },
+  { path: "/phone/recordings", label: "Call Recordings", group: "Phone" },
+  { path: "/phone/recording", label: "Call Recording", group: "Phone" },
+  { path: "/phone/voicemail", label: "Voicemail", group: "Phone" },
+  { path: "/phone/conference", label: "Conference", group: "Phone" },
+  { path: "/phone/sessions", label: "Dialing Sessions", group: "Phone" },
+  { path: "/phone/coach", label: "Call Coach", group: "Phone" },
+  { path: "/phone/secretary", label: "Phone Secretary", group: "Phone" },
+  { path: "/phone/numbers", label: "Phone Numbers", group: "Phone" },
+  { path: "/phone/call-center", label: "Outbound Call Center", group: "Phone" },
+  { path: "/phone/sms", label: "Phone SMS", group: "Phone" },
   { path: "/my-office", label: "My Office", group: "Office" },
   { path: "/marketplace", label: "Marketplace", group: "World" },
   { path: "/office", label: "The Office (Live View)", group: "Office" },
@@ -123,7 +153,6 @@ const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
 
 function isExcluded(path: string): boolean {
   const lower = path.toLowerCase();
-  if (lower === "/phone" || lower.startsWith("/phone/") || lower.startsWith("/phone?")) return true;
   if (lower === "/api" || lower.startsWith("/api/")) return true;
   return false;
 }

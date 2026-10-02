@@ -1865,7 +1865,8 @@ router.get("/chat/pablo/persona", async (req, res) => {
 
 // Server-side in-app path sanitizer for navigation actions. Mirrors the web
 // client's safe-path helper: same-origin in-app paths only, no /api machinery,
-// no off-limits /phone system, no protocol-relative open-redirect bait.
+// no protocol-relative open-redirect bait. Phone destinations are additionally
+// restricted to the server-owned PABLO_NAV_PATHS allowlist.
 export function sanitizeNavPath(path: unknown): string | null {
   if (typeof path !== "string") return null;
   if (path.length === 0 || path.length > 2048) return null;
@@ -1876,7 +1877,6 @@ export function sanitizeNavPath(path: unknown): string | null {
   try { parsed = new URL(path, "http://x"); } catch { return null; }
   const lower = decodeURIComponent(parsed.pathname).toLowerCase();
   if (lower === "/api" || lower.startsWith("/api/")) return null;
-  if (lower === "/phone" || lower.startsWith("/phone/")) return null;
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 
@@ -2049,11 +2049,8 @@ Rules:
 - Use "logout" only if the user explicitly asks to log out / sign out.
 - Use "search" for "find me X" / "search for X".
 - Use "external" with a fully-qualified https URL only if the user asks to open something off-platform.
+- For phone features, navigate to the matching existing CALLL HOME page when asked. Navigation does not place a call; the user controls call actions inside the phone interface.
 - Never wrap the JSON in markdown fences. Never include any prose outside the JSON.${navCatalogBlock}
-
-CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
-- The phone / call / dialer / voicemail / call-recordings system is paused for now. Do NOT navigate to /phone or any /phone/... or /phone?tab=... destination. Do NOT initiate, place, transfer, or schedule a call.
-- If the user asks about calls, voicemail, the dialer, or pulling a recording, return action=null and say one sentence like "Phone's offline on my side for now — open the dialer yourself when you need it." Do not promise to "open it for you" with a phone path.
 
 ${await buildLiveContext(transcript)}`;
 
@@ -2126,29 +2123,9 @@ ${await buildLiveContext(transcript)}`;
       const a = action as { kind?: string; path?: unknown; items?: unknown };
       const validKinds = new Set(["navigate", "logout", "search", "external", "suggest"]);
       if (!a.kind || !validKinds.has(a.kind)) action = null;
-      // Call system off-limits (user request). Strip any /phone* navigate
-      // and override `say` so the spoken line matches the dropped action,
-      // otherwise Pablo says "Opening the dialer now." with action=null
-      // and the user is left staring at no movement.
       if (a.kind === "navigate" && typeof a.path === "string") {
-        // Canonical URL parsing (architect-flagged): bare string ops
-        // miss /phone#x (fragment), /foo/../phone (dot-segment normalize),
-        // and percent-encoded variants like /%70hone. Parse against a
-        // throwaway origin and inspect the normalized pathname.
-        let normalized: string | null = null;
-        try {
-          const u = new URL(a.path, "http://x");
-          normalized = decodeURIComponent(u.pathname).toLowerCase();
-        } catch { normalized = null; }
-        if (normalized && (normalized === "/phone" || normalized.startsWith("/phone/"))) {
-          action = null;
-          const phoneSay = "Phone's offline on my side for now — open the dialer yourself when you need it.";
-          await persistExchange(phoneSay);
-          res.json({ say: phoneSay, action: null, persona: activePersona });
-          return;
-        }
         // Final safety net: only allow safe in-app paths (no off-origin,
-        // /api, /phone, protocol-relative). Drop the action otherwise.
+        // /api, unlisted phone paths, or protocol-relative destinations).
         const safe = sanitizeNavPath(a.path);
         if (!safe || !isPabloNavPath(safe) || (pageCatalog.length > 0 && !catalogPaths.has(safe))) action = null;
         else action = { kind: "navigate", path: safe };

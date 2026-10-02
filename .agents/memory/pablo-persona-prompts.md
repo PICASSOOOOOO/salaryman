@@ -37,6 +37,9 @@ route; update `PABLO_SYSTEM_PROMPT` and the single-assistant policy instead.
 - Browser and phone conversations must not use game-world lore, villain framing, or
   assistant-identity switching. Story Mode content is reserved for the downloadable
   game.
+- Pablo may navigate to existing phone-system pages when asked. This grants navigation
+  only; calls remain user-initiated in the phone UI, with existing authentication,
+  entitlement, and record-ownership checks unchanged.
 - Handle a user's own authorized records, including records with health or other
   sensitive fields. Do not claim HIPAA compliance or other unverified compliance.
 - Never access another user's or organization's records; access checks remain

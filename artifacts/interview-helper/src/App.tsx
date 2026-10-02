@@ -28,6 +28,7 @@ import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 import Console from "@/pages/Console";
+import { PHONE_ROUTE_TO_TAB } from "@/pages/phone/CalllHomeContext";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
@@ -746,17 +747,10 @@ function AppShell() {
                 render their Stripe-backed access options in-shell. */}
             <Route path="/phone">{() => <PhoneGate />}</Route>
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
-              const TAB_MAP: Record<string, string> = {
-                contacts: 'contacts', dialer: 'dial', active: 'cmd', cmd: 'cmd',
-                history: 'log', recordings: 'rec', recording: 'rec',
-                voicemail: 'vm', conference: 'conf', sms: 'sms',
-                sessions: 'cmd', coach: 'ai', secretary: 'ai',
-                numbers: 'numbers', 'call-center': 'cc',
-              };
               // Wouter's wildcard parameter shape differs across versions.
               // The browser pathname is authoritative for these legacy links.
               const legacySegment = window.location.pathname.slice('/phone/'.length).split('/')[0] ?? params.rest ?? '';
-              const tab = TAB_MAP[legacySegment] ?? '';
+              const tab = PHONE_ROUTE_TO_TAB[`/phone/${legacySegment}`] ?? '';
               return <PhoneGate redirectTo={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
