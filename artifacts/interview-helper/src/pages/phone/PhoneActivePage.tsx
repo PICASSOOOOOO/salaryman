@@ -26,6 +26,8 @@ interface DialingSession {
   queue?: Array<{ phone: string; name?: string }>;
   concurrency?: number;
   delayBetweenCalls?: number;
+  paused?: boolean;
+  error?: string;
 }
 
 interface DialingAttempt {
@@ -118,7 +120,10 @@ export default function PhoneActivePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
-  useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
+  useEffect(() => {
+    saveSession(dialingSession);
+    if (dialingSession?.error) setError(dialingSession.error);
+  }, [dialingSession]);
 
   useEffect(() => {
     if (!dialingSession) {
@@ -134,10 +139,17 @@ export default function PhoneActivePage() {
         if (cancelled) return;
         setDialingAttempts(d.attempts ?? []);
         if (d.session) {
+          if (d.session.status === 'completed') {
+            setDialingSession(null);
+            return;
+          }
+          const sessionStopped = d.session.status !== 'running';
           setDialingSession(prev => prev ? {
             ...prev,
             dialed: d.session.dialedCount ?? prev.dialed,
             total: d.session.totalNumbers ?? prev.total,
+            paused: prev.paused || sessionStopped,
+            error: prev.error ?? (sessionStopped ? 'This dialing session is stopped. Review call history before restarting.' : undefined),
           } : null);
         }
       } catch {}
@@ -211,7 +223,7 @@ export default function PhoneActivePage() {
   }, [activeCalls, expandedCall]);
 
   const advanceSession = async () => {
-    if (!dialingSession || advancingNext) return;
+    if (!dialingSession || dialingSession.paused || advancingNext) return;
     setAdvancingNext(true);
     setError('');
     try {
@@ -219,10 +231,16 @@ export default function PhoneActivePage() {
         const r = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
         const body = await r.json();
         if (r.status === 403) { navigate('/pricing'); throw new Error(body.error || 'Access denied'); }
-        if (!r.ok) throw new Error(body.error || 'Failed to advance session');
+        if (!r.ok) {
+          if (body.paused) return { paused: true, error: body.error };
+          throw new Error(body.error || 'Failed to advance session');
+        }
         return body;
       }, created => created.callSid ? [{ callSid: created.callSid, conferenceName: created.conferenceName }] : [], { allowNoLegs: true });
-      if (d.completed) {
+      if (d.paused) {
+        setDialingSession(prev => prev ? { ...prev, paused: true, error: d.error } : null);
+        setError(d.error || 'Dialing stopped. Review call history before restarting.');
+      } else if (d.completed) {
         setDialingSession(null);
       } else if (d.ok && d.callSid) {
         const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName };
@@ -235,13 +253,20 @@ export default function PhoneActivePage() {
         setError(d.error || 'Failed to advance session');
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Network error');
+      const message = e instanceof Error ? e.message : 'Network error';
+      await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' }).catch(() => {});
+      setDialingSession(prev => prev ? {
+        ...prev,
+        paused: true,
+        error: `Dialing stopped after an uncertain request. ${message} Review call history before restarting.`,
+      } : null);
+      setError(`Dialing stopped after an uncertain request. ${message} Review call history before restarting.`);
     }
     setAdvancingNext(false);
   };
 
   useEffect(() => {
-    if (!dialingSession || advancingNext || dialingSession.dialed >= dialingSession.total) return;
+    if (!dialingSession || dialingSession.paused || advancingNext || dialingSession.dialed >= dialingSession.total) return;
     if (dialingSession.mode !== 'auto' && dialingSession.mode !== 'predictive') return;
     const terminal = new Set(['completed', 'failed', 'busy', 'no-answer', 'canceled']);
     const liveCount = activeCalls.filter(call => !terminal.has(call.status)).length;
@@ -258,6 +283,7 @@ export default function PhoneActivePage() {
     dialingSession?.total,
     dialingSession?.concurrency,
     dialingSession?.delayBetweenCalls,
+    dialingSession?.paused,
     advancingNext,
     activeCalls,
   ]);
@@ -386,7 +412,9 @@ export default function PhoneActivePage() {
                 <Radio size={20} style={{ color: slate(0.8) }} />
               </div>
               <div>
-                <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', marginBottom: 3 }}>ACTIVE DIALING SESSION</div>
+                <div style={{ fontSize: '0.42rem', color: dialingSession.paused ? warning(0.8) : slate(0.55), letterSpacing: '0.2em', marginBottom: 3 }}>
+                  {dialingSession.paused ? 'DIALING SESSION PAUSED' : 'ACTIVE DIALING SESSION'}
+                </div>
                 <div style={{ fontSize: '0.85rem', color: slate(0.9), letterSpacing: '0.05em' }}>
                   {dialingSession.mode.toUpperCase()} · {dialingSession.dialed} / {dialingSession.total} DIALED
                 </div>
@@ -416,7 +444,7 @@ export default function PhoneActivePage() {
               {dialingSession.mode === 'power' && (
                 <PhoneBtn
                   onClick={advanceSession}
-                  disabled={advancingNext || dialingSession.dialed >= dialingSession.total}
+                  disabled={dialingSession.paused || advancingNext || dialingSession.dialed >= dialingSession.total}
                   color={primary}
 
                 >

@@ -7,4 +7,4 @@ Pablo outbound campaigns and direct Pablo dialing can use only the current user'
 
 **Why:** the user set these as product privacy and reliability requirements for outbound calling.
 
-**How to apply:** Preserve contact ownership, consent timestamps, pre-dial checks, persistent opt-out, and real assigned-voice synthesis checks in every Pablo outbound path. Do not place real recipient calls in automated tests.
+**How to apply:** Preserve contact ownership, consent timestamps, pre-dial checks, persistent opt-out, and real assigned-voice synthesis checks in every Pablo outbound path. The shared auto/predictive dialer follows the same rules: queue saved-contact IDs, recheck the current number and permission before each call, and stop for call-history review after an uncertain creation. Do not place real recipient calls in automated tests.

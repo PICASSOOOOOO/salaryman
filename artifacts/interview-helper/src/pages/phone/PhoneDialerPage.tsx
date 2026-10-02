@@ -197,16 +197,24 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {}, countryCode: dialCountry }) });
+          body: JSON.stringify({ mode: dialingMode, contactIds: recentContacts.map(c => c.id), settings: {}, countryCode: dialCountry }) });
         if (await handleFetchError(r)) throw new Error('Dialing session request failed');
         return r.json();
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
       const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const newActiveCalls: ActiveCall[] = batchCalls
         .filter(c => c.ok && c.callSid)
         .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
       addActiveCallsBatch(newActiveCalls);
-      const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length, queue: d.queue ?? nums };
+      const session = {
+        id: d.sessionId,
+        mode: d.mode,
+        total: d.queue?.length ?? recentContacts.length,
+        dialed: batchCalls.filter((c: BatchResult) => c.ok).length,
+        queue: d.queue ?? nums,
+        paused: Boolean(d.paused),
+        error: d.error,
+      };
       try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
       navigate('/phone/active');
     } catch (err: unknown) {

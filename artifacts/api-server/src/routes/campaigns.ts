@@ -818,7 +818,8 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
       }
       if (smsOptIn !== undefined) {
         updates.smsOptIn = smsOptIn;
-        if (!smsOptIn && existing.smsOptIn) updates.smsOptedOutAt = now;
+        if (smsOptIn) updates.smsOptedOutAt = null;
+        else if (existing.smsOptIn) updates.smsOptedOutAt = now;
       }
       if (phoneCallOptIn !== undefined) {
         updates.phoneCallOptIn = phoneCallOptIn;
@@ -847,6 +848,7 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
           userId,
           emailOptIn: emailOptIn ?? true,
           smsOptIn: smsOptIn ?? true,
+          smsOptedOutAt: smsOptIn === false ? now : null,
           phoneCallOptIn: phoneCallOptIn ?? false,
           phoneCallConsentedAt: phoneCallOptIn ? now : null,
           phoneCallOptedOutAt: phoneCallOptIn === false ? now : null,

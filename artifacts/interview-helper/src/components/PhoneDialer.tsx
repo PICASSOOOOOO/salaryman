@@ -55,7 +55,7 @@ export function PhoneDialer({
   activeCallsRef.current = activeCalls;
 
   const [dialingMode, setDialingMode] = useState<'power' | 'auto' | 'predictive'>('power');
-  const [dialingSession, setDialingSession] = useState<{ id: number; mode: string; total: number; dialed: number } | null>(null);
+  const [dialingSession, setDialingSession] = useState<{ id: number; mode: string; total: number; dialed: number; paused?: boolean; error?: string } | null>(null);
   const [dialConcurrency, setDialConcurrency] = useState(3);
   const [dialDelay, setDialDelay] = useState(5);
 
@@ -380,14 +380,22 @@ export function PhoneDialer({
       const d = await bridgeOutbound(async () => {
         const r = await apiFetch(apiUrl('twilio/dialing/start'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: dialingMode === 'predictive' ? { concurrency: dialConcurrency } : { delayBetweenCalls: dialDelay } }) });
+          body: JSON.stringify({ mode: dialingMode, contactIds: selectedContacts.map(c => c.id), settings: dialingMode === 'predictive' ? { concurrency: dialConcurrency } : { delayBetweenCalls: dialDelay } }) });
         const body = await r.json();
         if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
         return body;
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
       {
         const dialCalls = d.calls as (BatchResult & { conferenceName?: string })[];
-        setDialingSession({ id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: dialCalls.filter((c) => c.ok).length });
+        setDialingSession({
+          id: d.sessionId,
+          mode: d.mode,
+          total: selectedContacts.length,
+          dialed: dialCalls.filter((c) => c.ok).length,
+          paused: Boolean(d.paused),
+          error: d.error,
+        });
+        if (d.paused) setError(d.error || 'Dialing stopped. Review call history before restarting.');
         const newCalls: ActiveCall[] = dialCalls.filter((c) => c.ok).map((c) => ({ callSid: c.callSid ?? '', phone: c.phone, name: c.name || '', status: 'initiated', startTime: Date.now(), elapsed: 0, conferenceName: c.conferenceName }));
         if (newCalls.length > 0) { setActiveCalls(prev => [...prev, ...newCalls]); startPolling(newCalls); }
         setTab('active');
@@ -956,10 +964,15 @@ export function PhoneDialer({
 
               {dialingSession ? (
                 <div style={{ border: `1px solid ${warning(0.3)}`, padding: '8px', background: warning(0.05) }}>
-                  <div style={{ fontSize: '0.5rem', color: warning(0.8), marginBottom: 4 }}>SESSION ACTIVE: {dialingSession.mode.toUpperCase()}</div>
+                  <div style={{ fontSize: '0.5rem', color: warning(0.8), marginBottom: 4 }}>
+                    {dialingSession.paused ? 'SESSION PAUSED' : 'SESSION ACTIVE'}: {dialingSession.mode.toUpperCase()}
+                  </div>
                   <div style={{ fontSize: '0.42rem', color: warning(0.6) }}>
                     Progress: {dialingSession.dialed}/{dialingSession.total} dialed
                   </div>
+                  {dialingSession.error && (
+                    <div style={{ fontSize: '0.42rem', color: warning(0.8), marginTop: 4 }}>{dialingSession.error}</div>
+                  )}
                   <button onClick={stopDialingSession} style={{ marginTop: 6, padding: '5px 12px', background: destructive(0.15), border: `1px solid ${destructive(0.4)}`, color: destructive(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>STOP SESSION</button>
                 </div>
               ) : (

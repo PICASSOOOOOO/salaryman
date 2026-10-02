@@ -392,6 +392,32 @@ async function hasRecordedPhoneCallConsent(userId: string, contactId: number): P
   );
 }
 
+async function persistSmsPreference(userId: string, contactId: number, smsOptIn: boolean): Promise<void> {
+  const where = and(
+    eq(contactChannelPrefsTable.userId, userId),
+    eq(contactChannelPrefsTable.contactId, contactId),
+  );
+  const [existing] = await db.select({ id: contactChannelPrefsTable.id })
+    .from(contactChannelPrefsTable)
+    .where(where)
+    .orderBy(desc(contactChannelPrefsTable.updatedAt))
+    .limit(1);
+  const now = new Date();
+  const smsOptedOutAt = smsOptIn ? null : now;
+  if (existing) {
+    await db.update(contactChannelPrefsTable)
+      .set({ smsOptIn, smsOptedOutAt, updatedAt: now })
+      .where(where);
+    return;
+  }
+  await db.insert(contactChannelPrefsTable).values({
+    userId,
+    contactId,
+    smsOptIn,
+    smsOptedOutAt,
+  });
+}
+
 const RECORDING_RETENTION_DAYS = 1095;
 
 function getRetentionDate(): Date {
@@ -1211,13 +1237,9 @@ router.post("/twilio/conference/:roomName/end", requireAuth, requireFeature("pho
 router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { mode, numbers, settings } = req.body;
+    const { mode, numbers, contactIds, settings } = req.body;
     if (!["power", "auto", "predictive"].includes(mode)) {
       res.status(400).json({ error: "mode must be power, auto, or predictive" });
-      return;
-    }
-    if (!Array.isArray(numbers) || numbers.length === 0) {
-      res.status(400).json({ error: "numbers array required" });
       return;
     }
     const orgContext = await getPhoneOrgContext(userId);
@@ -1225,15 +1247,72 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     const dialCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
       ? req.body.countryCode.toUpperCase()
       : DEFAULT_COUNTRY;
-    const seen = new Set<string>();
-    const queue = numbers.flatMap((entry: unknown) => {
-      if (!entry || typeof entry !== "object") return [];
-      const raw = entry as { phone?: unknown; name?: unknown };
-      const phone = toE164(String(raw.phone ?? ""), dialCountry);
-      if (!phone || seen.has(phone)) return [];
-      seen.add(phone);
-      return [{ phone, name: typeof raw.name === "string" ? raw.name.slice(0, 128) : undefined }];
-    });
+    const requiresContactConsent = mode === "auto" || mode === "predictive";
+    type DialingQueueEntry = { phone: string; name?: string; contactId?: number; consentGiven: boolean };
+    let queue: DialingQueueEntry[] = [];
+    if (contactIds !== undefined) {
+      if (!Array.isArray(contactIds) || contactIds.length === 0 ||
+        contactIds.some((id: unknown) => !Number.isInteger(id) || Number(id) <= 0) ||
+        new Set(contactIds).size !== contactIds.length) {
+        res.status(400).json({ error: "Choose unique saved contacts for the dialing queue." });
+        return;
+      }
+      const ids = contactIds as number[];
+      const contacts = await db.select().from(contactsTable).where(and(
+        eq(contactsTable.userId, userId),
+        inArray(contactsTable.id, ids),
+      ));
+      if (contacts.length !== ids.length) {
+        res.status(400).json({ error: "Dialing sessions can only use your saved contacts." });
+        return;
+      }
+      const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+      const prefs = await db.select().from(contactChannelPrefsTable).where(and(
+        eq(contactChannelPrefsTable.userId, userId),
+        inArray(contactChannelPrefsTable.contactId, ids),
+      )).orderBy(desc(contactChannelPrefsTable.updatedAt));
+      const consentById = new Map<number, boolean>();
+      for (const pref of prefs) {
+        if (!consentById.has(pref.contactId)) {
+          consentById.set(pref.contactId, Boolean(
+            pref.phoneCallOptIn && pref.phoneCallConsentedAt && !pref.phoneCallOptedOutAt
+          ));
+        }
+      }
+      queue = ids.map((contactId) => {
+        const contact = contactsById.get(contactId)!;
+        return {
+          phone: toE164(contact.phone, dialCountry) ?? "",
+          name: contact.name?.slice(0, 128),
+          contactId,
+          consentGiven: consentById.get(contactId) === true,
+        };
+      });
+      if (queue.some((entry) => !entry.phone)) {
+        res.status(400).json({ error: "Every selected contact needs a valid saved phone number." });
+        return;
+      }
+      if (requiresContactConsent && queue.some((entry) => !entry.consentGiven)) {
+        res.status(409).json({ error: "Auto and predictive dialing require recorded phone-call permission for every saved contact." });
+        return;
+      }
+    } else if (requiresContactConsent) {
+      res.status(400).json({ error: "Auto and predictive dialing require selected saved contact IDs; pasted phone numbers are not accepted." });
+      return;
+    } else if (Array.isArray(numbers)) {
+      const seen = new Set<string>();
+      queue = numbers.flatMap((entry: unknown) => {
+        if (!entry || typeof entry !== "object") return [];
+        const raw = entry as { phone?: unknown; name?: unknown };
+        const phone = toE164(String(raw.phone ?? ""), dialCountry);
+        if (!phone || seen.has(phone)) return [];
+        seen.add(phone);
+        return [{ phone, name: typeof raw.name === "string" ? raw.name.slice(0, 128) : undefined, consentGiven: false }];
+      });
+    } else {
+      res.status(400).json({ error: "Saved contact IDs or a numbers array is required." });
+      return;
+    }
     if (queue.length === 0) {
       res.status(400).json({ error: "No valid phone numbers supplied" });
       return;
@@ -1247,8 +1326,11 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     const effectiveSettings = {
       concurrency: Math.min(policy.maxConcurrency, Math.max(1, requestedConcurrency)),
       delayBetweenCalls: Math.max(policy.minDelaySeconds, Number.isFinite(requestedDelay) ? requestedDelay : 5),
+      countryCode: dialCountry,
       recording: true,
     };
+    const client = getTwilioClient();
+    const fromNumber = await getUserOutboundNumber(userId);
     const [session] = await db
       .insert(dialingSessionsTable)
       .values({
@@ -1261,28 +1343,42 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
       })
       .returning();
 
-    const client = getTwilioClient();
-    const fromNumber = await getUserOutboundNumber(userId);
     const callerName = getAuthUserId(req);
     const settingsConcurrency = effectiveSettings.concurrency;
     let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, queue.length) : 1;
     const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string; conferenceName?: string }> = [];
     const _dialingHost = getAppHost();
     const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
+    let pauseReason: string | undefined;
 
     const { consumeUsage, throttleResponse: throttleResp } = await import("../lib/usage-meter");
     for (let i = 0; i < dialCount; i++) {
       const entry = queue[i];
       const e164 = toE164(entry.phone, dialCountry);
       if (!e164) {
+        pauseReason = "A queued number is invalid. The dialing session was stopped.";
         results.push({ ok: false, phone: entry.phone, error: "Invalid number" });
-        continue;
+        break;
+      }
+      const dialCrmMatch = entry.contactId
+        ? { contactId: entry.contactId }
+        : await matchContactByPhone(userId, e164, dialCountry);
+      const consentGiven = dialCrmMatch
+        ? await hasRecordedPhoneCallConsent(userId, dialCrmMatch.contactId)
+        : false;
+      entry.consentGiven = consentGiven;
+      if (requiresContactConsent && (!entry.contactId || !consentGiven)) {
+        pauseReason = "Recorded phone-call permission is no longer active. The dialing session was stopped.";
+        results.push({ ok: false, phone: e164, name: entry.name, error: pauseReason });
+        break;
       }
       const dialGate = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
       if (!dialGate.allowed) {
-        results.push({ ok: false, phone: entry.phone, error: throttleResp("voice_minutes", dialGate.used, dialGate.limit).message });
+        pauseReason = throttleResp("voice_minutes", dialGate.used, dialGate.limit).message;
+        results.push({ ok: false, phone: entry.phone, error: pauseReason });
         break;
       }
+      let createdCallSid: string | undefined;
       try {
         const confName = `conf-${userId}-${Date.now()}-${i}`;
         const recordingCallback = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call` : "";
@@ -1300,8 +1396,8 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
             statusCallbackMethod: "POST",
           }),
         });
+        createdCallSid = call.sid;
         const dialOrgId = await getUserOrgId(userId);
-        const dialCrmMatch = await matchContactByPhone(userId, e164);
         await db.insert(callHistoryTable).values({
           userId,
           orgId: dialOrgId ?? undefined,
@@ -1315,7 +1411,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
           dialingQueueIndex: i,
           conferenceName: confName,
           contactId: dialCrmMatch?.contactId,
-          consentGiven: true,
+          consentGiven,
           recordingRetainUntil: getRetentionDate(),
         });
         await recordTelephonyActivity({
@@ -1331,13 +1427,33 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
         }).catch(() => {});
         results.push({ ok: true, phone: e164, name: entry.name, callSid: call.sid, conferenceName: confName });
       } catch (e: unknown) {
-        results.push({ ok: false, phone: entry.phone, error: e instanceof Error ? e.message : "Failed" });
+        if (createdCallSid) {
+          await client.calls(createdCallSid).update({ status: "completed" }).catch(() => {});
+        }
+        pauseReason = "Call creation could not be confirmed. The session stopped; review call history before restarting.";
+        results.push({ ok: false, phone: e164, name: entry.name, error: pauseReason });
+        break;
       }
     }
 
-    await db.update(dialingSessionsTable).set({ dialedCount: results.filter((r) => r.ok).length }).where(eq(dialingSessionsTable.id, session.id));
+    const paused = Boolean(pauseReason);
+    await db.update(dialingSessionsTable).set({
+      dialedCount: results.filter((r) => r.ok).length,
+      queueJson: JSON.stringify(queue),
+      ...(paused ? { status: "stopped", endedAt: new Date() } : {}),
+    }).where(eq(dialingSessionsTable.id, session.id));
 
-    res.json({ ok: true, sessionId: session.id, mode, calls: results, queue, settings: effectiveSettings, policy });
+    res.json({
+      ok: true,
+      sessionId: session.id,
+      mode,
+      calls: results,
+      queue,
+      settings: effectiveSettings,
+      policy,
+      paused,
+      ...(pauseReason ? { error: pauseReason } : {}),
+    });
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] dialing start error:", _msg);
@@ -1371,15 +1487,20 @@ router.put("/twilio/dialing/policy", requireAuth, requireFeature("phone_system")
 });
 
 router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  let claimedSessionId: number | undefined;
+  let userId: string | undefined;
+  let createdCallSid: string | undefined;
   try {
-    const userId = getAuthUserId(req);
+    const currentUserId = getAuthUserId(req);
+    userId = currentUserId;
     const sessionId = Number(req.params.sessionId);
+    claimedSessionId = sessionId;
     const claim = await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(17, ${sessionId})`);
       const [locked] = await tx
         .select()
         .from(dialingSessionsTable)
-        .where(and(eq(dialingSessionsTable.id, sessionId), eq(dialingSessionsTable.userId, userId)))
+        .where(and(eq(dialingSessionsTable.id, sessionId), eq(dialingSessionsTable.userId, currentUserId)))
         .limit(1);
       if (!locked || locked.status !== "running") return { session: locked, index: -1 };
       const index = locked.dialedCount ?? 0;
@@ -1391,11 +1512,25 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       return { session: locked, index };
     });
     const session = claim.session;
+    const stopClaimedSession = async () => {
+      await db.update(dialingSessionsTable)
+        .set({ status: "stopped", endedAt: new Date() })
+        .where(and(
+          eq(dialingSessionsTable.id, sessionId),
+          eq(dialingSessionsTable.userId, userId!),
+          eq(dialingSessionsTable.status, "running"),
+        ));
+    };
     if (!session || session.status !== "running") {
-      res.status(400).json({ error: "Session not found or not running" });
+      res.status(409).json({ paused: true, error: "The dialing session is no longer running." });
       return;
     }
-    const queue: Array<{ phone: string; name?: string }> = JSON.parse(session.queueJson ?? "[]");
+    const queue: Array<{ phone: string; name?: string; contactId?: number; consentGiven?: boolean }> = JSON.parse(session.queueJson ?? "[]");
+    const sessionSettings = JSON.parse(session.settingsJson ?? "{}");
+    const dialCountry = typeof sessionSettings.countryCode === "string" && /^[A-Za-z]{2}$/.test(sessionSettings.countryCode)
+      ? sessionSettings.countryCode.toUpperCase()
+      : DEFAULT_COUNTRY;
+    const requiresContactConsent = session.mode === "auto" || session.mode === "predictive";
     const dialed = claim.index;
     if (dialed >= queue.length) {
       await db.update(dialingSessionsTable).set({ status: "completed", endedAt: new Date() }).where(eq(dialingSessionsTable.id, sessionId));
@@ -1403,60 +1538,121 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       return;
     }
     const entry = queue[dialed];
-    const e164 = toE164(entry.phone, DEFAULT_COUNTRY);
+    let e164 = toE164(entry.phone, dialCountry);
     if (!e164) {
-      res.json({ ok: false, skipped: true, phone: entry.phone, error: "Invalid number" });
+      await stopClaimedSession();
+      res.status(409).json({ paused: true, error: "The queued number is invalid. The dialing session was stopped." });
+      return;
+    }
+    let contactId = entry.contactId;
+    if (contactId) {
+      const [contact] = await db.select({ id: contactsTable.id, phone: contactsTable.phone })
+        .from(contactsTable)
+        .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, userId)))
+        .limit(1);
+      const currentPhone = contact ? toE164(contact.phone, dialCountry) : null;
+      if (!contact || !currentPhone || currentPhone !== e164) {
+        await stopClaimedSession();
+        res.status(409).json({ paused: true, error: "A saved contact was removed or its phone number changed. Review the queue and restart it." });
+        return;
+      }
+      e164 = currentPhone;
+    }
+    if (requiresContactConsent && !contactId) {
+      await stopClaimedSession();
+      res.status(409).json({ paused: true, error: "This automatic queue has no saved contact permission record. The session was stopped." });
+      return;
+    }
+    if (requiresContactConsent && !await hasRecordedPhoneCallConsent(userId, contactId!)) {
+      await stopClaimedSession();
+      res.status(409).json({ paused: true, error: "Recorded phone-call permission is no longer active. The session was stopped." });
+      return;
+    }
+    const nextCrmMatch = contactId
+      ? { contactId }
+      : await matchContactByPhone(userId, e164, dialCountry);
+    const consentGiven = nextCrmMatch
+      ? await hasRecordedPhoneCallConsent(userId, nextCrmMatch.contactId)
+      : false;
+    if (requiresContactConsent && !consentGiven) {
+      await stopClaimedSession();
+      res.status(409).json({ paused: true, error: "Recorded phone-call permission is no longer active. The session was stopped." });
       return;
     }
     const client = getTwilioClient();
     const fromNumber = await getUserOutboundNumber(userId);
     const _nextHost = getAppHost();
     const _nextStatusUrl = _nextHost ? `https://${_nextHost}/api/twilio/webhook/status` : undefined;
-    {
-      const { consumeUsage, throttleResponse: tr } = await import("../lib/usage-meter");
-      const g = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
-      if (!g.allowed) { res.status(429).json(tr("voice_minutes", g.used, g.limit)); return; }
+    const { consumeUsage, throttleResponse: tr } = await import("../lib/usage-meter");
+    const g = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
+    if (!g.allowed) {
+      await stopClaimedSession();
+      res.status(429).json({ ...tr("voice_minutes", g.used, g.limit), paused: true });
+      return;
     }
     const confName = `conf-${userId}-${Date.now()}`;
     const recordingCallback = _nextHost ? `https://${_nextHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call` : "";
-    const call = await client.calls.create({
-      to: e164,
-      from: fromNumber,
-      twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${recordingCallback ? ` recordingStatusCallback="${escapeTwiml(recordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${confName}</Conference></Dial></Response>`,
-      ...(_nextStatusUrl && {
-        statusCallback: _nextStatusUrl,
-        statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-        statusCallbackMethod: "POST",
-      }),
-    });
-    const nextOrgId = await getUserOrgId(userId);
-    const nextCrmMatch = await matchContactByPhone(userId, e164);
-    await db.insert(callHistoryTable).values({
-      userId, orgId: nextOrgId ?? undefined, recipientNumber: e164, twilioCallSid: call.sid, callerName: entry.name ?? null,
-      status: call.status ?? "initiated", direction: "outbound", callType: session.mode + "_dialing",
-      dialingSessionId: sessionId, dialingQueueIndex: dialed,
-      conferenceName: confName,
-      contactId: nextCrmMatch?.contactId, consentGiven: true, recordingRetainUntil: getRetentionDate(),
-    });
-    await recordTelephonyActivity({
-      userId,
-      orgId: nextOrgId,
-      channel: "call",
-      direction: "outbound",
-      phone: e164,
-      contactName: entry.name,
-      contactId: nextCrmMatch?.contactId,
-      status: call.status ?? "initiated",
-      twilioSid: call.sid,
-    }).catch(() => {});
-    const sessionSettings = JSON.parse(session.settingsJson ?? "{}");
-    const rawDelay = typeof sessionSettings.delayBetweenCalls === "number" ? sessionSettings.delayBetweenCalls : 5;
-    const delayBetweenCalls = Math.min(Math.max(rawDelay, 0), 30);
-    res.json({ ok: true, callSid: call.sid, phone: e164, name: entry.name, remaining: queue.length - dialed - 1, conferenceName: confName, delayBetweenCalls });
+    try {
+      const call = await client.calls.create({
+        to: e164,
+        from: fromNumber,
+        twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${recordingCallback ? ` recordingStatusCallback="${escapeTwiml(recordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${confName}</Conference></Dial></Response>`,
+        ...(_nextStatusUrl && {
+          statusCallback: _nextStatusUrl,
+          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+          statusCallbackMethod: "POST",
+        }),
+      });
+      createdCallSid = call.sid;
+      const nextOrgId = await getUserOrgId(userId);
+      await db.insert(callHistoryTable).values({
+        userId, orgId: nextOrgId ?? undefined, recipientNumber: e164, twilioCallSid: call.sid, callerName: entry.name ?? null,
+        status: call.status ?? "initiated", direction: "outbound", callType: session.mode + "_dialing",
+        dialingSessionId: sessionId, dialingQueueIndex: dialed,
+        conferenceName: confName,
+        contactId: nextCrmMatch?.contactId, consentGiven, recordingRetainUntil: getRetentionDate(),
+      });
+      await recordTelephonyActivity({
+        userId,
+        orgId: nextOrgId,
+        channel: "call",
+        direction: "outbound",
+        phone: e164,
+        contactName: entry.name,
+        contactId: nextCrmMatch?.contactId,
+        status: call.status ?? "initiated",
+        twilioSid: call.sid,
+      }).catch(() => {});
+      const rawDelay = typeof sessionSettings.delayBetweenCalls === "number" ? sessionSettings.delayBetweenCalls : 5;
+      const delayBetweenCalls = Math.min(Math.max(rawDelay, 0), 30);
+      res.json({ ok: true, callSid: call.sid, phone: e164, name: entry.name, remaining: queue.length - dialed - 1, conferenceName: confName, delayBetweenCalls });
+    } catch {
+      if (createdCallSid) await client.calls(createdCallSid).update({ status: "completed" }).catch(() => {});
+      await stopClaimedSession();
+      res.status(503).json({
+        paused: true,
+        error: "Call creation could not be confirmed. The session stopped; review call history before restarting.",
+      });
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] dialing next error:", msg);
-    res.status(500).json({ error: msg });
+    if (claimedSessionId && userId) {
+      await db.update(dialingSessionsTable)
+        .set({ status: "stopped", endedAt: new Date() })
+        .where(and(
+          eq(dialingSessionsTable.id, claimedSessionId),
+          eq(dialingSessionsTable.userId, userId),
+          eq(dialingSessionsTable.status, "running"),
+        ))
+        .catch(() => {});
+      res.status(503).json({
+        paused: true,
+        error: "The dialing request failed after claiming a queue item. The session stopped; review call history before restarting.",
+      });
+    } else {
+      res.status(500).json({ error: msg });
+    }
   }
 });
 
@@ -4766,21 +4962,28 @@ router.post("/twilio/webhook/sms", async (req, res) => {
       res.status(403).send("Forbidden");
       return;
     }
-    const { From, To, Body, MessageSid, NumMedia } = req.body;
+    const { From, To, Body, MessageSid, NumMedia, OptOutType } = req.body;
 
     if (!From || !Body) {
       res.type("text/xml").send("<Response></Response>");
       return;
     }
+    const stopKeyword = /^(STOP|STOPALL|UNSUBSCRIBE|CANCEL|END|QUIT)$/i.test(String(Body).trim());
+    const startKeyword = /^(START|UNSTOP)$/i.test(String(Body).trim());
+    const isSmsOptOut = stopKeyword || String(OptOutType ?? "").toUpperCase() === "STOP";
+    const isSmsOptIn = startKeyword || String(OptOutType ?? "").toUpperCase() === "START";
+    const isSmsConsentCommand = isSmsOptOut || isSmsOptIn;
+    let alreadyProcessed = false;
     if (MessageSid) {
-      const [alreadyProcessed] = await db.select({ id: smsMessagesTable.id })
+      const [processedRow] = await db.select({ id: smsMessagesTable.id })
         .from(smsMessagesTable)
         .where(eq(smsMessagesTable.twilioMessageSid, MessageSid))
         .limit(1);
-      if (alreadyProcessed) {
+      if (processedRow && !isSmsConsentCommand) {
         res.type("text/xml").send("<Response></Response>");
         return;
       }
+      alreadyProcessed = Boolean(processedRow);
     }
 
     const e164From = toE164(From) ?? From;
@@ -4831,6 +5034,14 @@ router.post("/twilio/webhook/sms", async (req, res) => {
       } catch (e: unknown) {
         console.error("[CalllHome] webhook/sms: contact lookup/create error:", e instanceof Error ? e.message : "Unknown");
       }
+    }
+
+    if (isSmsConsentCommand && userId && contactId) {
+      await persistSmsPreference(userId, contactId, isSmsOptIn);
+    }
+    if (alreadyProcessed) {
+      res.type("text/xml").send("<Response></Response>");
+      return;
     }
 
     // Persist the inbound text to the SMS thread tables (the phone/comms hub
@@ -4912,6 +5123,10 @@ router.post("/twilio/webhook/sms", async (req, res) => {
     }
 
     console.log(`[CalllHome] webhook/sms: inbound SMS from ${fromName ?? From} (${From}) to ${To}: ${Body.slice(0, 100)}`);
+    if (isSmsConsentCommand) {
+      res.type("text/xml").send("<Response></Response>");
+      return;
+    }
     if (!userId) {
       res.type("text/xml").send("<Response></Response>");
       return;

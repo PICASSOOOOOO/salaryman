@@ -24,6 +24,8 @@ interface DialingSession {
   queue: Array<{ phone: string; name?: string }>;
   concurrency?: number;
   delayBetweenCalls?: number;
+  paused?: boolean;
+  error?: string;
 }
 
 export default function PhoneSessionsPage() {
@@ -103,7 +105,7 @@ export default function PhoneSessionsPage() {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             mode: dialingMode,
-            numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })),
+            contactIds: selectedContacts.map(c => c.id),
             settings: { concurrency, delayBetweenCalls },
             countryCode: dialCountry,
           }) });
@@ -111,7 +113,7 @@ export default function PhoneSessionsPage() {
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
         return body;
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
       {
         const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
         const newActiveCalls: ActiveCall[] = batchCalls
@@ -126,6 +128,8 @@ export default function PhoneSessionsPage() {
           queue: d.queue ?? selectedContacts.map(c => ({ phone: c.phone, name: c.name })),
           concurrency: d.settings?.concurrency,
           delayBetweenCalls: d.settings?.delayBetweenCalls,
+          paused: Boolean(d.paused),
+          error: d.error,
         };
         setDialingSession(session);
         try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}

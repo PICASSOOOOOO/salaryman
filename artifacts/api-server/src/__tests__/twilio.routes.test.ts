@@ -19,8 +19,8 @@ vi.mock("@workspace/integrations-openai-ai-server", () => ({
 import request from "supertest";
 import type { Express } from "express";
 import twilio from "twilio";
-import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable, conferenceRoomsTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable, conferenceRoomsTable, contactsTable, contactChannelPrefsTable, contactInteractionsTable } from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
 import { checkAndEnforce, recordUsage } from "../lib/usage-meter";
 import {
@@ -36,6 +36,23 @@ const spies = (twilio as any).__spies as ReturnType<
 >["default"]["__spies"];
 
 let app: Express;
+let nextDialContactNumber = 1;
+
+async function createDialContact(phone: string) {
+  const [contact] = await db.insert(contactsTable).values({
+    userId: TEST_USER.id,
+    name: `Dial target ${nextDialContactNumber++}`,
+    phone,
+  }).returning();
+  await db.insert(contactChannelPrefsTable).values({
+    userId: TEST_USER.id,
+    contactId: contact.id,
+    phoneCallOptIn: true,
+    phoneCallConsentedAt: new Date(),
+    phoneCallOptedOutAt: null,
+  });
+  return contact;
+}
 
 beforeAll(() => {
   app = buildApp();
@@ -219,9 +236,10 @@ describe("hangup", () => {
 
 describe("dialing sessions", () => {
   it.each(["auto", "predictive"] as const)("keeps %s dialing available", async (mode) => {
+    const contact = await createDialContact(mode === "auto" ? "+15551117777" : "+15551118888");
     const res = await request(app)
       .post("/api/twilio/dialing/start")
-      .send({ mode, numbers: [{ phone: mode === "auto" ? "5551117777" : "5551118888", name: `${mode} lead` }] });
+      .send({ mode, contactIds: [contact.id] });
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.mode).toBe(mode);
@@ -231,6 +249,50 @@ describe("dialing sessions", () => {
       .send();
     expect(stop.status).toBe(200);
     expect(stop.body.stoppedCalls).toBe(1);
+  });
+
+  it.each(["auto", "predictive"] as const)("rejects %s dialing from pasted phone numbers", async (mode) => {
+    const res = await request(app)
+      .post("/api/twilio/dialing/start")
+      .send({ mode, numbers: [{ phone: "+15551112222", name: "Not a saved contact" }] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/saved contact IDs/i);
+    expect(spies.callsCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects automatic dialing when a saved contact has no active recorded permission", async () => {
+    const contact = await createDialContact("+15551112223");
+    await db.update(contactChannelPrefsTable).set({
+      phoneCallOptIn: false,
+      phoneCallOptedOutAt: new Date(),
+    }).where(and(
+      eq(contactChannelPrefsTable.userId, TEST_USER.id),
+      eq(contactChannelPrefsTable.contactId, contact.id),
+    ));
+    const res = await request(app)
+      .post("/api/twilio/dialing/start")
+      .send({ mode: "auto", contactIds: [contact.id] });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/recorded phone-call permission/i);
+    expect(spies.callsCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not allow an automatic queue to use another user's saved contact", async () => {
+    const [foreignContact] = await db.insert(contactsTable).values({
+      userId: `other-${TEST_USER.id}`,
+      name: "Foreign dial target",
+      phone: "+15551112224",
+    }).returning();
+    try {
+      const res = await request(app)
+        .post("/api/twilio/dialing/start")
+        .send({ mode: "auto", contactIds: [foreignContact.id] });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/your saved contacts/i);
+      expect(spies.callsCreate).not.toHaveBeenCalled();
+    } finally {
+      await db.delete(contactsTable).where(eq(contactsTable.id, foreignContact.id));
+    }
   });
 
   it("start: 400 on a bad mode", async () => {
@@ -257,6 +319,9 @@ describe("dialing sessions", () => {
     expect(res.body.mode).toBe("power");
     expect(res.body.calls[0].ok).toBe(true);
     expect(typeof res.body.sessionId).toBe("number");
+    const [history] = await db.select().from(callHistoryTable)
+      .where(eq(callHistoryTable.twilioCallSid, res.body.calls[0].callSid));
+    expect(history.consentGiven).toBe(false);
 
     // stop the session we just created
     const stop = await request(app)
@@ -306,6 +371,8 @@ describe("dialing sessions", () => {
   });
 
   it("next: concurrent requests atomically claim different queue positions", async () => {
+    const firstContact = await createDialContact("+15551114001");
+    const secondContact = await createDialContact("+15551114002");
     const [session] = await db
       .insert(dialingSessionsTable)
       .values({
@@ -315,10 +382,10 @@ describe("dialing sessions", () => {
         totalNumbers: 2,
         dialedCount: 0,
         queueJson: JSON.stringify([
-          { phone: "5551114001", name: "First" },
-          { phone: "5551114002", name: "Second" },
+          { phone: firstContact.phone, name: firstContact.name, contactId: firstContact.id, consentGiven: true },
+          { phone: secondContact.phone, name: secondContact.name, contactId: secondContact.id, consentGiven: true },
         ]),
-        settingsJson: JSON.stringify({ concurrency: 2 }),
+        settingsJson: JSON.stringify({ concurrency: 2, countryCode: "US" }),
       })
       .returning();
     const [first, second] = await Promise.all([
@@ -333,6 +400,59 @@ describe("dialing sessions", () => {
     const [updated] = await db.select().from(dialingSessionsTable)
       .where(eq(dialingSessionsTable.id, session.id));
     expect(updated.dialedCount).toBe(2);
+  });
+
+  it("stops the automatic queue when a later contact withdraws permission", async () => {
+    const firstContact = await createDialContact("+15551114101");
+    const secondContact = await createDialContact("+15551114102");
+    const started = await request(app).post("/api/twilio/dialing/start").send({
+      mode: "auto",
+      contactIds: [firstContact.id, secondContact.id],
+    });
+    expect(started.status).toBe(200);
+    expect(spies.callsCreate).toHaveBeenCalledTimes(1);
+
+    await db.update(contactChannelPrefsTable).set({
+      phoneCallOptIn: false,
+      phoneCallOptedOutAt: new Date(),
+    }).where(and(
+      eq(contactChannelPrefsTable.userId, TEST_USER.id),
+      eq(contactChannelPrefsTable.contactId, secondContact.id),
+    ));
+    const next = await request(app).post(`/api/twilio/dialing/${started.body.sessionId}/next`).send();
+    expect(next.status).toBe(409);
+    expect(next.body.paused).toBe(true);
+    expect(next.body.error).toMatch(/permission is no longer active/i);
+    expect(spies.callsCreate).toHaveBeenCalledTimes(1);
+    const [session] = await db.select().from(dialingSessionsTable)
+      .where(eq(dialingSessionsTable.id, started.body.sessionId));
+    expect(session.status).toBe("stopped");
+  });
+
+  it("pauses after an unconfirmed call failure instead of retrying or advancing", async () => {
+    const firstContact = await createDialContact("+15551114201");
+    const secondContact = await createDialContact("+15551114202");
+    const started = await request(app).post("/api/twilio/dialing/start").send({
+      mode: "auto",
+      contactIds: [firstContact.id, secondContact.id],
+    });
+    expect(started.status).toBe(200);
+    expect(spies.callsCreate).toHaveBeenCalledTimes(1);
+
+    spies.callsCreate.mockRejectedValueOnce(new Error("Twilio request timed out"));
+    const failed = await request(app).post(`/api/twilio/dialing/${started.body.sessionId}/next`).send();
+    expect(failed.status).toBe(503);
+    expect(failed.body.paused).toBe(true);
+    expect(failed.body.error).toMatch(/review call history before restarting/i);
+    expect(spies.callsCreate).toHaveBeenCalledTimes(2);
+
+    const repeated = await request(app).post(`/api/twilio/dialing/${started.body.sessionId}/next`).send();
+    expect(repeated.status).toBe(409);
+    expect(repeated.body.paused).toBe(true);
+    expect(spies.callsCreate).toHaveBeenCalledTimes(2);
+    const [session] = await db.select().from(dialingSessionsTable)
+      .where(eq(dialingSessionsTable.id, started.body.sessionId));
+    expect(session.status).toBe("stopped");
   });
 
   it("sessions: lists the user's sessions", async () => {
@@ -524,6 +644,21 @@ describe("webhook/sms shared-number reply routing", () => {
     process.env.TWILIO_PHONE_NUMBER = defaultDid;
     await db.delete(smsMessagesTable).where(eq(smsMessagesTable.toPhone, contactPhone));
     await db.delete(smsConversationsTable).where(eq(smsConversationsTable.contactPhone, contactPhone));
+    const staleContacts = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(
+      eq(contactsTable.userId, TEST_USER.id),
+      eq(contactsTable.phone, contactPhone),
+    ));
+    for (const contact of staleContacts) {
+      await db.delete(contactInteractionsTable).where(and(
+        eq(contactInteractionsTable.userId, TEST_USER.id),
+        eq(contactInteractionsTable.contactId, contact.id),
+      ));
+      await db.delete(contactChannelPrefsTable).where(and(
+        eq(contactChannelPrefsTable.userId, TEST_USER.id),
+        eq(contactChannelPrefsTable.contactId, contact.id),
+      ));
+      await db.delete(contactsTable).where(eq(contactsTable.id, contact.id));
+    }
     await db.insert(usersTable).values({ id: otherUserId, email: "sms-ambiguity@example.invalid" }).onConflictDoNothing();
   });
 
@@ -565,6 +700,47 @@ describe("webhook/sms shared-number reply routing", () => {
     const [updated] = await db.select().from(smsConversationsTable)
       .where(eq(smsConversationsTable.id, conversation.id));
     expect(updated.unreadCount).toBe(1);
+  });
+
+  it("persists SMS STOP and does not generate an assistant reply", async () => {
+    const [conversation] = await db.insert(smsConversationsTable).values({
+      userId: TEST_USER.id, contactPhone, contactName: "Recipient",
+    }).returning();
+    await db.insert(smsMessagesTable).values({
+      conversationId: conversation.id, userId: TEST_USER.id, direction: "outbound",
+      body: "Hello", fromPhone: defaultDid, toPhone: contactPhone, status: "sent",
+    });
+    const res = await request(app).post("/api/twilio/webhook/sms")
+      .set("x-twilio-signature", "sig")
+      .send({ From: contactPhone, To: defaultDid, Body: "STOP", MessageSid: "SMinbound-stop-1" });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("<Response></Response>");
+    expect(spies.messagesCreate).not.toHaveBeenCalled();
+
+    const [contact] = await db.select().from(contactsTable).where(and(
+      eq(contactsTable.userId, TEST_USER.id),
+      eq(contactsTable.phone, contactPhone),
+    ));
+    expect(contact).toBeDefined();
+    const [preference] = await db.select().from(contactChannelPrefsTable).where(and(
+      eq(contactChannelPrefsTable.userId, TEST_USER.id),
+      eq(contactChannelPrefsTable.contactId, contact.id),
+    )).orderBy(desc(contactChannelPrefsTable.updatedAt));
+    expect(preference.smsOptIn).toBe(false);
+    expect(preference.smsOptedOutAt).toBeInstanceOf(Date);
+
+    const rejoin = await request(app).post("/api/twilio/webhook/sms")
+      .set("x-twilio-signature", "sig")
+      .send({ From: contactPhone, To: defaultDid, Body: "START", MessageSid: "SMinbound-start-1" });
+    expect(rejoin.status).toBe(200);
+    expect(rejoin.text).toContain("<Response></Response>");
+    expect(spies.messagesCreate).not.toHaveBeenCalled();
+    const [rejoinedPreference] = await db.select().from(contactChannelPrefsTable).where(and(
+      eq(contactChannelPrefsTable.userId, TEST_USER.id),
+      eq(contactChannelPrefsTable.contactId, contact.id),
+    )).orderBy(desc(contactChannelPrefsTable.updatedAt));
+    expect(rejoinedPreference.smsOptIn).toBe(true);
+    expect(rejoinedPreference.smsOptedOutAt).toBeNull();
   });
 
   it("fails closed when two users recently messaged the same recipient from the shared number", async () => {

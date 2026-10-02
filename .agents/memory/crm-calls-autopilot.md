@@ -14,3 +14,9 @@ Handler: `lib/autopilot/crm-handler.ts`, registered in `index.ts` boot before `s
 - **Per-tick cap = `ctx.claimAction()`** (one claim per lead). Lead selection: status in new/contacted/qualified/proposal (closed_won/closed_lost never contacted), has phone, most-overdue-first.
 - `sendSmsMessage` gained an optional `orgId` forwarded to recordTelephonyActivity so a multi-org owner isn't misattributed; the manual route omits it (keeps resolve-from-user behavior).
 - Test `__tests__/autopilot.crm.test.ts` builds ctx by hand; twilioMock gained a `messages.create` spy (`__spies.messagesCreate`).
+
+SMS outreach must honor the latest saved channel preference. Inbound STOP-family commands persist an SMS opt-out before any assistant response; START/UNSTOP clears it. CRM Auto suppresses matching opted-out leads. A failed SMS follow-up is cooled down for the configured follow-up interval using its persisted activity log, rather than being retried on every scheduler tick.
+
+**Why:** automatic SMS must stop after a recipient opts out, and a sender/provider failure must not create a rapid retry loop.
+
+**How to apply:** Keep SMS consent commands out of the assistant reply path, preserve saved preference checks in every automatic CRM sender, and retain durable failure backoff when changing the follow-up scheduler.
