@@ -731,6 +731,40 @@ describe("webhook/recording", () => {
     });
     expect(rows[0].recordingRetainUntil).toBeInstanceOf(Date);
   });
+
+  it("matches conference recordings by conference name when Twilio omits CallSid", async () => {
+    const sid = "CAconference-recording-no-sid-00000001";
+    const conferenceName = "conference-recording-no-sid";
+    await seedOwnedCall(sid, "+15551234567");
+    await db.update(callHistoryTable)
+      .set({ conferenceName, callType: "conference" })
+      .where(eq(callHistoryTable.twilioCallSid, sid));
+
+    const res = await request(app)
+      .post(
+        `/api/twilio/webhook/recording?userId=${encodeURIComponent(TEST_USER.id)}&type=call&callType=conference&conferenceName=${encodeURIComponent(conferenceName)}`,
+      )
+      .set("x-twilio-signature", "sig")
+      .send({
+        RecordingSid: "REconference-no-sid-000000000000001",
+        RecordingUrl: "https://api.twilio.com/2010-04-01/Accounts/ACtest/Recordings/REconference-no-sid",
+        RecordingStatus: "completed",
+        RecordingDuration: "36",
+        Direction: "outbound-api",
+        From: "+15550001111",
+        To: "+15551234567",
+        CallStatus: "completed",
+      });
+
+    expect(res.status).toBe(204);
+    const [row] = await db.select().from(callHistoryTable)
+      .where(eq(callHistoryTable.twilioCallSid, sid));
+    expect(row.recordingSid).toBe("REconference-no-sid-000000000000001");
+    expect(row.recordingUrl).toContain("REconference-no-sid.mp3");
+    expect(row.durationSeconds).toBe(36);
+    expect(row.transcript).toBe("The caller requested a proposal and agreed to receive the follow-up by Friday.");
+    expect(row.summary).toBe("Got it.");
+  });
 });
 
 describe("recording retention", () => {
