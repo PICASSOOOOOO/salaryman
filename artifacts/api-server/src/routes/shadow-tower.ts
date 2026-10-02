@@ -48,7 +48,7 @@ async function membership(userIdValue: string, orgId: number) {
     .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userIdValue), eq(orgMembersTable.status, "active"))).limit(1);
   return member?.role as OrgRole | undefined;
 }
-async function canAccess(userIdValue: string, floor: typeof shadowTowerFloorsTable.$inferSelect, password?: unknown) {
+export async function canAccess(userIdValue: string, floor: typeof shadowTowerFloorsTable.$inferSelect, password?: unknown) {
   if (floor.ownerUserId === userIdValue) return true;
   if (floor.orgId) {
     const role = await membership(userIdValue, floor.orgId);
