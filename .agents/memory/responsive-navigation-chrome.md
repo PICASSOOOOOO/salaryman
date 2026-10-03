@@ -46,3 +46,15 @@ actions on small phones and made every page look like a control panel.
 
 **How to apply:** verify important pages at 320px and reject any global control
 that overlays page content.
+
+Visual non-regression is a first-class constraint for new features. Preserve the
+accepted design unless the user flags a problem; avoid style bleed, clipped brand
+labels, and colliding or oversized titles. When a visual issue is reported, make a
+focused responsive correction rather than restyling unrelated surfaces.
+
+**Why:** the user says design bleed and collisions are major issues, and that no
+design feedback means the current work is meeting expectations.
+
+**How to apply:** verify headings and shared chrome at narrow phone widths as well
+as desktop. Scope CSS to the relevant surface and correct truncation, overlap, and
+spacing before adding more UI.
