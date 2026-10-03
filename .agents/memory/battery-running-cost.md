@@ -5,19 +5,20 @@ description: Batteries are the in-world wrapper for AI/electrical running cost; 
 
 # Battery running-cost system
 
-Batteries wrap the real AI/electrical running cost in-world. AI consumers — bots,
-the Pablo/Mila assistant, non-human companions — run on installed, charged
-batteries. AI usage **burns charge sized to real provider cost** and settles the
-metered FIAT cost via the battery. There is **no separate per-use Pablo Tax** on
-AI anymore.
+Batteries remain the in-world AI/electrical resource. AI consumers — bots, the
+Pablo/Mila assistant, and non-human companions — run on installed, charged
+batteries, and AI usage continues to burn battery charge sized to real provider
+cost. The new Credits economy adds a separate, idempotent provider-usage charge
+in Credits at the approved cost-derived rate; an AI action may consume both
+resources. Do not treat the battery burn as payment of the Credits fee.
 
-**Rule:** all AI metering goes through `lib/battery.ts` — `getPowerStatus`
+**Rule:** preserve the battery path through `lib/battery.ts` — `getPowerStatus`
 (read-only preflight) then `burnAiCharge` (atomic burn + line item
-`settledVia=battery`). Don't reintroduce `chargePabloTax` on AI call sites.
+`settledVia=battery`) — and charge provider-use Credits through its own
+idempotent ledger path. Don't reintroduce `chargePabloTax` on AI call sites.
 
-**Why:** the project unified "what does it cost to run an AI" into one visible
-resource (battery charge) instead of an invisible tax meter, so players can see /
-manage / trade the cost.
+**Why:** the user explicitly wants provider-backed AI work to incur both the
+existing in-game battery consumption and a separate shared Credits usage fee.
 
 **How to apply:**
 - Humans and owners are EXEMPT (owners recharge free; humans never metered).
