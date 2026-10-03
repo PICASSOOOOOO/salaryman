@@ -34,6 +34,8 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 - Assume every business workflow is primarily used on a 320px-wide phone.
 - Lead with working, tappable feature visuals and motion; keep explanatory copy to an absolute minimum.
 - Preserve established product, route, and feature names during redesigns.
+- Preserve each screen's accepted layout and visual style when adding or upgrading features. Change only the requested surface; add only necessary UI and fix collisions by simplifying or reflowing, not by layering more controls.
+- Make feature discovery feel like exploring a video game: reveal useful features progressively and in context, with concise cues instead of front-loading instructions or clutter.
 - Never compress desktop tables or navigation into mobile; use mobile-native layouts without horizontal bleed or overlapping borders.
 
 **Naming / branding conventions:**
@@ -53,9 +55,9 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
 
 ### UI/UX Decisions
-- **Non-game pages:** Utilize a dark office aesthetic with warm dark slate, Inter for body text, and Share Tech Mono for headings. Minimum font size is 11px.
-- **Game pages (.game-route):** Feature a CRT/Pip-Boy aesthetic with phosphor blue on black, scan lines, and VT323/Share Tech Mono fonts.
-- **Font Floor System:** Global CSS ensures a minimum font size of 11-13px for non-game pages, overriding Tailwind defaults for readability.
+- **Browser/workspace pages:** Use clean cream or white surfaces, black text, flat hierarchy, and essential controls only. Keep text readable on small phones.
+- **Feature upgrades:** Keep existing screens visually stable unless a redesign is explicitly requested. Prefer progressive, contextual discovery over dense onboarding, extra panels, or long copy.
+- **Downloadable game:** Keep its visual language distinct from the browser workspace; start bright and lively, with deterioration emerging through the story. Do not use CRT effects, scanlines, flicker, grain, or retro terminal fonts.
 
 ### Technical Implementations
 - **Core Technologies:** Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL (Drizzle ORM), Zod, Orval, esbuild.
