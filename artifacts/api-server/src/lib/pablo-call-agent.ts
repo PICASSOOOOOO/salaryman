@@ -5,14 +5,13 @@ import {
   contactsTable,
   contactInteractionsTable,
   secretaryConfigTable,
-  organizationsTable,
-  orgMembersTable,
   type SecretaryConfig,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "./openai-models";
-import { PABLO_CORE_PERSONA } from "./pablo-persona";
+import { buildPabloOrgIndustryContext, PABLO_CORE_PERSONA } from "./pablo-persona";
+import { resolvePabloOrgContext } from "./pablo-org-context";
 
 interface ConversationTurn {
   role: "caller" | "pablo";
@@ -55,16 +54,6 @@ IMPORTANT RULES:
 - Callers aged 64-80 are the target audience. If a caller is over 80, politely let them know this program may not be the best fit.
 - Keep intros and outros warm, polite, and tailored to Medicare Club's tone.`;
 
-async function getOrgNameForUser(userId: string): Promise<string | null> {
-  const rows = await db
-    .select({ name: organizationsTable.name })
-    .from(orgMembersTable)
-    .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
-    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
-    .limit(1);
-  return rows[0]?.name ?? null;
-}
-
 function buildSystemPrompt(
   config: SecretaryConfig,
   direction: "inbound" | "outbound" | "screening",
@@ -72,6 +61,7 @@ function buildSystemPrompt(
   turnCount: number,
   outboundScript?: string,
   orgName?: string | null,
+  orgIndustryContext = "",
 ): string {
   const personality = config.personality ?? "professional";
   const personalityDesc =
@@ -100,6 +90,7 @@ RECORDING AND PRIVACY:
 - Be truthful about the recording notice and recording status configured for this call. Do not claim a call is or is not recorded unless that status is known.
 - Do not invent a retention period or claim regulatory compliance. If the caller asks about deletion or retention and the configured information does not answer, offer to have the business follow up.
 
+${orgIndustryContext ? `${orgIndustryContext}\n\n` : ""} 
 `;
 
   const isMedicareClub = orgName && /medicare\s*club/i.test(orgName);
@@ -308,7 +299,8 @@ export async function processPabloTurn(
     timestamp: new Date().toISOString(),
   });
 
-  const orgName = await getOrgNameForUser(userId);
+  const pabloOrganization = await resolvePabloOrgContext(userId);
+  const orgIndustryContext = buildPabloOrgIndustryContext(pabloOrganization?.industry);
 
   const systemPrompt = buildSystemPrompt(
     config,
@@ -316,7 +308,8 @@ export async function processPabloTurn(
     existingInfo,
     session.turnCount,
     outboundScript,
-    orgName,
+    pabloOrganization?.name,
+    orgIndustryContext,
   );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

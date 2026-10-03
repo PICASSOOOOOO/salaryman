@@ -43,6 +43,8 @@ import { speechToText } from "@workspace/integrations-openai-ai-server/audio";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { synthesizePabloLine } from "../lib/pablo-elevenlabs";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
+import { buildPabloOrgIndustryContext } from "../lib/pablo-persona";
+import { resolvePabloOrgContext } from "../lib/pablo-org-context";
 import {
   classifyPabloCallAnswer,
   interpolatePabloScript,
@@ -5430,14 +5432,15 @@ router.post("/twilio/webhook/sms", async (req, res) => {
       return;
     }
 
-    const PABLO_SMS_PROMPT = `${PABLO_CORE_PERSONA}
+    let pabloReplyText = "";
+    try {
+      const pabloOrganization = await resolvePabloOrgContext(userId, ownerOrgId);
+      const orgIndustryContext = buildPabloOrgIndustryContext(pabloOrganization?.industry);
+      const PABLO_SMS_PROMPT = `${PABLO_CORE_PERSONA}${orgIndustryContext ? `\n\n${orgIndustryContext}` : ""}
 
 You are replying to an inbound business SMS for the user's organization.
 Keep the response concise, clear, professional, and natural for SMS (under 300 characters).
 Answer the message directly. Ask at most one relevant follow-up question. Do not invent business facts or promise actions you cannot verify.`;
-
-    let pabloReplyText = "";
-    try {
       const recent = contactId
         ? await db
             .select()

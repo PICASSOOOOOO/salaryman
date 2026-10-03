@@ -26,6 +26,8 @@ import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
+import { buildPabloOrgIndustryContext } from "../lib/pablo-persona";
+import { resolvePabloOrgContext } from "../lib/pablo-org-context";
 import { completeInternalText, getInternalOpenAiModel, selectClaudeTools } from "../lib/internal-ai";
 import { isPabloNavPath } from "../lib/pablo-navigation";
 import { getOpenAiTextModel, isAstraRequested, isAstraVerified } from "../lib/openai-models";
@@ -1641,8 +1643,10 @@ router.post("/chat/pablo/message", parsePabloImportUpload, async (req, res) => {
     const crmAttachmentContext = attachedFile
       ? `${PABLO_CRM_IMPORT_CAPABILITY}\nA supported file is attached to this message. The file's cells are not included in the conversation; the import tool checks CRM edit permission in the current organization before making changes.`
       : "";
+    const pabloOrganization = await resolvePabloOrgContext(userId);
+    const orgIndustryContext = buildPabloOrgIndustryContext(pabloOrganization?.industry);
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_SINGLE_ASSISTANT_POLICY}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}${sheetsAccess?.canView ? `\n\n${PABLO_SHEETS_CAPABILITY}` : ""}${crmAttachmentContext ? `\n\n${crmAttachmentContext}` : ""}\n\n${liveContext}` },
+      { role: "system", content: `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_SINGLE_ASSISTANT_POLICY}${orgIndustryContext ? `\n\n${orgIndustryContext}` : ""}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}${sheetsAccess?.canView ? `\n\n${PABLO_SHEETS_CAPABILITY}` : ""}${crmAttachmentContext ? `\n\n${crmAttachmentContext}` : ""}\n\n${liveContext}` },
     ];
 
     if (privacyMode) {
@@ -2014,7 +2018,9 @@ ${known.join("\n")}`;
 
   const requestLog = req.log ?? logger;
   const activePersona = "pablo" as const;
-  const basePersona = `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_SINGLE_ASSISTANT_POLICY}`;
+  const pabloOrganization = isGuest ? null : await resolvePabloOrgContext(req.user!.id);
+  const orgIndustryContext = buildPabloOrgIndustryContext(pabloOrganization?.industry);
+  const basePersona = `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_SINGLE_ASSISTANT_POLICY}${orgIndustryContext ? `\n\n${orgIndustryContext}` : ""}`;
 
   // When the palette ships a page catalog, ground Pablo in the real, existing
   // pages so he NAVIGATES to an exact path when confident, and SUGGESTS a short
