@@ -35,6 +35,24 @@
   line-height: 1;
 }
 
+.app-brand-meta {
+  display: grid;
+  justify-items: start;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.app-powered-by {
+  overflow: hidden;
+  color: #59554f;
+  font-family: var(--font-sans);
+  font-size: 0.36rem;
+  letter-spacing: 0.015em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .start-work-control {
   position: relative;
   z-index: 110;
@@ -263,7 +281,7 @@
     max-width: 7rem;
   }
 
-  .app-alpha-badge {
+  .app-brand-meta {
     display: none;
   }
 
