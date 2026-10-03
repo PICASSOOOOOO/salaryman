@@ -17,3 +17,10 @@ Real-money payout from bot-generated business income is optional per organizatio
 **Why:** the user explicitly required secure, optional owner control and said employees must start their own business to use real payout.
 
 **How to apply:** resolve `organizations.ownerUserId` on the server for every setup, balance, and payout operation; do not treat a manager permission or client-supplied owner ID as sufficient. Keep new income domains opt-in, require server-verified settled earnings, and never derive cashable value from game currency, AI output, or activity logs.
+
+## Current revenue mode
+The user chose a review-only starting point: Pablo may organize and prepare income opportunities, but must not collect, transfer, or promise money until a real, independently verifiable revenue source is selected and implemented.
+
+**Why:** no connected marketplace or customer-payment flow currently settles bot-created business revenue into an organization-owned ledger.
+
+**How to apply:** keep the creation workspace focused on draft projects and reviewable business plans until a verified settlement source and its reversal/chargeback handling exist.

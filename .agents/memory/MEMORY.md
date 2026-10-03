@@ -106,6 +106,7 @@
 - [Office discovery onboarding](office-discovery-onboarding.md) — story starts by stepping into the office ELEVATOR (no BEGIN STORY button); cue-at-a-time discovery state machine in lib/office-discovery.ts; MISSION MENU lists quarter scenes; elevator onInteract is the trigger (reads storyGateRef).
 - [No CRT visual language](no-crt-visual-language.md) — SALARYMAN uses modern dark UI with Inter/Fira Code; do not reintroduce scanlines, phosphor effects, flicker, grain, or retro terminal fonts.
 - [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
+- [Pablo creation workspace](pablo-creation-workspace.md) — Pablo needs a persistent visual build area for apps, websites, games, and income ventures, combining internal work with external references.
 - [Authoritative world economy](authoritative-world-economy.md) — FIAT, quick-job runs, cargo, quotes, and economy-gated position are server-owned; client saves/UI only cache returned snapshots.
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
