@@ -22,7 +22,8 @@ export const AUTOPILOT_AI_COST_CENTS = 4;
 export type GuardrailFailure =
   | { reason: "domain_disabled" }
   | { reason: "org_not_found" }
-  | { reason: "org_owner_missing" };
+  | { reason: "org_owner_missing" }
+  | { reason: "pablo_prime_required" };
 
 export interface GuardrailPass {
   ownerId: string;
@@ -35,10 +36,11 @@ export type GuardrailResult =
   | ({ ok: false } & GuardrailFailure);
 
 /**
- * Pre-flight a config before invoking its handler. Resolves the org owner (whose
- * entitlement and assistant battery gate paid work), and computes the per-tick
- * action cap. Legacy config.botId values are deliberately ignored. Pure read —
- * does NOT mutate or log.
+ * Pre-flight a config before invoking its handler. Resolves the org owner,
+ * requires the paid Pablo Prime automation entitlement for every scheduled
+ * domain, and computes the per-tick action cap. Paid AI actions separately use
+ * the assistant battery. Legacy config.botId values are deliberately ignored.
+ * Pure read — does NOT mutate or log.
  */
 export async function evaluateConfigGuardrails(
   config: AutopilotConfig,
@@ -56,6 +58,13 @@ export async function evaluateConfigGuardrails(
   let ownerEmail: string | null = null;
   const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, ownerId));
   ownerEmail = u?.email ?? null;
+
+  // The automation subscription gates the whole scheduled feature, including
+  // domains whose underlying manual actions are otherwise available for free.
+  // This prevents enabled configs from continuing to run after PRIME access ends.
+  if (!(await checkEntitlement(ownerId, ownerEmail, "claw_bot"))) {
+    return { ok: false, reason: "pablo_prime_required" };
+  }
 
   const rawCap = config.maxActionsPerTick ?? defaultMaxActions;
   const maxActions = Math.min(Math.max(rawCap, 0), 100);

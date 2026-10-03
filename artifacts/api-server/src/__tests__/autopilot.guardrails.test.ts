@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
 
 // The shared guardrails are the gatekeeper every autopilot domain handler must
 // clear. evaluateConfigGuardrails resolves the org owner against the REAL dev
@@ -73,6 +73,11 @@ beforeAll(async () => {
   orgId = org.id;
 });
 
+beforeEach(() => {
+  hasFeatureMock.mockReset();
+  hasFeatureMock.mockResolvedValue(true);
+});
+
 afterAll(async () => {
   await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   await db.delete(usersTable).where(eq(usersTable.id, OWNER_ID));
@@ -90,6 +95,14 @@ describe("evaluateConfigGuardrails — failure reasons", () => {
       AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
     );
     expect(r.ok).toBe(true);
+  });
+
+  it("blocks scheduled automation when the org owner lacks the paid Pablo Prime feature", async () => {
+    hasFeatureMock.mockResolvedValueOnce(false);
+    const r = await evaluateConfigGuardrails(cfg({}), AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK);
+
+    expect(r).toEqual({ ok: false, reason: "pablo_prime_required" });
+    expect(hasFeatureMock).toHaveBeenCalledWith(OWNER_ID, OWNER_EMAIL, "claw_bot");
   });
 });
 

@@ -1,6 +1,6 @@
 ---
 name: Pablo automation foundation
-description: Product direction and shared execution rules for Pablo Prime's four opt-in business automation domains.
+description: Product direction and execution/access rules for Pablo Prime's four opt-in business automation domains.
 ---
 
 # Pablo automation foundation
@@ -60,3 +60,13 @@ extension rather than letting legacy bot IDs influence current runs.
 
 **How to apply:** current automation is grouped under Pablo. Any later per-domain
 agent ownership is a separate product change with explicit routing and guardrails.
+
+## Activation and paid access
+Each domain stays off until a user enables it once. After that, Pablo runs it on
+schedule without per-run approval, but only while the organization's owner has
+the active paid `claw_bot`/Pablo Prime entitlement. Do not auto-enable domains.
+
+**Why:** the user chose one-time opt-in and specified this as a paid feature.
+
+**How to apply:** enforce paid access at control APIs and again in the background
+scheduler; preserve the saved opt-in if access lapses, but block unattended runs.

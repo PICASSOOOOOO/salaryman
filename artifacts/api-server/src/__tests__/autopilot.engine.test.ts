@@ -8,6 +8,7 @@ import {
   autopilotActivityLogTable,
   organizationsTable,
   usersTable,
+  userFeaturesTable,
   type AutopilotDomain,
 } from "@workspace/db";
 import {
@@ -62,6 +63,11 @@ async function activityFor(domain: AutopilotDomain) {
 
 beforeAll(async () => {
   await db.insert(usersTable).values({ id: OWNER_ID, email: OWNER_EMAIL });
+  await db.insert(userFeaturesTable).values({
+    userId: OWNER_ID,
+    featureKey: "claw_bot",
+    stripeSubscriptionId: `sub_autopilot_test_${randomUUID()}`,
+  });
   const [org] = await db
     .insert(organizationsTable)
     .values({ name: `Engine Test Org ${randomUUID().slice(0, 8)}`, ownerUserId: OWNER_ID })
@@ -80,6 +86,7 @@ afterAll(async () => {
   await db.delete(autopilotConfigsTable).where(eq(autopilotConfigsTable.orgId, orgId));
   await db.delete(autopilotActivityLogTable).where(eq(autopilotActivityLogTable.orgId, orgId));
   await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
+  await db.delete(userFeaturesTable).where(eq(userFeaturesTable.userId, OWNER_ID));
   await db.delete(usersTable).where(eq(usersTable.id, OWNER_ID));
 });
 
@@ -124,6 +131,29 @@ describe("runAutopilotTick — cadence gating", () => {
 
     await runAutopilotTick();
     expect(calls).toBe(0);
+  });
+
+  it("does not invoke an enabled handler after the org owner loses the paid feature", async () => {
+    const [paidFeature] = await db
+      .delete(userFeaturesTable)
+      .where(eq(userFeaturesTable.userId, OWNER_ID))
+      .returning();
+    let calls = 0;
+    registerAutopilotHandler("business_ops", async (ctx) => {
+      if (ctx.orgId === orgId) calls++;
+    });
+    await insertConfig("business_ops", { lastRunAt: null });
+
+    try {
+      await runAutopilotTick();
+      expect(calls).toBe(0);
+      const entries = await activityFor("business_ops");
+      expect(entries.some((entry) =>
+        entry.outcome === "blocked" && entry.summary.includes("pablo prime required"),
+      )).toBe(true);
+    } finally {
+      if (paidFeature) await db.insert(userFeaturesTable).values(paidFeature);
+    }
   });
 });
 
