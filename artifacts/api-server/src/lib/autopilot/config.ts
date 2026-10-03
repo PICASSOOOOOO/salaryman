@@ -43,8 +43,8 @@ export async function getDomainConfig(orgId: number, domain: AutopilotDomain): P
 }
 
 /**
- * Merge stored rows over the default shape so the UI always gets all four
- * domains, whether or not a row exists yet.
+ * Merge stored rows over the default shape so the UI always gets every
+ * supported domain, whether or not a row exists yet.
  */
 export async function getOrgAutopilotView(orgId: number): Promise<
   (ReturnType<typeof defaultConfigShape> & { exists: boolean; updatedBy: string | null })[]

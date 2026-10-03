@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import {
-  AUTOPILOT_DOMAINS,
+  AUTOPILOT_PRIME_AUTO_START_DOMAINS,
   autopilotConfigsTable,
   db,
   organizationsTable,
@@ -47,8 +47,9 @@ describe("Prime autopilot paid activation", () => {
       .select()
       .from(autopilotConfigsTable)
       .where(eq(autopilotConfigsTable.orgId, orgId));
-    expect(firstRead.map((row) => row.domain).sort()).toEqual([...AUTOPILOT_DOMAINS].sort());
+    expect(firstRead.map((row) => row.domain).sort()).toEqual([...AUTOPILOT_PRIME_AUTO_START_DOMAINS].sort());
     expect(firstRead.every((row) => row.enabled)).toBe(true);
+    expect(firstRead.some((row) => row.domain === "creative_work")).toBe(false);
 
     await db
       .update(autopilotConfigsTable)

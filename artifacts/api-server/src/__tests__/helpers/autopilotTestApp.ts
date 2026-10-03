@@ -9,6 +9,8 @@ import {
   botsTable,
   userFeaturesTable,
   worldBusinessesTable,
+  projectsTable,
+  notesTable,
   type OrgRole,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
@@ -36,6 +38,7 @@ const createdUserIds: string[] = [];
 const createdOrgIds: number[] = [];
 const createdBotIds: number[] = [];
 const createdBusinessIds: number[] = [];
+const createdProjectIds: number[] = [];
 
 // Build an Express app that mirrors the real mount: the autopilot router lives
 // under "/api" (its own paths are "/autopilot/..."). A middleware injects the
@@ -113,6 +116,20 @@ export async function createOrg(
   return org.id;
 }
 
+export async function createWorkspaceProject(userId: string): Promise<number> {
+  const [project] = await db
+    .insert(projectsTable)
+    .values({
+      userId,
+      name: `Creative test project ${randomUUID().slice(0, 8)}`,
+      type: "general",
+      description: "A private project used by the Creative Work autopilot tests.",
+    })
+    .returning({ id: projectsTable.id });
+  createdProjectIds.push(project.id);
+  return project.id;
+}
+
 // Seed a bot row. Defaults the owner to the org's owner and ties it to `orgId`
 // so the cross-org assignment guard can be exercised: a bot belonging to a
 // *different* org must be rejected by PUT /api/autopilot/:domain.
@@ -144,6 +161,10 @@ export async function getStoredConfig(orgId: number, domain: string) {
 }
 
 export async function cleanupTestData() {
+  if (createdProjectIds.length) {
+    await db.delete(notesTable).where(inArray(notesTable.projectId, createdProjectIds));
+    await db.delete(projectsTable).where(inArray(projectsTable.id, createdProjectIds));
+  }
   if (createdBotIds.length) {
     await db.delete(botsTable).where(inArray(botsTable.id, createdBotIds));
   }
@@ -164,4 +185,5 @@ export async function cleanupTestData() {
   createdOrgIds.length = 0;
   createdBotIds.length = 0;
   createdBusinessIds.length = 0;
+  createdProjectIds.length = 0;
 }

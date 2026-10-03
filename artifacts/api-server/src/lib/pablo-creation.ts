@@ -51,6 +51,19 @@ export function parseGeneratedWorkspaceDraft(raw: string): GeneratedWorkspaceDra
   return { plan, prototype };
 }
 
+export function hasProjectInputsChanged(
+  projectUpdatedAt: Date,
+  latestSourceUpdatedAt: Date | null,
+  latestAutopilotDraftUpdatedAt: Date | null,
+): boolean {
+  if (!latestAutopilotDraftUpdatedAt) return true;
+  const latestInputAt = Math.max(
+    projectUpdatedAt.getTime(),
+    latestSourceUpdatedAt?.getTime() ?? Number.NEGATIVE_INFINITY,
+  );
+  return latestInputAt > latestAutopilotDraftUpdatedAt.getTime();
+}
+
 export const PABLO_CREATION_SYSTEM_PROMPT = [
   "You are Pablo, building a reviewable first draft inside the user's private creation workspace.",
   "Return one JSON object with exactly two string fields: plan and prototype.",
@@ -70,9 +83,10 @@ export function buildPabloCreationUserPrompt(input: {
   description: string;
   brief: string;
   materials: Array<{ title: string; category: string; content: string }>;
+  task?: string;
 }): string {
   return JSON.stringify({
-    task: "Create the first build plan and an interactive local prototype for this project.",
+    task: input.task ?? "Create the first build plan and an interactive local prototype for this project.",
     project: {
       name: input.name.slice(0, 160),
       type: input.type.slice(0, 40),

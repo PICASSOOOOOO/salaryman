@@ -6,12 +6,7 @@ import {
   GenerateWorkspaceProjectDraftParams,
   GenerateWorkspaceProjectDraftResponse,
 } from "@workspace/api-zod";
-import { completeInternalText } from "../lib/internal-ai";
-import {
-  buildPabloCreationUserPrompt,
-  parseGeneratedWorkspaceDraft,
-  PABLO_CREATION_SYSTEM_PROMPT,
-} from "../lib/pablo-creation";
+import { generateWorkspaceProjectDraft } from "../lib/pablo-creation-service";
 import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
@@ -91,78 +86,36 @@ router.post("/workspace/projects/:projectId/generate", requireCreationEntitlemen
 
   const projectId = params.data.projectId;
   try {
-    const [project] = await db.select().from(projectsTable)
-      .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
-      .limit(1);
-    if (!project) {
+    const result = await generateWorkspaceProjectDraft(userId, projectId, body.data.brief);
+    if (result.status === "not_found") {
       res.status(404).json({ error: "Project not found" });
       return;
     }
-
-    const projectNotes = await db.select({
-      title: notesTable.title,
-      category: notesTable.category,
-      content: notesTable.content,
-    }).from(notesTable)
-      .where(and(eq(notesTable.userId, userId), eq(notesTable.projectId, projectId)))
-      .orderBy(desc(notesTable.updatedAt))
-      .limit(30);
-    const materials = projectNotes
-      .filter((note) => note.category === "creation-context" || note.category === "external-reference")
-      .slice(0, 8);
-
-    const completion = await completeInternalText([
-      { role: "system", content: PABLO_CREATION_SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: buildPabloCreationUserPrompt({
-          name: project.name,
-          type: project.type,
-          description: project.description,
-          brief: body.data.brief,
-          materials,
-        }),
-      },
-    ], { maxTokens: 5_000, json: true, prefer: "gpt" });
-    const draft = parseGeneratedWorkspaceDraft(completion.content);
-    if (!draft) {
-      req.log.warn({ projectId, provider: completion.provider }, "Pablo creation returned an invalid or unsafe prototype");
+    if (result.status === "invalid") {
+      req.log.warn({ projectId, provider: result.provider }, "Pablo creation returned an invalid or unsafe prototype");
       res.status(502).json({ error: "Pablo could not produce a safe prototype. Try a shorter brief." });
       return;
     }
 
-    const [plan, prototype] = await db.transaction(async (tx) => {
-      const [planNote] = await tx.insert(notesTable).values({
-        userId,
-        projectId,
-        title: "Build plan",
-        content: draft.plan,
-        category: "creation-plan",
-      }).returning();
-      const [prototypeNote] = await tx.insert(notesTable).values({
-        userId,
-        projectId,
-        title: "index.html",
-        content: draft.prototype,
-        category: "creation-prototype",
-      }).returning();
-      return [planNote, prototypeNote];
-    });
+    if (result.status !== "generated") {
+      res.status(409).json({ error: "Project changed while the draft was being prepared. Try again." });
+      return;
+    }
 
     res.status(201).json(GenerateWorkspaceProjectDraftResponse.parse({
       plan: {
-        id: plan.id,
-        projectId: plan.projectId,
-        title: plan.title,
-        content: plan.content,
-        category: plan.category,
+        id: result.plan.id,
+        projectId: result.plan.projectId,
+        title: result.plan.title,
+        content: result.plan.content,
+        category: result.plan.category,
       },
       prototype: {
-        id: prototype.id,
-        projectId: prototype.projectId,
-        title: prototype.title,
-        content: prototype.content,
-        category: prototype.category,
+        id: result.prototype.id,
+        projectId: result.prototype.projectId,
+        title: result.prototype.title,
+        content: result.prototype.content,
+        category: result.prototype.category,
       },
     }));
   } catch (e) {

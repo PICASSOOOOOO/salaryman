@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import {
+  AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MARKETING_TONE,
   AUTOPILOT_MAX_MARKETING_TOPICS,
   AUTOPILOT_MAX_MARKETING_TOPIC_LEN,
@@ -13,6 +14,7 @@ import {
   setAuthed,
   createUser,
   createOrg,
+  createWorkspaceProject,
   getStoredConfig,
   cleanupTestData,
 } from "./helpers/autopilotTestApp";
@@ -495,5 +497,67 @@ describe("PUT /api/autopilot/:domain — no bot assignment", () => {
     expect(res.body.error).toMatch(/Pablo Prime owns automation/);
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored).toBeNull();
+  });
+});
+
+describe("Creative Work owner project targeting", () => {
+  it("requires a project before enabling and clamps its schedule to once daily", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const missingTarget = await request(app).put("/api/autopilot/creative_work").send({ enabled: true });
+    expect(missingTarget.status).toBe(400);
+    expect(await getStoredConfig(orgId, "creative_work")).toBeNull();
+
+    const projectId = await createWorkspaceProject(owner.id);
+    const enabled = await request(app).put("/api/autopilot/creative_work").send({
+      enabled: true,
+      cadenceMinutes: 5,
+      prefs: { projectId },
+    });
+
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.config.enabled).toBe(true);
+    expect(enabled.body.config.cadenceMinutes).toBe(AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES);
+    expect(enabled.body.config.prefs).toEqual({ projectId });
+    expect((await getStoredConfig(orgId, "creative_work"))?.prefs).toEqual({ projectId });
+  });
+
+  it("rejects a project that is not owned by the organization owner", async () => {
+    const owner = await createUser();
+    const otherUser = await createUser();
+    const orgId = await createOrg(owner.id);
+    const otherProjectId = await createWorkspaceProject(otherUser.id);
+    actAs(owner);
+
+    const res = await request(app).put("/api/autopilot/creative_work").send({
+      prefs: { projectId: otherProjectId },
+    });
+
+    expect(res.status).toBe(400);
+    expect(await getStoredConfig(orgId, "creative_work")).toBeNull();
+  });
+
+  it("hides the private target and denies configuration to organization managers", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+    const projectId = await createWorkspaceProject(owner.id);
+    actAs(owner);
+    await request(app).put("/api/autopilot/creative_work").send({
+      enabled: true,
+      prefs: { projectId },
+    });
+
+    actAs(manager);
+    const view = await request(app).get("/api/autopilot");
+    expect(view.status).toBe(200);
+    expect(view.body.creative).toEqual({ canManage: false, projects: [] });
+    expect(view.body.domains.find((domain: { domain: string }) => domain.domain === "creative_work").prefs).toEqual({});
+
+    const update = await request(app).put("/api/autopilot/creative_work").send({ enabled: false });
+    expect(update.status).toBe(403);
+    expect((await getStoredConfig(orgId, "creative_work"))?.enabled).toBe(true);
   });
 });

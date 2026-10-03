@@ -9,7 +9,7 @@ import {
   Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check,
 } from 'lucide-react';
 
-type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting';
+type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting' | 'creative_work';
 
 interface MarketingPrefs {
   platforms: string[];
@@ -39,6 +39,12 @@ interface AccountingPrefs {
   payrollPeriodDays: number;
 }
 
+interface CreativeProjectOption {
+  id: number;
+  name: string;
+  type: string;
+}
+
 interface DomainConfig {
   orgId: number;
   domain: AutopilotDomain;
@@ -66,7 +72,8 @@ interface ActivityRow {
 interface AutopilotPayload {
   orgId: number;
   meta: Record<AutopilotDomain, { label: string; description: string }>;
-  defaults: { cadenceMinutes: number; maxActionsPerTick: number };
+  defaults: { cadenceMinutes: number; creativeCadenceMinutes?: number; maxActionsPerTick: number };
+  creative?: { canManage: boolean; projects: CreativeProjectOption[] };
   marketing: { tones: string[]; platforms: { id: string; label: string }[] };
   crm: { leadStatuses: { id: string; label: string }[] };
   domains: DomainConfig[];
@@ -673,9 +680,10 @@ const DOMAIN_ICON: Record<AutopilotDomain, typeof Briefcase> = {
   marketing: Megaphone,
   crm_calls: PhoneCall,
   accounting: Calculator,
+  creative_work: Sparkles,
 };
 
-const AUTOPILOT_DOMAIN_ORDER: AutopilotDomain[] = ['business_ops', 'marketing', 'crm_calls', 'accounting'];
+const AUTOPILOT_DOMAIN_ORDER: AutopilotDomain[] = ['business_ops', 'marketing', 'crm_calls', 'accounting', 'creative_work'];
 
 const OUTCOME_STYLE: Record<string, { text: string; label: string }> = {
   success: { text: 'text-green-400', label: 'SUCCESS' },
@@ -984,7 +992,7 @@ export default function Autopilot() {
             <Sparkles className="w-5 h-5" /> PABLO AUTOMATION
           </h1>
           <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
-            Paid Prime starts the four supported workflows automatically. You can pause any workflow or change its settings at any time.
+            Paid Prime starts the four existing workflows automatically. Creative Work stays off until the organization owner enables it.
           </p>
         </div>
         <button
@@ -1026,6 +1034,12 @@ export default function Autopilot() {
               const busy = savingDomain === cfg.domain;
               const status = saveState[cfg.domain];
               const nonce = revertNonce[cfg.domain] ?? 0;
+              const canManageWorkflow = cfg.domain !== 'creative_work' || data.creative?.canManage === true;
+              const creativeProjectId = cfg.domain === 'creative_work' ? num(cfg.prefs.projectId, 0) : 0;
+              const creativeProjectAvailable = cfg.domain !== 'creative_work' ||
+                (data.creative?.projects ?? []).some((project) => project.id === creativeProjectId);
+              const toggleDisabled = busy || !canManageWorkflow ||
+                (cfg.domain === 'creative_work' && !cfg.enabled && !creativeProjectAvailable);
               return (
                 <div key={cfg.domain} data-autopilot-domain={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -1044,7 +1058,7 @@ export default function Autopilot() {
                       </div>
                     </div>
                     <button
-                      disabled={busy}
+                      disabled={toggleDisabled}
                       aria-label={`${cfg.enabled ? 'Pause' : 'Enable'} ${meta?.label ?? cfg.domain} scheduled workflow`}
                       data-testid={`toggle-workflow-${cfg.domain}`}
                       onClick={() => void patchDomain(cfg.domain, { enabled: !cfg.enabled })}
@@ -1052,7 +1066,7 @@ export default function Autopilot() {
                         cfg.enabled
                           ? 'bg-green-500/15 border-green-500/30 text-green-400 hover:bg-green-500/25'
                           : 'bg-[#080c12] border-cyan-500/15 text-cyan-500/40 hover:border-cyan-500/30'
-                      } ${busy ? 'opacity-50' : ''}`}
+                      } ${toggleDisabled ? 'opacity-50' : ''}`}
                     >
                       {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Power className="w-3 h-3" />}
                       {cfg.enabled ? 'ON' : 'OFF'}
@@ -1088,25 +1102,31 @@ export default function Autopilot() {
                       <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
                         CADENCE (MIN)
                       </label>
-                      <input
-                        key={`cadence-${nonce}`}
-                        type="number"
-                        min={5}
-                        max={1440}
-                        disabled={busy}
-                        defaultValue={cfg.cadenceMinutes ?? data.defaults.cadenceMinutes}
-                        onBlur={(e) => {
-                          const current = cfg.cadenceMinutes ?? data.defaults.cadenceMinutes;
-                          const v = parseClampedCap(e.target.value, 5, 1440);
-                          if (v === null) {
-                            e.target.value = String(current); // blank/non-numeric → revert, no write
-                            return;
-                          }
-                          e.target.value = String(v); // reflect the clamped/normalized value
-                          if (v !== current) void patchDomain(cfg.domain, { cadenceMinutes: v });
-                        }}
-                        className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none"
-                      />
+                      {cfg.domain === 'creative_work' ? (
+                        <div data-testid="text-creative-cadence" className="px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono">
+                          At most once per day
+                        </div>
+                      ) : (
+                        <input
+                          key={`cadence-${nonce}`}
+                          type="number"
+                          min={5}
+                          max={1440}
+                          disabled={busy}
+                          defaultValue={cfg.cadenceMinutes ?? data.defaults.cadenceMinutes}
+                          onBlur={(e) => {
+                            const current = cfg.cadenceMinutes ?? data.defaults.cadenceMinutes;
+                            const v = parseClampedCap(e.target.value, 5, 1440);
+                            if (v === null) {
+                              e.target.value = String(current); // blank/non-numeric → revert, no write
+                              return;
+                            }
+                            e.target.value = String(v); // reflect the clamped/normalized value
+                            if (v !== current) void patchDomain(cfg.domain, { cadenceMinutes: v });
+                          }}
+                          className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
@@ -1171,6 +1191,45 @@ export default function Autopilot() {
                       busy={busy}
                       onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
                     />
+                  )}
+                  {cfg.domain === 'creative_work' && (
+                    <div className="mt-4 border-t border-cyan-500/10 pt-3" data-testid="creative-work-settings">
+                      <label htmlFor="creative-work-project" className="font-mono text-[9px] text-cyan-500/50 tracking-wider mb-1 block">
+                        OWNER WORKSPACE PROJECT
+                      </label>
+                      {data.creative?.canManage ? (
+                        (data.creative.projects ?? []).length > 0 ? (
+                          <select
+                            id="creative-work-project"
+                            data-testid="select-creative-work-project"
+                            key={`creative-project-${nonce}`}
+                            defaultValue={creativeProjectId ? String(creativeProjectId) : ''}
+                            disabled={busy}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              void patchDomain(cfg.domain, { prefs: { projectId: value ? Number(value) : null } });
+                            }}
+                            className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-200 text-xs font-mono focus:border-cyan-500/40 outline-none disabled:opacity-50"
+                          >
+                            <option value="" disabled={cfg.enabled}>Choose a project</option>
+                            {data.creative.projects.map((project) => (
+                              <option key={project.id} value={String(project.id)}>{project.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="font-sans text-[11px] text-cyan-500/50">
+                            Create a project in the <a href="/pablo/create" className="text-cyan-300 underline">Creation Workspace</a> first.
+                          </p>
+                        )
+                      ) : (
+                        <p data-testid="text-creative-owner-only" className="font-sans text-[11px] text-cyan-500/50">
+                          Only the organization owner can select a private project or control this workflow.
+                        </p>
+                      )}
+                      <p className="mt-2 font-sans text-[10px] text-cyan-500/40 leading-relaxed">
+                        Drafts are saved for review. Pablo does not publish or run them, and waits for a project description or source-note update before drafting again.
+                      </p>
+                    </div>
                   )}
                 </div>
               );

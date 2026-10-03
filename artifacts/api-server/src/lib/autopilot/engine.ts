@@ -4,6 +4,7 @@ import {
   AUTOPILOT_DOMAINS,
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
+  AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
   type AutopilotConfig,
   type AutopilotDomain,
 } from "@workspace/db";
@@ -32,6 +33,7 @@ const handlers: Record<AutopilotDomain, AutopilotHandler> = {
   marketing: noopHandler,
   crm_calls: noopHandler,
   accounting: noopHandler,
+  creative_work: noopHandler,
 };
 
 /** Register the handler for a domain during server boot. */
@@ -46,7 +48,9 @@ let ticking = false; // reentrancy guard: never overlap two evaluation passes
 
 function cadenceElapsed(config: AutopilotConfig, now: number): boolean {
   if (!config.lastRunAt) return true;
-  const cadenceMin = config.cadenceMinutes ?? AUTOPILOT_DEFAULT_CADENCE_MINUTES;
+  const cadenceMin = config.domain === "creative_work"
+    ? Math.max(config.cadenceMinutes ?? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES, AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES)
+    : config.cadenceMinutes ?? AUTOPILOT_DEFAULT_CADENCE_MINUTES;
   const dueAt = new Date(config.lastRunAt).getTime() + cadenceMin * 60_000;
   return now >= dueAt;
 }

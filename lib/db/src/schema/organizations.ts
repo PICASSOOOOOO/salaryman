@@ -283,7 +283,7 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
   "members.view": { label: "View roster", description: "See the full list of organization members.", group: "People" },
   "members.manage": { label: "Manage members", description: "Invite, remove and change roles of members.", group: "People" },
   "billing.manage": { label: "Manage billing", description: "Manage subscriptions, plans and payment methods.", group: "Admin" },
-  "autopilot.manage": { label: "Manage autopilot", description: "Assign bots to domains and turn autopilot on or off.", group: "Admin" },
+  "autopilot.manage": { label: "Manage autopilot", description: "Manage scheduled workflows and their settings.", group: "Admin" },
   "website.manage": { label: "Manage public website", description: "Connect a Framer site and manage the org's public SALARYMAN-hosted site.", group: "Admin" },
   "org.settings": { label: "Edit settings & permissions", description: "Change org settings and edit this permissions matrix.", group: "Admin" },
 };

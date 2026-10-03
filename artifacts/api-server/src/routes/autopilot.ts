@@ -1,13 +1,18 @@
 import { Router, type Request, type Response } from "express";
 import {
+  db,
   AUTOPILOT_DOMAINS,
   AUTOPILOT_DOMAIN_META,
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
+  AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
   AUTOPILOT_MARKETING_TONES,
   AUTOPILOT_CRM_LEAD_STATUSES,
+  organizationsTable,
+  projectsTable,
   isAutopilotDomain,
 } from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getOrgAutopilotView, getDomainConfig, upsertDomainConfig } from "../lib/autopilot/config";
 import { getRecentAutopilotActivity } from "../lib/autopilot/activity";
@@ -15,6 +20,7 @@ import { sanitizeMarketingPrefs } from "../lib/autopilot/marketing-prefs";
 import { sanitizeBusinessOpsPrefs } from "../lib/autopilot/business-ops-prefs";
 import { sanitizeCrmPrefs } from "../lib/autopilot/crm-prefs";
 import { sanitizeAccountingPrefs } from "../lib/autopilot/accounting-prefs";
+import { sanitizeCreativeWorkPrefs } from "../lib/autopilot/creative-prefs";
 import { SOCIAL_PLATFORMS } from "../lib/social-service";
 import { requireFeature } from "../middlewares/requirePro";
 
@@ -46,6 +52,7 @@ const PREFS_SANITIZERS: Record<string, (raw: unknown) => Record<string, unknown>
   business_ops: (raw) => sanitizeBusinessOpsPrefs(raw) as unknown as Record<string, unknown>,
   crm_calls: (raw) => sanitizeCrmPrefs(raw) as unknown as Record<string, unknown>,
   accounting: (raw) => sanitizeAccountingPrefs(raw) as unknown as Record<string, unknown>,
+  creative_work: (raw) => sanitizeCreativeWorkPrefs(raw) as unknown as Record<string, unknown>,
 };
 
 const router = Router();
@@ -53,6 +60,12 @@ const requireAutomationSubscription = requireFeature("claw_bot");
 
 function getUserId(req: Request): string {
   return (req as Request & { user?: { id?: string } }).user?.id ?? "";
+}
+
+function bodyObject(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 function requireAuth(req: Request, res: Response): boolean {
@@ -83,18 +96,40 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       return;
     }
 
-    const [domains, activity] = await Promise.all([
+    const [domains, activity, org] = await Promise.all([
       getOrgAutopilotView(orgId),
       getRecentAutopilotActivity(orgId, { limit: 50 }),
+      db.select({ ownerUserId: organizationsTable.ownerUserId })
+        .from(organizationsTable)
+        .where(eq(organizationsTable.id, orgId))
+        .limit(1)
+        .then((rows) => rows[0]),
     ]);
+    const canManageCreative = org?.ownerUserId === userId;
+    const creativeProjects = canManageCreative
+      ? await db.select({
+          id: projectsTable.id,
+          name: projectsTable.name,
+          type: projectsTable.type,
+        })
+          .from(projectsTable)
+          .where(eq(projectsTable.userId, userId))
+          .orderBy(desc(projectsTable.updatedAt))
+          .limit(100)
+      : [];
+    const visibleDomains = canManageCreative
+      ? domains
+      : domains.map((domain) => domain.domain === "creative_work" ? { ...domain, prefs: {} } : domain);
 
     res.json({
       orgId,
       meta: AUTOPILOT_DOMAIN_META,
       defaults: {
         cadenceMinutes: AUTOPILOT_DEFAULT_CADENCE_MINUTES,
+        creativeCadenceMinutes: AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
         maxActionsPerTick: AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
       },
+      creative: { canManage: canManageCreative, projects: creativeProjects },
       marketing: {
         tones: AUTOPILOT_MARKETING_TONES,
         platforms: SOCIAL_PLATFORMS.map((id) => ({ id, label: MARKETING_PLATFORM_LABELS[id] ?? id })),
@@ -102,7 +137,7 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       crm: {
         leadStatuses: AUTOPILOT_CRM_LEAD_STATUSES.map((id) => ({ id, label: CRM_LEAD_STATUS_LABELS[id] ?? id })),
       },
-      domains,
+      domains: visibleDomains,
       activity,
     });
   } catch (err) {
@@ -177,6 +212,48 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
     }
 
     const body = req.body ?? {};
+    let creativePrefs: ReturnType<typeof sanitizeCreativeWorkPrefs> | null = null;
+    let existingCreativeConfig: Awaited<ReturnType<typeof getDomainConfig>> = null;
+    if (domain === "creative_work") {
+      const [org] = await db
+        .select({ ownerUserId: organizationsTable.ownerUserId })
+        .from(organizationsTable)
+        .where(eq(organizationsTable.id, orgId))
+        .limit(1);
+      if (org?.ownerUserId !== userId) {
+        res.status(403).json({ error: "Only the organization owner can manage Creative Work" });
+        return;
+      }
+      existingCreativeConfig = await getDomainConfig(orgId, domain);
+      const incoming = bodyObject(body.prefs);
+      creativePrefs = sanitizeCreativeWorkPrefs({
+        ...(existingCreativeConfig?.prefs ?? {}),
+        ...incoming,
+      });
+
+      const willBeEnabled = body.enabled !== undefined
+        ? !!body.enabled
+        : existingCreativeConfig?.enabled ?? false;
+      if (willBeEnabled && creativePrefs.projectId === null) {
+        res.status(400).json({ error: "Choose a workspace project before enabling Creative Work" });
+        return;
+      }
+      if (creativePrefs.projectId !== null) {
+        const [project] = await db
+          .select({ id: projectsTable.id })
+          .from(projectsTable)
+          .where(and(
+            eq(projectsTable.id, creativePrefs.projectId),
+            eq(projectsTable.userId, userId),
+          ))
+          .limit(1);
+        if (!project) {
+          res.status(400).json({ error: "Choose a project owned by the organization owner" });
+          return;
+        }
+      }
+    }
+
     const patch: Parameters<typeof upsertDomainConfig>[2] = { updatedBy: userId };
 
     if (body.botId !== undefined) {
@@ -193,7 +270,9 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
       if (!Number.isFinite(n)) return undefined;
       return Math.min(Math.max(Math.round(n), min), max);
     };
-    const cadence = clampInt(body.cadenceMinutes, 5, 1440);
+    const cadenceMin = domain === "creative_work" ? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES : 5;
+    const cadenceMax = domain === "creative_work" ? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES : 1440;
+    const cadence = clampInt(body.cadenceMinutes, cadenceMin, cadenceMax);
     if (cadence !== undefined) patch.cadenceMinutes = cadence;
     const maxActions = clampInt(body.maxActionsPerTick, 1, 100);
     if (maxActions !== undefined) patch.maxActionsPerTick = maxActions;
@@ -206,10 +285,12 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
     if (body.prefs !== undefined) {
       const sanitize = PREFS_SANITIZERS[domain];
       if (sanitize) {
-        const incoming = body.prefs && typeof body.prefs === "object" ? (body.prefs as Record<string, unknown>) : {};
-        const existing = await getDomainConfig(orgId, domain);
+        const incoming = bodyObject(body.prefs);
+        const existing = domain === "creative_work" ? existingCreativeConfig : await getDomainConfig(orgId, domain);
         patch.prefs = sanitize({ ...(existing?.prefs ?? {}), ...incoming });
       }
+    } else if (domain === "creative_work" && !existingCreativeConfig && creativePrefs) {
+      patch.prefs = creativePrefs;
     }
 
     const config = await upsertDomainConfig(orgId, domain, patch);

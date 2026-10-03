@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseGeneratedWorkspaceDraft } from "../lib/pablo-creation";
+import { hasProjectInputsChanged, parseGeneratedWorkspaceDraft } from "../lib/pablo-creation";
 
 const safePrototype = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Local prototype</title></head>
@@ -32,5 +32,20 @@ describe("parseGeneratedWorkspaceDraft", () => {
     expect(parseGeneratedWorkspaceDraft(asModelResponse(
       safePrototype.replace("</head>", '<script src="//cdn.example.test/app.js"></script></head>'),
     ))).toBeNull();
+  });
+});
+
+describe("hasProjectInputsChanged", () => {
+  const projectUpdatedAt = new Date("2026-10-01T10:00:00.000Z");
+  const priorDraftAt = new Date("2026-10-02T10:00:00.000Z");
+
+  it("allows the initial automatic draft", () => {
+    expect(hasProjectInputsChanged(projectUpdatedAt, null, null)).toBe(true);
+  });
+
+  it("waits until the project or source notes are updated after the previous draft", () => {
+    expect(hasProjectInputsChanged(projectUpdatedAt, new Date("2026-10-02T09:00:00.000Z"), priorDraftAt)).toBe(false);
+    expect(hasProjectInputsChanged(projectUpdatedAt, new Date("2026-10-02T10:00:01.000Z"), priorDraftAt)).toBe(true);
+    expect(hasProjectInputsChanged(new Date("2026-10-02T10:00:01.000Z"), null, priorDraftAt)).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import {
   db,
   autopilotConfigsTable,
-  AUTOPILOT_DOMAINS,
+  AUTOPILOT_PRIME_AUTO_START_DOMAINS,
   organizationsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -40,7 +40,7 @@ export async function autoActivatePrimeWorkflows(
     .from(autopilotConfigsTable)
     .where(eq(autopilotConfigsTable.orgId, orgId));
   const configured = new Set(configuredRows.map((row) => row.domain));
-  const missingDomains = AUTOPILOT_DOMAINS.filter((domain) => !configured.has(domain));
+  const missingDomains = AUTOPILOT_PRIME_AUTO_START_DOMAINS.filter((domain) => !configured.has(domain));
 
   if (missingDomains.length > 0) {
     await db

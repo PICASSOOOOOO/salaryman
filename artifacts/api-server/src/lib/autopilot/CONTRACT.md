@@ -1,8 +1,8 @@
 # Autopilot shared-service contract
 
-This is the foundation the four domain autopilots build on: **Business Ops,
-Marketing, CRM & Calls, Accounting**. Read this before implementing a domain
-handler.
+This is the foundation the domain autopilots build on: **Business Ops,
+Marketing, CRM & Calls, Accounting, and opt-in Creative Work**. Read this before
+implementing a domain handler.
 
 ## The one rule that matters
 
@@ -69,3 +69,15 @@ activity log instead of erroring:
 - HTTP: `routes/autopilot.ts` (`GET /api/autopilot`, `PUT /api/autopilot/:domain`),
   owner/manager-gated via the `autopilot.manage` org permission.
 - UI shell: the web app's Autopilot panel (`/business/autopilot`).
+
+## Creative Work (opt-in)
+
+- Keep paid activation limited to the four existing business workflows; Creative
+  Work is disabled until the organization owner selects a private workspace
+  project and enables it.
+- Check at most once per day and draft only after the project description or its
+  creation-context/reference notes change. Reuse the workspace draft service.
+- Save only a validated, offline plan and prototype for owner review. Never
+  execute, publish, deploy, fetch reference URLs, or move money.
+- Activity summaries must not disclose private project names, IDs, or content to
+  organization managers.

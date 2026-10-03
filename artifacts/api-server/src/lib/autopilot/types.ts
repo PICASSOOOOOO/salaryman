@@ -4,8 +4,8 @@ export const AUTOPILOT_ASSISTANT_NAME = "Pablo Prime";
 
 // ─── Autopilot handler contract ──────────────────────────────────────────────
 // A domain handler is invoked by the scheduler ONCE per due tick for an org that
-// has the domain enabled. Pablo Prime owns the four supported domains (Business
-// Ops / Marketing / CRM & Calls / Accounting).
+// has the domain enabled. Pablo Prime owns the supported domains; paid account
+// activation remains limited to the original four workflows.
 //
 // CORE RULE: a handler must perform its work by calling the SAME service
 // functions the manual screens call — never by re-implementing logic — so the
