@@ -54,7 +54,11 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
           <ChevronDown className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
       ) : (
-        <Link href="/sign-in?returnTo=%2F" className="start-work-login home-login-link">
+        <Link
+          href="/sign-in?returnTo=%2F"
+          className="start-work-login home-login-link"
+          aria-label="Log in to your SALARYMAN account"
+        >
           <LogIn aria-hidden="true" />
           <span>LOG IN</span>
         </Link>
