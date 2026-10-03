@@ -12,6 +12,8 @@ import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/pho
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { isSupportedCountry } from "../lib/phone";
 import { markOrganizationAsPaid, markUserAsPaid } from "../lib/payment-protection";
+import { autoActivatePrimeWorkflows } from "../lib/autopilot/activation";
+import { resolveCurrentOrgId } from "../lib/org-permissions";
 
 const router = Router();
 
@@ -347,6 +349,13 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     }
   }
 
+  // Carry the owner's active business into a personal Prime checkout so the
+  // paid webhook can start the right org's workflows. Company billing already
+  // resolved its target org above.
+  const primeAutopilotOrgId = feature === "claw_bot"
+    ? orgId ?? await resolveCurrentOrgId(user.id)
+    : null;
+
   const checkoutReturnPath = feature === "claw_bot" ? "/pledge?view=prime" : "/pricing";
   const checkoutReturnSeparator = checkoutReturnPath.includes("?") ? "&" : "?";
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -362,6 +371,7 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
       product_line: "SALARYMAN",
       grantedBy: grantedByValue,
       ...(orgId ? { orgId: String(orgId) } : {}),
+      ...(primeAutopilotOrgId ? { primeAutopilotOrgId: String(primeAutopilotOrgId) } : {}),
     },
     // NOTE: The bank statement descriptor "PICASSO AI LLC" must be configured at the
     // account level in the Stripe Dashboard (Settings → Account details → Statement descriptor).
@@ -377,6 +387,7 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
         product_line: "SALARYMAN",
         feature,
         ...(orgId ? { orgId: String(orgId) } : {}),
+        ...(primeAutopilotOrgId ? { primeAutopilotOrgId: String(primeAutopilotOrgId) } : {}),
       },
     },
   };
@@ -1115,24 +1126,39 @@ router.post(
           // the session has no `metadata.feature` because we can't inject
           // metadata into payment-link checkouts. Resolve the feature by
           // matching the subscription's product against FEATURE_PRODUCT_IDS.
+          let primeActivationFailed = false;
           try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] });
-            const productId = (() => {
-              const item = sub.items?.data?.[0];
-              if (!item) return undefined;
-              const product = (item.price as any)?.product;
-              return typeof product === "string" ? product : product?.id;
-            })();
-            const matchedFeature = (Object.entries(FEATURE_PRODUCT_IDS) as [FeatureKey, string][])
+            const firstItem = sub.items?.data?.[0];
+            const product = (firstItem?.price as any)?.product;
+            const productId = typeof product === "string" ? product : product?.id;
+            const featureFromProductMetadata = typeof product?.metadata?.feature === "string"
+              ? resolveFeatureKey(product.metadata.feature)
+              : undefined;
+            const matchedFeature = featureFromProductMetadata
+              ?? (Object.entries(FEATURE_PRODUCT_IDS) as [FeatureKey, string][])
               .find(([, pid]) => pid === productId)?.[0];
             if (matchedFeature) {
               await grantFeature(userId, matchedFeature, "stripe-payment-link", subscriptionId);
+              if (matchedFeature === "claw_bot" && session.payment_status === "paid") {
+                try {
+                  await autoActivatePrimeWorkflows(userId, {
+                    orgId: session.metadata?.primeAutopilotOrgId
+                      ? Number(session.metadata.primeAutopilotOrgId)
+                      : null,
+                  });
+                } catch (err) {
+                  primeActivationFailed = true;
+                  throw err;
+                }
+              }
               console.log(`[Stripe] Payment-link grant: user ${userId} → ${matchedFeature} (sub: ${subscriptionId}, product: ${productId})`);
             } else {
               console.warn("[Stripe] Payment-link checkout — no matching feature for product", { userId, productId, subscriptionId });
             }
           } catch (err) {
             console.error("[Stripe] Payment-link fallback failed:", err instanceof Error ? err.message : err);
+            if (primeActivationFailed) throw err;
           }
         } else if (userId && feature && (FEATURE_KEYS.includes(feature) || resolveFeatureKey(feature))) {
           const resolvedFeature = resolveFeatureKey(feature) ?? feature as FeatureKey;
@@ -1170,6 +1196,19 @@ router.post(
               }
               console.log(`[Stripe] Org ${parsedOrgId}: granted ${feature} to ${companyMembers.length} company-billing members`);
             }
+          }
+
+          if (resolvedFeature === "claw_bot" && subscriptionId && session.payment_status === "paid") {
+            const companyBilled = grantedBy.startsWith("org:");
+            const hintedOrgId = session.metadata?.primeAutopilotOrgId
+              ? Number(session.metadata.primeAutopilotOrgId)
+              : companyBilled && orgIdMeta
+                ? Number(orgIdMeta)
+                : null;
+            await autoActivatePrimeWorkflows(userId, {
+              orgId: Number.isInteger(hintedOrgId) && Number(hintedOrgId) > 0 ? hintedOrgId : null,
+              companyBilled,
+            });
           }
         } else {
           console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });

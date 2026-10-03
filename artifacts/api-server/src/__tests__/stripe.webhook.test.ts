@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   canUsePlatformTwilio: vi.fn().mockResolvedValue(false),
   hasFeature: vi.fn().mockResolvedValue(true),
   checkoutCreate: vi.fn(),
+  autoActivatePrimeWorkflows: vi.fn().mockResolvedValue(null),
 }));
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -87,6 +88,10 @@ vi.mock("../lib/phone-number-service", () => ({
 
 vi.mock("../lib/platform-twilio-access", () => ({
   canUsePlatformTwilio: mocks.canUsePlatformTwilio,
+}));
+
+vi.mock("../lib/autopilot/activation", () => ({
+  autoActivatePrimeWorkflows: mocks.autoActivatePrimeWorkflows,
 }));
 
 // ─── Test app ─────────────────────────────────────────────────────────────────
@@ -168,6 +173,7 @@ describe("POST /stripe/webhook", () => {
     mocks.provisionPaidPhoneNumber.mockResolvedValue({ sid: "PNpaid", phoneNumber: "+15558881111" });
     mocks.hasFeature.mockResolvedValue(true);
     mocks.canUsePlatformTwilio.mockResolvedValue(true);
+    mocks.autoActivatePrimeWorkflows.mockResolvedValue(null);
     mocks.checkoutCreate.mockResolvedValue({ id: `cs_checkout_${Date.now()}`, url: "https://checkout.example/session" });
     // Default: constructEvent succeeds and returns a minimal no-op event so
     // tests that don't need a specific event still get a 200.
@@ -382,6 +388,114 @@ describe("POST /stripe/webhook", () => {
         expect.any(String),   // grantedBy (defaults to "stripe")
         TEST_SUB,
       );
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledWith(TEST_USER, {
+        orgId: null,
+        companyBilled: false,
+      });
+    });
+
+    it("starts Prime workflows in the business linked to the paid checkout", async () => {
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_org",
+        payment_status: "paid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: { feature: "claw_bot", primeAutopilotOrgId: "42" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledWith(TEST_USER, {
+        orgId: 42,
+        companyBilled: false,
+      });
+    });
+
+    it("does not start Prime workflows for an unpaid checkout", async () => {
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_unpaid",
+        payment_status: "unpaid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: { feature: "claw_bot", primeAutopilotOrgId: "42" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(mocks.autoActivatePrimeWorkflows).not.toHaveBeenCalled();
+    });
+
+    it("resolves hosted Prime payment links from product metadata and starts workflows", async () => {
+      mocks.subscriptionsRetrieve.mockResolvedValueOnce({
+        items: {
+          data: [{
+            price: {
+              product: {
+                id: "prod_prime_payment_link",
+                metadata: { feature: "claw_bot" },
+              },
+            },
+          }],
+        },
+      });
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_payment_link",
+        payment_status: "paid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: {},
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(mocks.grantFeature).toHaveBeenCalledWith(
+        TEST_USER,
+        "claw_bot",
+        "stripe-payment-link",
+        TEST_SUB,
+      );
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledWith(TEST_USER, {
+        orgId: null,
+      });
+    });
+
+    it("returns a retryable error when hosted Prime activation fails", async () => {
+      mocks.subscriptionsRetrieve.mockResolvedValueOnce({
+        items: {
+          data: [{
+            price: {
+              product: {
+                id: "prod_prime_payment_link",
+                metadata: { feature: "claw_bot" },
+              },
+            },
+          }],
+        },
+      });
+      mocks.autoActivatePrimeWorkflows.mockRejectedValueOnce(new Error("activation unavailable"));
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_payment_link_retry",
+        payment_status: "paid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: {},
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(500);
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledOnce();
     });
 
     it("uses metadata.userId when client_reference_id is absent", async () => {

@@ -1,6 +1,6 @@
 ---
 name: Pablo automation foundation
-description: Product direction and execution/access rules for Pablo Prime's four opt-in business automation domains.
+description: Product direction and execution/access rules for Pablo Prime's paid automation domains.
 ---
 
 # Pablo automation foundation
@@ -62,18 +62,32 @@ extension rather than letting legacy bot IDs influence current runs.
 agent ownership is a separate product change with explicit routing and guardrails.
 
 ## Activation and paid access
-Each domain stays off until a user enables it once. After that, Pablo runs it on
-schedule without per-run approval, but only while the organization's owner has
-the active paid `claw_bot`/Pablo Prime entitlement. Do not auto-enable domains.
-Settings beyond that opt-in are optional; server defaults must work without
-requiring users to configure unrelated domains. Browser and future desktop
-surfaces should control the same server-side schedules rather than run parallel
-automation engines.
+A successful paid Prime activation automatically enables the four currently
+supported workflows. Users can pause any workflow; payment-event retries must not
+overwrite existing config rows or undo saved pauses. Scheduled runs remain gated
+by the organization's active paid `claw_bot` entitlement, and run without
+per-action approval after activation.
 
-**Why:** the user chose one-time opt-in for a paid feature and wants automation
-only where people choose it, without unwanted setup or actions.
+**Why:** the user explicitly chose automatic activation of all four workflows as
+part of the paid Prime feature, while retaining the ability to stop workflows
+they do not want.
 
-**How to apply:** enforce paid access at control APIs and again in the background
-scheduler; preserve the saved opt-in if access lapses, but block unattended runs.
-Keep each domain independently optional, with no per-run approval or local
-desktop scheduler.
+**How to apply:** start missing configs only after a successful paid checkout;
+preserve existing settings and pauses, and enforce paid access at control APIs
+and again in the background scheduler. Browser and future desktop controls share
+the same server-side schedules rather than running parallel automation engines.
+
+## Automation catalog and income direction
+The intended catalog extends beyond the first four domains: creative work,
+communication, consent-based telemarketing, permitted web research/scraping,
+app/site/downloadable-game construction, data and database management, office
+decor, and broader business workflows. Bot-based income generation should be
+optional and is a top product priority; users need a trustworthy path to receive
+verified earnings from their bots.
+
+**Why:** the user said the initial four domains are not enough and identified
+optional user income from bots as paramount.
+
+**How to apply:** ship each category as a real supported capability, not a
+placeholder. Reuse the existing consent and authoritative settlement rules;
+make income workflows optional and never promise guaranteed earnings.
