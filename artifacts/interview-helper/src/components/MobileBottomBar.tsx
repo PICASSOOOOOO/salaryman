@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, X, Menu, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, X, Menu, MoreHorizontal, LogIn } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
@@ -112,6 +112,7 @@ export function MobileModuleNav() {
               aria-label="Sign in"
               title="Sign in"
             >
+              <LogIn className="w-4 h-4" aria-hidden="true" />
               <span>SIGN IN</span>
             </button>
           )}

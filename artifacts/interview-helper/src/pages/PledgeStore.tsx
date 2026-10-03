@@ -122,13 +122,16 @@ export default function PledgeStore() {
   return (
     <main className="min-h-screen bg-[#fffdf8] px-4 py-6 text-black sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
-        <button
-          type="button"
-          onClick={() => navigate("/settings")}
-          className="mb-8 inline-flex min-h-10 items-center gap-2 border border-black px-3 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-black hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" /> Settings
-        </button>
+        {isAuthenticated && !authLoading && (
+          <button
+            type="button"
+            onClick={() => navigate("/settings")}
+            data-testid="button-membership-back-settings"
+            className="mb-8 inline-flex min-h-10 items-center gap-2 border border-black px-3 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-black hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" /> Settings
+          </button>
+        )}
 
         <header className="mb-8 max-w-2xl">
           <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-black/55">
