@@ -8,7 +8,6 @@ import {
   balanceSheetTxTable,
   autopilotActivityLogTable,
   type AutopilotConfig,
-  type Bot,
 } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { recordAutopilotActivity } from "../lib/autopilot/activity";
@@ -46,13 +45,13 @@ function makeCtx(
     orgId,
     domain: "accounting",
     config: { id: 1, orgId, domain: "accounting", botId: 1 } as unknown as AutopilotConfig,
-    bot: { id: 1 } as unknown as Bot,
+    assistantName: "Pablo Prime",
     ownerId,
     ownerEmail: null,
     maxActions,
     async log(input) {
       logs.push(input);
-      await recordAutopilotActivity({ orgId, domain: "accounting", botId: 1, ...input });
+      await recordAutopilotActivity({ orgId, domain: "accounting", botId: null, ...input });
     },
     claimAction() {
       if (budget <= 0) {

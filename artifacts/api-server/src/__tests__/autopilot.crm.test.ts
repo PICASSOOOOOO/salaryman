@@ -46,7 +46,7 @@ function makeCtx(maxActions: number): { ctx: AutopilotContext; logs: AutopilotLo
     orgId: ORG_ID,
     domain: "crm_calls",
     config: {} as AutopilotContext["config"],
-    bot: { id: 1 } as AutopilotContext["bot"],
+    assistantName: "Pablo Prime",
     ownerId: OWNER_ID,
     ownerEmail: "crm-ap@example.test",
     maxActions,

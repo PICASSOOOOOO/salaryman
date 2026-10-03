@@ -86,7 +86,6 @@ function basePayload() {
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
     marketing: { tones: ["professional"], platforms: [{ id: "twitter", label: "X / Twitter" }] },
     crm: { leadStatuses: [{ id: "new", label: "New" }] },
-    bots: [{ id: 10, name: "Pablo", status: "active", department: "Ops" }],
     domains: (["business_ops", "marketing", "crm_calls", "accounting"] as const).map((domain) => ({
       orgId: 1,
       domain,
@@ -342,7 +341,7 @@ describe("Autopilot activity feed", () => {
 
     // No rows render, just the generic empty notice.
     expect(renderedRowOutcomes()).toHaveLength(0);
-    expect(emptyStateText()).toBe("No Pixel Agents activity yet.");
+    expect(emptyStateText()).toBe("No Pablo Automation activity yet.");
 
     // Scoping to a domain switches the notice to that domain's label.
     await click(findButton("MARKETING"));

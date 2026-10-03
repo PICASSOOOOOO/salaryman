@@ -78,10 +78,6 @@ function freshPayload() {
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
     marketing: { tones: TONES, platforms: PLATFORMS },
     crm: { leadStatuses: LEAD_STATUSES },
-    bots: [
-      { id: 10, name: "Pablo", status: "active", department: "Ops" },
-      { id: 11, name: "Mila", status: "active", department: null },
-    ],
     domains: [
       {
         orgId: 1,
@@ -168,10 +164,9 @@ async function mount() {
 function cardFor(label: string): HTMLElement {
   const h3 = Array.from(container.querySelectorAll("h3")).find((h) => h.textContent === label);
   if (!h3) throw new Error(`no card heading for "${label}"`);
-  let el: HTMLElement | null = h3;
-  while (el && !el.querySelector("select")) el = el.parentElement;
-  if (!el) throw new Error(`no card body for "${label}"`);
-  return el;
+  const card = h3.closest("[data-autopilot-domain]");
+  if (!card) throw new Error(`no card body for "${label}"`);
+  return card as HTMLElement;
 }
 
 function topToggle(card: HTMLElement): HTMLButtonElement {

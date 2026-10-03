@@ -59,7 +59,7 @@ describe("ProfessionalHome header", () => {
     act(() => startWorkButton.click());
     expect(container.querySelector("#home-start-work-panel")).not.toBeNull();
     expect(container.textContent).toContain("PABLO PRIME");
-    expect(container.textContent).toContain("PIXEL AGENTS");
+    expect(container.textContent).toContain("PABLO AUTOMATION");
     expect(container.textContent).toContain("CALLL HOME");
     expect(container.textContent).toContain("SALARYMAN OS");
   });

@@ -6,8 +6,8 @@ import "./ProfessionalHome.css";
 
 const MODULES = [
   {
-    id: "pixel-agents",
-    title: "PIXEL AGENTS",
+    id: "pablo-automation",
+    title: "PABLO AUTOMATION",
     href: "/business/autopilot",
     icon: Workflow,
     logoSrc: undefined,

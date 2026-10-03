@@ -84,7 +84,7 @@ const QUICK_ACCESS = [
   { path: '/business/jobs', label: 'JOBS', icon: Briefcase },
   { path: '/marketing/leads', label: 'LEADS', icon: Target },
   { path: '/business/contacts', label: 'DATA', icon: LayoutDashboard },
-  { path: '/business/autopilot', label: 'PIXEL AGENTS', icon: Bot },
+  { path: '/business/autopilot', label: 'PABLO AUTOMATION', icon: Bot },
   { path: '/phone', label: 'CALLL HOME', icon: PhoneCall },
   { path: '/comms', label: 'COMMS', icon: MessageSquare },
 ];

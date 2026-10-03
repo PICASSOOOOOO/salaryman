@@ -3,10 +3,9 @@ import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import {
-  Bot, Loader2, RefreshCw, Power, AlertCircle, Clock,
+  Sparkles, Loader2, RefreshCw, Power, AlertCircle, Clock,
   Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check,
 } from 'lucide-react';
-import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
 
 type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting';
 
@@ -52,13 +51,6 @@ interface DomainConfig {
   updatedBy: string | null;
 }
 
-interface OrgBot {
-  id: number;
-  name: string;
-  status: string;
-  department: string | null;
-}
-
 interface ActivityRow {
   id: number;
   domain: AutopilotDomain;
@@ -76,7 +68,6 @@ interface AutopilotPayload {
   marketing: { tones: string[]; platforms: { id: string; label: string }[] };
   crm: { leadStatuses: { id: string; label: string }[] };
   domains: DomainConfig[];
-  bots: OrgBot[];
   activity: ActivityRow[];
 }
 
@@ -789,13 +780,13 @@ export default function Autopilot() {
           paymentRequired?: boolean;
         };
         if (body.onboardingRequired) {
-          setError('Complete onboarding before using Pixel Agents.');
+          setError('Complete onboarding before using Pablo Automation.');
           setErrorAction({ href: '/onboarding', label: 'OPEN ONBOARDING' });
         } else if (body.feature === 'claw_bot' || body.paymentRequired) {
-          setError('PABLO PRIME is required to activate Pixel Agents.');
+          setError('PABLO PRIME is required to use Pablo Automation.');
           setErrorAction({ href: '/pledge?view=prime', label: 'VIEW PABLO PRIME' });
         } else {
-          setError('You need owner or manager access to manage Pixel Agents.');
+          setError('You need owner or manager access to manage Pablo Automation.');
         }
         setData(null);
         return;
@@ -806,7 +797,7 @@ export default function Autopilot() {
         return;
       }
       if (!res.ok) {
-        setError('Failed to load Pixel Agents.');
+        setError('Failed to load Pablo Automation.');
         setData(null);
         return;
       }
@@ -973,7 +964,7 @@ export default function Autopilot() {
     };
   }, []);
 
-  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage Pixel Agents." />;
+  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage Pablo Automation." />;
 
   if (loading) {
     return (
@@ -988,10 +979,10 @@ export default function Autopilot() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="font-mono text-base text-cyan-300 tracking-widest flex items-center gap-2">
-            <Bot className="w-5 h-5" /> PIXEL AGENTS
+            <Sparkles className="w-5 h-5" /> PABLO AUTOMATION
           </h1>
           <p className="font-mono text-[10px] text-cyan-500/40 tracking-wider mt-1">
-            Assign a Pixel Agent to run a business domain on its own. OFF = fully manual, exactly as today.
+            Pablo Prime runs the business workflows you enable here. OFF = manual; no workflow runs automatically.
           </p>
         </div>
         <button
@@ -1021,38 +1012,32 @@ export default function Autopilot() {
         <>
           <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-[10px] font-mono leading-relaxed">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400/60" />
-            Pixel Agents only do what a human in the same seat could do, and respect entitlement, credit, and
-            per-tick limits. Automated behavior for each domain is being rolled out — toggling ON now just arms the
-            scheduler and logs activity below.
+            Pablo Prime runs enabled Business Ops, Marketing, SMS-only CRM follow-ups, and Accounting workflows
+            through your organization’s existing services. Runs stay subject to your permissions, saved preferences,
+            consent, assistant power, and per-tick action limits.
           </div>
 
           <div className="space-y-3">
             {data.domains.map((cfg) => {
               const Icon = DOMAIN_ICON[cfg.domain];
               const meta = data.meta[cfg.domain];
-               const assignedBot = data.bots.find((bot) => bot.id === cfg.botId);
-               const agentTheme = divisionFor(assignedBot?.department ?? 'automation').theme;
               const busy = savingDomain === cfg.domain;
               const status = saveState[cfg.domain];
               const nonce = revertNonce[cfg.domain] ?? 0;
               return (
-                <div key={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
+                <div key={cfg.domain} data-autopilot-domain={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                       <div className="w-9 h-9 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 overflow-hidden">
-                         {assignedBot ? (
-                           <PixelAgentFace seed={assignedBot.name} theme={agentTheme} className="h-8 w-8" />
-                         ) : (
-                           <Icon className="w-4 h-4 text-cyan-400/80" />
-                         )}
+                        <div className="w-9 h-9 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4 text-cyan-400/80" />
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-mono text-xs text-cyan-300 tracking-wider">{meta?.label ?? cfg.domain}</h3>
                         <p className="font-mono text-[9px] text-cyan-500/40 leading-relaxed mt-0.5">
                           {meta?.description}
                         </p>
-                         <p className="mt-1 font-mono text-[9px] tracking-wider text-violet-300/70">
-                           {assignedBot ? `RUN BY ${assignedBot.name.toUpperCase()}` : 'NO PIXEL AGENT ASSIGNED'}
+                          <p className="mt-1 font-mono text-[9px] tracking-wider text-violet-300/70">
+                            RUN BY PABLO PRIME
                          </p>
                       </div>
                     </div>
@@ -1092,30 +1077,7 @@ export default function Autopilot() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                    <div>
-                      <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
-                        ASSIGNED AGENT
-                      </label>
-                      <select
-                        disabled={busy}
-                        value={cfg.botId ?? ''}
-                        onChange={(e) =>
-                          void patchDomain(cfg.domain, {
-                            botId: e.target.value === '' ? null : Number(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none appearance-none"
-                      >
-                        <option value="">— none —</option>
-                        {data.bots.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                            {b.department ? ` · ${b.department}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                     <div>
                       <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
                         CADENCE (MIN)
@@ -1278,7 +1240,7 @@ export default function Autopilot() {
               {activity.length === 0 && (
                 <div className="px-4 py-6 text-center font-mono text-[10px] text-cyan-500/30">
                   {activityFilter === 'all'
-                    ? 'No Pixel Agents activity yet.'
+                    ? 'No Pablo Automation activity yet.'
                     : `No ${(data.meta[activityFilter]?.label ?? activityFilter)} activity yet.`}
                 </div>
               )}

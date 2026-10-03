@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// Renders the PIXEL AGENTS dashboard (Autopilot page) against a mocked
+// Renders the Pablo Automation dashboard against a mocked
 // GET /api/autopilot response and pins that the control surface correctly
 // reflects what the server saved. The backend save/read paths already have
 // integration tests; this is the missing FRONT-END guard that the dashboard
@@ -10,7 +10,7 @@
 // asserts:
 //   • all four domains render (by their meta labels)
 //   • an ENABLED domain shows toggled ON, its assigned bot selected in the
-//     ASSIGNED AGENT dropdown, its caps (cadence / max actions) populated, and
+//     Pablo Prime runner identity, its caps (cadence / max actions) populated, and
 //     its saved prefs surfaced in the domain's prefs editor
 //   • the OFF domains render as OFF
 //   • the option metadata populates the relevant selectors — marketing tones
@@ -49,7 +49,7 @@ vi.mock("@/lib/api-client", () => ({
 import Autopilot from "./Autopilot";
 
 // A control surface as GET /api/autopilot would return it: Business Ops saved
-// ON with a bot + caps + prefs, the other three domains OFF, plus the option
+// ON with caps + prefs and Pablo Prime as the runner, the other domains OFF, plus the option
 // metadata (marketing tones / platforms, CRM lead statuses).
 const TONES = ["professional", "casual", "bold"];
 const PLATFORMS = [
@@ -72,22 +72,18 @@ function freshPayload() {
     meta: {
       business_ops: { label: "Business Ops", description: "Runs day-to-day operations." },
       marketing: { label: "Marketing", description: "Plans and publishes campaigns." },
-      crm_calls: { label: "CRM & Calls", description: "Works the lead pipeline." },
+      crm_calls: { label: "CRM & Calls", description: "Sends consent-aware SMS follow-ups; no automated phone calls." },
       accounting: { label: "Accounting", description: "Keeps the books." },
     },
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
     marketing: { tones: TONES, platforms: PLATFORMS },
     crm: { leadStatuses: LEAD_STATUSES },
-    bots: [
-      { id: 10, name: "Pablo", status: "active", department: "Ops" },
-      { id: 11, name: "Mila", status: "active", department: null },
-    ],
     domains: [
       {
         orgId: 1,
         domain: "business_ops",
         enabled: true,
-        botId: 10,
+        botId: null,
         cadenceMinutes: 30,
         maxActionsPerTick: 7,
         budgetCapCents: null,
@@ -161,15 +157,13 @@ async function mount() {
   });
 }
 
-// The card for a domain is the nearest ancestor of its <h3> label that also
-// contains the ASSIGNED AGENT <select>.
+// The domain data attribute gives tests a stable way to address one card.
 function cardFor(label: string): HTMLElement {
   const h3 = Array.from(container.querySelectorAll("h3")).find((h) => h.textContent === label);
   if (!h3) throw new Error(`no card heading for "${label}"`);
-  let el: HTMLElement | null = h3;
-  while (el && !el.querySelector("select")) el = el.parentElement;
-  if (!el) throw new Error(`no card body for "${label}"`);
-  return el;
+  const card = h3.closest("[data-autopilot-domain]");
+  if (!card) throw new Error(`no card body for "${label}"`);
+  return card as HTMLElement;
 }
 
 // The ON/OFF toggle button inside a card (its text is exactly ON or OFF).
@@ -198,9 +192,9 @@ afterEach(() => {
 });
 
 describe("Autopilot dashboard renders saved config", () => {
-  it("identifies the dashboard as PIXEL AGENTS", async () => {
+  it("identifies the dashboard as PABLO AUTOMATION", async () => {
     await mount();
-    expect(container.textContent).toContain("PIXEL AGENTS");
+    expect(container.textContent).toContain("PABLO AUTOMATION");
   });
 
   it("routes a missing Prime entitlement to the Prime checkout instead of mislabeling it as a role error", async () => {
@@ -208,7 +202,7 @@ describe("Autopilot dashboard renders saved config", () => {
       ok: false,
       status: 403,
       json: async () => ({
-        error: "Automation Pixel Agents subscription required",
+        error: "Pablo Prime automation access required",
         feature: "claw_bot",
         paymentRequired: true,
       }),
@@ -229,18 +223,15 @@ describe("Autopilot dashboard renders saved config", () => {
     }
   });
 
-  it("shows an enabled domain toggled ON with its bot, caps and prefs", async () => {
+  it("shows an enabled domain running as Pablo Prime with its caps and prefs", async () => {
     await mount();
     const card = cardFor("Business Ops");
 
     // Toggled ON.
     expect(toggleState(card)).toBe("ON");
 
-    // ASSIGNED AGENT dropdown has the saved bot selected (botId 10 → "Pablo").
-    const agentSelect = card.querySelector("select") as HTMLSelectElement;
-    expect(agentSelect.value).toBe("10");
-    const selectedOption = agentSelect.options[agentSelect.selectedIndex];
-    expect(selectedOption.textContent).toContain("Pablo");
+    expect(card.textContent).toContain("RUN BY PABLO PRIME");
+    expect(card.textContent).not.toContain("ASSIGNED AGENT");
 
     // Caps reflect the saved cadence / max-actions, not the defaults.
     const numbers = Array.from(card.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
@@ -266,8 +257,7 @@ describe("Autopilot dashboard renders saved config", () => {
   it("populates marketing tones into the TONE selector", async () => {
     await mount();
     const card = cardFor("Marketing");
-    // The card has two selects: ASSIGNED AGENT then TONE. Find the one whose
-    // options match the tones option list.
+    // Find the select whose options match the tone list.
     const selects = Array.from(card.querySelectorAll("select")) as HTMLSelectElement[];
     const toneSelect = selects.find((s) =>
       TONES.every((t) => Array.from(s.options).some((o) => o.value === t)),

@@ -55,7 +55,7 @@ function makeCtx(overrides: Partial<AutopilotContext> = {}): {
     orgId,
     domain: "marketing",
     config: {} as never,
-    bot: { name: "Pablo" } as never,
+    assistantName: "Pablo Prime",
     ownerId: OWNER_ID,
     ownerEmail: "owner@test",
     maxActions: 5,

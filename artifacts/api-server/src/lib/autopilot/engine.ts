@@ -10,23 +10,19 @@ import {
 import { eq } from "drizzle-orm";
 import { recordAutopilotActivity } from "./activity";
 import { evaluateConfigGuardrails, checkEntitlement, checkCredit } from "./guardrails";
-import type { AutopilotContext, AutopilotHandler, AutopilotLogInput } from "./types";
+import { AUTOPILOT_ASSISTANT_NAME, type AutopilotContext, type AutopilotHandler, type AutopilotLogInput } from "./types";
 
 // ─── Autopilot engine ────────────────────────────────────────────────────────
 // A SINGLE server-side recurring scheduler. Each base tick it finds orgs with an
-// enabled domain + assigned bot whose cadence has elapsed, clears the shared
-// guardrails, and invokes that domain's registered handler. Handlers are no-ops
-// in this foundation task; the four dependent tasks register the real behavior
-// via `registerAutopilotHandler`.
+// enabled domain whose cadence has elapsed, clears the shared guardrails, and
+// invokes that domain's registered handler as Pablo Prime.
 
 // ── Handler registry ─────────────────────────────────────────────────────────
 const noopHandler: AutopilotHandler = async (ctx) => {
-  // Foundation placeholder. The dependent domain task replaces this by calling
-  // registerAutopilotHandler(<domain>, realHandler). Recording a noop keeps the
-  // activity feed honest: it shows the autopilot is alive but not yet acting.
+  // Safe fallback if a supported handler was not registered during server boot.
   await ctx.log({
     action: "tick",
-    summary: `${ctx.domain} autopilot ran — no automated behavior implemented yet.`,
+    summary: `${ctx.domain} has no registered automation handler.`,
     outcome: "noop",
   });
 };
@@ -38,7 +34,7 @@ const handlers: Record<AutopilotDomain, AutopilotHandler> = {
   accounting: noopHandler,
 };
 
-/** Register the real handler for a domain (called by the dependent tasks). */
+/** Register the handler for a domain during server boot. */
 export function registerAutopilotHandler(domain: AutopilotDomain, handler: AutopilotHandler): void {
   handlers[domain] = handler;
 }
@@ -58,7 +54,7 @@ function cadenceElapsed(config: AutopilotConfig, now: number): boolean {
 /** Build the per-run context handed to a domain handler. */
 function buildContext(
   config: AutopilotConfig,
-  pass: { bot: AutopilotContext["bot"]; ownerId: string; ownerEmail: string | null; maxActions: number }
+  pass: { ownerId: string; ownerEmail: string | null; maxActions: number }
 ): AutopilotContext {
   const domain = config.domain as AutopilotDomain;
   let actionsUsed = 0;
@@ -67,7 +63,7 @@ function buildContext(
     recordAutopilotActivity({
       orgId: config.orgId,
       domain,
-      botId: config.botId,
+      botId: null,
       action: input.action,
       summary: input.summary,
       outcome: input.outcome,
@@ -78,7 +74,7 @@ function buildContext(
     orgId: config.orgId,
     domain,
     config,
-    bot: pass.bot,
+    assistantName: AUTOPILOT_ASSISTANT_NAME,
     ownerId: pass.ownerId,
     ownerEmail: pass.ownerEmail,
     maxActions: pass.maxActions,
@@ -109,7 +105,7 @@ function buildContext(
       return ok;
     },
     async ensureCredit() {
-      const r = await checkCredit(pass.ownerId, pass.ownerEmail, pass.bot?.id ?? null);
+      const r = await checkCredit(pass.ownerId, pass.ownerEmail);
       if (!r.allowed) {
         await log({
           action: "blocked",
@@ -132,13 +128,10 @@ async function runConfig(config: AutopilotConfig): Promise<void> {
   await db.update(autopilotConfigsTable).set({ lastRunAt: new Date() }).where(eq(autopilotConfigsTable.id, config.id));
 
   if (!guard.ok) {
-    // bot_unassigned is the normal "enabled but no bot picked" state — stay quiet
-    // to avoid spamming the feed every cadence.
-    if (guard.reason === "bot_unassigned") return;
     await recordAutopilotActivity({
       orgId: config.orgId,
       domain: config.domain as AutopilotDomain,
-      botId: config.botId,
+      botId: null,
       action: "blocked",
       summary: `Autopilot could not run: ${guard.reason.replace(/_/g, " ")}.`,
       outcome: "blocked",
@@ -156,7 +149,7 @@ async function runConfig(config: AutopilotConfig): Promise<void> {
     await recordAutopilotActivity({
       orgId: config.orgId,
       domain: config.domain as AutopilotDomain,
-      botId: config.botId,
+      botId: null,
       action: "error",
       summary: `Autopilot handler threw an error: ${err instanceof Error ? err.message : "unknown error"}`,
       outcome: "error",

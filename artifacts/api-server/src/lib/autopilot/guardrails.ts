@@ -1,18 +1,16 @@
 import {
   db,
-  botsTable,
   organizationsTable,
   usersTable,
   type AutopilotConfig,
-  type Bot,
   type FeatureKey,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hasFeature, isOwnerEmail } from "../plan";
-import { getPowerStatus, burnAiCharge, ACTIVE_SLOT } from "../battery";
+import { getPowerStatus, burnAiCharge, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../battery";
 
 // Flat charge burned per autopilot AI action. Autopilot runs server-side AI on
-// the org owner's behalf; the work is metered against the assigned BOT's battery.
+// the org owner's behalf; the work is metered against Pablo's assistant battery.
 export const AUTOPILOT_AI_COST_CENTS = 4;
 
 // ─── Centralized autopilot guardrails ────────────────────────────────────────
@@ -23,12 +21,10 @@ export const AUTOPILOT_AI_COST_CENTS = 4;
 
 export type GuardrailFailure =
   | { reason: "domain_disabled" }
-  | { reason: "bot_unassigned" }
-  | { reason: "bot_not_found" }
-  | { reason: "bot_not_in_org" };
+  | { reason: "org_not_found" }
+  | { reason: "org_owner_missing" };
 
 export interface GuardrailPass {
-  bot: Bot;
   ownerId: string;
   ownerEmail: string | null;
   maxActions: number;
@@ -39,38 +35,32 @@ export type GuardrailResult =
   | ({ ok: false } & GuardrailFailure);
 
 /**
- * Pre-flight a config before invoking its handler. Resolves the assigned bot and
- * the org owner (whose entitlement & API credit gate paid work), and computes
- * the per-tick action cap. Pure read — does NOT mutate or log.
+ * Pre-flight a config before invoking its handler. Resolves the org owner (whose
+ * entitlement and assistant battery gate paid work), and computes the per-tick
+ * action cap. Legacy config.botId values are deliberately ignored. Pure read —
+ * does NOT mutate or log.
  */
 export async function evaluateConfigGuardrails(
   config: AutopilotConfig,
   defaultMaxActions: number
 ): Promise<GuardrailResult> {
   if (!config.enabled) return { ok: false, reason: "domain_disabled" };
-  if (!config.botId) return { ok: false, reason: "bot_unassigned" };
-
-  const [bot] = await db.select().from(botsTable).where(eq(botsTable.id, config.botId));
-  if (!bot) return { ok: false, reason: "bot_not_found" };
-  // The assigned bot must belong to the org it is running. A bot whose org no
-  // longer matches (re-assigned, org changed) is treated as unassigned.
-  if (bot.orgId !== config.orgId) return { ok: false, reason: "bot_not_in_org" };
-
   const [org] = await db
     .select({ ownerUserId: organizationsTable.ownerUserId })
     .from(organizationsTable)
     .where(eq(organizationsTable.id, config.orgId));
-  const ownerId = org?.ownerUserId ?? bot.ownerId;
+  if (!org) return { ok: false, reason: "org_not_found" };
+  if (!org.ownerUserId) return { ok: false, reason: "org_owner_missing" };
+
+  const ownerId = org.ownerUserId;
   let ownerEmail: string | null = null;
-  if (ownerId) {
-    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, ownerId));
-    ownerEmail = u?.email ?? null;
-  }
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, ownerId));
+  ownerEmail = u?.email ?? null;
 
   const rawCap = config.maxActionsPerTick ?? defaultMaxActions;
   const maxActions = Math.min(Math.max(rawCap, 0), 100);
 
-  return { ok: true, bot, ownerId, ownerEmail, maxActions };
+  return { ok: true, ownerId, ownerEmail, maxActions };
 }
 
 /**
@@ -94,31 +84,30 @@ export async function checkEntitlement(
 
 /**
  * Battery preflight for any PAID AI action an autopilot handler runs. The work
- * is metered against the assigned BOT's installed battery (the bot is the
- * electrical thing doing the work). Owners are exempt. A depleted/uninstalled
- * battery blocks the action. On a successful preflight the flat AI cost is
- * burned (fire-and-forget). DB errors fall back to ALLOW so a transient blip
- * can't silently freeze a paid customer's automation.
+ * is metered against the org owner's Pablo assistant battery. Owners are
+ * exempt. A depleted/uninstalled battery blocks the action. On a successful
+ * preflight the flat AI cost is burned (fire-and-forget), with the assistant's
+ * existing one-time starter-cell behavior. DB errors fall back to ALLOW so a
+ * transient blip can't silently freeze a paid customer's automation.
  */
 export async function checkCredit(
   ownerId: string,
   ownerEmail: string | null,
-  botId: number | null,
 ): Promise<{ allowed: boolean; reason?: string }> {
   if (!ownerId) return { allowed: false, reason: "no_owner" };
   if (isOwnerEmail(ownerEmail ?? undefined)) return { allowed: true };
-  if (!botId) return { allowed: false, reason: "bot_unassigned" };
   try {
-    const power = await getPowerStatus(ownerId, ACTIVE_SLOT, "bot", String(botId));
-    if (!power.powered) return { allowed: false, reason: "bot_battery_depleted" };
+    const power = await getPowerStatus(ownerId, ACTIVE_SLOT, "assistant", ASSISTANT_TARGET_ID);
+    if (!power.powered) return { allowed: false, reason: "assistant_battery_depleted" };
     void burnAiCharge({
       userId: ownerId,
-      targetType: "bot",
-      targetId: String(botId),
-      kind: "bot",
-      label: "autopilot ai action",
+      targetType: "assistant",
+      targetId: ASSISTANT_TARGET_ID,
+      kind: "chat",
+      label: "pablo automation ai action",
       costBasisCents: AUTOPILOT_AI_COST_CENTS,
-    }).catch((e) => console.error("[Autopilot] bot battery burn failed:", e?.message || e));
+      allowSeed: true,
+    }).catch((e) => console.error("[Autopilot] assistant battery burn failed:", e?.message || e));
     return { allowed: true };
   } catch (err) {
     console.error("[Autopilot] credit preflight failed:", err);

@@ -13,7 +13,6 @@ import {
   setAuthed,
   createUser,
   createOrg,
-  createBot,
   getStoredConfig,
   cleanupTestData,
 } from "./helpers/autopilotTestApp";
@@ -69,16 +68,14 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
     expect(stored?.enabled).toBe(false);
   });
 
-  it("toggling enabled alone preserves the bot, caps and prefs already saved", async () => {
+  it("toggling enabled alone preserves caps and prefs without a bot assignment", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
     actAs(owner);
 
     // Seed a fully-configured, enabled domain.
     await request(app).put("/api/autopilot/marketing").send({
       enabled: true,
-      botId,
       cadenceMinutes: 60,
       maxActionsPerTick: 10,
       budgetCapCents: 100000,
@@ -90,7 +87,7 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.config.enabled).toBe(false);
-    expect(res.body.config.botId).toBe(botId);
+    expect(res.body.config.botId).toBeNull();
     expect(res.body.config.cadenceMinutes).toBe(60);
     expect(res.body.config.maxActionsPerTick).toBe(10);
     expect(res.body.config.budgetCapCents).toBe(100000);
@@ -98,7 +95,7 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
 
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored?.enabled).toBe(false);
-    expect(stored?.botId).toBe(botId);
+    expect(stored?.botId).toBeNull();
     expect(stored?.cadenceMinutes).toBe(60);
     expect(stored?.maxActionsPerTick).toBe(10);
     expect(stored?.budgetCapCents).toBe(100000);
@@ -486,82 +483,17 @@ describe("PUT /api/autopilot/:domain — permission gating (autopilot.manage)", 
   });
 });
 
-describe("PUT /api/autopilot/:domain — bot assignment (cross-org hijack guard)", () => {
-  it("assigns a bot owned by the caller's own org → 200, botId persisted", async () => {
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
-    actAs(owner);
-
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId });
-
-    expect(res.status).toBe(200);
-    expect(res.body.config.botId).toBe(botId);
-    const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.botId).toBe(botId);
-  });
-
-  it("400 when botId is not a finite number", async () => {
+describe("PUT /api/autopilot/:domain — no bot assignment", () => {
+  it("rejects the legacy botId field and does not write a config", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
     actAs(owner);
 
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId: "not-a-number" });
+    const res = await request(app).put("/api/autopilot/marketing").send({ botId: null });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Invalid botId/);
+    expect(res.body.error).toMatch(/Pablo Prime owns automation/);
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored).toBeNull();
-  });
-
-  it("400 'Bot not found' for a non-existent botId", async () => {
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    actAs(owner);
-
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId: 2_000_000_000 });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Bot not found/);
-    const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored).toBeNull();
-  });
-
-  it("400 when the bot belongs to a different org (cross-org hijack attempt)", async () => {
-    // Victim org owns a bot; attacker (a separate org owner) tries to assign it.
-    const victim = await createUser();
-    const victimOrgId = await createOrg(victim.id);
-    const victimBotId = await createBot({ orgId: victimOrgId, ownerId: victim.id });
-
-    const attacker = await createUser();
-    const attackerOrgId = await createOrg(attacker.id);
-    actAs(attacker);
-
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId: victimBotId });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/does not belong to this organization/);
-    // Nothing was written for the attacker's org.
-    const stored = await getStoredConfig(attackerOrgId, "marketing");
-    expect(stored).toBeNull();
-  });
-
-  it("botId: null clears a previously-assigned bot", async () => {
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
-    actAs(owner);
-
-    // Assign first.
-    const assign = await request(app).put("/api/autopilot/marketing").send({ botId });
-    expect(assign.status).toBe(200);
-    expect(assign.body.config.botId).toBe(botId);
-
-    // Then clear.
-    const clear = await request(app).put("/api/autopilot/marketing").send({ botId: null });
-    expect(clear.status).toBe(200);
-    expect(clear.body.config.botId).toBeNull();
-    const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.botId).toBeNull();
   });
 });

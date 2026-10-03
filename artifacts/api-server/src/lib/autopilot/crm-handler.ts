@@ -245,7 +245,7 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
       ctx.orgId,
       "checking",
       BOT_SMS_REVENUE_FIAT * sent,
-      `${ctx.bot.name} — ${sent} lead follow-up(s)`,
+      `${ctx.assistantName} — ${sent} lead follow-up(s)`,
       "bot",
       ctx.ownerId,
     ).catch(() => {/* non-critical */});

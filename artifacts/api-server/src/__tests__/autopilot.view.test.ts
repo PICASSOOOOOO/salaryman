@@ -16,16 +16,14 @@ import {
   setAuthed,
   createUser,
   createOrg,
-  createBot,
   cleanupTestData,
 } from "./helpers/autopilotTestApp";
 
 // Integration coverage for GET /api/autopilot — the read path the dashboard
 // loads on open. It merges each org's stored config over the four-domain
-// defaults, lists ONLY that org's bots, surfaces marketing/CRM option metadata,
-// and enforces the same autopilot.manage / no-org / unauthenticated gates as the
-// save path. These tests lock in that an org always sees all four domains, that
-// one org never sees another org's bots, and that the gates hold.
+// defaults, surfaces marketing/CRM option metadata, and enforces the same
+// autopilot.manage / no-org / unauthenticated gates as the save path. Pablo is
+// the runner, so the response does not include an assignable bot roster.
 
 let app: Express;
 
@@ -71,13 +69,11 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
   it("merges a stored, fully-configured domain over the defaults while the rest stay OFF", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
     actAs(owner);
 
     // Configure one domain via the save path so the read path reflects it.
     await request(app).put("/api/autopilot/marketing").send({
       enabled: true,
-      botId,
       cadenceMinutes: 60,
       maxActionsPerTick: 10,
       budgetCapCents: 100000,
@@ -92,7 +88,7 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
     const marketing = byDomain.get("marketing") as Record<string, unknown>;
     expect(marketing.exists).toBe(true);
     expect(marketing.enabled).toBe(true);
-    expect(marketing.botId).toBe(botId);
+    expect(marketing.botId).toBeNull();
     expect(marketing.cadenceMinutes).toBe(60);
     expect(marketing.maxActionsPerTick).toBe(10);
     expect(marketing.budgetCapCents).toBe(100000);
@@ -109,48 +105,8 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
   });
 });
 
-describe("GET /api/autopilot — bot listing is scoped to the caller's org", () => {
-  it("lists the org's own bots", async () => {
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const botA = await createBot({ orgId, ownerId: owner.id, name: "Agent A" });
-    const botB = await createBot({ orgId, ownerId: owner.id, name: "Agent B" });
-    actAs(owner);
-
-    const res = await request(app).get("/api/autopilot");
-
-    expect(res.status).toBe(200);
-    const ids = res.body.bots.map((b: { id: number }) => b.id).sort((a: number, b: number) => a - b);
-    expect(ids).toEqual([botA, botB].sort((a, b) => a - b));
-    // Each listed bot carries the columns the dashboard renders.
-    for (const bot of res.body.bots) {
-      expect(bot).toHaveProperty("id");
-      expect(bot).toHaveProperty("name");
-      expect(bot).toHaveProperty("status");
-      expect(bot).toHaveProperty("department");
-    }
-  });
-
-  it("never leaks another org's bots", async () => {
-    // A separate org owns a bot; the caller must not see it.
-    const other = await createUser();
-    const otherOrgId = await createOrg(other.id);
-    const otherBotId = await createBot({ orgId: otherOrgId, ownerId: other.id, name: "Other Org Bot" });
-
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const ownBotId = await createBot({ orgId, ownerId: owner.id, name: "My Bot" });
-    actAs(owner);
-
-    const res = await request(app).get("/api/autopilot");
-
-    expect(res.status).toBe(200);
-    const ids = res.body.bots.map((b: { id: number }) => b.id);
-    expect(ids).toContain(ownBotId);
-    expect(ids).not.toContain(otherBotId);
-  });
-
-  it("returns an empty bot list for an org with no bots", async () => {
+describe("GET /api/autopilot — Pablo is the automation runner", () => {
+  it("omits the assignable bot roster and returns no legacy runner assignment", async () => {
     const owner = await createUser();
     await createOrg(owner.id);
     actAs(owner);
@@ -158,7 +114,8 @@ describe("GET /api/autopilot — bot listing is scoped to the caller's org", () 
     const res = await request(app).get("/api/autopilot");
 
     expect(res.status).toBe(200);
-    expect(res.body.bots).toEqual([]);
+    expect(res.body).not.toHaveProperty("bots");
+    expect(res.body.domains.every((domain: { botId: number | null }) => domain.botId === null)).toBe(true);
   });
 });
 
@@ -219,7 +176,7 @@ describe("GET /api/autopilot — permission gating (autopilot.manage)", () => {
     expect(res.status).toBe(404);
     // The shape stays consumable by the dashboard even on the no-org path.
     expect(res.body.domains).toEqual([]);
-    expect(res.body.bots).toEqual([]);
+    expect(res.body).not.toHaveProperty("bots");
   });
 
   it("403 when the caller lacks autopilot.manage (specialist, below the manager default)", async () => {

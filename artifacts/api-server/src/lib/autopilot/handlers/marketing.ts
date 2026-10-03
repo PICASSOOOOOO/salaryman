@@ -23,7 +23,7 @@ import { creditOrgAccount } from "../../../routes/org-accounts";
 const BOT_POST_REVENUE_FIAT = 100;
 
 // ─── Marketing autopilot handler ─────────────────────────────────────────────
-// The assigned bot drafts a social post and publishes it on the org's cadence,
+// Pablo Prime drafts a social post and publishes it on the org's cadence,
 // using the SAME services the manual Marketing Command Center screens call
 // (generateSocialCopy → create draft → publishSocialPost). It never forks the
 // logic or bypasses the PRIME gate:
@@ -170,7 +170,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
 
   await ctx.log({
     action: "draft_post",
-    summary: `${ctx.bot.name} drafted a ${platform} post for ${orgName}.`,
+    summary: `${ctx.assistantName} drafted a ${platform} post for ${orgName}.`,
     outcome: "success",
     detail: { postId: draft.id, platform },
   });
@@ -204,7 +204,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
   } else {
     await ctx.log({
       action: "publish_live",
-      summary: `${ctx.bot.name} published a ${platform} post live for ${orgName}.`,
+      summary: `${ctx.assistantName} published a ${platform} post live for ${orgName}.`,
       outcome: "success",
       detail: { postId: draft.id, platform, simulated: false, url: result.url ?? null },
     });
@@ -216,7 +216,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
     ctx.orgId,
     "checking",
     BOT_POST_REVENUE_FIAT,
-    `${ctx.bot.name} ${platform} campaign — engagement revenue`,
+    `${ctx.assistantName} ${platform} campaign — engagement revenue`,
     "bot",
     ctx.ownerId,
   ).catch(() => {/* non-critical */});

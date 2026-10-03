@@ -6,7 +6,6 @@ import {
   db,
   autopilotConfigsTable,
   autopilotActivityLogTable,
-  botsTable,
   organizationsTable,
   usersTable,
   type AutopilotDomain,
@@ -20,13 +19,12 @@ import type { AutopilotHandler } from "../lib/autopilot/types";
 // The engine is the scheduler: each tick it finds enabled+due configs, clears the
 // shared guardrails (real DB), claims the run slot, and invokes the registered
 // domain handler. These tests drive runAutopilotTick against the REAL dev DB with
-// real org/bot/owner rows so cadence gating, the reentrancy guard, the up-front
-// lastRunAt claim, and per-handler error isolation are genuinely exercised.
+// real org/owner rows so cadence gating, bot-independent execution, the
+// reentrancy guard, the up-front lastRunAt claim, and handler isolation are exercised.
 
 const OWNER_ID = `aptest-engine-${randomUUID()}`;
 const OWNER_EMAIL = `engine-${randomUUID().slice(0, 8)}@test`;
 let orgId: number;
-let botId: number;
 
 // Restore the foundation no-op handlers between tests so a handler registered by
 // one test can't leak into another.
@@ -37,14 +35,17 @@ function resetHandlers() {
   }
 }
 
-async function insertConfig(domain: AutopilotDomain, opts: { lastRunAt?: Date | null; cadenceMinutes?: number | null } = {}) {
+async function insertConfig(
+  domain: AutopilotDomain,
+  opts: { lastRunAt?: Date | null; cadenceMinutes?: number | null; botId?: number | null } = {},
+) {
   const [row] = await db
     .insert(autopilotConfigsTable)
     .values({
       orgId,
       domain,
       enabled: true,
-      botId,
+      botId: opts.botId ?? null,
       cadenceMinutes: opts.cadenceMinutes ?? null,
       lastRunAt: opts.lastRunAt ?? null,
     })
@@ -66,11 +67,6 @@ beforeAll(async () => {
     .values({ name: `Engine Test Org ${randomUUID().slice(0, 8)}`, ownerUserId: OWNER_ID })
     .returning({ id: organizationsTable.id });
   orgId = org.id;
-  const [bot] = await db
-    .insert(botsTable)
-    .values({ ownerId: OWNER_ID, orgId, name: "Engine Bot" })
-    .returning({ id: botsTable.id });
-  botId = bot.id;
 });
 
 beforeEach(async () => {
@@ -83,7 +79,6 @@ afterAll(async () => {
   resetHandlers();
   await db.delete(autopilotConfigsTable).where(eq(autopilotConfigsTable.orgId, orgId));
   await db.delete(autopilotActivityLogTable).where(eq(autopilotActivityLogTable.orgId, orgId));
-  await db.delete(botsTable).where(eq(botsTable.id, botId));
   await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   await db.delete(usersTable).where(eq(usersTable.id, OWNER_ID));
 });
@@ -125,7 +120,7 @@ describe("runAutopilotTick — cadence gating", () => {
     });
     await db
       .insert(autopilotConfigsTable)
-      .values({ orgId, domain: "business_ops", enabled: false, botId, lastRunAt: null });
+      .values({ orgId, domain: "business_ops", enabled: false, botId: null, lastRunAt: null });
 
     await runAutopilotTick();
     expect(calls).toBe(0);
@@ -206,23 +201,22 @@ describe("runAutopilotTick — handler isolation", () => {
     expect(marketingRan).toBe(true);
   });
 
-  it("logs a blocked guardrail (bot reassigned away) instead of running the handler", async () => {
-    let calls = 0;
+  it("runs without a bot assignment as Pablo Prime and records no bot actor", async () => {
+    let runnerName = "";
     registerAutopilotHandler("crm_calls", async (ctx) => {
-      if (ctx.orgId === orgId) calls++;
+      if (ctx.orgId !== orgId) return;
+      runnerName = ctx.assistantName;
+      await ctx.log({ action: "test_run", summary: "Pablo automation ran.", outcome: "success" });
     });
-    // Enabled + assigned, but the bot points at a non-existent bot id, so the
-    // guardrail fails with bot_not_found.
-    await db
-      .insert(autopilotConfigsTable)
-      .values({ orgId, domain: "crm_calls", enabled: true, botId: 1_999_999_999, lastRunAt: null });
+    // The domain is enabled with botId null: no Pixel Agent is needed to run it.
+    await insertConfig("crm_calls", { lastRunAt: null, botId: null });
 
     await runAutopilotTick();
 
-    expect(calls).toBe(0);
+    expect(runnerName).toBe("Pablo Prime");
     const log = await activityFor("crm_calls");
-    const blocked = log.filter((r) => r.outcome === "blocked");
-    expect(blocked.length).toBe(1);
-    expect((blocked[0].detail as { reason?: string }).reason).toBe("bot_not_found");
+    expect(log).toHaveLength(1);
+    expect(log[0].action).toBe("test_run");
+    expect(log[0].botId).toBeNull();
   });
 });

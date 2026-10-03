@@ -343,7 +343,7 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
   if (!capReached && prefs.postAnnouncements) {
     const anns = await listAnnouncements(userId);
     const lastOps = anns
-      .filter((a) => a.category === AUTOPILOT_ANNOUNCEMENT_CATEGORY && a.authorName === ctx.bot.name)
+      .filter((a) => a.category === AUTOPILOT_ANNOUNCEMENT_CATEGORY && a.authorName === ctx.assistantName)
       .reduce<Date | null>((acc, a) => {
         const t = new Date(a.createdAt);
         return !acc || t > acc ? t : acc;
@@ -351,7 +351,7 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
 
     if (shouldPostAnnouncement(lastOps, now, announcementIntervalMs)) {
       if (ctx.claimAction()) {
-        const ann = buildRoutineAnnouncement(ctx.bot.name, now, announcementIntervalMs);
+        const ann = buildRoutineAnnouncement(ctx.assistantName, now, announcementIntervalMs);
         const created = await createAnnouncement(userId, ann);
         if (!created) {
           await ctx.log({

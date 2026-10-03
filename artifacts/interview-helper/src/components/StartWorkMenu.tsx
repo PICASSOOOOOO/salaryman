@@ -13,7 +13,7 @@ const MENU_MODULES = HISTORIC_MODULES.filter(
 
 const PRODUCT_SHORTCUTS = [
   { id: "pablo", label: "PABLO AI", path: "/pablo" },
-  { id: "bots", label: "PIXEL AGENTS", path: "/business/autopilot" },
+  { id: "bots", label: "PABLO AUTOMATION", path: "/business/autopilot" },
   { id: "phone", label: "CALLL HOME", path: "/phone" },
   { id: "office", label: "SALARYMAN OS", path: "/desktop" },
   { id: "comms", label: "MESSAGES", path: "/comms" },
@@ -77,7 +77,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
             <span className="min-w-0">
               <span className="block font-mono text-[10px] tracking-[0.16em]">PABLO PRIME</span>
               <span className="mt-0.5 block font-mono text-[8px] tracking-wider text-[#D8CBE6]">
-                PABLO AI + PIXEL AGENTS
+                PABLO AI + AUTOMATION
               </span>
             </span>
           </div>

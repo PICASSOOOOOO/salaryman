@@ -1,7 +1,5 @@
 import { Router, type Request, type Response } from "express";
 import {
-  db,
-  botsTable,
   AUTOPILOT_DOMAINS,
   AUTOPILOT_DOMAIN_META,
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
@@ -10,7 +8,6 @@ import {
   AUTOPILOT_CRM_LEAD_STATUSES,
   isAutopilotDomain,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getOrgAutopilotView, getDomainConfig, upsertDomainConfig } from "../lib/autopilot/config";
 import { getRecentAutopilotActivity } from "../lib/autopilot/activity";
@@ -33,7 +30,7 @@ const MARKETING_PLATFORM_LABELS: Record<string, string> = {
   bluesky: "Bluesky",
 };
 
-// Display labels for the CRM pipeline stages the bot can be told to work.
+// Display labels for the CRM pipeline stages Pablo's automation can work.
 const CRM_LEAD_STATUS_LABELS: Record<string, string> = {
   new: "New",
   contacted: "Contacted",
@@ -67,8 +64,8 @@ function requireAuth(req: Request, res: Response): boolean {
 }
 
 /**
- * GET /api/autopilot — the org's autopilot control surface: per-domain config
- * (merged with defaults), the org's assignable bots, and recent activity.
+ * GET /api/autopilot — Pablo Prime's org-scoped automation control surface:
+ * per-domain config (merged with defaults) and recent activity.
  * Owner/manager gated via the `autopilot.manage` org permission.
  */
 router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
@@ -77,7 +74,7 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
   try {
     const orgId = await resolveCurrentOrgId(userId);
     if (!orgId) {
-      res.status(404).json({ error: "No organization", domains: [], bots: [], activity: [] });
+       res.status(404).json({ error: "No organization", domains: [], activity: [] });
       return;
     }
     const check = await canDoInOrg(userId, orgId, "autopilot.manage");
@@ -86,12 +83,8 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       return;
     }
 
-    const [domains, bots, activity] = await Promise.all([
+    const [domains, activity] = await Promise.all([
       getOrgAutopilotView(orgId),
-      db
-        .select({ id: botsTable.id, name: botsTable.name, status: botsTable.status, department: botsTable.department })
-        .from(botsTable)
-        .where(eq(botsTable.orgId, orgId)),
       getRecentAutopilotActivity(orgId, { limit: 50 }),
     ]);
 
@@ -110,7 +103,6 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
         leadStatuses: AUTOPILOT_CRM_LEAD_STATUSES.map((id) => ({ id, label: CRM_LEAD_STATUS_LABELS[id] ?? id })),
       },
       domains,
-      bots,
       activity,
     });
   } catch (err) {
@@ -161,8 +153,8 @@ router.get("/autopilot/activity", requireAutomationSubscription, async (req, res
 });
 
 /**
- * PUT /api/autopilot/:domain — set one domain's autopilot config (assign bot,
- * toggle on/off, optional caps). Owner/manager gated.
+ * PUT /api/autopilot/:domain — set one Pablo automation config (toggle on/off,
+ * optional caps and preferences). Owner/manager gated.
  */
 router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res) => {
   if (!requireAuth(req, res)) return;
@@ -187,30 +179,12 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
     const body = req.body ?? {};
     const patch: Parameters<typeof upsertDomainConfig>[2] = { updatedBy: userId };
 
-    if (body.enabled !== undefined) patch.enabled = !!body.enabled;
-
     if (body.botId !== undefined) {
-      if (body.botId === null) {
-        patch.botId = null;
-      } else {
-        const botId = Number(body.botId);
-        if (!Number.isFinite(botId)) {
-          res.status(400).json({ error: "Invalid botId" });
-          return;
-        }
-        // Only bots belonging to this org may be assigned.
-        const [bot] = await db.select({ orgId: botsTable.orgId }).from(botsTable).where(eq(botsTable.id, botId));
-        if (!bot) {
-          res.status(400).json({ error: "Bot not found" });
-          return;
-        }
-        if (bot.orgId !== orgId) {
-          res.status(400).json({ error: "That bot does not belong to this organization" });
-          return;
-        }
-        patch.botId = botId;
-      }
+      res.status(400).json({ error: "Pablo Prime owns automation; bot assignment is not supported" });
+      return;
     }
+
+    if (body.enabled !== undefined) patch.enabled = !!body.enabled;
 
     const clampInt = (v: unknown, min: number, max: number): number | null | undefined => {
       if (v === undefined) return undefined;
@@ -239,7 +213,7 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
     }
 
     const config = await upsertDomainConfig(orgId, domain, patch);
-    res.json({ config });
+    res.json({ config: { ...config, botId: null } });
   } catch (err) {
     console.error("[Autopilot] PUT /autopilot/:domain failed:", err);
     res.status(500).json({ error: "Failed to update autopilot" });
