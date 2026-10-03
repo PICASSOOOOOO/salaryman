@@ -3,11 +3,13 @@ import { buildPabloOrgIndustryContext } from "./pablo-persona";
 
 describe("Pablo organization industry context", () => {
   it("uses one organization's saved industry for all active members", () => {
-    const context = buildPabloOrgIndustryContext("Healthcare");
+    const context = buildPabloOrgIndustryContext("Healthcare & life sciences — Primary & specialty care");
 
-    expect(context).toContain('"Healthcare"');
+    expect(context).toContain('"Healthcare & life sciences — Primary & specialty care"');
     expect(context).toContain("applies to all of its active members");
     expect(context).toContain("Do not infer the individual member's industry");
+    expect(context).toContain("quality, safety");
+    expect(context).toContain("privacy");
   });
 
   it("bounds the label and treats it as untrusted data", () => {

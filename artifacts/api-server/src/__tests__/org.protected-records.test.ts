@@ -72,15 +72,28 @@ describe("organization settings and protected records", () => {
     const owner = await createUser();
     actAs(owner);
 
-    const created = await request(app).post("/api/orgs").send({ name: "Medicare Club" });
+    const created = await request(app).post("/api/orgs").send({
+      name: "Medicare Club",
+      industry: "Healthcare & life sciences — Primary & specialty care",
+    });
     expect(created.status).toBe(201);
     expect(created.body.org.name).toBe("MEDICARE CLUB");
+    expect(created.body.org.industry).toBe("Healthcare & life sciences — Primary & specialty care");
     const orgId = created.body.org.id as number;
     createdOrgIds.push(orgId);
 
     const renamed = await request(app).put(`/api/orgs/${orgId}`).send({ name: "Picasso AI LLC" });
     expect(renamed.status).toBe(200);
     expect(renamed.body.org.name).toBe("PICASSO AI LLC");
+  });
+
+  it("requires an industry when creating an organization", async () => {
+    const owner = await createUser();
+    actAs(owner);
+
+    const response = await request(app).post("/api/orgs").send({ name: "Unclassified Co" });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("industry");
   });
 
   it("persists expanded organization settings for directors", async () => {

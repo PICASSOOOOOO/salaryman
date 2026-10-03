@@ -42,8 +42,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { speechToText } from "@workspace/integrations-openai-ai-server/audio";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { synthesizePabloLine } from "../lib/pablo-elevenlabs";
-import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
-import { buildPabloOrgIndustryContext } from "../lib/pablo-persona";
+import { buildPabloOrgIndustryContext, PABLO_CORE_PERSONA } from "../lib/pablo-persona";
 import { resolvePabloOrgContext } from "../lib/pablo-org-context";
 import {
   classifyPabloCallAnswer,

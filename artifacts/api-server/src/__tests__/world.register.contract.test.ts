@@ -20,6 +20,18 @@ describe("world registration auth contract", () => {
     expect(route).toContain("companyName required for business registration");
   });
 
+  it("requires an industry for real-business registration", () => {
+    const route = source.slice(source.indexOf('router.post("/world/register"'));
+    expect(route).toContain('finalBizType === "real"');
+    expect(route).toContain("A business industry between 1 and 60 characters is required");
+  });
+
+  it("saves the selected industry to both the business registry and new organization", () => {
+    const route = source.slice(source.indexOf('router.post("/world/register"'));
+    expect(route).toContain('industry: finalBizType === "unemployed" ? null');
+    expect(route).toContain("industry: industry ? String(industry).trim().slice(0, 60) : null");
+  });
+
   it("keeps a registry row as the unemployment onboarding-complete signal", () => {
     const route = source.slice(source.indexOf('router.post("/world/register"'));
     expect(route).toContain("Unemployed arrivals still need a registry row");

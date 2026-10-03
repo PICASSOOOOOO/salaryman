@@ -563,8 +563,13 @@ router.post("/orgs", async (req, res) => {
 
   const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
   const normalizedName = typeof name === "string" ? normalizeOrgName(name) : "";
+  const normalizedIndustry = typeof industry === "string" ? industry.trim() : "";
   if (normalizedName.length < 2 || normalizedName.length > 120) {
     res.status(400).json({ error: "Organization name must be 2-120 visible characters" });
+    return;
+  }
+  if (!normalizedIndustry || normalizedIndustry.length > 80) {
+    res.status(400).json({ error: "Organization industry must be 1-80 characters" });
     return;
   }
 
@@ -581,7 +586,7 @@ router.post("/orgs", async (req, res) => {
     const org = await db.transaction(async (tx) => {
       const [inserted] = await tx.insert(organizationsTable).values({
           name: normalizedName.toUpperCase(),
-          industry: industry ? String(industry).trim() : null,
+          industry: normalizedIndustry,
           size: size ? String(size).trim() : null,
           ownerUserId: userId,
         }).returning();

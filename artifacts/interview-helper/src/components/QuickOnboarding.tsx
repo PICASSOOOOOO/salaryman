@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { getLocalTimezone, getOperationalCities, resolveHomeCity } from '@/lib/world-servers';
 import { getSalarymanEmail } from '@/lib/tutorial-progress';
 import { defaultAppearance } from '@/lib/character-identity';
+import { BUSINESS_INDUSTRY_GROUPS, findBusinessIndustry } from '@/lib/business-industries';
 import { trackEvent } from '@/lib/analytics';
 import type { OnboardingAnswers } from './PabloOnboarding';
 
@@ -29,6 +30,7 @@ export function QuickOnboarding({ charName, contactEmail: initialEmail, onComple
   const [email, setEmail] = useState(initialEmail?.trim() || getSalarymanEmail() || '');
   const [phone, setPhone] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState('');
   const [path, setPath] = useState<WorkPath>('unemployed');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -37,7 +39,7 @@ export function QuickOnboarding({ charName, contactEmail: initialEmail, onComple
     name.trim().length >= 2 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     phone.replace(/\D/g, '').length >= 7 &&
-    (path === 'unemployed' || companyName.trim().length >= 2) &&
+    (path === 'unemployed' || (companyName.trim().length >= 2 && Boolean(industry))) &&
     !submitting;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -51,7 +53,7 @@ export function QuickOnboarding({ charName, contactEmail: initialEmail, onComple
         bizPath: path,
         businessType: path === 'business' ? 'real' : 'unemployed',
         companyName: path === 'business' ? companyName.trim() : '',
-        industry: path === 'business' ? 'GENERAL SERVICES' : '',
+         industry: path === 'business' ? industry : '',
         contactEmail: email.trim(),
         contactPhone: phone.trim(),
         playerName: name.trim().slice(0, 80),
@@ -214,20 +216,47 @@ export function QuickOnboarding({ charName, contactEmail: initialEmail, onComple
         </fieldset>
 
         {path === 'business' && (
-          <label>
-            <span style={labelStyle}>BUSINESS NAME</span>
-            <input
-              value={companyName}
-              onChange={(event) => setCompanyName(event.target.value)}
-              autoComplete="organization"
-              maxLength={80}
-              placeholder="Your real business name"
-              style={inputStyle}
-            />
-            <span style={{ display: 'block', marginTop: 7, color: '#777066', fontSize: 12 }}>
-              This creates a real business workspace. No fictional company is created here.
-            </span>
-          </label>
+          <>
+            <label>
+              <span style={labelStyle}>BUSINESS NAME</span>
+              <input
+                value={companyName}
+                onChange={(event) => setCompanyName(event.target.value)}
+                autoComplete="organization"
+                maxLength={80}
+                placeholder="Your real business name"
+                style={inputStyle}
+              />
+              <span style={{ display: 'block', marginTop: 7, color: '#777066', fontSize: 12 }}>
+                This creates a real business workspace. No fictional company is created here.
+              </span>
+            </label>
+
+            <label>
+              <span style={labelStyle}>INDUSTRY</span>
+              <select
+                data-testid="onboarding-industry"
+                aria-required="true"
+                value={industry}
+                onChange={(event) => setIndustry(event.target.value)}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                <option value="">Select your industry</option>
+                {BUSINESS_INDUSTRY_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              {findBusinessIndustry(industry) && (
+                <span style={{ display: 'block', marginTop: 7, color: '#777066', fontSize: 12, lineHeight: 1.45 }}>
+                  {findBusinessIndustry(industry)?.description}
+                </span>
+              )}
+            </label>
+          </>
         )}
       </div>
 

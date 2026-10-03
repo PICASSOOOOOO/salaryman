@@ -280,6 +280,14 @@ router.post("/world/register", async (req, res) => {
       res.status(400).json({ error: "companyName required for business registration" });
       return;
     }
+    if (finalBizType === "real" && (
+      typeof industry !== "string"
+      || !industry.trim()
+      || industry.trim().length > 60
+    )) {
+      res.status(400).json({ error: "A business industry between 1 and 60 characters is required" });
+      return;
+    }
     if (source === "browser_onboarding") {
       const email = typeof contactEmail === "string" ? contactEmail.trim() : "";
       const phoneDigits = typeof contactPhone === "string" ? contactPhone.replace(/\D/g, "") : "";

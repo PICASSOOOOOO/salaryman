@@ -16,6 +16,8 @@ import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { invalidateOrgCache } from '@/hooks/use-org';
 import { Link } from 'wouter';
 import { OrgLaborRequests } from '@/components/OrgLaborRequests';
+import { BUSINESS_INDUSTRY_GROUPS, findBusinessIndustry } from '@/lib/business-industries';
+import type { BusinessIndustryGroup } from '@/lib/business-industries';
 
 interface Org {
   id: number;
@@ -74,7 +76,6 @@ interface Summary {
 }
 
 const ROLES = ['ceo', 'executive', 'director', 'manager', 'specialist'] as const;
-const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'Insurance', 'Legal', 'Real Estate', 'Marketing', 'Consulting', 'Education', 'Retail', 'Manufacturing', 'Media', 'Other'];
 const SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
 const QUICK_ACCESS = [
@@ -178,16 +179,75 @@ const EMPTY_EDIT_FORM = {
   contactEmail: '', contactPhone: '', legalEntityName: '', entityType: '',
 };
 
-function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options = [],
+  groups = [],
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options?: { value: string; label: string }[];
+  groups?: BusinessIndustryGroup[];
+}) {
+  const allValues = [...options.map(option => option.value), ...groups.flatMap(group => group.options.map(option => option.value))];
+  const hasUnlistedCurrentValue = Boolean(value) && !allValues.includes(value);
   return (
     <div className="space-y-1">
       <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
         className="w-full bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary transition-colors">
+        {hasUnlistedCurrentValue && <option value={value}>{value.toUpperCase()} · CURRENT VALUE</option>}
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {groups.map(group => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </optgroup>
+        ))}
       </select>
     </div>
   );
+}
+
+function IndustrySelectField({
+  value,
+  onChange,
+  emptyLabel = '— SELECT —',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  emptyLabel?: string;
+}) {
+  const selectedIndustry = findBusinessIndustry(value);
+  return (
+    <div className="space-y-1">
+      <SelectField
+        label="INDUSTRY *"
+        value={value}
+        onChange={onChange}
+        options={[{ value: '', label: emptyLabel }]}
+        groups={BUSINESS_INDUSTRY_GROUPS}
+      />
+      {selectedIndustry && (
+        <p className="text-[10px] leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">{selectedIndustry.value}.</span> {selectedIndustry.description}
+        </p>
+      )}
+      {value && !selectedIndustry && (
+        <p className="text-[10px] leading-relaxed text-muted-foreground">This saved industry is not in the current list. Choose a listed industry to change it.</p>
+      )}
+    </div>
+  );
+}
+
+function industryMatchesRequirement(industry: string, requirement: string): boolean {
+  const normalizedIndustry = industry.trim().toLowerCase();
+  const normalizedRequirement = requirement.trim().toLowerCase();
+  return normalizedIndustry === normalizedRequirement
+    || normalizedIndustry.startsWith(`${normalizedRequirement} —`)
+    || normalizedIndustry.startsWith(`${normalizedRequirement} & `);
 }
 
 function StatBox({ label, value, prefix, color }: { label: string; value: string; prefix?: string; color?: string }) {
@@ -329,6 +389,7 @@ export default function BusinessHub() {
   const handleCreateOrg = async () => {
     if (!createForm.name.trim()) { setCreateError('BUSINESS NAME IS REQUIRED'); return; }
     if (createForm.name.trim().length < 2) { setCreateError('NAME MUST BE AT LEAST 2 CHARACTERS'); return; }
+    if (!createForm.industry) { setCreateError('SELECT AN INDUSTRY'); return; }
     setCreating(true);
     setCreateError('');
     try {
@@ -610,7 +671,7 @@ export default function BusinessHub() {
                 CREATE AN ORGANIZATION TO UNLOCK TEAM MANAGEMENT, SHARED BILLING, EMPLOYEE TRACKING, AND COLLABORATIVE FEATURES.
               </p>
               <Field label="BUSINESS NAME *" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="YOUR COMPANY NAME" />
-              <SelectField label="INDUSTRY" value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))} options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
+              <IndustrySelectField value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))} />
               <SelectField label="COMPANY SIZE" value={createForm.size} onChange={v => setCreateForm(f => ({ ...f, size: v }))} options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s }))]} />
               {createError && <p className="text-[10px] text-destructive font-bold uppercase tracking-widest">{createError}</p>}
               <button onClick={handleCreateOrg} disabled={creating} className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
@@ -682,11 +743,11 @@ export default function BusinessHub() {
 
                 <div className="space-y-6">
                   {SECTIONS.filter(section => {
-                    const orgIndustry = activeOrg?.industry?.toLowerCase() ?? '';
-                    return section.items.some((item: any) => !item.requireIndustry || item.requireIndustry.toLowerCase() === orgIndustry);
+                    const orgIndustry = activeOrg?.industry ?? '';
+                    return section.items.some((item: any) => !item.requireIndustry || industryMatchesRequirement(orgIndustry, item.requireIndustry));
                   }).map(section => {
-                    const orgIndustry = activeOrg?.industry?.toLowerCase() ?? '';
-                    const items = section.items.filter((item: any) => !item.requireIndustry || item.requireIndustry.toLowerCase() === orgIndustry);
+                    const orgIndustry = activeOrg?.industry ?? '';
+                    const items = section.items.filter((item: any) => !item.requireIndustry || industryMatchesRequirement(orgIndustry, item.requireIndustry));
                     return (
                       <div key={section.title} className="space-y-3">
                         <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{section.title}</h3>
@@ -741,7 +802,7 @@ export default function BusinessHub() {
                           <div className="text-[9px] text-muted-foreground uppercase tracking-widest">NAME: {activeOrg.name} (OWNER ONLY)</div>
                         )}
                         <div className="grid grid-cols-2 gap-2">
-                          <SelectField label="INDUSTRY" value={editForm.industry} onChange={v => setEditForm(f => ({ ...f, industry: v }))} options={[{ value: '', label: '—' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
+                          <IndustrySelectField value={editForm.industry} onChange={v => setEditForm(f => ({ ...f, industry: v }))} emptyLabel="—" />
                           <SelectField label="SIZE" value={editForm.size} onChange={v => setEditForm(f => ({ ...f, size: v }))} options={[{ value: '', label: '—' }, ...SIZES.map(s => ({ value: s, label: s }))]} />
                         </div>
                         <Field label="ENTITY NAME" value={editForm.legalEntityName} onChange={v => setEditForm(f => ({ ...f, legalEntityName: v }))} />
@@ -989,7 +1050,7 @@ export default function BusinessHub() {
                       </div>
                       <Field label="BUSINESS NAME *" value={createForm.name} onChange={v => setCreateForm(f => ({ ...f, name: v }))} placeholder="YOUR COMPANY NAME" />
                       <div className="grid grid-cols-2 gap-2">
-                        <SelectField label="INDUSTRY" value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))} options={[{ value: '', label: '— SELECT —' }, ...INDUSTRIES.map(i => ({ value: i, label: i.toUpperCase() }))]} />
+                        <IndustrySelectField value={createForm.industry} onChange={v => setCreateForm(f => ({ ...f, industry: v }))} />
                         <SelectField label="SIZE" value={createForm.size} onChange={v => setCreateForm(f => ({ ...f, size: v }))} options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s }))]} />
                       </div>
                       {createError && <div className="text-[9px] font-bold text-destructive uppercase tracking-widest">{createError}</div>}

@@ -19,6 +19,7 @@ import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { WebsiteAnalyzer } from '@/components/WebsiteAnalyzer';
 import { ProGate } from '@/components/ProGate';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
+import { BUSINESS_INDUSTRY_GROUPS, findBusinessIndustry } from '@/lib/business-industries';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
@@ -755,6 +756,10 @@ export default function Home() {
   }, [isAuthenticated]);
 
   const registerBusiness = async () => {
+    if (bizRegForm.businessType === 'real' && !bizRegForm.industry.trim()) {
+      setBizRegError('SELECT YOUR BUSINESS INDUSTRY');
+      return;
+    }
     setBizRegLoading(true);
     setBizRegError('');
     try {
@@ -1609,8 +1614,37 @@ export default function Home() {
                       </select>
                       <input value={bizRegForm.companyName} onChange={e => setBizRegForm(f => ({ ...f, companyName: e.target.value }))}
                         placeholder="Company name" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
-                      <input value={bizRegForm.industry} onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
-                        placeholder="Industry (e.g. Technology, Finance)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
+                      {bizRegForm.businessType === 'real' ? (
+                        <>
+                          <select
+                            aria-label="Business industry"
+                            value={bizRegForm.industry}
+                            onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-md px-2 py-2 text-xs text-foreground outline-none"
+                            style={{ fontFamily: "var(--font-sans)" }}
+                          >
+                            <option value="">SELECT BUSINESS INDUSTRY</option>
+                            {bizRegForm.industry && !findBusinessIndustry(bizRegForm.industry) && (
+                              <option value={bizRegForm.industry}>{bizRegForm.industry.toUpperCase()} · CURRENT</option>
+                            )}
+                            {BUSINESS_INDUSTRY_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.options.map(option => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          {findBusinessIndustry(bizRegForm.industry) && (
+                            <div className="text-[10px] leading-relaxed text-muted-foreground">
+                              {findBusinessIndustry(bizRegForm.industry)?.description}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <input value={bizRegForm.industry} onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
+                          placeholder="In-game industry" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
+                      )}
                       <input value={bizRegForm.companySize} onChange={e => setBizRegForm(f => ({ ...f, companySize: e.target.value }))}
                         placeholder="Company size (e.g. 1-10, 50-100)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
                       <input value={bizRegForm.contactEmail} onChange={e => setBizRegForm(f => ({ ...f, contactEmail: e.target.value }))}
@@ -1621,7 +1655,7 @@ export default function Home() {
                           className="flex-1 text-xs py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                           CANCEL
                         </button>
-                        <button onClick={registerBusiness} disabled={bizRegLoading || !bizRegForm.companyName.trim()}
+                        <button onClick={registerBusiness} disabled={bizRegLoading || !bizRegForm.companyName.trim() || (bizRegForm.businessType === 'real' && !bizRegForm.industry.trim())}
                           className="flex-1 text-xs py-1.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors disabled:opacity-50" style={{ fontFamily: "var(--font-sans)" }}>
                           {bizRegLoading ? 'REGISTERING...' : 'REGISTER'}
                         </button>
