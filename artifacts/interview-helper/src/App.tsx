@@ -34,6 +34,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const loadPabloTerminal = () => import("@/pages/PabloTerminal");
 const PabloTerminal = lazy(loadPabloTerminal);
+const PabloCreate = lazy(() => import("@/pages/PabloCreate"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
@@ -579,6 +580,7 @@ function AppShell() {
             {/* Standalone routes */}
             <Route path="/landing">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/pablo/create" component={PabloCreate} />
             <Route path="/pablo/deck" component={PabloDeck} />
             <Route path="/pablo">{() => <PabloTerminal />}</Route>
             <Route path="/sms-opt-in" component={SmsOptIn} />

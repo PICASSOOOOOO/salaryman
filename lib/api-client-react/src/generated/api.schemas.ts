@@ -219,11 +219,11 @@ export interface OpenaiMessage {
   createdAt: string;
 }
 
-export interface CreateOpenaiConversationBody {
+export interface OpenaiConversationInput {
   title: string;
 }
 
-export interface SendOpenaiMessageBody {
+export interface OpenaiMessageInput {
   content: string;
 }
 
@@ -241,10 +241,10 @@ export interface OpenaiError {
 /**
  * Response mode: hint, solution, explain, complexity
  */
-export type SolveInterviewQuestionBodyMode = typeof SolveInterviewQuestionBodyMode[keyof typeof SolveInterviewQuestionBodyMode];
+export type InterviewQuestionInputMode = typeof InterviewQuestionInputMode[keyof typeof InterviewQuestionInputMode];
 
 
-export const SolveInterviewQuestionBodyMode = {
+export const InterviewQuestionInputMode = {
   hint: 'hint',
   solution: 'solution',
   explain: 'explain',
@@ -252,13 +252,27 @@ export const SolveInterviewQuestionBodyMode = {
   say_it: 'say_it',
 } as const;
 
-export interface SolveInterviewQuestionBody {
+export interface InterviewQuestionInput {
   /** The coding interview question text */
   question: string;
   /** Programming language (python, javascript, typescript, java, cpp, go, rust) */
   language: string;
   /** Response mode: hint, solution, explain, complexity */
-  mode: SolveInterviewQuestionBodyMode;
+  mode: InterviewQuestionInputMode;
+}
+
+export interface CrmSourceInput { [key: string]: unknown }
+
+export type CrmSyncConflictResolutionInputResolution = typeof CrmSyncConflictResolutionInputResolution[keyof typeof CrmSyncConflictResolutionInputResolution];
+
+
+export const CrmSyncConflictResolutionInputResolution = {
+  crm: 'crm',
+  source: 'source',
+} as const;
+
+export interface CrmSyncConflictResolutionInput {
+  resolution: CrmSyncConflictResolutionInputResolution;
 }
 
 export interface AuthUser {
@@ -304,6 +318,27 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface WorkspaceProjectGenerationInput {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  brief: string;
+}
+
+export interface WorkspaceGeneratedNote {
+  id: number;
+  projectId: number;
+  title: string;
+  content: string;
+  category: string;
+}
+
+export interface WorkspaceProjectGenerationResponse {
+  plan: WorkspaceGeneratedNote;
+  prototype: WorkspaceGeneratedNote;
+}
+
 export type AuthorizationSessionHeaderParameter = string;
 
 export type BeginDiscordLoginParams = {
@@ -311,8 +346,6 @@ returnTo?: string;
 };
 
 export type ListCrmSources200 = { [key: string]: unknown };
-
-export type CreateCrmSourceBody = { [key: string]: unknown };
 
 export type CreateCrmSource201 = { [key: string]: unknown };
 
@@ -333,18 +366,6 @@ state: string;
 export type SyncCrmSource200 = { [key: string]: unknown };
 
 export type ListCrmSyncConflicts200 = { [key: string]: unknown };
-
-export type ResolveCrmSyncConflictBodyResolution = typeof ResolveCrmSyncConflictBodyResolution[keyof typeof ResolveCrmSyncConflictBodyResolution];
-
-
-export const ResolveCrmSyncConflictBodyResolution = {
-  crm: 'crm',
-  source: 'source',
-} as const;
-
-export type ResolveCrmSyncConflictBody = {
-  resolution: ResolveCrmSyncConflictBodyResolution;
-};
 
 export type ResolveCrmSyncConflict200 = { [key: string]: unknown };
 

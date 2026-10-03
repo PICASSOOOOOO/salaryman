@@ -9,6 +9,39 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Generate a reviewable project plan and prototype
+ */
+export const GenerateWorkspaceProjectDraftParams = zod.object({
+  "projectId": zod.coerce.number().int()
+})
+
+export const generateWorkspaceProjectDraftBodyBriefMax = 4000;
+
+
+
+export const GenerateWorkspaceProjectDraftBody = zod.object({
+  "brief": zod.string().min(1).max(generateWorkspaceProjectDraftBodyBriefMax)
+})
+
+export const GenerateWorkspaceProjectDraftResponse = zod.object({
+  "plan": zod.object({
+  "id": zod.number().int(),
+  "projectId": zod.number().int(),
+  "title": zod.string(),
+  "content": zod.string(),
+  "category": zod.string()
+}),
+  "prototype": zod.object({
+  "id": zod.number().int(),
+  "projectId": zod.number().int(),
+  "title": zod.string(),
+  "content": zod.string(),
+  "category": zod.string()
+})
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

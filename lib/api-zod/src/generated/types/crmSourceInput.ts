@@ -6,6 +6,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateOpenaiConversationBody {
-  title: string;
-}
+export interface CrmSourceInput { [key: string]: unknown }

@@ -1,8 +1,21 @@
 import { Router } from "express";
 import { db, projectsTable, notesTable, brandKitTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import {
+  GenerateWorkspaceProjectDraftBody,
+  GenerateWorkspaceProjectDraftParams,
+  GenerateWorkspaceProjectDraftResponse,
+} from "@workspace/api-zod";
+import { completeInternalText } from "../lib/internal-ai";
+import {
+  buildPabloCreationUserPrompt,
+  parseGeneratedWorkspaceDraft,
+  PABLO_CREATION_SYSTEM_PROMPT,
+} from "../lib/pablo-creation";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
+const requireCreationEntitlement = requireFeature("claw_bot");
 
 // ── Auth guard helper ───────────────────────────────────────────────────────
 function requireAuth(req: any, res: any): string | null {
@@ -58,6 +71,104 @@ router.delete("/workspace/projects/:id", async (req, res) => {
     await db.delete(projectsTable).where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: "Failed to delete project" }); }
+});
+
+// Generate and persist a review-only project plan plus an offline prototype.
+router.post("/workspace/projects/:projectId/generate", requireCreationEntitlement, async (req, res): Promise<void> => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  const params = GenerateWorkspaceProjectDraftParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = GenerateWorkspaceProjectDraftBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const projectId = params.data.projectId;
+  try {
+    const [project] = await db.select().from(projectsTable)
+      .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+      .limit(1);
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    const projectNotes = await db.select({
+      title: notesTable.title,
+      category: notesTable.category,
+      content: notesTable.content,
+    }).from(notesTable)
+      .where(and(eq(notesTable.userId, userId), eq(notesTable.projectId, projectId)))
+      .orderBy(desc(notesTable.updatedAt))
+      .limit(30);
+    const materials = projectNotes
+      .filter((note) => note.category === "creation-context" || note.category === "external-reference")
+      .slice(0, 8);
+
+    const completion = await completeInternalText([
+      { role: "system", content: PABLO_CREATION_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: buildPabloCreationUserPrompt({
+          name: project.name,
+          type: project.type,
+          description: project.description,
+          brief: body.data.brief,
+          materials,
+        }),
+      },
+    ], { maxTokens: 5_000, json: true, prefer: "gpt" });
+    const draft = parseGeneratedWorkspaceDraft(completion.content);
+    if (!draft) {
+      req.log.warn({ projectId, provider: completion.provider }, "Pablo creation returned an invalid or unsafe prototype");
+      res.status(502).json({ error: "Pablo could not produce a safe prototype. Try a shorter brief." });
+      return;
+    }
+
+    const [plan, prototype] = await db.transaction(async (tx) => {
+      const [planNote] = await tx.insert(notesTable).values({
+        userId,
+        projectId,
+        title: "Build plan",
+        content: draft.plan,
+        category: "creation-plan",
+      }).returning();
+      const [prototypeNote] = await tx.insert(notesTable).values({
+        userId,
+        projectId,
+        title: "index.html",
+        content: draft.prototype,
+        category: "creation-prototype",
+      }).returning();
+      return [planNote, prototypeNote];
+    });
+
+    res.status(201).json(GenerateWorkspaceProjectDraftResponse.parse({
+      plan: {
+        id: plan.id,
+        projectId: plan.projectId,
+        title: plan.title,
+        content: plan.content,
+        category: plan.category,
+      },
+      prototype: {
+        id: prototype.id,
+        projectId: prototype.projectId,
+        title: prototype.title,
+        content: prototype.content,
+        category: prototype.category,
+      },
+    }));
+  } catch (e) {
+    req.log.error({ err: e, projectId }, "Failed to generate project draft");
+    res.status(500).json({ error: "Failed to generate project draft" });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════

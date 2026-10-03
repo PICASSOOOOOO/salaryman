@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
-import { ChevronDown, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
+import { ChevronDown, Code2, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { useLowGfx } from '@/lib/lowGfx';
@@ -157,6 +157,15 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
               />
             </div>
           )}
+
+          <Link
+            href="/pablo/create"
+            onClick={() => setOpen(false)}
+            className="app-action app-control mt-3 w-full border-white/10 bg-white/[0.035] text-white/70 hover:bg-white/[0.08] hover:text-white"
+          >
+            <Code2 className="app-control-icon" aria-hidden />
+            CREATE WORKSPACE
+          </Link>
 
           {isAuthenticated && (
             <Link

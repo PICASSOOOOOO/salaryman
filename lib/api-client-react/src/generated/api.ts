@@ -26,8 +26,6 @@ import type {
   ConnectCrmGoogleSheets200,
   ConnectCrmGoogleSheetsParams,
   CreateCrmSource201,
-  CreateCrmSourceBody,
-  CreateOpenaiConversationBody,
   CrmArchive,
   CrmCustomField,
   CrmCustomFieldInput,
@@ -36,26 +34,31 @@ import type {
   CrmImportPreview,
   CrmImportPreviewInput,
   CrmImportResult,
+  CrmSourceInput,
+  CrmSyncConflictResolutionInput,
   DeleteCrmSource200,
+  ErrorEnvelope,
   HealthStatus,
+  InterviewQuestionInput,
   ListCrmSources200,
   ListCrmSyncConflicts200,
   MyOrganizations,
   OpenaiConversation,
+  OpenaiConversationInput,
   OpenaiConversationWithMessages,
   OpenaiError,
   OpenaiMessage,
+  OpenaiMessageInput,
   PabloInternalDelivery,
   PabloInternalDeliveryResult,
   PhoneInternalDirectory,
   PhoneInternalLineAssignment,
   ResolveCrmSyncConflict200,
-  ResolveCrmSyncConflictBody,
-  SendOpenaiMessageBody,
-  SolveInterviewQuestionBody,
   SwitchOrganizationInput,
   SwitchOrganizationResult,
-  SyncCrmSource200
+  SyncCrmSource200,
+  WorkspaceProjectGenerationInput,
+  WorkspaceProjectGenerationResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -84,6 +87,87 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGenerateWorkspaceProjectDraftUrl = (projectId: number,) => {
+
+
+
+
+  return `/api/workspace/projects/${projectId}/generate`
+}
+
+/**
+ * @summary Generate a reviewable project plan and prototype
+ */
+export const generateWorkspaceProjectDraft = async (projectId: number,
+    workspaceProjectGenerationInput: WorkspaceProjectGenerationInput, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceProjectGenerationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<WorkspaceProjectGenerationResponse>(getGenerateWorkspaceProjectDraftUrl(projectId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(workspaceProjectGenerationInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateWorkspaceProjectDraftMutationKey = () => ['generateWorkspaceProjectDraft'] as const;
+
+export const getGenerateWorkspaceProjectDraftMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWorkspaceProjectDraft>>, TError,GenerateWorkspaceProjectDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateWorkspaceProjectDraft>>, TError,GenerateWorkspaceProjectDraftMutationVariables, TContext> => {
+
+const mutationKey = getGenerateWorkspaceProjectDraftMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateWorkspaceProjectDraft>>, GenerateWorkspaceProjectDraftMutationVariables> = (props) => {
+          const {projectId,data} = props ?? {};
+
+          return  generateWorkspaceProjectDraft(projectId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateWorkspaceProjectDraftMutationResult = NonNullable<Awaited<ReturnType<typeof generateWorkspaceProjectDraft>>>
+    export type GenerateWorkspaceProjectDraftMutationBody = BodyType<WorkspaceProjectGenerationInput>
+    export type GenerateWorkspaceProjectDraftMutationError = ErrorType<ErrorEnvelope>
+    export type GenerateWorkspaceProjectDraftMutationVariables = {projectId: number;data: BodyType<WorkspaceProjectGenerationInput>}
+
+    /**
+ * @summary Generate a reviewable project plan and prototype
+ */
+export const useGenerateWorkspaceProjectDraft = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWorkspaceProjectDraft>>, TError,GenerateWorkspaceProjectDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateWorkspaceProjectDraft>>,
+        TError,
+        GenerateWorkspaceProjectDraftMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateWorkspaceProjectDraftMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 
@@ -251,7 +335,7 @@ export const getCreateOpenaiConversationUrl = () => {
 /**
  * @summary Create a new conversation
  */
-export const createOpenaiConversation = async (createOpenaiConversationBody: CreateOpenaiConversationBody, options?: Parameters<typeof customFetch>[1]): Promise<OpenaiConversation> => {
+export const createOpenaiConversation = async (openaiConversationInput: OpenaiConversationInput, options?: Parameters<typeof customFetch>[1]): Promise<OpenaiConversation> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -264,7 +348,7 @@ return customFetch<OpenaiConversation>(getCreateOpenaiConversationUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(createOpenaiConversationBody)
+    body: JSON.stringify(openaiConversationInput)
   }
 );}
 
@@ -302,9 +386,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateOpenaiConversationMutationResult = NonNullable<Awaited<ReturnType<typeof createOpenaiConversation>>>
-    export type CreateOpenaiConversationMutationBody = BodyType<CreateOpenaiConversationBody>
+    export type CreateOpenaiConversationMutationBody = BodyType<OpenaiConversationInput>
     export type CreateOpenaiConversationMutationError = ErrorType<unknown>
-    export type CreateOpenaiConversationMutationVariables = {data: BodyType<CreateOpenaiConversationBody>}
+    export type CreateOpenaiConversationMutationVariables = {data: BodyType<OpenaiConversationInput>}
 
     /**
  * @summary Create a new conversation
@@ -560,7 +644,7 @@ export const getSendOpenaiMessageUrl = (id: number,) => {
  * @summary Send a text message and receive a streaming text response
  */
 export const sendOpenaiMessage = async (id: number,
-    sendOpenaiMessageBody: SendOpenaiMessageBody, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+    openaiMessageInput: OpenaiMessageInput, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -573,7 +657,7 @@ return customFetch<unknown>(getSendOpenaiMessageUrl(id),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(sendOpenaiMessageBody)
+    body: JSON.stringify(openaiMessageInput)
   }
 );}
 
@@ -611,9 +695,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SendOpenaiMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendOpenaiMessage>>>
-    export type SendOpenaiMessageMutationBody = BodyType<SendOpenaiMessageBody>
+    export type SendOpenaiMessageMutationBody = BodyType<OpenaiMessageInput>
     export type SendOpenaiMessageMutationError = ErrorType<unknown>
-    export type SendOpenaiMessageMutationVariables = {id: number;data: BodyType<SendOpenaiMessageBody>}
+    export type SendOpenaiMessageMutationVariables = {id: number;data: BodyType<OpenaiMessageInput>}
 
     /**
  * @summary Send a text message and receive a streaming text response
@@ -640,7 +724,7 @@ export const getSolveInterviewQuestionUrl = () => {
 /**
  * @summary Solve a coding interview question with streaming response
  */
-export const solveInterviewQuestion = async (solveInterviewQuestionBody: SolveInterviewQuestionBody, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+export const solveInterviewQuestion = async (interviewQuestionInput: InterviewQuestionInput, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -653,7 +737,7 @@ return customFetch<unknown>(getSolveInterviewQuestionUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(solveInterviewQuestionBody)
+    body: JSON.stringify(interviewQuestionInput)
   }
 );}
 
@@ -691,9 +775,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SolveInterviewQuestionMutationResult = NonNullable<Awaited<ReturnType<typeof solveInterviewQuestion>>>
-    export type SolveInterviewQuestionMutationBody = BodyType<SolveInterviewQuestionBody>
+    export type SolveInterviewQuestionMutationBody = BodyType<InterviewQuestionInput>
     export type SolveInterviewQuestionMutationError = ErrorType<unknown>
-    export type SolveInterviewQuestionMutationVariables = {data: BodyType<SolveInterviewQuestionBody>}
+    export type SolveInterviewQuestionMutationVariables = {data: BodyType<InterviewQuestionInput>}
 
     /**
  * @summary Solve a coding interview question with streaming response
@@ -1529,7 +1613,7 @@ export const getCreateCrmSourceUrl = () => {
   return `/api/crm/sources`
 }
 
-export const createCrmSource = async (createCrmSourceBody: CreateCrmSourceBody, options?: Parameters<typeof customFetch>[1]): Promise<CreateCrmSource201> => {
+export const createCrmSource = async (crmSourceInput: CrmSourceInput, options?: Parameters<typeof customFetch>[1]): Promise<CreateCrmSource201> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1542,7 +1626,7 @@ return customFetch<CreateCrmSource201>(getCreateCrmSourceUrl(),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(createCrmSourceBody)
+    body: JSON.stringify(crmSourceInput)
   }
 );}
 
@@ -1580,9 +1664,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateCrmSourceMutationResult = NonNullable<Awaited<ReturnType<typeof createCrmSource>>>
-    export type CreateCrmSourceMutationBody = BodyType<CreateCrmSourceBody>
+    export type CreateCrmSourceMutationBody = BodyType<CrmSourceInput>
     export type CreateCrmSourceMutationError = ErrorType<unknown>
-    export type CreateCrmSourceMutationVariables = {data: BodyType<CreateCrmSourceBody>}
+    export type CreateCrmSourceMutationVariables = {data: BodyType<CrmSourceInput>}
 
     export const useCreateCrmSource = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCrmSource>>, TError,CreateCrmSourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1967,7 +2051,7 @@ export const getResolveCrmSyncConflictUrl = (id: number,) => {
 }
 
 export const resolveCrmSyncConflict = async (id: number,
-    resolveCrmSyncConflictBody: ResolveCrmSyncConflictBody, options?: Parameters<typeof customFetch>[1]): Promise<ResolveCrmSyncConflict200> => {
+    crmSyncConflictResolutionInput: CrmSyncConflictResolutionInput, options?: Parameters<typeof customFetch>[1]): Promise<ResolveCrmSyncConflict200> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1980,7 +2064,7 @@ return customFetch<ResolveCrmSyncConflict200>(getResolveCrmSyncConflictUrl(id),
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(resolveCrmSyncConflictBody)
+    body: JSON.stringify(crmSyncConflictResolutionInput)
   }
 );}
 
@@ -2018,9 +2102,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ResolveCrmSyncConflictMutationResult = NonNullable<Awaited<ReturnType<typeof resolveCrmSyncConflict>>>
-    export type ResolveCrmSyncConflictMutationBody = BodyType<ResolveCrmSyncConflictBody>
+    export type ResolveCrmSyncConflictMutationBody = BodyType<CrmSyncConflictResolutionInput>
     export type ResolveCrmSyncConflictMutationError = ErrorType<unknown>
-    export type ResolveCrmSyncConflictMutationVariables = {id: number;data: BodyType<ResolveCrmSyncConflictBody>}
+    export type ResolveCrmSyncConflictMutationVariables = {id: number;data: BodyType<CrmSyncConflictResolutionInput>}
 
     export const useResolveCrmSyncConflict = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveCrmSyncConflict>>, TError,ResolveCrmSyncConflictMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

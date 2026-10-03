@@ -5,13 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { SolveInterviewQuestionBodyMode } from './solveInterviewQuestionBodyMode';
+import type { InterviewQuestionInputMode } from './interviewQuestionInputMode';
 
-export interface SolveInterviewQuestionBody {
+export interface InterviewQuestionInput {
   /** The coding interview question text */
   question: string;
   /** Programming language (python, javascript, typescript, java, cpp, go, rust) */
   language: string;
   /** Response mode: hint, solution, explain, complexity */
-  mode: SolveInterviewQuestionBodyMode;
+  mode: InterviewQuestionInputMode;
 }

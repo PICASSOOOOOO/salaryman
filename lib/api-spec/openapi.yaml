@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: workspace
+    description: User-owned creative workspace operations
   - name: openai
     description: OpenAI AI chat, image, and audio operations
   - name: interview
@@ -16,6 +18,54 @@ tags:
   - name: Auth
     description: Browser and mobile authentication endpoints.
 paths:
+  /workspace/projects/{projectId}/generate:
+    post:
+      operationId: generateWorkspaceProjectDraft
+      tags: [workspace]
+      summary: Generate a reviewable project plan and prototype
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceProjectGenerationInput"
+      responses:
+        "201":
+          description: Generated drafts saved to the project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceProjectGenerationResponse"
+        "400":
+          description: Invalid project brief
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Login required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: Pablo could not produce a valid draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /healthz:
     get:
       operationId: healthCheck
@@ -52,7 +102,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateOpenaiConversationBody"
+              $ref: "#/components/schemas/OpenaiConversationInput"
       responses:
         "201":
           description: Created conversation
@@ -138,7 +188,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendOpenaiMessageBody"
+              $ref: "#/components/schemas/OpenaiMessageInput"
       responses:
         "200":
           description: SSE stream of assistant text chunks
@@ -154,7 +204,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SolveInterviewQuestionBody"
+              $ref: "#/components/schemas/InterviewQuestionInput"
       responses:
         "200":
           description: SSE stream of solution chunks
@@ -305,7 +355,8 @@ paths:
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, additionalProperties: true } }
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmSourceInput" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { type: object } } } }
   /crm/sources/{id}:
@@ -361,7 +412,8 @@ paths:
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object, required: [resolution], properties: { resolution: { type: string, enum: [crm, source] } } } }
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmSyncConflictResolutionInput" }
       responses:
         "200": { description: Resolved, content: { application/json: { schema: { type: object } } } }
   /twilio/internal-directory:
@@ -599,14 +651,14 @@ components:
         - role
         - content
         - createdAt
-    CreateOpenaiConversationBody:
+    OpenaiConversationInput:
       type: object
       properties:
         title:
           type: string
       required:
         - title
-    SendOpenaiMessageBody:
+    OpenaiMessageInput:
       type: object
       properties:
         content:
@@ -639,7 +691,7 @@ components:
           type: string
       required:
         - error
-    SolveInterviewQuestionBody:
+    InterviewQuestionInput:
       type: object
       properties:
         question:
@@ -656,6 +708,17 @@ components:
         - question
         - language
         - mode
+    CrmSourceInput:
+      type: object
+      additionalProperties: true
+    CrmSyncConflictResolutionInput:
+      type: object
+      properties:
+        resolution:
+          type: string
+          enum: [crm, source]
+      required:
+        - resolution
     AuthUser:
       type: object
       required: [id, email, firstName, lastName, profileImageUrl]
@@ -719,6 +782,36 @@ components:
       properties:
         error:
           type: string
+    WorkspaceProjectGenerationInput:
+      type: object
+      required: [brief]
+      properties:
+        brief:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    WorkspaceGeneratedNote:
+      type: object
+      required: [id, projectId, title, content, category]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+    WorkspaceProjectGenerationResponse:
+      type: object
+      required: [plan, prototype]
+      properties:
+        plan:
+          $ref: "#/components/schemas/WorkspaceGeneratedNote"
+        prototype:
+          $ref: "#/components/schemas/WorkspaceGeneratedNote"
   parameters:
     AuthorizationSessionHeader:
       name: Authorization

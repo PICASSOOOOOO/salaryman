@@ -10,7 +10,7 @@ export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,
   type AuthUserEnvelope,
-  type CreateOpenaiConversationBody as CreateOpenaiConversationBodyType,
+  type OpenaiConversationInput as CreateOpenaiConversationBodyType,
   type ErrorEnvelope,
   type HealthStatus,
   type LogoutSuccess,
@@ -20,8 +20,9 @@ export {
   type OpenaiConversationWithMessages,
   type OpenaiError,
   type OpenaiMessage,
-  type SendOpenaiMessageBody as SendOpenaiMessageBodyType,
-  type SolveInterviewQuestionBody as SolveInterviewQuestionBodyType,
-  SolveInterviewQuestionBodyMode,
+  type OpenaiMessageInput as SendOpenaiMessageBodyType,
+  type InterviewQuestionInput as SolveInterviewQuestionBodyType,
+  InterviewQuestionInputMode as SolveInterviewQuestionBodyMode,
 } from "./generated/types";
 export * as generatedTypes from "./generated/types";
+export * from './generated/types';

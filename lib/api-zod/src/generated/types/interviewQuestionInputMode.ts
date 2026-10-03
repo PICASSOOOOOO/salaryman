@@ -9,10 +9,10 @@
 /**
  * Response mode: hint, solution, explain, complexity
  */
-export type SolveInterviewQuestionBodyMode = typeof SolveInterviewQuestionBodyMode[keyof typeof SolveInterviewQuestionBodyMode];
+export type InterviewQuestionInputMode = typeof InterviewQuestionInputMode[keyof typeof InterviewQuestionInputMode];
 
 
-export const SolveInterviewQuestionBodyMode = {
+export const InterviewQuestionInputMode = {
   hint: 'hint',
   solution: 'solution',
   explain: 'explain',
