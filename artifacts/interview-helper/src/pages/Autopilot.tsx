@@ -984,7 +984,7 @@ export default function Autopilot() {
             <Sparkles className="w-5 h-5" /> PABLO AUTOMATION
           </h1>
           <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
-            Four fixed workflows. Each starts paused; opt in once to let Pablo Prime run it on schedule.
+            Every workflow starts paused. Enable only what you want; defaults run automatically, and you can pause any time.
           </p>
         </div>
         <button

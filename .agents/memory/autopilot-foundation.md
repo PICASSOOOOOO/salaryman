@@ -65,8 +65,15 @@ agent ownership is a separate product change with explicit routing and guardrail
 Each domain stays off until a user enables it once. After that, Pablo runs it on
 schedule without per-run approval, but only while the organization's owner has
 the active paid `claw_bot`/Pablo Prime entitlement. Do not auto-enable domains.
+Settings beyond that opt-in are optional; server defaults must work without
+requiring users to configure unrelated domains. Browser and future desktop
+surfaces should control the same server-side schedules rather than run parallel
+automation engines.
 
-**Why:** the user chose one-time opt-in and specified this as a paid feature.
+**Why:** the user chose one-time opt-in for a paid feature and wants automation
+only where people choose it, without unwanted setup or actions.
 
 **How to apply:** enforce paid access at control APIs and again in the background
 scheduler; preserve the saved opt-in if access lapses, but block unattended runs.
+Keep each domain independently optional, with no per-run approval or local
+desktop scheduler.
