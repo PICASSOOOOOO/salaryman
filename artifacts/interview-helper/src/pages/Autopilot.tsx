@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
+import { AutopilotWorkflow } from '@/components/AutopilotWorkflow';
+import './autopilot.css';
 import {
   Sparkles, Loader2, RefreshCw, Power, AlertCircle, Clock,
   Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check,
@@ -976,18 +978,19 @@ export default function Autopilot() {
 
   return (
     <div className="salaryman-workspace autopilot-page min-h-screen bg-[#FFFAF0] text-[#111111] px-4 py-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-3">
         <div>
-          <h1 className="font-mono text-base text-cyan-300 tracking-widest flex items-center gap-2">
+          <h1 className="font-mono text-base tracking-widest flex items-center gap-2">
             <Sparkles className="w-5 h-5" /> PABLO AUTOMATION
           </h1>
-          <p className="font-mono text-[10px] text-cyan-500/40 tracking-wider mt-1">
-            Pablo Prime runs the business workflows you enable here. OFF = manual; no workflow runs automatically.
+          <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
+            Four fixed workflows. Each starts paused; opt in once to let Pablo Prime run it on schedule.
           </p>
         </div>
         <button
           onClick={() => void load()}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/25 text-cyan-400/80 font-mono text-[10px] tracking-wider hover:bg-cyan-500/20 transition-colors rounded"
+          aria-label="Refresh automation settings and activity"
+          className="mobile-tap-target flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/25 text-cyan-400/80 font-mono text-[10px] tracking-wider hover:bg-cyan-500/20 transition-colors rounded"
         >
           <RefreshCw className="w-3 h-3" /> REFRESH
         </button>
@@ -1010,11 +1013,10 @@ export default function Autopilot() {
 
       {data && (
         <>
-          <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-[10px] font-mono leading-relaxed">
+          <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-xs font-sans leading-relaxed">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400/60" />
-            Pablo Prime runs enabled Business Ops, Marketing, SMS-only CRM follow-ups, and Accounting workflows
-            through your organization’s existing services. Runs stay subject to your permissions, saved preferences,
-            consent, assistant power, and per-tick action limits.
+            Scheduled domains require active Pablo Prime. Your organization permissions, saved preferences, action caps,
+            available assistant power for paid AI, and channel consent remain in force. CRM sends SMS only.
           </div>
 
           <div className="space-y-3">
@@ -1043,6 +1045,8 @@ export default function Autopilot() {
                     </div>
                     <button
                       disabled={busy}
+                      aria-label={`${cfg.enabled ? 'Pause' : 'Enable'} ${meta?.label ?? cfg.domain} scheduled workflow`}
+                      data-testid={`toggle-workflow-${cfg.domain}`}
                       onClick={() => void patchDomain(cfg.domain, { enabled: !cfg.enabled })}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[10px] tracking-wider border transition-colors shrink-0 ${
                         cfg.enabled
@@ -1054,6 +1058,8 @@ export default function Autopilot() {
                       {cfg.enabled ? 'ON' : 'OFF'}
                     </button>
                   </div>
+
+                  <AutopilotWorkflow domain={cfg.domain} enabled={cfg.enabled} />
 
                   {status && (
                     <div
