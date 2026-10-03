@@ -74,8 +74,10 @@ they do not want.
 
 **How to apply:** start missing configs only after a successful paid checkout;
 preserve existing settings and pauses, and enforce paid access at control APIs
-and again in the background scheduler. Browser and future desktop controls share
-the same server-side schedules rather than running parallel automation engines.
+and again in the background scheduler. Keep the paid auto-start set separate from
+the supported-domain catalog so future high-impact or income domains remain
+opt-in. Browser and future desktop controls share the same server-side schedules
+rather than running parallel automation engines.
 
 ## Automation catalog and income direction
 The intended catalog extends beyond the first four domains: creative work,
