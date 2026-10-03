@@ -666,7 +666,7 @@ function MarketingPrefsEditor({
   );
 }
 
-const DOMAIN_ICON: Record<AutopilotDomain, typeof Bot> = {
+const DOMAIN_ICON: Record<AutopilotDomain, typeof Briefcase> = {
   business_ops: Briefcase,
   marketing: Megaphone,
   crm_calls: PhoneCall,
