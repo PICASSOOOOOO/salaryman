@@ -31,7 +31,7 @@ const router: IRouter = Router();
 // This is fire-and-forget (caller `.catch()`es); a failure here NEVER breaks the
 // save response.
 
-const FIAT_PER_GOLD_SAVE = 1_000; // mirrors gameSystems.ts FIAT_PER_GOLD
+const FIAT_PER_GOLD_SAVE = 10_000; // mirrors gameSystems.ts FIAT_PER_GOLD
 const NEGATIVE_DAY_INTERVAL_MS = 3_600_000; // 1 real hour = 1 in-game day
 
 function num(v: unknown, fallback = 0): number {

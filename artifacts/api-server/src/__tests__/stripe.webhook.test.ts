@@ -210,39 +210,16 @@ describe("POST /stripe/webhook", () => {
 
   // ── Subscription feature grant ───────────────────────────────────────────────
 
-  it("rejects number checkout for a subscribed but platform-unauthorized user", async () => {
-    mocks.canUsePlatformTwilio.mockResolvedValueOnce(false);
+  it("blocks new one-time USD number checkouts", async () => {
     const res = await request(app).post("/api/stripe/create-phone-number-session").send({
       phoneNumber: "+15558881111",
       countryCode: "US",
       requestId: "request-unauthorized-1",
     });
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe("TWILIO_ORG_RESTRICTED");
+    expect(res.status).toBe(410);
+    expect(res.body.error).toBe("monthly_subscriptions_only");
     expect(mocks.assertPhoneNumberAvailable).not.toHaveBeenCalled();
-  });
-
-  it("allows only one outstanding checkout reservation per number", async () => {
-    const phoneNumber = "+15558882222";
-    const previousBaseUrl = process.env.APP_BASE_URL;
-    process.env.APP_BASE_URL = "https://phone.example";
-    mocks.canUsePlatformTwilio.mockResolvedValue(true);
-    const first = await request(app).post("/api/stripe/create-phone-number-session").send({
-      phoneNumber,
-      countryCode: "US",
-      requestId: "request-reserve-first",
-    });
-    const second = await request(app).post("/api/stripe/create-phone-number-session").send({
-      phoneNumber,
-      countryCode: "US",
-      requestId: "request-reserve-second",
-    });
-    expect(first.status, JSON.stringify(first.body)).toBe(200);
-    expect(second.status).toBe(409);
-    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
-    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber));
-    if (previousBaseUrl === undefined) delete process.env.APP_BASE_URL;
-    else process.env.APP_BASE_URL = previousBaseUrl;
+    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
   });
 
   it("fulfils a paid custom number exactly once across duplicate webhooks", async () => {

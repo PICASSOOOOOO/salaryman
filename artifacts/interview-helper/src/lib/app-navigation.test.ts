@@ -32,7 +32,7 @@ describe("shared app navigation", () => {
     expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "comms", "office"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
       "bots", "org", "business", "contacts", "leads",
-      "creative", "marketing", "pledge", "settings", "profile", "admin",
+      "creative", "marketing", "settings", "profile", "admin",
     ]);
   });
 

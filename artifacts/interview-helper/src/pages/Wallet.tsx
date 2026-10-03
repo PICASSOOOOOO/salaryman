@@ -240,7 +240,7 @@ export default function Wallet() {
       {/* ===== PABLO TAX ===== */}
       <Section title={`PABLO TAX · ${pabloTax.period}`}>
         <Grid>
-          <Stat label="PABLO PRIME" value={pabloTax.primeActive ? "ACTIVE" : "INACTIVE"} sub={pabloTax.primeActive ? `$149/mo pre-paid · ${f(primeRemainingFiat)} credit left` : "Pay-as-you-go only"} tone={pabloTax.primeActive ? "cyan" : "muted"} />
+          <Stat label="PABLO PRIME" value={pabloTax.primeActive ? "ACTIVE" : "INACTIVE"} sub={pabloTax.primeActive ? `$100/mo pre-paid · ${f(primeRemainingFiat)} credit left` : "Pay-as-you-go only"} tone={pabloTax.primeActive ? "cyan" : "muted"} />
           <Stat label="ACCRUED THIS PERIOD" value={f(accruedFiat)} sub={`at ${pabloTax.markupMultiplier}× markup`} />
           <Stat label="BILLED" value={f(billedFiat)} sub={`next bill at ${f(nextBillIncrementFiat)} increments`} />
           <Stat label="OWED NOW" value={f(owedFiat)} tone={owedFiat > 0 ? "red" : "muted"} />

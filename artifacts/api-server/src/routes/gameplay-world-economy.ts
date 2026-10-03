@@ -16,7 +16,7 @@ const QUOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0
 const CARGO_CAPACITY = 5;
 const QUOTE_TTL_MS = 30_000;
 const INTERACTION_RADIUS = 55;
-export const MINIMUM_WAGE_FIAT_PER_HOUR = 300;
+export const MINIMUM_WAGE_FIAT_PER_HOUR = 3_000;
 export const STANDARD_SHIFT_MS = 60_000;
 // Centers/radius transcribed from WorldPlay's canonical BUILDINGS list. The
 // old-city entries are 60x60 rectangles; the radius matches WorldPlay's

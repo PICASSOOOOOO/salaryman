@@ -33,7 +33,7 @@ async function requireAuth(req: Request, res: Response): Promise<string | null> 
   if (!userId) return null;
   const has = await hasFeature(userId, req.user?.email, "phone_system");
   if (!has) {
-    res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
+    res.status(403).json({ error: "CALLL HOME subscription required ($50/mo)", feature: "phone_system", price: 50, upgrade: "/pricing" });
     return null;
   }
   if (!(await canUsePlatformTwilio(userId, req.user?.email))) {

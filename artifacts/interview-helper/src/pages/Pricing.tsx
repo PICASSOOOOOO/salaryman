@@ -187,7 +187,7 @@ export default function Pricing() {
               </div>
               <div className="flex flex-col items-end shrink-0">
                 <div className="flex items-baseline gap-1">
-                  <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: "var(--font-sans)" }}>$149</span>
+                    <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: "var(--font-sans)" }}>$100</span>
                   <span style={{ fontSize: 13, color: "#64748b" }}>/MO</span>
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function Pricing() {
               </div>
             </div>
             <div className="shrink-0 sm:text-right">
-              <div><span className="text-4xl font-extrabold text-sky-300">$95</span><span className="text-xs text-slate-500">/MO USD</span></div>
+              <div><span className="text-4xl font-extrabold text-sky-300">$50</span><span className="text-xs text-slate-500">/MO USD</span></div>
               {phoneActive ? (
                 <div className="mt-2 text-sm font-bold text-emerald-400">ACTIVE</div>
               ) : (

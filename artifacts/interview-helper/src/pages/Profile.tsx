@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, Plug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop, Eye, EyeOff, Map, Network, ShieldCheck } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, Plug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop, Eye, EyeOff, Map, Network, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { useLocation, Link, Redirect } from 'wouter';
@@ -645,6 +645,13 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                     <button onClick={() => navigate('/pricing')} className="border border-emerald-600 text-emerald-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-600/10 transition-colors">Upgrade</button>
                   </div>
                 )}
+                <Link href="/pledge" className="flex items-center justify-between border border-black p-2.5 hover:bg-black/5 transition-colors group">
+                  <div>
+                    <div className="font-bold text-[10px] uppercase tracking-widest text-black group-hover:text-emerald-700 transition-colors">Pledge Store</div>
+                    <div className="text-[9px] font-mono text-black/60 mt-0.5">View membership plans.</div>
+                  </div>
+                  <ShoppingBag className="w-4 h-4 text-black/30 group-hover:text-emerald-700 transition-colors" />
+                </Link>
               </Panel>
 
               <Panel title="City Links" icon={Laptop}>

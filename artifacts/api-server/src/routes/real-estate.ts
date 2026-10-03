@@ -428,7 +428,7 @@ async function refreshArtIfPending(l: RealEstateListing): Promise<RealEstateList
 // USD is the fixed reference. BTC is the live multiplier for the in-game rails:
 // when BTC rises, FIAT and GOLD are worth more, so fewer units are required for
 // $1. Every economy surface reads these same cross-rates.
-const USD_TO_FIAT = 100;
+const USD_TO_FIAT = 1_000;
 const USD_TO_GOLD_OZ = 0.01;
 router.get("/real-estate/market-index", async (_req: Request, res: Response) => {
   try {

@@ -1,4 +1,4 @@
-export const FIAT_PER_USD = 100;
+export const FIAT_PER_USD = 1_000;
 export const GOLD_TENTHS_PER_USD = 1;
 export const FIAT_PER_GOLD = FIAT_PER_USD * 10;
 export const GOLD_CONVERSION_FEE_BPS = 200;

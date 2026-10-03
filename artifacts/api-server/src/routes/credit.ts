@@ -254,7 +254,7 @@ async function getOrCreateLedger(userId: string) {
 
 /** Fiat-equivalent monthly income from org membership salary (USD → ƒ). */
 async function queryMonthlyIncomeFiat(userId: string): Promise<number> {
-  const FIAT_PER_USD = 100;
+  const FIAT_PER_USD = 1_000;
   const rows = await db
     .select({ salary: orgMembersTable.salary })
     .from(orgMembersTable)

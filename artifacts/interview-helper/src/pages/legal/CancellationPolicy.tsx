@@ -12,7 +12,7 @@ export default function CancellationPolicy() {
       <ul>
         <li><strong>Passport</strong> — Season-based subscription unlocking exclusive cosmetics, FIAT (ƒ) bonuses, and early access to features. Billed per season (approximately 3 months).</li>
         <li><strong>Season Pass</strong> — Annual subscription providing premium platform access, expanded AI agent capabilities, and exclusive perks. Billed annually.</li>
-        <li><strong>CALLL HOME</strong> — Monthly subscription ($95/mo) for access to business calling including call recording, AI coaching, and conference calling.</li>
+        <li><strong>CALLL HOME</strong> — Monthly subscription ($50/mo) for access to business calling including call recording, AI coaching, and conference calling.</li>
         <li><strong>Other premium features</strong> — Additional recurring subscriptions may be offered as the platform grows.</li>
       </ul>
 

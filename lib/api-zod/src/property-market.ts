@@ -15,14 +15,14 @@ export type PropertyContractStatus = z.infer<typeof propertyContractStatusSchema
 
 /**
  * Property entry prices use a USD benchmark and three months of minimum wage.
- * This is separate from the game's ƒ300/hour quick-job wage: properties are
+ * This is separate from the game's ƒ3,000/hour quick-job wage: properties are
  * real-world-priced assets, while quick jobs are gameplay income.
  */
 export const REAL_WORLD_MINIMUM_WAGE_USD_BY_YEAR = {
   2009: 7.25,
   2026: 7.25,
 } as const;
-export const USD_TO_FIAT_BASELINE = 100;
+export const USD_TO_FIAT_BASELINE = 1_000;
 export const MINIMUM_WAGE_HOURS_PER_MONTH = 720;
 export const PROPERTY_STARTING_WAGE_MONTHS = 3;
 

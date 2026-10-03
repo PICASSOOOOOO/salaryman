@@ -1,7 +1,7 @@
 import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pledgePurchasesTable } from "@workspace/db";
 import { eq, and, gt, sql as sqlFn } from "drizzle-orm";
 
-// PABLO PRIME and the PABLO PACKAGE ($149/mo `claw_bot` bundle) are sold
+// PABLO PRIME and the PABLO PACKAGE ($100/mo `claw_bot` bundle) are sold
 // to users as the same product but historically lived in two unrelated
 // tables: `user_features.claw_bot` (unlocks the feature bundle including
 // phone_system) and `pablo_tax_meter.prime_active` (grants the prepaid
@@ -12,7 +12,7 @@ import { eq, and, gt, sql as sqlFn } from "drizzle-orm";
 // columns going forward (see stripe.ts).
 export type Tier = "free" | "pro";
 
-// THE PABLO PACKAGE — single $149/mo bundle that unlocks every paid feature
+// THE PABLO PACKAGE — single $100/mo bundle that unlocks every paid feature
 // across the platform. The legacy `claw_bot` key remains the canonical
 // subscription identifier so existing Stripe subs and trials keep working;
 // granting it unlocks all other paid feature flags via the bundle rule in
@@ -26,13 +26,13 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
   phone_system:{
     name: "Phone System",
     codename: "CALLLHOME",
-    price: 95,
-    desc: "Paid Twilio-connected calling and two-way SMS with a default platform toll-free number. Custom numbers are $10 one-time each. Billed only in USD.",
+    price: 50,
+    desc: "Paid Twilio-connected calling and two-way SMS with a default platform toll-free number. Custom number rentals are managed separately.",
   },
   claw_bot: {
     name: "Automation Pixel Agents",
     codename: "PIXEL AGENT AUTOMATION",
-    price: 149,
+    price: 100,
     desc: "A curated automation workforce organized across four teams. Billed only in USD. Phone service is separate.",
   },
 };

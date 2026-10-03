@@ -111,10 +111,10 @@
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
 - [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.
-- [Release build heap cap](release-build-heap-cap.md) — full modern+legacy Vite build needs a 3 GiB Node heap cap here; unbounded rendering is OOM-killed despite ample reported free memory.
+- [Release build heap cap](release-build-heap-cap.md) — use a 3 GiB Node heap cap; exit 137 can still reflect container pressure outside V8, so do not raise it or retry blindly.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
-- [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ100=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
+- [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ1,000=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — Pablo must fail closed when ElevenLabs rejects his assigned voice; never substitute generic speech without user approval.
 - [Pablo outbound campaign consent](pablo-outbound-campaign-consent.md) — Campaigns and direct Pablo calls require an owned saved contact with recorded call permission; spoken STOP opts out and the assigned ElevenLabs voice must pass preflight.
 - [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.
@@ -137,7 +137,7 @@
 - [Godot and Unreal art development](godot-art-dev.md) — Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
 - [Tower office access](tower-office-access.md) — suite doors use the existing floor-level server access authority; vacant/sealed shells must not invent locks.
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
-- [Pygame real-time wage floor](pygame-real-time-wages.md) — production clock follows local wall time; $3/hour is ƒ300/hour minimum, with employer rates allowed above the floor.
+- [Pygame real-time wage floor](pygame-real-time-wages.md) — production clock follows local wall time; $3/hour is ƒ3,000/hour minimum, with employer rates allowed above the floor.
 - [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.

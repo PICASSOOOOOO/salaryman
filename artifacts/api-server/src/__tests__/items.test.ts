@@ -150,6 +150,15 @@ describe("POST /items/buy", () => {
   });
 });
 
+describe("POST /items/checkout", () => {
+  it("blocks one-time USD item purchases while leaving FIAT purchases available", async () => {
+    const res = await request(app).post("/api/items/checkout").send({ itemId: BAT.id });
+    expect(res.status).toBe(410);
+    expect(res.body.error).toBe("monthly_subscriptions_only");
+    expect(res.body.message).toContain("Buy in-game items with FIAT");
+  });
+});
+
 describe("POST /items/equip & /items/unequip", () => {
   it("equip: 400 when the player doesn't own the item", async () => {
     const res = await request(app).post("/api/items/equip").send({ itemId: BAT.id });

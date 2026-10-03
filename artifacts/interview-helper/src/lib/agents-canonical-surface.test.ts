@@ -25,9 +25,20 @@ describe("canonical Pixel Agents marketplace surface", () => {
     expect(app).toContain("return <PledgeStore />");
   });
 
-  it("keeps checkout inside the Pledge Store", () => {
-    expect(pledge).toContain('switchView("store")');
-    expect(pledge).toContain('switchView("prime")');
-    expect(pledge).toContain('/api/pledge/checkout');
+  it("keeps monthly membership checkout inside the Pledge Store", () => {
+    expect(pledge).toContain('new URLSearchParams(window.location.search).get("view") === "prime"');
+    expect(pledge).toContain('/api/stripe/create-checkout-session');
+    expect(pledge).not.toContain('/api/pledge/checkout');
+  });
+
+  it("keeps /pricing public and returns buyers to the storefront after sign-in", () => {
+    const anonymousRoutes = app.slice(
+      app.indexOf("const ANON_ALLOWED_PREFIXES"),
+      app.indexOf("const ANON_ALLOWED_EXACT"),
+    );
+    expect(anonymousRoutes).toContain('"/pricing"');
+    expect(app).toContain('pathname === "/pricing"');
+    expect(app).toContain('<Route path="/pricing" component={PledgeStoreRoute} />');
+    expect(pledge).toContain('login(`${window.location.pathname}${window.location.search}`)');
   });
 });

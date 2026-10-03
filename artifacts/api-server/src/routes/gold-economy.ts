@@ -10,6 +10,8 @@ import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
 import {
   buildGoldQuote,
   btcForOneUsd,
+  FIAT_PER_USD,
+  FIAT_PER_GOLD,
   GOLD_CONVERSION_FEE_BPS,
   GOLD_QUOTE_TTL_MS,
   isFreshExecutableMarket,
@@ -74,7 +76,7 @@ router.get("/economy/gold", async (req, res) => {
     spendableFiat: wallet.spendable,
     goldTenths: account.balanceTenths,
     gold: account.balanceTenths / 10,
-    base: { usd: 1, fiat: 100, gold: 0.1, fiatPerGold: 1000 },
+    base: { usd: 1, fiat: FIAT_PER_USD, gold: 0.1, fiatPerGold: FIAT_PER_GOLD },
     feeBps: GOLD_CONVERSION_FEE_BPS,
     quoteTtlMs: GOLD_QUOTE_TTL_MS,
     market: publicMarket(market),

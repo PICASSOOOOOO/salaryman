@@ -71,7 +71,7 @@ const STATIC_BODY = {
       </div>
       <div style="border:2px solid #7c3aed;border-radius:12px;padding:28px">
         ${badge("#7c3aed","PABLO PRIME")}
-        <div style="font-size:2rem;font-weight:700;margin:16px 0 4px">$149 <span style="font-size:1rem;font-weight:400;color:#a1a1aa">/month</span></div>
+        <div style="font-size:2rem;font-weight:700;margin:16px 0 4px">$100 <span style="font-size:1rem;font-weight:400;color:#a1a1aa">/month</span></div>
         <p style="color:#a1a1aa;font-size:.9rem">Cancel anytime · no contracts</p>
         ${UL([
           "Everything in Free",
@@ -108,7 +108,7 @@ const STATIC_BODY = {
 
   "/pledge/agents": () => `
     ${H1("Pixel Agents — 9 Curated AI Agents")}
-    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — nine curated agents organized across Core Command, The Academy, Finance Desk, and Creative Studio. Available with a Pablo Prime subscription at $149/month.")}
+    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — nine curated agents organized across Core Command, The Academy, Finance Desk, and Creative Studio. Available with a PABLO PRIME subscription at $100/month.")}
     ${H2("AGENT DIVISIONS")}
     ${UL([
       "Core Command — Pablo, Jean Claw, and Rick",
@@ -140,7 +140,7 @@ const STATIC_BODY = {
     ${UL([
       "Nine curated AI Pixel Agents organized across Core Command, The Academy, Finance Desk, and Creative Studio",
       "Free tier with Pablo AI assistant — no credit card, no friction entry",
-      "Pablo Prime subscription at $149/month with unlimited access to all agents and tools",
+      "PABLO PRIME subscription at $100/month with access to the curated workforce and automation tools",
       "Full business stack: CRM, phone system, hiring, invoicing, payroll, and creative suite",
       "AI phone system with outbound call agent, AI secretary, and unlimited SMS campaigns",
       "Virtual city-game environment for team collaboration and platform engagement",
@@ -180,7 +180,7 @@ const STATIC_BODY = {
       "Pixel Agents and AI tools must not be used to generate harmful, illegal, or deceptive content",
     ])}
     ${H2("SUBSCRIPTIONS")}
-    ${P("The free tier gives you access to Pablo and core tools. The Pablo Prime subscription ($149/month) grants access to all Pixel Agents and premium features. Subscriptions renew monthly until cancelled.")}
+    ${P("The free tier gives you access to Pablo and core tools. PABLO PRIME ($100/month) grants access to Pixel Agents and automation tools. CALLL HOME is a separate $50/month subscription. Subscriptions renew monthly until cancelled.")}
     ${H2("INTELLECTUAL PROPERTY")}
     ${P("SALARYMAN, Picasso AI, Pablo, Jean Claw, and Pixel Agents are trademarks of Picasso AI. Content you create using the platform remains your property.")}
     <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")}</p>
@@ -288,7 +288,7 @@ const STATIC_BODY = {
       "Picasso AI reserves the right to verify eligibility before applying promotional pricing",
     ])}
     ${H2("DURATION & EXPIRY")}
-    ${P("Promotional pricing applies for the duration specified in the offer. After the promotional period, the standard subscription rate of $149/month applies unless you cancel before renewal.")}
+    ${P("Promotional pricing applies for the duration specified in the offer. After the promotional period, the standard subscription rate of $100/month applies unless you cancel before renewal.")}
     ${H2("MODIFICATION")}
     ${P("Picasso AI reserves the right to modify or discontinue promotional offers at any time without prior notice. Active promotional subscriptions are honoured for their committed term.")}
     <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/pricing","Current Pricing")}</p>

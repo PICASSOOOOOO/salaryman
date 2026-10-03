@@ -65,7 +65,7 @@ const FEATURE_CARDS: FeatureCard[] = [
       { name: 'Live Listen', desc: 'Real-time audio help during meetings and interviews. Feeds you answers as people talk.' },
       { name: 'Screen Scan', desc: 'Reads your screen and identifies code, content, and context.' },
       { name: 'Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
-      { name: 'CALLL HOME', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform toll-free number. Custom numbers are $10 one-time each.' },
+      { name: 'CALLL HOME', desc: 'Calling, two-way SMS, SMS campaigns, call coaching, voicemail, conference calling, and a default platform number. Custom numbers will use Credits rentals.' },
       { name: 'Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
       { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
       { name: 'Pablo', desc: 'Your all-purpose AI business assistant for email, schedules, CRM, documents, and Q&A.' },
@@ -427,7 +427,7 @@ export default function Upgrade({ embedded = false, onPrimeCheckout, primeChecko
           {[
             [
               boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
-              "One subscription, $149/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full CALLL HOME service, and the nine-agent curated workforce. Cancel anytime.",
+              "PABLO PRIME is $100/month for the nine-agent curated workforce and automation tools. CALLL HOME is a separate $50/month subscription. Cancel anytime.",
             ],
             [
               "What about cosmetics, properties, vehicles?",

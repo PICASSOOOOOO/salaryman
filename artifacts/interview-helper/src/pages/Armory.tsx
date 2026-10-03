@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import {
   Loader2, Check, Shield, Sword, Sparkles, Cpu, Wand2, Heart, Dumbbell, Shirt,
-  ShoppingBag, Archive, Coins, CreditCard, X, ChevronRight, Battery,
+  ShoppingBag, Archive, Coins, X, ChevronRight, Battery,
 } from "lucide-react";
 
 const ACCENT = "#38bdf8"; // CRT cyan
@@ -256,37 +256,6 @@ export default function Armory() {
         setNotice(`Not enough florins — need ${fmtFiat(data.required)} (you have ${fmtFiat(data.spendable ?? 0)}).`);
       } else {
         setNotice(data.error ?? "Purchase failed.");
-      }
-    } catch {
-      setNotice("Network error — try again.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const buyCard = async (item: CatalogItem) => {
-    if (!isAuthenticated) {
-      window.location.href = apiUrl("/auth/login");
-      return;
-    }
-    setBusy(item.id);
-    setNotice("");
-    try {
-      const res = await apiFetch("/api/items/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: item.id, slot }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      if (data.owned) {
-        setOwnedIds((prev) => new Set(prev).add(item.id));
-        setNotice(`${item.name} already owned.`);
-      } else {
-        setNotice(data.error ?? "Card checkout is unavailable right now.");
       }
     } catch {
       setNotice("Network error — try again.");
@@ -911,7 +880,6 @@ export default function Armory() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-sm font-semibold">
                           {item.name}
-                          {item.priceUsd != null && <Sparkles className="h-3 w-3 shrink-0" style={{ color: "#fbbf24" }} />}
                           {item.consumable && heldQty > 0 && (
                             <span className="ml-auto rounded px-1.5 py-0.5 font-mono text-[10px] font-bold" style={{ background: `${ACCENT}1a`, color: ACCENT }}>
                               ×{heldQty}
@@ -952,16 +920,6 @@ export default function Armory() {
                               </>
                             )}
                           </button>
-                          {item.priceUsd != null && (
-                            <button
-                              onClick={() => buyCard(item)}
-                              disabled={busy === item.id}
-                              className="flex items-center justify-center gap-1.5 rounded border py-1.5 text-xs font-bold disabled:opacity-50"
-                              style={{ borderColor: "#fbbf24", color: "#fbbf24" }}
-                            >
-                              <CreditCard className="h-3.5 w-3.5" /> ${item.priceUsd} card
-                            </button>
-                          )}
                         </div>
                       )}
                       {owned && item.equipSlot && (

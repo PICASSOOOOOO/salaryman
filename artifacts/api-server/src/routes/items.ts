@@ -384,86 +384,14 @@ router.post("/items/buy", async (req, res) => {
   }
 });
 
-// ─── Buy premium high-tech with REAL money (Stripe) ──────────────────────────
+// ─── Retired one-time USD checkout ────────────────────────────────────────────
 router.post("/items/checkout", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const slot = parseSlot(req.body?.slot);
-  const item = findCatalogItem(String(req.body?.itemId ?? ""));
-  if (!item) {
-    res.status(400).json({ error: "Unknown item" });
-    return;
-  }
-  if (item.priceUsd == null) {
-    res.status(400).json({ error: "This item is FIAT-only — buy it with ƒ." });
-    return;
-  }
-
-  // Already owned? Don't sell it twice.
-  const existing = await db
-    .select({ id: playerInventoryTable.id })
-    .from(playerInventoryTable)
-    .where(and(
-      eq(playerInventoryTable.userId, userId),
-      eq(playerInventoryTable.slotIndex, slot),
-      eq(playerInventoryTable.itemId, item.id),
-    ))
-    .limit(1);
-  if (existing.length > 0) {
-    res.json({ owned: true, alreadyOwned: true });
-    return;
-  }
-
-  let stripe: Stripe;
-  try {
-    stripe = getStripe();
-  } catch {
-    res.status(503).json({ error: "Card checkout is not configured yet" });
-    return;
-  }
-  const baseUrl = getAppBaseUrl();
-
-  // Double-click / retry safety: keying the create call by (userId, slot, itemId)
-  // makes Stripe return the SAME in-flight session for a repeat request instead of
-  // opening a second checkout that could charge the card twice. Stripe scopes
-  // idempotency to a 24h window, which comfortably covers a single buy attempt.
-  const idempotencyKey = `item-checkout:${userId}:${slot}:${item.id}`;
-
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `${item.name} — SALARYMAN Armory`,
-              description: item.blurb,
-            },
-            unit_amount: item.priceUsd * 100,
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${baseUrl}/armory?purchase=success&item=${item.id}`,
-      cancel_url: `${baseUrl}/armory?purchase=cancel`,
-      client_reference_id: userId,
-      metadata: {
-        userId,
-        type: "item",
-        itemId: item.id,
-        slotIndex: String(slot),
-        brand: "Picassoo.AI",
-        product_line: "SALARYMAN",
-      },
-      payment_intent_data: {
-        description: `${item.name} by Picassoo.AI — SALARYMAN`,
-      },
-    },
-    { idempotencyKey },
-  );
-
-  res.json({ url: session.url });
+  res.status(410).json({
+    error: "monthly_subscriptions_only",
+    message: "USD checkout is limited to monthly service plans. Buy in-game items with FIAT.",
+  });
 });
 
 // ─── Equip / unequip ─────────────────────────────────────────────────────────

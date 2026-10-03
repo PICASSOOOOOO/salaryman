@@ -71,7 +71,7 @@ const SPONSORS: Array<{ id: string; name: string; tag: string }> = [
   { id: 'rick',        name: 'RICK',        tag: 'entry-level grind. cheap. silent. effective.' },
   { id: 'desk-corp',   name: 'DESK-CORP',   tag: 'rent your second desk. ƒ3000/mo. no questions.' },
   { id: 'capsule-co',  name: 'CAPSULE-CO',  tag: 'sleep tubes. ƒ2500/mo. now with light leak.' },
-  { id: 'gold-vault',  name: 'GOLD VAULT',  tag: 'ƒ100 = 0.1 GOLD. track in-game wealth.' },
+  { id: 'gold-vault',  name: 'GOLD VAULT',  tag: 'ƒ1,000 = 0.1 GOLD. track in-game wealth.' },
 ];
 
 export function CollectionsFacility({ onReleased }: { onReleased: () => void }) {
@@ -416,8 +416,8 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
                   </>
                 ) : (
                   <>
-                    <div style={{ color: '#f472b6', fontFamily: "var(--font-sans)", fontSize: '1.6rem', letterSpacing: '.15em', textShadow: '0 0 18px rgba(244,114,182,.6)' }}>PABLO PRIME — $149/mo</div>
-                    <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.8rem', textAlign: 'center', maxWidth: 420 }}>The only frontend purchase. Cosmetics + vehicles in-game. Buy it. Stop being here.</div>
+                    <div style={{ color: '#f472b6', fontFamily: "var(--font-sans)", fontSize: '1.6rem', letterSpacing: '.15em', textShadow: '0 0 18px rgba(244,114,182,.6)' }}>PABLO PRIME — $100/mo</div>
+                    <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.8rem', textAlign: 'center', maxWidth: 420 }}>PABLO PRIME covers automation. CALLL HOME is separate; in-game items use FIAT, Credits, or GOLD.</div>
                     <div style={{ width: '70%', height: 6, background: '#0a0a0c', border: '1px solid rgba(34,211,238,.4)', marginTop: 16 }}>
                       <div style={{ width: `${adProgress * 100}%`, height: '100%', background: '#22d3ee', boxShadow: '0 0 8px rgba(34,211,238,.6)' }} />
                     </div>

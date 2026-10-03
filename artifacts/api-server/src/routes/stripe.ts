@@ -8,9 +8,8 @@ import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
 import { ensureFiatAccounts, spendFiat } from "../lib/fiat-wallet";
-import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/phone-number-service";
+import { provisionPaidPhoneNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
-import { isSupportedCountry } from "../lib/phone";
 import { markOrganizationAsPaid, markUserAsPaid } from "../lib/payment-protection";
 import { autoActivatePrimeWorkflows } from "../lib/autopilot/activation";
 import { resolveCurrentOrgId } from "../lib/org-permissions";
@@ -55,27 +54,6 @@ const CASHOUT_MIN_FIAT = 5000;
 const CASHOUT_ELIGIBLE_KINDS = ["fiat_topup", "wage", "world_job", "world_sale", "rec_reward", "income", "payroll"] as const;
 
 const PHONE_NUMBER_PRICE_CENTS = 1000;
-
-async function getPhoneNumberPriceId(stripe: Stripe): Promise<string> {
-  const products = await stripe.products.search({ query: "metadata['salaryman_type']:'phone_number'" });
-  let product = products.data[0];
-  if (!product) {
-    product = await stripe.products.create({
-      name: "SALARYMAN custom phone number",
-      description: "One-time purchase of one custom Twilio phone number. Phone System subscription required.",
-      metadata: { salaryman_type: "phone_number" },
-    });
-  }
-  const prices = await stripe.prices.list({ product: product.id, active: true, type: "one_time", limit: 100 });
-  const existing = prices.data.find((price) => price.currency === "usd" && price.unit_amount === PHONE_NUMBER_PRICE_CENTS);
-  if (existing) return existing.id;
-  const price = await stripe.prices.create({
-    product: product.id,
-    currency: "usd",
-    unit_amount: PHONE_NUMBER_PRICE_CENTS,
-  });
-  return price.id;
-}
 
 async function activateBotSubscription(userId: string, marketplaceItemId: number, stripeSubscriptionId: string): Promise<void> {
   const [item] = await db
@@ -178,42 +156,27 @@ function getAppBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-// PABLO PRIME — single $149/mo bundle that grants every paid feature via
-// BUNDLED_BY_PABLO in lib/plan.ts. getPriceIdForFeature() lists active prices
-// on the product found via metadata search and uses the first one (the $149
-// monthly price), so no hardcoded product IDs are needed here.
+// Product and price records are created in Stripe ahead of checkout. Checkout
+// only accepts an active monthly price that exactly matches FEATURE_CATALOG.
 const FEATURE_PRODUCT_IDS: Partial<Record<FeatureKey, string>> = {};
 
 const priceIdCache: Partial<Record<FeatureKey, string>> = {};
 const productIdCache: Partial<Record<FeatureKey, string>> = {};
 
-async function ensureProductForFeature(feature: FeatureKey): Promise<string | undefined> {
+async function findProductForFeature(feature: FeatureKey): Promise<string | undefined> {
   if (FEATURE_PRODUCT_IDS[feature]) return FEATURE_PRODUCT_IDS[feature];
   if (productIdCache[feature]) return productIdCache[feature];
 
   try {
     const stripe = getStripe();
-    const catalog = FEATURE_CATALOG[feature];
-
     const existing = await stripe.products.search({ query: `metadata['feature']:'${feature}'`, limit: 1 });
     if (existing.data.length > 0) {
       productIdCache[feature] = existing.data[0].id;
-      console.log(`[Stripe] Found existing product for ${feature}: ${existing.data[0].id}`);
       return existing.data[0].id;
     }
-
-    const product = await stripe.products.create({
-      name: `${catalog.name} — THE SALARYMAN PLATFORM`,
-      description: catalog.desc,
-      tax_code: "txcd_10000000",
-      metadata: { feature, brand: "Picasso.AI", product_line: "SALARYMAN" },
-    });
-    productIdCache[feature] = product.id;
-    FEATURE_PRODUCT_IDS[feature] = product.id;
-    console.log(`[Stripe] Created product for ${feature}: ${product.id}`);
-    return product.id;
+    return undefined;
   } catch (err) {
-    console.error(`[Stripe] Failed to ensure product for ${feature}:`, err instanceof Error ? err.message : err);
+    console.error(`[Stripe] Failed to find product for ${feature}:`, err instanceof Error ? err.message : err);
     return undefined;
   }
 }
@@ -239,9 +202,17 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
     }
   }
 
-  if (priceIdCache[feature]) return priceIdCache[feature];
+  if (priceIdCache[feature]) {
+    try {
+      const cached = await getStripe().prices.retrieve(priceIdCache[feature]!);
+      if (priceMatches(cached)) return cached.id;
+      delete priceIdCache[feature];
+    } catch {
+      delete priceIdCache[feature];
+    }
+  }
 
-  const productId = await ensureProductForFeature(feature);
+  const productId = await findProductForFeature(feature);
   if (!productId) return undefined;
 
   try {
@@ -250,19 +221,10 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
     const matchingPrice = prices.data.find(priceMatches);
     if (matchingPrice) {
       priceIdCache[feature] = matchingPrice.id;
-      console.log(`[Stripe] Resolved verified USD price for ${feature}: ${matchingPrice.id}`);
       return matchingPrice.id;
     }
-
-    const newPrice = await stripe.prices.create({
-      product: productId,
-      unit_amount: catalog.price * 100,
-      currency: "usd",
-      recurring: { interval: "month" },
-    });
-    priceIdCache[feature] = newPrice.id;
-    console.log(`[Stripe] Created price for ${feature}: ${newPrice.id}`);
-    return newPrice.id;
+    console.warn(`[Stripe] No active USD ${catalog.price}/month price found for ${feature}`);
+    return undefined;
   } catch (err) {
     console.error(`[Stripe] Failed to resolve price for ${feature}:`, err instanceof Error ? err.message : err);
     return undefined;
@@ -305,18 +267,17 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     return;
   }
 
-  const priceId = await getPriceIdForFeature(feature);
-  if (!priceId) {
-    res.status(500).json({ error: `Pricing for ${FEATURE_CATALOG[feature].name} not configured yet` });
-    return;
-  }
-
   const user = req.user;
   if (await hasFeature(user.id, user.email, feature)) {
     res.status(409).json({
       error: "already_active",
       message: `${FEATURE_CATALOG[feature].name} is already active on this account.`,
     });
+    return;
+  }
+  const priceId = await getPriceIdForFeature(feature);
+  if (!priceId) {
+    res.status(500).json({ error: `Pricing for ${FEATURE_CATALOG[feature].name} not configured yet` });
     return;
   }
   const stripe = getStripe();
@@ -588,84 +549,10 @@ router.post("/stripe/create-phone-number-session", async (req, res) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const user = req.user;
-  if (!(await hasFeature(user.id, user.email, "phone_system"))) {
-    res.status(403).json({ error: "Phone System subscription required", feature: "phone_system" });
-    return;
-  }
-  if (!(await canUsePlatformTwilio(user.id, user.email))) {
-    res.status(403).json({ error: "Platform phone system is restricted to authorized organizations.", code: "TWILIO_ORG_RESTRICTED" });
-    return;
-  }
-  const { phoneNumber, countryCode, label, requestId } = req.body as Record<string, string | undefined>;
-  if (
-    !phoneNumber || !/^\+[1-9]\d{6,14}$/.test(phoneNumber)
-    || !countryCode || !isSupportedCountry(countryCode)
-    || !requestId || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)
-  ) {
-    res.status(400).json({ error: "Invalid number purchase request" });
-    return;
-  }
-  if (countryCode === "VN" && !process.env.TWILIO_REGULATORY_BUNDLE_SID) {
-    res.status(409).json({ error: "A verified Twilio regulatory bundle is required before buying a Vietnam number." });
-    return;
-  }
-  try {
-    await assertPhoneNumberAvailable(phoneNumber, countryCode);
-  } catch (error) {
-    res.status(409).json({ error: error instanceof Error ? error.message : "Number is unavailable" });
-    return;
-  }
-
-  const stripe = getStripe();
-  const reservationId = `reservation:${user.id}:${requestId}`;
-  try {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${phoneNumber}::text))`);
-      const [pending] = await tx.select({ id: phoneNumberPurchasesTable.id })
-        .from(phoneNumberPurchasesTable)
-        .where(and(
-          eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber),
-          sql`${phoneNumberPurchasesTable.status} in ('pending', 'processing')`,
-        )).limit(1);
-      if (pending) throw new Error("PHONE_NUMBER_ALREADY_RESERVED");
-      await tx.insert(phoneNumberPurchasesTable).values({
-        userId: user.id,
-        stripeSessionId: reservationId,
-        phoneNumber,
-        countryCode,
-        label: (label || "main").slice(0, 64),
-        amountCents: PHONE_NUMBER_PRICE_CENTS,
-      });
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === "PHONE_NUMBER_ALREADY_RESERVED") {
-      res.status(409).json({ error: "That number is already reserved by another checkout." });
-      return;
-    }
-    throw error;
-  }
-  let session: Stripe.Checkout.Session;
-  try {
-    session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{ price: await getPhoneNumberPriceId(stripe), quantity: 1 }],
-      success_url: `${getAppBaseUrl()}/phone?tab=numbers&number_checkout=success`,
-      cancel_url: `${getAppBaseUrl()}/phone?tab=numbers&number_checkout=cancel`,
-      client_reference_id: user.id,
-      metadata: {
-        type: "phone_number", userId: user.id, phoneNumber, countryCode,
-        label: (label || "main").slice(0, 64),
-        amountCents: String(PHONE_NUMBER_PRICE_CENTS), requestId,
-      },
-    }, { idempotencyKey: `phone-number:${user.id}:${requestId}` });
-    await db.update(phoneNumberPurchasesTable).set({ stripeSessionId: session.id })
-      .where(eq(phoneNumberPurchasesTable.stripeSessionId, reservationId));
-  } catch (error) {
-    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, reservationId));
-    throw error;
-  }
-  res.json({ url: session.url });
+  res.status(410).json({
+    error: "monthly_subscriptions_only",
+    message: "Custom number rentals will use Credits and are not available through USD checkout.",
+  });
 });
 
 async function fulfilPhoneNumberPurchase(session: Stripe.Checkout.Session): Promise<void> {

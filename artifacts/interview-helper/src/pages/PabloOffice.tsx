@@ -1066,7 +1066,7 @@ export default function PabloOffice() {
                     bankBalance={citySave?.savings ?? 0}
                     savings={citySave?.savings ?? 0}
                     gold={citySave?.goldBalance ?? 0}
-                    fiatPerGold={1_000}
+                    fiatPerGold={10_000}
                     stamina={citySave?.stamina ?? 100}
                     showStamina
                     creditScore={officeCreditInfo?.score}

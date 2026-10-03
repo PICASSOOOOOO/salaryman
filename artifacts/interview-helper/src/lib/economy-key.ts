@@ -3,7 +3,7 @@
 // brand-new player always understands what ƒ (FIAT) is worth before committing
 // to any money figure (salary, payroll, rent, starting balance).
 //
-// The authored baseline is $1 = ƒ100 = 0.01 GOLD. BTC is intentionally omitted
+// The authored baseline is $1 = ƒ1,000 = 0.1 GOLD. BTC is intentionally omitted
 // here because it is a live multiplier shown by the shared economy disclosure.
 
 export interface EconomyRail {
@@ -15,11 +15,11 @@ export interface EconomyRail {
   value: string;
 }
 
-// $1 USD = ƒ100 FIAT = 0.01 GOLD at the BTC baseline.
+// $1 USD = ƒ1,000 FIAT = 0.1 GOLD at the BTC baseline.
 export const ECONOMY_RAILS: EconomyRail[] = [
   { code: 'USD', label: 'USD', value: '$1' },
-  { code: 'FIAT', label: 'FIAT', value: 'ƒ100' },
-  { code: 'GOLD', label: 'GOLD', value: '0.01 GOLD' },
+  { code: 'FIAT', label: 'FIAT', value: 'ƒ1,000' },
+  { code: 'GOLD', label: 'GOLD', value: '0.1 GOLD' },
 ];
 
 // One-line compact legend, e.g. "$20 = ƒ20,000 = 0.1 oz GOLD".

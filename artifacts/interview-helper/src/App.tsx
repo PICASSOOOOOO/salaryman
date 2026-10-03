@@ -45,7 +45,6 @@ const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.
 const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
-const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
@@ -370,7 +369,7 @@ function AppShell() {
   //
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/pricing", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
   // Onboarding is optional for basic job-seeking and browsing. Mutations and
   // paid/managed capabilities enforce the server-side onboarding record.
   // Powering on the landing cinematic's terminal sends visitors to /console
@@ -402,6 +401,7 @@ function AppShell() {
     pathname === "/onboarding" ||
     pathname === "/upgrade" ||
     pathname === "/pledge" ||
+    pathname === "/pricing" ||
     pathname === "/sign-in" ||
     pathname === "/sign-up" ||
     pathname === "/legal" ||
@@ -609,7 +609,7 @@ function AppShell() {
             <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={LegacyUpgradeRedirect} />
-            <Route path="/pricing" component={Pricing} />
+            <Route path="/pricing" component={PledgeStoreRoute} />
             <Route path="/wallet" component={Wallet} />
             {/* Playable React gameplay retired. Keep old bookmarks useful by
                 sending them to the native desktop client landing page. */}

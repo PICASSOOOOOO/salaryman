@@ -453,7 +453,7 @@ router.post("/platform/music/generate", async (req, res) => {
   if (!subscribed) {
     res.status(402).json({
       error: "PABLO subscription required",
-      message: "AI music generation is a Jean Claw / PABLO PACKAGE perk ($149/mo). Subscribe to unlock automatic Replicate MusicGen tracks.",
+      message: "AI music generation is a PABLO PRIME perk ($100/mo). Subscribe to unlock automatic Replicate MusicGen tracks.",
       upgradeUrl: "/pricing",
     });
     return;

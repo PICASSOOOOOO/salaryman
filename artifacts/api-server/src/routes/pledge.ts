@@ -334,18 +334,28 @@ const BUNDLE_LISTINGS: PledgeItem[] = BUNDLE_DEFS.map((b) => {
   };
 });
 
-// PABLO PRIME — the $149/mo platform subscription. Consolidated INTO the
-// storefront so every real-money offer lives in one place, but it is a
-// recurring subscription that grants the `claw_bot` feature (which bundles
-// every paid capability). It is purchased via the subscription checkout, never
-// /pledge/checkout, and is listed at face value with NO markup.
+// Monthly plans are the only USD items exposed through the Pledge Store.
+const CALLL_HOME_LISTING: PledgeItem = {
+  id: "membership_calll_home",
+  category: "membership",
+  name: "CALLL HOME",
+  blurb: "Business calling and messaging for your organization.",
+  effect: "Twilio-connected calling, two-way SMS, campaigns, recordings, and the AI secretary — billed $50/month.",
+  costUsd: 50,
+  noMarkup: true,
+  subscriptionFeature: "phone_system",
+  icon: "☎",
+};
+
+// PABLO PRIME — the $100/mo platform subscription. It grants the `claw_bot`
+// feature, which bundles the paid automation capabilities.
 const PRIME_LISTING: PledgeItem = {
   id: "membership_pablo_prime",
   category: "membership",
   name: "PABLO PRIME",
   blurb: "The whole platform in one subscription.",
-  effect: "Unlocks Jean Claw and the full Pixel Agent workforce, Live Listen, Screen Scan, Say This, and the complete Phone System with AI secretary — billed $149/mo.",
-  costUsd: 149,
+  effect: "Unlocks Jean Claw and the full Pixel Agent workforce, Live Listen, Screen Scan, and Say This — billed $100/month. CALLL HOME is separate.",
+  costUsd: 100,
   noMarkup: true,
   subscriptionFeature: "claw_bot",
   icon: "👑",
@@ -356,35 +366,29 @@ const PHONE_NUMBER_LISTING: PledgeItem = {
   category: "terminals",
   name: "Custom Phone Number",
   blurb: "Your own SALARYMAN line.",
-  effect: "Choose one available Twilio number for a $10 one-time purchase. Phone System access is required for calling and SMS.",
+  effect: "Custom number rentals will use Credits for 30 days and be priced from current Twilio recurring costs. New rentals are not available yet.",
   costUsd: 10,
   noMarkup: true,
   icon: "☎",
   storeAction: "phone_number_picker",
 };
 
-// The full internal catalog is retained for delayed webhook fulfillment. The
-// live storefront contains the real-money agent/workforce offers, terminal
-// passes, and membership; in-world goods remain fulfillment-only.
+// The full internal catalog is retained for delayed webhook fulfillment.
 const FULL_CATALOG: PledgeItem[] = [
   ...PLEDGE_CATALOG,
   ...RETIRED_FULFILLMENT_CATALOG,
   ...GEAR_LISTINGS,
   ...BUNDLE_LISTINGS,
+  CALLL_HOME_LISTING,
   PRIME_LISTING,
   PHONE_NUMBER_LISTING,
 ];
 const PUBLIC_PRODUCT_IDS = new Set([
-  "bot_extra_seat",
-  "bot_overclock",
-  "bot_jean_claw_elite",
-  "term_pablo_pass",
-  "term_phone_pass",
-  "phone_number",
+  "membership_calll_home",
   "membership_pablo_prime",
 ]);
 const PUBLIC_CATALOG = FULL_CATALOG.filter((item) => PUBLIC_PRODUCT_IDS.has(item.id));
-const PUBLIC_CATEGORIES = ["bots", "terminals", "membership"] as const;
+const PUBLIC_CATEGORIES = ["membership"] as const;
 
 // Client-safe projection. This is the ONLY shape that reaches the client:
 // the derived retail price ONLY — never costUsd, markup, or internal
@@ -570,11 +574,9 @@ router.get("/pledge/catalog", async (_req, res) => {
 });
 
 // ─── Popup catalog ───────────────────────────────────────────────────────────
-// The small curated set (1–3 items) shown in the Pledge Store popup that opens
-// when a paid terminal feature is locked — instead of redirecting to a promo
-// page. Same checkout + entitlement plumbing as the full store.
+// Keep the legacy endpoint limited to monthly memberships as well.
 router.get("/pledge/popup", (_req, res) => {
-  res.json({ items: FULL_CATALOG.filter((i) => i.popup).map((i) => toPublicItem(i)) });
+  res.json({ items: PUBLIC_CATALOG.map((i) => toPublicItem(i)) });
 });
 
 // ─── Owned entitlements ──────────────────────────────────────────────────────
