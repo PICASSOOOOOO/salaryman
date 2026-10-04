@@ -16,6 +16,7 @@ import {
   getAppBackPath,
   consumeAppReturnPath,
   rememberAppReturnPath,
+  shouldShowGlobalSignIn,
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 import { getBoomerAppLabel } from '@/lib/vocabulary';
@@ -37,6 +38,10 @@ export function MobileModuleNav() {
 
   const pathname = location.split('?')[0];
   const isHome = pathname === "/";
+  // Pablo's signed-out screen has its own "Start work" action. Keep the
+  // shared sign-in action off that route so the two headers don't show
+  // duplicate login controls.
+  const showAnonymousSignIn = shouldShowGlobalSignIn(pathname, isAuthenticated);
   const goBack = () => {
     if (canGoBackInApp()) window.history.back();
     else navigate(consumeAppReturnPath() ?? getAppBackPath(isAuthenticated), { replace: true });
@@ -104,7 +109,7 @@ export function MobileModuleNav() {
               {dropdownOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               <span>MENU</span>
             </button>
-          ) : (
+          ) : showAnonymousSignIn ? (
             <button
               type="button"
               onClick={() => navigate(`/sign-in?returnTo=${encodeURIComponent(pathname)}`)}
@@ -115,7 +120,7 @@ export function MobileModuleNav() {
               <LogIn className="w-4 h-4" aria-hidden="true" />
               <span>SIGN IN</span>
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -200,7 +205,7 @@ export function MobileModuleNav() {
               <MoreHorizontal className="h-4 w-4" />
               <span className="desktop-primary-label whitespace-nowrap">MENU</span>
             </button>
-          ) : (
+          ) : showAnonymousSignIn ? (
             <button
               type="button"
               onClick={() => navigate(`/sign-in?returnTo=${encodeURIComponent(pathname)}`)}
@@ -210,7 +215,7 @@ export function MobileModuleNav() {
             >
               SIGN IN
             </button>
-          )}
+          ) : null}
         </nav>
       </div>
 

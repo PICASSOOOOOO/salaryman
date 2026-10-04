@@ -76,6 +76,10 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
   }
 }
 
+export function shouldShowGlobalSignIn(pathname: string, isAuthenticated: boolean): boolean {
+  return !isAuthenticated && pathname !== "/pablo";
+}
+
 export const APP_HISTORY_DEPTH_KEY = "__salarymanDepth";
 export const APP_HISTORY_SESSION_KEY = "__salarymanSession";
 export const APP_RETURN_PATH_KEY = "__salarymanReturnPath";

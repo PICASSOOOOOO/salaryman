@@ -11,6 +11,7 @@ import {
   isAppNavItemActive,
   readAppHistoryDepth,
   isSafeAppHistoryState,
+  shouldShowGlobalSignIn,
   shouldShowModuleSubnav,
   withAppHistoryDepth,
 } from "./app-navigation";
@@ -39,6 +40,12 @@ describe("shared app navigation", () => {
   it("shares active matching across desktop and mobile renderers", () => {
     const office = PRIMARY_NAV_ITEMS.find(item => item.id === "office")!;
     expect(isAppNavItemActive(office, "/phone")).toBe(false);
+  });
+
+  it("avoids duplicating Pablo's signed-out Start Work action", () => {
+    expect(shouldShowGlobalSignIn("/pablo", false)).toBe(false);
+    expect(shouldShowGlobalSignIn("/phone", false)).toBe(true);
+    expect(shouldShowGlobalSignIn("/pablo", true)).toBe(false);
   });
 
   it("suppresses redundant global phone sub-navigation", () => {
