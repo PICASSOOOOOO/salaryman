@@ -25,6 +25,7 @@ import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
 import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 import { creativeWorkAutopilotHandler } from './lib/autopilot/handlers/creative-work';
+import { marketResearchAutopilotHandler } from './lib/autopilot/handlers/market-research';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 import { expireOverdueRentals } from './routes/fleet';
@@ -133,6 +134,7 @@ function runDeferredBoot(): void {
   registerAutopilotHandler("crm_calls", crmCallsAutopilotHandler);
   registerAutopilotHandler("business_ops", businessOpsAutopilotHandler);
   registerAutopilotHandler("creative_work", creativeWorkAutopilotHandler);
+  registerAutopilotHandler("market_research", marketResearchAutopilotHandler);
   startAutopilotScheduler();
 }
 

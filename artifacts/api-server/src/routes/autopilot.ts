@@ -6,6 +6,7 @@ import {
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
   AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+  AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
   AUTOPILOT_MARKETING_TONES,
   AUTOPILOT_CRM_LEAD_STATUSES,
   organizationsTable,
@@ -21,6 +22,7 @@ import { sanitizeBusinessOpsPrefs } from "../lib/autopilot/business-ops-prefs";
 import { sanitizeCrmPrefs } from "../lib/autopilot/crm-prefs";
 import { sanitizeAccountingPrefs } from "../lib/autopilot/accounting-prefs";
 import { sanitizeCreativeWorkPrefs } from "../lib/autopilot/creative-prefs";
+import { sanitizeMarketResearchPrefs } from "../lib/autopilot/market-research-prefs";
 import { SOCIAL_PLATFORMS } from "../lib/social-service";
 import { requireFeature } from "../middlewares/requirePro";
 
@@ -53,6 +55,7 @@ const PREFS_SANITIZERS: Record<string, (raw: unknown) => Record<string, unknown>
   crm_calls: (raw) => sanitizeCrmPrefs(raw) as unknown as Record<string, unknown>,
   accounting: (raw) => sanitizeAccountingPrefs(raw) as unknown as Record<string, unknown>,
   creative_work: (raw) => sanitizeCreativeWorkPrefs(raw) as unknown as Record<string, unknown>,
+  market_research: (raw) => sanitizeMarketResearchPrefs(raw) as unknown as Record<string, unknown>,
 };
 
 const router = Router();
@@ -96,9 +99,8 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       return;
     }
 
-    const [domains, activity, org] = await Promise.all([
+    const [domains, org] = await Promise.all([
       getOrgAutopilotView(orgId),
-      getRecentAutopilotActivity(orgId, { limit: 50 }),
       db.select({ ownerUserId: organizationsTable.ownerUserId })
         .from(organizationsTable)
         .where(eq(organizationsTable.id, orgId))
@@ -106,6 +108,10 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
         .then((rows) => rows[0]),
     ]);
     const canManageCreative = org?.ownerUserId === userId;
+    const activity = await getRecentAutopilotActivity(orgId, {
+      limit: 50,
+      excludeDomain: canManageCreative ? undefined : "market_research",
+    });
     const creativeProjects = canManageCreative
       ? await db.select({
           id: projectsTable.id,
@@ -119,7 +125,11 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       : [];
     const visibleDomains = canManageCreative
       ? domains
-      : domains.map((domain) => domain.domain === "creative_work" ? { ...domain, prefs: {} } : domain);
+      : domains.map((domain) =>
+          domain.domain === "creative_work" || domain.domain === "market_research"
+            ? { ...domain, prefs: {} }
+            : domain
+        );
 
     res.json({
       orgId,
@@ -127,9 +137,11 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       defaults: {
         cadenceMinutes: AUTOPILOT_DEFAULT_CADENCE_MINUTES,
         creativeCadenceMinutes: AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+        marketResearchCadenceMinutes: AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
         maxActionsPerTick: AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
       },
       creative: { canManage: canManageCreative, projects: creativeProjects },
+      marketResearch: { canManage: canManageCreative },
       marketing: {
         tones: AUTOPILOT_MARKETING_TONES,
         platforms: SOCIAL_PLATFORMS.map((id) => ({ id, label: MARKETING_PLATFORM_LABELS[id] ?? id })),
@@ -174,7 +186,17 @@ router.get("/autopilot/activity", requireAutomationSubscription, async (req, res
     const rawBefore = Number(req.query.before);
     const before = Number.isFinite(rawBefore) && rawBefore > 0 ? rawBefore : undefined;
 
-    const activity = await getRecentAutopilotActivity(orgId, { domain, limit, before });
+    const [org] = await db
+      .select({ ownerUserId: organizationsTable.ownerUserId })
+      .from(organizationsTable)
+      .where(eq(organizationsTable.id, orgId))
+      .limit(1);
+    const activity = await getRecentAutopilotActivity(orgId, {
+      domain,
+      excludeDomain: org?.ownerUserId === userId ? undefined : "market_research",
+      limit,
+      before,
+    });
     res.json({
       activity,
       domain: domain ?? null,
@@ -254,6 +276,33 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
       }
     }
 
+    let researchPrefs: ReturnType<typeof sanitizeMarketResearchPrefs> | null = null;
+    let existingResearchConfig: Awaited<ReturnType<typeof getDomainConfig>> = null;
+    if (domain === "market_research") {
+      const [org] = await db
+        .select({ ownerUserId: organizationsTable.ownerUserId })
+        .from(organizationsTable)
+        .where(eq(organizationsTable.id, orgId))
+        .limit(1);
+      if (org?.ownerUserId !== userId) {
+        res.status(403).json({ error: "Only the organization owner can manage Market Research" });
+        return;
+      }
+      existingResearchConfig = await getDomainConfig(orgId, domain);
+      const incoming = bodyObject(body.prefs);
+      researchPrefs = sanitizeMarketResearchPrefs({
+        ...(existingResearchConfig?.prefs ?? {}),
+        ...incoming,
+      });
+      const willBeEnabled = body.enabled !== undefined
+        ? !!body.enabled
+        : existingResearchConfig?.enabled ?? false;
+      if (willBeEnabled && !researchPrefs.subject) {
+        res.status(400).json({ error: "Add a research topic before enabling Market Research" });
+        return;
+      }
+    }
+
     const patch: Parameters<typeof upsertDomainConfig>[2] = { updatedBy: userId };
 
     if (body.botId !== undefined) {
@@ -270,8 +319,13 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
       if (!Number.isFinite(n)) return undefined;
       return Math.min(Math.max(Math.round(n), min), max);
     };
-    const cadenceMin = domain === "creative_work" ? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES : 5;
-    const cadenceMax = domain === "creative_work" ? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES : 1440;
+    const fixedDailyCadence = domain === "creative_work"
+      ? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES
+      : domain === "market_research"
+        ? AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES
+        : null;
+    const cadenceMin = fixedDailyCadence ?? 5;
+    const cadenceMax = fixedDailyCadence ?? 1440;
     const cadence = clampInt(body.cadenceMinutes, cadenceMin, cadenceMax);
     if (cadence !== undefined) patch.cadenceMinutes = cadence;
     const maxActions = clampInt(body.maxActionsPerTick, 1, 100);
@@ -286,11 +340,17 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
       const sanitize = PREFS_SANITIZERS[domain];
       if (sanitize) {
         const incoming = bodyObject(body.prefs);
-        const existing = domain === "creative_work" ? existingCreativeConfig : await getDomainConfig(orgId, domain);
+        const existing = domain === "creative_work"
+          ? existingCreativeConfig
+          : domain === "market_research"
+            ? existingResearchConfig
+            : await getDomainConfig(orgId, domain);
         patch.prefs = sanitize({ ...(existing?.prefs ?? {}), ...incoming });
       }
     } else if (domain === "creative_work" && !existingCreativeConfig && creativePrefs) {
-      patch.prefs = { projectId: creativePrefs.projectId };
+      patch.prefs = { ...creativePrefs };
+    } else if (domain === "market_research" && !existingResearchConfig && researchPrefs) {
+      patch.prefs = { ...researchPrefs };
     }
 
     const config = await upsertDomainConfig(orgId, domain, patch);

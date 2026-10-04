@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import {
+  db,
+  autopilotActivityLogTable,
   AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+  AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
+  AUTOPILOT_PRIME_AUTO_START_DOMAINS,
   AUTOPILOT_DEFAULT_MARKETING_TONE,
   AUTOPILOT_MAX_MARKETING_TOPICS,
   AUTOPILOT_MAX_MARKETING_TOPIC_LEN,
@@ -520,8 +524,8 @@ describe("Creative Work owner project targeting", () => {
     expect(enabled.status).toBe(200);
     expect(enabled.body.config.enabled).toBe(true);
     expect(enabled.body.config.cadenceMinutes).toBe(AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES);
-    expect(enabled.body.config.prefs).toEqual({ projectId });
-    expect((await getStoredConfig(orgId, "creative_work"))?.prefs).toEqual({ projectId });
+    expect(enabled.body.config.prefs).toEqual({ projectId, focus: "" });
+    expect((await getStoredConfig(orgId, "creative_work"))?.prefs).toEqual({ projectId, focus: "" });
   });
 
   it("rejects a project that is not owned by the organization owner", async () => {
@@ -559,5 +563,78 @@ describe("Creative Work owner project targeting", () => {
     const update = await request(app).put("/api/autopilot/creative_work").send({ enabled: false });
     expect(update.status).toBe(403);
     expect((await getStoredConfig(orgId, "creative_work"))?.enabled).toBe(true);
+  });
+});
+
+describe("Market Research owner scope and opt-in configuration", () => {
+  it("requires a topic and forces a daily cadence without adding the domain to Prime auto-start", async () => {
+    expect(AUTOPILOT_PRIME_AUTO_START_DOMAINS).toEqual(["business_ops", "marketing", "crm_calls", "accounting"]);
+    expect(AUTOPILOT_PRIME_AUTO_START_DOMAINS).not.toContain("market_research");
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const missingTopic = await request(app).put("/api/autopilot/market_research").send({ enabled: true });
+    expect(missingTopic.status).toBe(400);
+    expect(await getStoredConfig(orgId, "market_research")).toBeNull();
+
+    const enabled = await request(app).put("/api/autopilot/market_research").send({
+      enabled: true,
+      cadenceMinutes: 5,
+      prefs: { subject: "  Clinic payroll software ", region: " Vietnam ", competitors: " A, B " },
+    });
+
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.config.enabled).toBe(true);
+    expect(enabled.body.config.cadenceMinutes).toBe(AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES);
+    expect(enabled.body.config.prefs).toEqual({
+      subject: "Clinic payroll software",
+      region: "Vietnam",
+      competitors: "A, B",
+    });
+    expect((await getStoredConfig(orgId, "market_research"))?.enabled).toBe(true);
+  });
+
+  it("keeps scope and report details private from managers while the owner can review them", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+    actAs(owner);
+    await request(app).put("/api/autopilot/market_research").send({
+      enabled: true,
+      prefs: { subject: "Private market scope" },
+    });
+    await db.insert(autopilotActivityLogTable).values({
+      orgId,
+      domain: "market_research",
+      action: "research_brief",
+      summary: "A private sourced brief.",
+      outcome: "success",
+      detail: {
+        report: "Owner-only research text.",
+        sources: [{ title: "Source", url: "https://example.com" }],
+      },
+    });
+
+    actAs(manager);
+    const managerView = await request(app).get("/api/autopilot");
+    expect(managerView.status).toBe(200);
+    expect(managerView.body.marketResearch).toEqual({ canManage: false });
+    expect(managerView.body.domains.find((row: { domain: string }) => row.domain === "market_research").prefs).toEqual({});
+    expect(managerView.body.activity.some((row: { domain: string }) => row.domain === "market_research")).toBe(false);
+
+    const managerFeed = await request(app).get("/api/autopilot/activity?domain=market_research");
+    expect(managerFeed.status).toBe(200);
+    expect(managerFeed.body.activity).toEqual([]);
+    const managerUpdate = await request(app).put("/api/autopilot/market_research").send({ enabled: false });
+    expect(managerUpdate.status).toBe(403);
+
+    actAs(owner);
+    const ownerView = await request(app).get("/api/autopilot");
+    expect(ownerView.body.domains.find((row: { domain: string }) => row.domain === "market_research").prefs.subject)
+      .toBe("Private market scope");
+    expect(ownerView.body.activity.some((row: { domain: string; detail?: { report?: string } }) =>
+      row.domain === "market_research" && row.detail?.report === "Owner-only research text.",
+    )).toBe(true);
   });
 });

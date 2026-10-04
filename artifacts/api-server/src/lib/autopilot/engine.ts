@@ -5,10 +5,11 @@ import {
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
   AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+  AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
   type AutopilotConfig,
   type AutopilotDomain,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { recordAutopilotActivity } from "./activity";
 import { evaluateConfigGuardrails, checkEntitlement, checkCredit } from "./guardrails";
 import { AUTOPILOT_ASSISTANT_NAME, type AutopilotContext, type AutopilotHandler, type AutopilotLogInput } from "./types";
@@ -34,6 +35,7 @@ const handlers: Record<AutopilotDomain, AutopilotHandler> = {
   crm_calls: noopHandler,
   accounting: noopHandler,
   creative_work: noopHandler,
+  market_research: noopHandler,
 };
 
 /** Register the handler for a domain during server boot. */
@@ -48,11 +50,38 @@ let ticking = false; // reentrancy guard: never overlap two evaluation passes
 
 function cadenceElapsed(config: AutopilotConfig, now: number): boolean {
   if (!config.lastRunAt) return true;
-  const cadenceMin = config.domain === "creative_work"
-    ? Math.max(config.cadenceMinutes ?? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES, AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES)
-    : config.cadenceMinutes ?? AUTOPILOT_DEFAULT_CADENCE_MINUTES;
+  const cadenceMin = minimumCadence(config);
   const dueAt = new Date(config.lastRunAt).getTime() + cadenceMin * 60_000;
   return now >= dueAt;
+}
+
+function minimumCadence(config: AutopilotConfig): number {
+  if (config.domain === "creative_work") {
+    return Math.max(config.cadenceMinutes ?? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES, AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES);
+  }
+  if (config.domain === "market_research") {
+    return Math.max(config.cadenceMinutes ?? AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES, AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES);
+  }
+  return config.cadenceMinutes ?? AUTOPILOT_DEFAULT_CADENCE_MINUTES;
+}
+
+/**
+ * Atomically claim a due config so separate API server instances cannot run
+ * the same org/domain concurrently. The database predicate rechecks enabled
+ * state and cadence after the scheduler's read.
+ */
+export async function claimAutopilotRunSlot(config: AutopilotConfig, now = new Date()): Promise<boolean> {
+  const cutoff = new Date(now.getTime() - minimumCadence(config) * 60_000);
+  const [claimed] = await db
+    .update(autopilotConfigsTable)
+    .set({ lastRunAt: now })
+    .where(and(
+      eq(autopilotConfigsTable.id, config.id),
+      eq(autopilotConfigsTable.enabled, true),
+      or(isNull(autopilotConfigsTable.lastRunAt), lte(autopilotConfigsTable.lastRunAt, cutoff)),
+    ))
+    .returning({ id: autopilotConfigsTable.id });
+  return !!claimed;
 }
 
 /** Build the per-run context handed to a domain handler. */
@@ -124,12 +153,10 @@ function buildContext(
   return ctx;
 }
 
-/** Process one config: guardrails → handler. Marks lastRunAt before invoking. */
-async function runConfig(config: AutopilotConfig): Promise<void> {
+/** Process one config: atomic cadence claim → guardrails → handler. */
+async function runConfig(config: AutopilotConfig, now: Date): Promise<void> {
+  if (!(await claimAutopilotRunSlot(config, now))) return;
   const guard = await evaluateConfigGuardrails(config, AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK);
-
-  // Claim the slot up front so a slow/failing handler can't double-run next tick.
-  await db.update(autopilotConfigsTable).set({ lastRunAt: new Date() }).where(eq(autopilotConfigsTable.id, config.id));
 
   if (!guard.ok) {
     await recordAutopilotActivity({
@@ -167,12 +194,13 @@ export async function runAutopilotTick(): Promise<void> {
   ticking = true;
   try {
     const enabled = await db.select().from(autopilotConfigsTable).where(eq(autopilotConfigsTable.enabled, true));
-    const now = Date.now();
+    const tickTime = new Date();
+    const now = tickTime.getTime();
     for (const config of enabled) {
       if (!AUTOPILOT_DOMAINS.includes(config.domain as AutopilotDomain)) continue;
       if (!cadenceElapsed(config, now)) continue;
       try {
-        await runConfig(config);
+        await runConfig(config, tickTime);
       } catch (err) {
         console.error(`[Autopilot] runConfig failed (org ${config.orgId}, ${config.domain}):`, err);
       }

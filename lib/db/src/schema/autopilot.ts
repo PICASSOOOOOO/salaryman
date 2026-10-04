@@ -15,6 +15,7 @@ export const AUTOPILOT_DOMAINS = [
   "crm_calls",
   "accounting",
   "creative_work",
+  "market_research",
 ] as const;
 export type AutopilotDomain = (typeof AUTOPILOT_DOMAINS)[number];
 
@@ -53,6 +54,10 @@ export const AUTOPILOT_DOMAIN_META: Record<AutopilotDomain, { label: string; des
     label: "Creative Work",
     description: "Drafts an offline project plan and prototype after the owner updates the selected project. Never publishes or runs it.",
   },
+  market_research: {
+    label: "Market Research",
+    description: "Creates a source-linked market brief for owner review. Read-only; no outreach, publishing, or purchases.",
+  },
 };
 
 // Outcome of a single automated action / tick, recorded to the activity log.
@@ -63,6 +68,8 @@ export type AutopilotOutcome = (typeof AUTOPILOT_OUTCOMES)[number];
 export const AUTOPILOT_DEFAULT_CADENCE_MINUTES = 60;
 // Creative Work is both opt-in and deliberately rate-limited to one check per day.
 export const AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES = 1440;
+// Market research is opt-in and limited to one source-backed brief per day.
+export const AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES = 1440;
 // Default per-tick action cap when an org has not set one.
 export const AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK = 5;
 
@@ -175,6 +182,14 @@ export interface AccountingAutopilotPrefs {
 // Owner-only target for the review-only Creative Work workflow.
 export interface CreativeWorkAutopilotPrefs {
   projectId: number | null;
+  focus: string;
+}
+
+// Owner-only scope for one daily, read-only market brief.
+export interface MarketResearchAutopilotPrefs {
+  subject: string;
+  region: string;
+  competitors: string;
 }
 
 // Per-org, per-domain autopilot configuration. A row is created lazily the first

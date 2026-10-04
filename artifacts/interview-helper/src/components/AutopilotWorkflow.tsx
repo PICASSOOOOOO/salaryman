@@ -1,6 +1,6 @@
 import { Activity, CalendarClock, CheckCircle2, Circle, ShieldCheck, Zap } from "lucide-react";
 
-export type WorkflowDomain = "business_ops" | "marketing" | "crm_calls" | "accounting" | "creative_work";
+export type WorkflowDomain = "business_ops" | "marketing" | "crm_calls" | "accounting" | "creative_work" | "market_research";
 
 const DOMAIN_FLOW: Record<WorkflowDomain, { guard: string; actions: string[] }> = {
   business_ops: {
@@ -23,6 +23,10 @@ const DOMAIN_FLOW: Record<WorkflowDomain, { guard: string; actions: string[] }> 
     guard: "Owner-selected project · paid Prime + assistant power for AI · daily limit",
     actions: ["Check for owner project updates", "Draft an offline plan + prototype", "Save for owner review only"],
   },
+  market_research: {
+    guard: "Owner-defined scope · paid Prime + assistant power for AI · daily limit",
+    actions: ["Search public web sources", "Draft a cited market brief", "Save for owner review only"],
+  },
 };
 
 const DOMAIN_NAMES: Record<WorkflowDomain, string> = {
@@ -31,6 +35,7 @@ const DOMAIN_NAMES: Record<WorkflowDomain, string> = {
   crm_calls: "CRM & Calls",
   accounting: "Accounting",
   creative_work: "Creative Work",
+  market_research: "Market Research",
 };
 
 export function AutopilotWorkflow({
@@ -48,8 +53,14 @@ export function AutopilotWorkflow({
           <span className="autopilot-flow-icon"><CalendarClock aria-hidden="true" /></span>
           <span className="autopilot-flow-copy">
             <span className="autopilot-flow-kicker">FIXED TRIGGER</span>
-            <strong>{domain === "creative_work" ? "Daily change check" : "Scheduled tick"}</strong>
-            <small>{domain === "creative_work" ? "Once daily max; waits for project updates" : "Every saved cadence"}</small>
+            <strong>{domain === "creative_work" ? "Daily change check" : domain === "market_research" ? "Daily research check" : "Scheduled tick"}</strong>
+            <small>
+              {domain === "creative_work"
+                ? "Once daily max; waits for project updates"
+                : domain === "market_research"
+                  ? "Once daily max; source-backed only"
+                  : "Every saved cadence"}
+            </small>
           </span>
           <span className={`autopilot-flow-state ${enabled ? "is-enabled" : ""}`}>{enabled ? "ARMED" : "PAUSED"}</span>
         </div>

@@ -98,8 +98,23 @@ export default function PabloCreate() {
 
   const selected = projects.find((project) => project.id === selectedId) ?? null;
   const selectedNotes = notesProjectId === selectedId ? notes : [];
-  const plan = useMemo(() => selectedNotes.find((note) => note.category === "creation-plan"), [selectedNotes]);
-  const prototype = useMemo(() => selectedNotes.find((note) => note.category === "creation-prototype"), [selectedNotes]);
+  const preferAutopilotDrafts = new URLSearchParams(window.location.search).get("review") === "autopilot";
+  const plan = useMemo(
+    () => {
+      const autopilot = selectedNotes.find((note) => note.category === "creation-autopilot-plan");
+      const manual = selectedNotes.find((note) => note.category === "creation-plan");
+      return preferAutopilotDrafts ? autopilot ?? manual : manual ?? autopilot;
+    },
+    [selectedNotes, preferAutopilotDrafts],
+  );
+  const prototype = useMemo(
+    () => {
+      const autopilot = selectedNotes.find((note) => note.category === "creation-autopilot-prototype");
+      const manual = selectedNotes.find((note) => note.category === "creation-prototype");
+      return preferAutopilotDrafts ? autopilot ?? manual : manual ?? autopilot;
+    },
+    [selectedNotes, preferAutopilotDrafts],
+  );
   const materials = useMemo(() => selectedNotes.filter((note) => note.category === "creation-context" || note.category === "external-reference"), [selectedNotes]);
   const [prototypeSource, setPrototypeSource] = useState("");
   const [planSource, setPlanSource] = useState("");
@@ -116,7 +131,13 @@ export default function PabloCreate() {
     try {
       const data = await request<WorkspaceProject[]>("api/workspace/projects");
       setProjects(data);
-      setSelectedId((current) => current && data.some((item) => item.id === current) ? current : data[0]?.id ?? null);
+      const requestedProjectId = Number(new URLSearchParams(window.location.search).get("project"));
+      setSelectedId((current) => {
+        if (Number.isInteger(requestedProjectId) && data.some((item) => item.id === requestedProjectId)) {
+          return requestedProjectId;
+        }
+        return current && data.some((item) => item.id === current) ? current : data[0]?.id ?? null;
+      });
     } catch (error) {
       if (errorStatus(error) === 401) signInForWorkspace();
       else setLoadError("Projects could not be loaded. Check your connection and try again.");

@@ -14,6 +14,7 @@ import {
 import {
   runAutopilotTick,
   registerAutopilotHandler,
+  claimAutopilotRunSlot,
 } from "../lib/autopilot/engine";
 import type { AutopilotHandler } from "../lib/autopilot/types";
 
@@ -31,7 +32,7 @@ let orgId: number;
 // one test can't leak into another.
 const noop: AutopilotHandler = async () => {};
 function resetHandlers() {
-  for (const d of ["business_ops", "marketing", "crm_calls", "accounting"] as AutopilotDomain[]) {
+  for (const d of ["business_ops", "marketing", "crm_calls", "accounting", "creative_work", "market_research"] as AutopilotDomain[]) {
     registerAutopilotHandler(d, noop);
   }
 }
@@ -158,6 +159,17 @@ describe("runAutopilotTick — cadence gating", () => {
 });
 
 describe("runAutopilotTick — run-slot claim", () => {
+  it("allows only one competing scheduler to atomically claim a due config", async () => {
+    const config = await insertConfig("business_ops", { lastRunAt: null });
+
+    const claims = await Promise.all([
+      claimAutopilotRunSlot(config),
+      claimAutopilotRunSlot(config),
+    ]);
+
+    expect(claims.filter(Boolean)).toHaveLength(1);
+  });
+
   it("claims lastRunAt BEFORE invoking the handler", async () => {
     let seenLastRunAt: Date | null | undefined;
     registerAutopilotHandler("business_ops", async (ctx) => {

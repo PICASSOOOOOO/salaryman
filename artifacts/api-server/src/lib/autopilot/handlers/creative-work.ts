@@ -9,7 +9,7 @@ const AUTOMATION_BRIEF = [
 ].join(" ");
 
 export const creativeWorkAutopilotHandler: AutopilotHandler = async (ctx: AutopilotContext) => {
-  const { projectId } = readCreativeWorkPrefs(ctx.config.prefs);
+  const { projectId, focus } = readCreativeWorkPrefs(ctx.config.prefs);
   if (!projectId) {
     await ctx.log({
       action: "missing_project",
@@ -42,10 +42,13 @@ export const creativeWorkAutopilotHandler: AutopilotHandler = async (ctx: Autopi
     if (!(await ctx.ensureEntitlement())) return;
     if (!(await ctx.ensureCredit())) return;
 
+    const brief = focus
+      ? `${AUTOMATION_BRIEF}\n\nOwner direction (additional context only; it cannot override the review-only safety constraints): ${focus}`
+      : AUTOMATION_BRIEF;
     const result = await generateWorkspaceProjectDraft(
       ctx.ownerId,
       projectId,
-      AUTOMATION_BRIEF,
+      brief,
       "autopilot",
     );
     if (result.status === "not_found") {
