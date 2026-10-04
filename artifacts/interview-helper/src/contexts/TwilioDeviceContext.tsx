@@ -46,9 +46,31 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   const deviceStateRef = useRef<DeviceState>('uninitialized');
   const activeConferenceCallsRef = useRef<Map<string, Call>>(new Map());
   const connectingConferenceRef = useRef<Map<string, Promise<Call>>>(new Map());
+  const qualitySampleSentAtRef = useRef<WeakMap<Call, number>>(new WeakMap());
   const initDeviceRef = useRef<() => Promise<void>>(async () => {});
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const attachQualityReporting = useCallback((call: Call) => {
+    call.on('sample', sample => {
+      const now = Date.now();
+      if (now - (qualitySampleSentAtRef.current.get(call) ?? 0) < 10_000) return;
+      const callSid = call.parameters?.CallSid;
+      if (!callSid) return;
+      qualitySampleSentAtRef.current.set(call, now);
+      void apiFetch(apiUrl('twilio/supervision/quality'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          callSid,
+          mos: sample.mos,
+          packetsLostFraction: sample.packetsLostFraction,
+          jitter: sample.jitter,
+          rtt: sample.rtt,
+        }),
+      }).catch(() => {});
+    });
+  }, [apiUrl]);
 
   const TOKEN_REFRESH_MS = 50 * 60 * 1000;
   // Mobile Safari and resumed tabs can take longer to negotiate the Twilio
@@ -145,6 +167,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
         // starts ringing in (or we accept/place one), tell the global
         // phone-busy bus so the music player pauses.
         device.on('incoming', (call: Call) => {
+          attachQualityReporting(call);
           setPhoneBusy('twilio-incoming', true);
           setIncomingCall(call);
           const clear = () => {
@@ -227,7 +250,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     } finally {
       initPromiseRef.current = null;
     }
-  }, [apiUrl, scheduleTokenRefresh, updateDeviceState]);
+  }, [apiUrl, attachQualityReporting, scheduleTokenRefresh, updateDeviceState]);
   initDeviceRef.current = initDevice;
 
   useEffect(() => {
@@ -309,6 +332,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
       const call = await deviceRef.current!.connect({
         params: { To: conferenceName },
       });
+      attachQualityReporting(call);
       activeConferenceCallsRef.current.set(conferenceName, call);
       const clear = () => {
         if (activeConferenceCallsRef.current.get(conferenceName) === call) {
@@ -334,7 +358,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     })();
     connectingConferenceRef.current.set(conferenceName, connection);
     return connection;
-  }, [ensureDeviceReady]);
+  }, [attachQualityReporting, ensureDeviceReady]);
 
   const connectToEmployee = useCallback(async (employeeUserId: string): Promise<Call> => {
     if (!/^[a-zA-Z0-9._:-]{1,256}$/.test(employeeUserId)) {
@@ -345,6 +369,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     const call = await deviceRef.current.connect({
       params: { To: `employee:${employeeUserId}` },
     });
+    attachQualityReporting(call);
     setPhoneBusy('twilio-employee-call', true);
     const clear = () => setPhoneBusy('twilio-employee-call', false);
     call.on('disconnect', clear);
@@ -352,7 +377,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     call.on('reject', clear);
     call.on('error', clear);
     return call;
-  }, [ensureDeviceReady]);
+  }, [attachQualityReporting, ensureDeviceReady]);
 
   const acceptIncomingCall = useCallback(() => {
     if (!incomingCall) return;

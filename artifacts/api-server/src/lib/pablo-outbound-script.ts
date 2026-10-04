@@ -2,7 +2,10 @@ export type PabloScriptBranch = {
   response: string;
   nextNodeId: string | null;
   transferToUserId: string | null;
+  captureField: PabloCaptureField | null;
 };
+
+export type PabloCaptureField = "email" | "company" | "timezone";
 
 export type PabloScriptNode = {
   id: string;
@@ -51,8 +54,8 @@ export function parsePabloOutboundScript(raw: string): PabloOutboundScript {
     return {
       id: cleanId(node.id, `Question ${index + 1} ID`),
       question: cleanLine(node.question, `Question ${index + 1}`, MAX_LINE_LENGTH),
-      yes: parseBranch(node.yes, `Question ${index + 1} yes branch`),
-      no: parseBranch(node.no, `Question ${index + 1} no branch`),
+      yes: parseBranch(node.yes, `Question ${index + 1} yes branch`, true),
+      no: parseBranch(node.no, `Question ${index + 1} no branch`, false),
     };
   });
 
@@ -90,7 +93,7 @@ function cleanId(value: unknown, label: string): string {
   return value;
 }
 
-function parseBranch(value: unknown, label: string): PabloScriptBranch {
+function parseBranch(value: unknown, label: string, isYesBranch: boolean): PabloScriptBranch {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${label} is required`);
   }
@@ -99,13 +102,29 @@ function parseBranch(value: unknown, label: string): PabloScriptBranch {
     ? null
     : cleanId(branch.nextNodeId, `${label} follow-up`);
   const transferToUserId = cleanTransferUserId(branch.transferToUserId, label);
+  const rawCaptureField = branch.captureField;
+  const captureField = rawCaptureField == null || rawCaptureField === ""
+    ? null
+    : rawCaptureField === "email" || rawCaptureField === "company" || rawCaptureField === "timezone"
+      ? rawCaptureField
+      : (() => { throw new Error(`${label} has an unsupported CRM field`); })();
+  if (!isYesBranch && transferToUserId) {
+    throw new Error(`${label} cannot transfer after a no answer`);
+  }
+  if (!isYesBranch && captureField) {
+    throw new Error(`${label} cannot capture CRM details after a no answer`);
+  }
   if (nextNodeId && transferToUserId) {
     throw new Error(`${label} cannot both continue to a follow-up and transfer to an employee`);
+  }
+  if (captureField && transferToUserId) {
+    throw new Error(`${label} cannot capture CRM details and transfer in the same step`);
   }
   return {
     response: cleanLine(branch.response, label, MAX_LINE_LENGTH),
     nextNodeId,
     transferToUserId,
+    captureField,
   };
 }
 

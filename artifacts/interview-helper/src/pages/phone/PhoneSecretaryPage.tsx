@@ -1,15 +1,14 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, Upload, PhoneOutgoing, FileText, Check, Briefcase, Smile, Settings2 } from 'lucide-react';
+import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, PhoneOutgoing, Check, Briefcase, Smile, Settings2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   slate, warning, primary, destructive, accent,
-  type SecretaryConfig,
-  type OutboundCampaign } from '@/lib/phone-utils';
+  type SecretaryConfig } from '@/lib/phone-utils';
 
 export default function PhoneSecretaryPage() {
   const isMobile = useIsMobile();
@@ -27,13 +26,6 @@ export default function PhoneSecretaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
-  const [campaigns, setCampaigns] = useState<OutboundCampaign[]>([]);
-  const [campaignName, setCampaignName] = useState('');
-  const [campaignScript, setCampaignScript] = useState('');
-  const [campaignLeads, setCampaignLeads] = useState('');
-  const [campaignCreating, setCampaignCreating] = useState(false);
-  const csvInputRef = useRef<HTMLInputElement>(null);
-
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const handleAuthStatus = useCallback((r: Response): boolean => {
@@ -64,52 +56,7 @@ export default function PhoneSecretaryPage() {
         setError(e instanceof Error ? e.message : 'Failed to load secretary configuration');
       })
       .finally(() => setLoading(false));
-
-    apiFetch(apiUrl('twilio/pablo/campaigns'), { credentials: 'include' })
-      .then(async r => { if (r.ok) { const d = await r.json(); setCampaigns(d.campaigns ?? []); } })
-      .catch(() => {});
   }, [apiUrl, handleAuthStatus]);
-
-  const createCampaign = async () => {
-    if (!campaignName || !campaignScript || !campaignLeads) return;
-    setCampaignCreating(true);
-    try {
-      const leads = campaignLeads.split('\n').filter(l => l.trim()).map(l => {
-        const parts = l.split(',');
-        return { phone: parts[0]?.trim() ?? '', name: parts[1]?.trim() ?? '' };
-      }).filter(l => l.phone);
-      const r = await apiFetch(apiUrl('twilio/pablo/campaigns'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }) });
-      if (r.ok) {
-        const d = await r.json();
-        setCampaigns(prev => [d.campaign, ...prev]);
-        setCampaignName(''); setCampaignScript(''); setCampaignLeads('');
-      }
-    } catch {} finally { setCampaignCreating(false); }
-  };
-
-  const startCampaign = async (id: number) => {
-    try {
-      const r = await apiFetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), {
-        method: 'POST', credentials: 'include' });
-      if (r.ok) {
-        setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c));
-      }
-    } catch {}
-  };
-
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      setCampaignLeads(text);
-    };
-    reader.readAsText(file);
-  };
 
   const saveConfig = async () => {
     setSaving(true);
@@ -547,87 +494,14 @@ export default function PhoneSecretaryPage() {
             />
           </div>
 
-          <div style={{ borderTop: `1px solid ${slate(0.06)}`, paddingTop: 16 }}>
-            <div style={{ fontSize: '0.55rem', color: warning(0.8), letterSpacing: '0.12em', marginBottom: 12 }}>
-              CREATE OUTBOUND CAMPAIGN
+          <div style={{ borderTop: `1px solid ${slate(0.06)}`, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: '0.4rem', color: slate(0.5), lineHeight: 1.6 }}>
+              Campaigns use saved contacts with recorded permission, a structured script, and a separate spoken confirmation before any employee transfer.
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN NAME</label>
-                <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Q1 Lead Follow-up" style={INPUT_STYLE} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN SCRIPT</label>
-                <input value={campaignScript} onChange={e => setCampaignScript(e.target.value)} placeholder="Hi, we wanted to follow up on..." style={INPUT_STYLE} />
-              </div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
-                LEAD LIST (PHONE,NAME — ONE PER LINE)
-              </label>
-              <textarea
-                value={campaignLeads}
-                onChange={e => setCampaignLeads(e.target.value)}
-                placeholder={'+15551234567,John Smith\n+15559876543,Jane Doe\n+15550001111,Bob Johnson'}
-                style={{ ...INPUT_STYLE, height: 80, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                <input type="file" accept=".csv,.txt" ref={csvInputRef} onChange={handleCsvUpload} style={{ display: 'none' }} />
-                <button
-                  onClick={() => csvInputRef.current?.click()}
-                  style={{
-                    fontSize: '0.45rem', color: slate(0.5), background: slate(0.5),
-                    border: `1px solid ${slate(0.12)}`, padding: '6px 12px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.1em' }}
-                >
-                  <Upload size={10} /> UPLOAD CSV
-                </button>
-                <span style={{ fontSize: '0.38rem', color: slate(0.55) }}>
-                  {campaignLeads ? `${campaignLeads.split('\n').filter(l => l.trim()).length} LEADS LOADED` : 'OR PASTE LEADS ABOVE'}
-                </span>
-              </div>
-            </div>
-            <PhoneBtn onClick={createCampaign} disabled={campaignCreating || !campaignName || !campaignScript || !campaignLeads} color={warning}>
-              {campaignCreating ? <Loader2 size={12} className="animate-spin" /> : <PhoneOutgoing size={12} />}
-              {campaignCreating ? 'CREATING...' : 'CREATE CAMPAIGN'}
+            <PhoneBtn onClick={() => navigate('/phone/call-center')} color={warning}>
+              <PhoneOutgoing size={12} /> OPEN CONSENT-AWARE CAMPAIGN CENTER
             </PhoneBtn>
           </div>
-
-          {campaigns.length > 0 && (
-            <div style={{ borderTop: `1px solid ${slate(0.06)}`, paddingTop: 16 }}>
-              <div style={{ fontSize: '0.55rem', color: slate(0.5), letterSpacing: '0.12em', marginBottom: 10 }}>
-                CAMPAIGNS ({campaigns.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {campaigns.map(c => (
-                  <div key={c.id} style={{
-                    padding: '12px 16px', background: slate(0.4),
-                    border: `1px solid ${c.status === 'active' ? warning(0.3) : slate(0.08)}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: '0.55rem', color: slate(0.7), letterSpacing: '0.08em' }}>
-                        <FileText size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                        {c.name}
-                      </div>
-                      <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 3 }}>
-                        {c.totalLeads} LEADS | {c.dialedCount} CALLED | STATUS: {c.status.toUpperCase()}
-                      </div>
-                    </div>
-                    {c.status === 'draft' && (
-                      <PhoneBtn onClick={() => startCampaign(c.id)} color={warning}>
-                        <Zap size={10} /> START
-                      </PhoneBtn>
-                    )}
-                    {c.status === 'active' && (
-                      <div style={{ fontSize: '0.45rem', color: warning(0.7), letterSpacing: '0.1em' }}>
-                        IN PROGRESS...
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </PhoneCard>
     </PhonePageLayout>

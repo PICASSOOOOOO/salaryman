@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, desc, and, asc, sql, gte, inArray } from "drizzle-orm";
+import { eq, desc, and, asc, sql, gte, inArray, isNull } from "drizzle-orm";
 import {
   db,
   callHistoryTable,
@@ -62,6 +62,7 @@ import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { resolveTelephonyOwner } from "../lib/telephony-owner";
 import { broadcastChatMessage } from "../chatServer";
+import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 
 const router = Router();
 
@@ -265,6 +266,13 @@ async function getCurrentPhoneOrgId(userId: string): Promise<number | null> {
     .where(eq(organizationsTable.ownerUserId, userId))
     .limit(1);
   return ownedOrg?.id ?? null;
+}
+
+async function getPhoneSupervisionOrgId(userId: string): Promise<number | null> {
+  const orgId = await resolveCurrentOrgId(userId);
+  if (!orgId) return null;
+  const permission = await canDoInOrg(userId, orgId, "phone.supervise");
+  return permission.allowed ? orgId : null;
 }
 
 type InternalPhoneEmployee = {
@@ -539,6 +547,103 @@ async function persistCallHistory(values: CallHistoryInsert) {
       .where(eq(callHistoryTable.id, existing.id))
       .returning();
     return merged;
+  });
+}
+
+type CampaignCaptureField = "email" | "company" | "timezone";
+
+function parseCampaignCaptureField(value: unknown): CampaignCaptureField | null {
+  return value === "email" || value === "company" || value === "timezone" ? value : null;
+}
+
+function cleanCampaignCapture(field: CampaignCaptureField, value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+  if (!cleaned || cleaned.length > 250) return null;
+  if (field === "email" && (cleaned.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned))) return null;
+  if (field === "timezone") {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: cleaned }).format();
+    } catch {
+      return null;
+    }
+  }
+  return cleaned;
+}
+
+async function saveCampaignContactCapture(
+  userId: string,
+  contactId: number,
+  callSid: string,
+  field: CampaignCaptureField,
+  value: string,
+): Promise<"updated" | "unchanged" | "review" | "missing"> {
+  return db.transaction(async (tx) => {
+    const [call] = await tx.select().from(callHistoryTable).where(and(
+      eq(callHistoryTable.userId, userId),
+      eq(callHistoryTable.twilioCallSid, callSid),
+      eq(callHistoryTable.contactId, contactId),
+    )).for("update").limit(1);
+    if (!call) return "missing";
+    const [contact] = await tx.select().from(contactsTable).where(and(
+      eq(contactsTable.userId, userId),
+      eq(contactsTable.id, contactId),
+    )).for("update").limit(1);
+    if (!contact) return "missing";
+
+    let snapshot: Record<string, unknown> | null = null;
+    try {
+      const parsed: unknown = call.contactSnapshotJson ? JSON.parse(call.contactSnapshotJson) : null;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) snapshot = parsed as Record<string, unknown>;
+    } catch {}
+
+    const currentValue = contact[field] ?? null;
+    const hasBaseline = snapshot && Object.prototype.hasOwnProperty.call(snapshot, field);
+    const baselineValue = hasBaseline && snapshot![field] != null ? String(snapshot![field]) : null;
+    const label = field === "email" ? "email" : field === "company" ? "company" : "timezone";
+    if (!hasBaseline || currentValue !== baselineValue) {
+      await tx.insert(contactInteractionsTable).values({
+        contactId,
+        userId,
+        type: "call_capture_review",
+        note: `Caller shared ${label} "${value}" during a consented campaign call, but the CRM field changed after the call began. Review before applying.`,
+      });
+      return "review";
+    }
+    if (currentValue === value) return "unchanged";
+
+    const baselinePredicate = baselineValue == null
+      ? isNull(contactsTable[field])
+      : eq(contactsTable[field], baselineValue);
+    const changes = field === "email"
+      ? { email: value }
+      : field === "company"
+        ? { company: value }
+        : { timezone: value };
+    const updated = await tx.update(contactsTable)
+      .set(changes)
+      .where(and(
+        eq(contactsTable.userId, userId),
+        eq(contactsTable.id, contactId),
+        baselinePredicate,
+      ))
+      .returning({ id: contactsTable.id });
+    if (!updated.length) {
+      await tx.insert(contactInteractionsTable).values({
+        contactId,
+        userId,
+        type: "call_capture_review",
+        note: `Caller shared ${label} "${value}" during a consented campaign call, but the CRM field changed during capture. Review before applying.`,
+      });
+      return "review";
+    }
+    await tx.insert(contactInteractionsTable).values({
+      contactId,
+      userId,
+      type: "call_capture",
+      note: `Updated ${label} from a consented campaign call.`,
+    });
+    return "updated";
   });
 }
 
@@ -2706,6 +2811,12 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
       const gather = (spokenText: string, clarify: number) =>
         `<Gather input="speech" timeout="10" action="${actionUrl}&amp;clarify=${clarify}" method="POST" speechTimeout="auto">${milaVoice(interpolatePabloScript(spokenText, leadName, company), req)}</Gather>`;
       const answer = classifyPabloCallAnswer(typeof SpeechResult === "string" ? SpeechResult : "");
+      const captureRequested = req.query.captureField !== undefined;
+      const captureField = parseCampaignCaptureField(req.query.captureField);
+      const transferConsentStep = String(req.query.transferConsent || "") === "1";
+      const finishCall = (spokenText: string) => {
+        res.type("text/xml").send(`<Response>${milaVoice(interpolatePabloScript(spokenText, leadName, company), req)}<Hangup/></Response>`);
+      };
 
       if (answer === "stop") {
         const now = new Date();
@@ -2718,6 +2829,142 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
           eq(contactChannelPrefsTable.contactId, contactId),
         ));
         res.type("text/xml").send(`<Response>${milaVoice("Understood. I'll remove this number from future calls. Goodbye.", req)}<Hangup/></Response>`);
+        return;
+      }
+
+      const affirmativeBranch = node.yes;
+      const affirmativeResponse = interpolatePabloScript(affirmativeBranch.response, leadName, company);
+      const connectEmployee = async (targetUserId: string) => {
+        const orgId = await getCurrentPhoneOrgId(userId);
+        const target = orgId ? await getActivePhoneEmployee(orgId, targetUserId) : null;
+        const [caller] = await db.select({ email: usersTable.email })
+          .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+        const [callerCanUseTwilio, targetCanUseTwilio] = orgId && target
+          ? await Promise.all([
+              canUsePlatformTwilio(userId, caller?.email ?? ""),
+              canUsePlatformTwilio(target.userId, target.email ?? ""),
+            ])
+          : [false, false];
+        const safeCallSid = typeof CallSid === "string" ? CallSid.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) : "";
+        if (!orgId || !target || target.userId === userId || !callerCanUseTwilio || !targetCanUseTwilio || !safeCallSid) {
+          finishCall(`${affirmativeResponse} ${interpolatePabloScript(script.closing, leadName, company)}`);
+          return;
+        }
+
+        const transferRoom = `calll-home-transfer-${safeCallSid}`;
+        const transferRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(target.userId)}&amp;type=call&amp;callType=pablo_internal_transfer&amp;conferenceName=${encodeURIComponent(transferRoom)}`;
+        let transferCallSid: string | null = null;
+        try {
+          const transferCall = await getTwilioClient().calls.create({
+            to: `client:${target.userId}`,
+            from: await getUserOutboundNumber(userId),
+            timeout: 25,
+            twiml: `<Response>${callRecordingNoticeTwiml()}<Dial><Conference startConferenceOnEnter="false" endConferenceOnExit="true" beep="false" record="record-from-start" recordingStatusCallback="${transferRecordingCallback}" recordingStatusCallbackMethod="POST">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`,
+            statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(target.userId)}&callType=pablo_internal_transfer&transferCallerUserId=${encodeURIComponent(userId)}&transferCallerSid=${encodeURIComponent(CallSid)}&transferOrgId=${orgId}`,
+            statusCallbackMethod: "POST",
+            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+          });
+          transferCallSid = transferCall.sid;
+          const transferLabel = `${script.businessName} via Pablo PRIME`;
+          await persistCallHistory({
+            userId: target.userId,
+            orgId,
+            callerName: transferLabel,
+            recipientNumber: "CALLL HOME employee",
+            twilioCallSid: transferCall.sid,
+            status: transferCall.status ?? "initiated",
+            direction: "inbound",
+            callType: "pablo_internal_transfer",
+            conferenceName: transferRoom,
+            contactId,
+            consentGiven: true,
+          });
+          await db.update(callHistoryTable).set({ conferenceName: transferRoom }).where(and(
+            eq(callHistoryTable.userId, userId),
+            eq(callHistoryTable.twilioCallSid, CallSid),
+            eq(callHistoryTable.contactId, contactId),
+          ));
+          await recordTelephonyActivity({
+            userId: target.userId,
+            orgId,
+            channel: "call",
+            direction: "inbound",
+            phone: "CALLL HOME employee",
+            contactName: transferLabel,
+            status: transferCall.status ?? "initiated",
+            twilioSid: transferCall.sid,
+          }).catch(() => {});
+
+          const transcriptionCallback = `${base}/twilio/webhook/realtime-transcription?userId=${encodeURIComponent(userId)}&contactId=${contactId}&orgId=${orgId}&conferenceName=${encodeURIComponent(transferRoom)}`;
+          res.type("text/xml").send(`<Response><Start><Transcription name="${escapeTwiml(`call-${safeCallSid}`)}" track="both_tracks" partialResults="false" statusCallbackUrl="${escapeTwiml(transcriptionCallback)}" statusCallbackMethod="POST" /></Start>${milaVoice(affirmativeResponse, req)}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`);
+        } catch (err) {
+          if (transferCallSid) {
+            await getTwilioClient().calls(transferCallSid).update({ status: "completed" }).catch(() => {});
+          }
+          req.log.error({ err, orgId }, "Pablo PRIME employee transfer could not be started");
+          finishCall(`${affirmativeResponse} ${interpolatePabloScript(script.closing, leadName, company)}`);
+        }
+      };
+
+      if (transferConsentStep) {
+        const targetUserId = affirmativeBranch.transferToUserId;
+        if (!targetUserId) {
+          finishCall(interpolatePabloScript(script.closing, leadName, company));
+          return;
+        }
+        if (answer === "no") {
+          finishCall(`No problem. I won't connect you to an employee. ${interpolatePabloScript(script.closing, leadName, company)}`);
+          return;
+        }
+        if (answer !== "yes") {
+          if (String(req.query.clarify || "0") === "1") {
+            finishCall(interpolatePabloScript(script.closing, leadName, company));
+            return;
+          }
+          const targetOrgId = await getCurrentPhoneOrgId(userId);
+          const target = targetOrgId ? await getActivePhoneEmployee(targetOrgId, targetUserId) : null;
+        const targetName = target
+            ? [target.firstName, target.lastName].filter(Boolean).join(" ") || target.username || "an employee"
+            : "an employee";
+          const transferUrl = `${actionUrl}&amp;transferConsent=1&amp;clarify=1`;
+          res.type("text/xml").send(`<Response><Gather input="speech" timeout="10" action="${transferUrl}" method="POST" speechTimeout="auto">${milaVoice(`Please answer yes or no. Would you like me to connect you to ${targetName}?`, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+          return;
+        }
+        await connectEmployee(targetUserId);
+        return;
+      }
+
+      if (captureRequested) {
+        if (!captureField || affirmativeBranch.captureField !== captureField) {
+          finishCall(interpolatePabloScript(script.closing, leadName, company));
+          return;
+        }
+        const rawValue = typeof SpeechResult === "string" ? SpeechResult : "";
+        const capturedValue = cleanCampaignCapture(captureField, rawValue);
+        let captureFeedback = "I couldn't confirm that detail, so I left the contact record unchanged.";
+        if (answer === "no" || answer === "yes") {
+          captureFeedback = answer === "no"
+            ? "That's fine. I won't change that contact detail."
+            : "I didn't hear the detail itself, so I left the contact record unchanged.";
+        } else if (capturedValue) {
+          const result = await saveCampaignContactCapture(userId, contactId, String(CallSid || ""), captureField, capturedValue);
+          captureFeedback = result === "updated" || result === "unchanged"
+            ? "Thank you. I've updated the contact record."
+            : result === "review"
+              ? "That contact detail changed during the call, so I've flagged it for review instead of replacing it."
+              : "I couldn't update that contact record. No CRM details were changed.";
+        }
+        if (affirmativeBranch.nextNodeId) {
+          const nextNode = script.nodes.find((item) => item.id === affirmativeBranch.nextNodeId);
+          if (!nextNode) {
+            finishCall(`${captureFeedback} ${interpolatePabloScript(script.closing, leadName, company)}`);
+            return;
+          }
+          const followUpUrl = `${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;campaignId=${campaignNumber}&amp;contactId=${contactId}&amp;nodeId=${encodeURIComponent(nextNode.id)}&amp;clarify=0`;
+          res.type("text/xml").send(`<Response><Gather input="speech" timeout="10" action="${followUpUrl}" method="POST" speechTimeout="auto">${milaVoice(`${captureFeedback} ${interpolatePabloScript(nextNode.question, leadName, company)}`, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+          return;
+        }
+        finishCall(`${captureFeedback} ${interpolatePabloScript(script.closing, leadName, company)}`);
         return;
       }
 
@@ -2734,6 +2981,16 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
 
       const branch = node[answer];
       const branchResponse = interpolatePabloScript(branch.response, leadName, company);
+      if (branch.captureField) {
+        const prompts: Record<CampaignCaptureField, string> = {
+          email: "Would you like to share an email address for the contact record? Say the address, or say no to skip.",
+          company: "Would you like to share a company name for the contact record? Say the name, or say no to skip.",
+          timezone: "Would you like to share your time zone for the contact record? Say the time zone, or say no to skip.",
+        };
+        const captureUrl = `${actionUrl}&amp;captureField=${encodeURIComponent(branch.captureField)}`;
+        res.type("text/xml").send(`<Response><Gather input="speech" timeout="10" action="${captureUrl}" method="POST" speechTimeout="auto">${milaVoice(`${branchResponse} ${prompts[branch.captureField]}`, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
+        return;
+      }
       if (branch.transferToUserId) {
         const orgId = await getCurrentPhoneOrgId(userId);
         const target = orgId ? await getActivePhoneEmployee(orgId, branch.transferToUserId) : null;
@@ -2747,54 +3004,14 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
             ])
           : [false, false];
         const safeCallSid = typeof CallSid === "string" ? CallSid.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) : "";
-        if (!orgId || !target || !callerCanUseTwilio || !targetCanUseTwilio || !safeCallSid) {
-          res.type("text/xml").send(`<Response>${milaVoice(`${branchResponse} ${interpolatePabloScript(script.closing, leadName, company)}`, req)}<Hangup/></Response>`);
+        if (!orgId || !target || target.userId === userId || !callerCanUseTwilio || !targetCanUseTwilio || !safeCallSid) {
+          finishCall(`${branchResponse} I can't connect you to an employee right now. ${interpolatePabloScript(script.closing, leadName, company)}`);
           return;
         }
 
-        const transferRoom = `calll-home-transfer-${safeCallSid}`;
-        const host = getAppHost(req);
-        const base = host ? `https://${host}/api` : "/api";
-        const transferRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(target.userId)}&amp;type=call&amp;callType=pablo_internal_transfer&amp;conferenceName=${encodeURIComponent(transferRoom)}`;
-        try {
-          const transferCall = await getTwilioClient().calls.create({
-            to: `client:${target.userId}`,
-            from: await getUserOutboundNumber(userId),
-            timeout: 25,
-            twiml: `<Response>${callRecordingNoticeTwiml()}<Dial><Conference startConferenceOnEnter="false" endConferenceOnExit="true" beep="false" record="record-from-start" recordingStatusCallback="${transferRecordingCallback}" recordingStatusCallbackMethod="POST">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`,
-            statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(target.userId)}&callType=pablo_internal_transfer&transferCallerUserId=${encodeURIComponent(userId)}&transferCallerSid=${encodeURIComponent(CallSid)}&transferOrgId=${orgId}`,
-            statusCallbackMethod: "POST",
-            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-          });
-          const transferLabel = `${script.businessName} via Pablo PRIME`;
-          await persistCallHistory({
-            userId: target.userId,
-            orgId,
-            callerName: transferLabel,
-            recipientNumber: "CALLL HOME employee",
-            twilioCallSid: transferCall.sid,
-            status: transferCall.status ?? "initiated",
-            direction: "inbound",
-            callType: "pablo_internal_transfer",
-            conferenceName: transferRoom,
-            consentGiven: true,
-          });
-          await recordTelephonyActivity({
-            userId: target.userId,
-            orgId,
-            channel: "call",
-            direction: "inbound",
-            phone: "CALLL HOME employee",
-            contactName: transferLabel,
-            status: transferCall.status ?? "initiated",
-            twilioSid: transferCall.sid,
-          }).catch(() => {});
-
-          res.type("text/xml").send(`<Response>${milaVoice(branchResponse, req)}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`);
-        } catch (err) {
-          req.log.error({ err, orgId }, "Pablo PRIME employee transfer could not be started");
-          res.type("text/xml").send(`<Response>${milaVoice(`${branchResponse} ${interpolatePabloScript(script.closing, leadName, company)}`, req)}<Hangup/></Response>`);
-        }
+        const targetName = [target.firstName, target.lastName].filter(Boolean).join(" ") || target.username || "an employee";
+        const transferUrl = `${actionUrl}&amp;transferConsent=1&amp;clarify=0`;
+        res.type("text/xml").send(`<Response><Gather input="speech" timeout="10" action="${transferUrl}" method="POST" speechTimeout="auto">${milaVoice(`${branchResponse} Would you like me to connect you to ${targetName}? Please say yes or no.`, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, leadName, company), req)}<Hangup/></Response>`);
         return;
       }
 
@@ -3378,6 +3595,11 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
           contactId: lead.contactId,
           consentGiven: true,
           recordingRetainUntil: getRetentionDate(),
+          contactSnapshotJson: JSON.stringify({
+            email: freshContact.email ?? null,
+            company: freshContact.company ?? null,
+            timezone: freshContact.timezone ?? null,
+          }),
         });
         await recordTelephonyActivity({
           userId,
@@ -5171,6 +5393,133 @@ router.post("/twilio/webhook/recording", async (req, res) => {
   }
 });
 
+router.post("/twilio/webhook/realtime-transcription", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    if (req.body.TranscriptionEvent !== "transcription-content") {
+      res.status(204).send();
+      return;
+    }
+
+    const userId = typeof req.query.userId === "string" ? req.query.userId : "";
+    const contactId = Number(req.query.contactId);
+    const orgId = Number(req.query.orgId);
+    const conferenceName = typeof req.query.conferenceName === "string" ? req.query.conferenceName : "";
+    const callSid = typeof req.body.CallSid === "string" ? req.body.CallSid : "";
+    const transcriptionSid = typeof req.body.TranscriptionSid === "string" ? req.body.TranscriptionSid : "";
+    const track = typeof req.body.Track === "string" ? req.body.Track.slice(0, 48) : "unknown";
+    const sequenceId = Number.parseInt(String(req.body.SequenceId ?? ""), 10);
+    let transcriptionData: Record<string, unknown> | null = null;
+    try {
+      const raw = req.body.TranscriptionData;
+      const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        transcriptionData = parsed as Record<string, unknown>;
+      }
+    } catch {}
+    const transcript = typeof transcriptionData?.transcript === "string"
+      ? transcriptionData.transcript.replace(/\s+/g, " ").trim().slice(0, 2000)
+      : "";
+    if (
+      !userId || !Number.isInteger(contactId) || contactId <= 0
+      || !Number.isInteger(orgId) || orgId <= 0
+      || !conferenceName || !callSid || !transcriptionSid
+      || !Number.isInteger(sequenceId) || sequenceId < 1 || !transcript
+    ) {
+      res.status(204).send();
+      return;
+    }
+
+    const trackLabel = track.toLowerCase().includes("outbound") ? "Employee" : "Caller";
+    const transcriptLine = `${trackLabel}: ${transcript}`;
+    let stopCallerRequested = false;
+    await db.transaction(async (tx) => {
+      const [parentCall] = await tx.select().from(callHistoryTable).where(and(
+        eq(callHistoryTable.userId, userId),
+        eq(callHistoryTable.orgId, orgId),
+        eq(callHistoryTable.contactId, contactId),
+        eq(callHistoryTable.twilioCallSid, callSid),
+      )).for("update").limit(1);
+      if (!parentCall || parentCall.callType !== "pablo_agent" || parentCall.conferenceName !== conferenceName) return;
+
+      const children = await tx.select().from(callHistoryTable).where(and(
+        eq(callHistoryTable.orgId, orgId),
+        eq(callHistoryTable.conferenceName, conferenceName),
+        eq(callHistoryTable.callType, "pablo_internal_transfer"),
+      )).for("update");
+      const rows = [parentCall, ...children];
+      const cursorKey = `${transcriptionSid}|${track}`;
+      for (const row of rows) {
+        let events: Record<string, number> = {};
+        try {
+          const parsed: unknown = JSON.parse(row.transcriptEventsJson || "{}");
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            events = parsed as Record<string, number>;
+          }
+        } catch {}
+        const lastSequence = Number(events[cursorKey] ?? 0);
+        if (sequenceId <= lastSequence) continue;
+        events[cursorKey] = sequenceId;
+        if (trackLabel === "Caller" && classifyPabloCallAnswer(transcript) === "stop") {
+          stopCallerRequested = true;
+        }
+        const transcriptText = [row.transcript, transcriptLine].filter(Boolean).join("\n").slice(-30000);
+        await tx.update(callHistoryTable).set({
+          transcript: transcriptText,
+          transcriptEventsJson: JSON.stringify(events),
+        }).where(eq(callHistoryTable.id, row.id));
+      }
+      if (stopCallerRequested) {
+        const now = new Date();
+        const prefs = await tx.select({ id: contactChannelPrefsTable.id }).from(contactChannelPrefsTable)
+          .where(and(
+            eq(contactChannelPrefsTable.userId, userId),
+            eq(contactChannelPrefsTable.contactId, contactId),
+          )).for("update");
+        if (prefs.length) {
+          await tx.update(contactChannelPrefsTable).set({
+            phoneCallOptIn: false,
+            phoneCallOptedOutAt: now,
+            updatedAt: now,
+          }).where(and(
+            eq(contactChannelPrefsTable.userId, userId),
+            eq(contactChannelPrefsTable.contactId, contactId),
+          ));
+        } else {
+          await tx.insert(contactChannelPrefsTable).values({
+            userId,
+            contactId,
+            phoneCallOptIn: false,
+            phoneCallConsentedAt: null,
+            phoneCallOptedOutAt: now,
+          });
+        }
+      }
+    });
+    if (stopCallerRequested) {
+      try {
+        const conferences = await getTwilioClient().conferences.list({
+          friendlyName: conferenceName,
+          status: "in-progress",
+          limit: 20,
+        });
+        await Promise.all(conferences
+          .filter((conference) => conference.friendlyName === conferenceName)
+          .map((conference) => getTwilioClient().conferences(conference.sid).update({ status: "completed" })));
+      } catch (err: unknown) {
+        req.log.error({ err, conferenceName }, "Could not end campaign conference after spoken STOP");
+      }
+    }
+    res.status(204).send();
+  } catch (err: unknown) {
+    req.log.error({ err }, "Twilio real-time transcription callback failed");
+    res.status(500).send("Callback error");
+  }
+});
+
 router.post("/twilio/webhook/transcription", async (req, res) => {
   try {
     if (!validateTwilioWebhook(req)) {
@@ -5633,6 +5982,217 @@ ${call.notes ? `<h3 style="color:#00ff41">Notes</h3><p>${call.notes}</p>` : ""}
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] email summary error:", _msg);
     res.status(500).json({ error: "Failed to send email summary" });
+  }
+});
+
+router.get("/twilio/supervision/calls", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const orgId = await getPhoneSupervisionOrgId(userId);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization call supervision permission required" });
+      return;
+    }
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const calls = await db.select().from(callHistoryTable).where(and(
+      eq(callHistoryTable.orgId, orgId),
+      eq(callHistoryTable.callType, "pablo_internal_transfer"),
+      gte(callHistoryTable.startedAt, since),
+    )).orderBy(desc(callHistoryTable.startedAt)).limit(100);
+    const conferenceNames = [...new Set(calls.map((call) => call.conferenceName).filter((name): name is string => Boolean(name)))];
+    const relatedCalls = conferenceNames.length
+      ? await db.select().from(callHistoryTable).where(and(
+          eq(callHistoryTable.orgId, orgId),
+          inArray(callHistoryTable.conferenceName, conferenceNames),
+        ))
+      : [];
+    const memberIds = [...new Set(calls.map((call) => call.userId))];
+    const members = memberIds.length
+      ? await db.select({
+          id: usersTable.id,
+          firstName: usersTable.firstName,
+          lastName: usersTable.lastName,
+          username: usersTable.username,
+        }).from(usersTable).where(inArray(usersTable.id, memberIds))
+      : [];
+    const memberNames = new Map(members.map((member) => [
+      member.id,
+      [member.firstName, member.lastName].filter(Boolean).join(" ") || member.username || "Employee",
+    ]));
+    const relatedByConference = new Map<string, typeof relatedCalls>();
+    for (const related of relatedCalls) {
+      if (!related.conferenceName) continue;
+      const group = relatedByConference.get(related.conferenceName) ?? [];
+      group.push(related);
+      relatedByConference.set(related.conferenceName, group);
+    }
+
+    res.json({
+      calls: calls.map((call) => {
+        const active = call.status === "in-progress";
+        const siblings = call.conferenceName ? relatedByConference.get(call.conferenceName) ?? [] : [];
+        const customerLeg = siblings.find((item) => item.callType === "pablo_agent");
+        const rawNumber = customerLeg?.recipientNumber ?? "";
+        const digits = rawNumber.replace(/\D/g, "");
+        let quality: Record<string, unknown> | null = null;
+        try {
+          const parsed: unknown = call.connectionQualityJson ? JSON.parse(call.connectionQualityJson) : null;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            const latest = (parsed as { latest?: unknown }).latest;
+            if (latest && typeof latest === "object" && !Array.isArray(latest)) quality = latest as Record<string, unknown>;
+          }
+        } catch {}
+        return {
+          id: call.id,
+          employeeName: memberNames.get(call.userId) ?? "Employee",
+          customerName: customerLeg?.callerName ?? "Outbound caller",
+          customerPhoneLast4: digits ? digits.slice(-4) : null,
+          status: call.status,
+          startedAt: call.startedAt,
+          durationSeconds: active
+            ? Math.max(0, Math.floor((Date.now() - call.startedAt.getTime()) / 1000))
+            : call.durationSeconds ?? 0,
+          transcript: call.transcript?.slice(-30000) ?? "",
+          connectionQuality: quality,
+          active,
+          canMonitor: active && Boolean(call.conferenceName && call.twilioCallSid),
+        };
+      }),
+    });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Phone call supervision list failed");
+    res.status(500).json({ error: "Failed to fetch supervised calls" });
+  }
+});
+
+router.post("/twilio/supervision/quality", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const callSid = typeof req.body.callSid === "string" ? req.body.callSid.slice(0, 64) : "";
+    const parseMetric = (value: unknown, min: number, max: number): number | null => {
+      if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) return null;
+      return Math.round(value * 1000) / 1000;
+    };
+    const sample = {
+      mos: parseMetric(req.body.mos, 1, 5),
+      packetsLostFraction: parseMetric(req.body.packetsLostFraction, 0, 1),
+      jitter: parseMetric(req.body.jitter, 0, 5000),
+      rtt: parseMetric(req.body.rtt, 0, 10000),
+      capturedAt: new Date().toISOString(),
+    };
+    if (!callSid || Object.values(sample).slice(0, 4).every((value) => value == null)) {
+      res.status(400).json({ error: "A call SID and at least one valid quality metric are required" });
+      return;
+    }
+    const [call] = await db.select().from(callHistoryTable).where(and(
+      eq(callHistoryTable.userId, userId),
+      eq(callHistoryTable.twilioCallSid, callSid),
+      eq(callHistoryTable.callType, "pablo_internal_transfer"),
+    )).limit(1);
+    if (!call || call.status !== "in-progress" || call.endedAt) {
+      res.status(204).send();
+      return;
+    }
+
+    let previous: { samples?: unknown[] } = {};
+    try {
+      const parsed: unknown = call.connectionQualityJson ? JSON.parse(call.connectionQualityJson) : null;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) previous = parsed as { samples?: unknown[] };
+    } catch {}
+    const samples = Array.isArray(previous.samples) ? previous.samples : [];
+    await db.update(callHistoryTable).set({
+      connectionQualityJson: JSON.stringify({
+        latest: sample,
+        samples: [...samples, sample].slice(-20),
+      }),
+    }).where(and(
+      eq(callHistoryTable.id, call.id),
+      eq(callHistoryTable.userId, userId),
+      eq(callHistoryTable.status, "in-progress"),
+    ));
+    res.status(204).send();
+  } catch (err: unknown) {
+    req.log.error({ err }, "Phone call quality sample failed");
+    res.status(500).json({ error: "Failed to store connection quality" });
+  }
+});
+
+router.post("/twilio/supervision/calls/:id/join", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const orgId = await getPhoneSupervisionOrgId(userId);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization call supervision permission required" });
+      return;
+    }
+    const callId = Number(req.params.id);
+    const mode = req.body.mode === "whisper" ? "whisper" : req.body.mode === "listen" ? "listen" : null;
+    if (!Number.isInteger(callId) || callId <= 0 || !mode) {
+      res.status(400).json({ error: "A valid call and supervision mode are required" });
+      return;
+    }
+    const [call] = await db.select().from(callHistoryTable).where(and(
+      eq(callHistoryTable.id, callId),
+      eq(callHistoryTable.orgId, orgId),
+      eq(callHistoryTable.callType, "pablo_internal_transfer"),
+    )).limit(1);
+    if (!call || call.status !== "in-progress" || call.endedAt || !call.twilioCallSid || !call.conferenceName) {
+      res.status(409).json({ error: "This employee call is no longer active" });
+      return;
+    }
+    if (mode === "whisper" && call.userId === userId) {
+      res.status(403).json({ error: "You cannot coach your own call" });
+      return;
+    }
+
+    const [supervisor] = await db.select({ email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!(await canUsePlatformTwilio(userId, supervisor?.email ?? ""))) {
+      res.status(403).json({ error: "Phone access is not available for this account" });
+      return;
+    }
+    const client = getTwilioClient();
+    const conferences = await client.conferences.list({
+      friendlyName: call.conferenceName,
+      status: "in-progress",
+      limit: 20,
+    });
+    const conference = conferences.find((item) => item.friendlyName === call.conferenceName);
+    if (!conference) {
+      res.status(409).json({ error: "The call conference is no longer active" });
+      return;
+    }
+    const participants = await client.conferences(conference.sid).participants.list();
+    const employeeParticipant = participants.find((participant) => participant.callSid === call.twilioCallSid);
+    const supervisorLabel = `supervisor-${userId.slice(-32)}`;
+    if (!employeeParticipant || participants.some((participant) => participant.label === supervisorLabel)) {
+      res.status(409).json({ error: "The employee call is unavailable or your phone is already joining it" });
+      return;
+    }
+
+    const participant = await client.conferences(conference.sid).participants.create({
+      to: `client:${userId}`,
+      from: await getUserOutboundNumber(userId),
+      label: supervisorLabel,
+      muted: mode === "listen",
+      coaching: mode === "whisper",
+      ...(mode === "whisper" ? { callSidToCoach: call.twilioCallSid } : {}),
+      beep: "false",
+      startConferenceOnEnter: true,
+      endConferenceOnExit: false,
+      timeout: 20,
+    });
+    res.status(202).json({
+      ok: true,
+      mode,
+      status: "ringing",
+      message: "Accept the incoming CALLL HOME browser call to join.",
+      participantCallSid: participant.callSid,
+    });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Phone supervision participant could not be added");
+    res.status(502).json({ error: "Could not connect to the live call" });
   }
 });
 

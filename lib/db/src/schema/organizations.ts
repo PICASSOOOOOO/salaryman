@@ -265,6 +265,7 @@ export const ORG_PERMISSION_KEYS = [
   "autopilot.manage",
   "website.manage",
   "org.settings",
+  "phone.supervise",
 ] as const;
 export type OrgPermissionKey = (typeof ORG_PERMISSION_KEYS)[number];
 
@@ -286,6 +287,7 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
   "autopilot.manage": { label: "Manage autopilot", description: "Manage scheduled workflows and their settings.", group: "Admin" },
   "website.manage": { label: "Manage public website", description: "Connect a Framer site and manage the org's public SALARYMAN-hosted site.", group: "Admin" },
   "org.settings": { label: "Edit settings & permissions", description: "Change org settings and edit this permissions matrix.", group: "Admin" },
+  "phone.supervise": { label: "Supervise organization calls", description: "View employee call details, transcripts, and connection health; join active calls to listen or privately coach.", group: "Phone" },
 };
 
 // Sensible defaults applied when an org has not customized a key.
@@ -302,6 +304,7 @@ export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
   "autopilot.manage": "manager",
   "website.manage": "manager",
   "org.settings": "ceo",
+  "phone.supervise": "manager",
 };
 
 export const orgPermissionsTable = pgTable(

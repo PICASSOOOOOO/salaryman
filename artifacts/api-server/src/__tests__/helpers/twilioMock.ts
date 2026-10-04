@@ -10,6 +10,8 @@ export const mockState = {
   conferenceGroupSid: "CFgroup0000000000000000000000000000",
   createdCallSid: "CAcreated000000000000000000000000000",
   createdStatus: "queued",
+  conferenceFriendlyName: "",
+  employeeCallSid: "",
 };
 
 // Build a fake `twilio` module. `import twilio from "twilio"` resolves to the
@@ -20,7 +22,14 @@ export function makeTwilioMock() {
   let createdCallSequence = 0;
   const participantUpdate = vi.fn().mockResolvedValue({});
   const participantsCallable: any = vi.fn(() => ({ update: participantUpdate }));
-  participantsCallable.list = vi.fn(async () => [{ callSid: mockState.callSid, muted: false, hold: false }]);
+  const participantCreate = vi.fn(async (options: Record<string, unknown>) => ({
+    callSid: "CAsupervisor00000000000000000000000",
+    ...options,
+  }));
+  participantsCallable.list = vi.fn(async () => [
+    { callSid: mockState.employeeCallSid || mockState.callSid, to: "client:employee", muted: false, hold: false },
+  ]);
+  participantsCallable.create = participantCreate;
 
   const conferenceUpdate = vi.fn().mockResolvedValue({});
   const conferenceFetch = vi.fn().mockResolvedValue({ sid: "CFx", status: "in-progress" });
@@ -29,7 +38,9 @@ export function makeTwilioMock() {
     update: conferenceUpdate,
     fetch: conferenceFetch,
   }));
-  conferencesCallable.list = vi.fn(async () => []);
+  conferencesCallable.list = vi.fn(async () => mockState.conferenceFriendlyName
+    ? [{ sid: "CFsupervised", friendlyName: mockState.conferenceFriendlyName, status: "in-progress" }]
+    : []);
   conferencesCallable.create = vi.fn().mockResolvedValue({ sid: "CFnew" });
 
   const callFetch = vi.fn(async () => ({
@@ -133,6 +144,7 @@ export function makeTwilioMock() {
     callUpdate,
     callFetch,
     participantUpdate,
+    participantCreate,
     participantsList: participantsCallable.list,
     conferencesList: conferencesCallable.list,
     conferenceUpdate,

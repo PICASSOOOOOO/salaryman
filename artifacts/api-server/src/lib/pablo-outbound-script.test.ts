@@ -16,14 +16,14 @@ const validFlow: PabloOutboundScript = {
     {
       id: "intro",
       question: "Would you like to hear more?",
-      yes: { response: "Great, I'll explain.", nextNodeId: "details", transferToUserId: null },
-      no: { response: "No problem.", nextNodeId: null, transferToUserId: null },
+      yes: { response: "Great, I'll explain.", nextNodeId: "details", transferToUserId: null, captureField: null },
+      no: { response: "No problem.", nextNodeId: null, transferToUserId: null, captureField: null },
     },
     {
       id: "details",
       question: "Would you like to schedule a follow-up?",
-      yes: { response: "I'll note that you are interested.", nextNodeId: null, transferToUserId: null },
-      no: { response: "Understood. Thanks for your time.", nextNodeId: null, transferToUserId: null },
+      yes: { response: "I'll note that you are interested.", nextNodeId: null, transferToUserId: null, captureField: null },
+      no: { response: "Understood. Thanks for your time.", nextNodeId: null, transferToUserId: null, captureField: null },
     },
   ],
 };
@@ -42,6 +42,20 @@ describe("Pablo outbound script matrix", () => {
 
     transfer.nodes[0].yes.nextNodeId = "details";
     expect(() => parsePabloOutboundScript(JSON.stringify(transfer))).toThrow(/both continue.*transfer/i);
+  });
+
+  it("allows opt-in CRM capture only on yes paths and blocks transfer on no paths", () => {
+    const capture = structuredClone(validFlow);
+    capture.nodes[0].yes.captureField = "email";
+    expect(parsePabloOutboundScript(JSON.stringify(capture)).nodes[0].yes.captureField).toBe("email");
+
+    const noTransfer = structuredClone(validFlow);
+    noTransfer.nodes[0].no.transferToUserId = "employee_123";
+    expect(() => parsePabloOutboundScript(JSON.stringify(noTransfer))).toThrow(/cannot transfer after a no answer/i);
+
+    const noCapture = structuredClone(validFlow);
+    noCapture.nodes[0].no.captureField = "company";
+    expect(() => parsePabloOutboundScript(JSON.stringify(noCapture))).toThrow(/cannot capture CRM details after a no answer/i);
   });
 
   it("rejects missing branches, cycles, and unreachable questions", () => {

@@ -21,7 +21,27 @@ type CampaignContact = {
   phoneCallOptIn: boolean;
   phoneCallConsentedAt: string | null;
 };
-type ScriptBranchDraft = { response: string; nextNodeId: string; transferToUserId: string };
+type SupervisionQuality = {
+  mos: number | null;
+  packetsLostFraction: number | null;
+  jitter: number | null;
+  rtt: number | null;
+  capturedAt: string;
+};
+type SupervisedCall = {
+  id: number;
+  employeeName: string;
+  customerName: string;
+  customerPhoneLast4: string | null;
+  status: string;
+  startedAt: string;
+  durationSeconds: number;
+  transcript: string;
+  connectionQuality: SupervisionQuality | null;
+  active: boolean;
+  canMonitor: boolean;
+};
+type ScriptBranchDraft = { response: string; nextNodeId: string; transferToUserId: string; captureField: string };
 type ScriptNodeDraft = {
   id: string;
   question: string;
@@ -32,8 +52,8 @@ type ScriptNodeDraft = {
 const makeScriptNode = (index: number): ScriptNodeDraft => ({
   id: `question-${index}`,
   question: '',
-  yes: { response: '', nextNodeId: '', transferToUserId: '' },
-  no: { response: '', nextNodeId: '', transferToUserId: '' },
+  yes: { response: '', nextNodeId: '', transferToUserId: '', captureField: '' },
+  no: { response: '', nextNodeId: '', transferToUserId: '', captureField: '' },
 });
 
 export default function PhoneCallCenterPage() {
@@ -44,7 +64,7 @@ export default function PhoneCallCenterPage() {
   const navigateInsidePhone = useCalllHomeNavigate();
   const directory = usePhoneInternalDirectory();
   const { features, isOwner } = usePlan();
-  const { connectToEmployee, disconnect, deviceState } = useTwilioDeviceContext();
+  const { connectToEmployee, disconnect, deviceState, ensureDeviceReady } = useTwilioDeviceContext();
   const hasPabloPrime = isOwner || features.has('claw_bot');
 
   const [tab, setTab] = useState<Tab>('outbound');
@@ -68,8 +88,8 @@ export default function PhoneCallCenterPage() {
   const [scriptNodes, setScriptNodes] = useState<ScriptNodeDraft[]>([{
     ...makeScriptNode(1),
     question: 'Would you like to hear more?',
-    yes: { response: 'Great, I can tell you more.', nextNodeId: '', transferToUserId: '' },
-    no: { response: 'Understood. Thank you for your time.', nextNodeId: '', transferToUserId: '' },
+    yes: { response: 'Great, I can tell you more.', nextNodeId: '', transferToUserId: '', captureField: '' },
+    no: { response: 'Understood. Thank you for your time.', nextNodeId: '', transferToUserId: '', captureField: '' },
   }]);
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [campaignCreating, setCampaignCreating] = useState(false);
@@ -83,6 +103,11 @@ export default function PhoneCallCenterPage() {
   const [deliveryBody, setDeliveryBody] = useState('');
   const [deliverySending, setDeliverySending] = useState(false);
   const [deliverySuccess, setDeliverySuccess] = useState('');
+  const [supervisionAllowed, setSupervisionAllowed] = useState<boolean | null>(null);
+  const [supervisedCalls, setSupervisedCalls] = useState<SupervisedCall[]>([]);
+  const [supervisionError, setSupervisionError] = useState('');
+  const [supervisionNotice, setSupervisionNotice] = useState('');
+  const [joiningCallId, setJoiningCallId] = useState<number | null>(null);
   const teamCallingUserIdRef = useRef<string | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
@@ -107,6 +132,63 @@ export default function PhoneCallCenterPage() {
       safeFetch(apiUrl('twilio/pablo/campaign-contacts')).then(d => { if (d) setCampaignContacts(d.contacts ?? []); }),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, [apiUrl, handleAuthStatus]);
+
+  useEffect(() => {
+    if (tab !== 'team') return;
+    let disposed = false;
+    const refreshSupervisedCalls = async () => {
+      try {
+        const response = await apiFetch(apiUrl('twilio/supervision/calls'), { credentials: 'include' });
+        if (disposed) return;
+        if (response.status === 403 || response.status === 401) {
+          setSupervisionAllowed(false);
+          return;
+        }
+        if (!response.ok) {
+          setSupervisionError('Could not refresh live call details.');
+          return;
+        }
+        const data = await response.json();
+        if (disposed) return;
+        setSupervisionAllowed(true);
+        setSupervisedCalls(Array.isArray(data.calls) ? data.calls : []);
+        setSupervisionError('');
+      } catch {
+        if (!disposed) setSupervisionError('Could not refresh live call details.');
+      }
+    };
+    void refreshSupervisedCalls();
+    const interval = setInterval(() => void refreshSupervisedCalls(), 5_000);
+    return () => {
+      disposed = true;
+      clearInterval(interval);
+    };
+  }, [apiUrl, tab]);
+
+  const joinSupervisedCall = async (callId: number, mode: 'listen' | 'whisper') => {
+    setJoiningCallId(callId);
+    setSupervisionError('');
+    setSupervisionNotice('');
+    try {
+      await ensureDeviceReady();
+      const response = await apiFetch(apiUrl(`twilio/supervision/calls/${callId}/join`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ mode }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setSupervisionError(data.error || 'Could not connect to the live call.');
+        return;
+      }
+      setSupervisionNotice(data.message || 'Accept the incoming CALLL HOME call to join.');
+    } catch (err) {
+      setSupervisionError(err instanceof Error ? err.message : 'Could not connect to the live call.');
+    } finally {
+      setJoiningCallId(null);
+    }
+  };
 
   const addAgent = async () => {
     if (!agentName || !agentPhone) return;
@@ -237,8 +319,8 @@ export default function PhoneCallCenterPage() {
         closing: scriptClosing,
         nodes: scriptNodes.map(node => ({
           ...node,
-          yes: { ...node.yes, nextNodeId: node.yes.nextNodeId || null },
-          no: { ...node.no, nextNodeId: node.no.nextNodeId || null },
+          yes: { ...node.yes, nextNodeId: node.yes.nextNodeId || null, captureField: node.yes.captureField || null },
+          no: { ...node.no, nextNodeId: node.no.nextNodeId || null, captureField: node.no.captureField || null },
         })),
       };
       const r = await apiFetch(apiUrl('twilio/pablo/campaigns'), {
@@ -642,28 +724,47 @@ export default function PhoneCallCenterPage() {
                                 </option>
                               ))}
                             </select>
-                            <select
-                              value={node[answer].transferToUserId}
-                              disabled={otherEmployees.length === 0}
-                              onChange={e => {
-                                const transferToUserId = e.target.value;
-                                updateScriptNode(node.id, current => ({
-                                  ...current,
-                                  [answer]: {
-                                    ...current[answer],
-                                    transferToUserId,
-                                    ...(transferToUserId ? { nextNodeId: '' } : {}),
-                                  },
-                                }));
-                              }}
-                              style={{ ...INPUT_STYLE, cursor: otherEmployees.length === 0 ? 'not-allowed' : 'pointer' }}
-                              aria-label={`${answer} employee transfer target`}
-                            >
-                              <option value="">No employee transfer</option>
-                              {otherEmployees.map(member => (
-                                <option key={member.userId} value={member.userId}>Transfer to {member.displayName}</option>
-                              ))}
-                            </select>
+                            {answer === 'yes' && (
+                              <>
+                                <select
+                                  value={node.yes.captureField}
+                                  disabled={Boolean(node.yes.transferToUserId)}
+                                  onChange={e => updateScriptNode(node.id, current => ({
+                                    ...current,
+                                    yes: { ...current.yes, captureField: e.target.value, transferToUserId: '' },
+                                  }))}
+                                  style={{ ...INPUT_STYLE, cursor: node.yes.transferToUserId ? 'not-allowed' : 'pointer' }}
+                                  aria-label="CRM field to capture after yes"
+                                >
+                                  <option value="">No CRM field capture</option>
+                                  <option value="email">Capture or update contact email</option>
+                                  <option value="company">Capture or update company</option>
+                                  <option value="timezone">Capture or update timezone</option>
+                                </select>
+                                <select
+                                  value={node.yes.transferToUserId}
+                                  disabled={otherEmployees.length === 0 || Boolean(node.yes.captureField)}
+                                  onChange={e => {
+                                    const transferToUserId = e.target.value;
+                                    updateScriptNode(node.id, current => ({
+                                      ...current,
+                                      yes: {
+                                        ...current.yes,
+                                        transferToUserId,
+                                        ...(transferToUserId ? { nextNodeId: '', captureField: '' } : {}),
+                                      },
+                                    }));
+                                  }}
+                                  style={{ ...INPUT_STYLE, cursor: otherEmployees.length === 0 || node.yes.captureField ? 'not-allowed' : 'pointer' }}
+                                  aria-label="Employee to transfer to after yes"
+                                >
+                                  <option value="">No employee transfer</option>
+                                  {otherEmployees.map(member => (
+                                    <option key={member.userId} value={member.userId}>Ask permission to connect to {member.displayName}</option>
+                                  ))}
+                                </select>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -679,7 +780,7 @@ export default function PhoneCallCenterPage() {
                   </button>
                   <textarea value={scriptClosing} onChange={e => setScriptClosing(e.target.value)} placeholder="Closing line" style={{ ...INPUT_STYLE, minHeight: 54, resize: 'vertical' }} />
                   <div style={{ fontSize: '0.38rem', color: slate(0.38), lineHeight: 1.5 }}>
-                    Use {'{{name}}'} or {'{{company}}'} for saved contact details. Unclear answers are clarified once, then the call ends.
+                    Use {'{{name}}'} or {'{{company}}'} for saved contact details. Only YES paths can capture CRM details or offer a transfer; transfers require a separate spoken YES. Unclear answers are clarified once, then the call ends.
                   </div>
                 </div>
               </div>
@@ -798,7 +899,7 @@ export default function PhoneCallCenterPage() {
             <PhoneCardHeader accent={accent(0.55)}>CALLL HOME TEAM</PhoneCardHeader>
             <div style={{ padding: 16 }}>
               <div style={{ fontSize: '0.4rem', color: slate(0.48), marginBottom: 12, lineHeight: 1.5 }}>
-                Active employees in your current organization with paid CALLL HOME access.
+                Active organization employees with CALLL HOME phone access.
               </div>
               {directory.isLoading ? (
                 <div style={{ padding: 24, textAlign: 'center', color: slate(0.5) }}><Loader2 size={16} className="animate-spin" /></div>
@@ -807,7 +908,7 @@ export default function PhoneCallCenterPage() {
               ) : !directory.data?.organizationId ? (
                 <EmptyState message="SELECT AN ACTIVE ORGANIZATION TO SEE TEAM MEMBERS" icon={<Users size={22} />} />
               ) : teamMembers.length === 0 ? (
-                <EmptyState message="NO ACTIVE EMPLOYEES HAVE CALLL HOME ACCESS" icon={<Users size={22} />} />
+                <EmptyState message="NO ACTIVE EMPLOYEES HAVE CALLL HOME PHONE ACCESS" icon={<Users size={22} />} />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {teamMembers.map(member => (
@@ -850,6 +951,87 @@ export default function PhoneCallCenterPage() {
               )}
             </div>
           </PhoneCard>
+
+          {supervisionAllowed && (
+            <PhoneCard>
+              <PhoneCardHeader accent={primary(0.6)}>LIVE CALL SUPERVISION</PhoneCardHeader>
+              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: '0.4rem', color: slate(0.5), lineHeight: 1.5 }}>
+                  Active employee transfers show a live transcript and browser connection quality. Listening is muted; whisper coaching is heard only by the employee.
+                </div>
+                {supervisionNotice && (
+                  <div role="status" style={{ fontSize: '0.42rem', color: primary(0.9), lineHeight: 1.5 }}>{supervisionNotice}</div>
+                )}
+                {supervisionError && (
+                  <div role="alert" style={{ fontSize: '0.42rem', color: destructive(0.9), lineHeight: 1.5 }}>{supervisionError}</div>
+                )}
+                {supervisedCalls.length === 0 ? (
+                  <EmptyState message="NO RECENT EMPLOYEE TRANSFERS" icon={<Headphones size={22} />} />
+                ) : supervisedCalls.map(call => {
+                  const quality = call.connectionQuality;
+                  const minutes = Math.floor(call.durationSeconds / 60);
+                  const seconds = String(call.durationSeconds % 60).padStart(2, '0');
+                  const qualityLabel = quality
+                    ? [
+                        quality.mos != null ? `MOS ${quality.mos.toFixed(1)}` : null,
+                        quality.packetsLostFraction != null ? `LOSS ${(quality.packetsLostFraction * 100).toFixed(1)}%` : null,
+                        quality.jitter != null ? `JITTER ${Math.round(quality.jitter)} ms` : null,
+                        quality.rtt != null ? `RTT ${Math.round(quality.rtt)} ms` : null,
+                      ].filter(Boolean).join(' · ')
+                    : 'WAITING FOR BROWSER QUALITY SAMPLES';
+                  return (
+                    <div key={call.id} style={{
+                      border: `1px solid ${slate(0.1)}`, borderRadius: 6, padding: 12,
+                      display: 'flex', flexDirection: 'column', gap: 9,
+                    }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        flexWrap: 'wrap', gap: 8,
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '0.52rem', color: slate(0.82) }}>
+                            {call.customerName} {call.customerPhoneLast4 ? `· •••• ${call.customerPhoneLast4}` : ''}
+                          </div>
+                          <div style={{ fontSize: '0.4rem', color: slate(0.5), marginTop: 3 }}>
+                            {call.employeeName} · {call.status.toUpperCase()} · {minutes}:{seconds}
+                          </div>
+                        </div>
+                        {call.active && call.canMonitor && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <PhoneBtn
+                              onClick={() => void joinSupervisedCall(call.id, 'listen')}
+                              disabled={joiningCallId === call.id}
+                              color={primary}
+                              size="sm"
+                            >
+                              {joiningCallId === call.id ? <Loader2 size={10} className="animate-spin" /> : <Headphones size={10} />}
+                              LISTEN
+                            </PhoneBtn>
+                            <PhoneBtn
+                              onClick={() => void joinSupervisedCall(call.id, 'whisper')}
+                              disabled={joiningCallId === call.id}
+                              color={warning}
+                              size="sm"
+                            >
+                              <MessageSquare size={10} /> WHISPER
+                            </PhoneBtn>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.38rem', color: slate(0.48) }}>{qualityLabel}</div>
+                      <div style={{
+                        maxHeight: 180, overflowY: 'auto', whiteSpace: 'pre-wrap',
+                        background: slate(0.32), borderRadius: 4, padding: 9,
+                        color: slate(0.68), fontSize: '0.4rem', lineHeight: 1.65,
+                      }}>
+                        {call.transcript || 'Live transcript will appear after the employee joins.'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </PhoneCard>
+          )}
 
           {directory.data?.canManageLines && (
             <PhoneCard>
