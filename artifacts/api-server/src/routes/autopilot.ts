@@ -290,7 +290,7 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
         patch.prefs = sanitize({ ...(existing?.prefs ?? {}), ...incoming });
       }
     } else if (domain === "creative_work" && !existingCreativeConfig && creativePrefs) {
-      patch.prefs = creativePrefs;
+      patch.prefs = { projectId: creativePrefs.projectId };
     }
 
     const config = await upsertDomainConfig(orgId, domain, patch);

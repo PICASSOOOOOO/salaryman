@@ -37,8 +37,8 @@ describe("workspace project draft service", () => {
     projectId = project.id;
     vi.mocked(completeInternalText).mockResolvedValue({
       content: JSON.stringify({ plan, prototype }),
-      provider: "test",
-    } as Awaited<ReturnType<typeof completeInternalText>>);
+      provider: "gpt",
+    });
   });
 
   afterAll(async () => {
