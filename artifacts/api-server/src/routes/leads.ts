@@ -675,6 +675,58 @@ router.post("/leads/:id/notes", async (req: Request, res: Response) => {
   res.json({ note: created });
 });
 
+router.patch("/leads/:id/notes/:noteId/review", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Owner or manager access required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
+
+  const leadId = Number(paramStr(req.params.id));
+  const noteId = Number(paramStr(req.params.noteId));
+  if (!Number.isSafeInteger(leadId) || leadId <= 0 || !Number.isSafeInteger(noteId) || noteId <= 0) {
+    res.status(400).json({ error: "Invalid lead or note ID" });
+    return;
+  }
+
+  const reviewStatus = req.body?.reviewStatus;
+  if (reviewStatus !== "reviewed" && reviewStatus !== "dismissed") {
+    res.status(400).json({ error: "Review status must be reviewed or dismissed" });
+    return;
+  }
+
+  const [lead] = await db.select({ id: leadRecordsTable.id })
+    .from(leadRecordsTable)
+    .where(and(eq(leadRecordsTable.id, leadId), eq(leadRecordsTable.orgId, membership.orgId)))
+    .limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  const [note] = await db.select().from(leadNotesTable).where(and(
+    eq(leadNotesTable.id, noteId),
+    eq(leadNotesTable.leadId, leadId),
+  )).limit(1);
+  if (!note) { res.status(404).json({ error: "Lead note not found" }); return; }
+  if (!["needs_review", "reviewed", "dismissed"].includes(note.reviewStatus)) {
+    res.status(400).json({ error: "This CRM note does not require research review" });
+    return;
+  }
+
+  const [updated] = await db.update(leadNotesTable).set({
+    reviewStatus,
+    reviewedByUserId: userId,
+    reviewedAt: new Date(),
+  }).where(and(
+    eq(leadNotesTable.id, noteId),
+    eq(leadNotesTable.leadId, leadId),
+  )).returning();
+  if (!updated) { res.status(404).json({ error: "Lead note not found" }); return; }
+
+  broadcastLeadEvent(membership.orgId, { type: "lead_note_reviewed", leadId, note: updated });
+  res.json({ note: updated });
+});
+
 /**
  * Multipart upload for CSV / XLSX / XLS files. The browser sends the raw file
  * via FormData, we parse it server-side, and then run it through the same

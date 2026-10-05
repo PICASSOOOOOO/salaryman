@@ -116,6 +116,7 @@ export const marketResearchAutopilotHandler: AutopilotHandler = async (ctx: Auto
             userId: ctx.ownerId,
             userName: ctx.assistantName,
             dedupeKey: `market-research-call-${callActivityId}`,
+            reviewStatus: "needs_review",
             note,
           });
         } catch (error) {

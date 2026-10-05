@@ -187,6 +187,47 @@ export interface CrmCustomFieldUpdate {
   position?: number;
 }
 
+export type LeadNoteReviewInputReviewStatus = typeof LeadNoteReviewInputReviewStatus[keyof typeof LeadNoteReviewInputReviewStatus];
+
+
+export const LeadNoteReviewInputReviewStatus = {
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+} as const;
+
+export interface LeadNoteReviewInput {
+  reviewStatus: LeadNoteReviewInputReviewStatus;
+}
+
+export type LeadNoteReviewNoteReviewStatus = typeof LeadNoteReviewNoteReviewStatus[keyof typeof LeadNoteReviewNoteReviewStatus];
+
+
+export const LeadNoteReviewNoteReviewStatus = {
+  not_required: 'not_required',
+  needs_review: 'needs_review',
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+} as const;
+
+export interface LeadNoteReviewNote {
+  id: number;
+  leadId: number;
+  userId: string;
+  /** @nullable */
+  userName: string | null;
+  note: string;
+  createdAt: string;
+  reviewStatus: LeadNoteReviewNoteReviewStatus;
+  /** @nullable */
+  reviewedByUserId: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export interface LeadNoteReviewResponse {
+  note: LeadNoteReviewNote;
+}
+
 export type CrmImportPreviewCandidatesItem = { [key: string]: unknown };
 
 export interface CrmImportPreview {

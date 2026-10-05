@@ -17,6 +17,8 @@ tags:
     description: OpenAI AI chat, image, and audio operations
   - name: interview
     description: Interview helper operations
+  - name: crm
+    description: Organization CRM operations
   - name: Auth
     description: Browser and mobile authentication endpoints.
 paths:
@@ -335,6 +337,35 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CrmImportResult" }
+  /leads/{id}/notes/{noteId}/review:
+    patch:
+      operationId: reviewCrmLeadNote
+      tags: [crm]
+      summary: Mark a cited Market Research CRM note reviewed or dismissed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadNoteReviewInput" }
+      responses:
+        "200":
+          description: CRM note review status saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadNoteReviewResponse" }
+        "400": { description: Invalid status or note is not research-reviewable }
+        "401": { description: Login required }
+        "403": { description: Owner or manager access required }
+        "404": { description: Lead or note not found in the current organization }
   /crm/archive/export:
     get:
       operationId: exportCrmArchive
@@ -668,6 +699,29 @@ components:
         required: { type: boolean }
         archived: { type: boolean }
         position: { type: integer }
+    LeadNoteReviewInput:
+      type: object
+      required: [reviewStatus]
+      properties:
+        reviewStatus: { type: string, enum: [reviewed, dismissed] }
+    LeadNoteReviewNote:
+      type: object
+      required: [id, leadId, userId, userName, note, createdAt, reviewStatus, reviewedByUserId, reviewedAt]
+      properties:
+        id: { type: integer }
+        leadId: { type: integer }
+        userId: { type: string }
+        userName: { type: ["string", "null"] }
+        note: { type: string }
+        createdAt: { type: string, format: date-time }
+        reviewStatus: { type: string, enum: [not_required, needs_review, reviewed, dismissed] }
+        reviewedByUserId: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+    LeadNoteReviewResponse:
+      type: object
+      required: [note]
+      properties:
+        note: { $ref: "#/components/schemas/LeadNoteReviewNote" }
     CrmImportPreview:
       type: object
       required: [headers, sampleRows, rowCount, candidates]

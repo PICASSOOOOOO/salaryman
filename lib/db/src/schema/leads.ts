@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const LEAD_STATUSES = ["new", "contacted", "qualified", "proposal", "closed_won", "closed_lost"] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
+export type LeadNoteReviewStatus = "not_required" | "needs_review" | "reviewed" | "dismissed";
 
 export const leadImportsTable = pgTable("lead_imports", {
   id: serial("id").primaryKey(),
@@ -59,6 +60,9 @@ export const leadNotesTable = pgTable("lead_notes", {
   userId: varchar("user_id", { length: 256 }).notNull(),
   userName: varchar("user_name", { length: 128 }),
   note: text("note").notNull(),
+  reviewStatus: varchar("review_status", { length: 24 }).$type<LeadNoteReviewStatus>().notNull().default("not_required"),
+  reviewedByUserId: varchar("reviewed_by_user_id", { length: 256 }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("lead_notes_lead_id_idx").on(t.leadId),

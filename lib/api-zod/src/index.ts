@@ -25,4 +25,5 @@ export {
   InterviewQuestionInputMode as SolveInterviewQuestionBodyMode,
 } from "./generated/types";
 export * as generatedTypes from "./generated/types";
+export type { GetSecureCallRecordingParams } from "./generated/types";
 export * from './generated/types';

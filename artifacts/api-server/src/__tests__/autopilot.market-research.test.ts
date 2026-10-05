@@ -221,6 +221,7 @@ describe("Market Research autopilot handler", () => {
       leadId: 12,
       userId: "market-research-owner",
       dedupeKey: "market-research-call-91",
+      reviewStatus: "needs_review",
       note: expect.stringContaining("https://example.com/about"),
     }));
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({

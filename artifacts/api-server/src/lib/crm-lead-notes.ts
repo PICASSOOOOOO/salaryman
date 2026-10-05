@@ -1,4 +1,4 @@
-import { db, leadNotesTable } from "@workspace/db";
+import { db, leadNotesTable, type LeadNoteReviewStatus } from "@workspace/db";
 import { and, eq, like, sql } from "drizzle-orm";
 
 export async function createLeadNote(input: {
@@ -7,6 +7,7 @@ export async function createLeadNote(input: {
   userName: string;
   note: string;
   dedupeKey?: string;
+  reviewStatus?: LeadNoteReviewStatus;
 }) {
   const dedupeKey = input.dedupeKey?.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 100);
   const marker = dedupeKey ? `[autopilot:${dedupeKey}]` : "";
@@ -15,6 +16,7 @@ export async function createLeadNote(input: {
     userId: input.userId,
     userName: input.userName,
     note: `${marker ? `${marker}\n` : ""}${input.note.trim()}`,
+    ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}),
   };
   if (!dedupeKey) {
     const [created] = await db.insert(leadNotesTable).values(values).returning();

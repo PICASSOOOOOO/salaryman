@@ -269,6 +269,37 @@ export const ApplyCrmLeadImportBody = zod.object({
 export const ApplyCrmLeadImportResponse = zod.record(zod.string(), zod.unknown())
 
 
+/**
+ * @summary Mark a cited Market Research CRM note reviewed or dismissed
+ */
+
+
+
+
+export const ReviewCrmLeadNoteParams = zod.object({
+  "id": zod.coerce.number().int().min(1),
+  "noteId": zod.coerce.number().int().min(1)
+})
+
+export const ReviewCrmLeadNoteBody = zod.object({
+  "reviewStatus": zod.enum(['reviewed', 'dismissed'])
+})
+
+export const ReviewCrmLeadNoteResponse = zod.object({
+  "note": zod.object({
+  "id": zod.number().int(),
+  "leadId": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string().nullable(),
+  "note": zod.string(),
+  "createdAt": zod.date(),
+  "reviewStatus": zod.enum(['not_required', 'needs_review', 'reviewed', 'dismissed']),
+  "reviewedByUserId": zod.string().nullable(),
+  "reviewedAt": zod.date().nullable()
+})
+})
+
+
 export const ExportCrmArchiveResponse = zod.record(zod.string(), zod.unknown())
 
 

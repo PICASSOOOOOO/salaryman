@@ -94,6 +94,9 @@ interface LeadNote {
   userId: string;
   userName: string | null;
   note: string;
+  reviewStatus: "not_required" | "needs_review" | "reviewed" | "dismissed";
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
   createdAt: string;
 }
 
@@ -239,6 +242,7 @@ export default function LeadsPage() {
 
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
   const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
+  const [reviewingNoteId, setReviewingNoteId] = useState<number | null>(null);
   const [leadCalls, setLeadCalls] = useState<CallRecord[]>([]);
   const [leadActivities, setLeadActivities] = useState<CrmActivity[]>([]);
   const [newNote, setNewNote] = useState("");
@@ -301,6 +305,17 @@ export default function LeadsPage() {
     }
   }, [search, statusFilter]);
 
+  const refreshSelectedLeadNotes = useCallback(async (leadId: number) => {
+    try {
+      const response = await apiFetch(`api/leads/${leadId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      if (selectedLead?.id === leadId) setLeadNotes(data.notes ?? []);
+    } catch {
+      // The lead detail refresh is best-effort; the next poll can recover.
+    }
+  }, [selectedLead?.id]);
+
   useEffect(() => {
     if (isAuthenticated) void fetchLeads();
   }, [isAuthenticated, fetchLeads]);
@@ -323,17 +338,23 @@ export default function LeadsPage() {
     const socket = new WebSocket(`${protocol}//${window.location.host}${base}/ws/chat?${params.toString()}`);
     socket.onmessage = (event) => {
       try {
-        if (JSON.parse(event.data)._channel === "leads") void fetchLeads();
+        if (JSON.parse(event.data)._channel === "leads") {
+          void fetchLeads();
+          if (selectedLead?.id) void refreshSelectedLeadNotes(selectedLead.id);
+        }
       } catch {
         /* A non-JSON socket message is not actionable here. */
       }
     };
-    const interval = window.setInterval(() => void fetchLeads(), 30000);
+    const interval = window.setInterval(() => {
+      void fetchLeads();
+      if (selectedLead?.id) void refreshSelectedLeadNotes(selectedLead.id);
+    }, 30000);
     return () => {
       socket.close();
       window.clearInterval(interval);
     };
-  }, [fetchLeads, isAuthenticated, orgId, user]);
+  }, [fetchLeads, isAuthenticated, orgId, refreshSelectedLeadNotes, selectedLead?.id, user]);
 
   const selectOrganization = (nextOrgId: number) => {
     if (nextOrgId === orgId || switchOrganization.isPending) return;
@@ -395,6 +416,30 @@ export default function LeadsPage() {
       setNewNote("");
     } catch (noteError) {
       setError(errorText(noteError, "Unable to add note"));
+    }
+  };
+
+  const reviewNote = async (note: LeadNote, reviewStatus: "reviewed" | "dismissed") => {
+    if (!selectedLead || !admin || reviewingNoteId !== null) return;
+    setReviewingNoteId(note.id);
+    setError("");
+    try {
+      const response = await apiFetch(`api/leads/${selectedLead.id}/notes/${note.id}/review`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewStatus }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Unable to update research review");
+      }
+      const data = await response.json();
+      setLeadNotes((current) => current.map((entry) => entry.id === note.id ? data.note : entry));
+      setNotice(reviewStatus === "reviewed" ? "Research note marked reviewed" : "Research note dismissed");
+    } catch (reviewError) {
+      setError(errorText(reviewError, "Unable to update research review"));
+    } finally {
+      setReviewingNoteId(null);
     }
   };
 
@@ -750,7 +795,72 @@ export default function LeadsPage() {
                 <div className="mt-6 border-t border-black/15 pt-4"><span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">Lead status</span><div className="flex flex-wrap gap-2">{STATUSES.map((status) => <button key={status.value} data-testid={`button-status-${status.value}`} onClick={() => void updateStatus(selectedLead.id, status.value)} className={`border px-2.5 py-2 text-[10px] font-bold uppercase tracking-[0.08em] ${selectedLead.status === status.value ? "bg-black text-white" : "bg-white hover:bg-black hover:text-white"}`}>{status.label}</button>)}</div></div>
                 {selectedLead.pabloNotesJson && <div className="mt-6 border-t border-black/15 pt-4"><span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">Extraction notes</span><pre className="whitespace-pre-wrap border border-black/15 bg-white p-3 text-xs leading-relaxed">{(() => { try { const parsed = JSON.parse(selectedLead.pabloNotesJson); return Array.isArray(parsed) ? parsed.join("\n") : String(parsed); } catch { return selectedLead.pabloNotesJson; } })()}</pre></div>}
                 <div className="mt-6 border-t border-black/15 pt-4"><CrmRoutingPanel leadId={selectedLead.id} leadName={selectedLead.name} leadPhone={selectedLead.phone} assignedUserId={selectedLead.assignedUserId} canEdit={admin} onUpdated={() => void openDetail(selectedLead)} /></div>
-                <div className="mt-6 border-t border-black/15 pt-4"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50"><StickyNote size={13} /> Notes ({leadNotes.length})</div><div className="mb-4 flex gap-2"><input data-testid="input-new-lead-note" value={newNote} onChange={(event) => setNewNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void addNote(); }} placeholder="Add a note" className="h-10 min-w-0 flex-1 border border-black bg-white px-3 text-sm outline-none" /><button data-testid="button-add-lead-note" onClick={() => void addNote()} disabled={!newNote.trim()} className="h-10 bg-black px-3 text-white disabled:opacity-40"><Plus size={15} /></button></div>{detailLoading ? <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin" /></div> : <div className="space-y-2">{leadNotes.map((note) => <div key={note.id} className="border border-black/15 bg-white p-3" data-testid={`note-lead-${note.id}`}><div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45"><span>{note.userName || "Team member"}</span><span>{new Date(note.createdAt).toLocaleDateString()}</span></div><p className="mt-2 text-xs leading-relaxed">{note.note}</p></div>)}</div>}</div>
+                <div className="mt-6 border-t border-black/15 pt-4">
+                  <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">
+                    <StickyNote size={13} /> Notes ({leadNotes.length})
+                  </div>
+                  <div className="mb-4 flex gap-2">
+                    <input
+                      data-testid="input-new-lead-note"
+                      value={newNote}
+                      onChange={(event) => setNewNote(event.target.value)}
+                      onKeyDown={(event) => { if (event.key === "Enter") void addNote(); }}
+                      placeholder="Add a note"
+                      className="h-10 min-w-0 flex-1 border border-black bg-white px-3 text-sm outline-none"
+                    />
+                    <button
+                      data-testid="button-add-lead-note"
+                      onClick={() => void addNote()}
+                      disabled={!newNote.trim()}
+                      className="h-10 bg-black px-3 text-white disabled:opacity-40"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </div>
+                  {detailLoading ? (
+                    <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin" /></div>
+                  ) : (
+                    <div className="space-y-2">
+                      {leadNotes.map((note) => (
+                        <div key={note.id} className="border border-black/15 bg-white p-3" data-testid={`note-lead-${note.id}`}>
+                          <div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45">
+                            <span>{note.userName || "Team member"}</span>
+                            <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed">{note.note}</p>
+                          {note.reviewStatus !== "not_required" && (
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-black/10 pt-2">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-black/55">
+                                {note.reviewStatus === "needs_review" ? "Needs review" : note.reviewStatus === "reviewed" ? "Reviewed" : "Dismissed"}
+                                {note.reviewedAt && ` · ${new Date(note.reviewedAt).toLocaleDateString()}`}
+                              </span>
+                              {note.reviewStatus === "needs_review" && admin && (
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    data-testid={`button-review-note-${note.id}`}
+                                    onClick={() => void reviewNote(note, "reviewed")}
+                                    disabled={reviewingNoteId !== null}
+                                    className="border border-black bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-[0.06em] disabled:opacity-40"
+                                  >
+                                    {reviewingNoteId === note.id ? "Saving…" : "Mark reviewed"}
+                                  </button>
+                                  <button
+                                    data-testid={`button-dismiss-note-${note.id}`}
+                                    onClick={() => void reviewNote(note, "dismissed")}
+                                    disabled={reviewingNoteId !== null}
+                                    className="border border-black/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.06em] disabled:opacity-40"
+                                  >
+                                    Dismiss
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {leadCalls.length > 0 && <div className="mt-6 border-t border-black/15 pt-4"><h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">Call history ({leadCalls.length})</h3><div className="space-y-2">{leadCalls.map((call) => <div key={call.id} className="border border-black/15 bg-white p-3" data-testid={`call-record-${call.id}`}><div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45"><span>{call.direction} · {call.callType}</span><span>{new Date(call.startedAt).toLocaleDateString()}</span></div><p className="mt-2 text-xs">{call.summary || call.transcript || `${call.status} · ${call.durationSeconds}s`}</p></div>)}</div></div>}
                 {leadActivities.length > 0 && <div className="mt-6 border-t border-black/15 pt-4"><h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">Activity ({leadActivities.length})</h3><div className="space-y-2">{leadActivities.map((activity) => <div key={activity.id} className="border border-black/10 bg-white p-3" data-testid={`activity-lead-${activity.id}`}><div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45"><span>{activity.channel}</span><span>{new Date(activity.occurredAt).toLocaleDateString()}</span></div><p className="mt-2 text-xs">{activity.summary || activity.body || "No detail"}</p></div>)}</div></div>}
               </div>

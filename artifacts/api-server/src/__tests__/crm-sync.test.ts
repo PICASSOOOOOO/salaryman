@@ -10,6 +10,7 @@ import {
   crmSyncChangesTable,
   crmSyncConflictsTable,
   crmSyncRunsTable,
+  leadNotesTable,
   leadRecordsTable,
   orgMembersTable,
   organizationsTable,
@@ -21,6 +22,7 @@ vi.mock("../lib/site-proxy", () => ({ safeFetch: safeFetchMock }));
 
 import crmSyncRouter from "../routes/crm-sync";
 import crmAdaptiveRouter from "../routes/crm-adaptive";
+import leadsRouter from "../routes/leads";
 
 type AuthState = { userId: string | null };
 
@@ -41,7 +43,7 @@ app.use((req: any, _res, next) => {
   if (auth.userId) req.user = { id: auth.userId };
   next();
 });
-app.use("/api", crmSyncRouter, crmAdaptiveRouter);
+app.use("/api", crmSyncRouter, crmAdaptiveRouter, leadsRouter);
 
 async function createUser(email: string) {
   const [user] = await db.insert(usersTable).values({ email }).returning({ id: usersTable.id });
@@ -99,6 +101,17 @@ async function insertLead(input: { name: string; email: string }) {
     customFieldsJson: {},
   }).returning();
   return lead;
+}
+
+async function insertReviewNote(leadId: number, reviewStatus: "needs_review" | "not_required" = "needs_review") {
+  const [note] = await db.insert(leadNotesTable).values({
+    leadId,
+    userId: ownerUserId,
+    userName: "Pablo",
+    note: "Cited public company research for owner review.",
+    reviewStatus,
+  }).returning();
+  return note;
 }
 
 let ownerUserId = "";
@@ -490,5 +503,93 @@ describe("organization CRM source sync", () => {
     expect(run.status).toBe("failed");
     expect(run.summaryJson.error).toBe(sync.body.error);
     expect(JSON.stringify(run.summaryJson)).not.toContain("provider-private-detail");
+  });
+});
+
+describe("CRM lead research-note review", () => {
+  it("lets an owner review a research note without changing lead fields", async () => {
+    const lead = await insertLead({ name: "Review Owner", email: `review-owner-${randomUUID()}@example.test` });
+    const note = await insertReviewNote(lead.id);
+
+    const response = await request(app)
+      .patch(`/api/leads/${lead.id}/notes/${note.id}/review`)
+      .send({ reviewStatus: "reviewed" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.note.reviewStatus).toBe("reviewed");
+    expect(response.body.note.reviewedByUserId).toBe(ownerUserId);
+    expect(response.body.note.reviewedAt).toBeTruthy();
+
+    const [persistedLead] = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.id, lead.id));
+    const [persistedNote] = await db.select().from(leadNotesTable).where(eq(leadNotesTable.id, note.id));
+    expect(persistedLead).toMatchObject({ name: lead.name, email: lead.email, company: lead.company, status: lead.status });
+    expect(persistedNote.reviewStatus).toBe("reviewed");
+  });
+
+  it("lets a manager dismiss a research note", async () => {
+    const managerUserId = await createUser(`crm-review-manager-${randomUUID()}@example.test`);
+    await db.insert(orgMembersTable).values({
+      orgId: primaryOrgId,
+      userId: managerUserId,
+      role: "manager",
+      status: "active",
+    });
+    await setCurrentOrg(managerUserId, primaryOrgId);
+    const lead = await insertLead({ name: "Review Manager", email: `review-manager-${randomUUID()}@example.test` });
+    const note = await insertReviewNote(lead.id);
+    auth.userId = managerUserId;
+
+    const response = await request(app)
+      .patch(`/api/leads/${lead.id}/notes/${note.id}/review`)
+      .send({ reviewStatus: "dismissed" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.note.reviewStatus).toBe("dismissed");
+    expect(response.body.note.reviewedByUserId).toBe(managerUserId);
+  });
+
+  it("rejects staff review attempts and ordinary CRM notes", async () => {
+    const lead = await insertLead({ name: "Review Boundaries", email: `review-boundary-${randomUUID()}@example.test` });
+    const researchNote = await insertReviewNote(lead.id);
+    const regularNote = await insertReviewNote(lead.id, "not_required");
+    const staffUserId = await createUser(`crm-review-staff-${randomUUID()}@example.test`);
+    await db.insert(orgMembersTable).values({
+      orgId: primaryOrgId,
+      userId: staffUserId,
+      role: "employee",
+      status: "active",
+    });
+    await setCurrentOrg(staffUserId, primaryOrgId);
+    auth.userId = staffUserId;
+
+    const forbidden = await request(app)
+      .patch(`/api/leads/${lead.id}/notes/${researchNote.id}/review`)
+      .send({ reviewStatus: "reviewed" });
+    expect(forbidden.status).toBe(403);
+
+    auth.userId = ownerUserId;
+    await setCurrentOrg(ownerUserId, primaryOrgId);
+    const ordinary = await request(app)
+      .patch(`/api/leads/${lead.id}/notes/${regularNote.id}/review`)
+      .send({ reviewStatus: "reviewed" });
+    expect(ordinary.status).toBe(400);
+
+    const [unchanged] = await db.select().from(leadNotesTable).where(eq(leadNotesTable.id, researchNote.id));
+    expect(unchanged.reviewStatus).toBe("needs_review");
+    expect(unchanged.reviewedByUserId).toBeNull();
+  });
+
+  it("does not expose another active organization’s lead note", async () => {
+    const lead = await insertLead({ name: "Other Organization", email: `review-org-${randomUUID()}@example.test` });
+    const note = await insertReviewNote(lead.id);
+    await setCurrentOrg(ownerUserId, secondaryOrgId);
+
+    const response = await request(app)
+      .patch(`/api/leads/${lead.id}/notes/${note.id}/review`)
+      .send({ reviewStatus: "dismissed" });
+
+    expect(response.status).toBe(404);
+    const [unchanged] = await db.select().from(leadNotesTable).where(eq(leadNotesTable.id, note.id));
+    expect(unchanged.reviewStatus).toBe("needs_review");
   });
 });

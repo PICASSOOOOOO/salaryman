@@ -41,6 +41,8 @@ import type {
   GetSecureCallRecordingParams,
   HealthStatus,
   InterviewQuestionInput,
+  LeadNoteReviewInput,
+  LeadNoteReviewResponse,
   ListCrmSources200,
   ListCrmSyncConflicts200,
   MyOrganizations,
@@ -1464,6 +1466,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getApplyCrmLeadImportMutationOptions(options));
+    }
+
+export const getReviewCrmLeadNoteUrl = (id: number,
+    noteId: number,) => {
+
+
+
+
+  return `/api/leads/${id}/notes/${noteId}/review`
+}
+
+/**
+ * @summary Mark a cited Market Research CRM note reviewed or dismissed
+ */
+export const reviewCrmLeadNote = async (id: number,
+    noteId: number,
+    leadNoteReviewInput: LeadNoteReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<LeadNoteReviewResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<LeadNoteReviewResponse>(getReviewCrmLeadNoteUrl(id,noteId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(leadNoteReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewCrmLeadNoteMutationKey = () => ['reviewCrmLeadNote'] as const;
+
+export const getReviewCrmLeadNoteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewCrmLeadNote>>, TError,ReviewCrmLeadNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewCrmLeadNote>>, TError,ReviewCrmLeadNoteMutationVariables, TContext> => {
+
+const mutationKey = getReviewCrmLeadNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewCrmLeadNote>>, ReviewCrmLeadNoteMutationVariables> = (props) => {
+          const {id,noteId,data} = props ?? {};
+
+          return  reviewCrmLeadNote(id,noteId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewCrmLeadNoteMutationResult = NonNullable<Awaited<ReturnType<typeof reviewCrmLeadNote>>>
+    export type ReviewCrmLeadNoteMutationBody = BodyType<LeadNoteReviewInput>
+    export type ReviewCrmLeadNoteMutationError = ErrorType<void>
+    export type ReviewCrmLeadNoteMutationVariables = {id: number;noteId: number;data: BodyType<LeadNoteReviewInput>}
+
+    /**
+ * @summary Mark a cited Market Research CRM note reviewed or dismissed
+ */
+export const useReviewCrmLeadNote = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewCrmLeadNote>>, TError,ReviewCrmLeadNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewCrmLeadNote>>,
+        TError,
+        ReviewCrmLeadNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewCrmLeadNoteMutationOptions(options));
     }
 
 export const getExportCrmArchiveUrl = () => {
