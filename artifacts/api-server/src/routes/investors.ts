@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db, investorLeadsTable } from "@workspace/db";
+import { getOwnerEmailRecipients } from "../lib/owner-email-recipients";
 import { getUncachableResendClient } from "../lib/resend";
 
 const router = Router();
@@ -67,12 +68,7 @@ router.post("/investors", async (req: Request, res: Response) => {
     const safeMessage = escapeHtml(message.trim());
 
     const { client, fromEmail } = await getUncachableResendClient();
-    const ownerRecipients = [...new Set(
-      (process.env.OWNER_EMAILS ?? "")
-        .split(",")
-        .map((recipient) => recipient.trim())
-        .filter(Boolean),
-    )];
+    const ownerRecipients = getOwnerEmailRecipients();
 
     await Promise.allSettled([
       ...(ownerRecipients.length > 0 ? [client.emails.send({

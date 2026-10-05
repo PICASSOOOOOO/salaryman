@@ -45,6 +45,7 @@ export default function PrivacyPolicy() {
       <p>We do not sell your personal information. We may share information with:</p>
       <ul>
         <li><strong>Service providers</strong> — third parties that help us deliver the Service (e.g., Twilio, Stripe, Resend, OpenAI, Anthropic, cloud hosting providers) under data processing agreements</li>
+        <li><strong>Support requests</strong> — messages submitted through the Contact Us form are routed through Resend to authorized SALARYMAN project owners for review and response</li>
         <li><strong>Organization and feature sharing</strong> — information you intentionally expose through an organization, team, CRM, shared workspace, public profile, message, call, or other recipient-facing feature is available to the people and organizations you choose, subject to the permissions of that feature</li>
         <li><strong>Legal requirements</strong> — when required by law, court order, or governmental authority</li>
         <li><strong>Business transfers</strong> — in connection with a merger, acquisition, or sale of assets, with appropriate notice</li>
