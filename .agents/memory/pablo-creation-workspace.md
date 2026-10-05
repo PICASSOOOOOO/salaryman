@@ -15,6 +15,8 @@ The user's product goal is to make automation and communication a visual, gamifi
 
 SALARYMAN should also offer a free marketplace where users create features specifically for SALARYMAN, share them with other users, and install them into My Apps. My Apps should distinguish user-owned/private items from public/shared items. The creator audience includes people making video games and other interactive experiences, not only players of the downloadable game.
 
+External Meshy and game-asset repositories are an internal developer/agent reference bank for improving SALARYMAN's game art direction and asset workflows, not marketplace apps for users to install.
+
 **Why:** the user explicitly described this as SALARYMAN's goal and manifesto and asked that it be remembered.
 
-**How to apply:** prioritize the browser-to-desktop funnel, a complete office-simulation experience, and a free SALARYMAN-specific creator marketplace with Owned and Public collections. Treat the desktop app as unfinished unless current project status shows otherwise.
+**How to apply:** prioritize the browser-to-desktop funnel, a complete office-simulation experience, and a free SALARYMAN-specific creator marketplace with Owned and Public collections. Keep developer reference repositories separate from marketplace features. Treat the desktop app as unfinished unless current project status shows otherwise.
