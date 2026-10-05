@@ -30,11 +30,14 @@ import {
   leadRecordsTable,
   orgMembersTable,
   organizationsTable,
+  phoneNumbersTable,
   pabloOutboundCampaignsTable,
+  smsCampaignRecipientsTable,
+  smsCampaignsTable,
   usersTable,
   worldBusinessesTable,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
 import { consumeUsage } from "../lib/usage-meter";
 import {
@@ -52,6 +55,7 @@ vi.mock("../lib/platform-twilio-access", () => ({
 
 const spies = (twilio as any).__spies as {
   callsCreate: ReturnType<typeof vi.fn>;
+  messagesCreate: ReturnType<typeof vi.fn>;
   participantCreate: ReturnType<typeof vi.fn>;
   conferenceUpdate: ReturnType<typeof vi.fn>;
 };
@@ -160,6 +164,20 @@ describe("Pablo campaign consent and voice gates", () => {
     expect(optOut.body.pref.phoneCallConsentedAt).toBeTruthy();
     expect(optOut.body.pref.phoneCallOptedOutAt).toBeTruthy();
 
+    const smsOptIn = await request(preferencesApp).put(`/api/campaigns/contact-prefs/${contact.id}`)
+      .send({ smsOptIn: true });
+    expect(smsOptIn.status).toBe(200);
+    expect(smsOptIn.body.pref.smsOptIn).toBe(true);
+    expect(smsOptIn.body.pref.smsConsentedAt).toBeTruthy();
+    expect(smsOptIn.body.pref.smsOptedOutAt).toBeNull();
+
+    const smsOptOut = await request(preferencesApp).put(`/api/campaigns/contact-prefs/${contact.id}`)
+      .send({ smsOptIn: false });
+    expect(smsOptOut.status).toBe(200);
+    expect(smsOptOut.body.pref.smsOptIn).toBe(false);
+    expect(smsOptOut.body.pref.smsConsentedAt).toBeTruthy();
+    expect(smsOptOut.body.pref.smsOptedOutAt).toBeTruthy();
+
     const foreign = await db.insert(contactsTable).values({
       userId: `other-${TEST_USER.id}`,
       name: "Not yours",
@@ -172,6 +190,51 @@ describe("Pablo campaign consent and voice gates", () => {
       expect(forbidden.status).toBe(404);
     } finally {
       await db.delete(contactsTable).where(eq(contactsTable.id, foreign[0].id));
+    }
+  });
+
+  it("sends an SMS campaign only to contacts with recorded SMS marketing permission", async () => {
+    const consented = await createContact(false);
+    const noPermission = await createContact(false);
+    const permission = await request(preferencesApp)
+      .put(`/api/campaigns/contact-prefs/${consented.id}`)
+      .send({ smsOptIn: true });
+    expect(permission.status).toBe(200);
+
+    const [sender] = await db.insert(phoneNumbersTable).values({
+      userId: TEST_USER.id,
+      number: "+15550002000",
+      friendlyName: "Campaign sender",
+      label: "marketing",
+    }).returning();
+    const [campaign] = await db.insert(smsCampaignsTable).values({
+      userId: TEST_USER.id,
+      name: "Consent-gated campaign",
+      messageBody: "A campaign message",
+    }).returning();
+
+    try {
+      const response = await request(preferencesApp).post(`/api/campaigns/sms/${campaign.id}/send`);
+      expect(response.status, `HTTP ${response.status}: ${response.text}`).toBe(200);
+      expect(response.body.total).toBe(1);
+
+      await vi.waitFor(async () => {
+        const [saved] = await db.select().from(smsCampaignsTable)
+          .where(eq(smsCampaignsTable.id, campaign.id));
+        expect(saved?.status).toBe("sent");
+      });
+
+      expect(spies.messagesCreate).toHaveBeenCalledTimes(1);
+      expect(spies.messagesCreate.mock.calls[0][0].to).toBe(consented.phone);
+      expect(spies.messagesCreate.mock.calls[0][0].to).not.toBe(noPermission.phone);
+      const recipients = await db.select().from(smsCampaignRecipientsTable)
+        .where(eq(smsCampaignRecipientsTable.campaignId, campaign.id));
+      expect(recipients).toHaveLength(1);
+      expect(recipients[0]).toMatchObject({ contactId: consented.id, status: "sent" });
+    } finally {
+      await db.delete(smsCampaignsTable).where(eq(smsCampaignsTable.id, campaign.id));
+      await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.id, sender.id));
+      await db.delete(contactsTable).where(inArray(contactsTable.id, [consented.id, noPermission.id]));
     }
   });
 

@@ -74,6 +74,9 @@ interface Contact {
   phone: string;
   tag: string;
   dealStage: string;
+  smsOptIn?: boolean;
+  smsConsentedAt?: string | null;
+  smsOptedOutAt?: string | null;
 }
 
 type Tab = 'dashboard' | 'email-campaigns' | 'sms-campaigns' | 'sms-inbox';
@@ -494,6 +497,7 @@ function SmsCompose({
 
   const recipientCount = contacts.filter(c => {
     if (!c.phone) return false;
+    if (!c.smsOptIn || !c.smsConsentedAt || c.smsOptedOutAt) return false;
     if (filterTag && c.tag !== filterTag) return false;
     if (filterStage && c.dealStage !== filterStage) return false;
     return true;
@@ -956,6 +960,9 @@ export default function Campaigns() {
   const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
   const [smsCampaigns, setSmsCampaigns] = useState<SmsCampaign[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [smsAudience, setSmsAudience] = useState<Contact[]>([]);
+  const [smsConsentSavingId, setSmsConsentSavingId] = useState<number | null>(null);
+  const [smsConsentError, setSmsConsentError] = useState('');
   const [loadingData, setLoadingData] = useState(true);
 
   const [emailView, setEmailView] = useState<EmailView>('list');
@@ -966,14 +973,16 @@ export default function Campaigns() {
   const loadAll = useCallback(async () => {
     if (!isAuthenticated) { setLoadingData(false); return; }
     setLoadingData(true);
-    const [emailRes, smsRes, contactsRes] = await Promise.all([
+    const [emailRes, smsRes, contactsRes, smsAudienceRes] = await Promise.all([
       api('/api/campaigns/email').catch(() => null),
       api('/api/campaigns/sms').catch(() => null),
       api('/api/tools/contacts').catch(() => null),
+      api('/api/campaigns/sms/audience').catch(() => null),
     ]);
     if (emailRes?.ok) { const d = await emailRes.json(); setEmailCampaigns(d.campaigns || []); }
     if (smsRes?.ok) { const d = await smsRes.json(); setSmsCampaigns(d.campaigns || []); }
     if (contactsRes?.ok) { const d = await contactsRes.json(); setContacts(d.contacts || []); }
+    if (smsAudienceRes?.ok) { const d = await smsAudienceRes.json(); setSmsAudience(d.contacts || []); }
     setLoadingData(false);
   }, [isAuthenticated]);
 
@@ -990,6 +999,40 @@ export default function Campaigns() {
     await api(`/api/campaigns/sms/${id}`, { method: 'DELETE' });
     setSmsCampaigns(prev => prev.filter(c => c.id !== id));
   }
+
+  async function updateSmsPermission(contactId: number, smsOptIn: boolean) {
+    setSmsConsentSavingId(contactId);
+    setSmsConsentError('');
+    try {
+      const response = await api(`/api/campaigns/contact-prefs/${contactId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ smsOptIn }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save SMS permission');
+      const pref = data.pref;
+      setSmsAudience(current => current.map(contact => contact.id === contactId
+        ? {
+            ...contact,
+            smsOptIn: Boolean(pref?.smsOptIn),
+            smsConsentedAt: pref?.smsConsentedAt ?? null,
+            smsOptedOutAt: pref?.smsOptedOutAt ?? null,
+          }
+        : contact));
+    } catch (cause: any) {
+      setSmsConsentError(cause.message || 'Could not save SMS permission');
+    } finally {
+      setSmsConsentSavingId(null);
+    }
+  }
+
+  const smsAudienceById = new Map(smsAudience.map(contact => [contact.id, contact]));
+  const smsCampaignContacts = contacts.map(contact => ({
+    ...contact,
+    smsOptIn: smsAudienceById.get(contact.id)?.smsOptIn ?? false,
+    smsConsentedAt: smsAudienceById.get(contact.id)?.smsConsentedAt ?? null,
+    smsOptedOutAt: smsAudienceById.get(contact.id)?.smsOptedOutAt ?? null,
+  }));
 
   const totalEmailSent = emailCampaigns.reduce((a, c) => a + c.totalSent, 0);
   const totalSmsSent = smsCampaigns.reduce((a, c) => a + c.totalSent, 0);
@@ -1186,6 +1229,40 @@ export default function Campaigns() {
           <div>
             {smsView === 'list' && (
               <div>
+                <details className="mb-4 border border-border bg-muted/10 rounded-xl">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-foreground">
+                    Record SMS marketing permission <span className="ml-1 text-xs font-normal text-muted-foreground">({smsAudience.length} saved contacts)</span>
+                  </summary>
+                  <div className="border-t border-border px-4 py-3">
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Mark permission only after your organization has recorded it. Campaigns skip contacts without a recorded opt-in or with an opt-out.
+                    </p>
+                    <p className="mb-3 text-xs text-muted-foreground">
+                      Campaigns use an active Twilio number assigned to you or your organization.
+                    </p>
+                    {smsConsentError && <p role="alert" className="mb-2 text-xs text-red-400">{smsConsentError}</p>}
+                    <div className="max-h-56 space-y-1 overflow-y-auto">
+                      {smsAudience.map(contact => {
+                        const permitted = Boolean(contact.smsOptIn && contact.smsConsentedAt && !contact.smsOptedOutAt);
+                        return (
+                          <label key={contact.id} className="flex items-center gap-3 border border-border/60 bg-background/40 px-3 py-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={permitted}
+                              disabled={!contact.phone || smsConsentSavingId !== null}
+                              onChange={event => void updateSmsPermission(contact.id, event.target.checked)}
+                              aria-label={`Record SMS marketing permission for ${contact.name}`}
+                            />
+                            <span className="min-w-0 flex-1 truncate font-medium">{contact.name}</span>
+                            <span className="shrink-0 text-muted-foreground">{contact.phone || 'No phone'}</span>
+                            {permitted && <span className="shrink-0 text-[10px] text-sky-400">RECORDED</span>}
+                          </label>
+                        );
+                      })}
+                      {!smsAudience.length && <p className="py-3 text-center text-xs text-muted-foreground">No saved contacts with phone numbers.</p>}
+                    </div>
+                  </div>
+                </details>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-foreground">SMS Campaigns</h3>
                   <button onClick={() => { setEditingSms(null); setSmsView('compose'); }}
@@ -1247,7 +1324,7 @@ export default function Campaigns() {
             {smsView === 'compose' && (
               <SmsCompose
                 initial={editingSms}
-                contacts={contacts}
+                contacts={smsCampaignContacts}
                 onSave={(c) => {
                   setSmsCampaigns(prev => {
                     const idx = prev.findIndex(x => x.id === c.id);

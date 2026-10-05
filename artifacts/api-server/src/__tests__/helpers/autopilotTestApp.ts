@@ -6,7 +6,12 @@ import {
   organizationsTable,
   orgMembersTable,
   autopilotConfigsTable,
+  autopilotReviewItemsTable,
   botsTable,
+  businessTasksTable,
+  callHistoryTable,
+  crmActivitiesTable,
+  leadRecordsTable,
   userFeaturesTable,
   worldBusinessesTable,
   projectsTable,
@@ -169,11 +174,16 @@ export async function cleanupTestData() {
     await db.delete(botsTable).where(inArray(botsTable.id, createdBotIds));
   }
   for (const orgId of createdOrgIds) {
+    await db.delete(autopilotReviewItemsTable).where(eq(autopilotReviewItemsTable.orgId, orgId));
+    await db.delete(crmActivitiesTable).where(eq(crmActivitiesTable.orgId, orgId));
+    await db.delete(callHistoryTable).where(eq(callHistoryTable.orgId, orgId));
+    await db.delete(leadRecordsTable).where(eq(leadRecordsTable.orgId, orgId));
     await db.delete(autopilotConfigsTable).where(eq(autopilotConfigsTable.orgId, orgId));
     // Cascades org members and org permissions.
     await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   }
   if (createdUserIds.length) {
+    await db.delete(businessTasksTable).where(inArray(businessTasksTable.userId, createdUserIds));
     await db.delete(userFeaturesTable).where(inArray(userFeaturesTable.userId, createdUserIds));
     await db.delete(orgMembersTable).where(inArray(orgMembersTable.userId, createdUserIds));
     await db.delete(usersTable).where(inArray(usersTable.id, createdUserIds));

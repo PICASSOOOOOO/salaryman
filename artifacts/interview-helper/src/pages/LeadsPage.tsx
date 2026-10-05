@@ -244,6 +244,7 @@ export default function LeadsPage() {
   const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
   const [reviewingNoteId, setReviewingNoteId] = useState<number | null>(null);
   const [leadCalls, setLeadCalls] = useState<CallRecord[]>([]);
+  const [suggestingFollowUpId, setSuggestingFollowUpId] = useState<number | null>(null);
   const [leadActivities, setLeadActivities] = useState<CrmActivity[]>([]);
   const [newNote, setNewNote] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
@@ -399,6 +400,28 @@ export default function LeadsPage() {
       setError(errorText(detailError, "Unable to load lead details"));
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const suggestCallFollowUp = async (call: CallRecord) => {
+    setSuggestingFollowUpId(call.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiFetch("api/autopilot/follow-up-suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callHistoryId: call.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not add a follow-up suggestion");
+      setNotice(data.duplicate
+        ? `A follow-up suggestion already exists (${data.item.status}).`
+        : "Follow-up suggestion added to the Autopilot approval queue.");
+    } catch (cause) {
+      setError(errorText(cause, "Could not add a follow-up suggestion"));
+    } finally {
+      setSuggestingFollowUpId(null);
     }
   };
 
@@ -861,7 +884,34 @@ export default function LeadsPage() {
                     </div>
                   )}
                 </div>
-                {leadCalls.length > 0 && <div className="mt-6 border-t border-black/15 pt-4"><h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">Call history ({leadCalls.length})</h3><div className="space-y-2">{leadCalls.map((call) => <div key={call.id} className="border border-black/15 bg-white p-3" data-testid={`call-record-${call.id}`}><div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45"><span>{call.direction} · {call.callType}</span><span>{new Date(call.startedAt).toLocaleDateString()}</span></div><p className="mt-2 text-xs">{call.summary || call.transcript || `${call.status} · ${call.durationSeconds}s`}</p></div>)}</div></div>}
+                {leadCalls.length > 0 && (
+                  <div className="mt-6 border-t border-black/15 pt-4">
+                    <h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">
+                      Call history ({leadCalls.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {leadCalls.map((call) => (
+                        <div key={call.id} className="border border-black/15 bg-white p-3" data-testid={`call-record-${call.id}`}>
+                          <div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45">
+                            <span>{call.direction} · {call.callType}</span>
+                            <span>{new Date(call.startedAt).toLocaleDateString()}</span>
+                          </div>
+                          <p className="mt-2 text-xs">{call.summary || call.transcript || `${call.status} · ${call.durationSeconds}s`}</p>
+                          {call.status === "completed" && call.summary?.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => void suggestCallFollowUp(call)}
+                              disabled={suggestingFollowUpId !== null}
+                              className="mt-2 border border-black/20 bg-[#f7f4ee] px-2.5 py-1 text-[10px] font-bold disabled:opacity-50"
+                            >
+                              {suggestingFollowUpId === call.id ? "Adding…" : "Suggest internal follow-up"}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {leadActivities.length > 0 && <div className="mt-6 border-t border-black/15 pt-4"><h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-black/50">Activity ({leadActivities.length})</h3><div className="space-y-2">{leadActivities.map((activity) => <div key={activity.id} className="border border-black/10 bg-white p-3" data-testid={`activity-lead-${activity.id}`}><div className="flex justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-black/45"><span>{activity.channel}</span><span>{new Date(activity.occurredAt).toLocaleDateString()}</span></div><p className="mt-2 text-xs">{activity.summary || activity.body || "No detail"}</p></div>)}</div></div>}
               </div>
             </aside>

@@ -3,6 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { AutopilotWorkflow } from '@/components/AutopilotWorkflow';
+import { AutopilotBriefReview } from '@/components/AutopilotBriefReview';
 import './autopilot.css';
 import {
   Sparkles, Loader2, RefreshCw, Power, AlertCircle, Clock,
@@ -1246,6 +1247,8 @@ export default function Autopilot() {
             Scheduled domains require active Pablo Prime. Your organization permissions, saved preferences, action caps,
             available assistant power for paid AI, and channel consent remain in force. CRM sends SMS only.
           </div>
+
+          <AutopilotBriefReview />
 
           <div className="space-y-3">
             {data.domains.map((cfg) => {

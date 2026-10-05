@@ -9,12 +9,17 @@ import {
   AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
   AUTOPILOT_MARKETING_TONES,
   AUTOPILOT_CRM_LEAD_STATUSES,
+  autopilotActivityLogTable,
+  autopilotReviewItemsTable,
+  callHistoryTable,
+  crmActivitiesTable,
+  leadRecordsTable,
   organizationsTable,
   projectsTable,
   isAutopilotDomain,
   type AutopilotDomain,
 } from "@workspace/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, notInArray } from "drizzle-orm";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getOrgAutopilotView, getDomainConfig, upsertDomainConfig } from "../lib/autopilot/config";
 import { getRecentAutopilotActivity } from "../lib/autopilot/activity";
@@ -26,6 +31,8 @@ import { sanitizeCreativeWorkPrefs } from "../lib/autopilot/creative-prefs";
 import { sanitizeMarketResearchPrefs } from "../lib/autopilot/market-research-prefs";
 import { SOCIAL_PLATFORMS } from "../lib/social-service";
 import { requireFeature } from "../middlewares/requirePro";
+import { createBusinessTaskInTransaction } from "../lib/business-ops-service";
+import { buildFollowUpTaskDraft } from "../lib/autopilot/review-items";
 
 // Display labels for the marketing platform allow-list, surfaced to the UI.
 const MARKETING_PLATFORM_LABELS: Record<string, string> = {
@@ -79,6 +86,302 @@ function requireAuth(req: Request, res: Response): boolean {
   }
   return true;
 }
+
+async function getManageableOrg(req: Request, res: Response): Promise<{ orgId: number; userId: string } | null> {
+  if (!requireAuth(req, res)) return null;
+  const userId = getUserId(req);
+  const orgId = await resolveCurrentOrgId(userId);
+  if (!orgId) {
+    res.status(404).json({ error: "No organization" });
+    return null;
+  }
+  const permission = await canDoInOrg(userId, orgId, "autopilot.manage");
+  if (!permission.allowed) {
+    res.status(403).json({ error: "You do not have permission to manage autopilot", reason: permission.reason });
+    return null;
+  }
+  return { orgId, userId };
+}
+
+function toApprovalItem(row: typeof autopilotReviewItemsTable.$inferSelect) {
+  return {
+    id: row.id,
+    callHistoryId: row.sourceCallId,
+    sourceLeadId: row.sourceLeadId,
+    sourceLeadName: row.sourceLeadName,
+    sourceCallAt: row.sourceCallAt,
+    sourceSummary: row.sourceSummary,
+    taskTitle: row.taskTitle,
+    taskDescription: row.taskDescription,
+    status: row.status,
+    createdAt: row.createdAt,
+  };
+}
+
+/**
+ * GET /api/autopilot/brief — read-only snapshot of the last 24 hours for the
+ * active organization. The response contract deliberately contains no finance
+ * fields, so it cannot disclose financial data to non-finance viewers.
+ */
+router.get("/autopilot/brief", requireAutomationSubscription, async (req, res): Promise<void> => {
+  const access = await getManageableOrg(req, res);
+  if (!access) return;
+  try {
+    const { orgId } = access;
+    const generatedAt = new Date();
+    const windowStart = new Date(generatedAt.getTime() - 24 * 60 * 60 * 1000);
+    const orgScope = eq(leadRecordsTable.orgId, orgId);
+    const [
+      [newLeadCount],
+      [activeLeadCount],
+      [totalCallCount],
+      [inboundCallCount],
+      [outboundCallCount],
+      [pendingApprovalCount],
+      recentCalls,
+      runRows,
+    ] = await Promise.all([
+      db.select({ value: count() }).from(leadRecordsTable)
+        .where(and(orgScope, gte(leadRecordsTable.createdAt, windowStart))),
+      db.select({ value: count() }).from(leadRecordsTable)
+        .where(and(orgScope, notInArray(leadRecordsTable.status, ["closed_won", "closed_lost"]))),
+      db.select({ value: count() }).from(callHistoryTable)
+        .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart))),
+      db.select({ value: count() }).from(callHistoryTable)
+        .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart), eq(callHistoryTable.direction, "inbound"))),
+      db.select({ value: count() }).from(callHistoryTable)
+        .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart), eq(callHistoryTable.direction, "outbound"))),
+      db.select({ value: count() }).from(autopilotReviewItemsTable)
+        .where(and(eq(autopilotReviewItemsTable.orgId, orgId), eq(autopilotReviewItemsTable.status, "pending"))),
+      db.select({
+        id: callHistoryTable.id,
+        callerName: callHistoryTable.callerName,
+        startedAt: callHistoryTable.startedAt,
+        summary: callHistoryTable.summary,
+        crmLeadName: leadRecordsTable.name,
+        crmContactName: crmActivitiesTable.contactName,
+      }).from(callHistoryTable)
+        .innerJoin(crmActivitiesTable, and(
+          eq(crmActivitiesTable.orgId, orgId),
+          eq(crmActivitiesTable.channel, "call"),
+          eq(crmActivitiesTable.twilioSid, callHistoryTable.twilioCallSid),
+        ))
+        .leftJoin(leadRecordsTable, and(
+          eq(leadRecordsTable.id, crmActivitiesTable.leadId),
+          eq(leadRecordsTable.orgId, orgId),
+        ))
+        .where(and(
+          eq(callHistoryTable.orgId, orgId),
+          gte(callHistoryTable.startedAt, windowStart),
+          eq(callHistoryTable.status, "completed"),
+          isNotNull(callHistoryTable.summary),
+        ))
+        .orderBy(desc(callHistoryTable.startedAt))
+        .limit(10),
+      db.select({
+        outcome: autopilotActivityLogTable.outcome,
+        count: count(),
+      }).from(autopilotActivityLogTable)
+        .where(and(eq(autopilotActivityLogTable.orgId, orgId), gte(autopilotActivityLogTable.createdAt, windowStart)))
+        .groupBy(autopilotActivityLogTable.outcome),
+    ]);
+    const recentCallIds = recentCalls.map((call) => call.id);
+    const proposals = recentCallIds.length
+      ? await db.select({
+          sourceCallId: autopilotReviewItemsTable.sourceCallId,
+          status: autopilotReviewItemsTable.status,
+        }).from(autopilotReviewItemsTable)
+          .where(and(
+            eq(autopilotReviewItemsTable.orgId, orgId),
+            inArray(autopilotReviewItemsTable.sourceCallId, recentCallIds),
+          ))
+      : [];
+    const proposalByCall = new Map(proposals.map((proposal) => [proposal.sourceCallId, proposal.status]));
+    const automationRuns = { success: 0, noop: 0, blocked: 0, error: 0, skipped: 0 };
+    for (const row of runRows) {
+      if (row.outcome in automationRuns) {
+        automationRuns[row.outcome as keyof typeof automationRuns] += Number(row.count);
+      }
+    }
+    res.json({
+      generatedAt,
+      windowStart,
+      newLeads: Number(newLeadCount?.value ?? 0),
+      activeLeads: Number(activeLeadCount?.value ?? 0),
+      calls: {
+        total: Number(totalCallCount?.value ?? 0),
+        inbound: Number(inboundCallCount?.value ?? 0),
+        outbound: Number(outboundCallCount?.value ?? 0),
+      },
+      pendingApprovals: Number(pendingApprovalCount?.value ?? 0),
+      automationRuns,
+      recentCalls: recentCalls.map((call) => ({
+        id: call.id,
+        leadName: call.crmLeadName || call.crmContactName || call.callerName || "Lead",
+        startedAt: call.startedAt,
+        summary: (call.summary || "").slice(0, 1000),
+        hasProposal: proposalByCall.has(call.id),
+        proposalStatus: proposalByCall.get(call.id) ?? null,
+      })),
+    });
+  } catch (err) {
+    req.log?.error({ err }, "Autopilot daily brief failed");
+    res.status(500).json({ error: "Failed to load daily brief" });
+  }
+});
+
+router.get("/autopilot/approval-queue", requireAutomationSubscription, async (req, res): Promise<void> => {
+  const access = await getManageableOrg(req, res);
+  if (!access) return;
+  try {
+    const rows = await db.select().from(autopilotReviewItemsTable)
+      .where(and(
+        eq(autopilotReviewItemsTable.orgId, access.orgId),
+        eq(autopilotReviewItemsTable.status, "pending"),
+      ))
+      .orderBy(desc(autopilotReviewItemsTable.createdAt))
+      .limit(100);
+    res.json({ items: rows.map(toApprovalItem) });
+  } catch (err) {
+    req.log?.error({ err }, "Autopilot approval queue failed");
+    res.status(500).json({ error: "Failed to load approval queue" });
+  }
+});
+
+router.post("/autopilot/follow-up-suggestions", requireAutomationSubscription, async (req, res): Promise<void> => {
+  const access = await getManageableOrg(req, res);
+  if (!access) return;
+  const callHistoryId = Number(req.body?.callHistoryId);
+  if (!Number.isInteger(callHistoryId) || callHistoryId < 1) {
+    res.status(400).json({ error: "A valid call history ID is required" });
+    return;
+  }
+  try {
+    const [call] = await db.select().from(callHistoryTable).where(and(
+      eq(callHistoryTable.id, callHistoryId),
+      eq(callHistoryTable.orgId, access.orgId),
+      eq(callHistoryTable.status, "completed"),
+    )).limit(1);
+    if (!call?.summary?.trim() || !call.twilioCallSid) {
+      res.status(404).json({ error: "Completed CRM call not found in this organization" });
+      return;
+    }
+    const [activity] = await db.select({
+      leadId: crmActivitiesTable.leadId,
+      contactName: crmActivitiesTable.contactName,
+    }).from(crmActivitiesTable).where(and(
+      eq(crmActivitiesTable.orgId, access.orgId),
+      eq(crmActivitiesTable.channel, "call"),
+      eq(crmActivitiesTable.twilioSid, call.twilioCallSid),
+    )).limit(1);
+    if (!activity) {
+      res.status(404).json({ error: "Completed CRM call not found in this organization" });
+      return;
+    }
+    const lead = activity.leadId
+      ? (await db.select({ id: leadRecordsTable.id, name: leadRecordsTable.name })
+          .from(leadRecordsTable)
+          .where(and(eq(leadRecordsTable.id, activity.leadId), eq(leadRecordsTable.orgId, access.orgId)))
+          .limit(1))[0]
+      : undefined;
+    const sourceLeadName = lead?.name || activity.contactName || call.callerName || "Lead";
+    const draft = buildFollowUpTaskDraft(sourceLeadName, call.summary);
+    const [org] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+      .from(organizationsTable)
+      .where(eq(organizationsTable.id, access.orgId))
+      .limit(1);
+    if (!org) {
+      res.status(404).json({ error: "Organization not found" });
+      return;
+    }
+    const result = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(autopilotReviewItemsTable).where(and(
+        eq(autopilotReviewItemsTable.orgId, access.orgId),
+        eq(autopilotReviewItemsTable.sourceCallId, call.id),
+      )).limit(1);
+      if (existing) return { row: existing, duplicate: true };
+      const [inserted] = await tx.insert(autopilotReviewItemsTable).values({
+        orgId: access.orgId,
+        ownerUserId: org.ownerUserId,
+        sourceCallId: call.id,
+        sourceLeadId: lead?.id ?? null,
+        sourceLeadName,
+        sourceCallAt: call.startedAt,
+        sourceSummary: call.summary!,
+        taskTitle: draft.title,
+        taskDescription: draft.description,
+        status: "pending",
+        createdByUserId: access.userId,
+      }).onConflictDoNothing().returning();
+      if (inserted) return { row: inserted, duplicate: false };
+      const [raced] = await tx.select().from(autopilotReviewItemsTable).where(and(
+        eq(autopilotReviewItemsTable.orgId, access.orgId),
+        eq(autopilotReviewItemsTable.sourceCallId, call.id),
+      )).limit(1);
+      if (!raced) throw new Error("Could not recover the existing follow-up suggestion");
+      return { row: raced, duplicate: true };
+    });
+    res.json({ item: toApprovalItem(result.row), duplicate: result.duplicate });
+  } catch (err) {
+    req.log?.error({ err }, "Autopilot follow-up suggestion failed");
+    res.status(500).json({ error: "Failed to create follow-up suggestion" });
+  }
+});
+
+router.post("/autopilot/approval-queue/:id/decision", requireAutomationSubscription, async (req, res): Promise<void> => {
+  const access = await getManageableOrg(req, res);
+  if (!access) return;
+  const id = Number(req.params.id);
+  const decision = req.body?.decision;
+  if (!Number.isInteger(id) || id < 1 || (decision !== "approved" && decision !== "dismissed")) {
+    res.status(400).json({ error: "A valid review item and decision are required" });
+    return;
+  }
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const [item] = await tx.select().from(autopilotReviewItemsTable).where(and(
+        eq(autopilotReviewItemsTable.id, id),
+        eq(autopilotReviewItemsTable.orgId, access.orgId),
+      )).for("update").limit(1);
+      if (!item) return { kind: "missing" as const };
+      if (item.status !== "pending") return { kind: "decided" as const };
+      let businessTaskId: number | null = null;
+      if (decision === "approved") {
+        const task = await createBusinessTaskInTransaction(tx, item.ownerUserId, {
+          title: item.taskTitle,
+          description: item.taskDescription,
+          status: "todo",
+          priority: "medium",
+          tags: "pablo-follow-up",
+        });
+        businessTaskId = task.id;
+      }
+      const [updated] = await tx.update(autopilotReviewItemsTable).set({
+        status: decision,
+        businessTaskId,
+        decidedByUserId: access.userId,
+        decidedAt: new Date(),
+      }).where(and(
+        eq(autopilotReviewItemsTable.id, item.id),
+        eq(autopilotReviewItemsTable.orgId, access.orgId),
+        eq(autopilotReviewItemsTable.status, "pending"),
+      )).returning();
+      return { kind: "updated" as const, item: updated, businessTaskId };
+    });
+    if (outcome.kind === "missing") {
+      res.status(404).json({ error: "Review item not found" });
+      return;
+    }
+    if (outcome.kind === "decided") {
+      res.status(409).json({ error: "Review item has already been decided" });
+      return;
+    }
+    res.json({ item: toApprovalItem(outcome.item), businessTaskId: outcome.businessTaskId });
+  } catch (err) {
+    req.log?.error({ err }, "Autopilot review decision failed");
+    res.status(500).json({ error: "Failed to record review decision" });
+  }
+});
 
 /**
  * GET /api/autopilot — Pablo Prime's org-scoped automation control surface:

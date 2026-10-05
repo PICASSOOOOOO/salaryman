@@ -72,7 +72,7 @@ router.post("/business/tasks", async (req: Request, res: Response) => {
   const task = await createBusinessTask(uid(req), {
     title, description, status, priority, assignee, dueDate, project, tags,
   });
-  res.json({ task });
+  return res.json({ task });
 });
 
 router.put("/business/tasks/:id", async (req: Request, res: Response) => {

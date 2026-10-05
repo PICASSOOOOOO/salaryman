@@ -442,7 +442,12 @@ async function persistSmsPreference(userId: string, contactId: number, smsOptIn:
   const smsOptedOutAt = smsOptIn ? null : now;
   if (existing) {
     await db.update(contactChannelPrefsTable)
-      .set({ smsOptIn, smsOptedOutAt, updatedAt: now })
+      .set({
+        smsOptIn,
+        smsOptedOutAt,
+        ...(smsOptIn ? { smsConsentedAt: now } : {}),
+        updatedAt: now,
+      })
       .where(where);
     return;
   }
@@ -451,6 +456,7 @@ async function persistSmsPreference(userId: string, contactId: number, smsOptIn:
     contactId,
     smsOptIn,
     smsOptedOutAt,
+    smsConsentedAt: smsOptIn ? now : null,
   });
 }
 

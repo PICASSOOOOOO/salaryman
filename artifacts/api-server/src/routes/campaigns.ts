@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, or, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import {
@@ -13,6 +13,7 @@ import {
   contactsTable,
   contactChannelPrefsTable,
   notificationsTable,
+  phoneNumbersTable,
 } from "@workspace/db";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
@@ -21,6 +22,7 @@ import { sendSmsMessage } from "../lib/telephony-service";
 import { toE164 } from "../lib/phone";
 import { resolveUserCountry } from "../lib/phone-context";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
+import { hasRecordedSmsMarketingPermission } from "../lib/campaign-consent";
 
 const router = Router();
 
@@ -327,6 +329,50 @@ router.get("/campaigns/sms", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/campaigns/sms/audience", async (req: Request, res: Response) => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+  try {
+    const contacts = await db.select({
+      id: contactsTable.id,
+      name: contactsTable.name,
+      phone: contactsTable.phone,
+      tag: contactsTable.tag,
+      dealStage: contactsTable.dealStage,
+    }).from(contactsTable)
+      .where(eq(contactsTable.userId, userId))
+      .orderBy(desc(contactsTable.id))
+      .limit(500);
+    const ids = contacts.map((contact) => contact.id);
+    const rows = ids.length
+      ? await db.select().from(contactChannelPrefsTable)
+        .where(and(
+          eq(contactChannelPrefsTable.userId, userId),
+          inArray(contactChannelPrefsTable.contactId, ids),
+        ))
+        .orderBy(desc(contactChannelPrefsTable.updatedAt))
+      : [];
+    const latest = new Map<number, typeof rows[number]>();
+    for (const row of rows) {
+      if (!latest.has(row.contactId)) latest.set(row.contactId, row);
+    }
+    res.json({
+      contacts: contacts.map((contact) => {
+        const preference = latest.get(contact.id);
+        return {
+          ...contact,
+          smsOptIn: preference?.smsOptIn ?? false,
+          smsConsentedAt: preference?.smsConsentedAt ?? null,
+          smsOptedOutAt: preference?.smsOptedOutAt ?? null,
+        };
+      }),
+    });
+  } catch (err: any) {
+    console.error("[campaigns] sms audience error:", err.message);
+    res.status(500).json({ error: "Failed to load SMS campaign audience" });
+  }
+});
+
 router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
@@ -420,7 +466,7 @@ router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
 router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
-  const { test, testPhone } = req.body;
+  const { test, testPhone } = req.body ?? {};
 
   try {
     const [campaign] = await db
@@ -433,7 +479,24 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     // relying on whichever membership happens to be resolved later.
     const campaignOrgId = (await resolveOrgForUser(userId))?.orgId ?? undefined;
 
-    const campaignCountry = "US";
+    const [campaignSender] = await db
+      .select({
+        id: phoneNumbersTable.id,
+        countryCode: phoneNumbersTable.countryCode,
+      })
+      .from(phoneNumbersTable)
+      .where(and(
+        eq(phoneNumbersTable.isActive, true),
+        campaignOrgId
+          ? or(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.orgId, campaignOrgId))
+          : eq(phoneNumbersTable.userId, userId),
+      ))
+      .limit(1);
+    if (!campaignSender) {
+      res.status(400).json({ error: "Assign an active organization-owned Twilio number before starting an SMS campaign." });
+      return;
+    }
+    const campaignCountry = campaignSender.countryCode || "US";
 
     if (test) {
       if (!testPhone) { res.status(400).json({ error: "Test phone number required" }); return; }
@@ -446,12 +509,16 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
         phone: e164,
         body: `[TEST] ${campaign.messageBody}`,
         defaultCountry: campaignCountry,
+        phoneNumberId: campaignSender.id,
       });
       res.json({ ok: true, message: `Test SMS sent to ${e164}` });
       return;
     }
 
-    if (campaign.status === "sent") { res.status(400).json({ error: "Campaign already sent" }); return; }
+    if (campaign.status !== "draft" && campaign.status !== "scheduled") {
+      res.status(409).json({ error: "Campaign is already sending or has been sent." });
+      return;
+    }
 
     const contacts = await db
       .select()
@@ -463,22 +530,41 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     if (filter.tag) eligible = eligible.filter((c) => c.tag === filter.tag);
     if (filter.dealStage) eligible = eligible.filter((c) => c.dealStage === filter.dealStage);
 
-    const unsubscribedPrefs = await db
+    const campaignContactIds = eligible.map((contact) => contact.id);
+    const campaignPrefs = campaignContactIds.length
+      ? await db
       .select()
       .from(contactChannelPrefsTable)
-      .where(and(eq(contactChannelPrefsTable.userId, userId), eq(contactChannelPrefsTable.smsOptIn, false)));
-    const unsubscribedContactIds = new Set(unsubscribedPrefs.map((p) => p.contactId));
-    eligible = eligible.filter((c) => !unsubscribedContactIds.has(c.id));
+      .where(and(
+        eq(contactChannelPrefsTable.userId, userId),
+        inArray(contactChannelPrefsTable.contactId, campaignContactIds),
+      ))
+      .orderBy(desc(contactChannelPrefsTable.updatedAt))
+      : [];
+    const latestPrefs = new Map<number, typeof campaignPrefs[number]>();
+    for (const pref of campaignPrefs) {
+      if (!latestPrefs.has(pref.contactId)) latestPrefs.set(pref.contactId, pref);
+    }
+    eligible = eligible.filter((contact) => hasRecordedSmsMarketingPermission(latestPrefs.get(contact.id)));
 
     if (eligible.length === 0) {
       res.status(400).json({ error: "No eligible recipients with phone numbers" });
       return;
     }
 
-    await db
+    const [claimedCampaign] = await db
       .update(smsCampaignsTable)
       .set({ status: "sending", totalRecipients: eligible.length, updatedAt: new Date() })
-      .where(eq(smsCampaignsTable.id, campaign.id));
+      .where(and(
+        eq(smsCampaignsTable.id, campaign.id),
+        eq(smsCampaignsTable.userId, userId),
+        eq(smsCampaignsTable.status, campaign.status),
+      ))
+      .returning({ id: smsCampaignsTable.id });
+    if (!claimedCampaign) {
+      res.status(409).json({ error: "Campaign is already sending or has been sent." });
+      return;
+    }
 
     res.json({ ok: true, total: eligible.length, message: `Sending to ${eligible.length} recipients...` });
 
@@ -487,6 +573,20 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       let sent = 0;
       let failed = 0;
       for (const contact of eligible) {
+        const freshPrefs = await db
+          .select()
+          .from(contactChannelPrefsTable)
+          .where(and(
+            eq(contactChannelPrefsTable.userId, userId),
+            eq(contactChannelPrefsTable.contactId, contact.id),
+          ))
+          .orderBy(desc(contactChannelPrefsTable.updatedAt))
+          .limit(1);
+        const freshPref = freshPrefs[0];
+        if (!hasRecordedSmsMarketingPermission(freshPref)) {
+          failed++;
+          continue;
+        }
         const e164 = toE164(contact.phone, campaignCountry);
         if (!e164) { failed++; continue; }
         const _gateSms = await _consumeUsage_cs(req.user?.id ?? "", req.user?.email, "sms_count", 1);
@@ -501,6 +601,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
             contactId: contact.id,
             contactName: contact.name,
             defaultCountry: campaignCountry,
+            phoneNumberId: campaignSender.id,
           });
           await db.insert(smsCampaignRecipientsTable).values({
             campaignId: campaign.id,
@@ -793,6 +894,10 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
     res.status(400).json({ error: "Phone-call permission must be true or false" });
     return;
   }
+  if (smsOptIn !== undefined && typeof smsOptIn !== "boolean") {
+    res.status(400).json({ error: "SMS marketing permission must be true or false" });
+    return;
+  }
   try {
     const [contact] = await db
       .select({ id: contactsTable.id })
@@ -818,8 +923,12 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
       }
       if (smsOptIn !== undefined) {
         updates.smsOptIn = smsOptIn;
-        if (smsOptIn) updates.smsOptedOutAt = null;
-        else if (existing.smsOptIn) updates.smsOptedOutAt = now;
+        if (smsOptIn) {
+          updates.smsConsentedAt = now;
+          updates.smsOptedOutAt = null;
+        } else {
+          updates.smsOptedOutAt = existing.smsOptIn ? now : existing.smsOptedOutAt ?? null;
+        }
       }
       if (phoneCallOptIn !== undefined) {
         updates.phoneCallOptIn = phoneCallOptIn;
@@ -847,8 +956,9 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
           contactId,
           userId,
           emailOptIn: emailOptIn ?? true,
-          smsOptIn: smsOptIn ?? true,
-          smsOptedOutAt: smsOptIn === false ? now : null,
+          smsOptIn: smsOptIn ?? false,
+          smsOptedOutAt: null,
+          smsConsentedAt: smsOptIn === true ? now : null,
           phoneCallOptIn: phoneCallOptIn ?? false,
           phoneCallConsentedAt: phoneCallOptIn ? now : null,
           phoneCallOptedOutAt: phoneCallOptIn === false ? now : null,

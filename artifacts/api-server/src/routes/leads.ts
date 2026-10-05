@@ -528,7 +528,10 @@ router.get("/leads/:id", async (req: Request, res: Response) => {
     phoneVariants.push(normalizedPhone.slice(-10));
   }
   const callHistory = lead.phone ? await db.select().from(callHistoryTable).where(
-    or(...phoneVariants.map(p => eq(callHistoryTable.recipientNumber, p)))
+    and(
+      eq(callHistoryTable.orgId, membership.orgId),
+      or(...phoneVariants.map(p => eq(callHistoryTable.recipientNumber, p))),
+    )
   ).orderBy(desc(callHistoryTable.startedAt)).limit(20) : [];
 
   res.json({ lead, notes, callHistory, role: membership.role });
