@@ -167,6 +167,15 @@ const STATIC_BODY = {
     ${P("For questions not covered in the documents above, use the contact page to reach the team.")}
   `,
 
+  "/sms-opt-in": () => `
+    ${H1("Enable SALARYMAN text messages")}
+    ${P("SALARYMAN Text Updates sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. Message frequency varies based on account activity and settings.")}
+    <p style="color:#a1a1aa;margin:0 0 16px"><input type="checkbox" aria-label="Optional consent to receive SALARYMAN text messages" /> I agree to receive recurring automated text messages from SALARYMAN at the mobile number I use to send the confirmation. Consent is optional and is not a condition of purchase.</p>
+    ${P("To enroll, select the optional checkbox, continue to the SMS confirmation, and send the prefilled START message from your mobile number to +18882307698.")}
+    <p style="color:#a1a1aa;margin:0 0 16px">Message and data rates may apply. Reply STOP to opt out or HELP for help. For support, email <a href="mailto:support@picassoo.ai" style="color:#38bdf8">support@picassoo.ai</a>.</p>
+    <p>${A("/legal/privacy","Privacy Policy")} &nbsp;·&nbsp; ${A("/legal/terms","Terms of Service")}</p>
+  `,
+
   "/legal/terms": () => `
     ${H1("Terms of Service")}
     ${P("These Terms of Service govern your use of the SALARYMAN platform operated by Picasso AI. By accessing or using SALARYMAN, you agree to be bound by these terms.")}
@@ -181,6 +190,10 @@ const STATIC_BODY = {
     ])}
     ${H2("SUBSCRIPTIONS")}
     ${P("The free tier gives you access to Pablo and core tools. PABLO PRIME ($100/month) grants access to Pixel Agents and automation tools. CALLL HOME is a separate $50/month subscription. Subscriptions renew monthly until cancelled.")}
+    ${H2("SMS MESSAGING PROGRAM")}
+    ${P("SALARYMAN Text Updates sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. To opt in, select the optional checkbox on the SMS opt-in page and send START from your mobile number. Consent is not a condition of purchase.")}
+    ${P("Message frequency varies. Message and data rates may apply. Reply STOP to cancel or HELP for help. Customer care: support@picassoo.ai or the Contact Us page. Wireless carriers are not liable for delayed or undelivered messages.")}
+    <p>${A("/sms-opt-in","SMS opt-in page")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
     ${H2("INTELLECTUAL PROPERTY")}
     ${P("SALARYMAN, Picasso AI, Pablo, Jean Claw, and Pixel Agents are trademarks of Picasso AI. Content you create using the platform remains your property.")}
     <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")}</p>
@@ -205,6 +218,9 @@ const STATIC_BODY = {
       "To communicate service updates, support responses, and relevant announcements",
       "To maintain platform security and prevent abuse",
     ])}
+    ${H2("SMS AND CONSENT DATA")}
+    ${P("Recurring SALARYMAN text messages are informational updates about account activity, CALLL HOME, and service updates. Message frequency varies; message and data rates may apply. Reply STOP to opt out or HELP for help.")}
+    ${P("All the above categories exclude text messaging originator opt-in data and consent; this information won’t be shared with any third parties.")}
     ${H2("YOUR RIGHTS")}
     ${P("You may request access to, correction of, or deletion of your personal data at any time. Contact us through the contact page to make a data request.")}
     ${H2("DATA RETENTION")}
@@ -216,7 +232,7 @@ const STATIC_BODY = {
     ${H1("Contact Picasso AI")}
     ${P("Get in touch with the SALARYMAN team for support, partnerships, press inquiries, and general questions.")}
     ${H2("SUPPORT")}
-    ${P("For platform support and account questions, use the contact form inside the SALARYMAN platform or reach us through Pablo — type 'I need help' to get started.")}
+    <p style="color:#a1a1aa;margin:0 0 16px">For platform support and account questions, use the contact form or email <a href="mailto:support@picassoo.ai" style="color:#38bdf8">support@picassoo.ai</a>.</p>
     ${H2("PARTNERSHIPS")}
     ${P("Interested in partnering with Picasso AI or integrating with the SALARYMAN platform? Reach out through the investor contact form on the investors page.")}
     ${H2("PRESS & MEDIA")}

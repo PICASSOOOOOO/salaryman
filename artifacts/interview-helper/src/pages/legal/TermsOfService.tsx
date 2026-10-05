@@ -44,30 +44,34 @@ export default function TermsOfService() {
       <h2>6. Subscriptions</h2>
       <p>Certain features — including Passport and Calll Home — require a paid subscription. Subscriptions are billed on a recurring basis (monthly or as otherwise specified at purchase). You may cancel at any time in accordance with the Cancellation Policy. The Company reserves the right to modify subscription pricing with 30 days' notice.</p>
 
-      <h2>7. Physical Merchandise</h2>
+      <h2>7. SMS Messaging Program</h2>
+      <p><strong>SALARYMAN Text Updates</strong> sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. By selecting the optional consent checkbox on our <a href="/sms-opt-in">SMS opt-in page</a> and sending START from your mobile number, you agree to receive these messages. Consent is not a condition of purchase. Message frequency varies, and message and data rates may apply.</p>
+      <p>Reply <strong>STOP</strong> to cancel or <strong>HELP</strong> for help. For customer care, email <a href="mailto:support@picassoo.ai">support@picassoo.ai</a> or use our <a href="/legal/contact">Contact Us</a> page. Wireless carriers are not liable for delayed or undelivered messages.</p>
+
+      <h2>8. Physical Merchandise</h2>
       <p>Physical merchandise is fulfilled by the <strong>PABLO CORP Merch Dept</strong>, a division of the Company. All physical merchandise purchases are subject to the Return Policy and applicable shipping terms.</p>
 
-      <h2>8. Intellectual Property</h2>
+      <h2>9. Intellectual Property</h2>
       <p>All content, software, trademarks, and trade dress associated with SALARYMAN and the Company are owned by or licensed to the Company. You are granted a limited, non-exclusive, non-transferable license to access and use the Service for personal, non-commercial purposes.</p>
 
-      <h2>9. Termination</h2>
+      <h2>10. Termination</h2>
       <p>The Company may suspend or terminate your account at any time for violation of these Terms or for any other reason at our discretion. Upon termination, your right to use the Service immediately ceases. Unused FIAT (ƒ) virtual currency will be forfeited upon account termination due to Terms violations.</p>
 
-      <h2>10. Disclaimer of Warranties</h2>
+      <h2>11. Disclaimer of Warranties</h2>
       <p>The Service is provided "as is" and "as available" without warranties of any kind, whether express or implied. The Company does not warrant that the Service will be uninterrupted, error-free, or free of viruses or other harmful components.</p>
       <p>The Service may use approximate regional signals such as IP-derived region, browser timezone, language, device settings, or a selected city to route services and display local information. These signals are not precise GPS, proof of residence, emergency location, or a guarantee that any regional service is available. AI output, fictional simulation, financial features, communications, and location-based information are provided for general use and are not legal, financial, medical, employment, emergency, or location advice.</p>
 
-      <h2>11. Limitation of Liability</h2>
+      <h2>12. Limitation of Liability</h2>
       <p>To the fullest extent permitted by law, the Company shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of or inability to use the Service, even if advised of the possibility of such damages. Nothing in these Terms excludes or limits liability that applicable law does not allow to be excluded or limited.</p>
 
-      <h2>12. Governing Law</h2>
+      <h2>13. Governing Law</h2>
       <p>These Terms are governed by the laws of the State of California, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be resolved through binding arbitration administered under the American Arbitration Association rules.</p>
 
-      <h2>13. Changes to Terms</h2>
+      <h2>14. Changes to Terms</h2>
       <p>The Company reserves the right to modify these Terms at any time. We will provide notice of material changes via email or a prominent notice on the platform. Continued use of the Service following any changes constitutes your acceptance of the new Terms.</p>
 
-      <h2>14. Contact</h2>
-      <p>Questions about these Terms? Please visit our <a href="/legal/contact">Contact Us</a> page.</p>
+      <h2>15. Contact</h2>
+      <p>Questions about these Terms? Please visit our <a href="/legal/contact">Contact Us</a> page or email <a href="mailto:support@picassoo.ai">support@picassoo.ai</a>.</p>
       <p className="text-sm text-zinc-500 mt-2">Picasso AI, LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );

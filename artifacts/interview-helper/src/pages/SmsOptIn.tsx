@@ -43,8 +43,9 @@ export default function SmsOptIn() {
             Enable SALARYMAN text messages
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400">
-            Receive important account, CALLL HOME, and service updates by SMS from SALARYMAN.
-            Message frequency varies based on your activity and settings.
+            Opt in to recurring automated informational text messages from SALARYMAN about
+            account activity, CALLL HOME, and service updates. Message frequency varies based
+            on your activity and settings.
           </p>
 
           {started ? (
@@ -53,7 +54,8 @@ export default function SmsOptIn() {
                 <Check className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 <p>
                   Your SMS app should now be ready with the word <strong>START</strong>.
-                  Send that message to finish confirming your opt-in.
+                  Send it to <strong>{TWILIO_NUMBER}</strong> from your mobile number to finish
+                  confirming your opt-in.
                 </p>
               </div>
             </div>
@@ -68,8 +70,8 @@ export default function SmsOptIn() {
                 />
                 <span className="text-sm leading-6 text-zinc-300">
                   I agree to receive recurring automated text messages from SALARYMAN at the
-                  mobile number I use to send the confirmation. Consent is not a condition of
-                  purchasing anything.
+                  mobile number I use to send the confirmation. This consent is optional and
+                  is not a condition of purchase.
                 </span>
               </label>
 
@@ -80,6 +82,9 @@ export default function SmsOptIn() {
               >
                 Continue to SMS confirmation
               </button>
+              <p className="mt-4 text-xs leading-5 text-zinc-500">
+                Continuing opens a text addressed to SALARYMAN. Send START to complete enrollment.
+              </p>
             </form>
           )}
 
@@ -87,7 +92,11 @@ export default function SmsOptIn() {
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sky-400/70" aria-hidden="true" />
             <p>
               Message and data rates may apply. Reply <strong className="text-zinc-300">STOP</strong> to
-              opt out or <strong className="text-zinc-300">HELP</strong> for help. See our{" "}
+              opt out or <strong className="text-zinc-300">HELP</strong> for help. You can also email{" "}
+              <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="mailto:support@picassoo.ai">
+                support@picassoo.ai
+              </a>
+              . See our{" "}
               <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/legal/privacy">
                 Privacy Policy
               </a>{" "}

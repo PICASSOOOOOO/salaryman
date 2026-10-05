@@ -32,6 +32,12 @@
       "ogTitle": "Investors — SALARYMAN by Picasso AI",
       "ogDescription": "Picasso AI is building the next generation AI business operating system. Learn about investment and partnership opportunities."
     },
+    "/sms-opt-in": {
+      "title": "SMS Opt-In — SALARYMAN",
+      "description": "Voluntarily enroll in recurring automated SALARYMAN informational text messages. Message frequency varies; message and data rates may apply.",
+      "ogTitle": "SALARYMAN SMS Text Updates",
+      "ogDescription": "Review the SALARYMAN text message program and its optional opt-in, frequency, rates, STOP, and HELP information."
+    },
     "/legal": {
       "title": "Legal — SALARYMAN by Picasso AI",
       "description": "Legal information for SALARYMAN by Picasso AI: Terms of Service, Privacy Policy, Refund Policy, Cancellation Policy, and more.",
