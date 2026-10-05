@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
+import multer from "multer";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { getUncachableResendClient } from "../lib/resend";
 import { db, contactsTable, contactInteractionsTable, userMemoryTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { parseContactImportFile } from "../lib/contact-import";
 import { fireWebhook } from "../lib/webhook";
 import { fireDiscordWebhook } from "../lib/discord-webhook";
 import { safeFetch, SafeFetchError } from "../lib/safe-fetch";
@@ -11,6 +13,10 @@ import { getSkillCatalog } from "../lib/ai-skills";
 import { requireFeature } from "../middlewares/requirePro";
 
 const router: IRouter = Router();
+const contactImportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 // ── Strip HTML to plain text ──────────────────────────────────────────────────
 function htmlToText(html: string): string {
@@ -276,6 +282,137 @@ router.post("/tools/contacts", async (req, res) => {
 
   res.status(201).json({ contact: record });
 });
+
+router.post(
+  "/tools/contacts/import-file",
+  (req, res, next) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
+    next();
+  },
+  contactImportUpload.single("file"),
+  async (req, res): Promise<void> => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
+    const file = (req as typeof req & {
+      file?: { buffer: Buffer; mimetype: string; originalname: string };
+    }).file;
+    if (!file?.buffer?.length) {
+      res.status(400).json({ error: "Choose a CSV or XLSX file to import." });
+      return;
+    }
+    if (!/\.(csv|xlsx|xlsm)$/i.test(file.originalname)) {
+      res.status(400).json({ error: "Use a .csv, .xlsx, or .xlsm file." });
+      return;
+    }
+
+    let parsed;
+    try {
+      parsed = await parseContactImportFile(file.buffer, file.mimetype || "", file.originalname);
+    } catch (error) {
+      req.log.warn(
+        { error: error instanceof Error ? error.message : "unknown", fileName: file.originalname },
+        "Could not parse CRM contacts import",
+      );
+      res.status(400).json({ error: "Could not read this file. Check that it is a valid CSV or Excel workbook." });
+      return;
+    }
+    if (parsed.headerCount === 0) {
+      res.status(400).json({ error: "The file is empty or has no header row." });
+      return;
+    }
+    if (!parsed.hasNameHeader) {
+      res.status(400).json({
+        error: 'Add a "Name" column (or Full Name, Contact Name, or Lead Name) and try again.',
+      });
+      return;
+    }
+    if (parsed.rows.length === 0) {
+      res.status(400).json({ error: "No contact rows found below the header." });
+      return;
+    }
+    if (parsed.rows.length > 5000) {
+      res.status(400).json({ error: "A single import can contain up to 5,000 contact rows." });
+      return;
+    }
+
+    const existing = await db
+      .select({ email: contactsTable.email, phone: contactsTable.phone })
+      .from(contactsTable)
+      .where(eq(contactsTable.userId, userId));
+    const normalizedEmail = (value: string) => value.trim().toLowerCase();
+    const normalizedPhone = (value: string) => value.replace(/\D/g, "");
+    const seenEmails = new Set(existing.map(contact => normalizedEmail(contact.email)).filter(Boolean));
+    const seenPhones = new Set(existing.map(contact => normalizedPhone(contact.phone)).filter(Boolean));
+    const accepted: Array<Omit<typeof contactsTable.$inferInsert, "id" | "createdAt">> = [];
+    let duplicatesSkipped = 0;
+    let invalidRows = 0;
+
+    for (const row of parsed.rows) {
+      const name = row.name.trim();
+      const email = row.email.trim();
+      const phone = row.phone.trim();
+      const dealValueText = row.dealValue.trim().replace(/[$,\s]/g, "");
+      const dealValue = dealValueText ? Number(dealValueText) : null;
+      if (
+        !name ||
+        row.tag.length > 50 ||
+        row.dealStage.length > 50 ||
+        (dealValue !== null && !Number.isSafeInteger(dealValue))
+      ) {
+        invalidRows += 1;
+        continue;
+      }
+
+      const emailKey = normalizedEmail(email);
+      const phoneKey = normalizedPhone(phone);
+      if ((emailKey && seenEmails.has(emailKey)) || (phoneKey && seenPhones.has(phoneKey))) {
+        duplicatesSkipped += 1;
+        continue;
+      }
+
+      accepted.push({
+        userId,
+        name,
+        email,
+        phone,
+        address: row.address,
+        age: row.age,
+        ethnicity: row.ethnicity,
+        hometown: row.hometown,
+        timezone: row.timezone,
+        kids: row.kids,
+        bio: row.bio,
+        tag: row.tag,
+        dealStage: row.dealStage,
+        dealValue,
+        company: row.company,
+      });
+      if (emailKey) seenEmails.add(emailKey);
+      if (phoneKey) seenPhones.add(phoneKey);
+    }
+
+    if (accepted.length > 0) {
+      await db.transaction(async tx => {
+        for (let index = 0; index < accepted.length; index += 250) {
+          await tx.insert(contactsTable).values(accepted.slice(index, index + 250));
+        }
+      });
+    }
+
+    res.json({
+      totalRows: parsed.rows.length,
+      imported: accepted.length,
+      duplicatesSkipped,
+      invalidRows,
+    });
+  },
+);
 
 router.put("/tools/contacts/:id", async (req, res) => {
   if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }

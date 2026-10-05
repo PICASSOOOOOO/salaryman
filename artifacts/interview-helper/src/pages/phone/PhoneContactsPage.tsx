@@ -14,6 +14,42 @@ import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 import type { CountryCode } from 'libphonenumber-js/max';
 import { PhoneCountrySelect } from './PhoneCountrySelect';
 
+function ContactDetails({ contact }: { contact: CRMContact }) {
+  const details = [
+    ["ADDRESS", contact.address],
+    ["AGE", contact.age],
+    ["ETHNICITY", contact.ethnicity],
+    ["HOMETOWN", contact.hometown],
+    ["TIME ZONE", contact.timezone],
+    ["CHILDREN", contact.kids],
+    ["TAG", contact.tag],
+    ["DEAL STAGE", contact.dealStage],
+    ["DEAL VALUE", contact.dealValue == null ? "" : `$${contact.dealValue.toLocaleString()}`],
+    ["NOTES", contact.bio],
+    ["ADDED", contact.createdAt ? new Date(contact.createdAt).toLocaleDateString() : ""],
+  ].filter(([, value]) => Boolean(value));
+
+  if (details.length === 0) return null;
+  return (
+    <details
+      onClick={event => event.stopPropagation()}
+      style={{ marginTop: 8, color: slate(0.65), fontSize: "0.48rem" }}
+    >
+      <summary style={{ cursor: "pointer", color: slate(0.6), letterSpacing: "0.12em" }}>
+        CRM DETAILS
+      </summary>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8, padding: "10px 2px 2px" }}>
+        {details.map(([label, value]) => (
+          <div key={label} style={{ minWidth: 0 }}>
+            <div style={{ color: slate(0.4), fontSize: "0.4rem", letterSpacing: "0.1em" }}>{label}</div>
+            <div style={{ color: slate(0.75), overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{value}</div>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 export default function PhoneContactsPage() {
   const isMobile = useIsMobile();
 
@@ -42,7 +78,7 @@ export default function PhoneContactsPage() {
   useEffect(() => {
     if (!userId) return;
     setError('');
-    apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
+    apiFetch(apiUrl('twilio/contacts'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
@@ -58,7 +94,9 @@ export default function PhoneContactsPage() {
       const q = search.toLowerCase();
       list = list.filter(c =>
         c.name.toLowerCase().includes(q) || c.phone.includes(q) ||
-        c.email.toLowerCase().includes(q) || (c.company ?? '').toLowerCase().includes(q)
+        c.email.toLowerCase().includes(q) || (c.company ?? '').toLowerCase().includes(q) ||
+        (c.hometown ?? '').toLowerCase().includes(q) || (c.tag ?? '').toLowerCase().includes(q) ||
+        (c.dealStage ?? '').toLowerCase().includes(q) || (c.bio ?? '').toLowerCase().includes(q)
       );
     }
     return [...list].sort((a, b) => sortBy === 'company'
@@ -67,6 +105,8 @@ export default function PhoneContactsPage() {
     );
   }, [contacts, search, sortBy, contactFilter]);
 
+  const dialableFiltered = useMemo(() => filtered.filter(c => c.phone?.trim()), [filtered]);
+
   const companies = useMemo(() => {
     const map = new Map<string, number>();
     contacts.forEach(c => { if (c.company) map.set(c.company, (map.get(c.company) || 0) + 1); });
@@ -74,15 +114,25 @@ export default function PhoneContactsPage() {
   }, [contacts]);
 
   const toggleSelect = (id: number) => {
+    if (!contacts.find(contact => contact.id === id)?.phone?.trim()) return;
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
   const selectAll = () => {
-    if (selected.size === filtered.length && filtered.length > 0) setSelected(new Set());
-    else setSelected(new Set(filtered.map(c => c.id)));
+    const allVisibleSelected = dialableFiltered.length > 0 && dialableFiltered.every(c => selected.has(c.id));
+    if (allVisibleSelected) {
+      setSelected(prev => {
+        const next = new Set(prev);
+        dialableFiltered.forEach(c => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelected(prev => new Set([...prev, ...dialableFiltered.map(c => c.id)]));
+    }
   };
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
+    if (!phone.trim()) return;
     setError('');
     setLoading(true);
     try {
@@ -109,7 +159,7 @@ export default function PhoneContactsPage() {
     if (selected.size === 0 || blasting) return;
     setBlasting(true);
     setError('');
-    const numbers = contacts.filter(c => selected.has(c.id)).map(c => ({ phone: c.phone, name: c.name }));
+    const numbers = contacts.filter(c => selected.has(c.id) && c.phone?.trim()).map(c => ({ phone: c.phone, name: c.name }));
     try {
       const d = await bridgeOutbound(async () => {
         const r = await apiFetch(apiUrl('twilio/batch-call'), {
@@ -140,7 +190,7 @@ export default function PhoneContactsPage() {
   return (
     <PhonePageLayout
       title="CONTACTS"
-      subtitle="Phone-enabled CRM contacts — search, select, batch dial"
+      subtitle="Shared CRM contact list — records without a number stay visible but cannot be dialed"
       icon={<Users size={24} style={{ color: slate(0.8) }} />}
       statusLine={
         <span style={{ color: slate(0.55) }}>
@@ -209,7 +259,9 @@ export default function PhoneContactsPage() {
           {viewMode === 'list' ? <Grid size={11} /> : <List size={11} />}
         </PhoneBtn>
         <PhoneBtn onClick={selectAll}>
-          {selected.size === filtered.length && filtered.length > 0 ? 'DESELECT ALL' : `SELECT ALL (${filtered.length})`}
+          {dialableFiltered.length > 0 && dialableFiltered.every(c => selected.has(c.id))
+            ? 'DESELECT VISIBLE'
+            : `SELECT DIALABLE (${dialableFiltered.length})`}
         </PhoneBtn>
         {selected.size > 0 && (
           <PhoneBtn onClick={blastSelected} disabled={blasting} color={primary}>
@@ -221,13 +273,13 @@ export default function PhoneContactsPage() {
 
       <PhoneCard>
         <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>CONTACTS WITH PHONE NUMBERS</span>
+          <span>CRM CONTACTS</span>
           <span style={{ color: slate(0.5), fontVariantNumeric: 'tabular-nums' }}>{filtered.length} / {contacts.length}</span>
         </PhoneCardHeader>
 
         {filtered.length === 0 ? (
           <EmptyState
-            message={contacts.length === 0 ? 'NO CONTACTS WITH PHONE NUMBERS — ADD CONTACTS IN THE CRM FIRST' : 'NO CONTACTS MATCH YOUR SEARCH'}
+            message={contacts.length === 0 ? 'NO CRM CONTACTS — ADD OR IMPORT CONTACTS IN THE CRM' : contactFilter === 'nums' ? 'NO CONTACTS WITH PHONE NUMBERS' : 'NO CONTACTS MATCH YOUR SEARCH'}
             icon={<Users size={32} />}
           />
         ) : viewMode === 'grid' ? (
@@ -239,13 +291,13 @@ export default function PhoneContactsPage() {
                   key={c.id}
                   onClick={() => toggleSelect(c.id)}
                   style={{
-                    padding: 14, borderRadius: 8, cursor: 'pointer',
+                    padding: 14, borderRadius: 8, cursor: c.phone?.trim() ? 'pointer' : 'default',
                     background: selected.has(c.id) ? slate(0.06) : slate(0.04),
                     border: `1px solid ${selected.has(c.id) ? slate(0.25) : slate(0.08)}`,
                     transition: 'all 0.15s',
                     position: 'relative' }}
                 >
-                  <div style={{ position: 'absolute', top: 10, right: 10, color: selected.has(c.id) ? slate(0.8) : slate(0.15) }}>
+                  <div style={{ position: 'absolute', top: 10, right: 10, color: c.phone?.trim() ? (selected.has(c.id) ? slate(0.8) : slate(0.15)) : slate(0.08) }}>
                     {selected.has(c.id) ? <CheckSquare size={14} /> : <Square size={14} />}
                   </div>
                   <div style={{
@@ -257,15 +309,19 @@ export default function PhoneContactsPage() {
                     {c.name[0]?.toUpperCase()}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: slate(0.85), marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                  <div style={{ fontSize: '0.48rem', color: slate(0.55), marginBottom: 2 }}>{formatPhone(c.phone)}</div>
+                  <div style={{ fontSize: '0.48rem', color: c.phone?.trim() ? slate(0.55) : slate(0.35), marginBottom: 2 }}>
+                    {c.phone?.trim() ? formatPhone(c.phone) : 'NO PHONE NUMBER'}
+                  </div>
                   {c.company && <div style={{ fontSize: '0.42rem', color: slate(0.55), marginTop: 2 }}>{c.company}</div>}
+                  <ContactDetails contact={c} />
                   <PhoneBtn
                     onClick={e => { e?.stopPropagation(); callSingle(c.phone, c.name, c.id); }}
                     color={primary}
                     size="sm"
                     style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
+                    disabled={!c.phone?.trim()}
                   >
-                    <Phone size={11} /> CALL
+                    <Phone size={11} /> {c.phone?.trim() ? 'CALL' : 'NO NUMBER'}
                   </PhoneBtn>
                 </div>
               );
@@ -276,42 +332,46 @@ export default function PhoneContactsPage() {
             {filtered.map((c, i) => {
               const colorFn = AVATAR_COLORS[i % AVATAR_COLORS.length];
               return (
-                <div
-                  key={c.id}
-                  style={{
-                    padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 12,
-                    borderBottom: `1px solid ${slate(0.04)}`,
-                    background: selected.has(c.id) ? slate(0.04) : 'transparent',
-                    cursor: 'pointer', transition: 'background 0.12s' }}
-                  onClick={() => toggleSelect(c.id)}
-                >
-                  <div style={{ color: selected.has(c.id) ? slate(0.8) : slate(0.15), flexShrink: 0 }}>
-                    {selected.has(c.id) ? <CheckSquare size={15} /> : <Square size={15} />}
-                  </div>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    background: slate(0.02),
-                    border: `1px solid ${colorFn(selected.has(c.id) ? 0.3 : 0.12)}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: '0.75rem', color: colorFn(selected.has(c.id) ? 0.8 : 0.5) }}>{c.name[0]?.toUpperCase()}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.7rem', color: slate(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                    <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span>{formatPhone(c.phone)}</span>
-                      {c.company && <span style={{ color: slate(0.55) }}>· {c.company}</span>}
-                      {c.email && <span style={{ color: slate(0.55) }}>· {c.email}</span>}
+                <div key={c.id} style={{ borderBottom: `1px solid ${slate(0.04)}` }}>
+                  <div
+                    style={{
+                      padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 12,
+                      background: selected.has(c.id) ? slate(0.04) : 'transparent',
+                      cursor: c.phone?.trim() ? 'pointer' : 'default', transition: 'background 0.12s' }}
+                    onClick={() => toggleSelect(c.id)}
+                  >
+                    <div style={{ color: c.phone?.trim() ? (selected.has(c.id) ? slate(0.8) : slate(0.15)) : slate(0.08), flexShrink: 0 }}>
+                      {selected.has(c.id) ? <CheckSquare size={15} /> : <Square size={15} />}
+                    </div>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8,
+                      background: slate(0.02),
+                      border: `1px solid ${colorFn(selected.has(c.id) ? 0.3 : 0.12)}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.75rem', color: colorFn(selected.has(c.id) ? 0.8 : 0.5) }}>{c.name[0]?.toUpperCase()}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.7rem', color: slate(0.85), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                      <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <span>{c.phone?.trim() ? formatPhone(c.phone) : 'NO PHONE NUMBER'}</span>
+                        {c.company && <span style={{ color: slate(0.55) }}>· {c.company}</span>}
+                        {c.email && <span style={{ color: slate(0.55) }}>· {c.email}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <PhoneBtn
+                        onClick={e => { e?.stopPropagation(); callSingle(c.phone, c.name, c.id); }}
+                        color={primary}
+                        size="sm"
+                        title={c.phone?.trim() ? `Call ${c.name}` : 'This contact has no phone number'}
+                        disabled={!c.phone?.trim()}
+                      >
+                        <Phone size={12} /> {c.phone?.trim() ? 'CALL' : 'NO NUMBER'}
+                      </PhoneBtn>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <PhoneBtn
-                      onClick={e => { e?.stopPropagation(); callSingle(c.phone, c.name, c.id); }}
-                      color={primary}
-                      size="sm"
-                      title={`Call ${c.name}`}
-                    >
-                      <Phone size={12} /> CALL
-                    </PhoneBtn>
+                  <div style={{ padding: '0 16px 10px 64px' }}>
+                    <ContactDetails contact={c} />
                   </div>
                 </div>
               );

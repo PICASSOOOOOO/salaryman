@@ -876,6 +876,29 @@ router.get("/twilio/system-status", requireAuth, requireFeature("phone_system"),
   res.json({ status: "online" });
 });
 
+router.get("/twilio/contacts", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
+    const contacts = await db
+      .select()
+      .from(contactsTable)
+      .where(eq(contactsTable.userId, userId))
+      .orderBy(contactsTable.createdAt);
+    res.json({
+      contacts,
+      total: contacts.length,
+      dialable: contacts.filter(contact => contact.phone.trim() !== "").length,
+    });
+  } catch (err: unknown) {
+    req.log.error({ error: err instanceof Error ? err.message : "Unknown error" }, "Failed to fetch CRM contacts for Phone Contacts");
+    res.status(500).json({ error: "Failed to fetch contacts" });
+  }
+});
+
 router.get("/twilio/contacts/:userId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
