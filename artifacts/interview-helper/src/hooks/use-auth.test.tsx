@@ -37,7 +37,7 @@ afterEach(() => {
   if (originalTop) {
     Object.defineProperty(window, "top", originalTop);
   } else {
-    delete (window as Window & { top?: Window }).top;
+    Reflect.deleteProperty(window, "top");
   }
   vi.restoreAllMocks();
 });
