@@ -313,8 +313,8 @@ export function MobileModuleNav() {
             >
               <MiniNebula size={38} status="idle" title="Open Pablo nebula" interactive={false} />
               <span className="min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.16em]">PABLO PRIME</span>
-                <span className="mt-0.5 block text-[9px] uppercase tracking-wider text-[#D8CBE6]">HIGH-RES NEBULA</span>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.16em]">PABLO AI</span>
+                <span className="mt-0.5 block text-[9px] uppercase tracking-wider text-[#D8CBE6]">CHAT + AUTOMATION</span>
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">

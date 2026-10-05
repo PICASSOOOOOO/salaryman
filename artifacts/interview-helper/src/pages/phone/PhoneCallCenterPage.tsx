@@ -1074,7 +1074,7 @@ export default function PhoneCallCenterPage() {
           )}
 
           <PhoneCard>
-            <PhoneCardHeader accent={warning(0.55)}>PABLO PRIME DELIVERY</PhoneCardHeader>
+            <PhoneCardHeader accent={warning(0.55)}>PABLO AI DELIVERY</PhoneCardHeader>
             <div style={{ padding: 16 }}>
               {hasPabloPrime ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1110,7 +1110,7 @@ export default function PhoneCallCenterPage() {
                     color={warning}
                   >
                     {deliverySending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-                    {deliverySending ? 'DELIVERING...' : 'DELIVER WITH PABLO PRIME'}
+                    {deliverySending ? 'DELIVERING...' : 'DELIVER WITH PABLO AI'}
                   </PhoneBtn>
                 </div>
               ) : (

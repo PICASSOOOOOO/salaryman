@@ -66,7 +66,7 @@ router.post("/trials", async (req, res) => {
       error: "Trial already used",
       message: `You've already used your free trial for ${catalog.name}. Subscribe to continue access.`,
       featureKey: fk,
-      upgrade: "/upgrade",
+      upgrade: "/pricing",
     });
     return;
   }

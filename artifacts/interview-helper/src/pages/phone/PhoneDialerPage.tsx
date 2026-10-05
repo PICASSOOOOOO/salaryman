@@ -73,7 +73,7 @@ export default function PhoneDialerPage() {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
       setError(d.error || 'Access denied — CALLL HOME subscription required.');
-      navigate('/upgrade');
+      navigate('/pricing');
       return true;
     }
     if (!r.ok) {

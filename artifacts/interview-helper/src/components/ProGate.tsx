@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Lock, Zap, Clock } from "lucide-react";
-import { usePlan, type FeatureKey } from "@/hooks/use-plan";
-import { usePledgePopup } from "@/components/PledgeStorePopup";
+import { invalidatePlanCache, usePlan, type FeatureKey } from "@/hooks/use-plan";
 
 interface ProGateProps {
   children?: React.ReactNode;
@@ -12,18 +11,17 @@ interface ProGateProps {
 }
 
 export function ProGate({ children, feature, featureKey, inline }: ProGateProps) {
-  const { isPro, features, isOwner, trials, loading } = usePlan();
+  const { isPro, features, isOwner, trials, loading, loadError } = usePlan();
   const [, navigate] = useLocation();
-  const { openPledgePopup } = usePledgePopup();
 
   const trial = featureKey ? trials.find((t) => t.featureKey === featureKey) : undefined;
   const hasPaidAccess = isOwner || (featureKey ? features.has(featureKey) : isPro);
   const hasAccess = hasPaidAccess || !!trial;
-  const shouldRedirect = !loading && featureKey && !hasAccess && !inline;
+  const shouldRedirect = !loading && !loadError && featureKey && !hasAccess && !inline;
 
   useEffect(() => {
     if (shouldRedirect) {
-      navigate("/pledge");
+      navigate("/pricing");
     }
   }, [shouldRedirect, navigate]);
 
@@ -32,6 +30,26 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
       <span className="inline-block w-16 h-4 bg-muted/30 rounded animate-pulse" />
     ) : (
       <div className="w-full h-20 rounded-xl bg-muted/10 animate-pulse" />
+    );
+  }
+
+  if (loadError) {
+    const retry = () => invalidatePlanCache();
+    return inline ? (
+      <button
+        type="button"
+        onClick={retry}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
+      >
+        Retry access check
+      </button>
+    ) : (
+      <div role="alert" className="w-full rounded-xl border border-black/15 bg-white p-4 text-sm text-black">
+        <p>Couldn’t verify service access, so pricing is not being shown yet.</p>
+        <button type="button" onClick={retry} className="mt-3 underline underline-offset-2">
+          Retry access check
+        </button>
+      </div>
     );
   }
 
@@ -47,8 +65,8 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
   if (inline) {
     return (
       <span
-        onClick={() => openPledgePopup({ reason: `Unlock ${displayName} with a one-time pledge.` })}
-        title={`${displayName} — view the current Stripe-backed pledge price`}
+        onClick={() => navigate("/pricing")}
+        title={`${displayName} — view pricing`}
         className="inline-flex items-center gap-1 cursor-pointer text-amber-400/70 hover:text-amber-400 transition-colors"
       >
         <Lock className="w-3 h-3" />
@@ -59,7 +77,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
 
   return (
     <div
-      onClick={() => openPledgePopup({ reason: `Unlock ${displayName} with a one-time pledge.` })}
+      onClick={() => navigate("/pricing")}
       className="relative rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 cursor-pointer hover:bg-amber-500/8 hover:border-amber-500/30 transition-colors group"
     >
       <div className="flex items-start gap-3">
@@ -71,7 +89,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
             {displayName} — Paid Access Required
           </p>
           <p className="text-xs text-muted-foreground">
-            Choose a one-time feature pass or PABLO PRIME. Stripe shows the authoritative price before payment.{" "}
+            Choose the service plan that fits your needs. Stripe shows the authoritative price before payment.{" "}
             <span className="text-amber-400/80 group-hover:text-amber-400 underline underline-offset-2 transition-colors">
               View pricing →
             </span>

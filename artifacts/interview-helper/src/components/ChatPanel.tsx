@@ -1346,7 +1346,7 @@ export function ChatPanel({
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ fontSize: isMobile ? "0.72rem" : "0.58rem", color: CRT(0.82), letterSpacing: "0.1em", fontWeight: 700 }}>
-                    PABLO PRIME
+                    PABLO AI
                   </span>
                   <span style={{ fontSize: "0.5rem", color: connected && pabloChannelId != null ? "rgba(22,101,52,0.9)" : CRT(0.42), letterSpacing: "0.08em" }}>
                     {connected && pabloChannelId != null ? "ONLINE" : "SYNCING"}

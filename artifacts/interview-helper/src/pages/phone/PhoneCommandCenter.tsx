@@ -153,7 +153,7 @@ export default function PhoneCommandCenter() {
 
   const readFetchError = useCallback(async (r: Response): Promise<string | null> => {
     if (r.ok) return null;
-    if (r.status === 403) rawNavigate('/pledge?view=prime');
+    if (r.status === 403) rawNavigate('/pricing?view=prime');
     const d = await r.json().catch(() => ({}));
     return d.error || `Request failed (${r.status})`;
   }, [rawNavigate]);

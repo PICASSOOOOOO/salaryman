@@ -14,26 +14,14 @@ interface MembershipItem {
   subscriptionFeature: FeatureKey;
 }
 
-const MEMBERSHIP_IMAGES = import.meta.glob("../assets/pledge/membership_*.png", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
-
-function imageFor(itemId: string): string | undefined {
-  const entry = Object.entries(MEMBERSHIP_IMAGES).find(([path]) =>
-    path.endsWith(`/${itemId}.png`),
-  );
-  return entry?.[1];
-}
-
 const PLAN_COPY: Record<FeatureKey, { summary: string; bullets: string[] }> = {
   phone_system: {
-    summary: "A dedicated business phone workspace.",
-    bullets: ["Business calling and two-way SMS", "Campaigns, recordings, and call tools", "Default platform number included"],
+    summary: "CALLL HOME calling and messaging, connected to your CRM.",
+    bullets: ["Business calling and two-way SMS", "Calls and messages connect to CRM contacts", "Default platform number included"],
   },
   claw_bot: {
-    summary: "SALARYMAN’s automation workforce.",
-    bullets: ["Nine curated agents across four teams", "Live Listen, Screen Scan, and Say This", "Business workflows and bot chaining"],
+    summary: "Pablo AI brings chat and business automation together.",
+    bullets: ["Pablo chat with nine specialist agents", "Business workflows and bot chaining", "Live Listen, Screen Scan, and Say This"],
   },
   live_listen: { summary: "", bullets: [] },
   screen_scan: { summary: "", bullets: [] },
@@ -135,7 +123,7 @@ export default function PledgeStore() {
 
         <header className="mb-8 max-w-2xl">
           <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-black/55">
-            <ShoppingBag className="h-4 w-4" /> SALARYMAN memberships
+            <ShoppingBag className="h-4 w-4" /> SALARYMAN services
           </div>
           <h1 className="text-3xl font-black tracking-tight sm:text-5xl">Choose your plan</h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-black/65">
@@ -205,12 +193,12 @@ export default function PledgeStore() {
                 </span>
                 <h2 className="text-lg font-black">CUSTOM</h2>
               </div>
-              <p className="text-2xl font-black">$500–$2,000</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-black/50">Per month</p>
-              <p className="mt-5 text-sm leading-relaxed text-black/70">A tailored plan for organizations with specific needs.</p>
+              <p className="text-2xl font-black">Client-specific</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-black/50">Terms set for each client</p>
+              <p className="mt-5 text-sm leading-relaxed text-black/70">A tailored plan for organizations with specific needs. Contact SALARYMAN for details.</p>
               <div className="mt-auto pt-6">
                 <span className="block border border-black/20 px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black/55">
-                  Display only
+                  Custom terms
                 </span>
               </div>
             </article>
@@ -243,23 +231,15 @@ function MembershipCard({
   onSubscribe: () => void;
 }) {
   const copy = PLAN_COPY[item.subscriptionFeature];
-  const image = imageFor(item.id);
+  const displayName = item.subscriptionFeature === "claw_bot" ? "PABLO AI" : item.name;
 
   return (
     <article
       className={`flex flex-col border border-black bg-white p-5 ${highlighted ? "ring-2 ring-black ring-offset-2" : ""}`}
     >
-      {image && (
-        <img
-          src={image}
-          alt=""
-          loading="lazy"
-          className="mb-5 aspect-[16/9] w-full border border-black/10 object-cover"
-        />
-      )}
       <div className="mb-5 flex items-center gap-2">
         <span className="grid h-9 w-9 place-items-center border border-black">{icon}</span>
-        <h2 className="text-lg font-black">{item.name}</h2>
+        <h2 className="text-lg font-black">{displayName}</h2>
       </div>
       <p className="text-3xl font-black">${price}</p>
       <p className="mt-1 text-xs font-bold uppercase tracking-wider text-black/50">Per month</p>

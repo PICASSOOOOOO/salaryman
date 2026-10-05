@@ -58,10 +58,33 @@ describe("ProfessionalHome header", () => {
 
     act(() => startWorkButton.click());
     expect(container.querySelector("#home-start-work-panel")).not.toBeNull();
-    expect(container.textContent).toContain("PABLO PRIME");
-    expect(container.textContent).toContain("PABLO AUTOMATION");
+    expect(container.textContent).toContain("PABLO AI");
+    expect(container.textContent).toContain("CHAT + AUTOMATION");
+    expect(container.textContent).not.toContain("PABLO PRIME");
+    expect(container.textContent).not.toContain("PABLO AUTOMATION");
     expect(container.textContent).toContain("CALLL HOME");
     expect(container.textContent).toContain("SALARYMAN OS");
+  });
+
+  it("shows exactly two feature cards and explains the CRM and CALLL HOME connection", () => {
+    act(() => root.render(<ProfessionalHome />));
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>(".home-module"));
+    expect(cards).toHaveLength(2);
+    expect(cards[0].querySelector("h2")?.textContent).toBe("PABLO AI");
+    expect(cards[0].textContent).toContain("Chat with Pablo and run business automations");
+    expect(Array.from(cards[0].querySelectorAll("a")).map(link => link.getAttribute("href"))).toEqual([
+      "/pablo",
+      "/business/autopilot",
+    ]);
+
+    expect(cards[1].querySelector("h2")?.textContent).toBe("CRM");
+    expect(cards[1].textContent).toContain("Your customer records stay under your organization’s control");
+    expect(cards[1].textContent).toContain("CALLL HOME connects calls, texts, and follow-up notes");
+    expect(Array.from(cards[1].querySelectorAll("a")).map(link => link.getAttribute("href"))).toEqual([
+      "/business/contacts",
+      "/phone",
+    ]);
   });
 
   it("keeps the authenticated header to one start-work control", () => {

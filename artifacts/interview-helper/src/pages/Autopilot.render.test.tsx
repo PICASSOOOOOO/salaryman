@@ -192,12 +192,12 @@ afterEach(() => {
 });
 
 describe("Autopilot dashboard renders saved config", () => {
-  it("identifies the dashboard as PABLO AUTOMATION", async () => {
+  it("identifies the dashboard as PABLO AI AUTOMATION", async () => {
     await mount();
-    expect(container.textContent).toContain("PABLO AUTOMATION");
+    expect(container.textContent).toContain("PABLO AI AUTOMATION");
   });
 
-  it("routes a missing Prime entitlement to the Prime checkout instead of mislabeling it as a role error", async () => {
+  it("routes a missing Pablo AI entitlement to pricing instead of mislabeling it as a role error", async () => {
     autopilotResponse = {
       ok: false,
       status: 403,
@@ -210,9 +210,27 @@ describe("Autopilot dashboard renders saved config", () => {
 
     await mount();
 
-    expect(container.textContent).toContain("PABLO PRIME is required");
-    const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent?.includes("VIEW PABLO PRIME"));
-    expect(link?.getAttribute("href")).toBe("/pledge?view=prime");
+    expect(container.textContent).toContain("Pablo AI access is required");
+    const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent?.includes("VIEW PABLO AI"));
+    expect(link?.getAttribute("href")).toBe("/pricing?view=prime");
+  });
+
+  it("keeps onboarding-required responses on onboarding instead of showing pricing", async () => {
+    autopilotResponse = {
+      ok: false,
+      status: 428,
+      json: async () => ({
+        error: "Complete onboarding before using paid features",
+        onboardingRequired: true,
+      }),
+    } as unknown as Response;
+
+    await mount();
+
+    expect(container.textContent).toContain("Complete onboarding before using Pablo AI automation");
+    const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent?.includes("OPEN ONBOARDING"));
+    expect(link?.getAttribute("href")).toBe("/onboarding");
+    expect(container.textContent).not.toContain("VIEW PABLO AI");
   });
 
   it("renders all four domains from the loaded control surface", async () => {
@@ -223,14 +241,14 @@ describe("Autopilot dashboard renders saved config", () => {
     }
   });
 
-  it("shows an enabled domain running as Pablo Prime with its caps and prefs", async () => {
+  it("shows an enabled domain running as Pablo AI with its caps and prefs", async () => {
     await mount();
     const card = cardFor("Business Ops");
 
     // Toggled ON.
     expect(toggleState(card)).toBe("ON");
 
-    expect(card.textContent).toContain("RUN BY PABLO PRIME");
+    expect(card.textContent).toContain("RUN BY PABLO AI");
     expect(card.textContent).not.toContain("ASSIGNED AGENT");
 
     // Caps reflect the saved cadence / max-actions, not the defaults.

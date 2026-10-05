@@ -43,10 +43,9 @@ const platforms = [
 ] as const;
 
 const desktopFeatures = [
-  ["PABLO PRIME / PABLO AI", "Plan, decide, and move work forward with one assistant.", Bot, "/pablo", null],
+  ["PABLO AI", "Chat with Pablo and run enabled business workflows through one assistant.", Bot, "/pablo", null],
   ["CALLL HOME", "Calls, shared numbers, routing, and remote conversations.", Phone, "/phone", `${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`],
   ["CRM & SALES", "Keep customers, leads, and every relationship moving.", Users, "/business/contacts", null],
-  ["PABLO AUTOMATION", "Run enabled business workflows through one assistant.", Bot, "/business/autopilot", null],
   ["BUSINESS", "Run daily operations, teams, and company workflows.", BriefcaseBusiness, "/business", null],
   ["KNOWLEDGE", "Keep working files and company context in one place.", FileText, "/console/vault", null],
   ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/business/accounts", null],

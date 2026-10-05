@@ -153,13 +153,13 @@ export default function MarketingCommandCenter() {
           </div>
            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fbbf24", marginBottom: 8, letterSpacing: 1 }}>MARKETING</h1>
           <p style={{ fontSize: 13, color: "rgba(228,228,231,0.7)", marginBottom: 20, lineHeight: 1.6 }}>
-             Connect social accounts and publish across 9 platforms. This is included with PABLO PRIME.
+             Connect social accounts and publish across 9 platforms. This is included with Pablo AI.
           </p>
           <button
-            onClick={() => navigate("/upgrade")}
+            onClick={() => navigate("/pricing")}
             style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(90deg,#f59e0b,#fbbf24)", color: "#1a1205", fontWeight: 700, fontFamily: FONT, letterSpacing: 1 }}
           >
-            UNLOCK WITH PABLO PRIME
+            VIEW PABLO AI PRICING
           </button>
         </div>
       </div>

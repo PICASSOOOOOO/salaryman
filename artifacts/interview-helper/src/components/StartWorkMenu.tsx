@@ -12,8 +12,6 @@ const MENU_MODULES = HISTORIC_MODULES.filter(
 );
 
 const PRODUCT_SHORTCUTS = [
-  { id: "pablo", label: "PABLO AI", path: "/pablo" },
-  { id: "bots", label: "PABLO AUTOMATION", path: "/business/autopilot" },
   { id: "phone", label: "CALLL HOME", path: "/phone" },
   { id: "office", label: "SALARYMAN OS", path: "/desktop" },
   { id: "comms", label: "MESSAGES", path: "/comms" },
@@ -68,23 +66,31 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
       {isAuthenticated && menuOpen && (
         <div id="home-start-work-panel" className="start-work-panel" role="menu">
           <div className="start-work-heading">WORKSPACE</div>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => go("/pablo")}
-            onKeyDown={event => {
-              if (event.key === "Enter" || event.key === " ") go("/pablo");
-            }}
-            className="flex cursor-pointer items-center gap-3 border border-black bg-black px-3 py-2 text-left text-[#FAFAF7] hover:bg-[#211B2B]"
-            aria-label="Open Pablo Prime"
-          >
-            <MiniNebula size={38} status="idle" title="Open Pablo Prime" interactive={false} />
-            <span className="min-w-0">
-              <span className="block font-mono text-[10px] tracking-[0.16em]">PABLO PRIME</span>
-              <span className="mt-0.5 block font-mono text-[8px] tracking-wider text-[#D8CBE6]">
-                PABLO AI + AUTOMATION
+          <div className="border border-black bg-black p-2 text-left text-[#FAFAF7]">
+            <button
+              type="button"
+              onClick={() => go("/pablo")}
+              className="flex w-full items-center gap-3 px-1 py-1 text-left hover:bg-[#211B2B]"
+              aria-label="Open Pablo AI chat"
+              role="menuitem"
+            >
+              <MiniNebula size={38} status="idle" title="Pablo AI" interactive={false} />
+              <span className="min-w-0">
+                <span className="block font-mono text-[10px] tracking-[0.16em]">PABLO AI</span>
+                <span className="mt-0.5 block font-mono text-[8px] tracking-wider text-[#D8CBE6]">
+                  CHAT + AUTOMATION
+                </span>
               </span>
-            </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => go("/business/autopilot")}
+              className="mt-2 flex min-h-9 w-full items-center justify-between border border-white/30 px-2 text-left font-mono text-[9px] tracking-wider hover:bg-white/10"
+              role="menuitem"
+            >
+              Open automation
+              <span aria-hidden="true">↗</span>
+            </button>
           </div>
 
           <div className="start-work-section-label">TOOLS</div>

@@ -85,7 +85,7 @@ export const MODULES: Module[] = [
   {
     id: 'bots',
     path: '/business/autopilot',
-    label: 'PABLO AUTOMATION',
+    label: 'PABLO AI AUTOMATION',
     codename: 'PABLO-OPS',
     icon: Bot,
     defaultPath: '/business/autopilot',
@@ -116,7 +116,7 @@ export const MODULES: Module[] = [
       { id: 'office', path: '/office', label: 'OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
       { id: 'marketplace', path: '/business/marketplace', label: 'MARKETPLACE', boomerLabel: 'BUSINESS MARKETPLACE', codename: 'BIZ-MART', icon: Store },
       { id: 'team', path: '/business/team', label: 'TEAM', boomerLabel: 'TEAM DIRECTORY', codename: 'ROSTER-X', icon: Users },
-      { id: 'autopilot', path: '/business/autopilot', label: 'PABLO AUTOMATION', boomerLabel: 'PABLO AUTOMATION', codename: 'PABLO-OPS', icon: Activity },
+      { id: 'autopilot', path: '/business/autopilot', label: 'PABLO AI AUTOMATION', boomerLabel: 'PABLO AI AUTOMATION', codename: 'PABLO-OPS', icon: Activity },
       { id: 'contacts', path: '/business/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'RECALL-6', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
       { id: 'resume', path: '/business/resume', label: 'RESUME', boomerLabel: 'RESUME BUILDER', codename: 'CV-FORGE', icon: FileText },

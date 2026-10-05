@@ -20,6 +20,7 @@ interface PlanData {
   features: Set<FeatureKey>;
   trials: TrialInfo[];
   loading: boolean;
+  loadError: boolean;
 }
 
 let _cachedPlan: PlanData | null = null;
@@ -39,6 +40,7 @@ const DEFAULT_PLAN: PlanData = {
   features: new Set(),
   trials: [],
   loading: true,
+  loadError: false,
 };
 
 export function usePlan(): PlanData {
@@ -72,6 +74,8 @@ export function usePlan(): PlanData {
       return;
     }
 
+    if (!isStale()) setPlan({ ...DEFAULT_PLAN, loading: true, loadError: false });
+
     try {
       const res = await apiFetch('/api/plan');
       if (!res.ok) throw new Error("plan fetch failed");
@@ -86,6 +90,7 @@ export function usePlan(): PlanData {
         features: featureSet,
         trials,
         loading: false,
+        loadError: false,
       };
       if (isStale()) return;
       _cachedPlan = p;
@@ -93,7 +98,7 @@ export function usePlan(): PlanData {
       setPlan(p);
     } catch {
       if (isStale()) return;
-      const p: PlanData = { ...DEFAULT_PLAN, loading: false };
+      const p: PlanData = { ...DEFAULT_PLAN, loading: false, loadError: true };
       _cachedPlan = p;
       _cachedForAuth = isAuthenticated;
       setPlan(p);

@@ -17,7 +17,7 @@ async function requirePrime(req: Request, res: Response): Promise<string | null>
   const userId = req.user.id;
   const ok = await hasFeature(userId, req.user.email, "claw_bot");
   if (!ok) {
-    res.status(403).json({ error: "PABLO PRIME subscription required", feature: "claw_bot", upgrade: "/upgrade" });
+    res.status(403).json({ error: "Pablo AI subscription required", feature: "claw_bot", upgrade: "/pricing" });
     return null;
   }
   return userId;

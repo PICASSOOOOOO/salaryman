@@ -84,7 +84,7 @@ const QUICK_ACCESS = [
   { path: '/business/jobs', label: 'JOBS', icon: Briefcase },
   { path: '/marketing/leads', label: 'LEADS', icon: Target },
   { path: '/business/contacts', label: 'DATA', icon: LayoutDashboard },
-  { path: '/business/autopilot', label: 'PABLO AUTOMATION', icon: Bot },
+  { path: '/business/autopilot', label: 'PABLO AI AUTOMATION', icon: Bot },
   { path: '/phone', label: 'CALLL HOME', icon: PhoneCall },
   { path: '/comms', label: 'COMMS', icon: MessageSquare },
 ];
@@ -142,7 +142,7 @@ const SECTIONS = [
     items: [
       { path: '/intel/reports', label: 'REPORTS', boomer: 'REPORTS', icon: BarChart2 },
       { path: '/intel/dashboard', label: 'DASHBOARD', boomer: 'DASHBOARD', icon: LayoutDashboard },
-      { path: '/pledge?view=prime', label: 'PABLO PRIME', boomer: 'PABLO PRIME', icon: Bot },
+      { path: '/pricing?view=prime', label: 'PABLO AI', boomer: 'PABLO AI', icon: Bot },
       { path: '/insurance', label: 'INSURANCE API', boomer: 'INSURANCE API', icon: Shield, requireIndustry: 'Insurance' },
     ],
   },

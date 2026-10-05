@@ -645,7 +645,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                     <button onClick={() => navigate('/pricing')} className="border border-emerald-600 text-emerald-700 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-600/10 transition-colors">Upgrade</button>
                   </div>
                 )}
-                <Link href="/pledge" className="flex items-center justify-between border border-black p-2.5 hover:bg-black/5 transition-colors group">
+                <Link href="/pricing" className="flex items-center justify-between border border-black p-2.5 hover:bg-black/5 transition-colors group">
                   <div>
                     <div className="font-bold text-[10px] uppercase tracking-widest text-black group-hover:text-emerald-700 transition-colors">Pledge Store</div>
                     <div className="text-[9px] font-mono text-black/60 mt-0.5">View membership plans.</div>

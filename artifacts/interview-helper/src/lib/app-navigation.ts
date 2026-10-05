@@ -35,7 +35,7 @@ export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "bots", path: "/business/autopilot", label: "PABLO AUTOMATION", boomerLabel: "PABLO AUTOMATION", icon: Bot },
+  { id: "bots", path: "/business/autopilot", label: "PABLO AI AUTOMATION", boomerLabel: "PABLO AI AUTOMATION", icon: Bot },
   { id: "org", path: "/organizations", label: "ORG", boomerLabel: "ORGANIZATION", icon: Network, authOnly: true },
   { id: "business", path: "/business", label: "BUSINESS", boomerLabel: "BUSINESS", icon: Briefcase, authOnly: true },
   { id: "contacts", path: "/contacts", label: "CONTACTS", boomerLabel: "CONTACTS", icon: Contact, authOnly: true },

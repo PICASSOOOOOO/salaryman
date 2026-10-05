@@ -1003,7 +1003,7 @@ export default function Autopilot() {
         setData(null);
         return;
       }
-      if (res.status === 403) {
+      if (res.status === 403 || res.status === 428) {
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
           feature?: string;
@@ -1011,11 +1011,11 @@ export default function Autopilot() {
           paymentRequired?: boolean;
         };
         if (body.onboardingRequired) {
-          setError('Complete onboarding before using Pablo Automation.');
+          setError('Complete onboarding before using Pablo AI automation.');
           setErrorAction({ href: '/onboarding', label: 'OPEN ONBOARDING' });
         } else if (body.feature === 'claw_bot' || body.paymentRequired) {
-          setError('PABLO PRIME is required to use Pablo Automation.');
-          setErrorAction({ href: '/pledge?view=prime', label: 'VIEW PABLO PRIME' });
+          setError('Pablo AI access is required to use automation.');
+          setErrorAction({ href: '/pricing?view=prime', label: 'VIEW PABLO AI' });
         } else {
           setError('You need owner or manager access to manage Pablo Automation.');
         }
@@ -1210,7 +1210,7 @@ export default function Autopilot() {
       <div className="flex items-center justify-between mb-5 gap-3">
         <div>
           <h1 className="font-mono text-base tracking-widest flex items-center gap-2">
-            <Sparkles className="w-5 h-5" /> PABLO AUTOMATION
+            <Sparkles className="w-5 h-5" /> PABLO AI AUTOMATION
           </h1>
           <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
             Paid Prime starts only the four established workflows. Creative Work and Market Research stay off until the organization owner enables them.
@@ -1287,7 +1287,7 @@ export default function Autopilot() {
                           {meta?.description}
                         </p>
                           <p className="mt-1 font-mono text-[9px] tracking-wider text-violet-300/70">
-                            RUN BY PABLO PRIME
+                            RUN BY PABLO AI
                          </p>
                       </div>
                     </div>

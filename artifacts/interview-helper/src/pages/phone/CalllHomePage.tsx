@@ -439,7 +439,7 @@ export default function CalllHomePage() {
                     <div style={{ fontSize: '0.55rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 22 }}>
                       Phone features require access.
                     </div>
-                    <button onClick={() => openPledgePopup({ reason: 'Unlock CALLL HOME with a Stripe-backed pass or PABLO PRIME.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
+                    <button onClick={() => openPledgePopup({ reason: 'View CALLL HOME pricing.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
                       VIEW PHONE ACCESS OPTIONS
                     </button>
                   </div>

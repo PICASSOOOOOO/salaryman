@@ -302,7 +302,7 @@ describe("Autopilot dashboard saves changes to the server", () => {
     await mount();
 
     const card = cardFor("Business Ops");
-    expect(card.textContent).toContain("RUN BY PABLO PRIME");
+    expect(card.textContent).toContain("RUN BY PABLO AI");
     expect(card.querySelector("select")).toBeNull();
     expect(card.textContent).not.toContain("ASSIGNED AGENT");
   });

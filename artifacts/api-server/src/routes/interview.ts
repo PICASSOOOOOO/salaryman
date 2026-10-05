@@ -33,7 +33,7 @@ router.post("/interview/solve", async (req, res) => {
     }
     const has = await hasFeature(req.user.id, req.user.email, "say_this");
     if (!has) {
-      res.status(403).json({ error: "Say This subscription required", feature: "say_this", price: 5, upgrade: "/upgrade" });
+      res.status(403).json({ error: "Say This subscription required", feature: "say_this", price: 5, upgrade: "/pricing" });
       return;
     }
   }

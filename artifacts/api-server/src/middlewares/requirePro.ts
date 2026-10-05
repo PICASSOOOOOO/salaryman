@@ -15,7 +15,7 @@ export function requireFeature(featureKey: FeatureKey) {
     // cannot be bypassed with a local tutorial flag or a paid feature grant.
     if (isUsdPaidFeature(featureKey)) {
       if (!await getCompletedOnboarding(String(req.user.id))) {
-        res.status(403).json({
+        res.status(428).json({
           error: "Complete onboarding before using paid features",
           feature: featureKey,
           featureName: catalog.name,
@@ -33,7 +33,7 @@ export function requireFeature(featureKey: FeatureKey) {
         featureName: catalog.name,
         price: catalog.price,
         ...(isUsdPaidFeature(featureKey) ? { currency: "usd", paymentRequired: true } : {}),
-        upgrade: "/upgrade",
+        upgrade: "/pricing",
       });
       return;
     }

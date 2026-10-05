@@ -525,7 +525,7 @@ export default function SocialMediaManager() {
                       </div>
                       {aiPrimeNeeded && (
                         <div className="text-[10px] font-mono text-yellow-400/80 border border-yellow-700/40 bg-yellow-950/20 px-2 py-1.5">
-                          AI COPY GENERATION REQUIRES PABLO PRIME. <a href="/upgrade" className="underline text-yellow-300">UPGRADE →</a>
+                          AI COPY GENERATION REQUIRES PABLO AI. <a href="/pricing" className="underline text-yellow-300">VIEW PRICING →</a>
                         </div>
                       )}
                     </div>
@@ -562,7 +562,7 @@ export default function SocialMediaManager() {
                       </button>
                       {aiPrimeNeeded && (
                         <div className="text-[10px] font-mono text-purple-300/80 border border-purple-700/40 bg-purple-950/20 px-2 py-1.5">
-                          AI CROSS-POST REQUIRES PABLO PRIME. <a href="/upgrade" className="underline text-purple-200">UPGRADE →</a>
+                          AI CROSS-POST REQUIRES PABLO AI. <a href="/pricing" className="underline text-purple-200">VIEW PRICING →</a>
                         </div>
                       )}
                     </div>

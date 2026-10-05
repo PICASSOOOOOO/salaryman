@@ -240,7 +240,7 @@ export default function Wallet() {
       {/* ===== PABLO TAX ===== */}
       <Section title={`PABLO TAX · ${pabloTax.period}`}>
         <Grid>
-          <Stat label="PABLO PRIME" value={pabloTax.primeActive ? "ACTIVE" : "INACTIVE"} sub={pabloTax.primeActive ? `$100/mo pre-paid · ${f(primeRemainingFiat)} credit left` : "Pay-as-you-go only"} tone={pabloTax.primeActive ? "cyan" : "muted"} />
+          <Stat label="PABLO AI" value={pabloTax.primeActive ? "ACTIVE" : "INACTIVE"} sub={pabloTax.primeActive ? `$100/mo pre-paid · ${f(primeRemainingFiat)} credit left` : "Pay-as-you-go only"} tone={pabloTax.primeActive ? "cyan" : "muted"} />
           <Stat label="ACCRUED THIS PERIOD" value={f(accruedFiat)} sub={`at ${pabloTax.markupMultiplier}× markup`} />
           <Stat label="BILLED" value={f(billedFiat)} sub={`next bill at ${f(nextBillIncrementFiat)} increments`} />
           <Stat label="OWED NOW" value={f(owedFiat)} tone={owedFiat > 0 ? "red" : "muted"} />
@@ -248,7 +248,7 @@ export default function Wallet() {
         {!pabloTax.primeActive && (
           <p style={{ marginTop: 12, fontSize: ".7rem", color: "#fbbf24" }}>
             ⚠ NO PRIME · Every API call bills you at {pabloTax.markupMultiplier}× cost.{" "}
-            <Link href="/pricing" style={{ color: "#38bdf8" }}>Upgrade to PABLO PRIME →</Link>
+            <Link href="/pricing" style={{ color: "#38bdf8" }}>Upgrade to PABLO AI →</Link>
           </p>
         )}
       </Section>
