@@ -1,6 +1,8 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { SignInPage } from "@/components/SignInPrompt";
 import {
   Key, Webhook, Plug, FileText, Copy, Trash2, Plus, Check, AlertCircle,
   Loader2, ExternalLink, RefreshCw, Shield, Zap, Globe, ChevronRight,
@@ -701,6 +703,7 @@ function AppsTab() {
 }
 
 export default function PlatformAPI({ embedded = false }: { embedded?: boolean }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
@@ -725,6 +728,13 @@ export default function PlatformAPI({ embedded = false }: { embedded?: boolean }
     const newUrl = tab === "overview" ? basePath : `${basePath}?tab=${tab}`;
     window.history.replaceState(null, "", `${import.meta.env.BASE_URL.replace(/\/$/, "")}${newUrl}`);
   };
+
+  if (authLoading) {
+    return <div className="min-h-[100dvh] grid place-items-center bg-[#fffaf0] font-mono text-[10px] uppercase tracking-widest text-black/40">Restoring session...</div>;
+  }
+  if (!isAuthenticated) {
+    return <SignInPage context="Sign in to manage your Platform API." />;
+  }
 
   return (
     <div className={`${embedded ? "my-apps-platform min-h-0 rounded-xl border border-stone-200 bg-[#fffdf8] text-stone-900" : "min-h-screen bg-zinc-950 text-zinc-100"}`}>

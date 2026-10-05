@@ -127,4 +127,20 @@ describe("Comms hub messages-tab badge", () => {
     await mount();
     expect(smsTabBadge()).toBe("5");
   });
+
+  it("shows existing Payphone alert controls from the Comms settings button", async () => {
+    await mount();
+
+    const settingsButton = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent?.trim() === "Settings");
+    expect(settingsButton).toBeDefined();
+
+    await act(async () => {
+      settingsButton!.click();
+    });
+
+    expect(settingsButton?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector('[aria-label="Payphone notification settings"]')).not.toBeNull();
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(2);
+  });
 });

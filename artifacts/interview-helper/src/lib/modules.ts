@@ -234,7 +234,7 @@ export const PROFILE_MODULES: SubItem[] = [
   { id: 'profile-account', path: '/profile', label: 'PROFILE', boomerLabel: 'MY PROFILE', codename: 'IDENTITY', icon: User },
   { id: 'profile-settings', path: '/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'CONTROL', icon: Settings },
   { id: 'profile-admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', codename: 'COMMAND', icon: ShieldCheck },
-  { id: 'profile-platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
+  { id: 'profile-platform', path: '/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
   { id: 'profile-moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', codename: 'WATCHTOWER', icon: Eye },
 ];
 
@@ -250,11 +250,11 @@ export const ADMIN_SUBS: SubItem[] = [
 ];
 
 export const SETTINGS_MODULES: SubItem[] = [
-  { id: 'plat-overview', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
-  { id: 'plat-keys', path: '/profile/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
-  { id: 'plat-webhooks', path: '/profile/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
-  { id: 'plat-endpoints', path: '/profile/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
-  { id: 'plat-apps', path: '/profile/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
+  { id: 'plat-overview', path: '/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
+  { id: 'plat-keys', path: '/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
+  { id: 'plat-webhooks', path: '/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
+  { id: 'plat-endpoints', path: '/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
+  { id: 'plat-apps', path: '/platform?tab=apps', label: 'APPS', boomerLabel: 'APPS', codename: 'APPS', icon: Globe },
 ];
 
 export function getModuleForPath(pathname: string): Module | null {

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { MessageSquare, Users, Shield, Mic, VolumeX } from 'lucide-react';
+import { MessageSquare, Users, Shield, Mic, VolumeX, Bell, Settings2 } from 'lucide-react';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
+import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 import Colleagues from './Colleagues';
 import { apiFetch } from '@/lib/api-client';
 import { takePendingCommsDmUserId } from '@/lib/comms-navigation';
@@ -61,6 +62,53 @@ function PabloVoiceControl() {
         <span className="w-8 text-right text-[10px] font-mono text-black/60">{Math.round(settings.voice * 100)}%</span>
       </div>
     </div>
+  );
+}
+
+function CommsAlertsSettings({ boomerMode }: { boomerMode: boolean }) {
+  const [alertsOn, setAlertsOn] = useCommsAlerts();
+  const [cityDndOn, setCityDndOn] = useCommsCityDnd();
+
+  return (
+    <section className="border border-black/15 bg-white/50 p-3 sm:p-4" aria-label="Payphone notification settings">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="w-3.5 h-3.5 text-emerald-700" />
+        <h2 className="text-[10px] font-bold uppercase tracking-widest">
+          {boomerMode ? 'Notifications' : 'Payphone Alerts'}
+        </h2>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <label className="flex items-start justify-between gap-3 cursor-pointer group">
+          <span>
+            <span className="block text-[10px] font-bold uppercase tracking-widest group-hover:text-emerald-700 transition-colors">
+              {boomerMode ? 'Pop-up Alerts' : 'Message Pop-ups'}
+            </span>
+            <span className="block text-[9px] font-mono text-black/60 mt-1">Off by default. Unread counts always update.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={alertsOn}
+            onChange={(event) => setAlertsOn(event.target.checked)}
+            className="accent-emerald-600 w-4 h-4 shrink-0"
+          />
+        </label>
+        <label className={`flex items-start justify-between gap-3 cursor-pointer group ${!alertsOn ? 'opacity-50 pointer-events-none' : ''}`}>
+          <span>
+            <span className="block text-[10px] font-bold uppercase tracking-widest group-hover:text-emerald-700 transition-colors">
+              {boomerMode ? 'Quiet During Games' : 'City DND'}
+            </span>
+            <span className="block text-[9px] font-mono text-black/60 mt-1">Mute pop-ups during active city gameplay.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={cityDndOn}
+            disabled={!alertsOn}
+            onChange={(event) => setCityDndOn(event.target.checked)}
+            className="accent-emerald-600 w-4 h-4 shrink-0"
+          />
+        </label>
+      </div>
+    </section>
   );
 }
 
@@ -168,7 +216,9 @@ export default function Comms() {
   const [section, setSection] = useState<CommsSection>('chat');
   const [initialDmUserId, setInitialDmUserId] = useState<string>();
   const [initialDmRequestId, setInitialDmRequestId] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
   const { unreadMessages, unreadSms, pendingRequests } = useCommsSummary();
+  const boomerMode = getDefaultBoomerMode();
 
   useEffect(() => {
     const queuedUserId = takePendingCommsDmUserId();
@@ -208,8 +258,20 @@ export default function Comms() {
                 <MessageSquare className="w-5 h-5" /> Comms
               </h1>
             </div>
-            <div className="w-full sm:w-auto shrink-0 flex sm:justify-end">
+            <div className="w-full sm:w-auto shrink-0 flex items-center sm:justify-end gap-2">
               <PabloVoiceControl />
+              <button
+                type="button"
+                onClick={() => setShowSettings(open => !open)}
+                aria-expanded={showSettings}
+                aria-controls="comms-feature-settings"
+                className={`inline-flex h-9 items-center gap-2 border border-black px-3 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                  showSettings ? 'bg-black text-[#fffaf0]' : 'bg-[#fffaf0] hover:bg-black hover:text-[#fffaf0]'
+                }`}
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+                Settings
+              </button>
             </div>
           </div>
 
@@ -245,6 +307,11 @@ export default function Comms() {
               );
             })}
           </div>
+          {showSettings && (
+            <div id="comms-feature-settings" className="pb-4">
+              <CommsAlertsSettings boomerMode={boomerMode} />
+            </div>
+          )}
         </div>
       </div>
       <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full relative">

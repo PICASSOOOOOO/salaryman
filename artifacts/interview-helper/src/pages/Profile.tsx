@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, Plug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop, Eye, EyeOff, Map, Network, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, Plug, Globe, SlidersHorizontal, FlaskConical, ChevronRight, Wrench, Laptop, Eye, EyeOff, Map, Network, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { useLocation, Link, Redirect } from 'wouter';
@@ -15,11 +15,9 @@ import GoogleLinkSection from '@/components/GoogleLinkSection';
 import GithubLinkSection from '@/components/GithubLinkSection';
 import DiscordLinkSection from '@/components/DiscordLinkSection';
 import { ReferralPanel } from '@/components/ReferralPanel';
-import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { AppInstallCard } from '@/components/AppInstallCard';
 
-const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
 
 interface DonationRecord { id: number; amountCents: number; tier: string | null; status: string; createdAt: string; }
@@ -277,35 +275,6 @@ function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAff
           })}
         </div>
       )}
-    </Panel>
-  );
-}
-
-function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
-  const [alertsOn, setAlertsOn] = useCommsAlerts();
-  const [cityDndOn, setCityDndOn] = useCommsCityDnd();
-  return (
-    <Panel title={boomerMode ? "Notifications" : "Payphone Alerts"} icon={Bell}>
-      <div className="space-y-3">
-        <label className="flex flex-col gap-1 cursor-pointer group">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-black group-hover:text-emerald-700 transition-colors">
-              {boomerMode ? 'Pop-up Alerts' : 'Message Pop-ups'}
-            </span>
-            <input type="checkbox" checked={alertsOn} onChange={(e) => setAlertsOn(e.target.checked)} className="accent-emerald-600 w-4 h-4" />
-          </div>
-          <span className="text-[9px] font-mono text-black/60">Off by default. Unread counts always update.</span>
-        </label>
-        <label className={`flex flex-col gap-1 cursor-pointer group ${!alertsOn ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-black group-hover:text-emerald-700 transition-colors">
-              {boomerMode ? 'Quiet During Games' : 'City DND'}
-            </span>
-            <input type="checkbox" checked={cityDndOn} disabled={!alertsOn} onChange={(e) => setCityDndOn(e.target.checked)} className="accent-emerald-600 w-4 h-4" />
-          </div>
-          <span className="text-[9px] font-mono text-black/60">Mute pop-ups during active city gameplay.</span>
-        </label>
-      </div>
     </Panel>
   );
 }
@@ -606,8 +575,6 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                 </Panel>
               )}
 
-              <CommsAlertsCard boomerMode={boomerMode} />
-
               <Panel title="Platform Integrations" icon={Plug}>
                 <div className="space-y-3">
                   <GoogleLinkSection />
@@ -681,12 +648,6 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
               </Panel>
 
               <VisaCitizenshipSection />
-
-              <Panel title="Platform API" icon={Network}>
-                <Suspense fallback={<div className="font-mono text-[9px] uppercase tracking-widest text-black/40 text-center py-4">Loading API...</div>}>
-                  <PlatformAPI />
-                </Suspense>
-              </Panel>
 
               <Panel title="Preferences" icon={SlidersHorizontal}>
                 <div className="space-y-4 text-[10px] font-bold uppercase tracking-widest text-black">
@@ -874,7 +835,7 @@ export function SettingsPage() {
           <SectionHeader
             icon={SlidersHorizontal}
             title={boomerMode ? 'SETTINGS' : 'SETTINGS'}
-            subtitle="Organization, building, and general preferences"
+            subtitle="Account, privacy, and shared preferences"
           />
           <AccountTab view="settings" />
         </Suspense>

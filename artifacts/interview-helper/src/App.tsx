@@ -600,10 +600,9 @@ function AppShell() {
             <Route path="/profile/admin" component={AdminHub} />
             <Route path="/profile/moderator" component={ModeratorPanel} />
             <Route path="/profile/world-map">{() => <Redirect to="/desktop" />}</Route>
-            {/* Platform API + the legacy APIs tab now live inside the unified
-                /settings page (General group). Preserve old deep links. */}
-            <Route path="/profile/platform">{() => <Redirect to={`/settings${window.location.search}`} />}</Route>
-            <Route path="/profile/apis">{() => <Redirect to="/settings" />}</Route>
+            {/* Platform API owns its feature route; keep its old account links working. */}
+            <Route path="/profile/platform">{() => <Redirect to={`/platform${window.location.search}`} />}</Route>
+            <Route path="/profile/apis">{() => <Redirect to="/platform" />}</Route>
             <Route path="/settings" component={SettingsPage} />
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
@@ -616,6 +615,8 @@ function AppShell() {
             <Route path="/world">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/game">{() => <Redirect to="/desktop" />}</Route>
+            {/* This was part of the retired browser game; desktop settings live at /settings. */}
+            <Route path="/game/settings">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/game/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/office">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/office/*">{() => <Redirect to="/desktop" />}</Route>
@@ -623,7 +624,6 @@ function AppShell() {
             <Route path="/tower">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/my-office" component={MyOffice} />
-            <Route path="/game/settings">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/skills">{() => <Redirect to="/desktop" />}</Route>
             {/* The legacy bathroom->office cutscene now folds into the single
                 walkable office (no separate tutorial-office surface). */}
@@ -762,11 +762,8 @@ function AppShell() {
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
 
-            {/* PLATFORM API module — folded into /settings (preserves query params) */}
-            <Route path="/platform">{() => {
-              const qs = window.location.search;
-              return <Redirect to={`/settings${qs}`} />;
-            }}</Route>
+            {/* Platform API keys, webhooks, endpoints, and connections are a feature. */}
+            <Route path="/platform">{() => <PlatformAPI />}</Route>
 
             {/* BOTS module */}
             {/* Job Command Center moved into BUSINESS — redirect old bookmarks. */}
