@@ -481,6 +481,38 @@ describe("PUT /api/autopilot/:domain — permission gating (autopilot.manage)", 
     expect(stored?.prefs).toEqual({ platforms: ["linkedin"], tone: "professional", topics: ["Update"] });
   });
 
+  it("requires finance.manage for accounting changes but lets an autopilot manager pause the workflow", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+
+    actAs(owner);
+    const ownerSave = await request(app).put("/api/autopilot/accounting").send({
+      enabled: true,
+      prefs: { payroll: true, billPayments: true },
+    });
+    expect(ownerSave.status).toBe(200);
+
+    actAs(manager);
+    const prefsAttempt = await request(app).put("/api/autopilot/accounting").send({
+      prefs: { payroll: false },
+    });
+    expect(prefsAttempt.status).toBe(403);
+    expect(prefsAttempt.body.error).toMatch(/finance manager/i);
+    expect((await getStoredConfig(orgId, "accounting"))?.prefs).toMatchObject({
+      payroll: true,
+      billPayments: true,
+    });
+
+    const pause = await request(app).put("/api/autopilot/accounting").send({ enabled: false });
+    expect(pause.status).toBe(200);
+    expect(pause.body.config.enabled).toBe(false);
+
+    const enableAttempt = await request(app).put("/api/autopilot/accounting").send({ enabled: true });
+    expect(enableAttempt.status).toBe(403);
+    expect((await getStoredConfig(orgId, "accounting"))?.enabled).toBe(false);
+  });
+
   it("404 when the caller has no organization", async () => {
     const loner = await createUser();
     actAs(loner);

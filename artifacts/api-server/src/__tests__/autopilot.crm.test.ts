@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 
+const { creditOrgAccountMock } = vi.hoisted(() => ({
+  creditOrgAccountMock: vi.fn(async () => {}),
+}));
+
 // Twilio is mocked so no real SMS is ever sent or charged.
 vi.mock("twilio", async () => (await import("./helpers/twilioMock")).makeTwilioMock());
 // Entitlement gate is the only plan check on this path; flip per-test via mockState.
@@ -9,6 +13,9 @@ vi.mock("../lib/plan", async (importActual) => ({
 }));
 vi.mock("../lib/platform-twilio-access", () => ({
   canUsePlatformTwilio: vi.fn(async () => true),
+}));
+vi.mock("../routes/org-accounts", () => ({
+  creditOrgAccount: creditOrgAccountMock,
 }));
 
 import twilio from "twilio";
@@ -150,6 +157,7 @@ describe("CRM autopilot handler", () => {
     // Autopilot activity log has a success touch + a tick summary.
     expect(logs.some((l) => l.action === "sms_followup" && l.outcome === "success")).toBe(true);
     expect(logs.some((l) => l.action === "tick")).toBe(true);
+    expect(creditOrgAccountMock).not.toHaveBeenCalled();
   });
 
   it("skips leads contacted within the follow-up window (per-lead cap)", async () => {

@@ -12,6 +12,7 @@ import {
   organizationsTable,
   projectsTable,
   isAutopilotDomain,
+  type AutopilotDomain,
 } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
@@ -90,7 +91,12 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
   try {
     const orgId = await resolveCurrentOrgId(userId);
     if (!orgId) {
-       res.status(404).json({ error: "No organization", domains: [], activity: [] });
+      res.status(404).json({
+        error: "No organization",
+        domains: [],
+        activity: [],
+        accounting: { canManage: false },
+      });
       return;
     }
     const check = await canDoInOrg(userId, orgId, "autopilot.manage");
@@ -99,18 +105,21 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       return;
     }
 
-    const [domains, org] = await Promise.all([
+    const [domains, org, financeView, financeManage] = await Promise.all([
       getOrgAutopilotView(orgId),
       db.select({ ownerUserId: organizationsTable.ownerUserId })
         .from(organizationsTable)
         .where(eq(organizationsTable.id, orgId))
         .limit(1)
         .then((rows) => rows[0]),
+      canDoInOrg(userId, orgId, "finance.view"),
+      canDoInOrg(userId, orgId, "finance.manage"),
     ]);
     const canManageCreative = org?.ownerUserId === userId;
     const activity = await getRecentAutopilotActivity(orgId, {
       limit: 50,
       excludeDomain: canManageCreative ? undefined : "market_research",
+      excludeDomains: financeView.allowed ? undefined : ["accounting"],
     });
     const creativeProjects = canManageCreative
       ? await db.select({
@@ -142,6 +151,7 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       },
       creative: { canManage: canManageCreative, projects: creativeProjects },
       marketResearch: { canManage: canManageCreative },
+      accounting: { canManage: financeManage.allowed },
       marketing: {
         tones: AUTOPILOT_MARKETING_TONES,
         platforms: SOCIAL_PLATFORMS.map((id) => ({ id, label: MARKETING_PLATFORM_LABELS[id] ?? id })),
@@ -191,9 +201,11 @@ router.get("/autopilot/activity", requireAutomationSubscription, async (req, res
       .from(organizationsTable)
       .where(eq(organizationsTable.id, orgId))
       .limit(1);
+    const financeView = await canDoInOrg(userId, orgId, "finance.view");
     const activity = await getRecentAutopilotActivity(orgId, {
       domain,
       excludeDomain: org?.ownerUserId === userId ? undefined : "market_research",
+      excludeDomains: financeView.allowed ? undefined : ["accounting" as AutopilotDomain],
       limit,
       before,
     });
@@ -234,6 +246,21 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
     }
 
     const body = req.body ?? {};
+    if (domain === "accounting") {
+      const financeManage = await canDoInOrg(userId, orgId, "finance.manage");
+      if (!financeManage.allowed) {
+        const accountingBody = bodyObject(body);
+        const keys = Object.keys(accountingBody);
+        const disableOnly = accountingBody.enabled === false
+          && keys.length === 1
+          && keys[0] === "enabled";
+        if (!disableOnly) {
+          res.status(403).json({ error: "Finance manager permission is required to change Accounting automation" });
+          return;
+        }
+      }
+    }
+
     let creativePrefs: ReturnType<typeof sanitizeCreativeWorkPrefs> | null = null;
     let existingCreativeConfig: Awaited<ReturnType<typeof getDomainConfig>> = null;
     if (domain === "creative_work") {

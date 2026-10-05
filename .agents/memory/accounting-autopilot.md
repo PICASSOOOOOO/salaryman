@@ -11,6 +11,15 @@ bill payment, periodic payroll. Registered at boot in api-server index.ts.
 ## Decisions (be consistent with these)
 - **Acts on the org OWNER's books.** All finance tables are keyed by `userId`;
   the handler uses `ctx.ownerId` as that userId. "Org books" == owner's books.
+- **Accounting automation follows finance permissions.** Enabling or changing its
+  settings requires `finance.manage`; an Autopilot manager without that permission
+  may still send the exact `enabled:false` change to pause it. Hide accounting
+  activity details unless the caller also has `finance.view`.
+  **Why:** `autopilot.manage` defaults to manager while finance writes default to
+  director; treating them as equivalent lets a manager authorize owner-book
+  bill payments/payroll or inspect restricted finance activity.
+  **How to apply:** enforce this at the API as well as disabling the UI controls;
+  keep the pause-only exception so safety actions remain available.
 - **No entitlement / no credit gate.** Manual Enterprise Finance requires only
   auth (no PRIME, no paid AI), so the handler deliberately does NOT call
   `ensureEntitlement`/`ensureCredit`. **Why:** gating it would make the automatic

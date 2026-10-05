@@ -4,7 +4,7 @@ import {
   type AutopilotDomain,
   type AutopilotOutcome,
 } from "@workspace/db";
-import { eq, and, desc, lt, ne } from "drizzle-orm";
+import { eq, and, desc, lt, ne, notInArray } from "drizzle-orm";
 
 // Org-scoped audit feed for autopilot. Every automated action (and every blocked
 // attempt) lands here so humans can review and trust what each bot did.
@@ -45,7 +45,13 @@ export async function recordAutopilotActivity(input: RecordActivityInput): Promi
  */
 export async function getRecentAutopilotActivity(
   orgId: number,
-  opts?: { domain?: AutopilotDomain; excludeDomain?: AutopilotDomain; limit?: number; before?: number }
+  opts?: {
+    domain?: AutopilotDomain;
+    excludeDomain?: AutopilotDomain;
+    excludeDomains?: AutopilotDomain[];
+    limit?: number;
+    before?: number;
+  }
 ): Promise<(typeof autopilotActivityLogTable.$inferSelect)[]> {
   const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 200);
   const conditions = [eq(autopilotActivityLogTable.orgId, orgId)];
@@ -54,6 +60,9 @@ export async function getRecentAutopilotActivity(
   }
   if (opts?.excludeDomain) {
     conditions.push(ne(autopilotActivityLogTable.domain, opts.excludeDomain));
+  }
+  if (opts?.excludeDomains?.length) {
+    conditions.push(notInArray(autopilotActivityLogTable.domain, opts.excludeDomains));
   }
   if (opts?.before != null && Number.isFinite(opts.before)) {
     conditions.push(lt(autopilotActivityLogTable.id, opts.before));

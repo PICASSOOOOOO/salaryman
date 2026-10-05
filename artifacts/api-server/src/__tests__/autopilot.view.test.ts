@@ -2,6 +2,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import {
+  db,
+  autopilotActivityLogTable,
+  orgPermissionsTable,
   AUTOPILOT_DOMAINS,
   AUTOPILOT_DOMAIN_META,
   AUTOPILOT_MARKETING_TONES,
@@ -206,5 +209,52 @@ describe("GET /api/autopilot — permission gating (autopilot.manage)", () => {
     expect(res.status).toBe(200);
     expect(res.body.orgId).toBe(orgId);
     expect(res.body.domains).toHaveLength(AUTOPILOT_DOMAINS.length);
+    expect(res.body.accounting).toEqual({ canManage: false });
+  });
+
+  it("hides accounting activity from Autopilot managers without finance.view", async () => {
+    const owner = await createUser();
+    const specialist = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: specialist.id, role: "specialist" }]);
+    await db.insert(orgPermissionsTable).values({
+      orgId,
+      permissionKey: "autopilot.manage",
+      minRole: "specialist",
+    });
+    await db.insert(autopilotActivityLogTable).values([
+      {
+        orgId,
+        domain: "accounting",
+        action: "bill_paid",
+        summary: "Paid a supplier bill",
+        outcome: "success",
+        detail: { amountFiat: 1200 },
+      },
+      {
+        orgId,
+        domain: "marketing",
+        action: "draft_post",
+        summary: "Drafted a marketing post",
+        outcome: "success",
+        detail: {},
+      },
+    ]);
+
+    actAs(specialist);
+    const view = await request(app).get("/api/autopilot");
+    expect(view.status).toBe(200);
+    expect(view.body.accounting).toEqual({ canManage: false });
+    expect(view.body.activity.map((row: { domain: string }) => row.domain)).toContain("marketing");
+    expect(view.body.activity.some((row: { domain: string }) => row.domain === "accounting")).toBe(false);
+
+    const privateFeed = await request(app).get("/api/autopilot/activity?domain=accounting");
+    expect(privateFeed.status).toBe(200);
+    expect(privateFeed.body.activity).toEqual([]);
+
+    actAs(owner);
+    const ownerFeed = await request(app).get("/api/autopilot/activity?domain=accounting");
+    expect(ownerFeed.status).toBe(200);
+    expect(ownerFeed.body.activity).toHaveLength(1);
+    expect(ownerFeed.body.activity[0].detail.amountFiat).toBe(1200);
   });
 });

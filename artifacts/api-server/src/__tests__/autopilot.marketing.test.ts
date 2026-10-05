@@ -5,9 +5,10 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 // orchestration (gating → draft → publish → log) without real AI/provider calls.
 // generateSocialCopy + publishSocialPost are stubbed; isSocialPlatform (used to
 // read connected platforms) is kept real via importActual.
-const { generateSocialCopyMock, publishSocialPostMock } = vi.hoisted(() => ({
+const { generateSocialCopyMock, publishSocialPostMock, creditOrgAccountMock } = vi.hoisted(() => ({
   generateSocialCopyMock: vi.fn(),
   publishSocialPostMock: vi.fn(),
+  creditOrgAccountMock: vi.fn(async () => {}),
 }));
 
 vi.mock("../lib/social-service", async (importActual) => ({
@@ -19,6 +20,9 @@ vi.mock("../lib/social-service", async (importActual) => ({
 vi.mock("../lib/studio-gen", () => ({
   getBrandKit: vi.fn(async () => null),
   buildBrandContext: vi.fn(() => ""),
+}));
+vi.mock("../routes/org-accounts", () => ({
+  creditOrgAccount: creditOrgAccountMock,
 }));
 
 import { randomUUID } from "crypto";
@@ -163,6 +167,7 @@ describe("marketingAutopilotHandler — drafting + publishing", () => {
 
     // Both the draft and the (simulated) publish are recorded to the activity log.
     expect(logActions(log)).toEqual(["draft_post", "publish_simulated"]);
+    expect(creditOrgAccountMock).not.toHaveBeenCalled();
   });
 
   it("drafts an AI post and logs a LIVE publish when PRIME + connected", async () => {
@@ -179,6 +184,7 @@ describe("marketingAutopilotHandler — drafting + publishing", () => {
     expect(logActions(log)).toEqual(["draft_post", "publish_live"]);
     const liveLog = log.mock.calls.find((c) => (c[0] as { action: string }).action === "publish_live");
     expect((liveLog?.[0] as { outcome: string }).outcome).toBe("success");
+    expect(creditOrgAccountMock).not.toHaveBeenCalled();
   });
 
   it("selects a platform configured only through Platform Connections", async () => {

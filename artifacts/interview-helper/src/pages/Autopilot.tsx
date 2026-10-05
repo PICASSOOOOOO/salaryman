@@ -82,6 +82,7 @@ interface AutopilotPayload {
   defaults: { cadenceMinutes: number; creativeCadenceMinutes?: number; marketResearchCadenceMinutes?: number; maxActionsPerTick: number };
   creative?: { canManage: boolean; projects: CreativeProjectOption[] };
   marketResearch?: { canManage: boolean };
+  accounting?: { canManage: boolean };
   marketing: { tones: string[]; platforms: { id: string; label: string }[] };
   crm: { leadStatuses: { id: string; label: string }[] };
   domains: DomainConfig[];
@@ -469,10 +470,12 @@ function CrmPrefsEditor({
 function AccountingPrefsEditor({
   cfg,
   busy,
+  canManage,
   onSave,
 }: {
   cfg: DomainConfig;
   busy: boolean;
+  canManage: boolean;
   onSave: (prefs: AccountingPrefs) => void;
 }) {
   const initial = readAccountingPrefs(cfg.prefs);
@@ -495,6 +498,11 @@ function AccountingPrefsEditor({
   return (
     <div className="mt-4 pt-4 border-t border-cyan-500/10">
       <p className={PREFS_HEADER_CLS}>CFO PREFERENCES — choose which books duties the bot runs.</p>
+      {!canManage && (
+        <p className="mt-2 font-mono text-[9px] text-amber-300/70">
+          Finance manager permission is required to change these settings. You can pause this workflow above.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
         <ToggleRow
@@ -1217,14 +1225,17 @@ export default function Autopilot() {
                 ? data.creative?.canManage === true
                 : cfg.domain === 'market_research'
                   ? data.marketResearch?.canManage === true
-                  : true;
+                  : cfg.domain === 'accounting'
+                    ? data.accounting?.canManage === true
+                    : true;
+              const canPauseAccounting = cfg.domain === 'accounting' && cfg.enabled && !canManageWorkflow;
               const creativeProjectId = cfg.domain === 'creative_work' ? num(cfg.prefs.projectId, 0) : 0;
               const creativeProjectAvailable = cfg.domain !== 'creative_work' ||
                 (data.creative?.projects ?? []).some((project) => project.id === creativeProjectId);
               const researchSubject = cfg.domain === 'market_research' && typeof cfg.prefs.subject === 'string'
                 ? cfg.prefs.subject.trim()
                 : '';
-              const toggleDisabled = busy || !canManageWorkflow ||
+              const toggleDisabled = busy || (!canManageWorkflow && !canPauseAccounting) ||
                 (cfg.domain === 'creative_work' && !cfg.enabled && !creativeProjectAvailable) ||
                 (cfg.domain === 'market_research' && !cfg.enabled && !researchSubject);
               return (
@@ -1299,7 +1310,7 @@ export default function Autopilot() {
                           type="number"
                           min={5}
                           max={1440}
-                          disabled={busy}
+                          disabled={busy || (cfg.domain === 'accounting' && !canManageWorkflow)}
                           defaultValue={cfg.cadenceMinutes ?? data.defaults.cadenceMinutes}
                           onBlur={(e) => {
                             const current = cfg.cadenceMinutes ?? data.defaults.cadenceMinutes;
@@ -1324,7 +1335,7 @@ export default function Autopilot() {
                         type="number"
                         min={1}
                         max={100}
-                        disabled={busy}
+                        disabled={busy || (cfg.domain === 'accounting' && !canManageWorkflow)}
                         defaultValue={cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick}
                         onBlur={(e) => {
                           const current = cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick;
@@ -1375,7 +1386,8 @@ export default function Autopilot() {
                     <AccountingPrefsEditor
                       key={`prefs-${nonce}`}
                       cfg={cfg}
-                      busy={busy}
+                      busy={busy || !canManageWorkflow}
+                      canManage={canManageWorkflow}
                       onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
                     />
                   )}

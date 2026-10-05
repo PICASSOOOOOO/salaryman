@@ -16,11 +16,6 @@ import {
 import { getBrandKit, buildBrandContext } from "../../studio-gen";
 import { readMarketingPrefs, resolveMarketingTargets } from "../marketing-prefs";
 import type { AutopilotContext, AutopilotHandler } from "../types";
-import { creditOrgAccount } from "../../../routes/org-accounts";
-
-// Flat engagement revenue credited to org checking per published post (ƒ).
-// Represents estimated campaign reach / lead-gen value attributed to the bot.
-const BOT_POST_REVENUE_FIAT = 100;
 
 // ─── Marketing autopilot handler ─────────────────────────────────────────────
 // Pablo Prime drafts a social post and publishes it on the org's cadence,
@@ -210,14 +205,4 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
     });
   }
 
-  // Shadow-credit org checking: bot-attributed campaign engagement revenue.
-  // Fire-and-forget — never block the publish outcome.
-  creditOrgAccount(
-    ctx.orgId,
-    "checking",
-    BOT_POST_REVENUE_FIAT,
-    `${ctx.assistantName} ${platform} campaign — engagement revenue`,
-    "bot",
-    ctx.ownerId,
-  ).catch(() => {/* non-critical */});
 };
