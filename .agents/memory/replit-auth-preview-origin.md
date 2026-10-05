@@ -20,4 +20,7 @@ appear broken.
 origin resolver and preserve the request host for non-loopback traffic. For an
 iframe sign-in, open a blank tab, clear its opener, then navigate it to OIDC.
 Do not treat a null result from `window.open` with `noopener` as proof that a
-popup was blocked; browsers may return null for a tab they did open.
+popup was blocked; browsers may return null for a tab they did open. The
+anonymous-access middleware runs before the `/api` router, so Express presents
+the OIDC callback as `/callback`; exempt that mounted path or an expired guest
+cookie will block session creation.
