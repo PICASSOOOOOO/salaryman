@@ -2,7 +2,7 @@
 - [Frontend API path prefix](frontend-api-path-prefix.md) — apiFetch does not add `/api` to slash-prefixed paths; browser callers must use `/api/...` or they request the SPA route.
 - [Office-first restructure + city story-gate](office-first-restructure.md) — onboarded land /office; /game=TERMINAL (Pablo a tile); do NOT hard-lock city behind story.active — story is BEGUN in-city, so gating /world soft-locks; add office begin-story path first.
 - [Browser onboarding work paths](browser-onboarding-work-path.md) — web onboarding offers real business or “LOOKING FOR WORK”; fictional business/immigration stays in the downloadable game.
-- [Site-wide popup boundary](site-wide-popup-boundary.md) — keep COMMS as a page, disable automatic message alerts by default, and preserve badges and intentional action dialogs.
+- [Site-wide popup boundary](site-wide-popup-boundary.md) — keep alerts opt-in; offer COMMS as a page and user-opened desktop dock, with badges and intentional dialogs preserved.
 - [Phone-system daily testing](phone-system-daily-test.md) — mocked `test:phone` + LIVE `health:phone` (real Twilio probe+email, DB-free, timeouts); daily = user-published Scheduled Deployment running health:phone (agent can't set cron).
 - [Browser phone bridge invariant](browser-phone-bridge.md) — outbound PSTN calls are transactional: Voice ready first, every conference joined before active UI, all legs rolled back on any join failure.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.

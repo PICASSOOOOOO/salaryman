@@ -902,11 +902,17 @@ function _writeAssocBaseline(uid: string, n: number): void {
 export function ChatPanel({
   initiallyOpen = false,
   initialDmUserId,
+  initialDmRequestId = 0,
+  openRequestId = 0,
   embedded = false,
+  dockMode = false,
 }: {
   initiallyOpen?: boolean;
   initialDmUserId?: string;
+  initialDmRequestId?: number;
+  openRequestId?: number;
   embedded?: boolean;
+  dockMode?: boolean;
 } = {}) {
   const { user, isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
@@ -917,6 +923,10 @@ export function ChatPanel({
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [pabloLoading, setPabloLoading] = useState(false);
+
+  useEffect(() => {
+    if (dockMode && openRequestId > 0) setOpen(true);
+  }, [dockMode, openRequestId]);
 
   const {
     connected,
@@ -1031,7 +1041,7 @@ export function ChatPanel({
       setShowUserSearch(false);
     });
     return () => { active = false; };
-  }, [initialDmUserId, currentUserId, startPrivateChat]);
+  }, [initialDmUserId, initialDmRequestId, currentUserId, startPrivateChat]);
 
   // Esc-to-close — basic dialog accessibility for the bottom-sheet on
   // mobile and the floating panel on desktop. Keyboard users can also
@@ -1206,12 +1216,13 @@ export function ChatPanel({
 
   if (!isAuthenticated) return null;
 
-  const PANEL_W = embedded ? "100%" : isMobile ? "100vw" : 340;
+  const PANEL_W = embedded ? "100%" : isMobile ? "100vw" : dockMode ? "min(420px, calc(100vw - 24px))" : 340;
   // Mobile: bottom-sheet sized to ~78% of the viewport so the user can
   // (a) tap the backdrop above to dismiss / see the page behind, and
   // (b) keep the input bar comfortably clear of the on-screen keyboard.
-  // Desktop: fixed 480px floating panel.
-  const PANEL_H = embedded ? (isMobile ? "calc(100dvh - 210px)" : 600) : isMobile ? "78dvh" : 480;
+  // Desktop COMMS docks to the lower edge; the page remains interactive because
+  // the panel has no backdrop or modal focus trap.
+  const PANEL_H = embedded ? (isMobile ? "calc(100dvh - 210px)" : 600) : isMobile ? "78dvh" : dockMode ? "min(68vh, 600px)" : 480;
 
   const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
@@ -1246,6 +1257,9 @@ export function ChatPanel({
       )}
       {open && (
         <div
+          id={dockMode ? "comms-panel" : undefined}
+          role={dockMode ? "region" : undefined}
+          aria-label={dockMode ? "COMMS panel" : undefined}
           style={{
             position: embedded ? "relative" : "fixed",
             ...(embedded
@@ -1258,6 +1272,8 @@ export function ChatPanel({
                   left: 0, right: 0, bottom: 0,
                   borderRadius: "16px 16px 0 0",
                 }
+              : dockMode
+              ? { bottom: 0, right: 24, borderRadius: "10px 10px 0 0" }
               : { bottom: 56, right: 16, borderRadius: 10 }),
             width: PANEL_W,
             height: PANEL_H,
@@ -1266,7 +1282,7 @@ export function ChatPanel({
             borderBottom: isMobile ? "none" : undefined,
             display: "flex",
             flexDirection: "column",
-            zIndex: embedded ? 1 : 9999,
+            zIndex: embedded ? 1 : dockMode ? 850 : 9999,
             boxShadow: isMobile
               ? "0 -8px 32px rgba(0,0,0,0.7)"
               : `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
@@ -1331,14 +1347,14 @@ export function ChatPanel({
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ fontSize: isMobile ? "0.72rem" : "0.58rem", color: CRT(0.82), letterSpacing: "0.1em", fontWeight: 700 }}>
-                    PABLO AI
+                    {dockMode ? "COMMS" : "PABLO AI"}
                   </span>
                   <span style={{ fontSize: "0.5rem", color: connected && pabloChannelId != null ? "rgba(22,101,52,0.9)" : CRT(0.42), letterSpacing: "0.08em" }}>
                     {connected && pabloChannelId != null ? "ONLINE" : "SYNCING"}
                   </span>
                 </div>
                 <span style={{ display: "block", marginTop: 2, fontSize: "0.48rem", color: CRT(0.42), letterSpacing: "0.08em" }}>
-                  {connected ? "LIVE COMMS" : commsReady ? "COMMS READY · SYNCING" : "COMMS OFFLINE"}
+                  {connected ? (dockMode ? "LIVE MESSAGES" : "LIVE COMMS") : commsReady ? "COMMS READY · SYNCING" : "COMMS OFFLINE"}
                 </span>
               </div>
               <div
@@ -1612,9 +1628,12 @@ export function ChatPanel({
         </div>
       )}
 
-      {!embedded && <button
+      {!embedded && !(dockMode && open) && <button
         onClick={() => setOpen(o => !o)}
         data-testid="button-comms-toggle"
+        aria-label={open ? "Close COMMS panel" : "Open COMMS panel"}
+        aria-expanded={open}
+        aria-controls="comms-panel"
         style={{
           position: "fixed",
           // ChatPanel is hidden on GAME_ROUTES (WorldPlay, /game, /mobile) so
@@ -1622,14 +1641,16 @@ export function ChatPanel({
           // bottom-RIGHT corner with comfortable padding — that area is
           // usually clear, and it keeps the ask-bot prompt off the user's
           // profile. Respect the iOS home-indicator safe-area inset on mobile.
-          bottom: isMobile ? `calc(var(--app-safe-bottom) + 24px + var(--fab-bottom-offset, 0px))` : `calc(16px + var(--fab-bottom-offset, 0px))`,
+          bottom: dockMode && !isMobile ? 0 : isMobile ? `calc(var(--app-safe-bottom) + 24px + var(--fab-bottom-offset, 0px))` : `calc(16px + var(--fab-bottom-offset, 0px))`,
           // Landscape iPhones push the home indicator / rounded corner
           // into the right edge — respect that inset so the FAB doesn't
           // hug the bezel.
-          right: isMobile ? `calc(env(safe-area-inset-right, 0px) + 20px)` : 16,
-          width: isMobile ? 60 : 42,
-          height: isMobile ? 60 : 42,
-          borderRadius: "50%",
+          right: dockMode && !isMobile ? 24 : isMobile ? `calc(env(safe-area-inset-right, 0px) + 20px)` : 16,
+          width: dockMode && !isMobile ? "auto" : isMobile ? 60 : 42,
+          minWidth: dockMode && !isMobile ? 112 : undefined,
+          height: dockMode && !isMobile ? 40 : isMobile ? 60 : 42,
+          padding: dockMode && !isMobile ? "0 14px" : undefined,
+          borderRadius: dockMode && !isMobile ? "8px 8px 0 0" : "50%",
           background: open
             ? `linear-gradient(135deg, ${CRT(0.15)}, ${BLUE(0.1)})`
             : `linear-gradient(135deg, rgba(0,20,0,0.95), rgba(0,10,15,0.95))`,
@@ -1641,7 +1662,7 @@ export function ChatPanel({
           justifyContent: "center",
           // Sit above all in-world HUD (z 150–240) but below full-screen
           // modals (z 9000+) so it never hijacks dialogs.
-          zIndex: isMobile ? 8500 : 901,
+          zIndex: isMobile ? 8500 : dockMode ? 851 : 901,
           boxShadow: open
             ? `0 0 18px ${CRT(0.3)}`
             : `0 4px 18px rgba(0,0,0,0.7), 0 0 12px ${CRT(0.18)}`,
@@ -1650,11 +1671,12 @@ export function ChatPanel({
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
         }}
-        title="Chat"
+        title={dockMode ? "Open COMMS" : "Chat"}
       >
         {open
           ? <ChevronDown size={isMobile ? 28 : 18} />
           : <MessageSquare size={isMobile ? 28 : 18} />}
+        {dockMode && !isMobile && <span style={{ fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.12em" }}>COMMS</span>}
         {!open && totalUnread > 0 && (
           <span
             style={{

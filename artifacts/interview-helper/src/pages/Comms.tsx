@@ -67,9 +67,11 @@ function PabloVoiceControl() {
 export function CommsEmbedded({
   section,
   initialDmUserId,
+  initialDmRequestId,
 }: {
   section: CommsSection;
   initialDmUserId?: string;
+  initialDmRequestId?: number;
 }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const boomerMode = getDefaultBoomerMode();
@@ -95,7 +97,14 @@ export function CommsEmbedded({
 
   return (
     <div className="flex-1 flex flex-col bg-[#fffaf0] text-black">
-      {section === 'chat' && <ChatPanel embedded initiallyOpen initialDmUserId={initialDmUserId} />}
+      {section === 'chat' && (
+        <ChatPanel
+          embedded
+          initiallyOpen
+          initialDmUserId={initialDmUserId}
+          initialDmRequestId={initialDmRequestId}
+        />
+      )}
       {section === 'sms' && (
         <div className="flex-1 grid place-items-center p-6">
           <a
@@ -158,12 +167,14 @@ export function CommsEmbedded({
 export default function Comms() {
   const [section, setSection] = useState<CommsSection>('chat');
   const [initialDmUserId, setInitialDmUserId] = useState<string>();
+  const [initialDmRequestId, setInitialDmRequestId] = useState(0);
   const { unreadMessages, unreadSms, pendingRequests } = useCommsSummary();
 
   useEffect(() => {
     const queuedUserId = takePendingCommsDmUserId();
     if (queuedUserId) {
       setInitialDmUserId(queuedUserId);
+      setInitialDmRequestId((current) => current + 1);
       setSection('chat');
     }
 
@@ -172,7 +183,10 @@ export default function Comms() {
       const eventUserId = (event as CustomEvent<{ userId?: string }>).detail?.userId?.trim();
       const queued = takePendingCommsDmUserId();
       const userId = eventUserId || queued;
-      if (userId) setInitialDmUserId(userId);
+      if (userId) {
+        setInitialDmUserId(userId);
+        setInitialDmRequestId((current) => current + 1);
+      }
       setSection('chat');
     };
 
@@ -234,7 +248,11 @@ export default function Comms() {
         </div>
       </div>
       <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full relative">
-        <CommsEmbedded section={section} initialDmUserId={initialDmUserId} />
+        <CommsEmbedded
+          section={section}
+          initialDmUserId={initialDmUserId}
+          initialDmRequestId={initialDmRequestId}
+        />
       </div>
     </div>
   );
