@@ -31,3 +31,16 @@ page-level ads over a route that renders no manual slot.
 
 **How to apply:** Keep the AdSense loader route-gated; on transitions into a
 strictly ad-free route, hard-navigate only when the existing loader is present.
+
+For delivery diagnosis, inspect the published slot's `data-ad-status` and the
+Google ad-request result; a rendered label, valid `ads.txt`, and loadable
+AdSense library do not prove that a creative was served. Check the site's
+AdSense review status before changing working slot code.
+
+**Why:** Production showed an `unfilled` slot while the site was still under
+review, despite the publisher tag, slot configuration, loader, and `ads.txt`
+being correct.
+
+**How to apply:** If Google marks a live slot `unfilled`, compare publisher and
+slot configuration, verify crawler access and `ads.txt`, then check AdSense
+site/unit readiness. Do not claim delivery until the slot is filled.
