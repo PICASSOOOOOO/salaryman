@@ -150,3 +150,4 @@
 - [Orval Zod output target](orval-zod-output-target.md) — Keep generated validators on Zod 3; Orval's automatic Zod 4 output crashes API startup.
 - [Marketing SMS consent boundary](marketing-sms-consent.md) — explicit per-contact SMS permission and an active user/org-owned Twilio sender; campaigns remain explicitly started.
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
+- [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
