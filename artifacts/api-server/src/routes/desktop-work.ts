@@ -1,12 +1,11 @@
-import { createHash } from "node:crypto";
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter } from "express";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import {
   db,
   desktopWorkClaimsTable,
   desktopWorkLeasesTable,
-  deviceLinksTable,
 } from "@workspace/db";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { creditFiat } from "../lib/fiat-wallet";
 
 const router: IRouter = Router();
@@ -14,32 +13,6 @@ const WORK_TYPE = "office_shift";
 const FIAT_PER_HOUR = 300;
 const MAX_LEASE_MINUTES = 8 * 60;
 const LEASE_TTL_MS = 24 * 60 * 60 * 1000;
-
-function hashDesktopToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-async function requireDesktopLink(req: Request, res: Response) {
-  const authorization = req.header("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  const deviceId = req.header("x-salaryman-device-id") ?? "";
-  if (!token || !/^[a-zA-Z0-9._:-]{8,128}$/.test(deviceId)) {
-    res.status(401).json({ error: "Desktop credential required" });
-    return null;
-  }
-  const [link] = await db.select().from(deviceLinksTable).where(and(
-    eq(deviceLinksTable.desktopAccessTokenHash, hashDesktopToken(token)),
-    eq(deviceLinksTable.desktopDeviceId, deviceId),
-    eq(deviceLinksTable.status, "linked"),
-  )).limit(1);
-  if (!link || !link.scopes.includes("salaryman_app")) {
-    res.status(401).json({ error: "Desktop credential is invalid, revoked, or lacks SALARYMAN access" });
-    return null;
-  }
-  await db.update(deviceLinksTable).set({ lastDesktopSeenAt: new Date(), updatedAt: new Date() })
-    .where(eq(deviceLinksTable.id, link.id));
-  return link;
-}
 
 router.post("/desktop-work/lease", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);

@@ -9,6 +9,7 @@ import sys
 import pygame
 
 from .bridge import OfficeBridge, apply_command
+from .automation import AutopilotPoller, AutopilotSnapshot, load_desktop_link
 from .pablo import fetch_pablo_status
 from .state import OfficeState
 from .scene import build_tower_scene
@@ -36,6 +37,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Optional SALARYMAN API URL for the shared Pablo capability check.",
     )
     parser.add_argument(
+        "--desktop-link-file",
+        default=os.environ.get("SALARYMAN_DESKTOP_LINK_FILE"),
+        help="Private linked-device JSON file for read-only automation status.",
+    )
+    parser.add_argument(
         "--role",
         choices=("player", "moderator", "admin"),
         default=os.environ.get("SALARYMAN_OPERATOR_ROLE", "player"),
@@ -58,6 +64,19 @@ def run(argv: list[str] | None = None) -> int:
     renderer = SolarPunkRenderer(screen)
     renderer.set_pablo_status(fetch_pablo_status(args.server_url))
     scene = build_tower_scene()
+    try:
+        desktop_link = load_desktop_link(
+            args.desktop_link_file,
+            fallback_server_url=args.server_url,
+        )
+        autopilot_poller = AutopilotPoller(desktop_link)
+    except ValueError:
+        autopilot_poller = AutopilotPoller(None)
+        scene.set_autopilot_snapshot(AutopilotSnapshot("error", {}, "INVALID GAME LINK FILE", 1))
+    autopilot_poller.start()
+    if scene.autopilot_snapshot.state != "error":
+        scene.set_autopilot_snapshot(autopilot_poller.current())
+    last_autopilot_revision = scene.autopilot_snapshot.revision
     coffee_rects: dict[int, pygame.Rect] = {}
     # The packaged client opens directly into the playable office. The business
     # dashboard remains one Tab press away.
@@ -198,6 +217,10 @@ def run(argv: list[str] | None = None) -> int:
             scene.set_motion_input(0.0, 0.0)
         scene.update_motion(delta_seconds)
         scene.update_npc_motion(delta_seconds)
+        autopilot_snapshot = autopilot_poller.current()
+        if autopilot_snapshot.revision > last_autopilot_revision:
+            scene.set_autopilot_snapshot(autopilot_snapshot)
+            last_autopilot_revision = autopilot_snapshot.revision
         state.update(delta_seconds)
         if not args.no_bridge:
             bridge_elapsed += delta_seconds
@@ -218,6 +241,7 @@ def run(argv: list[str] | None = None) -> int:
             running = False
 
     state.save_to_file(args.save_file)
+    autopilot_poller.close()
     bridge.close()
     pygame.quit()
     return 0

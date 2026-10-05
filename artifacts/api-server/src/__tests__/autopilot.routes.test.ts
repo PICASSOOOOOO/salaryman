@@ -623,6 +623,7 @@ describe("Market Research owner scope and opt-in configuration", () => {
       subject: "Clinic payroll software",
       region: "Vietnam",
       competitors: "A, B",
+      autoInvestigateRecentCalls: false,
     });
     expect((await getStoredConfig(orgId, "market_research"))?.enabled).toBe(true);
   });

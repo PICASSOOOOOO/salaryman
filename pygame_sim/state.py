@@ -92,7 +92,7 @@ class OfficeState:
     recruitment_candidates: list[RecruitCandidate] = field(default_factory=list)
     recruitment_open: bool = False
     role: GameRole = "player"
-    active_page: OverlayPage | None = None
+    active_page: OverlayPage | Literal["automation"] | None = None
     page_source: str | None = None
     tool_menu_open: bool = False
     decay: float = 8.0
@@ -175,7 +175,7 @@ class OfficeState:
 
     def open_page(
         self,
-        page: OverlayPage,
+        page: OverlayPage | Literal["automation"],
         *,
         from_object: bool = False,
         source: str = "OBJECT",

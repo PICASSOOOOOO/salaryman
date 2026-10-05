@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
@@ -15,6 +14,7 @@ import {
 } from "@workspace/db";
 import { canAccess } from "./shadow-tower";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 
 const router = Router();
 const FLOOR_COUNT = 67;
@@ -32,32 +32,6 @@ const ROOM_LABEL: Record<string, string> = {
   elevator: "ELEVATOR",
   office: "ORGANIZATION OFFICE",
 };
-
-function hashDesktopToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-async function requireDesktopLink(req: Request, res: Response) {
-  const authorization = req.header("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  const deviceId = req.header("x-salaryman-device-id") ?? "";
-  if (!token || !/^[a-zA-Z0-9._:-]{8,128}$/.test(deviceId)) {
-    res.status(401).json({ error: "Desktop credential required" });
-    return null;
-  }
-  const [link] = await db.select().from(deviceLinksTable).where(and(
-    eq(deviceLinksTable.desktopAccessTokenHash, hashDesktopToken(token)),
-    eq(deviceLinksTable.desktopDeviceId, deviceId),
-    eq(deviceLinksTable.status, "linked"),
-  )).limit(1);
-  if (!link || !link.scopes.includes("salaryman_app")) {
-    res.status(401).json({ error: "Desktop credential is invalid, revoked, or lacks SALARYMAN access" });
-    return null;
-  }
-  await db.update(deviceLinksTable).set({ lastDesktopSeenAt: new Date(), updatedAt: new Date() })
-    .where(eq(deviceLinksTable.id, link.id));
-  return link;
-}
 
 function personName(user: { firstName: string | null; lastName: string | null; username: string | null }): string {
   return [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.username || "Employee";

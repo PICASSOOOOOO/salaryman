@@ -235,6 +235,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                 }
                 for item in scene.objects.objects
             ],
+            "automationSync": {
+                "state": scene.autopilot_snapshot.state,
+                "message": scene.autopilot_snapshot.message,
+            },
+            "automationCharacters": scene.automation_character_states(),
             # MiniGrid-inspired observation data: the client can render and
             # navigate a room graph without becoming the simulation authority.
             # Coordinates remain in Pygame's world space so no second movement

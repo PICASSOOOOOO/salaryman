@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import {
   db,
   AUTOPILOT_DOMAINS,
@@ -33,6 +33,7 @@ import { SOCIAL_PLATFORMS } from "../lib/social-service";
 import { requireFeature } from "../middlewares/requirePro";
 import { createBusinessTaskInTransaction } from "../lib/business-ops-service";
 import { buildFollowUpTaskDraft } from "../lib/autopilot/review-items";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 
 // Display labels for the marketing platform allow-list, surfaced to the UI.
 const MARKETING_PLATFORM_LABELS: Record<string, string> = {
@@ -101,6 +102,31 @@ async function getManageableOrg(req: Request, res: Response): Promise<{ orgId: n
     return null;
   }
   return { orgId, userId };
+}
+
+async function authenticateDesktopAutopilotRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const link = await requireDesktopLink(req, res);
+    if (!link) return;
+
+    // The device credential was verified above; adapt it to the same auth
+    // contract used by the subscription and organization guards.
+    Object.defineProperty(req, "user", {
+      configurable: true,
+      value: { id: link.userId },
+    });
+    Object.defineProperty(req, "isAuthenticated", {
+      configurable: true,
+      value: () => true,
+    });
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
 
 function toApprovalItem(row: typeof autopilotReviewItemsTable.$inferSelect) {
@@ -477,6 +503,45 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
  * the dashboard to poll for a live feed and to filter by domain without reloading
  * the whole control surface.
  */
+router.get(
+  "/autopilot/desktop-snapshot",
+  authenticateDesktopAutopilotRequest,
+  requireAutomationSubscription,
+  async (req, res): Promise<void> => {
+    const access = await getManageableOrg(req, res);
+    if (!access) return;
+    try {
+      const [domains, org, financeView] = await Promise.all([
+        getOrgAutopilotView(access.orgId),
+        db.select({ ownerUserId: organizationsTable.ownerUserId })
+          .from(organizationsTable)
+          .where(eq(organizationsTable.id, access.orgId))
+          .limit(1)
+          .then((rows) => rows[0]),
+        canDoInOrg(access.userId, access.orgId, "finance.view"),
+      ]);
+      const isOwner = org?.ownerUserId === access.userId;
+      const visibleDomains = domains.filter(({ domain }) => {
+        if (domain === "accounting" && !financeView.allowed) return false;
+        if ((domain === "creative_work" || domain === "market_research") && !isOwner) return false;
+        return true;
+      });
+
+      res.json({
+        snapshotAt: new Date().toISOString(),
+        domains: visibleDomains.map(({ domain, enabled, lastRunAt }) => ({
+          domain,
+          enabled,
+          lastRunAt: lastRunAt?.toISOString() ?? null,
+        })),
+      });
+    } catch (err) {
+      req.log?.error({ err }, "Desktop autopilot snapshot failed");
+      res.status(500).json({ error: "Could not load automation status" });
+    }
+  },
+);
+
 router.get("/autopilot/activity", requireAutomationSubscription, async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = getUserId(req);

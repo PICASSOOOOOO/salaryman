@@ -152,3 +152,4 @@
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
 - [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
 - [SALARYMAN support routing](salaryman-support-routing.md) — public support uses salaryman.io Contact Us; submissions go privately to OWNER_EMAILS until an official support inbox exists.
+- [Pygame automation bridge](pygame-automation-bridge.md) — desktop characters mirror only permission-filtered server status; game inspection stays read-only and fails closed when sync is unavailable.

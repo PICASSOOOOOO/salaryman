@@ -15,6 +15,12 @@ from .objects import (
     OfficeObjectRegistry,
     build_tower_object_registry,
 )
+from .automation import (
+    AUTOMATION_CHARACTERS,
+    AutopilotDomainStatus,
+    AutopilotSnapshot,
+    AutomationCharacter,
+)
 
 
 _FLOOR_PLAN_PATH = Path(__file__).resolve().parent.parent / "godot" / "office-client" / "floor_plan.json"
@@ -91,6 +97,10 @@ class TowerScene:
     player_action_remaining: float = 0.0
     idle_seconds: float = 0.0
     seated_chair_id: str | None = None
+    autopilot_snapshot: AutopilotSnapshot = field(
+        default_factory=lambda: AutopilotSnapshot("unlinked", {}, "NO DESKTOP LINK", 0)
+    )
+    selected_automation_domain: str | None = None
 
     MAX_SPEED: float = 300.0
     ACCELERATION: float = 1_500.0
@@ -317,6 +327,101 @@ class TowerScene:
         if delta_seconds > 0:
             self.npc_motion_seconds += delta_seconds
 
+    def set_autopilot_snapshot(self, snapshot: AutopilotSnapshot) -> None:
+        self.autopilot_snapshot = snapshot
+
+    def automation_domain_status(
+        self,
+        profile: AutomationCharacter,
+    ) -> AutopilotDomainStatus | None:
+        if self.autopilot_snapshot.state != "connected":
+            return None
+        return self.autopilot_snapshot.domains.get(profile.domain)
+
+    def automation_pose(
+        self,
+        profile: AutomationCharacter,
+    ) -> tuple[tuple[int, int], str, str]:
+        """Walk between workstations and pause long enough to show each task."""
+        status = self.automation_domain_status(profile)
+        if status is None:
+            activity = self.autopilot_snapshot.message or "LINK DESKTOP"
+            return profile.route[0], "down", activity
+        if not status.enabled:
+            return profile.route[0], "down", "AUTOMATION OFF"
+
+        dwell_seconds = 2.1
+        cycle = 0.0
+        segment_lengths: list[float] = []
+        for start, end in zip(profile.route, profile.route[1:] + profile.route[:1]):
+            length = hypot(end[0] - start[0], end[1] - start[1])
+            segment_lengths.append(length)
+            cycle += dwell_seconds + length / profile.speed
+        if cycle <= 0:
+            return profile.route[0], "down", profile.work_stops[0]
+
+        elapsed = (self.npc_motion_seconds + profile.phase_seconds) % cycle
+        for index, (start, end) in enumerate(zip(profile.route, profile.route[1:] + profile.route[:1])):
+            if elapsed < dwell_seconds:
+                return start, "down", profile.work_stops[index]
+            elapsed -= dwell_seconds
+            length = segment_lengths[index]
+            travel_seconds = length / profile.speed
+            if elapsed < travel_seconds:
+                ratio = elapsed / max(0.001, travel_seconds)
+                x = round(start[0] + (end[0] - start[0]) * ratio)
+                y = round(start[1] + (end[1] - start[1]) * ratio)
+                dx = end[0] - start[0]
+                dy = end[1] - start[1]
+                facing = "right" if abs(dx) > abs(dy) and dx > 0 else "left" if abs(dx) > abs(dy) else "down" if dy > 0 else "up"
+                return (x, y), facing, f"TO {profile.work_stops[(index + 1) % len(profile.work_stops)]}"
+            elapsed -= travel_seconds
+        return profile.route[0], "down", profile.work_stops[0]
+
+    @property
+    def nearby_automation_character(self) -> AutomationCharacter | None:
+        if self.current_floor != 1:
+            return None
+        candidates = []
+        for profile in AUTOMATION_CHARACTERS:
+            if profile.room_id != self.current_room:
+                continue
+            if self.autopilot_snapshot.state == "connected" and profile.domain not in self.autopilot_snapshot.domains:
+                continue
+            position, _, _ = self.automation_pose(profile)
+            distance = hypot(position[0] - self.player_position[0], position[1] - self.player_position[1])
+            if distance <= 260:
+                candidates.append((distance, profile))
+        return min(candidates, key=lambda item: item[0])[1] if candidates else None
+
+    def automation_character_states(self) -> list[dict[str, object]]:
+        if self.current_floor != 1:
+            return []
+        result: list[dict[str, object]] = []
+        for profile in AUTOMATION_CHARACTERS:
+            if profile.room_id != self.current_room:
+                continue
+            if self.autopilot_snapshot.state == "connected" and profile.domain not in self.autopilot_snapshot.domains:
+                continue
+            (x, y), facing, activity = self.automation_pose(profile)
+            status = self.automation_domain_status(profile)
+            result.append({
+                "domain": profile.domain,
+                "name": profile.name,
+                "role": profile.role,
+                "room": profile.room_id,
+                "x": x,
+                "y": y,
+                "facing": facing,
+                "activity": activity,
+                "enabled": status.enabled if status else None,
+                "lastRunAt": status.last_run_at if status else None,
+                "syncState": self.autopilot_snapshot.state,
+                "sprite": profile.sprite,
+                "accent": list(profile.accent),
+            })
+        return result
+
     def npc_pose(self, room_id: str, index: int) -> tuple[tuple[int, int], str] | None:
         """Return an NPC's current route position and cardinal facing."""
         routes = NPC_ROUTES.get(room_id)
@@ -355,6 +460,14 @@ class TowerScene:
         return current + amount if target > current else current - amount
 
     def interact(self, state: "OfficeState", object_id: str | None = None, *, vending_item: str = "coffee") -> InteractionResult:
+        if object_id is None:
+            agent = self.nearby_automation_character
+            if agent is not None:
+                self.selected_automation_domain = agent.domain
+                state.open_page("automation", from_object=True, source=agent.name)
+                message = f"INSPECT / {agent.name} · {agent.domain.replace('_', ' ').upper()}"
+                state.notice = message
+                return InteractionResult(True, message)
         target = object_id or (self.nearby_object.id if self.nearby_object else None)
         if target is None:
             message = "NO OBJECT IN RANGE"
