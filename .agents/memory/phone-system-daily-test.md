@@ -29,3 +29,12 @@ not WARN. Production probe target defaults to https://salaryman.io (override via
 Validate a Standard browser Voice API key against a supported Voice resource such as the Calls API.
 Do not validate it against the Accounts resource: Twilio intentionally denies Standard keys there,
 which creates a false "invalid key" diagnosis. Validate newly provisioned keys before persisting them.
+
+**Feature independence:** Toll-free SMS verification is a separate health result. A rejected or
+pending SMS registration must not make browser Voice unavailable or gate Voice readiness.
+
+**Why:** The user explicitly requires each phone subfeature to be independent; SMS compliance can
+fail while browser Voice is otherwise healthy.
+
+**How to apply:** Keep SMS verification out of Voice readiness checks and report phone subfeature
+status independently. The live `health:phone` script may still report its own SMS check as a failure.

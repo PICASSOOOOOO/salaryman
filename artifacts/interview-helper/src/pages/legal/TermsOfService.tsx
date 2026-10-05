@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/LegalLayout";
 
 export default function TermsOfService() {
   return (
-    <LegalLayout title="Terms of Service" lastUpdated="October 5, 2026">
+    <LegalLayout title="Terms of Service" lastUpdated="October 6, 2026">
       <div className="highlight-box">
         <p><strong>Legal review notice:</strong> These Terms are informational and are not legal advice. Have a qualified attorney review them for your circumstances.</p>
         <p>These Terms of Service ("Terms") govern your access to and use of SALARYMAN, a platform operated by <strong>Picasso AI, LLC</strong> ("Company"), a California limited liability company formed under the laws of California, United States. By creating an account or using any part of the Service, you agree to be bound by these Terms.</p>
@@ -45,7 +45,7 @@ export default function TermsOfService() {
       <p>Certain features — including Passport and Calll Home — require a paid subscription. Subscriptions are billed on a recurring basis (monthly or as otherwise specified at purchase). You may cancel at any time in accordance with the Cancellation Policy. The Company reserves the right to modify subscription pricing with 30 days' notice.</p>
 
       <h2>7. SMS Messaging Program</h2>
-      <p><strong>SALARYMAN Text Updates</strong> sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. By selecting the optional consent checkbox on our <a href="/sms-opt-in">SMS opt-in page</a> and sending START from your mobile number, you agree to receive these messages. Consent is not a condition of purchase. Message frequency varies, and message and data rates may apply.</p>
+      <p><strong>SALARYMAN Text Updates</strong> sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. To opt in, text <strong>START</strong> from your mobile phone to <strong>+1 888-230-7698</strong> after reviewing our <a href="/sms-opt-in">SMS opt-in page</a>. Sending START is your consent to receive these messages. Consent is not a condition of purchase. Message frequency varies, and message and data rates may apply.</p>
       <p>Reply <strong>STOP</strong> to cancel or <strong>HELP</strong> for help. For customer care, use our <a href="/legal/contact">Contact Us</a> page. Wireless carriers are not liable for delayed or undelivered messages.</p>
 
       <h2>8. Physical Merchandise</h2>
