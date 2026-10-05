@@ -74,6 +74,7 @@ function isAlwaysAllowed(path: string): boolean {
     || path === "/healthz"
     || path === "/version"
     || path === "/login"
+    || path === "/callback"
     || path === "/logout"
     || path === "/legal"
     || path.startsWith("/legal/")

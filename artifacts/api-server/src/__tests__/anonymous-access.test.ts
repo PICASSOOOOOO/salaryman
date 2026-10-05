@@ -80,4 +80,19 @@ describe("anonymous access window", () => {
     expect(legalRequest.next).toHaveBeenCalledOnce();
     expect(legalRequest.responseState.statusCode).toBeUndefined();
   });
+
+  it("keeps Replit OIDC login and callback routes available after expiry", () => {
+    const startedAt = Date.UTC(2026, 0, 1);
+    vi.spyOn(Date, "now").mockReturnValue(startedAt);
+    const firstVisit = invokeMiddleware("/private");
+    const cookieValue = firstVisit.res.cookie.mock.calls[0][1] as string;
+
+    vi.mocked(Date.now).mockReturnValue(startedAt + ANONYMOUS_ACCESS_MS);
+
+    for (const path of ["/login", "/callback", "/api/callback", "/logout", "/auth/user"]) {
+      const request = invokeMiddleware(path, cookieValue);
+      expect(request.next, `${path} should continue to the auth route`).toHaveBeenCalledOnce();
+      expect(request.responseState.statusCode, `${path} should not return an expired-access error`).toBeUndefined();
+    }
+  });
 });
