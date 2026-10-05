@@ -58,6 +58,8 @@ type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
 type SendToPabloFn = (content: string, uploadFile?: File) => Promise<boolean>;
 
+export const CHAT_SEND_TIMEOUT_MS = 15_000;
+
 interface UseChatSocket extends ChatState {
   send: SendFn;
   markRead: MarkReadFn;
@@ -301,11 +303,16 @@ export function useChatSocket(): UseChatSocket {
     // Use the request/response transport for outgoing messages. The previous
     // WebSocket-only path had no acknowledgement, so a slow insert looked like
     // a dropped message and the composer cleared before delivery was known.
+    // Bound the wait so an unresponsive request cannot leave the composer
+    // disabled forever. The timeout aborts the browser request, not server work.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CHAT_SEND_TIMEOUT_MS);
     try {
       const res = await chatFetch(`/api/chat/channels/${channelId}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        signal: controller.signal,
         body: JSON.stringify({ content: trimmed, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
       });
       if (res.ok) {
@@ -320,6 +327,8 @@ export function useChatSocket(): UseChatSocket {
       }
     } catch {
       removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
+    } finally {
+      clearTimeout(timeout);
     }
     return false;
   }, [appendMessage, removePendingMessage, user]);

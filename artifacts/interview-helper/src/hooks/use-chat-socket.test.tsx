@@ -28,7 +28,7 @@ const h = vi.hoisted(() => ({
 
 vi.mock("@/hooks/use-auth", () => ({ useAuth: () => h.authState }));
 
-import { useChatSocket, type ChatMessage } from "./use-chat-socket";
+import { CHAT_SEND_TIMEOUT_MS, useChatSocket, type ChatMessage } from "./use-chat-socket";
 
 // --- Controllable WebSocket double ------------------------------------------
 class MockWS {
@@ -65,9 +65,24 @@ class MockWS {
 let wsInstances: MockWS[] = [];
 let channelMeta: any;
 let sendMockResponse: { ok: boolean; status: number; message: ChatMessage } | null = null;
+let hangSendRequest = false;
 
-const fetchMock = vi.fn(async (url: string) => {
+const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
   const u = String(url);
+  if (u.endsWith("/api/chat/channels/1/send") && hangSendRequest) {
+    return new Promise<never>((_resolve, reject) => {
+      const signal = init?.signal;
+      if (signal?.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+      } else {
+        signal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
+      }
+    });
+  }
   if (u.endsWith("/api/chat/channels/1/send") && sendMockResponse) {
     return {
       ok: sendMockResponse.ok,
@@ -136,6 +151,7 @@ beforeEach(() => {
     unreadCounts: {},
   };
   sendMockResponse = null;
+  hangSendRequest = false;
   (globalThis as any).fetch = fetchMock;
   (globalThis as any).WebSocket = MockWS;
   fetchMock.mockClear();
@@ -174,6 +190,33 @@ describe("useChatSocket message sending", () => {
       ),
     ).toBe(true);
     expect(captured!.messages[1]?.some((item) => item.id === message.id)).toBe(true);
+  });
+
+  it("stops waiting when a Global send never receives a response", async () => {
+    hangSendRequest = true;
+    await mount();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    try {
+      let sendPromise!: Promise<boolean>;
+      await act(async () => {
+        sendPromise = captured!.send(1, "Hello Global");
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(CHAT_SEND_TIMEOUT_MS);
+      });
+
+      let sent = true;
+      await act(async () => {
+        sent = await sendPromise;
+      });
+      expect(sent).toBe(false);
+      expect(captured!.messages[1] ?? []).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

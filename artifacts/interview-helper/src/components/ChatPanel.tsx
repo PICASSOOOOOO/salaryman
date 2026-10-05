@@ -495,10 +495,10 @@ function InputBar({
         setUploadFile(null);
         setUploadError("");
       } else {
-        setSendError("Message didn't send. Your draft is still here; try again.");
+        setSendError("Couldn't confirm delivery. Your draft is still here; check the chat before retrying.");
       }
     } catch {
-      setSendError("Message didn't send. Your draft is still here; try again.");
+      setSendError("Couldn't confirm delivery. Your draft is still here; check the chat before retrying.");
     } finally {
       setSending(false);
       ref.current?.focus();
@@ -545,7 +545,7 @@ function InputBar({
         </div>
       )}
       {uploadError && <div role="alert" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{uploadError}</div>}
-      {sendError && <div role="alert" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{sendError}</div>}
+      {sendError && <div role="alert" data-testid="status-message-send-error" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{sendError}</div>}
       {allowUpload && (
         <input
           ref={uploadRef}
