@@ -54,6 +54,14 @@ describe("consolidated workspace navigation", () => {
     ]);
   });
 
+  it("filters BROWSE like the other destinations", () => {
+    expect(filterWorkspaceMenuEntry(WORKSPACE_MENU_BROWSE, "business", false)).toBeNull();
+    expect(filterWorkspaceMenuEntry(WORKSPACE_MENU_BROWSE, "world", false)).toMatchObject({
+      label: "BROWSE",
+      path: "/world",
+    });
+  });
+
   it("retains ADMIN as staff-only for the shared menu to enforce", () => {
     const admin = menuDestinations.find((entry) => entry.path === "/profile/admin");
     expect(admin?.staffOnly).toBe(true);

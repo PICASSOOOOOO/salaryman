@@ -14,6 +14,10 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => authState,
 }));
 
+vi.mock("@/hooks/use-plan", () => ({
+  usePlan: () => ({ isOwner: false }),
+}));
+
 import ProfessionalHome from "./ProfessionalHome";
 
 let container: HTMLDivElement;
@@ -33,7 +37,7 @@ afterEach(() => {
 });
 
 describe("ProfessionalHome header", () => {
-  it("keeps the header compact and puts sign-in inside the menu", () => {
+  it("shows a compact sign-in link while signed out", () => {
     act(() => root.render(<ProfessionalHome />));
 
     expect(container.querySelector(".home-start-link")).toBeNull();
@@ -43,11 +47,10 @@ describe("ProfessionalHome header", () => {
     expect(loginLink?.textContent).toBe("LOG IN");
     expect(loginLink?.getAttribute("href")).toContain("/sign-in?returnTo=%2F");
 
-    act(() => root.render(<ProfessionalHome />));
-    expect(container.querySelector("#home-start-work-panel")).toBeNull();
+    expect(document.body.querySelector("#workspace-navigation-menu")).toBeNull();
   });
 
-  it("shows the start-work panel only after authentication", () => {
+  it("opens the shared navigation menu from START WORK after authentication", () => {
     authState.isAuthenticated = true;
     act(() => root.render(<ProfessionalHome />));
 
@@ -57,12 +60,14 @@ describe("ProfessionalHome header", () => {
     expect(container.querySelector(".home-login-link")).toBeNull();
 
     act(() => startWorkButton.click());
-    expect(container.querySelector("#home-start-work-panel")).not.toBeNull();
-    expect(container.textContent).toContain("PABLO AI");
-    expect(container.textContent).toContain("CHAT");
-    expect(container.textContent).toContain("PABLO PRIME AUTOMATION");
-    expect(container.textContent).toContain("CALLL HOME");
-    expect(container.textContent).toContain("SALARYMAN OS");
+    expect(startWorkButton.getAttribute("aria-expanded")).toBe("true");
+    expect(startWorkButton.getAttribute("aria-controls")).toBe("workspace-navigation-menu");
+    expect(document.body.querySelector("#workspace-navigation-menu")).not.toBeNull();
+    expect(document.body.textContent).toContain("PABLO AI");
+    expect(document.body.textContent).toContain("CHAT");
+    expect(document.body.textContent).toContain("PABLO PRIME AUTOMATION");
+    expect(document.body.textContent).toContain("CALLL HOME");
+    expect(document.body.textContent).toContain("SALARYMAN OS");
   });
 
   it("labels the customer card CALLL HOME and keeps its existing action tabs", () => {
