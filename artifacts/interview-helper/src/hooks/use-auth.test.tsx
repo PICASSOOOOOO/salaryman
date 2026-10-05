@@ -11,6 +11,7 @@ let latest: ReturnType<typeof useAuth>;
 let root: Root;
 let container: HTMLDivElement;
 let fetchMock: ReturnType<typeof vi.fn>;
+let originalTop: PropertyDescriptor | undefined;
 
 function Probe() {
   latest = useAuth();
@@ -24,6 +25,7 @@ function render() {
 beforeEach(() => {
   fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ user: null }) });
   vi.stubGlobal("fetch", fetchMock);
+  originalTop = Object.getOwnPropertyDescriptor(window, "top");
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -32,9 +34,15 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  if (originalTop) {
+    Object.defineProperty(window, "top", originalTop);
+  } else {
+    delete (window as Window & { top?: Window }).top;
+  }
+  vi.restoreAllMocks();
 });
 
-describe("Clerk-backed useAuth adapter", () => {
+describe("Replit-backed useAuth adapter", () => {
   it("starts loading and resolves signed-out state from the session endpoint", async () => {
     render();
     expect(latest.isLoading).toBe(true);
@@ -67,5 +75,31 @@ describe("Clerk-backed useAuth adapter", () => {
       firstName: "Salary",
       lastName: "Person",
     });
+  });
+
+  it("opens preview sign-in in a detached tab without redirecting the preview frame", () => {
+    Object.defineProperty(window, "top", { configurable: true, value: {} });
+    const childLocation = { replace: vi.fn() };
+    const childHead = { appendChild: vi.fn() };
+    const childWindow = {
+      opener: window,
+      document: {
+        createElement: vi.fn(() => document.createElement("meta")),
+        head: childHead,
+      },
+      location: childLocation,
+      close: vi.fn(),
+    } as unknown as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(childWindow);
+
+    render();
+    act(() => latest.login("/office"));
+
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(childWindow.opener).toBeNull();
+    expect(childHead.appendChild).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "referrer", content: "no-referrer" }),
+    );
+    expect(childLocation.replace).toHaveBeenCalledWith("/api/login?returnTo=%2Foffice");
   });
 });

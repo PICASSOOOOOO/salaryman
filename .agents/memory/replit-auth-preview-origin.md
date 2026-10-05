@@ -1,6 +1,6 @@
 ---
-name: Preview OIDC callback origin
-description: How Replit preview proxy host headers interact with browser-reachable OIDC callbacks.
+name: Preview OIDC callback origin and iframe handoff
+description: How Replit preview host headers and iframe popup behavior affect OIDC sign-in.
 ---
 
 In the local Replit preview, the API can receive a loopback `Host` or
@@ -17,4 +17,7 @@ callbacking on `*.replit.dev` loses the PKCE state entirely. Both make sign-in
 appear broken.
 
 **How to apply:** Keep the loopback check server-side in the shared auth
-origin resolver and preserve the request host for non-loopback traffic.
+origin resolver and preserve the request host for non-loopback traffic. For an
+iframe sign-in, open a blank tab, clear its opener, then navigate it to OIDC.
+Do not treat a null result from `window.open` with `noopener` as proof that a
+popup was blocked; browsers may return null for a tab they did open.

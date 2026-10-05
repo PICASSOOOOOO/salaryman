@@ -32,8 +32,31 @@ function navigateTopLevel(url: string): void {
   // to render when they are navigated inside that frame. Open the OAuth
   // handoff in a normal browser tab so the workspace preview stays intact.
   if (window.top && window.top !== window) {
-    const authWindow = window.open(url, "_blank", "noopener,noreferrer");
-    if (authWindow) return;
+    let authWindow: Window | null = null;
+    try {
+      // `noopener` makes window.open return null even when it successfully
+      // opens a tab. Start with a blank tab, sever its opener, then navigate.
+      authWindow = window.open("about:blank", "_blank");
+    } catch {
+      // Fall through to the same-window navigation if popups are unavailable.
+    }
+    if (authWindow) {
+      try {
+        authWindow.opener = null;
+        const referrerPolicy = authWindow.document.createElement("meta");
+        referrerPolicy.name = "referrer";
+        referrerPolicy.content = "no-referrer";
+        authWindow.document.head?.appendChild(referrerPolicy);
+        authWindow.location.replace(url);
+        return;
+      } catch {
+        try {
+          authWindow.close();
+        } catch {
+          // Continue to the same-window fallback below.
+        }
+      }
+    }
     // A popup blocker may reject the new tab. Preserve the handoff as a
     // last-resort same-window navigation rather than leaving a dead button.
     window.location.assign(url);

@@ -28,7 +28,7 @@
 - [Keep-alive ErrorBoundary + HMR](keepalive-errorboundary-hmr.md) — always-mounted hidden subtrees (Console "terminal", home) get stuck on fallback after a transient Fast-Refresh hook-order crash; ErrorBoundary now auto-resets on vite:afterUpdate. Don't re-chase as a runtime bug.
 - [Browser auth routing](newuser-funnel-gate.md) — public homepage stays at `/`; missing/expired sessions go directly to compact sign-in with returnTo, never through Pablo.
 - [Public route auth gating](public-route-auth-gating.md) — shared providers must wait for resolved auth before protected reads, polling, or user-scoped metadata caching.
-- [Preview OIDC callback origin](replit-auth-preview-origin.md) — loopback preview requests must build Replit OIDC callbacks from REPLIT_DEV_DOMAIN; forwarded 127.0.0.1 is not browser-reachable.
+- [Preview OIDC callback origin](replit-auth-preview-origin.md) — loopback callbacks use REPLIT_DEV_DOMAIN; iframe handoff must account for `noopener` returning null even when a tab opens.
 - [Pablo nebula canonical](pablo-nebula-canonical.md) — approved /pablo nebula is the shader purple "emotion/wavy orb" (659-line PabloNebula3D w/ variants), NOT the 7f0d717 starfield (which full-bleed = broken white blob). Match the `Published your App` commit, not "older = original".
 - [Pablo voice output gating](pablo-voice-output-gating.md) — text stays free; Pablo TTS needs an active paid product or approved tester, and iOS unlock must match its actual playback path.
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — /pablo: voice needs an explicit labeled "Tap to talk" button (orb-tap is invisible); bottom controls share a safe lane — keep reply/idle bubbles well above the talk button + give it higher z, or they overlap/intercept taps.
