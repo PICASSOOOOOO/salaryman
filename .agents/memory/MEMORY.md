@@ -102,6 +102,7 @@
 - [No CRT visual language](no-crt-visual-language.md) — SALARYMAN uses modern dark UI with Inter/Fira Code; do not reintroduce scanlines, phosphor effects, flicker, grain, or retro terminal fonts.
 - [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
 - [SALARYMAN product manifesto](pablo-creation-workspace.md) — automation and communication through a gamified office simulation; browser funnels users to desktop, with free SALARYMAN-only creator features.
+- [Lab naming](lab-name-1999.md) — the lab is called 1999; preserve established project names and do not rename them.
 - [Authoritative world economy](authoritative-world-economy.md) — FIAT, quick-job runs, cargo, quotes, and economy-gated position are server-owned; client saves/UI only cache returned snapshots.
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
