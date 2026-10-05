@@ -89,6 +89,27 @@ async function getSummary(user: { id: string; email: string }) {
   return request(app).get("/api/comms/summary");
 }
 
+describe("POST /chat/channels/:id/send — Global", () => {
+  it("accepts an authenticated message and returns the saved row", async () => {
+    const sender = await createUser();
+    const globalId = await createGlobalChannel();
+    actAs(sender);
+
+    const res = await request(app)
+      .post(`/api/chat/channels/${globalId}/send`)
+      .send({ content: "Hello Global" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatchObject({
+      channelId: globalId,
+      senderUserId: sender.id,
+      content: "Hello Global",
+      isBot: false,
+    });
+    expect(typeof res.body.message.id).toBe("number");
+  });
+});
+
 describe("GET /comms/summary — unread counts", () => {
   it("401 when not authenticated", async () => {
     const me = await createUser();

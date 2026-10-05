@@ -64,9 +64,17 @@ class MockWS {
 
 let wsInstances: MockWS[] = [];
 let channelMeta: any;
+let sendMockResponse: { ok: boolean; status: number; message: ChatMessage } | null = null;
 
 const fetchMock = vi.fn(async (url: string) => {
   const u = String(url);
+  if (u.endsWith("/api/chat/channels/1/send") && sendMockResponse) {
+    return {
+      ok: sendMockResponse.ok,
+      status: sendMockResponse.status,
+      json: async () => ({ message: sendMockResponse!.message }),
+    };
+  }
   if (u.endsWith("/api/chat/channels")) {
     return { ok: true, json: async () => channelMeta };
   }
@@ -127,6 +135,7 @@ beforeEach(() => {
     privateChannels: [],
     unreadCounts: {},
   };
+  sendMockResponse = null;
   (globalThis as any).fetch = fetchMock;
   (globalThis as any).WebSocket = MockWS;
   fetchMock.mockClear();
@@ -140,6 +149,32 @@ afterEach(() => {
     root.unmount();
   });
   container.remove();
+});
+
+describe("useChatSocket message sending", () => {
+  it("posts a Global message and resolves after the server acknowledges it", async () => {
+    const message = makeMessage({
+      id: 91,
+      channelId: 1,
+      senderUserId: "me",
+      content: "Hello Global",
+    });
+    sendMockResponse = { ok: true, status: 200, message };
+
+    await mount();
+    let sent = false;
+    await act(async () => {
+      sent = await captured!.send(1, "  Hello Global  ");
+    });
+
+    expect(sent).toBe(true);
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).endsWith("/api/chat/channels/1/send"),
+      ),
+    ).toBe(true);
+    expect(captured!.messages[1]?.some((item) => item.id === message.id)).toBe(true);
+  });
 });
 
 describe("useChatSocket unread badge wiring", () => {

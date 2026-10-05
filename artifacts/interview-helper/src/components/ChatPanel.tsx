@@ -475,6 +475,7 @@ function InputBar({
   const [attachment, setAttachment] = useState<MediaItem | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const [sendError, setSendError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -485,6 +486,7 @@ function InputBar({
     const text = value.trim();
     if (!text && !attachment && !uploadFile) return;
     setSending(true);
+    setSendError("");
     try {
       const sent = await onSend(text, attachment?.id, uploadFile ?? undefined);
       if (sent) {
@@ -492,7 +494,11 @@ function InputBar({
         setAttachment(null);
         setUploadFile(null);
         setUploadError("");
+      } else {
+        setSendError("Message didn't send. Your draft is still here; try again.");
       }
+    } catch {
+      setSendError("Message didn't send. Your draft is still here; try again.");
     } finally {
       setSending(false);
       ref.current?.focus();
@@ -539,6 +545,7 @@ function InputBar({
         </div>
       )}
       {uploadError && <div role="alert" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{uploadError}</div>}
+      {sendError && <div role="alert" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{sendError}</div>}
       {allowUpload && (
         <input
           ref={uploadRef}
@@ -592,7 +599,7 @@ function InputBar({
       <textarea
         ref={ref}
         value={value}
-        onChange={e => setValue(e.target.value)}
+        onChange={e => { setValue(e.target.value); setSendError(""); }}
         onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
