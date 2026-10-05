@@ -67,6 +67,10 @@ export default defineConfig({
     // overridden with a warning. We *do* still set cssTarget — plugin-legacy
     // doesn't manage CSS compatibility.
     cssTarget: ["chrome64", "safari12", "firefox67", "edge79"],
+    // plugin-legacy forces Terser for legacy chunks. Vite defaults its Terser
+    // pool to CPU count minus one; serialize it to keep the shared build's
+    // peak memory within the existing 3 GiB Node heap budget.
+    terserOptions: { maxWorkers: 1 },
     rollupOptions: {
       output: {
         manualChunks(id) {

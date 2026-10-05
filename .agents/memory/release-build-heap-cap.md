@@ -3,8 +3,8 @@ name: Release build heap cap
 description: Workspace-specific memory constraint for the full modern and legacy frontend build.
 ---
 
-Run the SALARYMAN release build with a 3 GiB Node old-space cap rather than leaving V8 unbounded.
+Run the SALARYMAN release build with a 3 GiB Node old-space cap and `build.terserOptions.maxWorkers: 1`. Legacy chunks go through Terser, whose worker pool otherwise defaults to CPU count minus one.
 
-**Why:** The unbounded Vite build is killed with exit 137 during chunk rendering after transforming all modules. Disabling minification does not solve it and can exhaust enough memory to stop workspace services. A 3072 MiB cap has completed the full build before, but it is not a guarantee: Vite/Rollup and workers also use memory outside V8 old space, and container-level pressure can still SIGKILL the build.
+**Why:** A production build exited 137 during chunk rendering with the default worker pool. Limiting Terser to one worker let the full modern+legacy build and metadata prerender complete under the existing 3 GiB cap. Vite/Rollup and workers also use memory outside V8 old space, so the heap cap alone is not a guarantee.
 
-**How to apply:** Keep the heap cap in the package's standard build command so local validation and release automation use the same resource-safe path. If a capped build still exits 137, do not keep raising the heap or retrying blindly; first ensure container memory headroom and run one build at a time. Do not remove legacy rendering or prerendering as a workaround.
+**How to apply:** Keep the heap cap in the package's standard build command and keep Terser to one worker so local validation and release automation use the same resource-safe path. If a capped build still exits 137, do not raise the heap or retry blindly; first ensure container memory headroom and run one build at a time. Do not remove legacy rendering or prerendering as a workaround.
