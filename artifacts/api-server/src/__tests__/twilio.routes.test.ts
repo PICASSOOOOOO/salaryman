@@ -2,6 +2,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 
 const objectStorageMocks = vi.hoisted(() => ({
   deleteObject: vi.fn(async () => true),
+  getObjectEntityFile: vi.fn(async () => ({
+    download: vi.fn(async () => [Buffer.from("recording")]),
+  })),
 }));
 
 vi.mock("twilio", async () => (await import("./helpers/twilioMock")).makeTwilioMock());
@@ -25,6 +28,7 @@ vi.mock("@workspace/integrations-openai-ai-server/audio", () => ({
 vi.mock("../lib/objectStorage", () => {
   class MockObjectStorageService {
     deleteObject = objectStorageMocks.deleteObject;
+    getObjectEntityFile = objectStorageMocks.getObjectEntityFile;
   }
   return { ObjectStorageService: MockObjectStorageService };
 });
@@ -33,13 +37,14 @@ import request from "supertest";
 import type { Express } from "express";
 import twilio from "twilio";
 import { speechToText } from "@workspace/integrations-openai-ai-server/audio";
-import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable, conferenceRoomsTable, contactsTable, contactChannelPrefsTable, contactInteractionsTable } from "@workspace/db";
+import { db, callHistoryTable, dialingSessionsTable, usersTable, phoneNumbersTable, smsConversationsTable, smsMessagesTable, conferenceRoomsTable, contactsTable, contactChannelPrefsTable, contactInteractionsTable, systemConfigTable, sharedMediaTable, worldBusinessesTable } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { mockState } from "./helpers/twilioMock";
 import { checkAndEnforce, recordUsage } from "../lib/usage-meter";
 import { runRecordingRetentionSweep } from "../lib/recording-retention";
 import {
   buildApp,
+  authState,
   resetAuthState,
   cleanupTestData,
   seedOwnedCall,
@@ -72,9 +77,10 @@ async function createDialContact(phone: string) {
 beforeAll(() => {
   app = buildApp();
 });
-beforeEach(() => {
+beforeEach(async () => {
   resetAuthState();
   vi.clearAllMocks();
+  await db.delete(systemConfigTable).where(eq(systemConfigTable.key, `phone_recording_user_${TEST_USER.id}`));
   mockState.callSid = "CAtest00000000000000000000000000000";
   mockState.conferenceGroupSid = "CFgroup0000000000000000000000000000";
 });
@@ -120,7 +126,8 @@ describe("POST /twilio/call", () => {
     expect(rows[0].recipientNumber).toBe("+15551234567");
     expect(rows[0].direction).toBe("outbound");
     const createArgs = spies.callsCreate.mock.calls[0][0] as { twiml: string };
-    expect(createArgs.twiml).toContain("This call may be recorded and transcribed");
+    expect(createArgs.twiml).not.toContain("This call may be recorded");
+    expect(createArgs.twiml).not.toContain("<Say");
     expect(createArgs.twiml).toContain('record="record-from-start"');
   });
 });
@@ -211,8 +218,99 @@ describe("call control (mute / hold / transfer)", () => {
     const updateArgs = spies.callUpdate.mock.calls.at(-1)?.[0] as { twiml: string };
     expect(updateArgs.twiml).toContain('record="record-from-answer"');
     expect(updateArgs.twiml).toContain("recordingStatusCallback=");
-    expect(updateArgs.twiml).toContain("<Number url=");
-    expect(updateArgs.twiml).toContain("recording-notice");
+    expect(updateArgs.twiml).toContain("<Number>");
+    expect(updateArgs.twiml).not.toContain("recording-notice");
+    expect(updateArgs.twiml).not.toContain("<Say");
+  });
+
+  it("does not record a transferred call when the user's recording setting is off", async () => {
+    const sid = "CAxfer0000000000000000000000000004";
+    await seedOwnedCall(sid);
+    const preference = await request(app)
+      .put("/api/twilio/recording-preferences")
+      .send({ scope: "user", enabled: false });
+    expect(preference.status).toBe(200);
+
+    const res = await request(app)
+      .post(`/api/twilio/call/${sid}/transfer`)
+      .send({ transferTo: "5559998888" });
+    expect(res.status).toBe(200);
+    const updateArgs = spies.callUpdate.mock.calls.at(-1)?.[0] as { twiml: string };
+    expect(updateArgs.twiml).not.toContain("record=");
+    expect(updateArgs.twiml).not.toContain("recordingStatusCallback=");
+    expect(updateArgs.twiml).not.toContain("<Say");
+  });
+});
+
+describe("recording preferences and archive scope", () => {
+  it("defaults to enabled, persists the personal opt-out, and blocks org scope without an org", async () => {
+    const initial = await request(app).get("/api/twilio/recording-preferences");
+    expect(initial.status).toBe(200);
+    expect(initial.body).toMatchObject({
+      userCallsEnabled: true,
+      organizationCallsEnabled: null,
+      effectiveCallsEnabled: true,
+      canManageOrganization: false,
+    });
+
+    const saved = await request(app)
+      .put("/api/twilio/recording-preferences")
+      .send({ scope: "user", enabled: false });
+    expect(saved.status).toBe(200);
+
+    const updated = await request(app).get("/api/twilio/recording-preferences");
+    expect(updated.body.userCallsEnabled).toBe(false);
+    expect(updated.body.effectiveCallsEnabled).toBe(false);
+
+    const organizationUpdate = await request(app)
+      .put("/api/twilio/recording-preferences")
+      .send({ scope: "organization", enabled: false });
+    expect(organizationUpdate.status).toBe(403);
+
+    const organizationArchive = await request(app)
+      .get(`/api/twilio/history/${TEST_USER.id}?scope=organization`);
+    expect(organizationArchive.status).toBe(403);
+    expect(authState.user.id).toBe(TEST_USER.id);
+  });
+});
+
+describe("recording access", () => {
+  it("keeps personal audio private until an explicit recording share is created", async () => {
+    const [call] = await db.insert(callHistoryTable).values({
+      userId: TEST_USER.id,
+      recipientNumber: "+15551234567",
+      status: "completed",
+      direction: "outbound",
+      recordingUrl: "/objects/private/test-call.mp3",
+    }).returning();
+
+    const recipientId = `test-recording-recipient-${TEST_USER.id}`;
+    await db.insert(worldBusinessesTable).values({
+      userId: recipientId,
+      playerName: recipientId.slice(0, 32),
+      businessType: "unemployed",
+      contactEmail: `${recipientId}@example.test`,
+      meta: { source: "browser_onboarding", contactPhone: "+15550002222" },
+    });
+    try {
+      authState.user = { id: recipientId, email: `${recipientId}@example.test` };
+      const denied = await request(app).get(`/api/twilio/recording/${call.id}`);
+      expect(denied.status).toBe(403);
+
+      await db.insert(sharedMediaTable).values({
+        fromUserId: TEST_USER.id,
+        toUserId: recipientId,
+        mediaType: "recording",
+        title: "Call recording",
+        callHistoryId: call.id,
+      });
+      const shared = await request(app).get(`/api/twilio/recording/${call.id}`);
+      expect(shared.status, JSON.stringify(shared.body)).toBe(200);
+      expect(shared.headers["content-type"]).toMatch(/audio\/mpeg/);
+      expect(shared.headers["cache-control"]).toContain("private");
+    } finally {
+      await db.delete(worldBusinessesTable).where(eq(worldBusinessesTable.userId, recipientId));
+    }
   });
 });
 
@@ -502,7 +600,7 @@ describe("batch-call", () => {
     expect(res.body.calls[0].ok).toBe(true);
     expect(res.body.calls[0].phone).toBe("+15551114444");
     const createArgs = spies.callsCreate.mock.calls[0][0] as { twiml: string };
-    expect(createArgs.twiml).toContain("This call may be recorded and transcribed");
+    expect(createArgs.twiml).not.toContain("This call may be recorded");
     expect(createArgs.twiml).toContain('record="record-from-start"');
   });
 });
@@ -547,7 +645,7 @@ describe("conference rooms", () => {
     expect(add.body.ok).toBe(true);
     expect(add.body.phone).toBe("+15551115555");
     const callArgs = spies.callsCreate.mock.calls[0][0] as { twiml: string };
-    expect(callArgs.twiml).toContain("This call may be recorded and transcribed");
+    expect(callArgs.twiml).not.toContain("This call may be recorded");
     expect(callArgs.twiml).toContain('record="record-from-start"');
 
     const list = await request(app).get("/api/twilio/conference/list").send();
@@ -675,7 +773,7 @@ describe("webhook/status", () => {
 });
 
 describe("webhook/recording-notice", () => {
-  it("only returns the disclosure announcement to a valid Twilio callback", async () => {
+  it("keeps the legacy callback silent and rejects invalid Twilio callbacks", async () => {
     const rejected = await request(app).post("/api/twilio/webhook/recording-notice").send({});
     expect(rejected.status).toBe(403);
 
@@ -685,8 +783,8 @@ describe("webhook/recording-notice", () => {
       .send({});
     expect(accepted.status).toBe(200);
     expect(accepted.headers["content-type"]).toMatch(/xml/);
-    expect(accepted.text).toContain("This call may be recorded and transcribed");
-    expect(accepted.text).toContain("If you do not consent, please hang up now");
+    expect(accepted.text).toBe("<Response/>");
+    expect(accepted.text).not.toContain("recorded");
   });
 });
 
@@ -840,7 +938,7 @@ describe("webhook destination ownership", () => {
         .where(eq(callHistoryTable.twilioCallSid, sid));
       expect(row.userId).toBe(attributionUserId);
       expect(row.userId).not.toBe(TEST_USER.id);
-      expect(res.text).toContain("This call may be recorded and transcribed");
+      expect(res.text).not.toContain("This call may be recorded");
       expect(res.text).toContain("<Start><Recording");
     } finally {
       await db.delete(callHistoryTable).where(eq(callHistoryTable.twilioCallSid, sid));

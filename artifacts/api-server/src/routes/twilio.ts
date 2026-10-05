@@ -24,6 +24,7 @@ import {
   smsMessagesTable,
   contactChannelPrefsTable,
   organizationsTable,
+  sharedMediaTable,
   chatChannelsTable,
   chatMessagesTable,
   type InsertSecretaryConfig,
@@ -63,6 +64,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { resolveTelephonyOwner } from "../lib/telephony-owner";
 import { broadcastChatMessage } from "../chatServer";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
+import { getCallRecordingAccess } from "../lib/phone-recording-access";
 
 const router = Router();
 
@@ -429,11 +431,60 @@ async function persistSmsPreference(userId: string, contactId: number, smsOptIn:
 }
 
 const RECORDING_RETENTION_DAYS = 1095;
-const CALL_RECORDING_NOTICE =
-  "This call may be recorded and transcribed for your call records. If you do not consent, please hang up now.";
 
-function callRecordingNoticeTwiml(): string {
-  return `<Say>${escapeTwiml(CALL_RECORDING_NOTICE)}</Say>`;
+function userRecordingPreferenceKey(userId: string): string {
+  return `phone_recording_user_${userId}`;
+}
+
+function orgRecordingPreferenceKey(orgId: number): string {
+  return `phone_recording_org_${orgId}`;
+}
+
+async function readRecordingPreference(key: string): Promise<boolean> {
+  const [row] = await db.select({ value: systemConfigTable.value })
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, key))
+    .limit(1);
+  return row ? row.value === "true" : true;
+}
+
+async function writeRecordingPreference(key: string, enabled: boolean, userId: string, description: string) {
+  const updatedAt = new Date();
+  await db.insert(systemConfigTable).values({
+    key,
+    value: String(enabled),
+    category: "phone_recording",
+    description,
+    updatedBy: userId,
+    updatedAt,
+  }).onConflictDoUpdate({
+    target: systemConfigTable.key,
+    set: { value: String(enabled), description, updatedBy: userId, updatedAt },
+  });
+}
+
+async function isCallRecordingEnabled(userId: string, orgId: number | null): Promise<boolean> {
+  if (!userId) return false;
+  const [userEnabled, orgEnabled] = await Promise.all([
+    readRecordingPreference(userRecordingPreferenceKey(userId)),
+    orgId ? readRecordingPreference(orgRecordingPreferenceKey(orgId)) : Promise.resolve(true),
+  ]);
+  return userEnabled && orgEnabled;
+}
+
+function recordingAttrs(
+  enabled: boolean,
+  mode: "record-from-start" | "record-from-answer",
+  callback?: string,
+): string {
+  if (!enabled) return "";
+  return ` record="${mode}"${callback ? ` recordingStatusCallback="${escapeTwiml(callback)}" recordingStatusCallbackMethod="POST"` : ""}`;
+}
+
+function startRecordingTwiml(enabled: boolean, callback: string): string {
+  return enabled
+    ? `<Start><Recording recordingStatusCallback="${escapeTwiml(callback)}" recordingStatusCallbackMethod="POST" /></Start>`
+    : "";
 }
 
 function getRetentionDate(): Date {
@@ -965,7 +1016,8 @@ router.post("/twilio/twiml/client-voice", async (req, res) => {
         consentGiven: true,
       });
       const recordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(identity)}&amp;type=call&amp;callType=internal_employee`;
-      res.send(`<Response>${callRecordingNoticeTwiml()}<Dial action="${actionUrl}" method="POST" timeout="25" record="record-from-answer" recordingStatusCallback="${escapeTwiml(recordingCallback)}" recordingStatusCallbackMethod="POST"><Client>${escapeTwiml(targetUserId)}</Client></Dial></Response>`);
+      const recordingEnabled = await isCallRecordingEnabled(identity, orgId);
+      res.send(`<Response><Dial action="${actionUrl}" method="POST" timeout="25"${recordingAttrs(recordingEnabled, "record-from-answer", recordingCallback)}><Client>${escapeTwiml(targetUserId)}</Client></Dial></Response>`);
       return;
     } catch (err) {
       req.log.error({ err }, "CALLL HOME internal call could not be started");
@@ -1069,7 +1121,8 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
       ? `${_baseUrl}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=conference&conferenceName=${encodeURIComponent(confName)}`
       : undefined;
 
-    const twiml = `<Response>${callRecordingNoticeTwiml()}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${_recordingCallback ? ` recordingStatusCallback="${escapeTwiml(_recordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${confName}</Conference></Dial></Response>`;
+    const recordingEnabled = await isCallRecordingEnabled(userId, orgId);
+    const twiml = `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(recordingEnabled, "record-from-start", _recordingCallback)}>${confName}</Conference></Dial></Response>`;
 
     const call = await client.calls.create({
       to: e164,
@@ -1283,15 +1336,18 @@ router.post("/twilio/call/:callSid/transfer", requireAuth, requireFeature("phone
       return;
     }
     const client = getTwilioClient();
+    const orgId = await getUserOrgId(userId);
+    const recordingEnabled = await isCallRecordingEnabled(userId, orgId);
     const transferHost = getAppHost(req);
-    if (!transferHost) {
+    if (recordingEnabled && !transferHost) {
       res.status(503).json({ error: "Call recording is unavailable. Please retry the transfer." });
       return;
     }
-    const transferRecordingCallback = `https://${transferHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=transfer`;
-    const transferNoticeCallback = `https://${transferHost}/api/twilio/webhook/recording-notice`;
+    const transferRecordingCallback = transferHost
+      ? `https://${transferHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=transfer`
+      : undefined;
     await client.calls(callSid).update({
-      twiml: `<Response><Dial record="record-from-answer" recordingStatusCallback="${escapeTwiml(transferRecordingCallback)}" recordingStatusCallbackMethod="POST"><Number url="${escapeTwiml(transferNoticeCallback)}" method="POST">${e164}</Number></Dial></Response>`,
+      twiml: `<Response><Dial${recordingAttrs(recordingEnabled, "record-from-answer", transferRecordingCallback)}><Number>${e164}</Number></Dial></Response>`,
     });
 
     await db
@@ -1360,9 +1416,10 @@ router.post("/twilio/conference/:roomName/add", requireAuth, requireFeature("pho
     const _confRecordingUrl = _confHost
       ? `https://${_confHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=conference&conferenceName=${encodeURIComponent(roomName)}`
       : undefined;
+    const recordingEnabled = await isCallRecordingEnabled(userId, await getUserOrgId(userId));
     const confTwiml = _confEventUrl
-      ? `<Response>${callRecordingNoticeTwiml()}<Say voice="Google.en-US-Neural2-F">You are being connected to a conference call.</Say><Dial><Conference record="record-from-start"${_confRecordingUrl ? ` recordingStatusCallback="${escapeTwiml(_confRecordingUrl)}" recordingStatusCallbackMethod="POST"` : ""} statusCallback="${_confEventUrl}" statusCallbackEvent="start end join leave mute hold" statusCallbackMethod="POST">${roomName}</Conference></Dial></Response>`
-      : `<Response>${callRecordingNoticeTwiml()}<Say voice="Google.en-US-Neural2-F">You are being connected to a conference call.</Say><Dial><Conference record="record-from-start"${_confRecordingUrl ? ` recordingStatusCallback="${escapeTwiml(_confRecordingUrl)}" recordingStatusCallbackMethod="POST"` : ""}>${roomName}</Conference></Dial></Response>`;
+      ? `<Response><Say voice="Google.en-US-Neural2-F">You are being connected to a conference call.</Say><Dial><Conference${recordingAttrs(recordingEnabled, "record-from-start", _confRecordingUrl)} statusCallback="${_confEventUrl}" statusCallbackEvent="start end join leave mute hold" statusCallbackMethod="POST">${roomName}</Conference></Dial></Response>`
+      : `<Response><Say voice="Google.en-US-Neural2-F">You are being connected to a conference call.</Say><Dial><Conference${recordingAttrs(recordingEnabled, "record-from-start", _confRecordingUrl)}>${roomName}</Conference></Dial></Response>`;
     const call = await client.calls.create({
       to: e164,
       from: fromNumber,
@@ -1567,7 +1624,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
       concurrency: Math.min(policy.maxConcurrency, Math.max(1, requestedConcurrency)),
       delayBetweenCalls: Math.max(policy.minDelaySeconds, Number.isFinite(requestedDelay) ? requestedDelay : 5),
       countryCode: dialCountry,
-      recording: true,
+      recording: await isCallRecordingEnabled(userId, orgContext.orgId),
     };
     const client = getTwilioClient();
     const fromNumber = await getUserOutboundNumber(userId);
@@ -1626,10 +1683,10 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
         const recordingCallback = _dialingHost
           ? `https://${_dialingHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=${encodeURIComponent(`${mode}_dialing`)}&conferenceName=${encodeURIComponent(confName)}`
           : "";
-        const conference = `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${recordingCallback ? ` recordingStatusCallback="${escapeTwiml(recordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${confName}</Conference>`;
+        const conference = `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(effectiveSettings.recording, "record-from-start", recordingCallback)}>${confName}</Conference>`;
         const twiml = mode === "auto" && settings?.recordingUrl
-          ? `<Response>${callRecordingNoticeTwiml()}<Play>${settings.recordingUrl}</Play><Dial>${conference}</Dial></Response>`
-          : `<Response>${callRecordingNoticeTwiml()}<Dial>${conference}</Dial></Response>`;
+          ? `<Response><Play>${settings.recordingUrl}</Play><Dial>${conference}</Dial></Response>`
+          : `<Response><Dial>${conference}</Dial></Response>`;
         const call = await client.calls.create({
           to: e164,
           from: fromNumber,
@@ -1840,11 +1897,13 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
     const recordingCallback = _nextHost
       ? `https://${_nextHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=${encodeURIComponent(`${session.mode}_dialing`)}&conferenceName=${encodeURIComponent(confName)}`
       : "";
+    const nextOrgId = await getUserOrgId(userId);
+    const recordingEnabled = await isCallRecordingEnabled(userId, nextOrgId);
     try {
       const call = await client.calls.create({
         to: e164,
         from: fromNumber,
-        twiml: `<Response>${callRecordingNoticeTwiml()}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${recordingCallback ? ` recordingStatusCallback="${escapeTwiml(recordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${confName}</Conference></Dial></Response>`,
+        twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(recordingEnabled, "record-from-start", recordingCallback)}>${confName}</Conference></Dial></Response>`,
         ...(_nextStatusUrl && {
           statusCallback: _nextStatusUrl,
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1852,7 +1911,6 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
         }),
       });
       createdCallSid = call.sid;
-      const nextOrgId = await getUserOrgId(userId);
       await persistCallHistory({
         userId, orgId: nextOrgId ?? undefined, recipientNumber: e164, twilioCallSid: call.sid, callerName: entry.name ?? null,
         status: call.status ?? "initiated", direction: "outbound", callType: session.mode + "_dialing",
@@ -2241,8 +2299,10 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
 
     const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
+    const inbOrgId = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
+    const recordingEnabled = userId ? await isCallRecordingEnabled(userId, inbOrgId) : false;
     const fullRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId ?? "")}&amp;type=call`;
-    const fullCallRecording = `<Start><Recording recordingStatusCallback="${escapeTwiml(fullRecordingCallback)}" recordingStatusCallbackMethod="POST" /></Start>`;
+    const fullCallRecording = startRecordingTwiml(recordingEnabled, fullRecordingCallback);
 
     const configRows = userId
       ? await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1)
@@ -2264,7 +2324,6 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
     }
 
     if (CallSid) {
-      const inbOrgId = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
       const inbCrmMatch = userId && From ? await matchContactByPhone(userId, From, inbOwningCountry) : null;
       await persistCallHistory({
         userId: userId || "unknown",
@@ -2298,7 +2357,6 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
         if (config.autoAnswer) {
           const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${fullCallRecording}
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 ${milaVoice(greeting)}
@@ -2315,7 +2373,6 @@ ${milaVoice("I didn't catch that. Please leave a message after the tone.")}
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${fullCallRecording}
 <Gather input="speech" timeout="10" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
 ${milaVoice(greeting)}
@@ -2330,7 +2387,6 @@ ${milaVoice("I didn't catch that. Please leave a message after the tone.")}
 
     const greeting = config?.greetingScript ?? PABLO_VOICEMAIL_GREETING;
     const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${fullCallRecording}
 ${milaVoice(greeting)}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
@@ -2462,16 +2518,17 @@ router.post("/twilio/pablo/gather", async (req, res) => {
         const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
         const fromNumber = userNumbers[0]?.number || process.env.TWILIO_PHONE_NUMBER || "";
         if (fromNumber) {
+          const transferOrgId = await getUserOrgId(userId);
+          const recordingEnabled = await isCallRecordingEnabled(userId, transferOrgId);
           const transferRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=call&amp;callType=pablo_transfer&amp;conferenceName=${encodeURIComponent(confName)}`;
           const transferCall = await client.calls.create({
             to: action.transferTo,
             from: fromNumber,
-            twiml: `<Response>${callRecordingNoticeTwiml()}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" record="record-from-start" recordingStatusCallback="${transferRecordingCallback}" recordingStatusCallbackMethod="POST">${safeConf}</Conference></Dial></Response>`,
+            twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false"${recordingAttrs(recordingEnabled, "record-from-start", transferRecordingCallback)}>${safeConf}</Conference></Dial></Response>`,
             statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(userId)}&callType=pablo_transfer`,
             statusCallbackMethod: "POST",
             statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
           });
-          const transferOrgId = await getUserOrgId(userId);
           await persistCallHistory({
             userId,
             orgId: transferOrgId ?? undefined,
@@ -2709,16 +2766,17 @@ ${milaVoice("I'm sorry, but no agents are currently available. Please leave a me
     const confName = `screening_${callSid}_${Date.now()}`;
     const client = getTwilioClient();
     const agentCallerId = await getUserOutboundNumber(userId);
+    const agentOrgId = await getUserOrgId(userId);
+    const recordingEnabled = await isCallRecordingEnabled(userId, agentOrgId);
     const agentRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=call&amp;callType=screening_transfer&amp;conferenceName=${encodeURIComponent(confName)}`;
     const agentCall = await client.calls.create({
       to: agent.phone,
       from: agentCallerId,
-      twiml: `<Response>${callRecordingNoticeTwiml()}${milaVoice("Incoming screened call for you. Connecting now.")}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" record="record-from-start" recordingStatusCallback="${agentRecordingCallback}" recordingStatusCallbackMethod="POST">${escapeTwiml(confName)}</Conference></Dial></Response>`,
+      twiml: `<Response>${milaVoice("Incoming screened call for you. Connecting now.")}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false"${recordingAttrs(recordingEnabled, "record-from-start", agentRecordingCallback)}>${escapeTwiml(confName)}</Conference></Dial></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(userId)}&callType=screening_transfer`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
     });
-    const agentOrgId = await getUserOrgId(userId);
     await persistCallHistory({
       userId,
       orgId: agentOrgId ?? undefined,
@@ -2852,6 +2910,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
         }
 
         const transferRoom = `calll-home-transfer-${safeCallSid}`;
+        const transferRecordingEnabled = await isCallRecordingEnabled(target.userId, orgId);
         const transferRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(target.userId)}&amp;type=call&amp;callType=pablo_internal_transfer&amp;conferenceName=${encodeURIComponent(transferRoom)}`;
         let transferCallSid: string | null = null;
         try {
@@ -2859,7 +2918,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
             to: `client:${target.userId}`,
             from: await getUserOutboundNumber(userId),
             timeout: 25,
-            twiml: `<Response>${callRecordingNoticeTwiml()}<Dial><Conference startConferenceOnEnter="false" endConferenceOnExit="true" beep="false" record="record-from-start" recordingStatusCallback="${transferRecordingCallback}" recordingStatusCallbackMethod="POST">${escapeTwiml(transferRoom)}</Conference></Dial></Response>`,
+            twiml: `<Response><Dial><Conference startConferenceOnEnter="false" endConferenceOnExit="true" beep="false"${recordingAttrs(transferRecordingEnabled, "record-from-start", transferRecordingCallback)}>${escapeTwiml(transferRoom)}</Conference></Dial></Response>`,
             statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(target.userId)}&callType=pablo_internal_transfer&transferCallerUserId=${encodeURIComponent(userId)}&transferCallerSid=${encodeURIComponent(CallSid)}&transferOrgId=${orgId}`,
             statusCallbackMethod: "POST",
             statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -3225,10 +3284,12 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
       ? `Hello, this is Pablo calling on behalf of our team. ${outboundScript.split('.')[0]}.`
       : `Hello, this is Pablo, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
 
+    const recordingEnabled = await isCallRecordingEnabled(userId, pabloOrgId);
+    const outboundRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=call&amp;callType=pablo_agent`;
     const call = await client.calls.create({
       to: callTo,
       from: fromNumber,
-      twiml: `<Response>${callRecordingNoticeTwiml()}<Start><Recording recordingStatusCallback="${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=call&amp;callType=pablo_agent" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;contactId=${pabloCrmMatch.contactId}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice("Thank you for your time. Goodbye.", req)}</Response>`,
+      twiml: `<Response>${startRecordingTwiml(recordingEnabled, outboundRecordingCallback)}<Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;contactId=${pabloCrmMatch.contactId}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice("Thank you for your time. Goodbye.", req)}</Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(userId)}&callType=pablo_agent`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -3574,15 +3635,17 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
         const firstQuestion = script.nodes.find((node) => node.id === script.startNodeId)!;
         const greeting = `Hello${freshContact.name ? `, ${freshContact.name}` : ""}. This is Pablo, an AI assistant calling on behalf of ${freshContact.company || script.businessName}. ${opening} ${interpolatePabloScript(firstQuestion.question, freshContact.name, freshContact.company || script.businessName)}`;
         const actionUrl = `${base}/twilio/pablo/outbound/gather?userId=${encodeURIComponent(userId)}&amp;campaignId=${campaignId}&amp;contactId=${lead.contactId}&amp;nodeId=${encodeURIComponent(script.startNodeId)}&amp;clarify=0`;
+        const campOrgId = await getUserOrgId(userId);
+        const recordingEnabled = await isCallRecordingEnabled(userId, campOrgId);
+        const campaignRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=call&amp;callType=pablo_agent`;
         const call = await client.calls.create({
           to: freshPhone,
           from: campaignFromNumber,
-          twiml: `<Response>${callRecordingNoticeTwiml()}<Start><Recording recordingStatusCallback="${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&amp;type=call&amp;callType=pablo_agent" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${actionUrl}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, freshContact.name, freshContact.company || script.businessName), req)}<Hangup/></Response>`,
+          twiml: `<Response>${startRecordingTwiml(recordingEnabled, campaignRecordingCallback)}<Gather input="speech" timeout="10" action="${actionUrl}" method="POST" speechTimeout="auto">${milaVoice(greeting, req)}</Gather>${milaVoice(interpolatePabloScript(script.closing, freshContact.name, freshContact.company || script.businessName), req)}<Hangup/></Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${encodeURIComponent(userId)}&callType=pablo_agent`,
           statusCallbackMethod: "POST",
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
         });
-        const campOrgId = await getUserOrgId(userId);
         await persistCallHistory({
           userId,
           orgId: campOrgId ?? undefined,
@@ -4328,26 +4391,27 @@ router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), a
     const batchCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
       ? req.body.countryCode.toUpperCase()
       : DEFAULT_COUNTRY;
+    const batchOrgId = await getUserOrgId(userId);
     const results = await Promise.allSettled(
       numbers.map(async (entry: { phone: string; name?: string }) => {
         const e164 = toE164(entry.phone, batchCountry);
         if (!e164) return { ok: false, phone: entry.phone, error: "Invalid number" };
         const batchConfName = `conf-${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const batchRecordingEnabled = await isCallRecordingEnabled(userId, batchOrgId);
         const batchRecordingCallback = host
           ? `${protocol}://${host}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=batch&conferenceName=${encodeURIComponent(batchConfName)}`
           : "";
-        const batchConference = `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" record="record-from-start"${batchRecordingCallback ? ` recordingStatusCallback="${escapeTwiml(batchRecordingCallback)}" recordingStatusCallbackMethod="POST"` : ""}>${batchConfName}</Conference>`;
+        const batchConference = `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(batchRecordingEnabled, "record-from-start", batchRecordingCallback)}>${batchConfName}</Conference>`;
         const call = await client.calls.create({
           to: e164,
           from: fromNumber,
-          twiml: `<Response>${callRecordingNoticeTwiml()}<Dial>${batchConference}</Dial></Response>`,
+          twiml: `<Response><Dial>${batchConference}</Dial></Response>`,
           ...(statusCallbackUrl && {
             statusCallback: statusCallbackUrl,
             statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
             statusCallbackMethod: "POST",
           }),
         });
-        const batchOrgId = await getUserOrgId(userId);
         const batchCrmMatch = await matchContactByPhone(userId, e164);
         const record = await persistCallHistory({
             userId,
@@ -4545,24 +4609,139 @@ router.post("/twilio/hangup-all", requireAuth, requireFeature("phone_system"), a
   }
 });
 
+router.get("/twilio/recording-preferences", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const orgId = await getCurrentPhoneOrgId(userId);
+    const canManageOrganization = orgId != null
+      && (await canDoInOrg(userId, orgId, "phone.supervise")).allowed;
+    const [userCallsEnabled, organizationCallsEnabled] = await Promise.all([
+      readRecordingPreference(userRecordingPreferenceKey(userId)),
+      orgId ? readRecordingPreference(orgRecordingPreferenceKey(orgId)) : Promise.resolve(null),
+    ]);
+    res.json({
+      userCallsEnabled,
+      organizationCallsEnabled,
+      effectiveCallsEnabled: userCallsEnabled && organizationCallsEnabled !== false,
+      organizationId: orgId,
+      canManageOrganization,
+    });
+  } catch (err: unknown) {
+    console.error("[CalllHome] recording preferences read error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to load recording preferences" });
+  }
+});
+
+router.put("/twilio/recording-preferences", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const { scope, enabled } = req.body ?? {};
+    if (typeof enabled !== "boolean" || (scope !== "user" && scope !== "organization")) {
+      res.status(400).json({ error: "scope must be user or organization, with a boolean enabled value" });
+      return;
+    }
+
+    if (scope === "user") {
+      await writeRecordingPreference(
+        userRecordingPreferenceKey(userId),
+        enabled,
+        userId,
+        "Whether this user records their own calls.",
+      );
+    } else {
+      const orgId = await getCurrentPhoneOrgId(userId);
+      if (!orgId) {
+        res.status(403).json({ error: "An active organization is required to change organization recording settings" });
+        return;
+      }
+      if (!(await canDoInOrg(userId, orgId, "phone.supervise")).allowed) {
+        res.status(403).json({ error: "Organization phone supervision permission required" });
+        return;
+      }
+      await writeRecordingPreference(
+        orgRecordingPreferenceKey(orgId),
+        enabled,
+        userId,
+        `Whether organization ${orgId} records calls.`,
+      );
+    }
+
+    res.json({ ok: true });
+  } catch (err: unknown) {
+    console.error("[CalllHome] recording preferences update error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to update recording preferences" });
+  }
+});
+
 router.get("/twilio/history/:userId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
-    const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
+    const userId = getAuthUserId(req);
     if (!userId) {
-      res.status(400).json({ error: "userId required" });
+      res.status(401).json({ error: "Login required" });
       return;
     }
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     const search = req.query.search as string;
+    const requestedScope = req.query.scope;
+    if (requestedScope != null && (
+      typeof requestedScope !== "string"
+      || !["user", "organization", "shared"].includes(requestedScope)
+    )) {
+      res.status(400).json({ error: "scope must be user, organization, or shared" });
+      return;
+    }
+    const scope = requestedScope === "organization" || requestedScope === "shared"
+      ? requestedScope
+      : "user";
+    let history: (typeof callHistoryTable.$inferSelect & { employeeName?: string })[];
+    let employeeNames = new Map<string, string>();
 
-    let query = db
-      .select()
-      .from(callHistoryTable)
-      .where(eq(callHistoryTable.userId, userId))
-      .orderBy(desc(callHistoryTable.startedAt))
-      .limit(limit);
-
-    const history = await query;
+    if (scope === "organization") {
+      const orgId = await getCurrentPhoneOrgId(userId);
+      if (!orgId) {
+        res.status(403).json({ error: "Active organization required" });
+        return;
+      }
+      if (!(await canDoInOrg(userId, orgId, "phone.supervise")).allowed) {
+        res.status(403).json({ error: "Organization phone supervision permission required" });
+        return;
+      }
+      history = await db.select().from(callHistoryTable)
+        .where(eq(callHistoryTable.orgId, orgId))
+        .orderBy(desc(callHistoryTable.startedAt))
+        .limit(limit);
+      const employeeIds = [...new Set(history.map((call) => call.userId))];
+      if (employeeIds.length) {
+        const employees = await db.select({
+          id: usersTable.id,
+          firstName: usersTable.firstName,
+          lastName: usersTable.lastName,
+        }).from(usersTable).where(inArray(usersTable.id, employeeIds));
+        employeeNames = new Map(employees.map((employee) => [
+          employee.id,
+          [employee.firstName, employee.lastName].filter(Boolean).join(" ") || employee.id,
+        ]));
+      }
+    } else if (scope === "shared") {
+      const shares = await db.select({ callHistoryId: sharedMediaTable.callHistoryId })
+        .from(sharedMediaTable)
+        .where(and(
+          eq(sharedMediaTable.toUserId, userId),
+          eq(sharedMediaTable.mediaType, "recording"),
+        ));
+      const callIds = [...new Set(shares.map((share) => share.callHistoryId).filter((id): id is number => id != null))];
+      history = callIds.length
+        ? await db.select().from(callHistoryTable)
+          .where(inArray(callHistoryTable.id, callIds))
+          .orderBy(desc(callHistoryTable.startedAt))
+          .limit(limit)
+        : [];
+    } else {
+      history = await db.select().from(callHistoryTable)
+        .where(eq(callHistoryTable.userId, userId))
+        .orderBy(desc(callHistoryTable.startedAt))
+        .limit(limit);
+    }
 
     let filtered = history;
     if (search && search.trim()) {
@@ -4576,7 +4755,11 @@ router.get("/twilio/history/:userId", requireAuth, requireFeature("phone_system"
       );
     }
 
-    res.json({ calls: filtered });
+    res.json({
+      calls: filtered.map((call) => scope === "organization"
+        ? { ...call, employeeName: employeeNames.get(call.userId) ?? call.userId }
+        : call),
+    });
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] history error:", _msg);
@@ -4591,18 +4774,17 @@ router.get("/twilio/recording/:callId", requireAuth, requireFeature("phone_syste
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
-    if (!userId || !Number.isFinite(callId)) {
+    if (!userId || !Number.isInteger(callId) || callId <= 0) {
       res.status(400).json({ error: "callId required" });
       return;
     }
-    const rows = await db
-      .select()
-      .from(callHistoryTable)
-      .where(and(eq(callHistoryTable.id, callId), eq(callHistoryTable.userId, userId)))
-      .limit(1);
-    const call = rows[0];
+    const { call, allowed } = await getCallRecordingAccess(userId, callId);
     if (!call) {
       res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied" });
       return;
     }
     if (!call.recordingUrl) {
@@ -4794,11 +4976,13 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       hintedUserId,
     });
     const userId = telephonyOwner?.userId;
+    const inbOrgId2 = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
+    const recordingEnabled = userId ? await isCallRecordingEnabled(userId, inbOrgId2) : false;
 
     const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
     const voiceRecordingCallback = `${base}/twilio/webhook/recording?userId=${encodeURIComponent(userId ?? "")}&amp;type=call`;
-    const voiceFullCallRecording = `<Start><Recording recordingStatusCallback="${escapeTwiml(voiceRecordingCallback)}" recordingStatusCallbackMethod="POST" /></Start>`;
+    const voiceFullCallRecording = startRecordingTwiml(recordingEnabled, voiceRecordingCallback);
 
     const configRows = userId
       ? await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1)
@@ -4818,8 +5002,6 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       } catch {
       }
     }
-
-    const inbOrgId2 = telephonyOwner?.orgId ?? (userId ? await getUserOrgId(userId) : null);
 
     if (CallSid) {
       await persistCallHistory({
@@ -4864,7 +5046,6 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       });
       const timeLimit = config.screeningTimeLimit ?? 120;
       const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${voiceFullCallRecording}
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${Date.now()}" method="POST" speechTimeout="auto">
 ${milaVoice(screeningGreeting)}
@@ -4893,7 +5074,6 @@ ${milaVoice("I didn't catch that. Let me transfer you now.")}
         if (config.autoAnswer) {
           const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${voiceFullCallRecording}
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 ${milaVoice(greeting)}
@@ -4910,7 +5090,6 @@ ${milaVoice("I didn't catch that. Please leave a message after the tone.")}
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${voiceFullCallRecording}
 <Gather input="speech" timeout="10" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
 ${milaVoice(greeting)}
@@ -4925,7 +5104,6 @@ ${milaVoice("I didn't catch that. Please leave a message after the tone.")}
 
     const greeting = config?.greetingScript ?? PABLO_VOICEMAIL_GREETING;
     const twiml = `<Response>
-${callRecordingNoticeTwiml()}
 ${voiceFullCallRecording}
 ${milaVoice(greeting)}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
@@ -5110,7 +5288,8 @@ router.post("/twilio/webhook/recording-notice", async (req, res) => {
     res.status(403).send("Forbidden");
     return;
   }
-  res.type("text/xml").send(`<Response>${callRecordingNoticeTwiml()}</Response>`);
+  // Older TwiML may still call this callback; keep it silent.
+  res.type("text/xml").send("<Response/>");
 });
 
 router.post("/twilio/webhook/recording", async (req, res) => {

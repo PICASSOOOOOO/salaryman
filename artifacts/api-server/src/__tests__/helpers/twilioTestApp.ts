@@ -13,8 +13,10 @@ import {
   contactsTable,
   contactChannelPrefsTable,
   worldBusinessesTable,
+  sharedMediaTable,
+  systemConfigTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import twilioRouter from "../../routes/twilio";
 
 // A throwaway user, unique per test file. There are no hard FK constraints on
@@ -75,6 +77,10 @@ export function buildApp(): Express {
 // Remove every row this test file may have created, scoped to TEST_USER.id.
 export async function cleanupTestData() {
   const id = TEST_USER.id;
+  await db.delete(sharedMediaTable).where(or(
+    eq(sharedMediaTable.fromUserId, id),
+    eq(sharedMediaTable.toUserId, id),
+  ));
   await Promise.allSettled([
     db.delete(callHistoryTable).where(eq(callHistoryTable.userId, id)),
     db.delete(voicemailsTable).where(eq(voicemailsTable.userId, id)),
@@ -86,6 +92,7 @@ export async function cleanupTestData() {
     db.delete(pabloOutboundCampaignsTable).where(eq(pabloOutboundCampaignsTable.userId, id)),
     db.delete(contactChannelPrefsTable).where(eq(contactChannelPrefsTable.userId, id)),
     db.delete(contactsTable).where(eq(contactsTable.userId, id)),
+    db.delete(systemConfigTable).where(eq(systemConfigTable.key, `phone_recording_user_${id}`)),
     db.delete(worldBusinessesTable).where(eq(worldBusinessesTable.userId, id)),
   ]);
   onboardingSeed = null;
