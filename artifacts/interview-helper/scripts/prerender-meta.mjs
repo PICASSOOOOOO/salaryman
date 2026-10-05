@@ -219,7 +219,7 @@ const STATIC_BODY = {
       "To maintain platform security and prevent abuse",
     ])}
     ${H2("SUPPORT REQUESTS")}
-    ${P("Messages submitted through the Contact Us form are routed through Resend to authorized SALARYMAN project owners for review and response.")}
+    ${P("Support and investor inquiries submitted through the Contact Us and Investors forms are routed through Resend to authorized SALARYMAN project owners for review and response.")}
     ${H2("SMS AND CONSENT DATA")}
     ${P("Recurring SALARYMAN text messages are informational updates about account activity, CALLL HOME, and service updates. Message frequency varies; message and data rates may apply. Reply STOP to opt out or HELP for help.")}
     ${P("All the above categories exclude text messaging originator opt-in data and consent; this information won’t be shared with any third parties.")}

@@ -151,3 +151,4 @@
 - [Marketing SMS consent boundary](marketing-sms-consent.md) — explicit per-contact SMS permission and an active user/org-owned Twilio sender; campaigns remain explicitly started.
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
 - [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
+- [SALARYMAN support routing](salaryman-support-routing.md) — public support uses salaryman.io Contact Us; submissions go privately to OWNER_EMAILS until an official support inbox exists.
