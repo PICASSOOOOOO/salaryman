@@ -341,6 +341,142 @@ export interface OrganizationPaymentCheckoutResponse {
   expiresAt: string | null;
 }
 
+export type OrganizationCustomAppFieldType = typeof OrganizationCustomAppFieldType[keyof typeof OrganizationCustomAppFieldType];
+
+
+export const OrganizationCustomAppFieldType = {
+  text: 'text',
+  textarea: 'textarea',
+  number: 'number',
+  date: 'date',
+  select: 'select',
+  checkbox: 'checkbox',
+} as const;
+
+export interface OrganizationCustomAppField {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     * @pattern ^[a-z][a-z0-9_]*$
+     */
+  key: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  label: string;
+  type: OrganizationCustomAppFieldType;
+  required: boolean;
+  /** @maxLength 120 */
+  placeholder?: string;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 80
+     */
+  options?: string[];
+}
+
+export type OrganizationCustomAppStatus = typeof OrganizationCustomAppStatus[keyof typeof OrganizationCustomAppStatus];
+
+
+export const OrganizationCustomAppStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export interface OrganizationCustomApp {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  slug: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  /** @maxLength 240 */
+  description: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  fields: OrganizationCustomAppField[];
+  status: OrganizationCustomAppStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type OrganizationCustomAppsResponsePermissions = {
+  canEditRecords: boolean;
+  canManageApps: boolean;
+};
+
+export interface OrganizationCustomAppsResponse {
+  items: OrganizationCustomApp[];
+  permissions: OrganizationCustomAppsResponsePermissions;
+}
+
+export type OrganizationCustomAppResponsePermissions = {
+  canEditRecords: boolean;
+  canManageApps: boolean;
+};
+
+export interface OrganizationCustomAppResponse {
+  app: OrganizationCustomApp;
+  permissions: OrganizationCustomAppResponsePermissions;
+}
+
+export interface OrganizationCustomAppInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  /** @maxLength 240 */
+  description: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  fields: OrganizationCustomAppField[];
+}
+
+export type OrganizationCustomAppStatusInputStatus = typeof OrganizationCustomAppStatusInputStatus[keyof typeof OrganizationCustomAppStatusInputStatus];
+
+
+export const OrganizationCustomAppStatusInputStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export interface OrganizationCustomAppStatusInput {
+  status: OrganizationCustomAppStatusInputStatus;
+}
+
+export type OrganizationCustomAppRecordData = { [key: string]: unknown };
+
+export interface OrganizationCustomAppRecord {
+  id: string;
+  data: OrganizationCustomAppRecordData;
+  createdByUserId: string;
+  updatedByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type OrganizationCustomAppRecordInputData = { [key: string]: unknown };
+
+export interface OrganizationCustomAppRecordInput {
+  data: OrganizationCustomAppRecordInputData;
+}
+
+export interface OrganizationCustomAppRecordsResponse {
+  items: OrganizationCustomAppRecord[];
+  hasMore: boolean;
+}
+
 export type CrmCustomFieldFieldType = typeof CrmCustomFieldFieldType[keyof typeof CrmCustomFieldFieldType];
 
 

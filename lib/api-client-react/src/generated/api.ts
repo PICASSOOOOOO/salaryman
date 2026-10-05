@@ -58,6 +58,13 @@ import type {
   OpenaiError,
   OpenaiMessage,
   OpenaiMessageInput,
+  OrganizationCustomAppInput,
+  OrganizationCustomAppRecord,
+  OrganizationCustomAppRecordInput,
+  OrganizationCustomAppRecordsResponse,
+  OrganizationCustomAppResponse,
+  OrganizationCustomAppStatusInput,
+  OrganizationCustomAppsResponse,
   OrganizationPaymentCheckoutInput,
   OrganizationPaymentCheckoutResponse,
   OrganizationPaymentsResponse,
@@ -1343,6 +1350,798 @@ export const useCreateOrganizationPaymentCheckout = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateOrganizationPaymentCheckoutMutationOptions(options));
+    }
+
+export const getListOrganizationCustomAppsUrl = () => {
+
+
+
+
+  return `/api/orgs/current/custom-apps`
+}
+
+/**
+ * @summary List custom pages visible in the active organization
+ */
+export const listOrganizationCustomApps = async ( options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppsResponse> => {
+
+  return customFetch<OrganizationCustomAppsResponse>(getListOrganizationCustomAppsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrganizationCustomAppsQueryKey = () => {
+    return [
+    `/api/orgs/current/custom-apps`
+    ] as const;
+    }
+
+
+export const getListOrganizationCustomAppsQueryOptions = <TData = Awaited<ReturnType<typeof listOrganizationCustomApps>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationCustomApps>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrganizationCustomAppsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrganizationCustomApps>>> = ({ signal }) => listOrganizationCustomApps({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrganizationCustomApps>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrganizationCustomAppsQueryResult = NonNullable<Awaited<ReturnType<typeof listOrganizationCustomApps>>>
+export type ListOrganizationCustomAppsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List custom pages visible in the active organization
+ */
+
+export function useListOrganizationCustomApps<TData = Awaited<ReturnType<typeof listOrganizationCustomApps>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationCustomApps>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrganizationCustomAppsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateOrganizationCustomAppUrl = () => {
+
+
+
+
+  return `/api/orgs/current/custom-apps`
+}
+
+/**
+ * @summary Create an organization-only custom page draft
+ */
+export const createOrganizationCustomApp = async (organizationCustomAppInput: OrganizationCustomAppInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationCustomAppResponse>(getCreateOrganizationCustomAppUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationCustomAppInput)
+  }
+);}
+
+
+
+
+
+export const getCreateOrganizationCustomAppMutationKey = () => ['createOrganizationCustomApp'] as const;
+
+export const getCreateOrganizationCustomAppMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationCustomApp>>, TError,CreateOrganizationCustomAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOrganizationCustomApp>>, TError,CreateOrganizationCustomAppMutationVariables, TContext> => {
+
+const mutationKey = getCreateOrganizationCustomAppMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOrganizationCustomApp>>, CreateOrganizationCustomAppMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOrganizationCustomApp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOrganizationCustomAppMutationResult = NonNullable<Awaited<ReturnType<typeof createOrganizationCustomApp>>>
+    export type CreateOrganizationCustomAppMutationBody = BodyType<OrganizationCustomAppInput>
+    export type CreateOrganizationCustomAppMutationError = ErrorType<void>
+    export type CreateOrganizationCustomAppMutationVariables = {data: BodyType<OrganizationCustomAppInput>}
+
+    /**
+ * @summary Create an organization-only custom page draft
+ */
+export const useCreateOrganizationCustomApp = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationCustomApp>>, TError,CreateOrganizationCustomAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOrganizationCustomApp>>,
+        TError,
+        CreateOrganizationCustomAppMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateOrganizationCustomAppMutationOptions(options));
+    }
+
+export const getGetOrganizationCustomAppUrl = (appSlug: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}`
+}
+
+/**
+ * @summary Read one page in the active organization
+ */
+export const getOrganizationCustomApp = async (appSlug: string, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppResponse> => {
+
+  return customFetch<OrganizationCustomAppResponse>(getGetOrganizationCustomAppUrl(appSlug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrganizationCustomAppQueryKey = (appSlug: string,) => {
+    return [
+    `/api/orgs/current/custom-apps/${appSlug}`
+    ] as const;
+    }
+
+
+export const getGetOrganizationCustomAppQueryOptions = <TData = Awaited<ReturnType<typeof getOrganizationCustomApp>>, TError = ErrorType<void>>(appSlug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrganizationCustomApp>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrganizationCustomAppQueryKey(appSlug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrganizationCustomApp>>> = ({ signal }) => getOrganizationCustomApp(appSlug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: appSlug !== null && appSlug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrganizationCustomApp>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrganizationCustomAppQueryResult = NonNullable<Awaited<ReturnType<typeof getOrganizationCustomApp>>>
+export type GetOrganizationCustomAppQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read one page in the active organization
+ */
+
+export function useGetOrganizationCustomApp<TData = Awaited<ReturnType<typeof getOrganizationCustomApp>>, TError = ErrorType<void>>(
+ appSlug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrganizationCustomApp>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrganizationCustomAppQueryOptions(appSlug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateOrganizationCustomAppUrl = (appSlug: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}`
+}
+
+/**
+ * @summary Update a page definition in the active organization
+ */
+export const updateOrganizationCustomApp = async (appSlug: string,
+    organizationCustomAppInput: OrganizationCustomAppInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationCustomAppResponse>(getUpdateOrganizationCustomAppUrl(appSlug),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationCustomAppInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateOrganizationCustomAppMutationKey = () => ['updateOrganizationCustomApp'] as const;
+
+export const getUpdateOrganizationCustomAppMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationCustomApp>>, TError,UpdateOrganizationCustomAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationCustomApp>>, TError,UpdateOrganizationCustomAppMutationVariables, TContext> => {
+
+const mutationKey = getUpdateOrganizationCustomAppMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrganizationCustomApp>>, UpdateOrganizationCustomAppMutationVariables> = (props) => {
+          const {appSlug,data} = props ?? {};
+
+          return  updateOrganizationCustomApp(appSlug,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrganizationCustomAppMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrganizationCustomApp>>>
+    export type UpdateOrganizationCustomAppMutationBody = BodyType<OrganizationCustomAppInput>
+    export type UpdateOrganizationCustomAppMutationError = ErrorType<void>
+    export type UpdateOrganizationCustomAppMutationVariables = {appSlug: string;data: BodyType<OrganizationCustomAppInput>}
+
+    /**
+ * @summary Update a page definition in the active organization
+ */
+export const useUpdateOrganizationCustomApp = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationCustomApp>>, TError,UpdateOrganizationCustomAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrganizationCustomApp>>,
+        TError,
+        UpdateOrganizationCustomAppMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateOrganizationCustomAppMutationOptions(options));
+    }
+
+export const getDeleteOrganizationCustomAppUrl = (appSlug: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}`
+}
+
+/**
+ * @summary Delete a custom page and its organization-owned records
+ */
+export const deleteOrganizationCustomApp = async (appSlug: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteOrganizationCustomAppUrl(appSlug),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteOrganizationCustomAppMutationKey = () => ['deleteOrganizationCustomApp'] as const;
+
+export const getDeleteOrganizationCustomAppMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrganizationCustomApp>>, TError,DeleteOrganizationCustomAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteOrganizationCustomApp>>, TError,DeleteOrganizationCustomAppMutationVariables, TContext> => {
+
+const mutationKey = getDeleteOrganizationCustomAppMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteOrganizationCustomApp>>, DeleteOrganizationCustomAppMutationVariables> = (props) => {
+          const {appSlug} = props ?? {};
+
+          return  deleteOrganizationCustomApp(appSlug,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteOrganizationCustomAppMutationResult = NonNullable<Awaited<ReturnType<typeof deleteOrganizationCustomApp>>>
+
+    export type DeleteOrganizationCustomAppMutationError = ErrorType<void>
+    export type DeleteOrganizationCustomAppMutationVariables = {appSlug: string}
+
+    /**
+ * @summary Delete a custom page and its organization-owned records
+ */
+export const useDeleteOrganizationCustomApp = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrganizationCustomApp>>, TError,DeleteOrganizationCustomAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteOrganizationCustomApp>>,
+        TError,
+        DeleteOrganizationCustomAppMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteOrganizationCustomAppMutationOptions(options));
+    }
+
+export const getSetOrganizationCustomAppStatusUrl = (appSlug: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}/status`
+}
+
+/**
+ * @summary Publish a page inside the organization or return it to draft
+ */
+export const setOrganizationCustomAppStatus = async (appSlug: string,
+    organizationCustomAppStatusInput: OrganizationCustomAppStatusInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationCustomAppResponse>(getSetOrganizationCustomAppStatusUrl(appSlug),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationCustomAppStatusInput)
+  }
+);}
+
+
+
+
+
+export const getSetOrganizationCustomAppStatusMutationKey = () => ['setOrganizationCustomAppStatus'] as const;
+
+export const getSetOrganizationCustomAppStatusMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setOrganizationCustomAppStatus>>, TError,SetOrganizationCustomAppStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setOrganizationCustomAppStatus>>, TError,SetOrganizationCustomAppStatusMutationVariables, TContext> => {
+
+const mutationKey = getSetOrganizationCustomAppStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setOrganizationCustomAppStatus>>, SetOrganizationCustomAppStatusMutationVariables> = (props) => {
+          const {appSlug,data} = props ?? {};
+
+          return  setOrganizationCustomAppStatus(appSlug,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetOrganizationCustomAppStatusMutationResult = NonNullable<Awaited<ReturnType<typeof setOrganizationCustomAppStatus>>>
+    export type SetOrganizationCustomAppStatusMutationBody = BodyType<OrganizationCustomAppStatusInput>
+    export type SetOrganizationCustomAppStatusMutationError = ErrorType<void>
+    export type SetOrganizationCustomAppStatusMutationVariables = {appSlug: string;data: BodyType<OrganizationCustomAppStatusInput>}
+
+    /**
+ * @summary Publish a page inside the organization or return it to draft
+ */
+export const useSetOrganizationCustomAppStatus = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setOrganizationCustomAppStatus>>, TError,SetOrganizationCustomAppStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setOrganizationCustomAppStatus>>,
+        TError,
+        SetOrganizationCustomAppStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetOrganizationCustomAppStatusMutationOptions(options));
+    }
+
+export const getListOrganizationCustomAppRecordsUrl = (appSlug: string,
+    offset: number,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}/records/page/${offset}`
+}
+
+/**
+ * @summary Read records from a page in the active organization
+ */
+export const listOrganizationCustomAppRecords = async (appSlug: string,
+    offset: number, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppRecordsResponse> => {
+
+  return customFetch<OrganizationCustomAppRecordsResponse>(getListOrganizationCustomAppRecordsUrl(appSlug,offset),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrganizationCustomAppRecordsQueryKey = (appSlug: string,
+    offset: number,) => {
+    return [
+    `/api/orgs/current/custom-apps/${appSlug}/records/page/${offset}`
+    ] as const;
+    }
+
+
+export const getListOrganizationCustomAppRecordsQueryOptions = <TData = Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>, TError = ErrorType<void>>(appSlug: string,
+    offset: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrganizationCustomAppRecordsQueryKey(appSlug,offset);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>> = ({ signal }) => listOrganizationCustomAppRecords(appSlug,offset, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: appSlug !== null && appSlug !== undefined && offset !== null && offset !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrganizationCustomAppRecordsQueryResult = NonNullable<Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>>
+export type ListOrganizationCustomAppRecordsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read records from a page in the active organization
+ */
+
+export function useListOrganizationCustomAppRecords<TData = Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>, TError = ErrorType<void>>(
+ appSlug: string,
+    offset: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationCustomAppRecords>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrganizationCustomAppRecordsQueryOptions(appSlug,offset,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateOrganizationCustomAppRecordUrl = (appSlug: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}/records`
+}
+
+/**
+ * @summary Create a record in a page in the active organization
+ */
+export const createOrganizationCustomAppRecord = async (appSlug: string,
+    organizationCustomAppRecordInput: OrganizationCustomAppRecordInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppRecord> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationCustomAppRecord>(getCreateOrganizationCustomAppRecordUrl(appSlug),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationCustomAppRecordInput)
+  }
+);}
+
+
+
+
+
+export const getCreateOrganizationCustomAppRecordMutationKey = () => ['createOrganizationCustomAppRecord'] as const;
+
+export const getCreateOrganizationCustomAppRecordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationCustomAppRecord>>, TError,CreateOrganizationCustomAppRecordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOrganizationCustomAppRecord>>, TError,CreateOrganizationCustomAppRecordMutationVariables, TContext> => {
+
+const mutationKey = getCreateOrganizationCustomAppRecordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOrganizationCustomAppRecord>>, CreateOrganizationCustomAppRecordMutationVariables> = (props) => {
+          const {appSlug,data} = props ?? {};
+
+          return  createOrganizationCustomAppRecord(appSlug,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOrganizationCustomAppRecordMutationResult = NonNullable<Awaited<ReturnType<typeof createOrganizationCustomAppRecord>>>
+    export type CreateOrganizationCustomAppRecordMutationBody = BodyType<OrganizationCustomAppRecordInput>
+    export type CreateOrganizationCustomAppRecordMutationError = ErrorType<void>
+    export type CreateOrganizationCustomAppRecordMutationVariables = {appSlug: string;data: BodyType<OrganizationCustomAppRecordInput>}
+
+    /**
+ * @summary Create a record in a page in the active organization
+ */
+export const useCreateOrganizationCustomAppRecord = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationCustomAppRecord>>, TError,CreateOrganizationCustomAppRecordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOrganizationCustomAppRecord>>,
+        TError,
+        CreateOrganizationCustomAppRecordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateOrganizationCustomAppRecordMutationOptions(options));
+    }
+
+export const getUpdateOrganizationCustomAppRecordUrl = (appSlug: string,
+    recordId: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}/records/${recordId}`
+}
+
+/**
+ * @summary Update an organization-owned app record
+ */
+export const updateOrganizationCustomAppRecord = async (appSlug: string,
+    recordId: string,
+    organizationCustomAppRecordInput: OrganizationCustomAppRecordInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationCustomAppRecord> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationCustomAppRecord>(getUpdateOrganizationCustomAppRecordUrl(appSlug,recordId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationCustomAppRecordInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateOrganizationCustomAppRecordMutationKey = () => ['updateOrganizationCustomAppRecord'] as const;
+
+export const getUpdateOrganizationCustomAppRecordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationCustomAppRecord>>, TError,UpdateOrganizationCustomAppRecordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationCustomAppRecord>>, TError,UpdateOrganizationCustomAppRecordMutationVariables, TContext> => {
+
+const mutationKey = getUpdateOrganizationCustomAppRecordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrganizationCustomAppRecord>>, UpdateOrganizationCustomAppRecordMutationVariables> = (props) => {
+          const {appSlug,recordId,data} = props ?? {};
+
+          return  updateOrganizationCustomAppRecord(appSlug,recordId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrganizationCustomAppRecordMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrganizationCustomAppRecord>>>
+    export type UpdateOrganizationCustomAppRecordMutationBody = BodyType<OrganizationCustomAppRecordInput>
+    export type UpdateOrganizationCustomAppRecordMutationError = ErrorType<void>
+    export type UpdateOrganizationCustomAppRecordMutationVariables = {appSlug: string;recordId: string;data: BodyType<OrganizationCustomAppRecordInput>}
+
+    /**
+ * @summary Update an organization-owned app record
+ */
+export const useUpdateOrganizationCustomAppRecord = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationCustomAppRecord>>, TError,UpdateOrganizationCustomAppRecordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrganizationCustomAppRecord>>,
+        TError,
+        UpdateOrganizationCustomAppRecordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateOrganizationCustomAppRecordMutationOptions(options));
+    }
+
+export const getDeleteOrganizationCustomAppRecordUrl = (appSlug: string,
+    recordId: string,) => {
+
+
+
+
+  return `/api/orgs/current/custom-apps/${appSlug}/records/${recordId}`
+}
+
+/**
+ * @summary Delete an organization-owned app record
+ */
+export const deleteOrganizationCustomAppRecord = async (appSlug: string,
+    recordId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteOrganizationCustomAppRecordUrl(appSlug,recordId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteOrganizationCustomAppRecordMutationKey = () => ['deleteOrganizationCustomAppRecord'] as const;
+
+export const getDeleteOrganizationCustomAppRecordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrganizationCustomAppRecord>>, TError,DeleteOrganizationCustomAppRecordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteOrganizationCustomAppRecord>>, TError,DeleteOrganizationCustomAppRecordMutationVariables, TContext> => {
+
+const mutationKey = getDeleteOrganizationCustomAppRecordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteOrganizationCustomAppRecord>>, DeleteOrganizationCustomAppRecordMutationVariables> = (props) => {
+          const {appSlug,recordId} = props ?? {};
+
+          return  deleteOrganizationCustomAppRecord(appSlug,recordId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteOrganizationCustomAppRecordMutationResult = NonNullable<Awaited<ReturnType<typeof deleteOrganizationCustomAppRecord>>>
+
+    export type DeleteOrganizationCustomAppRecordMutationError = ErrorType<void>
+    export type DeleteOrganizationCustomAppRecordMutationVariables = {appSlug: string;recordId: string}
+
+    /**
+ * @summary Delete an organization-owned app record
+ */
+export const useDeleteOrganizationCustomAppRecord = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrganizationCustomAppRecord>>, TError,DeleteOrganizationCustomAppRecordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteOrganizationCustomAppRecord>>,
+        TError,
+        DeleteOrganizationCustomAppRecordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteOrganizationCustomAppRecordMutationOptions(options));
     }
 
 export const getListCrmCustomFieldsUrl = () => {

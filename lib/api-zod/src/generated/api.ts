@@ -280,6 +280,452 @@ export const CreateOrganizationPaymentCheckoutResponse = zod.object({
 })
 
 
+/**
+ * @summary List custom pages visible in the active organization
+ */
+export const listOrganizationCustomAppsResponseItemsItemSlugMax = 100;
+
+export const listOrganizationCustomAppsResponseItemsItemNameMax = 80;
+
+export const listOrganizationCustomAppsResponseItemsItemDescriptionMax = 240;
+
+export const listOrganizationCustomAppsResponseItemsItemFieldsItemKeyMax = 40;
+
+
+export const listOrganizationCustomAppsResponseItemsItemFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const listOrganizationCustomAppsResponseItemsItemFieldsItemLabelMax = 80;
+
+export const listOrganizationCustomAppsResponseItemsItemFieldsItemPlaceholderMax = 120;
+
+export const listOrganizationCustomAppsResponseItemsItemFieldsItemOptionsItemMax = 80;
+
+export const listOrganizationCustomAppsResponseItemsItemFieldsItemOptionsMax = 20;
+
+export const listOrganizationCustomAppsResponseItemsItemFieldsMax = 20;
+
+
+
+export const ListOrganizationCustomAppsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "slug": zod.string().min(1).max(listOrganizationCustomAppsResponseItemsItemSlugMax),
+  "name": zod.string().min(1).max(listOrganizationCustomAppsResponseItemsItemNameMax),
+  "description": zod.string().max(listOrganizationCustomAppsResponseItemsItemDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(listOrganizationCustomAppsResponseItemsItemFieldsItemKeyMax).regex(listOrganizationCustomAppsResponseItemsItemFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(listOrganizationCustomAppsResponseItemsItemFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(listOrganizationCustomAppsResponseItemsItemFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(listOrganizationCustomAppsResponseItemsItemFieldsItemOptionsItemMax)).max(listOrganizationCustomAppsResponseItemsItemFieldsItemOptionsMax).optional()
+})).min(1).max(listOrganizationCustomAppsResponseItemsItemFieldsMax),
+  "status": zod.enum(['draft', 'published']),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+})),
+  "permissions": zod.object({
+  "canEditRecords": zod.boolean(),
+  "canManageApps": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Create an organization-only custom page draft
+ */
+export const createOrganizationCustomAppBodyNameMax = 80;
+
+export const createOrganizationCustomAppBodyDescriptionMax = 240;
+
+export const createOrganizationCustomAppBodyFieldsItemKeyMax = 40;
+
+
+export const createOrganizationCustomAppBodyFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const createOrganizationCustomAppBodyFieldsItemLabelMax = 80;
+
+export const createOrganizationCustomAppBodyFieldsItemPlaceholderMax = 120;
+
+export const createOrganizationCustomAppBodyFieldsItemOptionsItemMax = 80;
+
+export const createOrganizationCustomAppBodyFieldsItemOptionsMax = 20;
+
+export const createOrganizationCustomAppBodyFieldsMax = 20;
+
+
+
+export const CreateOrganizationCustomAppBody = zod.object({
+  "name": zod.string().min(1).max(createOrganizationCustomAppBodyNameMax),
+  "description": zod.string().max(createOrganizationCustomAppBodyDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(createOrganizationCustomAppBodyFieldsItemKeyMax).regex(createOrganizationCustomAppBodyFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(createOrganizationCustomAppBodyFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(createOrganizationCustomAppBodyFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(createOrganizationCustomAppBodyFieldsItemOptionsItemMax)).max(createOrganizationCustomAppBodyFieldsItemOptionsMax).optional()
+})).min(1).max(createOrganizationCustomAppBodyFieldsMax)
+})
+
+export const createOrganizationCustomAppResponseAppSlugMax = 100;
+
+export const createOrganizationCustomAppResponseAppNameMax = 80;
+
+export const createOrganizationCustomAppResponseAppDescriptionMax = 240;
+
+export const createOrganizationCustomAppResponseAppFieldsItemKeyMax = 40;
+
+
+export const createOrganizationCustomAppResponseAppFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const createOrganizationCustomAppResponseAppFieldsItemLabelMax = 80;
+
+export const createOrganizationCustomAppResponseAppFieldsItemPlaceholderMax = 120;
+
+export const createOrganizationCustomAppResponseAppFieldsItemOptionsItemMax = 80;
+
+export const createOrganizationCustomAppResponseAppFieldsItemOptionsMax = 20;
+
+export const createOrganizationCustomAppResponseAppFieldsMax = 20;
+
+
+
+export const CreateOrganizationCustomAppResponse = zod.object({
+  "app": zod.object({
+  "slug": zod.string().min(1).max(createOrganizationCustomAppResponseAppSlugMax),
+  "name": zod.string().min(1).max(createOrganizationCustomAppResponseAppNameMax),
+  "description": zod.string().max(createOrganizationCustomAppResponseAppDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(createOrganizationCustomAppResponseAppFieldsItemKeyMax).regex(createOrganizationCustomAppResponseAppFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(createOrganizationCustomAppResponseAppFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(createOrganizationCustomAppResponseAppFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(createOrganizationCustomAppResponseAppFieldsItemOptionsItemMax)).max(createOrganizationCustomAppResponseAppFieldsItemOptionsMax).optional()
+})).min(1).max(createOrganizationCustomAppResponseAppFieldsMax),
+  "status": zod.enum(['draft', 'published']),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+}),
+  "permissions": zod.object({
+  "canEditRecords": zod.boolean(),
+  "canManageApps": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Read one page in the active organization
+ */
+export const getOrganizationCustomAppPathAppSlugMax = 100;
+
+
+
+export const GetOrganizationCustomAppParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(getOrganizationCustomAppPathAppSlugMax)
+})
+
+export const getOrganizationCustomAppResponseAppSlugMax = 100;
+
+export const getOrganizationCustomAppResponseAppNameMax = 80;
+
+export const getOrganizationCustomAppResponseAppDescriptionMax = 240;
+
+export const getOrganizationCustomAppResponseAppFieldsItemKeyMax = 40;
+
+
+export const getOrganizationCustomAppResponseAppFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const getOrganizationCustomAppResponseAppFieldsItemLabelMax = 80;
+
+export const getOrganizationCustomAppResponseAppFieldsItemPlaceholderMax = 120;
+
+export const getOrganizationCustomAppResponseAppFieldsItemOptionsItemMax = 80;
+
+export const getOrganizationCustomAppResponseAppFieldsItemOptionsMax = 20;
+
+export const getOrganizationCustomAppResponseAppFieldsMax = 20;
+
+
+
+export const GetOrganizationCustomAppResponse = zod.object({
+  "app": zod.object({
+  "slug": zod.string().min(1).max(getOrganizationCustomAppResponseAppSlugMax),
+  "name": zod.string().min(1).max(getOrganizationCustomAppResponseAppNameMax),
+  "description": zod.string().max(getOrganizationCustomAppResponseAppDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(getOrganizationCustomAppResponseAppFieldsItemKeyMax).regex(getOrganizationCustomAppResponseAppFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(getOrganizationCustomAppResponseAppFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(getOrganizationCustomAppResponseAppFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(getOrganizationCustomAppResponseAppFieldsItemOptionsItemMax)).max(getOrganizationCustomAppResponseAppFieldsItemOptionsMax).optional()
+})).min(1).max(getOrganizationCustomAppResponseAppFieldsMax),
+  "status": zod.enum(['draft', 'published']),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+}),
+  "permissions": zod.object({
+  "canEditRecords": zod.boolean(),
+  "canManageApps": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Update a page definition in the active organization
+ */
+export const updateOrganizationCustomAppPathAppSlugMax = 100;
+
+
+
+export const UpdateOrganizationCustomAppParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(updateOrganizationCustomAppPathAppSlugMax)
+})
+
+export const updateOrganizationCustomAppBodyNameMax = 80;
+
+export const updateOrganizationCustomAppBodyDescriptionMax = 240;
+
+export const updateOrganizationCustomAppBodyFieldsItemKeyMax = 40;
+
+
+export const updateOrganizationCustomAppBodyFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const updateOrganizationCustomAppBodyFieldsItemLabelMax = 80;
+
+export const updateOrganizationCustomAppBodyFieldsItemPlaceholderMax = 120;
+
+export const updateOrganizationCustomAppBodyFieldsItemOptionsItemMax = 80;
+
+export const updateOrganizationCustomAppBodyFieldsItemOptionsMax = 20;
+
+export const updateOrganizationCustomAppBodyFieldsMax = 20;
+
+
+
+export const UpdateOrganizationCustomAppBody = zod.object({
+  "name": zod.string().min(1).max(updateOrganizationCustomAppBodyNameMax),
+  "description": zod.string().max(updateOrganizationCustomAppBodyDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(updateOrganizationCustomAppBodyFieldsItemKeyMax).regex(updateOrganizationCustomAppBodyFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(updateOrganizationCustomAppBodyFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(updateOrganizationCustomAppBodyFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(updateOrganizationCustomAppBodyFieldsItemOptionsItemMax)).max(updateOrganizationCustomAppBodyFieldsItemOptionsMax).optional()
+})).min(1).max(updateOrganizationCustomAppBodyFieldsMax)
+})
+
+export const updateOrganizationCustomAppResponseAppSlugMax = 100;
+
+export const updateOrganizationCustomAppResponseAppNameMax = 80;
+
+export const updateOrganizationCustomAppResponseAppDescriptionMax = 240;
+
+export const updateOrganizationCustomAppResponseAppFieldsItemKeyMax = 40;
+
+
+export const updateOrganizationCustomAppResponseAppFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const updateOrganizationCustomAppResponseAppFieldsItemLabelMax = 80;
+
+export const updateOrganizationCustomAppResponseAppFieldsItemPlaceholderMax = 120;
+
+export const updateOrganizationCustomAppResponseAppFieldsItemOptionsItemMax = 80;
+
+export const updateOrganizationCustomAppResponseAppFieldsItemOptionsMax = 20;
+
+export const updateOrganizationCustomAppResponseAppFieldsMax = 20;
+
+
+
+export const UpdateOrganizationCustomAppResponse = zod.object({
+  "app": zod.object({
+  "slug": zod.string().min(1).max(updateOrganizationCustomAppResponseAppSlugMax),
+  "name": zod.string().min(1).max(updateOrganizationCustomAppResponseAppNameMax),
+  "description": zod.string().max(updateOrganizationCustomAppResponseAppDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(updateOrganizationCustomAppResponseAppFieldsItemKeyMax).regex(updateOrganizationCustomAppResponseAppFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(updateOrganizationCustomAppResponseAppFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(updateOrganizationCustomAppResponseAppFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(updateOrganizationCustomAppResponseAppFieldsItemOptionsItemMax)).max(updateOrganizationCustomAppResponseAppFieldsItemOptionsMax).optional()
+})).min(1).max(updateOrganizationCustomAppResponseAppFieldsMax),
+  "status": zod.enum(['draft', 'published']),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+}),
+  "permissions": zod.object({
+  "canEditRecords": zod.boolean(),
+  "canManageApps": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Delete a custom page and its organization-owned records
+ */
+export const deleteOrganizationCustomAppPathAppSlugMax = 100;
+
+
+
+export const DeleteOrganizationCustomAppParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(deleteOrganizationCustomAppPathAppSlugMax)
+})
+
+export const DeleteOrganizationCustomAppResponse = zod.void()
+
+
+/**
+ * @summary Publish a page inside the organization or return it to draft
+ */
+export const setOrganizationCustomAppStatusPathAppSlugMax = 100;
+
+
+
+export const SetOrganizationCustomAppStatusParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(setOrganizationCustomAppStatusPathAppSlugMax)
+})
+
+export const SetOrganizationCustomAppStatusBody = zod.object({
+  "status": zod.enum(['draft', 'published'])
+})
+
+export const setOrganizationCustomAppStatusResponseAppSlugMax = 100;
+
+export const setOrganizationCustomAppStatusResponseAppNameMax = 80;
+
+export const setOrganizationCustomAppStatusResponseAppDescriptionMax = 240;
+
+export const setOrganizationCustomAppStatusResponseAppFieldsItemKeyMax = 40;
+
+
+export const setOrganizationCustomAppStatusResponseAppFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]*$');
+export const setOrganizationCustomAppStatusResponseAppFieldsItemLabelMax = 80;
+
+export const setOrganizationCustomAppStatusResponseAppFieldsItemPlaceholderMax = 120;
+
+export const setOrganizationCustomAppStatusResponseAppFieldsItemOptionsItemMax = 80;
+
+export const setOrganizationCustomAppStatusResponseAppFieldsItemOptionsMax = 20;
+
+export const setOrganizationCustomAppStatusResponseAppFieldsMax = 20;
+
+
+
+export const SetOrganizationCustomAppStatusResponse = zod.object({
+  "app": zod.object({
+  "slug": zod.string().min(1).max(setOrganizationCustomAppStatusResponseAppSlugMax),
+  "name": zod.string().min(1).max(setOrganizationCustomAppStatusResponseAppNameMax),
+  "description": zod.string().max(setOrganizationCustomAppStatusResponseAppDescriptionMax),
+  "fields": zod.array(zod.object({
+  "key": zod.string().min(1).max(setOrganizationCustomAppStatusResponseAppFieldsItemKeyMax).regex(setOrganizationCustomAppStatusResponseAppFieldsItemKeyRegExp),
+  "label": zod.string().min(1).max(setOrganizationCustomAppStatusResponseAppFieldsItemLabelMax),
+  "type": zod.enum(['text', 'textarea', 'number', 'date', 'select', 'checkbox']),
+  "required": zod.boolean(),
+  "placeholder": zod.string().max(setOrganizationCustomAppStatusResponseAppFieldsItemPlaceholderMax).optional(),
+  "options": zod.array(zod.string().min(1).max(setOrganizationCustomAppStatusResponseAppFieldsItemOptionsItemMax)).max(setOrganizationCustomAppStatusResponseAppFieldsItemOptionsMax).optional()
+})).min(1).max(setOrganizationCustomAppStatusResponseAppFieldsMax),
+  "status": zod.enum(['draft', 'published']),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+}),
+  "permissions": zod.object({
+  "canEditRecords": zod.boolean(),
+  "canManageApps": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Read records from a page in the active organization
+ */
+export const listOrganizationCustomAppRecordsPathAppSlugMax = 100;
+
+export const listOrganizationCustomAppRecordsPathOffsetMin = 0;
+
+
+
+export const ListOrganizationCustomAppRecordsParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(listOrganizationCustomAppRecordsPathAppSlugMax),
+  "offset": zod.coerce.number().int().min(listOrganizationCustomAppRecordsPathOffsetMin)
+})
+
+export const ListOrganizationCustomAppRecordsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "data": zod.record(zod.string(), zod.unknown()),
+  "createdByUserId": zod.string(),
+  "updatedByUserId": zod.string(),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+})),
+  "hasMore": zod.boolean()
+})
+
+
+/**
+ * @summary Create a record in a page in the active organization
+ */
+export const createOrganizationCustomAppRecordPathAppSlugMax = 100;
+
+
+
+export const CreateOrganizationCustomAppRecordParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(createOrganizationCustomAppRecordPathAppSlugMax)
+})
+
+export const CreateOrganizationCustomAppRecordBody = zod.object({
+  "data": zod.record(zod.string(), zod.unknown())
+})
+
+export const CreateOrganizationCustomAppRecordResponse = zod.object({
+  "id": zod.string().uuid(),
+  "data": zod.record(zod.string(), zod.unknown()),
+  "createdByUserId": zod.string(),
+  "updatedByUserId": zod.string(),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+})
+
+
+/**
+ * @summary Update an organization-owned app record
+ */
+export const updateOrganizationCustomAppRecordPathAppSlugMax = 100;
+
+
+
+export const UpdateOrganizationCustomAppRecordParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(updateOrganizationCustomAppRecordPathAppSlugMax),
+  "recordId": zod.coerce.string().uuid()
+})
+
+export const UpdateOrganizationCustomAppRecordBody = zod.object({
+  "data": zod.record(zod.string(), zod.unknown())
+})
+
+export const UpdateOrganizationCustomAppRecordResponse = zod.object({
+  "id": zod.string().uuid(),
+  "data": zod.record(zod.string(), zod.unknown()),
+  "createdByUserId": zod.string(),
+  "updatedByUserId": zod.string(),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+})
+
+
+/**
+ * @summary Delete an organization-owned app record
+ */
+export const deleteOrganizationCustomAppRecordPathAppSlugMax = 100;
+
+
+
+export const DeleteOrganizationCustomAppRecordParams = zod.object({
+  "appSlug": zod.coerce.string().min(1).max(deleteOrganizationCustomAppRecordPathAppSlugMax),
+  "recordId": zod.coerce.string().uuid()
+})
+
+export const DeleteOrganizationCustomAppRecordResponse = zod.void()
+
+
 export const ListCrmCustomFieldsResponseItem = zod.object({
   "id": zod.number().int(),
   "orgId": zod.number().int(),

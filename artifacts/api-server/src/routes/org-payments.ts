@@ -54,7 +54,7 @@ function appBaseUrl(): string {
 function paymentResponse(payment: typeof orgPaymentsTable.$inferSelect) {
   return {
     id: payment.id,
-    provider: STRIPE_PROVIDER as const,
+    provider: "stripe" as const,
     description: payment.description,
     amountMinor: payment.amountMinor,
     refundedMinor: payment.refundedMinor,
@@ -328,7 +328,7 @@ router.post("/orgs/current/payments/checkout", async (req, res): Promise<void> =
     res.status(201).json(CreateOrganizationPaymentCheckoutResponse.parse({
       payment: paymentResponse(existing),
       checkoutUrl: session.url,
-      expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+      expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : null,
     }));
     return;
   }
@@ -422,7 +422,7 @@ router.post("/orgs/current/payments/checkout", async (req, res): Promise<void> =
   res.status(201).json(CreateOrganizationPaymentCheckoutResponse.parse({
     payment: paymentResponse(payment),
     checkoutUrl: session.url,
-    expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+    expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : null,
   }));
 });
 

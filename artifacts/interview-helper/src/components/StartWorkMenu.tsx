@@ -17,6 +17,7 @@ const PRODUCT_SHORTCUTS = [
   { id: "phone", label: "CALLL HOME", path: "/phone" },
   { id: "office", label: "SALARYMAN OS", path: "/desktop" },
   { id: "comms", label: "MESSAGES", path: "/comms" },
+  { id: "apps", label: "MY APPS", path: "/my-apps" },
 ];
 
 export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }) {

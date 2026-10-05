@@ -19,6 +19,8 @@ tags:
     description: Interview helper operations
   - name: crm
     description: Organization CRM operations
+  - name: customApps
+    description: Published organization-only custom pages and their records
   - name: autopilot
     description: Pablo automation review and read-only business insights
   - name: Auth
@@ -312,6 +314,182 @@ paths:
         "403": { description: Finance manage permission required }
         "404": { description: No active organization found }
         "409": { description: Stripe account is not ready for payments }
+  /orgs/current/custom-apps:
+    get:
+      operationId: listOrganizationCustomApps
+      tags: [customApps]
+      summary: List custom pages visible in the active organization
+      responses:
+        "200":
+          description: Published pages and manager-visible drafts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppsResponse" }
+        "401": { description: Login required }
+        "403": { description: Organization custom-app access required }
+        "404": { description: No active organization found }
+    post:
+      operationId: createOrganizationCustomApp
+      tags: [customApps]
+      summary: Create an organization-only custom page draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppInput" }
+      responses:
+        "201":
+          description: Created organization custom page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "400": { description: Invalid page definition }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: No active organization found }
+  /orgs/current/custom-apps/{appSlug}:
+    get:
+      operationId: getOrganizationCustomApp
+      tags: [customApps]
+      summary: Read one page in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        "200":
+          description: Organization custom page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "401": { description: Login required }
+        "403": { description: Organization custom-app access required }
+        "404": { description: Page not found in the active organization }
+    put:
+      operationId: updateOrganizationCustomApp
+      tags: [customApps]
+      summary: Update a page definition in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppInput" }
+      responses:
+        "200":
+          description: Updated organization custom page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "400": { description: Invalid page definition }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: Page not found in the active organization }
+    delete:
+      operationId: deleteOrganizationCustomApp
+      tags: [customApps]
+      summary: Delete a custom page and its organization-owned records
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        "204": { description: Page and its records deleted }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/status:
+    patch:
+      operationId: setOrganizationCustomAppStatus
+      tags: [customApps]
+      summary: Publish a page inside the organization or return it to draft
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppStatusInput" }
+      responses:
+        "200":
+          description: Updated page status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/records/page/{offset}:
+    get:
+      operationId: listOrganizationCustomAppRecords
+      tags: [customApps]
+      summary: Read records from a page in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: offset, in: path, required: true, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: A page of organization-owned app records
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppRecordsResponse" }
+        "401": { description: Login required }
+        "403": { description: Published page access required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/records:
+    post:
+      operationId: createOrganizationCustomAppRecord
+      tags: [customApps]
+      summary: Create a record in a page in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppRecordInput" }
+      responses:
+        "201":
+          description: Created organization-owned app record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppRecord" }
+        "400": { description: Invalid record fields }
+        "401": { description: Login required }
+        "403": { description: Published page edit access required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/records/{recordId}:
+    put:
+      operationId: updateOrganizationCustomAppRecord
+      tags: [customApps]
+      summary: Update an organization-owned app record
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppRecordInput" }
+      responses:
+        "200":
+          description: Updated organization-owned app record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppRecord" }
+        "400": { description: Invalid record fields }
+        "401": { description: Login required }
+        "403": { description: Published page edit access required }
+        "404": { description: Record not found in the active organization }
+    delete:
+      operationId: deleteOrganizationCustomAppRecord
+      tags: [customApps]
+      summary: Delete an organization-owned app record
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Record deleted }
+        "401": { description: Login required }
+        "403": { description: Published page edit access required }
+        "404": { description: Record not found in the active organization }
   /crm/custom-fields:
     get:
       operationId: listCrmCustomFields
@@ -950,6 +1128,94 @@ components:
         payment: { $ref: "#/components/schemas/OrganizationPayment" }
         checkoutUrl: { type: string, format: uri }
         expiresAt: { type: ["string", "null"], format: date-time }
+    OrganizationCustomAppField:
+      type: object
+      required: [key, label, type, required]
+      properties:
+        key: { type: string, minLength: 1, maxLength: 40, pattern: "^[a-z][a-z0-9_]*$" }
+        label: { type: string, minLength: 1, maxLength: 80 }
+        type: { type: string, enum: [text, textarea, number, date, select, checkbox] }
+        required: { type: boolean }
+        placeholder: { type: string, maxLength: 120 }
+        options: { type: array, maxItems: 20, items: { type: string, minLength: 1, maxLength: 80 } }
+    OrganizationCustomApp:
+      type: object
+      required: [slug, name, description, fields, status, createdAt, updatedAt]
+      properties:
+        slug: { type: string, minLength: 1, maxLength: 100 }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 240 }
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/OrganizationCustomAppField" }
+        status: { type: string, enum: [draft, published] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OrganizationCustomAppsResponse:
+      type: object
+      required: [items, permissions]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationCustomApp" }
+        permissions:
+          type: object
+          required: [canEditRecords, canManageApps]
+          properties:
+            canEditRecords: { type: boolean }
+            canManageApps: { type: boolean }
+    OrganizationCustomAppResponse:
+      type: object
+      required: [app, permissions]
+      properties:
+        app: { $ref: "#/components/schemas/OrganizationCustomApp" }
+        permissions:
+          type: object
+          required: [canEditRecords, canManageApps]
+          properties:
+            canEditRecords: { type: boolean }
+            canManageApps: { type: boolean }
+    OrganizationCustomAppInput:
+      type: object
+      required: [name, description, fields]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 240 }
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/OrganizationCustomAppField" }
+    OrganizationCustomAppStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [draft, published] }
+    OrganizationCustomAppRecord:
+      type: object
+      required: [id, data, createdByUserId, updatedByUserId, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        data: { type: object, additionalProperties: true }
+        createdByUserId: { type: string }
+        updatedByUserId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OrganizationCustomAppRecordInput:
+      type: object
+      required: [data]
+      properties:
+        data: { type: object, additionalProperties: true }
+    OrganizationCustomAppRecordsResponse:
+      type: object
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationCustomAppRecord" }
+        hasMore: { type: boolean }
     CrmCustomField:
       type: object
       required: [id, orgId, fieldKey, label, fieldType, optionsJson, required, archived, position]

@@ -700,11 +700,15 @@ function AppsTab() {
   );
 }
 
-export default function PlatformAPI() {
+export default function PlatformAPI({ embedded = false }: { embedded?: boolean }) {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
   useEffect(() => {
+    if (embedded) {
+      setActiveTab("apps");
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as Tab;
     if (tab && TABS.some(t => t.id === tab)) {
@@ -712,19 +716,33 @@ export default function PlatformAPI() {
     } else {
       setActiveTab("overview");
     }
-  }, []);
+  }, [embedded]);
 
   const setTab = (tab: Tab) => {
     setActiveTab(tab);
+    if (embedded) return;
     const basePath = window.location.pathname.includes('/profile/') ? '/profile/platform' : '/platform';
     const newUrl = tab === "overview" ? basePath : `${basePath}?tab=${tab}`;
     window.history.replaceState(null, "", `${import.meta.env.BASE_URL.replace(/\/$/, "")}${newUrl}`);
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className={`${embedded ? "my-apps-platform min-h-0 rounded-xl border border-stone-200 bg-[#fffdf8] text-stone-900" : "min-h-screen bg-zinc-950 text-zinc-100"}`}>
+      {embedded && <style>{`
+        .my-apps-platform [class*="bg-zinc-"] { background-color: #f2f0e9 !important; }
+        .my-apps-platform [class*="bg-gradient"] { background: #eeece5 !important; }
+        .my-apps-platform [class*="border-zinc-"] { border-color: #dfdbd1 !important; }
+        .my-apps-platform [class*="text-zinc-"] { color: #615e55 !important; }
+        .my-apps-platform [class*="text-cyan-"], .my-apps-platform [class*="text-blue-"],
+        .my-apps-platform [class*="text-emerald-"], .my-apps-platform [class*="text-purple-"],
+        .my-apps-platform [class*="text-amber-"] { color: #4f5b42 !important; }
+        .my-apps-platform [class*="bg-cyan-"], .my-apps-platform [class*="bg-emerald-"],
+        .my-apps-platform [class*="bg-purple-"], .my-apps-platform [class*="bg-amber-"],
+        .my-apps-platform [class*="bg-blue-"] { background-color: #e9ece2 !important; }
+        .my-apps-platform input, .my-apps-platform textarea { color: #282821 !important; background: #fffefa !important; border-color: #d9d5ca !important; }
+      `}</style>}
       <div className="max-w-5xl mx-auto px-4 py-6">
-        <div className="flex items-center gap-3 mb-6">
+        {!embedded && <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
             <Plug className="w-5 h-5 text-white" />
           </div>
@@ -732,7 +750,7 @@ export default function PlatformAPI() {
             <h1 className="text-xl font-bold tracking-wider">SALARYMAN PLATFORM API</h1>
             <p className="text-xs text-zinc-500 tracking-wider">CONNECT ALL SALARYMAN APPS TOGETHER</p>
           </div>
-        </div>
+        </div>}
 
         <div className="flex gap-1 border-b border-zinc-800 mb-6 overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (

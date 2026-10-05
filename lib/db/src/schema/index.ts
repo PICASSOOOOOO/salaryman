@@ -56,6 +56,7 @@ export * from "./investor-leads";
 export * from "./feature-trials";
 export * from "./organizations";
 export * from "./org-payments";
+export * from "./org-custom-apps";
 export * from "./org-websites";
 export * from "./world-kv";
 export * from "./business-transactions";

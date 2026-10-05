@@ -266,6 +266,9 @@ export const ORG_PERMISSION_KEYS = [
   "website.manage",
   "org.settings",
   "phone.supervise",
+  "custom_apps.view",
+  "custom_apps.edit",
+  "custom_apps.manage",
 ] as const;
 export type OrgPermissionKey = (typeof ORG_PERMISSION_KEYS)[number];
 
@@ -288,6 +291,9 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
   "website.manage": { label: "Manage public website", description: "Connect a Framer site and manage the org's public SALARYMAN-hosted site.", group: "Admin" },
   "org.settings": { label: "Edit settings & permissions", description: "Change org settings and edit this permissions matrix.", group: "Admin" },
   "phone.supervise": { label: "Supervise organization calls", description: "View employee call details, transcripts, and connection health; join active calls to listen or privately coach.", group: "Phone" },
+  "custom_apps.view": { label: "View custom apps", description: "Open published custom pages and read their organization records.", group: "Apps" },
+  "custom_apps.edit": { label: "Edit custom app records", description: "Create, update, and delete records in published custom pages.", group: "Apps" },
+  "custom_apps.manage": { label: "Manage custom apps", description: "Create, edit, publish, and delete organization custom pages.", group: "Apps" },
 };
 
 // Sensible defaults applied when an org has not customized a key.
@@ -305,6 +311,9 @@ export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
   "website.manage": "manager",
   "org.settings": "ceo",
   "phone.supervise": "manager",
+  "custom_apps.view": "specialist",
+  "custom_apps.edit": "specialist",
+  "custom_apps.manage": "manager",
 };
 
 export const orgPermissionsTable = pgTable(
