@@ -513,3 +513,112 @@ export const SendPabloInternalDeliveryResponse = zod.object({
 })
 
 
+/**
+ * @summary Read a 24-hour organization business brief and recent call candidates
+ */
+export const GetAutopilotBriefResponse = zod.object({
+  "generatedAt": zod.date(),
+  "windowStart": zod.date(),
+  "newLeads": zod.number().int(),
+  "activeLeads": zod.number().int(),
+  "calls": zod.object({
+  "total": zod.number().int(),
+  "inbound": zod.number().int(),
+  "outbound": zod.number().int()
+}),
+  "pendingApprovals": zod.number().int(),
+  "automationRuns": zod.object({
+  "success": zod.number().int(),
+  "noop": zod.number().int(),
+  "blocked": zod.number().int(),
+  "error": zod.number().int(),
+  "skipped": zod.number().int()
+}),
+  "recentCalls": zod.array(zod.object({
+  "id": zod.number().int(),
+  "leadName": zod.string(),
+  "startedAt": zod.date(),
+  "summary": zod.string(),
+  "hasProposal": zod.boolean(),
+  "proposalStatus": zod.union([zod.literal('pending'),zod.literal('approved'),zod.literal('dismissed'),zod.literal(null)]).nullable()
+}))
+})
+
+
+/**
+ * @summary List pending post-call follow-up task proposals
+ */
+export const GetAutopilotApprovalQueueResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "callHistoryId": zod.number().int(),
+  "sourceLeadId": zod.number().int().nullable(),
+  "sourceLeadName": zod.string(),
+  "sourceCallAt": zod.date(),
+  "sourceSummary": zod.string(),
+  "taskTitle": zod.string(),
+  "taskDescription": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'dismissed']),
+  "createdAt": zod.date()
+}))
+})
+
+
+/**
+ * @summary Draft an internal follow-up task from a completed CRM call
+ */
+
+
+
+export const CreateAutopilotFollowUpSuggestionBody = zod.object({
+  "callHistoryId": zod.number().int().min(1)
+})
+
+export const CreateAutopilotFollowUpSuggestionResponse = zod.object({
+  "item": zod.object({
+  "id": zod.number().int(),
+  "callHistoryId": zod.number().int(),
+  "sourceLeadId": zod.number().int().nullable(),
+  "sourceLeadName": zod.string(),
+  "sourceCallAt": zod.date(),
+  "sourceSummary": zod.string(),
+  "taskTitle": zod.string(),
+  "taskDescription": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'dismissed']),
+  "createdAt": zod.date()
+}),
+  "duplicate": zod.boolean()
+})
+
+
+/**
+ * @summary Approve an internal task proposal or dismiss it
+ */
+
+
+
+export const DecideAutopilotApprovalParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DecideAutopilotApprovalBody = zod.object({
+  "decision": zod.enum(['approved', 'dismissed'])
+})
+
+export const DecideAutopilotApprovalResponse = zod.object({
+  "item": zod.object({
+  "id": zod.number().int(),
+  "callHistoryId": zod.number().int(),
+  "sourceLeadId": zod.number().int().nullable(),
+  "sourceLeadName": zod.string(),
+  "sourceCallAt": zod.date(),
+  "sourceSummary": zod.string(),
+  "taskTitle": zod.string(),
+  "taskDescription": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'dismissed']),
+  "createdAt": zod.date()
+}),
+  "businessTaskId": zod.number().int().nullable()
+})
+
+

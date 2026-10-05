@@ -36,8 +36,14 @@ export interface CreateTaskInput {
   tags?: string;
 }
 
-export async function createBusinessTask(userId: string, input: CreateTaskInput): Promise<BusinessTask> {
-  const [row] = await db
+type BusinessTaskTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export async function createBusinessTaskInTransaction(
+  tx: BusinessTaskTransaction,
+  userId: string,
+  input: CreateTaskInput,
+): Promise<BusinessTask> {
+  const [row] = await tx
     .insert(businessTasksTable)
     .values({
       userId,
@@ -52,6 +58,10 @@ export async function createBusinessTask(userId: string, input: CreateTaskInput)
     })
     .returning();
   return row;
+}
+
+export async function createBusinessTask(userId: string, input: CreateTaskInput): Promise<BusinessTask> {
+  return db.transaction((tx) => createBusinessTaskInTransaction(tx, userId, input));
 }
 
 const TASK_UPDATE_FIELDS = ["title", "description", "status", "priority", "assignee", "dueDate", "project", "tags"] as const;

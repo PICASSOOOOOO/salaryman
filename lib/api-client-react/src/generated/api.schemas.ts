@@ -5,6 +5,108 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * @nullable
+ */
+export type AutopilotRecentCallProposalStatus = typeof AutopilotRecentCallProposalStatus[keyof typeof AutopilotRecentCallProposalStatus] | null;
+
+
+export const AutopilotRecentCallProposalStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  dismissed: 'dismissed',
+} as const;
+
+export interface AutopilotRecentCall {
+  id: number;
+  leadName: string;
+  startedAt: string;
+  summary: string;
+  hasProposal: boolean;
+  /** @nullable */
+  proposalStatus: AutopilotRecentCallProposalStatus;
+}
+
+export interface AutopilotOutcomeCounts {
+  success: number;
+  noop: number;
+  blocked: number;
+  error: number;
+  skipped: number;
+}
+
+export type AutopilotDailyBriefResponseCalls = {
+  total: number;
+  inbound: number;
+  outbound: number;
+};
+
+export interface AutopilotDailyBriefResponse {
+  generatedAt: string;
+  windowStart: string;
+  newLeads: number;
+  activeLeads: number;
+  calls: AutopilotDailyBriefResponseCalls;
+  pendingApprovals: number;
+  automationRuns: AutopilotOutcomeCounts;
+  recentCalls: AutopilotRecentCall[];
+}
+
+export type AutopilotApprovalItemStatus = typeof AutopilotApprovalItemStatus[keyof typeof AutopilotApprovalItemStatus];
+
+
+export const AutopilotApprovalItemStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  dismissed: 'dismissed',
+} as const;
+
+export interface AutopilotApprovalItem {
+  id: number;
+  callHistoryId: number;
+  /** @nullable */
+  sourceLeadId: number | null;
+  sourceLeadName: string;
+  sourceCallAt: string;
+  sourceSummary: string;
+  taskTitle: string;
+  taskDescription: string;
+  status: AutopilotApprovalItemStatus;
+  createdAt: string;
+}
+
+export interface AutopilotApprovalQueueResponse {
+  items: AutopilotApprovalItem[];
+}
+
+export interface AutopilotFollowUpSuggestionInput {
+  /** @minimum 1 */
+  callHistoryId: number;
+}
+
+export interface AutopilotFollowUpSuggestionResponse {
+  item: AutopilotApprovalItem;
+  duplicate: boolean;
+}
+
+export type AutopilotApprovalDecisionInputDecision = typeof AutopilotApprovalDecisionInputDecision[keyof typeof AutopilotApprovalDecisionInputDecision];
+
+
+export const AutopilotApprovalDecisionInputDecision = {
+  approved: 'approved',
+  dismissed: 'dismissed',
+} as const;
+
+export interface AutopilotApprovalDecisionInput {
+  decision: AutopilotApprovalDecisionInputDecision;
+}
+
+export interface AutopilotApprovalDecisionResponse {
+  item: AutopilotApprovalItem;
+  /** @nullable */
+  businessTaskId: number | null;
+}
+
 export interface RecordingExcerpt {
   /**
      * @minLength 1

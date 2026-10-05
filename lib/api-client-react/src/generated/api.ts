@@ -21,6 +21,12 @@ import type {
 
 import type {
   AssignPhoneInternalLine200,
+  AutopilotApprovalDecisionInput,
+  AutopilotApprovalDecisionResponse,
+  AutopilotApprovalQueueResponse,
+  AutopilotDailyBriefResponse,
+  AutopilotFollowUpSuggestionInput,
+  AutopilotFollowUpSuggestionResponse,
   BeginDiscordLoginParams,
   CompleteCrmGoogleSheetsParams,
   ConnectCrmGoogleSheets200,
@@ -2611,5 +2617,320 @@ export const useSendPabloInternalDelivery = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSendPabloInternalDeliveryMutationOptions(options));
+    }
+
+export const getGetAutopilotBriefUrl = () => {
+
+
+
+
+  return `/api/autopilot/brief`
+}
+
+/**
+ * @summary Read a 24-hour organization business brief and recent call candidates
+ */
+export const getAutopilotBrief = async ( options?: Parameters<typeof customFetch>[1]): Promise<AutopilotDailyBriefResponse> => {
+
+  return customFetch<AutopilotDailyBriefResponse>(getGetAutopilotBriefUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAutopilotBriefQueryKey = () => {
+    return [
+    `/api/autopilot/brief`
+    ] as const;
+    }
+
+
+export const getGetAutopilotBriefQueryOptions = <TData = Awaited<ReturnType<typeof getAutopilotBrief>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutopilotBrief>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAutopilotBriefQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAutopilotBrief>>> = ({ signal }) => getAutopilotBrief({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAutopilotBrief>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAutopilotBriefQueryResult = NonNullable<Awaited<ReturnType<typeof getAutopilotBrief>>>
+export type GetAutopilotBriefQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a 24-hour organization business brief and recent call candidates
+ */
+
+export function useGetAutopilotBrief<TData = Awaited<ReturnType<typeof getAutopilotBrief>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutopilotBrief>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAutopilotBriefQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAutopilotApprovalQueueUrl = () => {
+
+
+
+
+  return `/api/autopilot/approval-queue`
+}
+
+/**
+ * @summary List pending post-call follow-up task proposals
+ */
+export const getAutopilotApprovalQueue = async ( options?: Parameters<typeof customFetch>[1]): Promise<AutopilotApprovalQueueResponse> => {
+
+  return customFetch<AutopilotApprovalQueueResponse>(getGetAutopilotApprovalQueueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAutopilotApprovalQueueQueryKey = () => {
+    return [
+    `/api/autopilot/approval-queue`
+    ] as const;
+    }
+
+
+export const getGetAutopilotApprovalQueueQueryOptions = <TData = Awaited<ReturnType<typeof getAutopilotApprovalQueue>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutopilotApprovalQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAutopilotApprovalQueueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAutopilotApprovalQueue>>> = ({ signal }) => getAutopilotApprovalQueue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAutopilotApprovalQueue>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAutopilotApprovalQueueQueryResult = NonNullable<Awaited<ReturnType<typeof getAutopilotApprovalQueue>>>
+export type GetAutopilotApprovalQueueQueryError = ErrorType<void>
+
+
+/**
+ * @summary List pending post-call follow-up task proposals
+ */
+
+export function useGetAutopilotApprovalQueue<TData = Awaited<ReturnType<typeof getAutopilotApprovalQueue>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutopilotApprovalQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAutopilotApprovalQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAutopilotFollowUpSuggestionUrl = () => {
+
+
+
+
+  return `/api/autopilot/follow-up-suggestions`
+}
+
+/**
+ * @summary Draft an internal follow-up task from a completed CRM call
+ */
+export const createAutopilotFollowUpSuggestion = async (autopilotFollowUpSuggestionInput: AutopilotFollowUpSuggestionInput, options?: Parameters<typeof customFetch>[1]): Promise<AutopilotFollowUpSuggestionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AutopilotFollowUpSuggestionResponse>(getCreateAutopilotFollowUpSuggestionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(autopilotFollowUpSuggestionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAutopilotFollowUpSuggestionMutationKey = () => ['createAutopilotFollowUpSuggestion'] as const;
+
+export const getCreateAutopilotFollowUpSuggestionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAutopilotFollowUpSuggestion>>, TError,CreateAutopilotFollowUpSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAutopilotFollowUpSuggestion>>, TError,CreateAutopilotFollowUpSuggestionMutationVariables, TContext> => {
+
+const mutationKey = getCreateAutopilotFollowUpSuggestionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAutopilotFollowUpSuggestion>>, CreateAutopilotFollowUpSuggestionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAutopilotFollowUpSuggestion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAutopilotFollowUpSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof createAutopilotFollowUpSuggestion>>>
+    export type CreateAutopilotFollowUpSuggestionMutationBody = BodyType<AutopilotFollowUpSuggestionInput>
+    export type CreateAutopilotFollowUpSuggestionMutationError = ErrorType<void>
+    export type CreateAutopilotFollowUpSuggestionMutationVariables = {data: BodyType<AutopilotFollowUpSuggestionInput>}
+
+    /**
+ * @summary Draft an internal follow-up task from a completed CRM call
+ */
+export const useCreateAutopilotFollowUpSuggestion = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAutopilotFollowUpSuggestion>>, TError,CreateAutopilotFollowUpSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAutopilotFollowUpSuggestion>>,
+        TError,
+        CreateAutopilotFollowUpSuggestionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAutopilotFollowUpSuggestionMutationOptions(options));
+    }
+
+export const getDecideAutopilotApprovalUrl = (id: number,) => {
+
+
+
+
+  return `/api/autopilot/approval-queue/${id}/decision`
+}
+
+/**
+ * @summary Approve an internal task proposal or dismiss it
+ */
+export const decideAutopilotApproval = async (id: number,
+    autopilotApprovalDecisionInput: AutopilotApprovalDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<AutopilotApprovalDecisionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AutopilotApprovalDecisionResponse>(getDecideAutopilotApprovalUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(autopilotApprovalDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideAutopilotApprovalMutationKey = () => ['decideAutopilotApproval'] as const;
+
+export const getDecideAutopilotApprovalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAutopilotApproval>>, TError,DecideAutopilotApprovalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideAutopilotApproval>>, TError,DecideAutopilotApprovalMutationVariables, TContext> => {
+
+const mutationKey = getDecideAutopilotApprovalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideAutopilotApproval>>, DecideAutopilotApprovalMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  decideAutopilotApproval(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideAutopilotApprovalMutationResult = NonNullable<Awaited<ReturnType<typeof decideAutopilotApproval>>>
+    export type DecideAutopilotApprovalMutationBody = BodyType<AutopilotApprovalDecisionInput>
+    export type DecideAutopilotApprovalMutationError = ErrorType<void>
+    export type DecideAutopilotApprovalMutationVariables = {id: number;data: BodyType<AutopilotApprovalDecisionInput>}
+
+    /**
+ * @summary Approve an internal task proposal or dismiss it
+ */
+export const useDecideAutopilotApproval = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideAutopilotApproval>>, TError,DecideAutopilotApprovalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideAutopilotApproval>>,
+        TError,
+        DecideAutopilotApprovalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDecideAutopilotApprovalMutationOptions(options));
     }
 

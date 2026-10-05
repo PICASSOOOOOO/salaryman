@@ -19,6 +19,8 @@ tags:
     description: Interview helper operations
   - name: crm
     description: Organization CRM operations
+  - name: autopilot
+    description: Pablo automation review and read-only business insights
   - name: Auth
     description: Browser and mobile authentication endpoints.
 paths:
@@ -569,8 +571,183 @@ paths:
                 $ref: "#/components/schemas/PabloInternalDeliveryResult"
         "403":
           description: CALLL HOME or Pablo PRIME paid access is required
+  /autopilot/brief:
+    get:
+      operationId: getAutopilotBrief
+      tags: [autopilot]
+      summary: Read a 24-hour organization business brief and recent call candidates
+      responses:
+        "200":
+          description: Read-only organization snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotDailyBriefResponse"
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+  /autopilot/approval-queue:
+    get:
+      operationId: getAutopilotApprovalQueue
+      tags: [autopilot]
+      summary: List pending post-call follow-up task proposals
+      responses:
+        "200":
+          description: Pending review items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotApprovalQueueResponse"
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+  /autopilot/follow-up-suggestions:
+    post:
+      operationId: createAutopilotFollowUpSuggestion
+      tags: [autopilot]
+      summary: Draft an internal follow-up task from a completed CRM call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutopilotFollowUpSuggestionInput"
+      responses:
+        "200":
+          description: Suggestion created or already present
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotFollowUpSuggestionResponse"
+        "400":
+          description: Invalid call identifier
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+        "404":
+          description: Call not found in the current organization
+  /autopilot/approval-queue/{id}/decision:
+    post:
+      operationId: decideAutopilotApproval
+      tags: [autopilot]
+      summary: Approve an internal task proposal or dismiss it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutopilotApprovalDecisionInput"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotApprovalDecisionResponse"
+        "400":
+          description: Invalid decision
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+        "404":
+          description: Review item not found
+        "409":
+          description: Review item was already decided
 components:
   schemas:
+    AutopilotRecentCall:
+      type: object
+      required: [id, leadName, startedAt, summary, hasProposal, proposalStatus]
+      properties:
+        id: { type: integer }
+        leadName: { type: string }
+        startedAt: { type: string, format: date-time }
+        summary: { type: string }
+        hasProposal: { type: boolean }
+        proposalStatus: { type: ["string", "null"], enum: [pending, approved, dismissed, null] }
+    AutopilotOutcomeCounts:
+      type: object
+      required: [success, noop, blocked, error, skipped]
+      properties:
+        success: { type: integer }
+        noop: { type: integer }
+        blocked: { type: integer }
+        error: { type: integer }
+        skipped: { type: integer }
+    AutopilotDailyBriefResponse:
+      type: object
+      required: [generatedAt, windowStart, newLeads, activeLeads, calls, pendingApprovals, automationRuns, recentCalls]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        windowStart: { type: string, format: date-time }
+        newLeads: { type: integer }
+        activeLeads: { type: integer }
+        calls:
+          type: object
+          required: [total, inbound, outbound]
+          properties:
+            total: { type: integer }
+            inbound: { type: integer }
+            outbound: { type: integer }
+        pendingApprovals: { type: integer }
+        automationRuns: { $ref: "#/components/schemas/AutopilotOutcomeCounts" }
+        recentCalls:
+          type: array
+          items: { $ref: "#/components/schemas/AutopilotRecentCall" }
+    AutopilotApprovalItem:
+      type: object
+      required: [id, callHistoryId, sourceLeadId, sourceLeadName, sourceCallAt, sourceSummary, taskTitle, taskDescription, status, createdAt]
+      properties:
+        id: { type: integer }
+        callHistoryId: { type: integer }
+        sourceLeadId: { type: ["integer", "null"] }
+        sourceLeadName: { type: string }
+        sourceCallAt: { type: string, format: date-time }
+        sourceSummary: { type: string }
+        taskTitle: { type: string }
+        taskDescription: { type: string }
+        status: { type: string, enum: [pending, approved, dismissed] }
+        createdAt: { type: string, format: date-time }
+    AutopilotApprovalQueueResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AutopilotApprovalItem" }
+    AutopilotFollowUpSuggestionInput:
+      type: object
+      required: [callHistoryId]
+      properties:
+        callHistoryId: { type: integer, minimum: 1 }
+    AutopilotFollowUpSuggestionResponse:
+      type: object
+      required: [item, duplicate]
+      properties:
+        item: { $ref: "#/components/schemas/AutopilotApprovalItem" }
+        duplicate: { type: boolean }
+    AutopilotApprovalDecisionInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, dismissed] }
+    AutopilotApprovalDecisionResponse:
+      type: object
+      required: [item, businessTaskId]
+      properties:
+        item: { $ref: "#/components/schemas/AutopilotApprovalItem" }
+        businessTaskId: { type: ["integer", "null"] }
     RecordingExcerptSaveInput:
       type: object
       required: [excerpts]
