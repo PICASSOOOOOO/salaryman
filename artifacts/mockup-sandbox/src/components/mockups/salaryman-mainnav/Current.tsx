@@ -21,7 +21,7 @@ function LightweightNebula({ size }: { size: number }) {
   );
 }
 
-function CurrentMiniNebula({ size }: { size: number }) {
+export function CurrentMiniNebula({ size }: { size: number }) {
   return (
     <span
       className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full"

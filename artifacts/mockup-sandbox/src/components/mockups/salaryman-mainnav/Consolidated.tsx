@@ -7,7 +7,6 @@ import {
   Bot,
   BriefcaseBusiness,
   CalendarDays,
-  Check,
   ChevronDown,
   CircleHelp,
   Clock3,
@@ -18,13 +17,11 @@ import {
   Hash,
   Layers3,
   ListChecks,
-  LogOut,
   Megaphone,
   Menu,
   Music2,
   Network,
   Palette,
-  Phone,
   PhoneCall,
   Radio,
   Search,
@@ -41,6 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MORE_NAV_ITEMS, PRIMARY_NAV_ITEMS, type AppNavItem } from "./_shared/nav-items";
+import { CurrentMiniNebula } from "./Current";
 import "./_group.css";
 
 type Destination = {
@@ -49,6 +47,8 @@ type Destination = {
   icon: LucideIcon;
   hint?: string;
   restricted?: "staff";
+  secondaryLabel?: string;
+  children?: Destination[];
 };
 
 type Area = {
@@ -60,12 +60,33 @@ type Area = {
 const primary = (id: string) => PRIMARY_NAV_ITEMS.find((item) => item.id === id)!;
 const more = (id: string) => MORE_NAV_ITEMS.find((item) => item.id === id)!;
 
-const featuredItems: AppNavItem[] = [
-  primary("phone"),
-  { ...primary("comms"), boomerLabel: "COMMS" },
-  primary("office"),
-  { id: "apps", path: "/my-apps", label: "MY APPS", boomerLabel: "MY APPS", icon: Layers3 },
-  more("bots"),
+const appDestination = (item: AppNavItem, label = item.boomerLabel ?? item.label): Destination => ({
+  path: item.path,
+  label,
+  icon: item.icon,
+});
+
+const phoneSubroutes: Destination[] = [
+  { path: "/phone/dialer", label: "DIALER", icon: PhoneCall },
+  { path: "/phone/active", label: "ACTIVE CALLS", icon: Zap },
+  { path: "/phone/history", label: "CALL LOG", icon: Clock3 },
+  { path: "/phone/voicemail", label: "VOICEMAIL", icon: Voicemail },
+  { path: "/phone/conference", label: "CONFERENCE", icon: UsersRound },
+  { path: "/phone/sessions", label: "DIALING SESSIONS", icon: Radio },
+  { path: "/phone/coach", label: "AI COACH", icon: Bot },
+  { path: "/phone/secretary", label: "AI SECRETARY", icon: Settings2 },
+  { path: "/phone/numbers", label: "PHONE NUMBERS", icon: Hash },
+];
+
+const featuredItems: Destination[] = [
+  { ...appDestination(primary("phone")), children: phoneSubroutes },
+  appDestination(primary("comms"), "COMMS"),
+  appDestination(primary("office")),
+  appDestination({ id: "apps", path: "/my-apps", label: "MY APPS", boomerLabel: "MY APPS", icon: Layers3 }),
+  {
+    ...appDestination(more("bots")),
+    secondaryLabel: "PABLO PRIME AUTOMATION",
+  },
 ];
 
 const areas: Area[] = [
@@ -86,7 +107,6 @@ const areas: Area[] = [
     icon: BriefcaseBusiness,
     entries: [
       { path: "/business", label: "BUSINESS", icon: BriefcaseBusiness },
-      { path: "/business/contacts", label: "CONTACTS", icon: ContactRound },
       { path: "/business/hiring", label: "HIRING & HR", icon: UsersRound },
       { path: "/business/calendar", label: "CALENDAR", icon: CalendarDays },
       { path: "/business/documents", label: "DOCUMENTS", icon: Archive },
@@ -116,28 +136,20 @@ const areas: Area[] = [
       { path: "/intel/seo", label: "SEO", icon: Search },
     ],
   },
-  {
-    title: "CALLL HOME",
-    icon: Phone,
-    entries: [
-      { path: "/phone/dialer", label: "DIALER", icon: PhoneCall },
-      { path: "/phone/contacts", label: "CONTACTS", icon: ContactRound },
-      { path: "/phone/active", label: "ACTIVE CALLS", icon: Zap },
-      { path: "/phone/history", label: "CALL LOG", icon: Clock3 },
-      { path: "/phone/voicemail", label: "VOICEMAIL", icon: Voicemail },
-      { path: "/phone/conference", label: "CONFERENCE", icon: UsersRound },
-      { path: "/phone/sessions", label: "DIALING SESSIONS", icon: Radio },
-      { path: "/phone/coach", label: "AI COACH", icon: Bot },
-      { path: "/phone/secretary", label: "AI SECRETARY", icon: Settings2 },
-      { path: "/phone/numbers", label: "PHONE NUMBERS", icon: Hash },
-    ],
-  },
 ];
 
 const workspaceItems: Destination[] = [
   { path: "/world", label: "BROWSE", icon: Globe2 },
   { path: "/organizations", label: "ORGANIZATION", icon: Network },
-  { path: "/contacts", label: "CONTACTS", icon: ContactRound },
+  {
+    path: "/contacts",
+    label: "CONTACTS",
+    icon: ContactRound,
+    children: [
+      { path: "/business/contacts", label: "CONTACTS", icon: ContactRound, hint: "BUSINESS" },
+      { path: "/phone/contacts", label: "CONTACTS", icon: ContactRound, hint: "CALLL HOME" },
+    ],
+  },
   { path: "/leads", label: "LEADS", icon: ListChecks },
   { path: "/marketing", label: "MARKETING", icon: Megaphone },
   { path: "/platform", label: "PLATFORM API", icon: Code2 },
@@ -146,74 +158,109 @@ const workspaceItems: Destination[] = [
   { path: "/profile/admin", label: "ADMIN", icon: ShieldCheck, restricted: "staff" },
 ];
 
-const dedupeByPath = (items: Destination[]) =>
-  items.filter((item, index) => items.findIndex((candidate) => candidate.path === item.path) === index);
-
-function PabloMark() {
-  return (
-    <span className="smn-pablo-mark" aria-hidden="true">
-      <span />
-      <i />
-      <b />
-    </span>
-  );
+function uniqueDestination(item: Destination, seen: Set<string>): Destination | null {
+  if (seen.has(item.path)) return null;
+  seen.add(item.path);
+  const children = item.children
+    ?.map((child) => uniqueDestination(child, seen))
+    .filter((child): child is Destination => child !== null);
+  return { ...item, children };
 }
+
+function filterDestination(item: Destination, query: string): Destination | null {
+  if (!query) return item;
+  const queryMatches = `${item.label} ${item.path} ${item.hint ?? ""} ${item.secondaryLabel ?? ""}`.toLowerCase().includes(query);
+  const children = item.children
+    ?.map((child) => filterDestination(child, query))
+    .filter((child): child is Destination => child !== null);
+  if (!queryMatches && !children?.length) return null;
+  return { ...item, children: queryMatches ? item.children : children };
+}
+
+const pabloDestination = appDestination(primary("pablo"), "PABLO AI");
+const globalSeenPaths = new Set<string>();
+const uniquePablo = uniqueDestination(pabloDestination, globalSeenPaths)!;
+const uniqueFeatured = featuredItems
+  .map((item) => uniqueDestination(item, globalSeenPaths))
+  .filter((item): item is Destination => item !== null);
+const uniqueAreas: Area[] = areas
+  .map((area) => ({
+    ...area,
+    entries: area.entries
+      .map((item) => uniqueDestination(item, globalSeenPaths))
+      .filter((item): item is Destination => item !== null),
+  }))
+  .filter((area) => area.entries.length > 0);
+const uniqueWorkspace = workspaceItems
+  .map((item) => uniqueDestination(item, globalSeenPaths))
+  .filter((item): item is Destination => item !== null);
+const uniqueDestinationCount = globalSeenPaths.size;
 
 function DestinationRow({
   item,
   active,
+  selectedPath,
   onSelect,
+  expanded = false,
+  onToggle,
   compact = false,
 }: {
   item: Destination;
   active: boolean;
+  selectedPath: string;
   onSelect: (item: Destination) => void;
+  expanded?: boolean;
+  onToggle?: (path: string) => void;
   compact?: boolean;
 }) {
   const Icon = item.icon;
+  const expandable = Boolean(item.children?.length);
   return (
-    <button
-      type="button"
-      className={`smn-destination${active ? " is-active" : ""}${compact ? " is-compact" : ""}`}
-      onClick={() => onSelect(item)}
-      aria-current={active ? "page" : undefined}
-    >
-      <span className="smn-destination-icon"><Icon size={15} strokeWidth={1.8} /></span>
-      <span className="smn-destination-copy">
-        <span className="smn-destination-label">{item.label}</span>
-        {item.hint && <span className="smn-destination-hint">{item.hint}</span>}
-      </span>
-      {item.restricted && <span className="smn-access-tag">STAFF</span>}
-      <ArrowUpRight className="smn-row-arrow" size={13} aria-hidden="true" />
-    </button>
-  );
-}
-
-function AppDestination({ item, selected, onSelect }: {
-  item: AppNavItem;
-  selected: boolean;
-  onSelect: (item: Destination) => void;
-}) {
-  const Icon = item.icon;
-  const isAutomation = item.id === "bots";
-  return (
-    <button
-      type="button"
-      className={`smn-shortcut${selected ? " is-active" : ""}${isAutomation ? " smn-automation" : ""}`}
-      onClick={() => onSelect({
-        path: item.path,
-        label: item.boomerLabel ?? item.label,
-        icon: item.icon,
-      })}
-      aria-current={selected ? "page" : undefined}
-    >
-      <span className="smn-shortcut-icon"><Icon size={16} strokeWidth={1.8} /></span>
-      <span className="smn-shortcut-text">
-        <span>{item.boomerLabel ?? item.label}</span>
-        {isAutomation && <small>PABLO PRIME AUTOMATION</small>}
-      </span>
-      <ArrowUpRight size={13} className="smn-shortcut-arrow" aria-hidden="true" />
-    </button>
+    <div className={`smn-destination-group${compact ? " is-compact" : ""}${expanded ? " is-expanded" : ""}`}>
+      <div className={`smn-destination${active ? " is-active" : ""}${compact ? " is-compact" : ""}`}>
+        <button
+          type="button"
+          className="smn-destination-action"
+          onClick={() => onSelect(item)}
+          aria-current={active ? "page" : undefined}
+        >
+          <span className="smn-destination-icon"><Icon size={15} strokeWidth={1.8} /></span>
+          <span className="smn-destination-copy">
+            <span className="smn-destination-label">{item.label}</span>
+            {(item.hint || item.secondaryLabel) && (
+              <span className="smn-destination-hint">{item.hint ?? item.secondaryLabel}</span>
+            )}
+          </span>
+          {item.restricted && <span className="smn-access-tag">STAFF</span>}
+          {!expandable && <ArrowUpRight className="smn-row-arrow" size={13} aria-hidden="true" />}
+        </button>
+        {expandable && (
+          <button
+            type="button"
+            className="smn-expand"
+            onClick={() => onToggle?.(item.path)}
+            aria-label={`${expanded ? "Collapse" : "Expand"} ${item.label}`}
+            aria-expanded={expanded}
+          >
+            <ChevronDown size={13} />
+          </button>
+        )}
+      </div>
+      {expandable && expanded && (
+        <div className="smn-nested-destinations">
+          {item.children!.map((child) => (
+            <DestinationRow
+              key={child.path}
+              item={child}
+              active={selectedPath === child.path}
+              selectedPath={selectedPath}
+              onSelect={onSelect}
+              compact={compact}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -222,6 +269,7 @@ export function Consolidated() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
   const [notice, setNotice] = useState("");
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(["/contacts"]));
 
   useEffect(() => {
     if (!open) return;
@@ -237,27 +285,28 @@ export function Consolidated() {
 
   const filteredAreas = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return areas;
-    return areas
+    return uniqueAreas
       .map((area) => ({
         ...area,
-        entries: area.entries.filter((entry) =>
-          `${area.title} ${entry.label} ${entry.path} ${entry.hint ?? ""}`.toLowerCase().includes(normalized),
-        ),
+        entries: area.title.toLowerCase().includes(normalized)
+          ? area.entries
+          : area.entries.map((entry) => filterDestination(entry, normalized)).filter((entry): entry is Destination => entry !== null),
       }))
       .filter((area) => area.entries.length > 0);
   }, [query]);
 
   const filteredFeatured = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return featuredItems.filter((item) =>
-      !normalized || `${item.boomerLabel ?? item.label} ${item.path} ${item.id === "bots" ? "pablo prime automation" : ""}`.toLowerCase().includes(normalized),
-    );
+    return uniqueFeatured
+      .map((item) => filterDestination(item, normalized))
+      .filter((item): item is Destination => item !== null);
   }, [query]);
 
   const filteredWorkspace = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return workspaceItems.filter((item) => !normalized || `${item.label} ${item.path}`.toLowerCase().includes(normalized));
+    return uniqueWorkspace
+      .map((item) => filterDestination(item, normalized))
+      .filter((item): item is Destination => item !== null);
   }, [query]);
 
   const choose = (item: Destination) => {
@@ -270,9 +319,15 @@ export function Consolidated() {
     setNotice("");
   };
 
-  const pabloItem = primary("pablo");
-  const pabloSelected = selected === pabloItem.path;
-  const pabloMatches = !query || `${pabloItem.boomerLabel} ${pabloItem.path}`.toLowerCase().includes(query.trim().toLowerCase());
+  const toggleExpanded = (path: string) => {
+    setExpandedPaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+  const filteredPablo = filterDestination(uniquePablo, query.trim().toLowerCase());
 
   return (
     <div className="smn-root">
@@ -334,10 +389,6 @@ export function Consolidated() {
         .smn-pablo-card { display: flex; align-items: center; width: 100%; gap: 12px; border: 1px solid #242a25; background: #1c211e; color: #f4f1e9; padding: 12px; text-align: left; cursor: pointer; transition: background .15s ease, transform .15s ease; }
         .smn-pablo-card:hover { background: #2a302b; transform: translateY(-1px); }
         .smn-pablo-card.is-active { box-shadow: inset 0 0 0 1px #9eb49c; }
-        .smn-pablo-mark { position: relative; width: 34px; height: 34px; display: block; flex: 0 0 34px; overflow: hidden; border: 1px solid rgba(206,211,195,.44); border-radius: 50%; background: radial-gradient(circle at 48% 52%, #e7dfc5 0, #a6b39f 9%, #43574c 30%, #202a25 62%, #171d19 78%); }
-        .smn-pablo-mark span { position: absolute; width: 5px; height: 5px; left: 8px; top: 8px; border-radius: 50%; background: #ede7d9; box-shadow: 12px 4px 0 -1px #d0d8c5, 4px 13px 0 -1px #d0d8c5; }
-        .smn-pablo-mark i { position: absolute; left: 2px; top: 15px; width: 29px; height: 1px; transform: rotate(-32deg); background: rgba(239,236,220,.68); }
-        .smn-pablo-mark b { position: absolute; top: 3px; right: 7px; width: 1px; height: 28px; transform: rotate(30deg); background: rgba(185,202,179,.72); }
         .smn-pablo-copy { display: block; min-width: 0; }
         .smn-pablo-title { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; }
         .smn-pablo-sub { display: block; margin-top: 5px; color: #b9c1b5; font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; }
@@ -414,7 +465,6 @@ export function Consolidated() {
           .smn-rail { display: block; flex: none; padding: 13px 14px 14px; border-right: 0; border-bottom: 1px solid var(--smn-line); }
           .smn-section-label { margin-bottom: 7px; font-size: 8px; }
           .smn-pablo-card { min-height: 52px; padding: 8px 10px; }
-          .smn-pablo-mark { width: 32px; height: 32px; flex-basis: 32px; }
           .smn-rail-section { margin-top: 14px; }
           .smn-shortcut-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
           .smn-shortcut { min-height: 35px; padding: 5px 6px; }
@@ -441,64 +491,146 @@ export function Consolidated() {
           .smn-areas { padding-right: 10px; padding-left: 10px; }
           .smn-destination { gap: 4px; }
         }
+        .smn-root {
+          display: grid;
+          place-items: center;
+          min-height: 100dvh;
+          padding: 20px;
+          overflow: auto;
+        }
+        .smn-overlay {
+          position: relative;
+          inset: auto;
+          z-index: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          min-height: calc(100dvh - 40px);
+          padding: 0;
+          background: transparent;
+          backdrop-filter: none;
+        }
+        .smn-menu {
+          width: min(1180px, 100%);
+          height: min(820px, calc(100dvh - 40px));
+          max-height: calc(100dvh - 40px);
+          border-radius: 3px;
+        }
+        .smn-menu-body { grid-template-columns: 240px minmax(0, 1fr); overflow: hidden; }
+        .smn-rail { overflow-y: auto; }
+        .smn-areas { min-height: 0; overflow-y: auto; }
+        .smn-heading-lockup { min-width: 108px; }
+        .smn-heading-title { margin: 0; }
+        .smn-destination-group { min-width: 0; }
+        .smn-destination { padding: 0; gap: 0; }
+        .smn-destination-action {
+          min-width: 0;
+          min-height: 31px;
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 5px 6px;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+        .smn-destination-action:focus-visible, .smn-expand:focus-visible {
+          outline: 2px solid #869983;
+          outline-offset: -2px;
+        }
+        .smn-expand {
+          width: 28px;
+          min-height: 31px;
+          display: grid;
+          flex: 0 0 28px;
+          place-items: center;
+          border: 0;
+          background: transparent;
+          color: #929287;
+          cursor: pointer;
+        }
+        .smn-expand:hover { color: #242822; background: #eeece3; }
+        .smn-expand svg { transition: transform .16s ease; }
+        .smn-destination-group.is-expanded > .smn-destination .smn-expand svg { transform: rotate(180deg); }
+        .smn-nested-destinations {
+          display: grid;
+          gap: 1px;
+          margin: 3px 0 7px 17px;
+          padding-left: 8px;
+          border-left: 1px solid #e3dfd4;
+        }
+        .smn-destination-group.is-compact .smn-destination { min-height: 35px; }
+        .smn-destination-group.is-compact .smn-destination-action { min-height: 35px; gap: 7px; padding-left: 7px; }
+        .smn-destination-group.is-compact .smn-destination-label { font-size: 8px; letter-spacing: .05em; }
+        .smn-destination-group.is-compact .smn-expand { min-height: 35px; }
+        .smn-destination-group.is-compact .smn-nested-destinations { margin-left: 15px; }
+        .smn-shortcut-list { gap: 3px; }
+        .smn-closed-note { position: fixed; inset: 0; display: grid; place-items: center; background: var(--smn-paper); box-shadow: none; }
+        .smn-closed-note button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 11px 14px;
+          border: 1px solid #d9d4c8;
+          background: var(--smn-surface);
+          color: #252822;
+          cursor: pointer;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          letter-spacing: .1em;
+        }
+        @media (max-width: 900px) {
+          .smn-root { padding: 13px; }
+          .smn-overlay { min-height: calc(100dvh - 26px); }
+          .smn-menu { height: min(900px, calc(100dvh - 26px)); max-height: calc(100dvh - 26px); }
+          .smn-menu-body { grid-template-columns: 205px minmax(0,1fr); }
+          .smn-menu-head { gap: 14px; }
+          .smn-menu-count { display: none; }
+        }
+        @media (max-width: 620px) {
+          .smn-root { display: block; min-height: 100dvh; padding: 0; }
+          .smn-overlay { display: block; min-height: 100dvh; }
+          .smn-menu { width: 100%; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; }
+          .smn-menu-body { display: flex; flex-direction: column; overflow-y: auto; }
+          .smn-rail { flex: none; overflow: visible; padding: 13px 14px 14px; border-right: 0; border-bottom: 1px solid var(--smn-line); }
+          .smn-section-label { margin-bottom: 7px; }
+          .smn-pablo-card { min-height: 52px; padding: 8px 10px; }
+          .smn-rail-section { margin-top: 14px; }
+          .smn-destination-group.is-compact .smn-destination { min-height: 36px; }
+          .smn-destination-group.is-compact .smn-destination-action { min-height: 36px; }
+          .smn-destination-group.is-compact .smn-expand { min-height: 36px; }
+          .smn-areas { display: block; padding: 15px 14px 20px; overflow: visible; }
+          .smn-area { margin-bottom: 19px; }
+          .smn-area-links { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 6px; }
+          .smn-destination-action { min-height: 35px; gap: 6px; padding: 5px; }
+          .smn-expand { min-height: 35px; }
+          .smn-destination-icon { width: 15px; flex-basis: 15px; }
+          .smn-destination-label { font-size: 8px; letter-spacing: .035em; }
+          .smn-destination-hint { font-size: 6px; }
+          .smn-row-arrow { display: none; }
+          .smn-menu-foot { min-height: 36px; padding: 0 14px; font-size: 7px; }
+          .smn-foot-right { gap: 10px; }
+        }
+        @media (max-width: 370px) {
+          .smn-menu-head { gap: 5px; }
+          .smn-heading-lockup { min-width: 80px; }
+          .smn-areas { padding-right: 10px; padding-left: 10px; }
+          .smn-destination-action { gap: 4px; }
+        }
       `}</style>
 
-      <header className="smn-topbar">
-        <div className="smn-brand">
-          <span className="smn-brand-mark">S/</span>
-          <span>SALARYMAN</span>
-        </div>
-        <nav className="smn-topnav" aria-label="Workspace navigation">
-          <span className="smn-topnav-label">OVERVIEW</span>
-          <span className="smn-topnav-label">ACTIVITY</span>
-          <span className="smn-topnav-label">PREFERENCES</span>
-        </nav>
-        <button
-          type="button"
-          className="smn-menu-trigger"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-label={open ? "Close workspace navigation" : "Open workspace navigation"}
-        >
-          {open ? <X size={14} /> : <Menu size={14} />}
-          <span>WORKSPACE</span>
-          <ChevronDown size={12} />
-        </button>
-        <div className="smn-avatar" aria-label="Mira Chen account">MC</div>
-      </header>
-
-      <main className="smn-main">
-        <div className="smn-welcome-kicker">MONDAY, 19 MAY 2026 <span style={{ margin: "0 8px", color: "#b5b2a7" }}>/</span> PERSONAL WORKSPACE</div>
-        <h1 className="smn-welcome-title">A clear start,<br /><em>Mira.</em></h1>
-        <div className="smn-workspace-grid" aria-hidden="true">
-          <section className="smn-quiet-panel">
-            <div className="smn-quiet-label"><span>IN MOTION</span><span>02 OPEN</span></div>
-            <div className="smn-quiet-line"><span>Review Q2 operating plan</span><span>BUSINESS</span></div>
-            <div className="smn-quiet-line"><span>Follow up with Noma Studio</span><span>CONTACTS</span></div>
-            <div className="smn-quiet-line"><span>Prepare the weekly readout</span><span>REPORTS</span></div>
-          </section>
-          <section className="smn-quiet-panel secondary">
-            <div className="smn-quiet-label"><span>RECENTLY OPENED</span><span>THIS WEEK</span></div>
-            <div className="smn-quiet-line"><span>Creative Studio</span><span>09:42</span></div>
-            <div className="smn-quiet-line"><span>CALLL HOME</span><span>YESTERDAY</span></div>
-            <div className="smn-quiet-line"><span>Platform API</span><span>MON</span></div>
-          </section>
-        </div>
-      </main>
-
       {open ? (
-        <div className="smn-overlay" role="presentation" onPointerDown={(event) => {
-          if (event.target === event.currentTarget) closeMenu();
-        }}>
+        <div className="smn-overlay">
           <section className="smn-menu" role="dialog" aria-modal="true" aria-label="Workspace navigation">
             <header className="smn-menu-head">
               <div className="smn-heading-lockup">
-                <div>
-                  <div className="smn-eyebrow">SALARYMAN OS</div>
-                  <div className="smn-heading-title">WORKSPACE</div>
-                </div>
+                <div className="smn-heading-title">WORKSPACE</div>
               </div>
-              <div className="smn-menu-count">ALL DESTINATIONS <span style={{ color: "#bbb7aa" }}>/</span> 43</div>
+              <div className="smn-menu-count">ALL DESTINATIONS <span style={{ color: "#bbb7aa" }}>/</span> {uniqueDestinationCount}</div>
               <label className="smn-search">
                 <Search size={14} aria-hidden="true" />
                 <input
@@ -517,13 +649,13 @@ export function Consolidated() {
             <div className="smn-menu-body">
               <aside className="smn-rail">
                 <div className="smn-section-label">START HERE</div>
-                {pabloMatches && (
+                {filteredPablo && (
                   <button
                     type="button"
-                    className={`smn-pablo-card${pabloSelected ? " is-active" : ""}`}
-                    onClick={() => choose({ path: pabloItem.path, label: "PABLO AI", icon: Terminal })}
+                    className={`smn-pablo-card${selected === uniquePablo.path ? " is-active" : ""}`}
+                    onClick={() => choose(uniquePablo)}
                   >
-                    <PabloMark />
+                    <CurrentMiniNebula size={38} />
                     <span className="smn-pablo-copy">
                       <span className="smn-pablo-title">PABLO AI</span>
                       <span className="smn-pablo-sub">CHAT + AUTOMATION</span>
@@ -535,31 +667,18 @@ export function Consolidated() {
                   <div className="smn-section-label">YOUR TOOLS</div>
                   <div className="smn-shortcut-list">
                     {filteredFeatured.map((item) => (
-                      <AppDestination
-                        key={item.id}
+                      <DestinationRow
+                        key={item.path}
                         item={item}
-                        selected={selected === item.path}
+                        active={selected === item.path}
+                        selectedPath={selected}
                         onSelect={choose}
+                        expanded={expandedPaths.has(item.path)}
+                        onToggle={toggleExpanded}
+                        compact
                       />
                     ))}
                   </div>
-                </div>
-
-                <div className="smn-rail-bottom">
-                  <div className="smn-account-line">
-                    <span className="smn-user-avatar">MC</span>
-                    <span className="smn-user-copy">
-                      <span className="smn-user-name">Mira Chen</span>
-                      <span className="smn-user-role">PERSONAL WORKSPACE</span>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="smn-logout"
-                    onClick={() => setNotice("Sign out is available from your account")}
-                  >
-                    <LogOut size={13} /> SIGN OUT
-                  </button>
                 </div>
               </aside>
 
@@ -570,8 +689,16 @@ export function Consolidated() {
                     <section className="smn-area" key={area.title}>
                       <h2 className="smn-area-title"><AreaIcon size={13} /> {area.title}</h2>
                       <div className="smn-area-links">
-                        {dedupeByPath(area.entries).map((item) => (
-                          <DestinationRow key={item.path} item={item} active={selected === item.path} onSelect={choose} />
+                        {area.entries.map((item) => (
+                          <DestinationRow
+                            key={item.path}
+                            item={item}
+                            active={selected === item.path}
+                            selectedPath={selected}
+                            onSelect={choose}
+                            expanded={expandedPaths.has(item.path)}
+                            onToggle={toggleExpanded}
+                          />
                         ))}
                       </div>
                     </section>
@@ -582,12 +709,20 @@ export function Consolidated() {
                     <h2 className="smn-area-title"><Globe2 size={13} /> WORKSPACE</h2>
                     <div className="smn-area-links">
                       {filteredWorkspace.map((item) => (
-                        <DestinationRow key={item.path} item={item} active={selected === item.path} onSelect={choose} />
+                        <DestinationRow
+                          key={item.path}
+                          item={item}
+                          active={selected === item.path}
+                          selectedPath={selected}
+                          onSelect={choose}
+                          expanded={expandedPaths.has(item.path)}
+                          onToggle={toggleExpanded}
+                        />
                       ))}
                     </div>
                   </section>
                 )}
-                {filteredAreas.length === 0 && filteredWorkspace.length === 0 && filteredFeatured.length === 0 && !pabloMatches && (
+                {filteredAreas.length === 0 && filteredWorkspace.length === 0 && filteredFeatured.length === 0 && !filteredPablo && (
                   <div className="smn-no-results">
                     <CircleHelp size={20} />
                     <strong>No destinations found</strong>
@@ -611,9 +746,7 @@ export function Consolidated() {
         </div>
       ) : (
         <div className="smn-closed-note">
-          <Check size={13} />
-          {notice || "Navigation closed"}
-          <button type="button" onClick={() => setOpen(true)}>OPEN</button>
+          <button type="button" onClick={() => setOpen(true)}><Menu size={14} /> OPEN WORKSPACE</button>
         </div>
       )}
     </div>

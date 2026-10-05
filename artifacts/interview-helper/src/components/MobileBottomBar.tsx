@@ -1,15 +1,13 @@
 import { useLocation } from 'wouter';
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useState, useLayoutEffect } from 'react';
 import { ArrowLeft, X, Menu, MoreHorizontal, LogIn } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
-import { MiniNebula } from './MiniNebula';
 import {
-  MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
   isAppNavItemActive,
   canGoBackInApp,
@@ -20,21 +18,23 @@ import {
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 import { getBoomerAppLabel } from '@/lib/vocabulary';
+import { WorkspaceMenuOverlay } from './WorkspaceMenuOverlay';
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
+  const { isOwner } = usePlan();
   const { total: commsCount } = useCommsSummary();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDropdownOpen(false);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [dropdownOpen]);
+  const closeMenu = useCallback(() => setDropdownOpen(false), []);
+  const navigateMenu = useCallback((path: string) => {
+    navigate(path);
+    setDropdownOpen(false);
+  }, [navigate]);
+  const signOutFromMenu = useCallback(() => {
+    void logout();
+    setDropdownOpen(false);
+  }, [logout]);
 
   const pathname = location.split('?')[0];
   const isHome = pathname === "/";
@@ -55,10 +55,6 @@ export function MobileModuleNav() {
   const visibleTabs = isAuthenticated
     ? PRIMARY_NAV_ITEMS.filter(tab => !tab.authOnly || isAuthenticated)
     : [];
-  const dropdownItems = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS]
-    .filter(item => isAuthenticated && (!item.authOnly || isAuthenticated))
-    .filter((item, index, items) => items.findIndex(candidate => candidate.id === item.id) === index);
-
   return (
     <>
       {/* One stable top bar: back, brand, and menu. Account actions live in the menu. */}
@@ -102,7 +98,7 @@ export function MobileModuleNav() {
               onClick={() => setDropdownOpen(open => !open)}
               className={`mobile-menu-trigger${dropdownOpen ? ' is-open' : ''}`}
               aria-expanded={dropdownOpen}
-              aria-controls="mobile-features-menu"
+              aria-controls="workspace-navigation-menu"
               aria-label={dropdownOpen ? 'Close menu' : 'Open menu'}
               title={dropdownOpen ? 'Close menu' : 'Open menu'}
             >
@@ -198,7 +194,7 @@ export function MobileModuleNav() {
                   : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
               }`}
               aria-expanded={dropdownOpen}
-              aria-controls="mobile-features-menu"
+              aria-controls="workspace-navigation-menu"
               aria-label="Features"
               title="Features"
             >
@@ -282,60 +278,14 @@ export function MobileModuleNav() {
         </div>
       </div>
 
-      {/* More Overflow Menu Overlay */}
-      {dropdownOpen && createPortal(
-        <div
-          className="fixed inset-0 bg-black/20 z-[9999] flex flex-col justify-end"
-          role="presentation"
-          onPointerDown={() => setDropdownOpen(false)}
-        >
-          <div
-            id="mobile-features-menu"
-            className="max-h-[min(82svh,42rem)] overflow-y-auto bg-white rounded-t-xl pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-2 px-4 shadow-xl"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Workspace</span>
-              <button onClick={() => setDropdownOpen(false)} className="p-2"><X className="w-5 h-5 text-gray-400" /></button>
-            </div>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => { navigate('/pablo'); setDropdownOpen(false); }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  navigate('/pablo');
-                  setDropdownOpen(false);
-                }
-              }}
-              className="mb-2 flex cursor-pointer items-center gap-3 rounded-lg bg-black p-3 text-[#FAF7EF]"
-              aria-label="Open Pablo nebula"
-            >
-              <MiniNebula size={38} status="idle" title="Open Pablo nebula" interactive={false} />
-              <span className="min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.16em]">PABLO AI</span>
-                <span className="mt-0.5 block text-[9px] uppercase tracking-wider text-[#D8CBE6]">CHAT + AUTOMATION</span>
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {dropdownItems.map(item => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => { navigate(item.path); setDropdownOpen(false); }}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-black hover:bg-gray-100"
-                  >
-                    <Icon className="w-5 h-5 text-gray-500" />
-                     <span className="text-[10px] font-bold uppercase tracking-widest">{getBoomerAppLabel(item.id, item.boomerLabel ?? item.label)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <WorkspaceMenuOverlay
+        open={isAuthenticated && dropdownOpen}
+        pathname={pathname}
+        canAccessStaff={isOwner}
+        onClose={closeMenu}
+        onNavigate={navigateMenu}
+        onSignOut={signOutFromMenu}
+      />
 
     </>
   );

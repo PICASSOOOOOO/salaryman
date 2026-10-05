@@ -27,9 +27,52 @@
 .workspace-menu-header {
   display: flex;
   align-items: center;
+  gap: 0.65rem;
   justify-content: space-between;
   border-bottom: 1px solid #E7E0D5;
   padding: 0 0 0.55rem;
+}
+
+.workspace-menu-search {
+  display: flex;
+  min-width: 0;
+  max-width: 24rem;
+  height: 2.15rem;
+  flex: 1;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+  border: 1px solid #D8D1C3;
+  border-radius: 0.35rem;
+  padding: 0 0.55rem;
+  background: #FAFAF7;
+  color: #6C665C;
+}
+
+.workspace-menu-search:focus-within {
+  border-color: #6C665C;
+  outline: 2px solid rgb(108 102 92 / 20%);
+}
+
+.workspace-menu-search svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+}
+
+.workspace-menu-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+}
+
+.workspace-menu-search input::placeholder {
+  color: #777066;
 }
 
 .workspace-menu-title,
@@ -121,6 +164,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
+}
+
+.workspace-menu-no-results {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 1.25rem 0.25rem;
+  color: #6C665C;
+  font-size: 0.75rem;
 }
 
 .workspace-menu-section {
@@ -296,6 +347,14 @@
 
   .workspace-menu-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-menu-header {
+    gap: 0.35rem;
+  }
+
+  .workspace-menu-title {
+    white-space: nowrap;
   }
 }
 

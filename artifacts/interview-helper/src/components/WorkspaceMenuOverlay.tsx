@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, LogOut, X } from "lucide-react";
+import { ChevronDown, LogOut, Search, X } from "lucide-react";
 import { MiniNebula } from "./MiniNebula";
 import {
   WORKSPACE_MENU_BROWSE,
   WORKSPACE_MENU_FEATURED,
   WORKSPACE_MENU_SECTIONS,
+  filterWorkspaceMenuEntry,
   type WorkspaceMenuEntry,
 } from "@/lib/navigation-menu";
 import "./WorkspaceMenuOverlay.css";
@@ -13,6 +14,7 @@ import "./WorkspaceMenuOverlay.css";
 type WorkspaceMenuOverlayProps = {
   open: boolean;
   pathname: string;
+  canAccessStaff: boolean;
   onClose: () => void;
   onNavigate: (path: string) => void;
   onSignOut: () => void;
@@ -26,10 +28,14 @@ function Destination({
   entry,
   pathname,
   onNavigate,
+  searching,
+  canAccessStaff,
 }: {
   entry: WorkspaceMenuEntry;
   pathname: string;
   onNavigate: (path: string) => void;
+  searching: boolean;
+  canAccessStaff: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = entry.icon;
@@ -50,7 +56,7 @@ function Destination({
             {entry.hint && <span className="workspace-menu-link-hint">{entry.hint}</span>}
           </span>
         </button>
-        {entry.children?.length ? (
+        {entry.children?.length && !searching ? (
           <button
             type="button"
             className="workspace-menu-expand"
@@ -62,7 +68,7 @@ function Destination({
           </button>
         ) : null}
       </div>
-      {expanded && entry.children?.length ? (
+      {(expanded || searching) && entry.children?.length ? (
         <div className="workspace-menu-children">
           {entry.children.map((child) => (
             <Destination
@@ -70,6 +76,8 @@ function Destination({
               entry={child}
               pathname={pathname}
               onNavigate={onNavigate}
+              searching={searching}
+              canAccessStaff={canAccessStaff}
             />
           ))}
         </div>
@@ -81,12 +89,18 @@ function Destination({
 export function WorkspaceMenuOverlay({
   open,
   pathname,
+  canAccessStaff,
   onClose,
   onNavigate,
   onSignOut,
 }: WorkspaceMenuOverlayProps) {
+  const [query, setQuery] = useState("");
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setQuery("");
+      return;
+    }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -96,6 +110,18 @@ export function WorkspaceMenuOverlay({
 
   if (!open) return null;
 
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleFeatured = filterWorkspaceMenuEntry(WORKSPACE_MENU_FEATURED, normalizedQuery, canAccessStaff);
+  const visibleSections = WORKSPACE_MENU_SECTIONS
+    .map((section) => ({
+      ...section,
+      entries: section.entries
+        .map((entry) => filterWorkspaceMenuEntry(entry, normalizedQuery, canAccessStaff))
+        .filter((entry): entry is WorkspaceMenuEntry => entry !== null),
+    }))
+    .filter((section) => section.entries.length > 0);
+  const browseMatches = filterWorkspaceMenuEntry(WORKSPACE_MENU_BROWSE, normalizedQuery, canAccessStaff);
+  const hasResults = Boolean(visibleFeatured) || visibleSections.length > 0 || Boolean(browseMatches);
   const featured = WORKSPACE_MENU_FEATURED;
   const FeaturedIcon = featured.icon;
 
@@ -115,27 +141,39 @@ export function WorkspaceMenuOverlay({
       >
         <div className="workspace-menu-header">
           <span id="workspace-menu-title" className="workspace-menu-title">WORKSPACE</span>
+          <label className="workspace-menu-search">
+            <Search aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Find a destination"
+              aria-label="Find a destination"
+            />
+          </label>
           <button type="button" onClick={onClose} className="workspace-menu-close" aria-label="Close menu">
             <X aria-hidden="true" />
           </button>
         </div>
 
-        <button
-          type="button"
-          className={`workspace-menu-feature${isEntryActive(pathname, featured.path) ? " is-active" : ""}`}
-          onClick={() => onNavigate(featured.path)}
-          aria-current={isEntryActive(pathname, featured.path) ? "page" : undefined}
-        >
-          <MiniNebula size={38} status="idle" title="Open Pablo AI" interactive={false} />
-          <span className="workspace-menu-feature-copy">
-            <span className="workspace-menu-feature-label">{featured.label}</span>
-            <span className="workspace-menu-feature-hint">{featured.hint}</span>
-          </span>
-          <FeaturedIcon className="workspace-menu-feature-icon" aria-hidden="true" />
-        </button>
+        {visibleFeatured && (
+          <button
+            type="button"
+            className={`workspace-menu-feature${isEntryActive(pathname, featured.path) ? " is-active" : ""}`}
+            onClick={() => onNavigate(featured.path)}
+            aria-current={isEntryActive(pathname, featured.path) ? "page" : undefined}
+          >
+            <MiniNebula size={38} status="idle" title="Open Pablo AI" interactive={false} />
+            <span className="workspace-menu-feature-copy">
+              <span className="workspace-menu-feature-label">{featured.label}</span>
+              <span className="workspace-menu-feature-hint">{featured.hint}</span>
+            </span>
+            <FeaturedIcon className="workspace-menu-feature-icon" aria-hidden="true" />
+          </button>
+        )}
 
         <div className="workspace-menu-sections">
-          {WORKSPACE_MENU_SECTIONS.map((section) => (
+          {visibleSections.map((section) => (
             <section key={section.id} className="workspace-menu-section" aria-labelledby={`workspace-section-${section.id}`}>
               <h2 id={`workspace-section-${section.id}`} className="workspace-menu-section-title">
                 {section.label}
@@ -147,11 +185,16 @@ export function WorkspaceMenuOverlay({
                     entry={entry}
                     pathname={pathname}
                     onNavigate={onNavigate}
+                    searching={Boolean(normalizedQuery)}
+                    canAccessStaff={canAccessStaff}
                   />
                 ))}
               </div>
             </section>
           ))}
+          {!hasResults && (
+            <p className="workspace-menu-no-results">No destinations found.</p>
+          )}
         </div>
 
         <div className="workspace-menu-utility">

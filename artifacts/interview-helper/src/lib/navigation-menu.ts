@@ -13,6 +13,7 @@ export type WorkspaceMenuEntry = {
   label: string;
   icon: AppNavItem["icon"];
   hint?: string;
+  staffOnly?: boolean;
   children?: WorkspaceMenuEntry[];
 };
 
@@ -21,6 +22,24 @@ export type WorkspaceMenuSection = {
   label: string;
   entries: WorkspaceMenuEntry[];
 };
+
+export function filterWorkspaceMenuEntry(
+  entry: WorkspaceMenuEntry,
+  query: string,
+  canAccessStaff: boolean,
+): WorkspaceMenuEntry | null {
+  if (entry.staffOnly && !canAccessStaff) return null;
+
+  const matches = !query
+    || `${entry.label} ${entry.path} ${entry.hint ?? ""}`.toLowerCase().includes(query);
+  const childQuery = matches ? "" : query;
+  const children = entry.children
+    ?.map((child) => filterWorkspaceMenuEntry(child, childQuery, canAccessStaff))
+    .filter((child): child is WorkspaceMenuEntry => child !== null);
+
+  if (!matches && !children?.length) return null;
+  return { ...entry, children };
+}
 
 const allAppItems = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
 
@@ -32,6 +51,7 @@ function appEntry(id: string, additions: Partial<WorkspaceMenuEntry> = {}): Work
     path: item.path,
     label: getBoomerAppLabel(item.id, item.boomerLabel ?? item.label),
     icon: item.icon,
+    ...(item.staffOnly ? { staffOnly: true } : {}),
     ...additions,
   };
 }
@@ -69,18 +89,36 @@ const businessModule = historicModule("business");
 const creativeModule = historicModule("creative");
 const consoleModule = historicModule("console");
 const intelModule = historicModule("intel");
+const phoneModule = historicModule("phone");
+const businessContacts = businessModule.subs.find((sub) => sub.id === "contacts");
+const phoneContacts = phoneModule.subs.find((sub) => sub.id === "contacts");
+if (!businessContacts || !phoneContacts) {
+  throw new Error("The shared CONTACTS menu requires the business and phone contact destinations");
+}
 
 export const WORKSPACE_MENU_FEATURED = {
   ...appEntry("pablo"),
   hint: "CHAT + AUTOMATION",
 };
 
+const contactsEntry = appEntry("contacts", {
+  hint: "WORKSPACE",
+  children: [
+    { ...historicSubEntry(businessContacts), hint: "BUSINESS" },
+    { ...historicSubEntry(phoneContacts), hint: "CALLL HOME" },
+  ],
+});
+
 export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
   {
     id: "workspace",
     label: "WORKSPACE",
     entries: [
-      appEntry("phone"),
+      appEntry("phone", {
+        children: phoneModule.subs
+          .filter((sub) => sub.id !== "contacts")
+          .map(historicSubEntry),
+      }),
       appEntry("comms"),
       appEntry("office"),
       { id: "apps", path: "/my-apps", label: "MY APPS", icon: Grid2X2 },
@@ -91,10 +129,12 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
     label: "BUSINESS",
     entries: [
       appEntry("business", {
-        children: businessModule.subs.map(historicSubEntry),
+        children: businessModule.subs
+          .filter((sub) => sub.id !== "contacts")
+          .map(historicSubEntry),
       }),
       appEntry("org"),
-      appEntry("contacts"),
+      contactsEntry,
       appEntry("leads"),
       appEntry("bots", { hint: "PABLO PRIME AUTOMATION" }),
       appEntry("marketing"),

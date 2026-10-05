@@ -143,6 +143,7 @@
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
 - [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.
+- [Shared menu route deduplication](shared-menu-route-dedupe.md) — merge identical paths; preserve same-label destinations with explicit context hints.
 - [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is a cream/black floating terminal widget; its live socket drives Pablo working/offline status.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
