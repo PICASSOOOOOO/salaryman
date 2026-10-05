@@ -121,6 +121,7 @@ export default function MediaCenter() {
     try {
       if (!user?.id) {
         setCalls([]);
+        setLoading(false);
         return;
       }
       const data = await mediaApi(`/twilio/history/${encodeURIComponent(user.id)}?limit=100`);

@@ -11,7 +11,7 @@ import {
   type CallRecord, type VoicemailRecord } from '@/lib/phone-utils';
 
 type RecordingItem =
-  | { kind: 'call'; id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; direction: string; transcript: string | null; summary: string | null; recordingUrl: string; ownerId?: string; employeeName?: string; sharedBy?: string; shareId?: number; }
+  | { kind: 'call'; id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; direction: string; transcript: string | null; summary: string | null; recordingUrl: string; ownerId?: string; employeeName?: string; orgId?: number | null; sharedBy?: string; shareId?: number; }
   | { kind: 'vm';   id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; transcript: string | null; summary: string | null; recordingUrl: string; };
 
 type ArchiveScope = 'mine' | 'organization' | 'shared';
@@ -486,7 +486,7 @@ export default function PhoneRecordingsPage() {
                   <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
                     {it.kind === 'call' && (it.ownerId === userId || scope === 'organization') && scope !== 'shared' && (
                       <PhoneBtn
-                        onClick={e => { e.stopPropagation(); void startSharing(it.id, it.partyName || formatPhone(it.partyNumber), it.orgId); }}
+                        onClick={e => { e?.stopPropagation(); void startSharing(it.id, it.partyName || formatPhone(it.partyNumber), it.orgId); }}
                         size="sm"
                         title="Share with a colleague"
                       >
