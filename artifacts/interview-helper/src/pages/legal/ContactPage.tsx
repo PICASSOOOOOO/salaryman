@@ -136,7 +136,7 @@ export default function ContactPage() {
           <Mail className="w-4 h-4 text-sky-400/60" />
           <span className="text-sm font-semibold text-zinc-300">Contact Form</span>
         </div>
-        <p className="text-xs text-zinc-600 mb-2">Use the form below or email our support team directly at <a className="text-sky-400 underline underline-offset-2" href="mailto:support@picassoo.ai">support@picassoo.ai</a>. Select a topic and we'll route your message to the right team.</p>
+        <p className="text-xs text-zinc-600 mb-2">Use the form below to reach SALARYMAN support. Select a topic and we'll route your message to the right team.</p>
       </div>
 
       <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30 mb-8">

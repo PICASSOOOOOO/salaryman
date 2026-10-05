@@ -46,7 +46,7 @@ export default function TermsOfService() {
 
       <h2>7. SMS Messaging Program</h2>
       <p><strong>SALARYMAN Text Updates</strong> sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. By selecting the optional consent checkbox on our <a href="/sms-opt-in">SMS opt-in page</a> and sending START from your mobile number, you agree to receive these messages. Consent is not a condition of purchase. Message frequency varies, and message and data rates may apply.</p>
-      <p>Reply <strong>STOP</strong> to cancel or <strong>HELP</strong> for help. For customer care, email <a href="mailto:support@picassoo.ai">support@picassoo.ai</a> or use our <a href="/legal/contact">Contact Us</a> page. Wireless carriers are not liable for delayed or undelivered messages.</p>
+      <p>Reply <strong>STOP</strong> to cancel or <strong>HELP</strong> for help. For customer care, use our <a href="/legal/contact">Contact Us</a> page. Wireless carriers are not liable for delayed or undelivered messages.</p>
 
       <h2>8. Physical Merchandise</h2>
       <p>Physical merchandise is fulfilled by the <strong>PABLO CORP Merch Dept</strong>, a division of the Company. All physical merchandise purchases are subject to the Return Policy and applicable shipping terms.</p>
@@ -71,7 +71,7 @@ export default function TermsOfService() {
       <p>The Company reserves the right to modify these Terms at any time. We will provide notice of material changes via email or a prominent notice on the platform. Continued use of the Service following any changes constitutes your acceptance of the new Terms.</p>
 
       <h2>15. Contact</h2>
-      <p>Questions about these Terms? Please visit our <a href="/legal/contact">Contact Us</a> page or email <a href="mailto:support@picassoo.ai">support@picassoo.ai</a>.</p>
+      <p>Questions about these Terms? Please visit our <a href="/legal/contact">Contact Us</a> page.</p>
       <p className="text-sm text-zinc-500 mt-2">Picasso AI, LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );

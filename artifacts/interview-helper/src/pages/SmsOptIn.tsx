@@ -92,9 +92,9 @@ export default function SmsOptIn() {
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sky-400/70" aria-hidden="true" />
             <p>
               Message and data rates may apply. Reply <strong className="text-zinc-300">STOP</strong> to
-              opt out or <strong className="text-zinc-300">HELP</strong> for help. You can also email{" "}
-              <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="mailto:support@picassoo.ai">
-                support@picassoo.ai
+              opt out or <strong className="text-zinc-300">HELP</strong> for help. You can also use{" "}
+              our <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/legal/contact">
+                Contact Us form
               </a>
               . See our{" "}
               <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/legal/privacy">
