@@ -1045,28 +1045,6 @@ export function ChatPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, embedded]);
 
-  useEffect(() => {
-    const onOpenDm = async (e: Event) => {
-      const detail = (e as CustomEvent<{ userId?: string }>).detail;
-      if (!detail?.userId) return;
-      if (detail.userId === currentUserId) return;
-      setOpen(true);
-      const channelId = await startPrivateChat(detail.userId);
-      if (channelId) {
-        setActivePrivateChannelId(channelId);
-        setActiveTab("private");
-        setShowUserSearch(false);
-      }
-    };
-    const onOpenChat = () => setOpen(true);
-    window.addEventListener("salaryman:open-dm", onOpenDm as EventListener);
-    window.addEventListener("salaryman:open-chat", onOpenChat as EventListener);
-    return () => {
-      window.removeEventListener("salaryman:open-dm", onOpenDm as EventListener);
-      window.removeEventListener("salaryman:open-chat", onOpenChat as EventListener);
-    };
-  }, [currentUserId, startPrivateChat]);
-
   // --- Proactive toast notifications -------------------------------------
   // Surface new comms (incoming DM/company/Pablo messages + associate
   // requests) the moment they arrive so the user notices without having to

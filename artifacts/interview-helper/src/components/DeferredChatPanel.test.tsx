@@ -2,27 +2,24 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const receivedProps = vi.hoisted(() => vi.fn());
+const navigate = vi.hoisted(() => vi.fn());
+
+vi.mock("wouter", () => ({
+  useLocation: () => ["/game", navigate],
+}));
 
 vi.mock("@/hooks/use-comms-summary", () => ({
   useCommsSummary: () => ({ total: 0 }),
 }));
 
-vi.mock("@/components/ChatPanel", () => ({
-  ChatPanel: (props: unknown) => {
-    receivedProps(props);
-    return <div data-testid="loaded-chat" />;
-  },
-}));
-
 import { DeferredChatPanel } from "./DeferredChatPanel";
 
-describe("DeferredChatPanel direct-message handoff", () => {
+describe("DeferredChatPanel navigation", () => {
   let container: HTMLDivElement;
   let root: Root;
 
   beforeEach(() => {
-    receivedProps.mockClear();
+    navigate.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -33,24 +30,19 @@ describe("DeferredChatPanel direct-message handoff", () => {
     container.remove();
   });
 
-  it("preserves the target user while the chat chunk is unloaded", async () => {
+  it("opens the dedicated COMMS page instead of a floating chat panel", async () => {
     await act(async () => {
       root.render(<DeferredChatPanel />);
     });
 
+    const button = container.querySelector('[data-testid="button-comms-toggle"]');
+    expect(button).not.toBeNull();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
     await act(async () => {
-      window.dispatchEvent(
-        new CustomEvent("salaryman:open-dm", { detail: { userId: "target-user" } }),
-      );
-      await Promise.resolve();
+      button!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(receivedProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initiallyOpen: true,
-        initialDmUserId: "target-user",
-      }),
-    );
-    expect(container.querySelector('[data-testid="loaded-chat"]')).not.toBeNull();
+    expect(navigate).toHaveBeenCalledWith("/comms");
   });
 });

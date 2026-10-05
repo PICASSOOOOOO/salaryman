@@ -290,11 +290,11 @@ function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
         <label className="flex flex-col gap-1 cursor-pointer group">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-black group-hover:text-emerald-700 transition-colors">
-              {boomerMode ? 'Pop-up Alerts' : 'Global Pop-ups'}
+              {boomerMode ? 'Pop-up Alerts' : 'Message Pop-ups'}
             </span>
             <input type="checkbox" checked={alertsOn} onChange={(e) => setAlertsOn(e.target.checked)} className="accent-emerald-600 w-4 h-4" />
           </div>
-          <span className="text-[9px] font-mono text-black/60">Unread counts always update; controls toasts only.</span>
+          <span className="text-[9px] font-mono text-black/60">Off by default. Unread counts always update.</span>
         </label>
         <label className={`flex flex-col gap-1 cursor-pointer group ${!alertsOn ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center justify-between">

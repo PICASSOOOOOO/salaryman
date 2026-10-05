@@ -7,6 +7,7 @@ import { useCommsSummary } from '@/hooks/use-comms-summary';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import Colleagues from './Colleagues';
 import { apiFetch } from '@/lib/api-client';
+import { takePendingCommsDmUserId } from '@/lib/comms-navigation';
 import { ChatPanel } from '@/components/ChatPanel';
 
 export type CommsSection = 'chat' | 'sms' | 'associates' | 'responders';
@@ -63,7 +64,13 @@ function PabloVoiceControl() {
   );
 }
 
-export function CommsEmbedded({ section }: { section: CommsSection }) {
+export function CommsEmbedded({
+  section,
+  initialDmUserId,
+}: {
+  section: CommsSection;
+  initialDmUserId?: string;
+}) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const boomerMode = getDefaultBoomerMode();
   const [responders, setResponders] = useState<ResponderEntry[]>([]);
@@ -88,7 +95,7 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
 
   return (
     <div className="flex-1 flex flex-col bg-[#fffaf0] text-black">
-      {section === 'chat' && <ChatPanel embedded initiallyOpen />}
+      {section === 'chat' && <ChatPanel embedded initiallyOpen initialDmUserId={initialDmUserId} />}
       {section === 'sms' && (
         <div className="flex-1 grid place-items-center p-6">
           <a
@@ -150,7 +157,32 @@ export function CommsEmbedded({ section }: { section: CommsSection }) {
 
 export default function Comms() {
   const [section, setSection] = useState<CommsSection>('chat');
+  const [initialDmUserId, setInitialDmUserId] = useState<string>();
   const { unreadMessages, unreadSms, pendingRequests } = useCommsSummary();
+
+  useEffect(() => {
+    const queuedUserId = takePendingCommsDmUserId();
+    if (queuedUserId) {
+      setInitialDmUserId(queuedUserId);
+      setSection('chat');
+    }
+
+    const onOpenChat = () => setSection('chat');
+    const onOpenDm = (event: Event) => {
+      const eventUserId = (event as CustomEvent<{ userId?: string }>).detail?.userId?.trim();
+      const queued = takePendingCommsDmUserId();
+      const userId = eventUserId || queued;
+      if (userId) setInitialDmUserId(userId);
+      setSection('chat');
+    };
+
+    window.addEventListener('salaryman:open-chat', onOpenChat);
+    window.addEventListener('salaryman:open-dm', onOpenDm as EventListener);
+    return () => {
+      window.removeEventListener('salaryman:open-chat', onOpenChat);
+      window.removeEventListener('salaryman:open-dm', onOpenDm as EventListener);
+    };
+  }, []);
 
   return (
     <div className="comms-page min-h-[100dvh] flex flex-col bg-[#fffaf0] text-black font-sans">
@@ -202,7 +234,7 @@ export default function Comms() {
         </div>
       </div>
       <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full relative">
-        <CommsEmbedded section={section} />
+        <CommsEmbedded section={section} initialDmUserId={initialDmUserId} />
       </div>
     </div>
   );

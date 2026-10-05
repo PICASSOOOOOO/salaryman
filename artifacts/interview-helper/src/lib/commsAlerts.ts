@@ -3,22 +3,19 @@ import { useEffect, useState } from "react";
 const KEY = "salaryman_comms_alerts";
 const EVENT = "salaryman:comms-alerts-changed";
 
-// Comms pop-up alerts (toasts for new DM/company/Pablo messages and associate
-// requests) are ON by default. The preference is stored as an explicit opt-out:
-// only when the user turns alerts OFF do we write "0" to localStorage. Any other
-// value (including a missing key) means alerts are enabled.
+// Comms pop-up alerts are opt-in. A missing key or any value other than "1"
+// keeps incoming message/notification toasts and their chime disabled.
 export function commsAlertsEnabled(): boolean {
   try {
-    return window.localStorage.getItem(KEY) !== "0";
+    return window.localStorage.getItem(KEY) === "1";
   } catch {
-    return true;
+    return false;
   }
 }
 
 export function setCommsAlertsEnabled(on: boolean) {
   try {
-    if (on) window.localStorage.removeItem(KEY);
-    else window.localStorage.setItem(KEY, "0");
+    window.localStorage.setItem(KEY, on ? "1" : "0");
   } catch {}
   try { window.dispatchEvent(new CustomEvent(EVENT, { detail: on })); } catch {}
 }

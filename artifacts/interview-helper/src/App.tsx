@@ -27,6 +27,7 @@ import { isEmbedMode } from "@/lib/embed-mode";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
+import { queuePendingCommsDmUserId } from "@/lib/comms-navigation";
 import Console from "@/pages/Console";
 import { PHONE_ROUTE_TO_TAB } from "@/pages/phone/CalllHomeContext";
 
@@ -435,6 +436,23 @@ function AppShell() {
   // are never held.
   const holdForAuth = isLoading && !tutorialDone && !allowedForAnon;
   const [, navigate] = useLocation();
+  useEffect(() => {
+    const onOpenChat = () => navigate("/comms");
+    const onOpenDm = (event: Event) => {
+      const userId = (event as CustomEvent<{ userId?: string }>).detail?.userId?.trim();
+      const currentPath = location.split("?")[0];
+      if (userId && !currentPath.startsWith("/comms")) {
+        queuePendingCommsDmUserId(userId);
+      }
+      navigate("/comms");
+    };
+    window.addEventListener("salaryman:open-chat", onOpenChat);
+    window.addEventListener("salaryman:open-dm", onOpenDm as EventListener);
+    return () => {
+      window.removeEventListener("salaryman:open-chat", onOpenChat);
+      window.removeEventListener("salaryman:open-dm", onOpenDm as EventListener);
+    };
+  }, [location, navigate]);
   const anonymousExpiryExempt =
     pathname === "/" ||
     pathname === "/landing" ||
