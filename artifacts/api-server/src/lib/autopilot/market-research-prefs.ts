@@ -2,6 +2,7 @@ export interface MarketResearchPrefs {
   subject: string;
   region: string;
   competitors: string;
+  autoInvestigateRecentCalls: boolean;
 }
 
 const text = (value: unknown, maxLength: number): string =>
@@ -9,7 +10,7 @@ const text = (value: unknown, maxLength: number): string =>
 
 export function sanitizeMarketResearchPrefs(raw: unknown): MarketResearchPrefs {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { subject: "", region: "", competitors: "" };
+    return { subject: "", region: "", competitors: "", autoInvestigateRecentCalls: false };
   }
 
   const prefs = raw as Record<string, unknown>;
@@ -17,6 +18,7 @@ export function sanitizeMarketResearchPrefs(raw: unknown): MarketResearchPrefs {
     subject: text(prefs.subject, 180),
     region: text(prefs.region, 120),
     competitors: text(prefs.competitors, 500),
+    autoInvestigateRecentCalls: prefs.autoInvestigateRecentCalls === true,
   };
 }
 

@@ -41,6 +41,44 @@ function toE164(phone: string): string {
   return `+${n}`;
 }
 
+type CallLeadCandidate = {
+  id: number;
+  name: string | null;
+  phone: string | null;
+  customFieldsJson: Record<string, unknown> | null;
+};
+
+export function selectExistingCallLead<T extends CallLeadCandidate>(
+  leads: readonly T[],
+  phone: string,
+  name?: string | null,
+  dateOfBirth?: string | null,
+): T | undefined {
+  const phoneLeads = leads.filter((lead) => lead.phone && phoneMatches(lead.phone, phone));
+  const normalizedName = normalizeLeadName(name);
+  const isPlaceholder = (lead: T) =>
+    !lead.name || lead.name === lead.phone || normalizePhone(lead.name) === normalizePhone(lead.phone ?? "");
+  const storedDob = (lead: T) => {
+    const value = lead.customFieldsJson?.dateOfBirth;
+    return typeof value === "string" ? value : "";
+  };
+
+  if (normalizedName) {
+    const sameName = phoneLeads.filter((lead) => normalizeLeadName(lead.name) === normalizedName);
+    const consistent = sameName.filter((lead) => !dateOfBirth || !storedDob(lead) || storedDob(lead) === dateOfBirth);
+    return consistent.length === 1 ? consistent[0] : undefined;
+  }
+  if (dateOfBirth) {
+    const sameDob = phoneLeads.filter((lead) => storedDob(lead) === dateOfBirth);
+    return sameDob.length === 1 ? sameDob[0] : undefined;
+  }
+
+  // A phone-only lead represents an unidentified number, not a person.
+  // Never attach a named caller to it or merge two named people on a shared line.
+  const placeholders = phoneLeads.filter(isPlaceholder);
+  return placeholders.length === 1 ? placeholders[0] : undefined;
+}
+
 export async function resolveOrgForUser(
   userId: string,
 ): Promise<{ orgId: number; industry: string | null } | null> {
@@ -81,29 +119,11 @@ async function findOrCreateOrgLead(opts: {
       .select()
       .from(leadRecordsTable)
       .where(eq(leadRecordsTable.orgId, orgId));
-    const phoneLeads = leads.filter((lead) => lead.phone && phoneMatches(lead.phone, phone));
-    const normalizedName = normalizeLeadName(name);
-    const isPlaceholder = (lead: typeof leads[number]) =>
-      !lead.name || lead.name === lead.phone || normalizePhone(lead.name) === normalizePhone(lead.phone);
+    const existing = selectExistingCallLead(leads, phone, name, dateOfBirth);
     const storedDob = (lead: typeof leads[number]) => {
       const value = lead.customFieldsJson?.dateOfBirth;
       return typeof value === "string" ? value : "";
     };
-
-    let existing: typeof leads[number] | undefined;
-    if (normalizedName) {
-      const sameName = phoneLeads.filter((lead) => normalizeLeadName(lead.name) === normalizedName);
-      const consistent = sameName.filter((lead) => !dateOfBirth || !storedDob(lead) || storedDob(lead) === dateOfBirth);
-      if (consistent.length === 1) existing = consistent[0];
-    } else if (dateOfBirth) {
-      const sameDob = phoneLeads.filter((lead) => storedDob(lead) === dateOfBirth);
-      if (sameDob.length === 1) existing = sameDob[0];
-    } else {
-      // A phone-only lead represents an unidentified number, not a person.
-      // Never attach a named caller to it or merge two named people on a shared line.
-      const placeholders = phoneLeads.filter(isPlaceholder);
-      if (placeholders.length === 1) existing = placeholders[0];
-    }
 
     if (existing) {
       const customFields = { ...(existing.customFieldsJson ?? {}) };
@@ -119,7 +139,9 @@ async function findOrCreateOrgLead(opts: {
     }
 
     const customFields: Record<string, unknown> = {
-      identityResolution: normalizedName || dateOfBirth ? "corroborated_call_evidence" : "phone_only_unidentified",
+      identityResolution: normalizeLeadName(name) || dateOfBirth
+        ? "corroborated_call_evidence"
+        : "phone_only_unidentified",
     };
     if (dateOfBirth) customFields.dateOfBirth = dateOfBirth;
     const [created] = await db

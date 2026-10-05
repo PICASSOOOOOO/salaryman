@@ -830,6 +830,47 @@ describe("webhook/recording", () => {
     expect(rows[0].recordingRetainUntil).toBeInstanceOf(Date);
   });
 
+  it("stores user-confirmed excerpt boundaries without replacing transcript cursors", async () => {
+    const sid = "CArecording-excerpt-metadata-000000001";
+    await seedOwnedCall(sid);
+    const [call] = await db.select({ id: callHistoryTable.id })
+      .from(callHistoryTable)
+      .where(eq(callHistoryTable.twilioCallSid, sid));
+    const cursors = { "transcription-sid|inbound": 8 };
+    await db.update(callHistoryTable).set({
+      recordingUrl: "/objects/private/calls/test-recording.mp3",
+      durationSeconds: 120,
+      transcriptEventsJson: JSON.stringify(cursors),
+    }).where(eq(callHistoryTable.id, call.id));
+
+    const now = new Date().toISOString();
+    const saved = await request(app)
+      .put(`/api/twilio/recording/${call.id}/excerpts`)
+      .send({
+        excerpts: [{
+          id: "payment-terms-1",
+          label: "Payment terms",
+          startMs: 5_000,
+          endMs: 25_000,
+          transcriptText: "The deposit is due next week.",
+          createdAt: now,
+        }],
+      });
+
+    expect(saved.status).toBe(200);
+    expect(saved.body.excerpts).toHaveLength(1);
+    const [updated] = await db.select({ transcriptEventsJson: callHistoryTable.transcriptEventsJson })
+      .from(callHistoryTable)
+      .where(eq(callHistoryTable.id, call.id));
+    const stored = JSON.parse(updated.transcriptEventsJson ?? "{}");
+    expect(stored["transcription-sid|inbound"]).toBe(8);
+    expect(stored.__recordingWorkflow.excerpts).toMatchObject([{
+      id: "payment-terms-1",
+      startMs: 5_000,
+      endMs: 25_000,
+    }]);
+  });
+
   it("matches conference recordings by conference name when Twilio omits CallSid", async () => {
     const sid = "CAconference-recording-no-sid-00000001";
     const conferenceName = "conference-recording-no-sid";

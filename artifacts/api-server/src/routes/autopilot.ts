@@ -324,8 +324,8 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
       const willBeEnabled = body.enabled !== undefined
         ? !!body.enabled
         : existingResearchConfig?.enabled ?? false;
-      if (willBeEnabled && !researchPrefs.subject) {
-        res.status(400).json({ error: "Add a research topic before enabling Market Research" });
+      if (willBeEnabled && !researchPrefs.subject && !researchPrefs.autoInvestigateRecentCalls) {
+        res.status(400).json({ error: "Add a research topic or enable CRM call investigations before enabling Market Research" });
         return;
       }
     }

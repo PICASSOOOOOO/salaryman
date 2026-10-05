@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: phone
+    description: Authenticated phone recording and archive operations
   - name: workspace
     description: User-owned creative workspace operations
   - name: openai
@@ -416,6 +418,65 @@ paths:
             schema: { $ref: "#/components/schemas/CrmSyncConflictResolutionInput" }
       responses:
         "200": { description: Resolved, content: { application/json: { schema: { type: object } } } }
+  /twilio/recording/{callId}:
+    get:
+      operationId: getSecureCallRecording
+      tags: [phone]
+      summary: Stream an authorized call recording or a bounded excerpt
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: startMs
+          in: query
+          required: false
+          description: Excerpt start offset in milliseconds; requires endMs.
+          schema: { type: integer, minimum: 0 }
+        - name: endMs
+          in: query
+          required: false
+          description: Excerpt end offset in milliseconds; excerpt length is limited to ten minutes.
+          schema: { type: integer, minimum: 1 }
+        - name: download
+          in: query
+          required: false
+          schema: { type: string, enum: ["1"] }
+      responses:
+        "200":
+          description: Authenticated MP3 recording or excerpt
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid excerpt range }
+        "401": { description: Login required }
+        "403": { description: Recording access denied }
+        "404": { description: Recording not found }
+  /twilio/recording/{callId}/excerpts:
+    put:
+      operationId: saveCallRecordingExcerpts
+      tags: [phone]
+      summary: Save user-confirmed timestamp ranges for a call recording
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordingExcerptSaveInput" }
+      responses:
+        "200":
+          description: Saved excerpt metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordingExcerptSaveResponse" }
+        "400": { description: Invalid excerpt boundaries or metadata }
+        "401": { description: Login required }
+        "403": { description: Recording access denied }
+        "404": { description: Recording not found }
   /twilio/internal-directory:
     get:
       operationId: getPhoneInternalDirectory
@@ -479,6 +540,32 @@ paths:
           description: CALLL HOME or Pablo PRIME paid access is required
 components:
   schemas:
+    RecordingExcerptSaveInput:
+      type: object
+      required: [excerpts]
+      properties:
+        excerpts:
+          type: array
+          maxItems: 40
+          items: { $ref: "#/components/schemas/RecordingExcerpt" }
+    RecordingExcerpt:
+      type: object
+      required: [id, label, startMs, endMs, transcriptText, createdAt, updatedAt]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        startMs: { type: integer, minimum: 0 }
+        endMs: { type: integer, minimum: 1 }
+        transcriptText: { type: string, maxLength: 2000 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RecordingExcerptSaveResponse:
+      type: object
+      required: [excerpts]
+      properties:
+        excerpts:
+          type: array
+          items: { $ref: "#/components/schemas/RecordingExcerpt" }
     PhoneInternalDirectory:
       type: object
       required: [organizationId, canManageLines, members, lines]

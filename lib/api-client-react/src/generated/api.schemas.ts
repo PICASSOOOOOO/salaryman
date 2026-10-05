@@ -5,6 +5,36 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface RecordingExcerpt {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  label: string;
+  /** @minimum 0 */
+  startMs: number;
+  /** @minimum 1 */
+  endMs: number;
+  /** @maxLength 2000 */
+  transcriptText: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordingExcerptSaveInput {
+  /** @maxItems 40 */
+  excerpts: RecordingExcerpt[];
+}
+
+export interface RecordingExcerptSaveResponse {
+  excerpts: RecordingExcerpt[];
+}
+
 export interface PhoneInternalDirectoryMember {
   userId: string;
   displayName: string;
@@ -368,6 +398,27 @@ export type SyncCrmSource200 = { [key: string]: unknown };
 export type ListCrmSyncConflicts200 = { [key: string]: unknown };
 
 export type ResolveCrmSyncConflict200 = { [key: string]: unknown };
+
+export type GetSecureCallRecordingParams = {
+/**
+ * Excerpt start offset in milliseconds; requires endMs.
+ * @minimum 0
+ */
+startMs?: number;
+/**
+ * Excerpt end offset in milliseconds; excerpt length is limited to ten minutes.
+ * @minimum 1
+ */
+endMs?: number;
+download?: GetSecureCallRecordingDownload;
+};
+
+export type GetSecureCallRecordingDownload = typeof GetSecureCallRecordingDownload[keyof typeof GetSecureCallRecordingDownload];
+
+
+export const GetSecureCallRecordingDownload = {
+  NUMBER_1: '1',
+} as const;
 
 export type AssignPhoneInternalLine200 = {
   ok: boolean;

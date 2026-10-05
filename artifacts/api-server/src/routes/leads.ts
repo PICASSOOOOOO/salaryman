@@ -14,6 +14,7 @@ import {
 import { eq, and, or, ilike, desc } from "drizzle-orm";
 import { broadcastLeadEvent } from "../chatServer";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
+import { createLeadNote } from "../lib/crm-lead-notes";
 import multer from "multer";
 import ExcelJS from "exceljs";
 import { Readable } from "node:stream";
@@ -664,12 +665,12 @@ router.post("/leads/:id/notes", async (req: Request, res: Response) => {
   }
 
   const userName = getAuthUserName(req);
-  const [created] = await db.insert(leadNotesTable).values({
+  const created = await createLeadNote({
     leadId,
     userId,
-    userName,
+    userName: userName ?? "Team member",
     note: note.trim(),
-  }).returning();
+  });
 
   res.json({ note: created });
 });

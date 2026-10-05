@@ -1,8 +1,8 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Mic, Search, Phone, Download, AlertTriangle, X, ArrowUpRight, ArrowDownLeft, ChevronRight, ChevronDown, Shield, Voicemail, FileText, Share2 } from 'lucide-react';
+import { Mic, Search, Phone, Download, AlertTriangle, X, ArrowUpRight, ArrowDownLeft, ChevronRight, ChevronDown, Shield, Voicemail, FileText, Share2, Clock3, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
@@ -11,8 +11,46 @@ import {
   type CallRecord, type VoicemailRecord } from '@/lib/phone-utils';
 
 type RecordingItem =
-  | { kind: 'call'; id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; direction: string; transcript: string | null; summary: string | null; recordingUrl: string; ownerId?: string; employeeName?: string; orgId?: number | null; sharedBy?: string; shareId?: number; }
+  | { kind: 'call'; id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; direction: string; transcript: string | null; summary: string | null; recordingUrl: string; ownerId?: string; employeeName?: string; orgId?: number | null; sharedBy?: string; shareId?: number; excerpts: RecordingExcerpt[]; contractHighlights: ContractHighlight[]; transcriptEventsJson?: string; }
   | { kind: 'vm';   id: number; startedAt: string; durationSeconds: number | null; partyName: string | null; partyNumber: string; transcript: string | null; summary: string | null; recordingUrl: string; };
+
+type RecordingExcerpt = {
+  id: string;
+  label: string;
+  startMs: number;
+  endMs: number;
+  transcriptText: string;
+  createdAt: string;
+  updatedAt: string;
+};
+type ContractHighlight = { id: string; category: string; text: string };
+
+function recordingWorkflow(raw?: string | null): { excerpts: RecordingExcerpt[]; contractHighlights: ContractHighlight[] } {
+  try {
+    const root = JSON.parse(raw || '{}') as Record<string, unknown>;
+    const state = root.__recordingWorkflow as Record<string, unknown> | undefined;
+    return {
+      excerpts: Array.isArray(state?.excerpts) ? state.excerpts as RecordingExcerpt[] : [],
+      contractHighlights: Array.isArray(state?.contractHighlights) ? state.contractHighlights as ContractHighlight[] : [],
+    };
+  } catch {
+    return { excerpts: [], contractHighlights: [] };
+  }
+}
+
+function withExcerpts(raw: string | null | undefined, excerpts: RecordingExcerpt[]): string {
+  let root: Record<string, unknown> = {};
+  try { root = JSON.parse(raw || '{}') as Record<string, unknown>; } catch {}
+  const current = root.__recordingWorkflow && typeof root.__recordingWorkflow === 'object'
+    ? root.__recordingWorkflow as Record<string, unknown>
+    : {};
+  return JSON.stringify({ ...root, __recordingWorkflow: { ...current, version: 1, excerpts } });
+}
+
+function timeLabel(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
 
 type ArchiveScope = 'mine' | 'organization' | 'shared';
 type ArchiveCall = CallRecord & { userId?: string; employeeName?: string; orgId?: number | null };
@@ -54,6 +92,13 @@ export default function PhoneRecordingsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'calls' | 'vm' | 'inbound' | 'outbound'>('all');
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playheadSeconds, setPlayheadSeconds] = useState(0);
+  const [draftStartMs, setDraftStartMs] = useState<number | null>(null);
+  const [draftEndMs, setDraftEndMs] = useState<number | null>(null);
+  const [draftLabel, setDraftLabel] = useState('Contract excerpt');
+  const [draftTranscriptText, setDraftTranscriptText] = useState('');
+  const [savingExcerpts, setSavingExcerpts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -190,6 +235,7 @@ export default function PhoneRecordingsPage() {
       .map(c => {
         const archiveCall = c as ArchiveCall;
         const share = sharedItems.find(item => item.callHistoryId === c.id);
+        const workflow = recordingWorkflow(archiveCall.transcriptEventsJson);
         return ({
         kind: 'call' as const,
         id: c.id,
@@ -206,6 +252,9 @@ export default function PhoneRecordingsPage() {
         orgId: archiveCall.orgId,
         sharedBy: share?.fromUserName,
         shareId: share?.id,
+        excerpts: workflow.excerpts,
+        contractHighlights: workflow.contractHighlights,
+        transcriptEventsJson: archiveCall.transcriptEventsJson,
       });
       });
     const vmItems: RecordingItem[] = vms
@@ -262,6 +311,43 @@ export default function PhoneRecordingsPage() {
     it.kind === 'call' ? apiUrl(`twilio/recording/${it.id}`) : apiUrl(`twilio/voicemail-recording/${it.id}`);
   const downloadUrlFor = (it: RecordingItem) =>
     it.kind === 'call' ? apiUrl(`twilio/recording/${it.id}?download=1`) : apiUrl(`twilio/voicemail-recording/${it.id}?download=1`);
+  const excerptUrlFor = (callId: number, excerpt: RecordingExcerpt, download = false) =>
+    apiUrl(`twilio/recording/${callId}?startMs=${excerpt.startMs}&endMs=${excerpt.endMs}${download ? '&download=1' : ''}`);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const callId = Number(params.get('callId'));
+    const voicemailId = Number(params.get('voicemailId'));
+    const linked = items.find(item =>
+      (Number.isInteger(callId) && callId > 0 && item.kind === 'call' && item.id === callId) ||
+      (Number.isInteger(voicemailId) && voicemailId > 0 && item.kind === 'vm' && item.id === voicemailId)
+    );
+    if (linked) setExpandedKey(`${linked.kind}-${linked.id}`);
+  }, [items]);
+
+  const saveExcerpts = async (call: Extract<RecordingItem, { kind: 'call' }>, excerpts: RecordingExcerpt[]) => {
+    setSavingExcerpts(true);
+    setError('');
+    try {
+      const response = await apiFetch(apiUrl(`twilio/recording/${call.id}/excerpts`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ excerpts }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Could not save excerpts (${response.status})`);
+      }
+      setCalls(previous => previous.map(row => row.id === call.id
+        ? { ...row, transcriptEventsJson: withExcerpts(row.transcriptEventsJson, excerpts) }
+        : row));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not save excerpts');
+    } finally {
+      setSavingExcerpts(false);
+    }
+  };
 
   return (
     <PhonePageLayout
@@ -532,8 +618,158 @@ export default function PhoneRecordingsPage() {
                           <Download size={10} /> DOWNLOAD MP3
                         </a>
                       </div>
-                      <audio controls preload="none" src={recordingUrlFor(it)} style={{ width: '100%', height: 32 }} />
+                      <audio
+                        ref={it.kind === 'call' ? audioRef : undefined}
+                        controls
+                        preload="none"
+                        src={recordingUrlFor(it)}
+                        onTimeUpdate={event => setPlayheadSeconds(event.currentTarget.currentTime)}
+                        style={{ width: '100%', height: 32 }}
+                      />
                     </div>
+
+                    {it.kind === 'call' && (
+                      <div style={{ marginBottom: 14, padding: '12px 14px', background: slate(0.2), borderRadius: 6, border: `1px solid ${slate(0.1)}` }}>
+                        <div style={{ fontSize: '0.42rem', color: primary(0.75), letterSpacing: '0.18em', marginBottom: 5 }}>
+                          CONTRACT PASSAGES · REVIEW AGAINST AUDIO
+                        </div>
+                        <div style={{ fontSize: '0.5rem', color: slate(0.56), lineHeight: 1.6, marginBottom: 10 }}>
+                          Suggestions are transcript keyword matches, not legal conclusions. Scrub the source recording and set excerpt boundaries yourself.
+                        </div>
+                        {it.transcript && !/^\s*(?:Caller|Employee|Contact|External)\s*:/im.test(it.transcript) && (
+                          <div style={{ fontSize: '0.48rem', color: warning(0.8), marginBottom: 8 }}>
+                            Speaker labels are unavailable for this transcript; SALARYMAN does not guess who spoke.
+                          </div>
+                        )}
+                        {it.contractHighlights.length > 0 ? (
+                          <div style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
+                            {it.contractHighlights.map(highlight => (
+                              <button
+                                key={highlight.id}
+                                type="button"
+                                onClick={() => {
+                                  setDraftLabel(`${highlight.category} excerpt`);
+                                  setDraftTranscriptText(highlight.text);
+                                }}
+                                style={{
+                                  textAlign: 'left', cursor: 'pointer', padding: '8px 10px',
+                                  border: `1px solid ${warning(0.22)}`, borderRadius: 4,
+                                  background: warning(0.05), color: slate(0.7),
+                                  fontSize: '0.52rem', lineHeight: 1.6,
+                                }}
+                                title="Select this passage text, then scrub and mark its audio boundaries"
+                              >
+                                <span style={{ color: warning(0.85), textTransform: 'uppercase', fontSize: '0.42rem', letterSpacing: '0.1em' }}>
+                                  {highlight.category}
+                                </span>
+                                <span style={{ display: 'block', marginTop: 3 }}>{highlight.text}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.5rem', color: slate(0.42), marginBottom: 12 }}>No likely contract passages found.</div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setDraftStartMs(Math.round((audioRef.current?.currentTime ?? playheadSeconds) * 1000))}
+                            style={{ padding: '6px 9px', borderRadius: 4, border: `1px solid ${primary(0.3)}`, background: primary(0.06), color: primary(0.85), cursor: 'pointer', fontSize: '0.43rem', letterSpacing: '0.08em' }}
+                          >
+                            MARK START · {draftStartMs == null ? '—' : timeLabel(draftStartMs)}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDraftEndMs(Math.round((audioRef.current?.currentTime ?? playheadSeconds) * 1000))}
+                            style={{ padding: '6px 9px', borderRadius: 4, border: `1px solid ${primary(0.3)}`, background: primary(0.06), color: primary(0.85), cursor: 'pointer', fontSize: '0.43rem', letterSpacing: '0.08em' }}
+                          >
+                            MARK END · {draftEndMs == null ? '—' : timeLabel(draftEndMs)}
+                          </button>
+                          <span style={{ fontSize: '0.45rem', color: slate(0.45) }}>
+                            PLAYHEAD {timeLabel(playheadSeconds * 1000)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(150px, 0.7fr) minmax(220px, 1.3fr) auto', gap: 7 }}>
+                          <input
+                            aria-label="Excerpt label"
+                            value={draftLabel}
+                            maxLength={120}
+                            onChange={event => setDraftLabel(event.target.value)}
+                            style={{ ...INPUT_STYLE, minWidth: 0 }}
+                          />
+                          <input
+                            aria-label="Transcript passage for excerpt"
+                            value={draftTranscriptText}
+                            maxLength={2000}
+                            onChange={event => setDraftTranscriptText(event.target.value)}
+                            placeholder="Optional transcript passage"
+                            style={{ ...INPUT_STYLE, minWidth: 0 }}
+                          />
+                          <PhoneBtn
+                            size="sm"
+                            disabled={savingExcerpts || draftStartMs == null || draftEndMs == null || draftEndMs <= draftStartMs || !draftLabel.trim()}
+                            onClick={() => {
+                              const now = new Date().toISOString();
+                              const next: RecordingExcerpt[] = [
+                                ...it.excerpts,
+                                {
+                                  id: globalThis.crypto?.randomUUID?.() ?? `excerpt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                                  label: draftLabel.trim(),
+                                  startMs: draftStartMs!,
+                                  endMs: draftEndMs!,
+                                  transcriptText: draftTranscriptText.trim(),
+                                  createdAt: now,
+                                  updatedAt: now,
+                                },
+                              ];
+                              void saveExcerpts(it, next);
+                            }}
+                          >
+                            {savingExcerpts ? 'SAVING…' : 'SAVE EXCERPT'}
+                          </PhoneBtn>
+                        </div>
+
+                        {it.excerpts.length > 0 && (
+                          <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+                            {it.excerpts.map(excerpt => (
+                              <div key={excerpt.id} style={{ padding: '9px 10px', border: `1px solid ${slate(0.12)}`, borderRadius: 4, background: slate(0.25) }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                                  <span style={{ fontSize: '0.5rem', color: slate(0.8) }}>
+                                    <Clock3 size={10} style={{ verticalAlign: '-2px', marginRight: 5 }} />
+                                    {excerpt.label} · {timeLabel(excerpt.startMs)}–{timeLabel(excerpt.endMs)}
+                                  </span>
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <a
+                                      href={excerptUrlFor(it.id, excerpt, true)}
+                                      download={`call-${it.id}-excerpt-${excerpt.startMs}-${excerpt.endMs}.mp3`}
+                                      style={{ color: primary(0.8), fontSize: '0.43rem', textDecoration: 'none' }}
+                                    >
+                                      <Download size={11} style={{ verticalAlign: '-2px', marginRight: 3 }} />DOWNLOAD
+                                    </a>
+                                    <button
+                                      type="button"
+                                      aria-label={`Delete ${excerpt.label}`}
+                                      disabled={savingExcerpts}
+                                      onClick={() => void saveExcerpts(it, it.excerpts.filter(row => row.id !== excerpt.id))}
+                                      style={{ border: 0, background: 'transparent', color: destructive(0.75), cursor: 'pointer', padding: 2 }}
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                                {excerpt.transcriptText && (
+                                  <div style={{ fontSize: '0.48rem', color: slate(0.55), marginBottom: 6 }}>{excerpt.transcriptText}</div>
+                                )}
+                                <audio controls preload="none" src={excerptUrlFor(it.id, excerpt)} style={{ width: '100%', height: 30 }} />
+                                <div style={{ fontSize: '0.42rem', color: slate(0.4), marginTop: 4 }}>
+                                  Separate excerpt copy; the original recording is unchanged. Verify boundaries and wording before legal use.
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {(it.summary || it.transcript) && (
                       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (it.summary && it.transcript ? '1fr 1fr' : '1fr'), gap: 16 }}>

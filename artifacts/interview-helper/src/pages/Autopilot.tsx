@@ -49,6 +49,7 @@ interface MarketResearchPrefs {
   subject: string;
   region: string;
   competitors: string;
+  autoInvestigateRecentCalls: boolean;
 }
 
 interface DomainConfig {
@@ -198,6 +199,7 @@ function readMarketResearchPrefs(prefs: Record<string, unknown>): MarketResearch
     subject: typeof prefs.subject === 'string' ? prefs.subject : '',
     region: typeof prefs.region === 'string' ? prefs.region : '',
     competitors: typeof prefs.competitors === 'string' ? prefs.competitors : '',
+    autoInvestigateRecentCalls: prefs.autoInvestigateRecentCalls === true,
   };
 }
 
@@ -769,21 +771,24 @@ function MarketResearchPrefsEditor({
   const [subject, setSubject] = useState(initial.subject);
   const [region, setRegion] = useState(initial.region);
   const [competitors, setCompetitors] = useState(initial.competitors);
+  const [autoInvestigateRecentCalls, setAutoInvestigateRecentCalls] = useState(initial.autoInvestigateRecentCalls);
 
   useEffect(() => {
     const next = readMarketResearchPrefs(cfg.prefs);
     setSubject(next.subject);
     setRegion(next.region);
     setCompetitors(next.competitors);
+    setAutoInvestigateRecentCalls(next.autoInvestigateRecentCalls);
   }, [cfg.prefs]);
 
   const unchanged = subject.trim() === initial.subject
     && region.trim() === initial.region
-    && competitors.trim() === initial.competitors;
+    && competitors.trim() === initial.competitors
+    && autoInvestigateRecentCalls === initial.autoInvestigateRecentCalls;
 
   return (
     <div className="mt-4 border-t border-cyan-500/10 pt-3" data-testid="market-research-settings">
-      <p className={PREFS_HEADER_CLS}>RESEARCH SCOPE — one source-linked brief per day, for owner review.</p>
+      <p className={PREFS_HEADER_CLS}>PUBLIC-SOURCE RESEARCH · CITED FINDINGS ARE SAVED IN THE CRM FOR OWNER REVIEW.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={LABEL_CLS} htmlFor="market-research-subject">MARKET OR PRODUCT *</label>
@@ -823,12 +828,34 @@ function MarketResearchPrefsEditor({
             placeholder="Names or a short list"
           />
         </div>
+        <label className="sm:col-span-2 flex items-start gap-2 rounded border border-cyan-500/15 bg-[#080c12] px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoInvestigateRecentCalls}
+            disabled={busy}
+            onChange={(event) => setAutoInvestigateRecentCalls(event.target.checked)}
+            className="mt-0.5 accent-cyan-400"
+          />
+          <span>
+            <span className="block font-mono text-[9px] tracking-wider text-cyan-300/75">
+              INVESTIGATE COMPANY LEADS AFTER CALLS
+            </span>
+            <span className="mt-1 block font-sans text-[10px] leading-relaxed text-cyan-500/45">
+              Check company leads linked to calls from the last 30 days. Save cited notes to this CRM for owner review; do not research personal profiles or change external sites.
+            </span>
+          </span>
+        </label>
       </div>
       <div className="flex justify-end mt-3">
         <button
           type="button"
           disabled={busy || unchanged}
-          onClick={() => onSave({ subject: subject.trim(), region: region.trim(), competitors: competitors.trim() })}
+          onClick={() => onSave({
+            subject: subject.trim(),
+            region: region.trim(),
+            competitors: competitors.trim(),
+            autoInvestigateRecentCalls,
+          })}
           className={`${SAVE_BTN_CLS} ${busy || unchanged ? 'opacity-50' : ''}`}
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
@@ -890,7 +917,7 @@ function fmtRelative(iso: string | null): string {
   return fmtTime(iso);
 }
 
-function readResearchReview(detail: unknown): { report: string; sources: { title: string; url: string }[] } | null {
+function readResearchReview(detail: unknown): { title: string; report: string; sources: { title: string; url: string }[] } | null {
   if (typeof detail !== 'object' || detail === null) return null;
   const value = detail as Record<string, unknown>;
   if (typeof value.report !== 'string' || !Array.isArray(value.sources)) return null;
@@ -909,7 +936,13 @@ function readResearchReview(detail: unknown): { report: string; sources: { title
       return [];
     }
   });
-  return sources.length ? { report: value.report, sources } : null;
+  return sources.length ? {
+    title: typeof value.company === 'string'
+      ? value.company
+      : typeof value.subject === 'string' ? value.subject : 'Public research',
+    report: value.report,
+    sources,
+  } : null;
 }
 
 const ACTIVITY_POLL_MS = 15000;
@@ -1454,7 +1487,7 @@ export default function Autopilot() {
                         </p>
                       )}
                       <p className="mt-2 font-sans text-[10px] text-cyan-500/40 leading-relaxed">
-                        Read-only web research. No competitor or customer outreach, publishing, or purchases.
+                        Public web research only. Cited results may be saved to SALARYMAN’s CRM for owner review; no external sites are changed or contacted.
                       </p>
                     </>
                   )}
@@ -1539,7 +1572,7 @@ export default function Autopilot() {
               {activity.map((row) => {
                 const oc = OUTCOME_STYLE[row.outcome] ?? { text: 'text-cyan-500/50', label: row.outcome.toUpperCase() };
                 const meta = data.meta[row.domain];
-                const researchReview = row.domain === 'market_research' && row.action === 'research_brief'
+                const researchReview = row.domain === 'market_research' && ['research_brief', 'lead_investigation'].includes(row.action)
                   ? readResearchReview(row.detail)
                   : null;
                 return (
@@ -1554,8 +1587,9 @@ export default function Autopilot() {
                       {researchReview && (
                         <details className="mt-2 rounded border border-cyan-500/15 bg-[#080c12] px-3 py-2">
                           <summary className="cursor-pointer font-mono text-[9px] tracking-wider text-cyan-300/75">
-                            REVIEW BRIEF · {researchReview.sources.length} SOURCES
+                            {row.action === 'lead_investigation' ? 'REVIEW COMPANY RESEARCH' : 'REVIEW MARKET BRIEF'} · {researchReview.sources.length} SOURCES
                           </summary>
+                          <p className="mt-2 font-mono text-[9px] tracking-wider text-cyan-500/45">{researchReview.title}</p>
                           <div className="mt-3 whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-cyan-100/75">
                             {researchReview.report}
                           </div>

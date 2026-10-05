@@ -74,6 +74,7 @@ export interface CallRecord {
   callType?: string;
   transcript?: string | null;
   summary?: string | null;
+  transcriptEventsJson?: string;
   notes?: string | null;
   calendarEventId?: number | null;
   contactId?: number | null;

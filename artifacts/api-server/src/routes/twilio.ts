@@ -1,4 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
+import { spawn } from "child_process";
 import { eq, desc, and, asc, sql, gte, inArray, isNull } from "drizzle-orm";
 import {
   db,
@@ -56,6 +57,13 @@ import { requireFeature } from "../middlewares/requirePro";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
+import { extractCallerIdentityEvidence } from "../lib/crm-recorder";
+import {
+  findContractualHighlights,
+  readRecordingWorkflowState,
+  updateRecordingWorkflowState,
+  validateRecordingExcerpts,
+} from "../lib/recording-excerpts";
 import { toE164, SUPPORTED_COUNTRIES, regulatoryRequirement, getCountryInfo, isSupportedCountry, countryForCity, DEFAULT_COUNTRY } from "../lib/phone";
 import { resolveUserCountry, resolveUserCity, resolveOwningNumberCountry } from "../lib/phone-context";
 import { getUserOutboundNumber } from "../lib/phone-number-service";
@@ -116,6 +124,22 @@ function getAppHost(req?: Request): string {
   if (process.env.REPLIT_DEV_DOMAIN) return process.env.REPLIT_DEV_DOMAIN;
   const rawHost = req?.headers?.host as string | undefined;
   return rawHost ? rawHost.split(",")[0].trim() : "";
+}
+
+function appAbsoluteUrl(req: Request, path: string): string {
+  const host = getAppHost(req);
+  const origin = /^https?:\/\//i.test(host) ? host.replace(/\/+$/, "") : `https://${host}`;
+  return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function htmlEscape(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
 }
 
 async function verifyCallOwnership(userId: string, callSid: string): Promise<boolean> {
@@ -739,27 +763,100 @@ async function transcribeRecordingOnce(recordingKey: string, audio: Buffer): Pro
   }
 }
 
-async function sendMissedCallEmail(userId: string, fromNumber: string, fromName?: string) {
+async function sendMissedCallEmail(
+  userId: string,
+  fromNumber: string,
+  fromName?: string,
+  voicemailId?: number,
+  req?: Request,
+) {
   try {
     const { client, fromEmail } = await getUncachableResendClient();
     const users = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     const userEmail = (users[0] as { email?: string } | undefined)?.email;
     if (!userEmail) return;
+    const voicemailLink = voicemailId && req
+      ? appAbsoluteUrl(req, `/phone?tab=rec&voicemailId=${voicemailId}`)
+      : "";
     await client.emails.send({
       from: fromEmail,
       to: [userEmail],
       subject: `Missed Call from ${fromName || fromNumber}`,
       html: `<div style="font-family:monospace;background:#030803;color:#00ff41;padding:24px;max-width:480px;">
 <h2 style="color:#00ff41;letter-spacing:0.1em">[ MISSED CALL ]</h2>
-<p><strong>From:</strong> ${fromName || "Unknown"}</p>
-<p><strong>Number:</strong> ${fromNumber}</p>
+<p><strong>From:</strong> ${htmlEscape(fromName || "Unknown")}</p>
+<p><strong>Number:</strong> ${htmlEscape(fromNumber)}</p>
 <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+${voicemailLink ? `<p><a href="${htmlEscape(voicemailLink)}" style="color:#00ff41">Sign in to listen to the voicemail</a></p>` : ""}
 <p style="color:rgba(0,255,65,0.5);font-size:0.8em">Calll Home · Business Phone System</p>
 </div>`,
     });
   } catch (e: unknown) {
     console.error("[CalllHome] missed call email error:", e instanceof Error ? e.message : "Unknown");
   }
+}
+
+async function sendRecordingReadyEmailOnce(callId: number, userId: string, req: Request): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`recording-email:${callId}`}))`);
+    const [call] = await tx.select().from(callHistoryTable)
+      .where(and(eq(callHistoryTable.id, callId), eq(callHistoryTable.userId, userId)))
+      .for("update")
+      .limit(1);
+    if (!call?.recordingUrl) return;
+    if (readRecordingWorkflowState(call.transcriptEventsJson).emailSentAt) return;
+
+    const [user] = await tx.select({ email: usersTable.email }).from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+    if (!user?.email) return;
+    const { client, fromEmail } = await getUncachableResendClient();
+    const title = call.callerName || call.recipientNumber || "Call recording";
+    const recordingLink = appAbsoluteUrl(req, `/phone?tab=rec&callId=${call.id}`);
+    await client.emails.send({
+      from: fromEmail,
+      to: [user.email],
+      subject: `Call recording ready: ${title}`,
+      html: `<div style="font-family:Arial,sans-serif;color:#191919;padding:24px;max-width:560px">
+<h2 style="margin:0 0 14px">Your call recording is ready</h2>
+<p style="line-height:1.6">The recording has been saved to SALARYMAN. Sign in to view the transcript, playback, and any saved excerpts.</p>
+<p><strong>Contact:</strong> ${htmlEscape(title)}<br><strong>Number:</strong> ${htmlEscape(call.recipientNumber)}</p>
+<p><a href="${htmlEscape(recordingLink)}" style="display:inline-block;background:#151515;color:#fff;padding:10px 16px;text-decoration:none;border-radius:4px">Sign in to open recording</a></p>
+<p style="font-size:12px;color:#666">This link does not grant recording access by itself. SALARYMAN sign-in and recording permissions are still required.</p>
+</div>`,
+    });
+    await tx.update(callHistoryTable).set({
+      transcriptEventsJson: updateRecordingWorkflowState(call.transcriptEventsJson, {
+        ...readRecordingWorkflowState(call.transcriptEventsJson),
+        emailSentAt: new Date().toISOString(),
+      }),
+    }).where(eq(callHistoryTable.id, call.id));
+  });
+}
+
+async function saveRecordingAnalysis(
+  callId: number,
+  contractHighlights: ReturnType<typeof findContractualHighlights>,
+  callerName?: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [call] = await tx.select({
+      callerName: callHistoryTable.callerName,
+      transcriptEventsJson: callHistoryTable.transcriptEventsJson,
+    }).from(callHistoryTable)
+      .where(eq(callHistoryTable.id, callId))
+      .for("update")
+      .limit(1);
+    if (!call) return;
+    const state = readRecordingWorkflowState(call.transcriptEventsJson);
+    await tx.update(callHistoryTable).set({
+      transcriptEventsJson: updateRecordingWorkflowState(call.transcriptEventsJson, {
+        ...state,
+        contractHighlights,
+      }),
+      ...(!call.callerName && callerName ? { callerName: callerName.slice(0, 64) } : {}),
+    }).where(eq(callHistoryTable.id, callId));
+  });
 }
 
 router.get("/twilio/system-status", requireAuth, requireFeature("phone_system"), async (_req, res) => {
@@ -4770,6 +4867,121 @@ router.get("/twilio/history/:userId", requireAuth, requireFeature("phone_system"
 // Stream a Twilio recording (MP3) to an authenticated user. Twilio recording
 // URLs require Basic auth (AccountSid + AuthToken), so the browser can't fetch
 // them directly — we proxy with auth and verify ownership first.
+async function loadCallRecordingBytes(recordingUrl: string): Promise<Buffer> {
+  if (recordingUrl.startsWith("/objects/")) {
+    const file = await new ObjectStorageService().getObjectEntityFile(recordingUrl);
+    const [bytes] = await file.download();
+    const buffer = Buffer.from(bytes);
+    if (!buffer.length || buffer.length > 150 * 1024 * 1024) throw new Error("Recording exceeds excerpt processing limits");
+    return buffer;
+  }
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!accountSid || !authToken) throw new Error("Twilio credentials not configured");
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const upstream = await fetch(recordingUrl, { headers: { Authorization: `Basic ${auth}` } });
+  if (!upstream.ok) throw new Error(`Twilio responded ${upstream.status}`);
+  const bytes = Buffer.from(await upstream.arrayBuffer());
+  if (!bytes.length || bytes.length > 150 * 1024 * 1024) throw new Error("Recording exceeds excerpt processing limits");
+  return bytes;
+}
+
+async function createMp3Excerpt(audio: Buffer, startMs: number, endMs: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const startSeconds = (startMs / 1000).toFixed(3);
+    const durationSeconds = ((endMs - startMs) / 1000).toFixed(3);
+    const ffmpeg = spawn("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-ss", startSeconds,
+      "-i", "pipe:0",
+      "-t", durationSeconds,
+      "-map", "0:a:0",
+      "-vn",
+      "-codec:a", "libmp3lame",
+      "-q:a", "4",
+      "-f", "mp3",
+      "pipe:1",
+    ], { stdio: ["pipe", "pipe", "pipe"] });
+    const chunks: Buffer[] = [];
+    let outputBytes = 0;
+    let stderr = "";
+    ffmpeg.stdout.on("data", (chunk: Buffer) => {
+      outputBytes += chunk.length;
+      if (outputBytes > 30 * 1024 * 1024) {
+        ffmpeg.kill("SIGKILL");
+        reject(new Error("Excerpt exceeds the export size limit"));
+        return;
+      }
+      chunks.push(Buffer.from(chunk));
+    });
+    ffmpeg.stderr.on("data", (chunk: Buffer) => {
+      if (stderr.length < 2000) stderr += chunk.toString();
+    });
+    ffmpeg.on("error", reject);
+    ffmpeg.on("close", (code) => {
+      if (code === 0 && chunks.length) resolve(Buffer.concat(chunks));
+      else reject(new Error(`Could not create excerpt: ${stderr.slice(-600) || `ffmpeg exited ${code}`}`));
+    });
+    ffmpeg.stdin.on("error", reject);
+    ffmpeg.stdin.end(audio);
+  });
+}
+
+router.put("/twilio/recording/:callId/excerpts", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const callId = Number(req.params.callId);
+    if (!userId || !Number.isInteger(callId) || callId <= 0) {
+      res.status(400).json({ error: "callId required" });
+      return;
+    }
+    const { call, allowed } = await getCallRecordingAccess(userId, callId);
+    if (!call) {
+      res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    if (!allowed) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+    if (!call.recordingUrl) {
+      res.status(404).json({ error: "No recording on file for this call" });
+      return;
+    }
+    const excerpts = validateRecordingExcerpts(req.body?.excerpts, call.durationSeconds);
+    if (!excerpts) {
+      res.status(400).json({
+        error: "Excerpts must have unique ids, valid time ranges within the call, and be no longer than 10 minutes each.",
+      });
+      return;
+    }
+    const saved = await db.transaction(async (tx) => {
+      const [fresh] = await tx.select({ transcriptEventsJson: callHistoryTable.transcriptEventsJson })
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.id, callId))
+        .for("update")
+        .limit(1);
+      if (!fresh) return false;
+      const state = readRecordingWorkflowState(fresh.transcriptEventsJson);
+      await tx.update(callHistoryTable).set({
+        transcriptEventsJson: updateRecordingWorkflowState(fresh.transcriptEventsJson, {
+          ...state,
+          excerpts,
+        }),
+      }).where(eq(callHistoryTable.id, callId));
+      return true;
+    });
+    if (!saved) {
+      res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    res.json({ excerpts });
+  } catch (err: unknown) {
+    console.error("[CalllHome] recording excerpt save error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to save recording excerpts" });
+  }
+});
+
 router.get("/twilio/recording/:callId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
@@ -4789,6 +5001,33 @@ router.get("/twilio/recording/:callId", requireAuth, requireFeature("phone_syste
     }
     if (!call.recordingUrl) {
       res.status(404).json({ error: "No recording on file for this call" });
+      return;
+    }
+    const hasStart = req.query.startMs !== undefined;
+    const hasEnd = req.query.endMs !== undefined;
+    if (hasStart || hasEnd) {
+      const startMs = typeof req.query.startMs === "string" ? Number(req.query.startMs) : NaN;
+      const endMs = typeof req.query.endMs === "string" ? Number(req.query.endMs) : NaN;
+      const durationMs = Math.max(0, (call.durationSeconds ?? 0) * 1000);
+      if (
+        !Number.isInteger(startMs) || !Number.isInteger(endMs) ||
+        startMs < 0 || endMs <= startMs || endMs > durationMs ||
+        endMs - startMs > 10 * 60 * 1000
+      ) {
+        res.status(400).json({ error: "Provide valid startMs/endMs within the call duration; excerpts are limited to 10 minutes." });
+        return;
+      }
+      const source = await loadCallRecordingBytes(call.recordingUrl);
+      const excerpt = await createMp3Excerpt(source, startMs, endMs);
+      const disposition = req.query.download === "1" ? "attachment" : "inline";
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", excerpt.length);
+      res.setHeader("Content-Disposition", `${disposition}; filename="call-${callId}-excerpt-${startMs}-${endMs}.mp3"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Call-Id", String(callId));
+      res.setHeader("X-Excerpt-Start-Ms", String(startMs));
+      res.setHeader("X-Excerpt-End-Ms", String(endMs));
+      res.send(excerpt);
       return;
     }
     if (call.recordingUrl.startsWith("/objects/")) {
@@ -5406,7 +5645,7 @@ router.post("/twilio/webhook/recording", async (req, res) => {
       });
 
       if (voicemailResult.created) {
-        await sendMissedCallEmail(userId, fromNumber ?? "unknown", fromName);
+        await sendMissedCallEmail(userId, fromNumber ?? "unknown", fromName, voicemailResult.vm.id, req);
         console.log(`[CalllHome] webhook/recording: voicemail created id=${voicemailResult.vm.id} from=${fromNumber} orgId=${orgId}`);
       }
       await recordTelephonyActivity({
@@ -5545,14 +5784,23 @@ router.post("/twilio/webhook/recording", async (req, res) => {
             }
           }
         }
+        const callerEvidence = transcript ? extractCallerIdentityEvidence(transcript) : {};
+        const contractHighlights = transcript ? findContractualHighlights(transcript) : [];
+        const emailedUsers = new Set<string>();
         for (const call of finalized.rows) {
+          if (transcript) {
+            await saveRecordingAnalysis(call.id, contractHighlights, callerEvidence.name);
+          }
           await recordTelephonyActivity({
             userId: call.userId,
             orgId: call.orgId ?? null,
             channel: "call",
             direction: call.direction === "inbound" ? "inbound" : "outbound",
             phone: call.recipientNumber,
-            contactName: call.callerName ?? undefined,
+            contactName: callerEvidence.name ?? call.callerName ?? undefined,
+            dateOfBirth: callerEvidence.dateOfBirth,
+            email: callerEvidence.email,
+            company: callerEvidence.company,
             contactId: call.contactId ?? undefined,
             recordingUrl: finalized.storedRecordingUrl,
             body: transcript || undefined,
@@ -5560,6 +5808,10 @@ router.post("/twilio/webhook/recording", async (req, res) => {
             durationSeconds: call.durationSeconds ?? undefined,
             twilioSid: call.twilioCallSid ?? CallSid,
           }).catch(() => {});
+          if (!emailedUsers.has(call.userId)) {
+            await sendRecordingReadyEmailOnce(call.id, call.userId, req);
+            emailedUsers.add(call.userId);
+          }
         }
       }
     }
@@ -5632,11 +5884,11 @@ router.post("/twilio/webhook/realtime-transcription", async (req, res) => {
       const rows = [parentCall, ...children];
       const cursorKey = `${transcriptionSid}|${track}`;
       for (const row of rows) {
-        let events: Record<string, number> = {};
+        let events: Record<string, unknown> = {};
         try {
           const parsed: unknown = JSON.parse(row.transcriptEventsJson || "{}");
           if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-            events = parsed as Record<string, number>;
+            events = parsed as Record<string, unknown>;
           }
         } catch {}
         const lastSequence = Number(events[cursorKey] ?? 0);

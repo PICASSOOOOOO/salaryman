@@ -339,6 +339,83 @@ export const ResolveCrmSyncConflictResponse = zod.object({
 
 
 /**
+ * @summary Stream an authorized call recording or a bounded excerpt
+ */
+export const GetSecureCallRecordingParams = zod.object({
+  "callId": zod.coerce.number().int()
+})
+
+export const getSecureCallRecordingQueryStartMsMin = 0;
+
+
+
+
+export const GetSecureCallRecordingQueryParams = zod.object({
+  "startMs": zod.coerce.number().int().min(getSecureCallRecordingQueryStartMsMin).optional().describe('Excerpt start offset in milliseconds; requires endMs.'),
+  "endMs": zod.coerce.number().int().min(1).optional().describe('Excerpt end offset in milliseconds; excerpt length is limited to ten minutes.'),
+  "download": zod.enum(['1']).optional()
+})
+
+export const GetSecureCallRecordingResponse = zod.unknown()
+
+
+/**
+ * @summary Save user-confirmed timestamp ranges for a call recording
+ */
+export const SaveCallRecordingExcerptsParams = zod.object({
+  "callId": zod.coerce.number().int()
+})
+
+export const saveCallRecordingExcerptsBodyExcerptsItemIdMax = 64;
+
+export const saveCallRecordingExcerptsBodyExcerptsItemLabelMax = 120;
+
+export const saveCallRecordingExcerptsBodyExcerptsItemStartMsMin = 0;
+
+
+export const saveCallRecordingExcerptsBodyExcerptsItemTranscriptTextMax = 2000;
+
+export const saveCallRecordingExcerptsBodyExcerptsMax = 40;
+
+
+
+export const SaveCallRecordingExcerptsBody = zod.object({
+  "excerpts": zod.array(zod.object({
+  "id": zod.string().min(1).max(saveCallRecordingExcerptsBodyExcerptsItemIdMax),
+  "label": zod.string().min(1).max(saveCallRecordingExcerptsBodyExcerptsItemLabelMax),
+  "startMs": zod.number().int().min(saveCallRecordingExcerptsBodyExcerptsItemStartMsMin),
+  "endMs": zod.number().int().min(1),
+  "transcriptText": zod.string().max(saveCallRecordingExcerptsBodyExcerptsItemTranscriptTextMax),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+})).max(saveCallRecordingExcerptsBodyExcerptsMax)
+})
+
+export const saveCallRecordingExcerptsResponseExcerptsItemIdMax = 64;
+
+export const saveCallRecordingExcerptsResponseExcerptsItemLabelMax = 120;
+
+export const saveCallRecordingExcerptsResponseExcerptsItemStartMsMin = 0;
+
+
+export const saveCallRecordingExcerptsResponseExcerptsItemTranscriptTextMax = 2000;
+
+
+
+export const SaveCallRecordingExcerptsResponse = zod.object({
+  "excerpts": zod.array(zod.object({
+  "id": zod.string().min(1).max(saveCallRecordingExcerptsResponseExcerptsItemIdMax),
+  "label": zod.string().min(1).max(saveCallRecordingExcerptsResponseExcerptsItemLabelMax),
+  "startMs": zod.number().int().min(saveCallRecordingExcerptsResponseExcerptsItemStartMsMin),
+  "endMs": zod.number().int().min(1),
+  "transcriptText": zod.string().max(saveCallRecordingExcerptsResponseExcerptsItemTranscriptTextMax),
+  "createdAt": zod.date(),
+  "updatedAt": zod.date()
+}))
+})
+
+
+/**
  * @summary List eligible CALLL HOME employees and office lines in the active organization
  */
 export const GetPhoneInternalDirectoryResponse = zod.object({

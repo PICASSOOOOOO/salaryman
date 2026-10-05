@@ -38,6 +38,7 @@ import type {
   CrmSyncConflictResolutionInput,
   DeleteCrmSource200,
   ErrorEnvelope,
+  GetSecureCallRecordingParams,
   HealthStatus,
   InterviewQuestionInput,
   ListCrmSources200,
@@ -53,6 +54,8 @@ import type {
   PabloInternalDeliveryResult,
   PhoneInternalDirectory,
   PhoneInternalLineAssignment,
+  RecordingExcerptSaveInput,
+  RecordingExcerptSaveResponse,
   ResolveCrmSyncConflict200,
   SwitchOrganizationInput,
   SwitchOrganizationResult,
@@ -2115,6 +2118,176 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getResolveCrmSyncConflictMutationOptions(options));
+    }
+
+export const getGetSecureCallRecordingUrl = (callId: number,
+    params?: GetSecureCallRecordingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/twilio/recording/${callId}?${stringifiedParams}` : `/api/twilio/recording/${callId}`
+}
+
+/**
+ * @summary Stream an authorized call recording or a bounded excerpt
+ */
+export const getSecureCallRecording = async (callId: number,
+    params?: GetSecureCallRecordingParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSecureCallRecordingUrl(callId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSecureCallRecordingQueryKey = (callId: number,
+    params?: GetSecureCallRecordingParams,) => {
+    return [
+    `/api/twilio/recording/${callId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSecureCallRecordingQueryOptions = <TData = Awaited<ReturnType<typeof getSecureCallRecording>>, TError = ErrorType<void>>(callId: number,
+    params?: GetSecureCallRecordingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSecureCallRecording>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSecureCallRecordingQueryKey(callId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSecureCallRecording>>> = ({ signal }) => getSecureCallRecording(callId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: callId !== null && callId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSecureCallRecording>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSecureCallRecordingQueryResult = NonNullable<Awaited<ReturnType<typeof getSecureCallRecording>>>
+export type GetSecureCallRecordingQueryError = ErrorType<void>
+
+
+/**
+ * @summary Stream an authorized call recording or a bounded excerpt
+ */
+
+export function useGetSecureCallRecording<TData = Awaited<ReturnType<typeof getSecureCallRecording>>, TError = ErrorType<void>>(
+ callId: number,
+    params?: GetSecureCallRecordingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSecureCallRecording>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSecureCallRecordingQueryOptions(callId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveCallRecordingExcerptsUrl = (callId: number,) => {
+
+
+
+
+  return `/api/twilio/recording/${callId}/excerpts`
+}
+
+/**
+ * @summary Save user-confirmed timestamp ranges for a call recording
+ */
+export const saveCallRecordingExcerpts = async (callId: number,
+    recordingExcerptSaveInput: RecordingExcerptSaveInput, options?: Parameters<typeof customFetch>[1]): Promise<RecordingExcerptSaveResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<RecordingExcerptSaveResponse>(getSaveCallRecordingExcerptsUrl(callId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(recordingExcerptSaveInput)
+  }
+);}
+
+
+
+
+
+export const getSaveCallRecordingExcerptsMutationKey = () => ['saveCallRecordingExcerpts'] as const;
+
+export const getSaveCallRecordingExcerptsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCallRecordingExcerpts>>, TError,SaveCallRecordingExcerptsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveCallRecordingExcerpts>>, TError,SaveCallRecordingExcerptsMutationVariables, TContext> => {
+
+const mutationKey = getSaveCallRecordingExcerptsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCallRecordingExcerpts>>, SaveCallRecordingExcerptsMutationVariables> = (props) => {
+          const {callId,data} = props ?? {};
+
+          return  saveCallRecordingExcerpts(callId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveCallRecordingExcerptsMutationResult = NonNullable<Awaited<ReturnType<typeof saveCallRecordingExcerpts>>>
+    export type SaveCallRecordingExcerptsMutationBody = BodyType<RecordingExcerptSaveInput>
+    export type SaveCallRecordingExcerptsMutationError = ErrorType<void>
+    export type SaveCallRecordingExcerptsMutationVariables = {callId: number;data: BodyType<RecordingExcerptSaveInput>}
+
+    /**
+ * @summary Save user-confirmed timestamp ranges for a call recording
+ */
+export const useSaveCallRecordingExcerpts = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCallRecordingExcerpts>>, TError,SaveCallRecordingExcerptsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveCallRecordingExcerpts>>,
+        TError,
+        SaveCallRecordingExcerptsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveCallRecordingExcerptsMutationOptions(options));
     }
 
 export const getGetPhoneInternalDirectoryUrl = () => {
