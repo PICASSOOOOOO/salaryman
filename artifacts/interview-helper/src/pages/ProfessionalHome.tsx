@@ -17,7 +17,7 @@ const MODULES = [
   },
   {
     id: "crm",
-    title: "CRM",
+    title: "CALLL HOME",
     description: "Your customer records stay under your organization’s control. CALLL HOME connects calls, texts, and follow-up notes to those same contacts.",
     icon: Users,
     links: [

@@ -65,7 +65,7 @@ describe("ProfessionalHome header", () => {
     expect(container.textContent).toContain("SALARYMAN OS");
   });
 
-  it("shows exactly two feature cards and explains the CRM and CALLL HOME connection", () => {
+  it("labels the customer card CALLL HOME and keeps its existing action tabs", () => {
     act(() => root.render(<ProfessionalHome />));
 
     const cards = Array.from(container.querySelectorAll<HTMLElement>(".home-module"));
@@ -78,9 +78,13 @@ describe("ProfessionalHome header", () => {
       "/business/autopilot",
     ]);
 
-    expect(cards[1].querySelector("h2")?.textContent).toBe("CRM");
+    expect(cards[1].querySelector("h2")?.textContent).toBe("CALLL HOME");
     expect(cards[1].textContent).toContain("Your customer records stay under your organization’s control");
     expect(cards[1].textContent).toContain("CALLL HOME connects calls, texts, and follow-up notes");
+    expect(Array.from(cards[1].querySelectorAll(".home-module-actions a")).map(link => link.textContent?.trim())).toEqual([
+      "Open CRM",
+      "CALLL HOME",
+    ]);
     expect(Array.from(cards[1].querySelectorAll("a")).map(link => link.getAttribute("href"))).toEqual([
       "/business/contacts",
       "/phone",
