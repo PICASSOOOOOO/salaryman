@@ -41,5 +41,8 @@ export function classifyPhoneSystemResponse(
   if (httpStatus === 408 || httpStatus === 429 || httpStatus >= 500) {
     return { status: 'unavailable', retry: true };
   }
-  return { status: 'unavailable', retry: httpStatus !== 401 };
+  // A short-lived 401 can happen while the browser session is being handed off
+  // to the API after sign-in. The caller is already gated on authenticated
+  // phone access, so retry rather than leaving the dialer stuck unavailable.
+  return { status: 'unavailable', retry: true };
 }

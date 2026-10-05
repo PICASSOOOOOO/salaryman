@@ -157,6 +157,7 @@ export default function CalllHomePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
     if (planLoading) return;
     if (!hasPhoneAccess) {
       setSystemStatus('no_subscription');
@@ -183,6 +184,7 @@ export default function CalllHomePage() {
         const response = await apiFetch(apiUrl('twilio/system-status'), {
           credentials: 'include',
           signal: controller.signal,
+          skipSessionExpiryRedirect: true,
         });
         const payload = response.ok ? null : await response.json().catch(() => null);
         const result = classifyPhoneSystemResponse(response.status, payload);
@@ -205,7 +207,7 @@ export default function CalllHomePage() {
       activeController?.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [apiUrl, hasPhoneAccess, planLoading, statusRetryKey]);
+  }, [apiUrl, authLoading, hasPhoneAccess, isAuthenticated, planLoading, statusRetryKey]);
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading || systemStatus !== 'online') return;

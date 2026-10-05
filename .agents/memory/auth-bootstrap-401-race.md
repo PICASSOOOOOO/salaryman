@@ -19,8 +19,9 @@ another consumer is still recovering.
 middleware or just-in-time user provisioning is ready. Returning users otherwise get
 stuck on the route-handshake screen even though the login callback succeeded.
 
-**How to apply:** Keep special handling limited to onboarding/bootstrap reads, let
-protected pages perform their own auth check, and defer background requests until
+**How to apply:** Keep special handling limited to onboarding/bootstrap reads and
+protected-page status probes: wait for auth hydration, and retry a short-lived 401
+without weakening the server route's auth gate. Defer background requests until
 hydration resolves. Eager-load or idle-prefetch the public `/pablo` route without
 putting its heavy Three bundle in the homepage path. When the app is embedded in
 the Replit preview iframe, open the OIDC handoff in a new tab; Replit auth refuses

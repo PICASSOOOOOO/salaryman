@@ -27,9 +27,9 @@ describe('classifyPhoneSystemResponse', () => {
     expect(classifyPhoneSystemResponse(429, {})).toEqual({ status: 'unavailable', retry: true });
   });
 
-  it('retries a missing route after deploy startup but leaves auth failures to session handling', () => {
+  it('retries missing routes and transient auth handoff failures', () => {
     expect(classifyPhoneSystemResponse(404, {})).toEqual({ status: 'unavailable', retry: true });
-    expect(classifyPhoneSystemResponse(401, {})).toEqual({ status: 'unavailable', retry: false });
+    expect(classifyPhoneSystemResponse(401, {})).toEqual({ status: 'unavailable', retry: true });
   });
 });
 
