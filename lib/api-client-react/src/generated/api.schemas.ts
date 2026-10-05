@@ -238,6 +238,109 @@ export interface SwitchOrganizationResult {
   currentOrgId: string | null;
 }
 
+export type OrganizationPaymentsResponseCurrency = typeof OrganizationPaymentsResponseCurrency[keyof typeof OrganizationPaymentsResponseCurrency];
+
+
+export const OrganizationPaymentsResponseCurrency = {
+  usd: 'usd',
+} as const;
+
+export interface OrganizationPaymentSummary {
+  /** @minimum 0 */
+  confirmedMinor: number;
+  /** @minimum 0 */
+  refundedMinor: number;
+  /** @minimum 0 */
+  settledCount: number;
+  /** @minimum 0 */
+  disputedCount: number;
+}
+
+export type OrganizationPaymentProvider = typeof OrganizationPaymentProvider[keyof typeof OrganizationPaymentProvider];
+
+
+export const OrganizationPaymentProvider = {
+  stripe: 'stripe',
+} as const;
+
+export type OrganizationPaymentCurrency = typeof OrganizationPaymentCurrency[keyof typeof OrganizationPaymentCurrency];
+
+
+export const OrganizationPaymentCurrency = {
+  usd: 'usd',
+} as const;
+
+export type OrganizationPaymentStatus = typeof OrganizationPaymentStatus[keyof typeof OrganizationPaymentStatus];
+
+
+export const OrganizationPaymentStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  failed: 'failed',
+  expired: 'expired',
+  partially_refunded: 'partially_refunded',
+  refunded: 'refunded',
+  disputed: 'disputed',
+  dispute_won: 'dispute_won',
+  dispute_lost: 'dispute_lost',
+} as const;
+
+export interface OrganizationPayment {
+  id: number;
+  provider: OrganizationPaymentProvider;
+  description: string;
+  /** @minimum 0 */
+  amountMinor: number;
+  /** @minimum 0 */
+  refundedMinor: number;
+  currency: OrganizationPaymentCurrency;
+  status: OrganizationPaymentStatus;
+  createdAt: string;
+  /** @nullable */
+  settledAt: string | null;
+}
+
+export interface OrganizationPaymentsResponse {
+  organizationId: number;
+  organizationName: string;
+  connected: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  currency: OrganizationPaymentsResponseCurrency;
+  summary: OrganizationPaymentSummary;
+  payments: OrganizationPayment[];
+}
+
+export interface OrganizationStripeOnboardingResponse {
+  url: string;
+}
+
+export interface OrganizationPaymentCheckoutInput {
+  /**
+     * @minimum 50
+     * @maximum 100000000
+     */
+  amountMinor: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  description: string;
+  /**
+     * @minLength 8
+     * @maxLength 80
+     * @pattern ^[A-Za-z0-9-]+$
+     */
+  requestKey: string;
+}
+
+export interface OrganizationPaymentCheckoutResponse {
+  payment: OrganizationPayment;
+  checkoutUrl: string;
+  /** @nullable */
+  expiresAt: string | null;
+}
+
 export type CrmCustomFieldFieldType = typeof CrmCustomFieldFieldType[keyof typeof CrmCustomFieldFieldType];
 
 

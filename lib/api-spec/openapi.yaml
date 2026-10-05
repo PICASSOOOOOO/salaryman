@@ -263,6 +263,55 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SwitchOrganizationResult" }
+  /orgs/current/payments:
+    get:
+      operationId: getOrganizationPayments
+      tags: [organizations]
+      summary: Read verified real-money payments for the active organization
+      responses:
+        "200":
+          description: Organization Stripe connection and recent payment ledger
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPaymentsResponse" }
+        "401": { description: Login required }
+        "403": { description: Finance view permission required }
+        "404": { description: No active organization found }
+  /orgs/current/payments/connect:
+    post:
+      operationId: beginOrganizationStripeOnboarding
+      tags: [organizations]
+      summary: Create or resume Stripe onboarding for the active organization
+      responses:
+        "200":
+          description: Stripe-hosted onboarding URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationStripeOnboardingResponse" }
+        "401": { description: Login required }
+        "403": { description: Finance manage permission required }
+        "404": { description: No active organization found }
+  /orgs/current/payments/checkout:
+    post:
+      operationId: createOrganizationPaymentCheckout
+      tags: [organizations]
+      summary: Create a hosted one-time USD checkout for the active organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationPaymentCheckoutInput" }
+      responses:
+        "201":
+          description: Pending payment and Stripe Checkout URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPaymentCheckoutResponse" }
+        "400": { description: "Invalid amount, description, or idempotency key" }
+        "401": { description: Login required }
+        "403": { description: Finance manage permission required }
+        "404": { description: No active organization found }
+        "409": { description: Stripe account is not ready for payments }
   /crm/custom-fields:
     get:
       operationId: listCrmCustomFields
@@ -845,6 +894,62 @@ components:
       properties:
         ok: { type: boolean }
         currentOrgId: { type: [string, "null"] }
+    OrganizationPaymentsResponse:
+      type: object
+      required: [organizationId, organizationName, connected, chargesEnabled, payoutsEnabled, currency, summary, payments]
+      properties:
+        organizationId: { type: integer }
+        organizationName: { type: string }
+        connected: { type: boolean }
+        chargesEnabled: { type: boolean }
+        payoutsEnabled: { type: boolean }
+        currency: { type: string, enum: [usd] }
+        summary: { $ref: "#/components/schemas/OrganizationPaymentSummary" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationPayment" }
+    OrganizationPaymentSummary:
+      type: object
+      required: [confirmedMinor, refundedMinor, settledCount, disputedCount]
+      properties:
+        confirmedMinor: { type: integer, minimum: 0 }
+        refundedMinor: { type: integer, minimum: 0 }
+        settledCount: { type: integer, minimum: 0 }
+        disputedCount: { type: integer, minimum: 0 }
+    OrganizationPayment:
+      type: object
+      required: [id, provider, description, amountMinor, refundedMinor, currency, status, createdAt, settledAt]
+      properties:
+        id: { type: integer }
+        provider: { type: string, enum: [stripe] }
+        description: { type: string }
+        amountMinor: { type: integer, minimum: 0 }
+        refundedMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [usd] }
+        status:
+          type: string
+          enum: [pending, paid, failed, expired, partially_refunded, refunded, disputed, dispute_won, dispute_lost]
+        createdAt: { type: string, format: date-time }
+        settledAt: { type: ["string", "null"], format: date-time }
+    OrganizationStripeOnboardingResponse:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+    OrganizationPaymentCheckoutInput:
+      type: object
+      required: [amountMinor, description, requestKey]
+      properties:
+        amountMinor: { type: integer, minimum: 50, maximum: 100000000 }
+        description: { type: string, minLength: 1, maxLength: 200 }
+        requestKey: { type: string, minLength: 8, maxLength: 80, pattern: "^[A-Za-z0-9-]+$" }
+    OrganizationPaymentCheckoutResponse:
+      type: object
+      required: [payment, checkoutUrl, expiresAt]
+      properties:
+        payment: { $ref: "#/components/schemas/OrganizationPayment" }
+        checkoutUrl: { type: string, format: uri }
+        expiresAt: { type: ["string", "null"], format: date-time }
     CrmCustomField:
       type: object
       required: [id, orgId, fieldKey, label, fieldType, optionsJson, required, archived, position]

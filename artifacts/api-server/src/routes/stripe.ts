@@ -7,6 +7,7 @@ import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
+import { handleStripeOrganizationPaymentEvent } from "../lib/org-payment-settlement";
 import { ensureFiatAccounts, spendFiat } from "../lib/fiat-wallet";
 import { provisionPaidPhoneNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
@@ -932,7 +933,9 @@ router.post(
         // Route pledge sessions to their handler so entitlements are only
         // granted on settled funds and revoked/marked failed otherwise.
         const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.type === "pledge") {
+        if (session.metadata?.type === "organization_payment") {
+          await handleStripeOrganizationPaymentEvent(event, stripe);
+        } else if (session.metadata?.type === "pledge") {
           await handlePledgeWebhookEvent(event);
         } else if (session.metadata?.type === "item") {
           await handleItemWebhookEvent(event);
@@ -948,7 +951,9 @@ router.post(
       case "checkout.session.expired": {
         // An abandoned/expired checkout releases any reserved limited-drop stock.
         const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.type === "pledge") {
+        if (session.metadata?.type === "organization_payment") {
+          await handleStripeOrganizationPaymentEvent(event, stripe);
+        } else if (session.metadata?.type === "pledge") {
           await handlePledgeWebhookEvent(event);
         } else if (session.metadata?.type === "fiat_topup") {
           await markFiatTopupTerminal(session, "cancelled");
@@ -959,6 +964,10 @@ router.post(
       }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === "organization_payment") {
+          await handleStripeOrganizationPaymentEvent(event, stripe);
+          break;
+        }
         const userId = session.client_reference_id || session.metadata?.userId;
         const type = session.metadata?.type;
         const feature = session.metadata?.feature as FeatureKey | undefined;
@@ -1100,6 +1109,13 @@ router.post(
         } else {
           console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
         }
+        break;
+      }
+
+      case "charge.refunded":
+      case "charge.dispute.created":
+      case "charge.dispute.closed": {
+        await handleStripeOrganizationPaymentEvent(event, stripe);
         break;
       }
 

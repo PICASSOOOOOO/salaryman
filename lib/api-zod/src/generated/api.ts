@@ -184,6 +184,102 @@ export const SwitchOrganizationResponse = zod.object({
 })
 
 
+/**
+ * @summary Read verified real-money payments for the active organization
+ */
+export const getOrganizationPaymentsResponseSummaryConfirmedMinorMin = 0;
+
+export const getOrganizationPaymentsResponseSummaryRefundedMinorMin = 0;
+
+export const getOrganizationPaymentsResponseSummarySettledCountMin = 0;
+
+export const getOrganizationPaymentsResponseSummaryDisputedCountMin = 0;
+
+export const getOrganizationPaymentsResponsePaymentsItemAmountMinorMin = 0;
+
+export const getOrganizationPaymentsResponsePaymentsItemRefundedMinorMin = 0;
+
+
+
+export const GetOrganizationPaymentsResponse = zod.object({
+  "organizationId": zod.number().int(),
+  "organizationName": zod.string(),
+  "connected": zod.boolean(),
+  "chargesEnabled": zod.boolean(),
+  "payoutsEnabled": zod.boolean(),
+  "currency": zod.enum(['usd']),
+  "summary": zod.object({
+  "confirmedMinor": zod.number().int().min(getOrganizationPaymentsResponseSummaryConfirmedMinorMin),
+  "refundedMinor": zod.number().int().min(getOrganizationPaymentsResponseSummaryRefundedMinorMin),
+  "settledCount": zod.number().int().min(getOrganizationPaymentsResponseSummarySettledCountMin),
+  "disputedCount": zod.number().int().min(getOrganizationPaymentsResponseSummaryDisputedCountMin)
+}),
+  "payments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "provider": zod.enum(['stripe']),
+  "description": zod.string(),
+  "amountMinor": zod.number().int().min(getOrganizationPaymentsResponsePaymentsItemAmountMinorMin),
+  "refundedMinor": zod.number().int().min(getOrganizationPaymentsResponsePaymentsItemRefundedMinorMin),
+  "currency": zod.enum(['usd']),
+  "status": zod.enum(['pending', 'paid', 'failed', 'expired', 'partially_refunded', 'refunded', 'disputed', 'dispute_won', 'dispute_lost']),
+  "createdAt": zod.date(),
+  "settledAt": zod.date().nullable()
+}))
+})
+
+
+/**
+ * @summary Create or resume Stripe onboarding for the active organization
+ */
+export const BeginOrganizationStripeOnboardingResponse = zod.object({
+  "url": zod.string().url()
+})
+
+
+/**
+ * @summary Create a hosted one-time USD checkout for the active organization
+ */
+export const createOrganizationPaymentCheckoutBodyAmountMinorMin = 50;
+export const createOrganizationPaymentCheckoutBodyAmountMinorMax = 100000000;
+
+export const createOrganizationPaymentCheckoutBodyDescriptionMax = 200;
+
+export const createOrganizationPaymentCheckoutBodyRequestKeyMin = 8;
+export const createOrganizationPaymentCheckoutBodyRequestKeyMax = 80;
+
+
+export const createOrganizationPaymentCheckoutBodyRequestKeyRegExp = new RegExp('^[A-Za-z0-9-]+$');
+
+
+export const CreateOrganizationPaymentCheckoutBody = zod.object({
+  "amountMinor": zod.number().int().min(createOrganizationPaymentCheckoutBodyAmountMinorMin).max(createOrganizationPaymentCheckoutBodyAmountMinorMax),
+  "description": zod.string().min(1).max(createOrganizationPaymentCheckoutBodyDescriptionMax),
+  "requestKey": zod.string().min(createOrganizationPaymentCheckoutBodyRequestKeyMin).max(createOrganizationPaymentCheckoutBodyRequestKeyMax).regex(createOrganizationPaymentCheckoutBodyRequestKeyRegExp)
+})
+
+export const createOrganizationPaymentCheckoutResponsePaymentAmountMinorMin = 0;
+
+export const createOrganizationPaymentCheckoutResponsePaymentRefundedMinorMin = 0;
+
+
+
+export const CreateOrganizationPaymentCheckoutResponse = zod.object({
+  "payment": zod.object({
+  "id": zod.number().int(),
+  "provider": zod.enum(['stripe']),
+  "description": zod.string(),
+  "amountMinor": zod.number().int().min(createOrganizationPaymentCheckoutResponsePaymentAmountMinorMin),
+  "refundedMinor": zod.number().int().min(createOrganizationPaymentCheckoutResponsePaymentRefundedMinorMin),
+  "currency": zod.enum(['usd']),
+  "status": zod.enum(['pending', 'paid', 'failed', 'expired', 'partially_refunded', 'refunded', 'disputed', 'dispute_won', 'dispute_lost']),
+  "createdAt": zod.date(),
+  "settledAt": zod.date().nullable()
+}),
+  "checkoutUrl": zod.string().url(),
+  "expiresAt": zod.date().nullable()
+})
+
+
 export const ListCrmCustomFieldsResponseItem = zod.object({
   "id": zod.number().int(),
   "orgId": zod.number().int(),

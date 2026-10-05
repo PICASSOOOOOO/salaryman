@@ -1,5 +1,14 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
+import type { FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  getGetOrganizationPaymentsQueryKey,
+  useGetOrganizationPayments,
+  useBeginOrganizationStripeOnboarding,
+  useCreateOrganizationPaymentCheckout,
+} from '@workspace/api-client-react';
+import type { OrganizationPayment } from '@workspace/api-client-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, LabelList,
@@ -411,6 +420,246 @@ function TransferModal({
   );
 }
 
+function usd(minor: number, currency = 'usd') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  }).format(minor / 100);
+}
+
+function paymentStatus(status: OrganizationPayment['status']) {
+  const labels: Record<OrganizationPayment['status'], string> = {
+    pending: 'Pending',
+    paid: 'Paid',
+    failed: 'Failed',
+    expired: 'Expired',
+    partially_refunded: 'Partially refunded',
+    refunded: 'Refunded',
+    disputed: 'Disputed',
+    dispute_won: 'Dispute won',
+    dispute_lost: 'Dispute lost',
+  };
+  return labels[status] ?? status;
+}
+
+function StripePayments({ canManage }: { canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const queryKey = getGetOrganizationPaymentsQueryKey();
+  const { data, isLoading, isError, refetch, isFetching } = useGetOrganizationPayments();
+  const onboarding = useBeginOrganizationStripeOnboarding();
+  const checkout = useCreateOrganizationPaymentCheckout();
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [requestKey, setRequestKey] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState('');
+
+  const refreshPayments = () => queryClient.invalidateQueries({ queryKey });
+  const beginConnect = () => {
+    setMutationError('');
+    onboarding.mutate(undefined, {
+      onSuccess: (result) => {
+        void refreshPayments();
+        window.location.assign(result.url);
+      },
+      onError: () => setMutationError('Stripe setup could not be started. Try again.'),
+    });
+  };
+  const createCheckout = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const amountMinor = Math.round(Number(amount) * 100);
+    if (!Number.isFinite(amountMinor) || amountMinor < 50 || !description.trim()) return;
+    setMutationError('');
+    const retryKey = requestKey ?? `checkout-${crypto.randomUUID()}`;
+    if (!requestKey) setRequestKey(retryKey);
+    checkout.mutate(
+      { data: { amountMinor, description: description.trim(), requestKey: retryKey } },
+      {
+        onSuccess: (result) => {
+          void refreshPayments();
+          setShowCheckout(false);
+          setRequestKey(null);
+          window.location.assign(result.checkoutUrl);
+        },
+        onError: () => setMutationError('Checkout could not be created. Check the details and try again.'),
+      },
+    );
+  };
+
+  const connected = data?.connected ?? false;
+  const ready = connected && data?.chargesEnabled === true && data?.payoutsEnabled === true;
+
+  return (
+    <section className="mb-6 overflow-hidden rounded-2xl border border-[#d9e4e8] bg-[#fffefa] text-[#183344] shadow-sm" aria-labelledby="stripe-payments-title">
+      <div className="border-b border-[#e7edef] px-4 py-4 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-lg border border-[#c8dce6] bg-[#edf5f8] text-[#176187] text-sm font-bold">S</span>
+              <h3 id="stripe-payments-title" className="text-base font-semibold tracking-tight text-[#183344]">Stripe payments</h3>
+              <span className="rounded-full bg-[#f2f5f5] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#71818a]">USD</span>
+            </div>
+            <p className="text-xs text-[#71818a]">Customer payments are tracked separately from your FIAT treasury.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canManage && ready && (
+              <button
+                type="button"
+                data-testid="button-create-checkout"
+                onClick={() => { setMutationError(''); setRequestKey(`checkout-${crypto.randomUUID()}`); setShowCheckout(true); }}
+                className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#176187] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-[#124d6c]"
+              >
+                Create checkout
+              </button>
+            )}
+            {canManage && !ready && !isLoading && !isError && (
+              <button
+                type="button"
+                data-testid="button-connect-stripe"
+                disabled={onboarding.isPending}
+                onClick={beginConnect}
+                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#b8d1dc] bg-white px-3.5 text-xs font-semibold text-[#176187] transition-colors hover:bg-[#f2f8fa] disabled:cursor-wait disabled:opacity-60"
+              >
+                {onboarding.isPending ? 'Opening setup…' : connected ? 'Continue Stripe setup' : 'Connect Stripe'}
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="button-refresh-payments"
+              aria-label="Refresh Stripe payments"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#d9e4e8] px-3 text-xs font-medium text-[#607783] hover:bg-[#f5f8f8] disabled:opacity-50"
+            >
+              {isFetching ? 'Refreshing' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-6">
+        {mutationError && !showCheckout && (
+          <p role="alert" className="mb-4 rounded-lg border border-[#ead8c8] bg-[#fff8f0] px-3 py-2 text-xs text-[#8b5c3d]">{mutationError}</p>
+        )}
+        {isLoading && (
+          <div role="status" className="grid animate-pulse grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="h-20 rounded-xl bg-[#f0f4f4]" />
+            <div className="h-20 rounded-xl bg-[#f0f4f4]" />
+            <div className="h-20 rounded-xl bg-[#f0f4f4]" />
+            <span className="sr-only">Loading Stripe payment information</span>
+          </div>
+        )}
+        {isError && (
+          <div className="rounded-xl border border-[#ead8c8] bg-[#fff8f0] px-4 py-4" role="alert">
+            <p className="text-sm font-semibold text-[#684c37]">Payment information is unavailable.</p>
+            <p className="mt-1 text-xs text-[#88705d]">Your FIAT accounts are unaffected. Try loading Stripe again.</p>
+            <button type="button" data-testid="button-retry-payments" onClick={() => void refetch()} className="mt-3 text-xs font-semibold text-[#176187] underline underline-offset-2">Try again</button>
+          </div>
+        )}
+        {!isLoading && !isError && data && (
+          <>
+            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <span className={`inline-flex items-center gap-1.5 font-semibold ${ready ? 'text-[#267455]' : connected ? 'text-[#9a6a22]' : 'text-[#71818a]'}`}>
+                <span className={`h-2 w-2 rounded-full ${ready ? 'bg-[#4c9b72]' : connected ? 'bg-[#d19a3b]' : 'bg-[#aab7bc]'}`} />
+                {ready ? 'Connected and ready' : connected ? 'Setup in progress' : 'Not connected'}
+              </span>
+              {connected && (
+                <span className="text-[#87969d]">
+                  Charges {data.chargesEnabled ? 'enabled' : 'not enabled'} · Payouts {data.payoutsEnabled ? 'enabled' : 'not enabled'}
+                </span>
+              )}
+              {!canManage && <span className="text-[#87969d]">Manager access is required to make changes.</span>}
+            </div>
+
+            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-[#e2e9eb] bg-[#f8faf9] p-4">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#71818a]">Confirmed volume</p>
+                <p data-testid="text-confirmed-volume" className="mt-1 text-xl font-semibold tracking-tight text-[#183344]">{usd(data.summary.confirmedMinor, data.currency)}</p>
+              </div>
+              <div className="rounded-xl border border-[#e2e9eb] bg-[#f8faf9] p-4">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#71818a]">Refunded</p>
+                <p data-testid="text-refunded-volume" className="mt-1 text-xl font-semibold tracking-tight text-[#183344]">{usd(data.summary.refundedMinor, data.currency)}</p>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-[#e2e9eb] bg-[#f8faf9] p-4">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-[#71818a]">Settled payments</p>
+                  <p data-testid="text-settled-count" className="mt-1 text-xl font-semibold tracking-tight text-[#183344]">{data.summary.settledCount.toLocaleString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-[#71818a]">Disputes</p>
+                  <p data-testid="text-disputed-count" className="mt-1 text-xl font-semibold tracking-tight text-[#183344]">{data.summary.disputedCount.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h4 className="text-sm font-semibold text-[#274454]">Recent payments</h4>
+              <span className="text-[11px] text-[#87969d]">{data.organizationName}</span>
+            </div>
+            {data.payments.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#d9e4e8] bg-[#fbfcfb] px-4 py-7 text-center">
+                <p className="text-sm font-medium text-[#516a77]">No Stripe payments yet</p>
+                <p className="mt-1 text-xs text-[#87969d]">{ready ? 'Create a checkout link to record your first payment.' : 'Payments will appear here after Stripe is connected.'}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[540px]">
+                  <div className="grid grid-cols-[minmax(0,1fr)_120px_132px] gap-3 border-b border-[#e7edef] px-3 pb-2 text-[10px] font-semibold uppercase tracking-wide text-[#87969d]">
+                    <span>Payment</span><span>Status</span><span className="text-right">Amount</span>
+                  </div>
+                  <div className="divide-y divide-[#edf1f2]">
+                    {data.payments.map((payment) => (
+                      <div key={payment.id} data-testid={`row-payment-${payment.id}`} className="grid grid-cols-[minmax(0,1fr)_120px_132px] items-center gap-3 px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-[#274454]">{payment.description}</p>
+                          <p className="mt-0.5 text-[11px] text-[#87969d]">{new Date(payment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{payment.settledAt ? ` · Settled ${new Date(payment.settledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</p>
+                        </div>
+                        <span data-testid={`status-payment-${payment.id}`} className={`w-fit rounded-full px-2 py-1 text-[10px] font-semibold ${payment.status === 'paid' || payment.status === 'dispute_won' ? 'bg-[#eaf4ee] text-[#347451]' : payment.status === 'disputed' || payment.status === 'dispute_lost' || payment.status === 'failed' ? 'bg-[#fbefed] text-[#a74f45]' : 'bg-[#f1f4f4] text-[#687b84]'}`}>
+                          {paymentStatus(payment.status)}
+                        </span>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold tabular-nums text-[#274454]">{usd(payment.amountMinor, payment.currency)}</p>
+                          {payment.refundedMinor > 0 && <p className="mt-0.5 text-[10px] text-[#87969d]">Refunded {usd(payment.refundedMinor, payment.currency)}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {showCheckout && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#142c3c]/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowCheckout(false); setRequestKey(null); } }}>
+          <form onSubmit={createCheckout} className="w-full max-w-md rounded-2xl border border-[#d9e4e8] bg-[#fffefa] p-5 text-[#183344] shadow-xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 id="checkout-title" className="text-lg font-semibold">Create a checkout</h3>
+                <p className="mt-1 text-xs text-[#71818a]">A secure Stripe checkout will open in your browser.</p>
+              </div>
+              <button type="button" data-testid="button-close-checkout" aria-label="Close checkout form" onClick={() => { setShowCheckout(false); setRequestKey(null); }} className="rounded-lg px-2 py-1 text-lg leading-none text-[#71818a] hover:bg-[#f1f5f5]">×</button>
+            </div>
+            <label className="mb-4 block text-xs font-semibold text-[#526b78]" htmlFor="checkout-amount">Amount in USD</label>
+            <div className="mb-4 flex items-center rounded-lg border border-[#d9e4e8] bg-white px-3 focus-within:border-[#6ca5bd]">
+              <span className="text-sm text-[#71818a]">$</span>
+              <input id="checkout-amount" data-testid="input-checkout-amount" type="number" inputMode="decimal" min="0.50" step="0.01" required value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="min-h-11 w-full border-0 bg-transparent px-2 text-sm text-[#183344] outline-none" />
+            </div>
+            <label className="mb-2 block text-xs font-semibold text-[#526b78]" htmlFor="checkout-description">What is this payment for?</label>
+            <input id="checkout-description" data-testid="input-checkout-description" type="text" maxLength={200} required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="e.g. Membership dues" className="mb-4 min-h-11 w-full rounded-lg border border-[#d9e4e8] bg-white px-3 text-sm text-[#183344] outline-none focus:border-[#6ca5bd]" />
+            {mutationError && <p role="alert" className="mb-3 text-xs text-[#a74f45]">{mutationError}</p>}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button type="button" data-testid="button-cancel-checkout" onClick={() => { setShowCheckout(false); setRequestKey(null); }} className="min-h-10 rounded-lg border border-[#d9e4e8] px-4 text-xs font-semibold text-[#526b78] hover:bg-[#f4f7f7]">Cancel</button>
+              <button type="submit" data-testid="button-submit-checkout" disabled={checkout.isPending || Number(amount) < 0.5 || !description.trim()} className="min-h-10 rounded-lg bg-[#176187] px-4 text-xs font-semibold text-white hover:bg-[#124d6c] disabled:cursor-not-allowed disabled:opacity-50">{checkout.isPending ? 'Preparing checkout…' : 'Continue to Stripe'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function OrgAccounts() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useState(() => getDefaultBoomerMode());
@@ -540,6 +789,8 @@ export default function OrgAccounts() {
             <div className="mb-6">
               <RevenueFlowPanel orgId={data.orgId} />
             </div>
+
+            <StripePayments canManage={canManage} />
 
             <div className="rounded-xl border border-white/8 bg-white/[0.02] p-5">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

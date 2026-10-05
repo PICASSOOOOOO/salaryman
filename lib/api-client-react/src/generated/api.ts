@@ -58,6 +58,10 @@ import type {
   OpenaiError,
   OpenaiMessage,
   OpenaiMessageInput,
+  OrganizationPaymentCheckoutInput,
+  OrganizationPaymentCheckoutResponse,
+  OrganizationPaymentsResponse,
+  OrganizationStripeOnboardingResponse,
   PabloInternalDelivery,
   PabloInternalDeliveryResult,
   PhoneInternalDirectory,
@@ -1108,6 +1112,237 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSwitchOrganizationMutationOptions(options));
+    }
+
+export const getGetOrganizationPaymentsUrl = () => {
+
+
+
+
+  return `/api/orgs/current/payments`
+}
+
+/**
+ * @summary Read verified real-money payments for the active organization
+ */
+export const getOrganizationPayments = async ( options?: Parameters<typeof customFetch>[1]): Promise<OrganizationPaymentsResponse> => {
+
+  return customFetch<OrganizationPaymentsResponse>(getGetOrganizationPaymentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrganizationPaymentsQueryKey = () => {
+    return [
+    `/api/orgs/current/payments`
+    ] as const;
+    }
+
+
+export const getGetOrganizationPaymentsQueryOptions = <TData = Awaited<ReturnType<typeof getOrganizationPayments>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrganizationPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrganizationPaymentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrganizationPayments>>> = ({ signal }) => getOrganizationPayments({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrganizationPayments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrganizationPaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof getOrganizationPayments>>>
+export type GetOrganizationPaymentsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read verified real-money payments for the active organization
+ */
+
+export function useGetOrganizationPayments<TData = Awaited<ReturnType<typeof getOrganizationPayments>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrganizationPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrganizationPaymentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getBeginOrganizationStripeOnboardingUrl = () => {
+
+
+
+
+  return `/api/orgs/current/payments/connect`
+}
+
+/**
+ * @summary Create or resume Stripe onboarding for the active organization
+ */
+export const beginOrganizationStripeOnboarding = async ( options?: Parameters<typeof customFetch>[1]): Promise<OrganizationStripeOnboardingResponse> => {
+
+  return customFetch<OrganizationStripeOnboardingResponse>(getBeginOrganizationStripeOnboardingUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getBeginOrganizationStripeOnboardingMutationKey = () => ['beginOrganizationStripeOnboarding'] as const;
+
+export const getBeginOrganizationStripeOnboardingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof beginOrganizationStripeOnboarding>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof beginOrganizationStripeOnboarding>>, TError,void, TContext> => {
+
+const mutationKey = getBeginOrganizationStripeOnboardingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof beginOrganizationStripeOnboarding>>, void> = () => {
+
+
+          return  beginOrganizationStripeOnboarding(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BeginOrganizationStripeOnboardingMutationResult = NonNullable<Awaited<ReturnType<typeof beginOrganizationStripeOnboarding>>>
+
+    export type BeginOrganizationStripeOnboardingMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Create or resume Stripe onboarding for the active organization
+ */
+export const useBeginOrganizationStripeOnboarding = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof beginOrganizationStripeOnboarding>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof beginOrganizationStripeOnboarding>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getBeginOrganizationStripeOnboardingMutationOptions(options));
+    }
+
+export const getCreateOrganizationPaymentCheckoutUrl = () => {
+
+
+
+
+  return `/api/orgs/current/payments/checkout`
+}
+
+/**
+ * @summary Create a hosted one-time USD checkout for the active organization
+ */
+export const createOrganizationPaymentCheckout = async (organizationPaymentCheckoutInput: OrganizationPaymentCheckoutInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationPaymentCheckoutResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationPaymentCheckoutResponse>(getCreateOrganizationPaymentCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationPaymentCheckoutInput)
+  }
+);}
+
+
+
+
+
+export const getCreateOrganizationPaymentCheckoutMutationKey = () => ['createOrganizationPaymentCheckout'] as const;
+
+export const getCreateOrganizationPaymentCheckoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationPaymentCheckout>>, TError,CreateOrganizationPaymentCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOrganizationPaymentCheckout>>, TError,CreateOrganizationPaymentCheckoutMutationVariables, TContext> => {
+
+const mutationKey = getCreateOrganizationPaymentCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOrganizationPaymentCheckout>>, CreateOrganizationPaymentCheckoutMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOrganizationPaymentCheckout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOrganizationPaymentCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createOrganizationPaymentCheckout>>>
+    export type CreateOrganizationPaymentCheckoutMutationBody = BodyType<OrganizationPaymentCheckoutInput>
+    export type CreateOrganizationPaymentCheckoutMutationError = ErrorType<void>
+    export type CreateOrganizationPaymentCheckoutMutationVariables = {data: BodyType<OrganizationPaymentCheckoutInput>}
+
+    /**
+ * @summary Create a hosted one-time USD checkout for the active organization
+ */
+export const useCreateOrganizationPaymentCheckout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationPaymentCheckout>>, TError,CreateOrganizationPaymentCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOrganizationPaymentCheckout>>,
+        TError,
+        CreateOrganizationPaymentCheckoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateOrganizationPaymentCheckoutMutationOptions(options));
     }
 
 export const getListCrmCustomFieldsUrl = () => {
