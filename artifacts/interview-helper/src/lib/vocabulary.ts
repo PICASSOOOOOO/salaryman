@@ -25,7 +25,7 @@ export function getBoomerModuleLabel(moduleId: string, fallback: string): string
 const APP_LABELS: Record<string, string> = {
   pablo: "PABLO AI",
   phone: "CALLL HOME",
-  comms: "MESSAGES",
+  comms: "COMMS",
   office: "SALARYMAN OS",
   bots: "PABLO AI AUTOMATION",
   org: "ORGANIZATION",

@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildPabloOrgIndustryContext } from "./pablo-persona";
+import {
+  buildPabloOrgIndustryContext,
+  PABLO_CORE_PERSONA,
+  PABLO_INTERNAL_DETAILS_POLICY,
+} from "./pablo-persona";
+
+describe("Pablo internal-details policy", () => {
+  it("is part of the shared persona", () => {
+    expect(PABLO_CORE_PERSONA).toContain(PABLO_INTERNAL_DETAILS_POLICY);
+    expect(PABLO_INTERNAL_DETAILS_POLICY).toContain("SALARYMAN source code");
+    expect(PABLO_INTERNAL_DETAILS_POLICY).toContain("unfinished code changes");
+  });
+});
 
 describe("Pablo organization industry context", () => {
   it("uses one organization's saved industry for all active members", () => {

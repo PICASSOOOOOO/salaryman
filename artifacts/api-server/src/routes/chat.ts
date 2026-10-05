@@ -25,7 +25,12 @@ import { isOwnerEmail } from "../lib/plan";
 import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { buildPabloOrgIndustryContext, PABLO_CORE_PERSONA } from "../lib/pablo-persona";
+import {
+  buildPabloOrgIndustryContext,
+  PABLO_CORE_PERSONA,
+  PABLO_INTERNAL_DETAILS_POLICY,
+} from "../lib/pablo-persona";
+import { parsePabloCommandResponse } from "../lib/pablo-response";
 import { resolvePabloOrgContext } from "../lib/pablo-org-context";
 import { completeInternalText, getInternalOpenAiModel, selectClaudeTools } from "../lib/internal-ai";
 import { isPabloNavPath } from "../lib/pablo-navigation";
@@ -2049,6 +2054,7 @@ You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of
 { "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string }${suggestShape} }
 
 Rules:
+${PABLO_INTERNAL_DETAILS_POLICY}
 - "say" is what you speak aloud — keep it tight, in character, ideally one or two sentences.
 - "action" is OPTIONAL. Use null unless the user clearly asked to go somewhere or do something.
 - Use "navigate" with an in-app path like "/world/play", "/dashboard", "/studio", "/pablo". Never invent paths you aren't sure exist; prefer null.
@@ -2120,11 +2126,9 @@ ${await buildLiveContext(transcript)}`;
 
   try {
     const completion = await completeInternalText(messages, { maxTokens: 400, json: true });
-    const raw = completion.content;
-    let parsed: { say?: unknown; action?: unknown } = {};
-    try { parsed = JSON.parse(raw); } catch { parsed = { say: raw }; }
-    const say = typeof parsed.say === "string" && parsed.say.trim() ? parsed.say.trim() : "I'm here.";
-    let action: unknown = parsed.action ?? null;
+    const parsed = parsePabloCommandResponse(completion.content);
+    const say = parsed.say;
+    let action: unknown = parsed.action;
     if (action && typeof action === "object" && "kind" in action) {
       const a = action as { kind?: string; path?: unknown; items?: unknown };
       const validKinds = new Set(["navigate", "logout", "search", "external", "suggest"]);

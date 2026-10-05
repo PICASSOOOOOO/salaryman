@@ -13,6 +13,12 @@ Pablo should have a dedicated creation workspace where users can organize and bu
 
 The user's product goal is to make automation and communication a visual, gamified narrative centered on an office simulation for remote work and digital collaboration, powered by Pablo and SALARYMAN's automation features. The downloadable desktop app is the office-simulation hook and was unfinished as of 2026-10-05. The browser experience is intended to funnel users toward the download so they can experience that simulation.
 
+Pablo AI is conversational; PABLO PRIME is for automation, not chat or COMMS. The messaging area is named COMMS. Organize the product around one Office workspace with departments/office spaces and automation bots that run those departments.
+
+**Why:** the user explicitly clarified these product roles and the Office-centered organization.
+
+**How to apply:** keep chat, messaging, and automation in distinct navigation labels and destinations; map departments to existing SALARYMAN work areas and bots without inventing new brand names.
+
 SALARYMAN should also offer a free marketplace where users create features specifically for SALARYMAN, share them with other users, and install them into My Apps. My Apps should distinguish user-owned/private items from public/shared items. The creator audience includes people making video games and other interactive experiences, not only players of the downloadable game.
 
 External Meshy and game-asset repositories are an internal developer/agent reference bank for improving SALARYMAN's game art direction and asset workflows, not marketplace apps for users to install.

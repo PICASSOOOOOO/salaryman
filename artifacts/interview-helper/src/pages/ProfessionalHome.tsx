@@ -8,11 +8,11 @@ const MODULES = [
   {
     id: "pablo-ai",
     title: "PABLO AI",
-    description: "Chat with Pablo and run business automations from the same assistant.",
+     description: "Chat with Pablo for SALARYMAN help. PABLO PRIME runs opt-in business automations separately.",
     icon: Bot,
     links: [
-      { label: "Open Pablo", href: "/pablo" },
-      { label: "Open automation", href: "/business/autopilot" },
+       { label: "Open Pablo AI chat", href: "/pablo" },
+       { label: "PABLO PRIME AUTOMATION", href: "/business/autopilot" },
     ],
   },
   {

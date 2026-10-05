@@ -44,7 +44,7 @@ describe("frontend startup boundaries", () => {
     expect(landing).not.toContain("<video");
     expect(landing).not.toContain(".mp4");
     expect(landing).toContain("Make work possible.");
-    expect(landing).toContain("PABLO AI AUTOMATION");
+    expect(landing).toContain("PABLO PRIME AUTOMATION");
     expect(landing).not.toContain("PIXEL AGENTS");
     expect(landing).toContain('href: "/business/autopilot"');
   });

@@ -14,7 +14,7 @@ const MENU_MODULES = HISTORIC_MODULES.filter(
 const PRODUCT_SHORTCUTS = [
   { id: "phone", label: "CALLL HOME", path: "/phone" },
   { id: "office", label: "SALARYMAN OS", path: "/desktop" },
-  { id: "comms", label: "MESSAGES", path: "/comms" },
+  { id: "comms", label: "COMMS", path: "/comms" },
   { id: "apps", label: "MY APPS", path: "/my-apps" },
 ];
 
@@ -78,7 +78,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
               <span className="min-w-0">
                 <span className="block font-mono text-[10px] tracking-[0.16em]">PABLO AI</span>
                 <span className="mt-0.5 block font-mono text-[8px] tracking-wider text-[#D8CBE6]">
-                  CHAT + AUTOMATION
+                  CHAT
                 </span>
               </span>
             </button>
@@ -88,7 +88,7 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
               className="mt-2 flex min-h-9 w-full items-center justify-between border border-white/30 px-2 text-left font-mono text-[9px] tracking-wider hover:bg-white/10"
               role="menuitem"
             >
-              Open automation
+              PABLO PRIME AUTOMATION
               <span aria-hidden="true">↗</span>
             </button>
           </div>
