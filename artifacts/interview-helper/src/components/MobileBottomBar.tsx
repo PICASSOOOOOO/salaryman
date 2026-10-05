@@ -265,11 +265,15 @@ export function MobileModuleNav() {
 
           {isAuthenticated && (
             <button
+              type="button"
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
                 dropdownOpen ? 'text-black' : 'text-gray-400'
               }`}
-              aria-label="Open menu"
+              aria-expanded={dropdownOpen}
+              aria-controls="workspace-navigation-menu"
+              aria-label={dropdownOpen ? 'Close menu' : 'Open menu'}
+              title={dropdownOpen ? 'Close menu' : 'Open menu'}
             >
               <MoreHorizontal className="w-5 h-5" />
               <span className="text-[8px] font-bold uppercase tracking-wider">MENU</span>
