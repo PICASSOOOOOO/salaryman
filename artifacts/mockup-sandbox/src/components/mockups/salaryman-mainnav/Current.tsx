@@ -4,7 +4,6 @@ import { MORE_NAV_ITEMS, PRIMARY_NAV_ITEMS, type AppNavItem } from "./_shared/na
 import "./_group.css";
 
 const dropdownItems = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS]
-  .filter((item) => !item.authOnly || true)
   .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
 
 function LightweightNebula({ size }: { size: number }) {
