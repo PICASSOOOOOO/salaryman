@@ -14,6 +14,7 @@ import {
   slate, destructive, warning, formatPhone, formatDuration, ENDED_STATUSES,
   type ActiveCall, type CRMContact 
 } from '@/lib/phone-utils';
+import type { PhoneSystemStatus } from '@/lib/phone-system-status';
 import { useCalllHomeNav } from './CalllHomeContext';
 
 function validatePhoneNumber(raw: string): boolean {
@@ -116,7 +117,7 @@ function ActiveCallCard({
   );
 }
 
-export default function PhoneCommandCenter() {
+export default function PhoneCommandCenter({ systemStatus }: { systemStatus: PhoneSystemStatus }) {
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
@@ -124,7 +125,7 @@ export default function PhoneCommandCenter() {
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
 
-  const { deviceState, deviceError, ensureDeviceReady, reconnect } = useTwilioDeviceContext();
+  const { deviceState, deviceError } = useTwilioDeviceContext();
   const { activeCalls, setActiveCalls, toggleMute, toggleHold, hangupOne, hangupAll } = useActiveCallContext();
 
   const [manualNumber, setManualNumber] = useState('');
@@ -138,11 +139,9 @@ export default function PhoneCommandCenter() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
-  useEffect(() => {
-    void ensureDeviceReady().catch(() => {});
-  }, [ensureDeviceReady]);
-
   const liveCalls = useMemo(() => activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)), [activeCalls]);
+  const browserPhoneReady = systemStatus === 'online' && deviceState === 'ready';
+  const browserPhoneError = systemStatus === 'online' && deviceState === 'error';
 
   useEffect(() => {
     apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
@@ -159,6 +158,10 @@ export default function PhoneCommandCenter() {
   }, [rawNavigate]);
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
+    if (systemStatus !== 'online') {
+      setError('Phone service is unavailable. Wait for it to reconnect before calling.');
+      return;
+    }
     if (!validatePhoneNumber(phone)) { setError('Invalid phone number'); return; }
     setError('');
     setLoading(true);
@@ -208,20 +211,14 @@ export default function PhoneCommandCenter() {
         <div className="dialer-status" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: deviceState === 'ready' ? slate(0.7) : deviceState === 'error' ? destructive(0.7) : warning(0.5),
-            boxShadow: `0 0 12px ${deviceState === 'ready' ? slate(0.5) : deviceState === 'error' ? destructive(0.5) : warning(0.4)}`
+            background: browserPhoneReady ? slate(0.7) : browserPhoneError ? destructive(0.7) : warning(0.5),
+            boxShadow: `0 0 12px ${browserPhoneReady ? slate(0.5) : browserPhoneError ? destructive(0.5) : warning(0.4)}`
           }} />
-          <span style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: slate(0.6), textTransform: 'uppercase', fontWeight: 600 }} title={deviceError || undefined}>
-             {deviceState === 'ready' ? 'CALLING READY' : deviceState === 'initializing' ? 'CONNECTING' : deviceState === 'error' ? 'CALLING ERROR' : 'STARTING'}
+          <span style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: slate(0.6), textTransform: 'uppercase', fontWeight: 600 }} title={systemStatus === 'online' ? deviceError || undefined : undefined}>
+             {systemStatus !== 'online'
+               ? systemStatus === 'checking' ? 'CHECKING SERVICE' : systemStatus === 'no_subscription' ? 'NO PHONE ACCESS' : systemStatus === 'restricted' ? 'PHONE RESTRICTED' : 'PHONE UNAVAILABLE'
+               : deviceState === 'ready' ? 'CALLING READY' : deviceState === 'initializing' ? 'CONNECTING' : deviceState === 'error' ? 'CALLING ERROR' : 'STARTING'}
           </span>
-          {(deviceState === 'error' || deviceState === 'uninitialized' || deviceState === 'initializing') && (
-            <button
-              onClick={() => { void reconnect(); }}
-              disabled={deviceState === 'initializing'}
-              className="status-btn"
-              style={{ marginLeft: 8 }}
-            >{deviceState === 'initializing' ? '...' : 'RETRY'}</button>
-          )}
         </div>
 
         {switchTab && (
@@ -236,7 +233,7 @@ export default function PhoneCommandCenter() {
         )}
       </div>
 
-      {deviceState === 'error' && deviceError && (
+      {systemStatus === 'online' && deviceState === 'error' && deviceError && (
         <div style={{
           margin: '-16px 8px 24px',
           padding: '10px 12px',
@@ -247,7 +244,7 @@ export default function PhoneCommandCenter() {
           fontSize: '0.68rem',
           lineHeight: 1.5,
         }}>
-          Browser calling could not connect. Check microphone permission and tap Retry.
+          Browser calling could not connect. Use RECONNECT in the header to retry.
         </div>
       )}
 

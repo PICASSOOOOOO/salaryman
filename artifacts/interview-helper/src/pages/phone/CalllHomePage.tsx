@@ -9,6 +9,11 @@ import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import {
+  classifyPhoneSystemResponse,
+  getPhoneSystemStatusRetryDelay,
+  type PhoneSystemStatus,
+} from '@/lib/phone-system-status';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
@@ -63,9 +68,19 @@ function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode:
   );
 }
 
-function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: AiSubMode; setAiSubMode: (m: AiSubMode) => void }) {
+function TabContent({
+  tab,
+  aiSubMode,
+  setAiSubMode,
+  systemStatus,
+}: {
+  tab: TabKey;
+  aiSubMode: AiSubMode;
+  setAiSubMode: (m: AiSubMode) => void;
+  systemStatus: PhoneSystemStatus;
+}) {
   switch (tab) {
-    case 'cmd': return <PhoneCommandCenter />;
+    case 'cmd': return <PhoneCommandCenter systemStatus={systemStatus} />;
     case 'contacts': return <PhoneContactsPage />;
     case 'dial': return <PhoneDialerPage />;
     case 'live': return <PhoneActivePage />;
@@ -128,7 +143,8 @@ export default function CalllHomePage() {
     };
   }, [showTabSettings]);
 
-  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'restricted' | 'unconfigured'>('checking');
+  const [systemStatus, setSystemStatus] = useState<PhoneSystemStatus>('checking');
+  const [statusRetryKey, setStatusRetryKey] = useState(0);
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
@@ -141,25 +157,55 @@ export default function CalllHomePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
-    if (!hasPhoneAccess || planLoading) return;
-    apiFetch(apiUrl('twilio/system-status'), { credentials: 'include' })
-      .then(r => {
-        if (r.ok) {
-          setSystemStatus('online');
-          return;
-        }
-        return r.json().catch(() => ({})).then(data => {
-          if (r.status === 403 && data.code === 'TWILIO_ORG_RESTRICTED') {
-            setSystemStatus('restricted');
-          } else if (r.status === 403) {
-            setSystemStatus('no_subscription');
-          } else {
-            setSystemStatus('unconfigured');
-          }
+    if (planLoading) return;
+    if (!hasPhoneAccess) {
+      setSystemStatus('no_subscription');
+      return;
+    }
+
+    let stopped = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let activeController: AbortController | null = null;
+    let retryAttempt = 0;
+
+    const scheduleRetry = () => {
+      const delay = getPhoneSystemStatusRetryDelay(retryAttempt);
+      retryAttempt += 1;
+      retryTimer = setTimeout(() => void checkStatus(false), delay);
+    };
+
+    const checkStatus = async (showChecking: boolean) => {
+      if (showChecking) setSystemStatus('checking');
+      const controller = new AbortController();
+      activeController = controller;
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await apiFetch(apiUrl('twilio/system-status'), {
+          credentials: 'include',
+          signal: controller.signal,
         });
-      })
-      .catch(() => setSystemStatus('unconfigured'));
-  }, [apiUrl, hasPhoneAccess, planLoading]);
+        const payload = response.ok ? null : await response.json().catch(() => null);
+        const result = classifyPhoneSystemResponse(response.status, payload);
+        if (stopped) return;
+        setSystemStatus(result.status);
+        if (result.retry) scheduleRetry();
+      } catch {
+        if (stopped) return;
+        setSystemStatus('unavailable');
+        scheduleRetry();
+      } finally {
+        clearTimeout(timeout);
+        if (activeController === controller) activeController = null;
+      }
+    };
+
+    void checkStatus(true);
+    return () => {
+      stopped = true;
+      activeController?.abort();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [apiUrl, hasPhoneAccess, planLoading, statusRetryKey]);
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading || systemStatus !== 'online') return;
@@ -267,15 +313,22 @@ export default function CalllHomePage() {
           </div>
         )}
 
-        {systemStatus === 'unconfigured' && (
+        {(systemStatus === 'unconfigured' || systemStatus === 'unavailable') && (
           <div style={{
             margin: '8px 0', padding: '8px 14px',
             background: slate(0.02),
             border: `1px solid ${warning(0.2)}`, borderRadius: 6,
             fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
-            display: 'flex', alignItems: 'center', gap: 8 }}>
+            display: 'flex', alignItems: 'center', gap: 8 }} role="status" aria-live="polite">
             <AlertTriangle size={12} />
-            Phone service is temporarily unavailable. The system will keep trying to reconnect.
+            <span style={{ flex: 1 }}>Phone service is temporarily unavailable. The system will keep trying to reconnect.</span>
+            <button
+              type="button"
+              onClick={() => setStatusRetryKey(value => value + 1)}
+              style={{ border: `1px solid ${warning(0.28)}`, borderRadius: 4, padding: '5px 7px', background: 'transparent', color: warning(0.9), fontSize: '0.45rem', letterSpacing: '0.08em' }}
+            >
+              RETRY
+            </button>
           </div>
         )}
         {systemStatus === 'no_subscription' && (
@@ -444,7 +497,7 @@ export default function CalllHomePage() {
                     </button>
                   </div>
                 ) : (
-                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} />
+                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} systemStatus={systemStatus} />
                 )}
               </Suspense>
             </CalllHomeProvider>
