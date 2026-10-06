@@ -39,7 +39,9 @@ export const desktopBuildingObjectStatesTable = pgTable(
   ],
 );
 
+// Drizzle-Zod already excludes generatedAlwaysAsIdentity() columns, so `id`
+// is not part of the insert schema and must not be passed to Zod 4's strict omit.
 export const insertDesktopBuildingObjectStateSchema = createInsertSchema(desktopBuildingObjectStatesTable)
-  .omit({ id: true, createdAt: true, updatedAt: true });
+  .omit({ createdAt: true, updatedAt: true });
 export type InsertDesktopBuildingObjectState = z.infer<typeof insertDesktopBuildingObjectStateSchema>;
 export type DesktopBuildingObjectState = typeof desktopBuildingObjectStatesTable.$inferSelect;

@@ -1476,10 +1476,55 @@ func _update_hud() -> void:
 	var office: Dictionary = snapshot.get("office", {})
 	var room_id := str(scene_data.get("room", "waiting for bridge"))
 	room_label.text = "FLOOR %02d  ·  %s" % [int(scene_data.get("floor", 1)), room_id.to_upper()]
+	var maintenance_status := _nearby_maintenance_status(scene_data)
+	if not maintenance_status.is_empty():
+		var cleanliness := int(maintenance_status.get("cleanliness", 0))
+		var condition := int(maintenance_status.get("condition", 0))
+		var target_name := str(maintenance_status.get("label", "OBJECT"))
+		controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nC CLEAN %d%%  ·  V REPAIR %d%%  ·  %s" % [
+			cleanliness,
+			condition,
+			target_name,
+		]
+		var worst_state := mini(cleanliness, condition)
+		var state_color := Color("#c4ddcb")
+		if worst_state < 35:
+			state_color = Color("#ef7f70")
+		elif worst_state < 65:
+			state_color = Color("#f8b957")
+		controls_label.add_theme_color_override("font_color", state_color)
+	else:
+		controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nE USE / STAIRS  ·  C CLEAN  ·  V REPAIR"
+		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
 	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), str(office.get("notice", "WAITING FOR PYGAME"))]
 	_update_native_app_panel(office, scene_data)
+
+
+func _nearby_maintenance_status(scene_data: Dictionary) -> Dictionary:
+	var raw_objects: Variant = scene_data.get("objects", [])
+	if not raw_objects is Array:
+		return {}
+	for value in raw_objects:
+		if not value is Dictionary:
+			continue
+		var object: Dictionary = value
+		if not bool(object.get("nearby", false)):
+			continue
+		var cleanliness: Variant = object.get("cleanliness")
+		var condition: Variant = object.get("condition")
+		if typeof(cleanliness) != TYPE_INT or typeof(condition) != TYPE_INT:
+			continue
+		var label := str(object.get("label", "OBJECT")).strip_edges().to_upper()
+		if label.length() > 18:
+			label = label.substr(0, 17) + "…"
+		return {
+			"label": label,
+			"cleanliness": clampi(int(cleanliness), 0, 100),
+			"condition": clampi(int(condition), 0, 100),
+		}
+	return {}
 
 
 func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> void:
