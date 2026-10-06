@@ -15,6 +15,18 @@ Reuse the established onboarding, receptionist, elevator, office-discovery, stor
 
 **How to apply:** Reject city expansion until this single building has an end-to-end new-user intro, Godot-driven playable movement/actions, persistent objects/economy, NPC life, authoritative API connections, story progression, and production-quality solar-punk art.
 
+The customer-facing Tower is the primary SALARYMAN product. Community custom
+servers and player-designed buildings are a separate priority; they may use
+official builder assets or their own Godot assets, but do not unlock or provide
+paid SALARYMAN products unless the person has an active paid account.
+
+**Why:** the user clarified that direct customer needs come before custom
+servers, and that custom building access must not bypass paid product gates.
+
+**How to apply:** Prioritize the Tower experience sold directly to SALARYMAN
+customers. Keep community building tools separate from the core product and
+enforce paid entitlements on the server for every paid feature.
+
 Keep work on this first building until its complete loop is polished before
 starting another building or geographic expansion. Building ownership should
 support organization-hired NPC or human workers whose physical construction,
