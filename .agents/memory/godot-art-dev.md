@@ -22,6 +22,15 @@ feel like a 1970s–1980s solar-punk retrofuture even when the story is dark noi
 All new assets must be animation-worthy: readable silhouettes, separable layers,
 clean pivots and contacts, stable lighting, and no baked text or UI.
 
+Keep the game open to other developers who want to design buildings within the
+SALARYMAN world using Godot.
+
+**Why:** the user asked to keep this contribution path open.
+
+**How to apply:** Make the Godot building-authoring path discoverable and usable
+by external developers, and preserve existing paid entitlement gates in the
+game when distributing public builds.
+
 Portable Godot bundles should ship source GLTF/GLB assets and floor-plan data,
 but not the generated `.godot` import cache. A cache-free smoke test must run
 one editor import pass before launching the runtime; otherwise first-load

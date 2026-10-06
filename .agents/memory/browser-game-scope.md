@@ -7,6 +7,8 @@ The browser workspace is the professional product; the Desktop OS gameplay clien
 
 The only browser page connected to the desktop experience is the `/desktop` download page. The downloadable OS app is computer-only for macOS, Windows, and Linux; there is no phone app.
 
-**Why:** The user clarified the audience split, feature-parity requirement, native-game UI boundary, free office-simulation positioning, and supported download platforms.
+Paid features in the game version remain subject to their existing paid entitlement gates. Downloading the public game client does not unlock them.
 
-**How to apply:** Keep the professional browser tools in the browser, share backend data where needed, and build the gameplay client’s own screens and interactions. Connect desktop marketing/downloads through `/desktop` only. List computer builds for macOS, Windows, and Linux; do not present a phone app.
+**Why:** The user clarified the audience split, feature-parity requirement, native-game UI boundary, free office-simulation positioning, supported download platforms, and paid-access boundary.
+
+**How to apply:** Keep the professional browser tools in the browser, share backend data where needed, and build the gameplay client’s own screens and interactions. Connect desktop marketing/downloads through `/desktop` only. List computer builds for macOS, Windows, and Linux; do not present a phone app. Preserve existing in-game entitlement checks when distributing the client publicly.
