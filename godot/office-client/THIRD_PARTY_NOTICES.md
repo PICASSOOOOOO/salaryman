@@ -34,3 +34,9 @@ reference for the bundled art.
 
 Small Ambitions is a GPL-3.0 Unity project used only as visual reference. No
 code or assets from it are included.
+
+## Shadow Tower Office Kit
+
+The ATM, vending machine, and owner desk-terminal PNGs are user-supplied art.
+Their original README and asset manifest are preserved in
+`shadow-tower-assets/`. No separate license was included with the submission.

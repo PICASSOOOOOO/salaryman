@@ -51,6 +51,7 @@ var camera_target := Vector3.ZERO
 
 var materials: Dictionary = {}
 var imported_scenes: Dictionary = {}
+var shadow_tower_textures: Dictionary = {}
 
 
 func _ready() -> void:
@@ -227,9 +228,19 @@ func _build_static_furniture() -> void:
 	imported_scenes["chair"] = load("res://agentshire-assets/furniture/chair_A.gltf")
 	imported_scenes["couch"] = load("res://agentshire-assets/furniture/couch.gltf")
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
+	shadow_tower_textures["atm"] = _load_shadow_tower_texture("atm")
+	shadow_tower_textures["vending"] = _load_shadow_tower_texture("vending")
+	shadow_tower_textures["desk-terminal"] = _load_shadow_tower_texture("desk-terminal")
 
 	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5), 1.25)
 	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5), 1.1)
+
+
+func _load_shadow_tower_texture(asset_name: String) -> Texture2D:
+	var texture := load("res://shadow-tower-assets/%s.png" % asset_name) as Texture2D
+	if texture == null:
+		push_error("Could not load Shadow Tower asset: %s.png" % asset_name)
+	return texture
 
 
 func _add_imported(node_name: String, asset_name: String, position: Vector3, scale_value: float) -> void:
@@ -446,17 +457,50 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 	for child in dynamic_root.get_children():
 		child.queue_free()
 	interaction_rings.clear()
+	var has_owner_terminal_art: bool = shadow_tower_textures.get("desk-terminal") is Texture2D
 	for item in objects:
 		var object: Dictionary = item
 		var position := _pygame_to_world(float(object.get("x", 0)), float(object.get("y", 0)))
 		var kind := str(object.get("kind", ""))
-		var marker := _build_bridge_object(kind, position)
-		marker.name = str(object.get("id", "bridge-object"))
+		var object_id := str(object.get("id", "bridge-object"))
+		var render_position := position
+		if object_id == "executive-crt":
+			render_position = _pygame_to_world(
+				float(object.get("displayX", object.get("x", 0))),
+				float(object.get("displayY", object.get("y", 0))),
+			)
+		var owner_terminal_replaces_object := has_owner_terminal_art and (
+			object_id == "executive-desk" or object_id == "executive-telephone"
+		)
+		if not owner_terminal_replaces_object:
+			var marker := _build_bridge_object(kind, render_position, object_id)
+			marker.name = object_id
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
 
 
-func _build_bridge_object(kind: String, position: Vector3) -> Node3D:
+func _build_bridge_object(kind: String, position: Vector3, object_id: String) -> Node3D:
+	if kind == "atm" and shadow_tower_textures.get("atm") is Texture2D:
+		return _add_shadow_tower_sprite_to_dynamic(
+			"ATM",
+			shadow_tower_textures["atm"],
+			position,
+			1.8,
+		)
+	if kind == "vending_machine" and shadow_tower_textures.get("vending") is Texture2D:
+		return _add_shadow_tower_sprite_to_dynamic(
+			"VendingMachine",
+			shadow_tower_textures["vending"],
+			position,
+			1.9,
+		)
+	if kind == "crt_terminal" and object_id == "executive-crt" and shadow_tower_textures.get("desk-terminal") is Texture2D:
+		return _add_shadow_tower_sprite_to_dynamic(
+			"OwnerDeskTerminal",
+			shadow_tower_textures["desk-terminal"],
+			position,
+			3.4,
+		)
 	var packed_name := ""
 	if kind == "desk" or kind == "chair":
 		packed_name = "chair" if kind == "chair" else "table"
@@ -478,6 +522,26 @@ func _build_bridge_object(kind: String, position: Vector3) -> Node3D:
 			dynamic_root.add_child(instance)
 			return instance
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
+
+
+func _add_shadow_tower_sprite_to_dynamic(
+	node_name: String,
+	texture: Texture2D,
+	position: Vector3,
+	target_width: float,
+) -> Sprite3D:
+	var sprite := Sprite3D.new()
+	sprite.name = node_name
+	sprite.texture = texture
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.shaded = false
+	sprite.pixel_size = target_width / float(texture.get_width())
+	var rendered_height := sprite.pixel_size * float(texture.get_height())
+	sprite.position = position + Vector3(0.0, rendered_height / 2.0, 0.0)
+	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dynamic_root.add_child(sprite)
+	return sprite
 
 
 func _add_box_to_dynamic(node_name: String, position: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
