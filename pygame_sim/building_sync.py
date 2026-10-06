@@ -14,7 +14,7 @@ from .automation import DesktopLink
 from .scene import TowerScene
 
 BUILDING_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite"}
-ROOM_API_NAME = {"lobby": "lobby", "recreation": "hallway", "executive_suite": "office"}
+ROOM_API_NAME = {"lobby": "lobby", "recreation": "hallway", "executive_suite": "executive_suite"}
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,7 @@ class BuildingSyncEvent:
     ok: bool
     message: str
     state: dict[str, Any] | None = None
+    code: str | None = None
 
 
 class DesktopBuildingSync:
@@ -144,9 +145,10 @@ class DesktopBuildingSync:
                 self._object_states.update(normalized)
             self._last_error = None
         except RuntimeError as exc:
-            message = _friendly_sync_error(str(exc))
+            code = str(exc)
+            message = _friendly_sync_error(code)
             if message != self._last_error:
-                self._events.put(BuildingSyncEvent(False, message))
+                self._events.put(BuildingSyncEvent(False, message, code=code))
                 self._last_error = message
             if message != "BUILDING SERVER OFFLINE":
                 self._discard_one_pending_action(message)

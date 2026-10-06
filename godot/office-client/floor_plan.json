@@ -27,14 +27,23 @@
     "floorCount": 58,
     "officesPerFloor": 4,
     "totalOffices": 232,
-    "pricePerPixelFiat": 2000,
-    "officeAreaPixels": 400000000,
+    "pricePerPixelFiat": 8080.808080808081,
+    "officeAreaPixels": 99000000,
     "startingOfficePriceFiat": 800000000000
   },
   "baseLayout": {
     "unitsPerMeter": 100,
     "officeDimensionsMeters": [90, 110],
-    "outerBounds": [0, 0, 22000, 25000],
+    "clearEnvelopeMeters": [220, 250],
+    "outerBounds": [-30, -30, 22060, 25060],
+    "structure": {
+      "wallThicknessMeters": 0.3,
+      "wallServiceCavityMeters": 0.12,
+      "crawlSpaceClearHeightMeters": 1.0,
+      "foundationBeamWidthMeters": 0.5,
+      "foundationBeamDepthMeters": 0.6,
+      "foundationBeamSpacingMeters": 15.0
+    },
     "elevator": {
       "position": [11000, 1500],
       "doorSide": "south"
@@ -44,9 +53,9 @@
       "spawn": [49978000, 50000000]
     },
     "hallways": [
-      [9000, 0, 4000, 25000],
-      [0, 11000, 9000, 3000],
-      [13000, 11000, 9000, 3000]
+      [9030, 0, 3940, 25000],
+      [0, 11030, 8970, 2940],
+      [13030, 11030, 8970, 2940]
     ],
     "offices": [
       {"id": "executive", "unitNumber": 1, "bounds": [0, 0, 9000, 11000], "capacityDesks": 200, "entrance": [4500, 11000], "doorSide": "south", "label": "OFFICE 01"},
@@ -64,17 +73,17 @@
       "officeWindow": [2500, 6400]
     },
     "sharedObjects": [
-      {"id": "recreation-atm", "kind": "atm", "position": [12800, 5000]},
-      {"id": "recreation-vending", "kind": "vending_machine", "position": [12800, 8000]}
+      {"id": "recreation-atm", "kind": "atm", "position": [12500, 5000]},
+      {"id": "recreation-vending", "kind": "vending_machine", "position": [12500, 8000]}
     ],
     "stairs": {
       "position": [11000, 23500],
       "underConstructionAboveFloor": 1
     },
     "walkableHallways": [
-      [9000, 0, 4000, 25000],
-      [0, 11000, 9000, 3000],
-      [13000, 11000, 9000, 3000]
+      [9030, 0, 3940, 25000],
+      [0, 11030, 8970, 2940],
+      [13030, 11030, 8970, 2940]
     ]
   },
   "rooms": [

@@ -47,6 +47,16 @@ as explicit building geometry, not zero-thickness visual boundaries.
 or full structural footprints before moving boundaries; keep support/service
 areas visible in the layout and out of usable floor space.
 
+Each office is 90 × 110 m of clear interior space; fit four such offices plus
+the shared hallway and elevator area. Structural space expands the building
+footprint instead of reducing office interiors.
+
+**Why:** the user clarified that the dimensions apply per office and do not
+include the hallway or elevator.
+
+**How to apply:** preserve 90 × 110 m interior bounds for every unit; add wall,
+crawl/service, and foundation geometry outside or below those bounds.
+
 Elevator travel should show entry from the lobby, a short camera zoom into a
 transparent isometric elevator interior, and arrival in the selected floor's
 hallway.

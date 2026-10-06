@@ -87,6 +87,8 @@ var imported_scenes: Dictionary = {}
 var automation_actors: Dictionary = {}
 var automation_animations: Dictionary = {}
 var automation_targets: Dictionary = {}
+var structural_wall_thickness := 0.3
+var wall_service_cavity := 0.12
 
 
 func _ready() -> void:
@@ -117,6 +119,8 @@ func _build_materials() -> void:
 	materials["office_3"] = _material(Color("#60759e"), 0.82)
 	materials["office_4"] = _material(Color("#ad7890"), 0.82)
 	materials["wall"] = _material(Color("#173239"), 0.78)
+	materials["wall_service"] = _material(Color("#777e72"), 0.58, false, 0.12)
+	materials["foundation"] = _material(Color("#48534f"), 0.9)
 	materials["wall_trim"] = _material(Color("#2f8f82"), 0.62)
 	materials["door"] = _material(Color("#e8b45d"), 0.66)
 	materials["glass"] = _material(Color("#8ed6d2"), 0.18, true)
@@ -208,6 +212,13 @@ func _build_building_shell() -> void:
 
 	var floor_plan := _load_floor_plan()
 	var base_layout: Dictionary = floor_plan.get("baseLayout", {})
+	var structure: Dictionary = base_layout.get("structure", {})
+	structural_wall_thickness = maxf(float(structure.get("wallThicknessMeters", 0.3)), 0.12)
+	wall_service_cavity = clampf(
+		float(structure.get("wallServiceCavityMeters", 0.12)),
+		0.0,
+		structural_wall_thickness * 0.6
+	)
 	var elevator_lobby: Dictionary = base_layout.get("elevatorLobby", {})
 	var lobby_spawn: Array = elevator_lobby.get("spawn", [])
 	var lobby_bounds: Array = elevator_lobby.get("bounds", [])
@@ -230,6 +241,7 @@ func _build_building_shell() -> void:
 		})
 	for spec in room_specs:
 		_add_room_shell(spec, floor_plan)
+	_build_underfloor_structure(base_layout)
 	_build_room_lighting(floor_plan)
 	_build_lobby_building_services()
 
@@ -271,50 +283,73 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var right := float(render_position_px.x + rect_size_px.x) * WORLD_SCALE
 	var top := float(render_position_px.y) * WORLD_SCALE
 	var bottom := float(render_position_px.y + rect_size_px.y) * WORLD_SCALE
-	var wall_thickness := 0.26
+	var wall_half := structural_wall_thickness / 2.0
 	if room_id == "recreation":
-		var hall_core_left := 9000.0 * WORLD_SCALE
-		var hall_core_right := 13000.0 * WORLD_SCALE
-		var hall_left := 0.0
-		var hall_right := 22000.0 * WORLD_SCALE
-		var cross_top := 11000.0 * WORLD_SCALE
-		var cross_bottom := 14000.0 * WORLD_SCALE
-		_add_horizontal_solid_wall("%sNorthWall" % room_id, hall_core_left, hall_core_right, top)
-		_add_horizontal_solid_wall("%sSouthWall" % room_id, hall_core_left, hall_core_right, bottom)
-		_add_solid_box("%sWestCrossWall" % room_id, Vector3(hall_left, WALL_HEIGHT / 2.0, (cross_top + cross_bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, cross_bottom - cross_top), materials["wall"])
-		_add_solid_box("%sEastCrossWall" % room_id, Vector3(hall_right, WALL_HEIGHT / 2.0, (cross_top + cross_bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, cross_bottom - cross_top), materials["wall"])
+		var hall_core_left := 9000.0 * WORLD_SCALE + wall_half
+		var hall_core_right := 13000.0 * WORLD_SCALE - wall_half
+		var hall_left := -wall_half
+		var hall_right := 22000.0 * WORLD_SCALE + wall_half
+		var cross_top := 11000.0 * WORLD_SCALE + wall_half
+		var cross_bottom := 14000.0 * WORLD_SCALE - wall_half
+		_add_horizontal_solid_wall("%sNorthWall" % room_id, hall_core_left, hall_core_right, top - wall_half)
+		_add_horizontal_solid_wall("%sSouthWall" % room_id, hall_core_left, hall_core_right, bottom + wall_half)
+		_add_structural_wall(
+			"%sWestCrossWall" % room_id,
+			Vector3(hall_left, WALL_HEIGHT / 2.0, (cross_top + cross_bottom) / 2.0),
+			cross_bottom - cross_top + structural_wall_thickness,
+			false,
+		)
+		_add_structural_wall(
+			"%sEastCrossWall" % room_id,
+			Vector3(hall_right, WALL_HEIGHT / 2.0, (cross_top + cross_bottom) / 2.0),
+			cross_bottom - cross_top + structural_wall_thickness,
+			false,
+		)
 	elif room_id == "lobby":
-		_add_solid_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
-		_add_solid_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
-		_add_solid_box("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), Vector3(float(rect_size_px.x) * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
+		_add_structural_wall("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
+		_add_structural_wall("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
+		_add_structural_wall("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), float(rect_size_px.x) * WORLD_SCALE, true)
 		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, [float(floor_plan["lobbyHallwayOpening"]) * WORLD_SCALE], 1.8)
 	elif room_id == "executive_suite":
 		var outside_window: Array = spec["outsideWindow"]
 		var office_window: Array = spec["officeWindow"]
 		var door: Array = floor_plan["baseLayout"]["executiveSuite"]["door"]
-		_add_vertical_opening_wall("%sOutsideWall" % room_id, left, top, bottom, [{"center": float(outside_window[1]) * WORLD_SCALE, "kind": "window"}])
-		_add_vertical_opening_wall("%sOfficeWall" % room_id, right, top, bottom, [
+		var outer_left := left - wall_half
+		var outer_right := right + wall_half
+		var outer_top := top - wall_half
+		var outer_bottom := bottom + wall_half
+		_add_vertical_opening_wall("%sOutsideWall" % room_id, outer_left, top, bottom, [{"center": float(outside_window[1]) * WORLD_SCALE, "kind": "window"}])
+		_add_vertical_opening_wall("%sOfficeWall" % room_id, outer_right, top, bottom, [
 			{"center": float(door[1]) * WORLD_SCALE, "kind": "door"},
 			{"center": float(office_window[1]) * WORLD_SCALE, "kind": "window"},
 		])
-		_add_horizontal_solid_wall("%sWallTop" % room_id, left, right, top)
-		_add_horizontal_solid_wall("%sWallBottom" % room_id, left, right, bottom)
+		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
+		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
 	elif room_id in ["executive", "public", "office_03", "office_04"]:
-		_add_solid_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
-		_add_solid_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
+		var outer_left := left - wall_half
+		var outer_right := right + wall_half
+		var outer_top := top - wall_half
+		var outer_bottom := bottom + wall_half
+		var wall_length_z := bottom - top + structural_wall_thickness
+		_add_structural_wall("%sWallLeft" % room_id, Vector3(outer_left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
+		_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
 		var entrance: Array = spec["entrance"]
 		var door_center := float(entrance[0]) * WORLD_SCALE
 		if spec["doorSide"] == "north":
-			_add_horizontal_wall_segments("%sWallTop" % room_id, left, right, top, [door_center], 1.55)
-			_add_horizontal_solid_wall("%sWallBottom" % room_id, left, right, bottom)
+			_add_horizontal_wall_segments("%sWallTop" % room_id, outer_left, outer_right, outer_top, [door_center], 1.55)
+			_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
 		else:
-			_add_horizontal_solid_wall("%sWallTop" % room_id, left, right, top)
-			_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, [door_center], 1.55)
+			_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
+			_add_horizontal_wall_segments("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom, [door_center], 1.55)
 	else:
-		_add_solid_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
-		_add_solid_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
-		_add_solid_box("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
-		_add_solid_box("%sWallBottom" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
+		var outer_left := left - wall_half
+		var outer_right := right + wall_half
+		var outer_top := top - wall_half
+		var outer_bottom := bottom + wall_half
+		_add_structural_wall("%sWallLeft" % room_id, Vector3(outer_left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
+		_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
+		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
+		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
 
 
 func _add_floor_region(node_name: String, bounds: Array, material: Material) -> void:
@@ -323,8 +358,143 @@ func _add_floor_region(node_name: String, bounds: Array, material: Material) -> 
 	_add_solid_box(node_name, center, size, material)
 
 
+func _build_underfloor_structure(base_layout: Dictionary) -> void:
+	var bounds: Array = base_layout.get("outerBounds", [])
+	if bounds.size() < 4:
+		return
+	var structure: Dictionary = base_layout.get("structure", {})
+	var span_x := float(bounds[2]) * WORLD_SCALE
+	var span_z := float(bounds[3]) * WORLD_SCALE
+	var left := float(bounds[0]) * WORLD_SCALE
+	var top := float(bounds[1]) * WORLD_SCALE
+	var right := left + span_x
+	var bottom := top + span_z
+	var beam_width := maxf(float(structure.get("foundationBeamWidthMeters", 0.5)), 0.1)
+	var beam_depth := maxf(float(structure.get("foundationBeamDepthMeters", 0.6)), 0.1)
+	var beam_spacing := maxf(float(structure.get("foundationBeamSpacingMeters", 15.0)), 2.0)
+	var crawl_clearance := maxf(float(structure.get("crawlSpaceClearHeightMeters", 1.0)), 0.4)
+	var beam_top_y := -crawl_clearance
+	var beam_center_y := beam_top_y - beam_depth / 2.0
+	var center_x := left + span_x / 2.0
+	var center_z := top + span_z / 2.0
+	var line_index := 0
+	var x := left
+	while x <= right:
+		_add_solid_box(
+			"FoundationBeamAcross%d" % line_index,
+			Vector3(x, beam_center_y, center_z),
+			Vector3(beam_width, beam_depth, span_z),
+			materials["foundation"],
+		)
+		line_index += 1
+		x += beam_spacing
+	_add_solid_box(
+		"FoundationBeamRightEdge",
+		Vector3(right, beam_center_y, center_z),
+		Vector3(beam_width, beam_depth, span_z),
+		materials["foundation"],
+	)
+	line_index = 0
+	var z := top
+	while z <= bottom:
+		_add_solid_box(
+			"FoundationBeamAlong%d" % line_index,
+			Vector3(center_x, beam_center_y, z),
+			Vector3(span_x, beam_depth, beam_width),
+			materials["foundation"],
+		)
+		line_index += 1
+		z += beam_spacing
+	_add_solid_box(
+		"FoundationBeamBottomEdge",
+		Vector3(center_x, beam_center_y, bottom),
+		Vector3(span_x, beam_depth, beam_width),
+		materials["foundation"],
+	)
+	var crawl_floor_top := beam_top_y - beam_depth - 0.5
+	_add_solid_box(
+		"UnderfloorCrawlSlab",
+		Vector3(center_x, crawl_floor_top - 0.06, center_z),
+		Vector3(span_x, 0.12, span_z),
+		materials["foundation"],
+	)
+
+
+func _add_structural_wall(node_name: String, center: Vector3, length: float, horizontal: bool) -> void:
+	var thickness := structural_wall_thickness
+	var cavity := minf(wall_service_cavity, thickness * 0.6)
+	if cavity < 0.01:
+		var solid_size := Vector3(length, WALL_HEIGHT, thickness) if horizontal else Vector3(thickness, WALL_HEIGHT, length)
+		_add_solid_box(node_name, center, solid_size, materials["wall"])
+		return
+	var skin := (thickness - cavity) / 2.0
+	var skin_offset := (cavity + skin) / 2.0
+	if horizontal:
+		_add_solid_box(
+			node_name + "SkinA",
+			center + Vector3(0.0, 0.0, -skin_offset),
+			Vector3(length, WALL_HEIGHT, skin),
+			materials["wall"],
+		)
+		_add_solid_box(
+			node_name + "SkinB",
+			center + Vector3(0.0, 0.0, skin_offset),
+			Vector3(length, WALL_HEIGHT, skin),
+			materials["wall"],
+		)
+		_add_box(
+			node_name + "CavityCapTop",
+			center + Vector3(0.0, WALL_HEIGHT - 0.025, 0.0),
+			Vector3(length, 0.05, thickness),
+			materials["wall"],
+		)
+		_add_box(
+			node_name + "CavityCapBottom",
+			center + Vector3(0.0, 0.025, 0.0),
+			Vector3(length, 0.05, thickness),
+			materials["wall"],
+		)
+		_add_box(
+			node_name + "ServiceConduit",
+			Vector3(center.x, 1.15, center.z),
+			Vector3(length * 0.94, 0.045, cavity * 0.65),
+			materials["wall_service"],
+		)
+	else:
+		_add_solid_box(
+			node_name + "SkinA",
+			center + Vector3(-skin_offset, 0.0, 0.0),
+			Vector3(skin, WALL_HEIGHT, length),
+			materials["wall"],
+		)
+		_add_solid_box(
+			node_name + "SkinB",
+			center + Vector3(skin_offset, 0.0, 0.0),
+			Vector3(skin, WALL_HEIGHT, length),
+			materials["wall"],
+		)
+		_add_box(
+			node_name + "CavityCapTop",
+			center + Vector3(0.0, WALL_HEIGHT - 0.025, 0.0),
+			Vector3(thickness, 0.05, length),
+			materials["wall"],
+		)
+		_add_box(
+			node_name + "CavityCapBottom",
+			center + Vector3(0.0, 0.025, 0.0),
+			Vector3(thickness, 0.05, length),
+			materials["wall"],
+		)
+		_add_box(
+			node_name + "ServiceConduit",
+			Vector3(center.x, 1.15, center.z),
+			Vector3(cavity * 0.65, 0.045, length * 0.94),
+			materials["wall_service"],
+		)
+
+
 func _add_horizontal_solid_wall(node_name: String, left: float, right: float, z: float) -> void:
-	_add_solid_box(node_name, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(right - left, WALL_HEIGHT, 0.26), materials["wall"])
+	_add_structural_wall(node_name, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, z), right - left, true)
 
 
 func _add_vertical_opening_wall(node_name: String, x: float, top: float, bottom: float, openings: Array) -> void:
@@ -337,14 +507,24 @@ func _add_vertical_opening_wall(node_name: String, x: float, top: float, bottom:
 		var opening_top := float(opening["center"]) - width / 2.0
 		var opening_bottom := float(opening["center"]) + width / 2.0
 		if opening_top > cursor:
-			_add_solid_box("%sSegment%d" % [node_name, index], Vector3(x, WALL_HEIGHT / 2.0, (cursor + opening_top) / 2.0), Vector3(0.26, WALL_HEIGHT, opening_top - cursor), materials["wall"])
+			_add_structural_wall(
+				"%sSegment%d" % [node_name, index],
+				Vector3(x, WALL_HEIGHT / 2.0, (cursor + opening_top) / 2.0),
+				opening_top - cursor,
+				false,
+			)
 		if opening["kind"] == "window":
-			_add_box("%sGlass%d" % [node_name, index], Vector3(x, 1.55, float(opening["center"])), Vector3(0.06, 0.92, width), materials["glass"])
-			_add_box("%sWindowTop%d" % [node_name, index], Vector3(x, 2.08, float(opening["center"])), Vector3(0.30, 0.12, width + 0.12), materials["wall_trim"])
-			_add_box("%sWindowBottom%d" % [node_name, index], Vector3(x, 1.02, float(opening["center"])), Vector3(0.30, 0.12, width + 0.12), materials["wall_trim"])
+			_add_box("%sGlass%d" % [node_name, index], Vector3(x, 1.55, float(opening["center"])), Vector3(structural_wall_thickness, 0.92, width), materials["glass"])
+			_add_box("%sWindowTop%d" % [node_name, index], Vector3(x, 2.08, float(opening["center"])), Vector3(structural_wall_thickness + 0.12, 0.12, width + 0.12), materials["wall_trim"])
+			_add_box("%sWindowBottom%d" % [node_name, index], Vector3(x, 1.02, float(opening["center"])), Vector3(structural_wall_thickness + 0.12, 0.12, width + 0.12), materials["wall_trim"])
 		cursor = opening_bottom
 	if cursor < bottom:
-		_add_solid_box("%sEnd" % node_name, Vector3(x, WALL_HEIGHT / 2.0, (cursor + bottom) / 2.0), Vector3(0.26, WALL_HEIGHT, bottom - cursor), materials["wall"])
+		_add_structural_wall(
+			"%sEnd" % node_name,
+			Vector3(x, WALL_HEIGHT / 2.0, (cursor + bottom) / 2.0),
+			bottom - cursor,
+			false,
+		)
 
 
 func _add_horizontal_wall_segments(node_prefix: String, left: float, right: float, z: float, door_centers: Array, opening_width: float) -> void:
@@ -354,16 +534,26 @@ func _add_horizontal_wall_segments(node_prefix: String, left: float, right: floa
 		var opening_left := center - opening_width / 2.0
 		var opening_right := center + opening_width / 2.0
 		if opening_left > cursor:
-			_add_solid_box("%sSegment%d" % [node_prefix, int(cursor * 100.0)], Vector3((cursor + opening_left) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(opening_left - cursor, WALL_HEIGHT, 0.26), materials["wall"])
+			_add_structural_wall(
+				"%sSegment%d" % [node_prefix, int(cursor * 100.0)],
+				Vector3((cursor + opening_left) / 2.0, WALL_HEIGHT / 2.0, z),
+				opening_left - cursor,
+				true,
+			)
 		var frame_width := 0.13
-		var frame_depth := 0.34
+		var frame_depth := structural_wall_thickness + 0.08
 		var frame_height := 0.18
 		_add_box("%sFrameLeft%d" % [node_prefix, int(center * 100.0)], Vector3(opening_left + frame_width / 2.0, WALL_HEIGHT / 2.0, z), Vector3(frame_width, WALL_HEIGHT, frame_depth), materials["wall_trim"])
 		_add_box("%sFrameRight%d" % [node_prefix, int(center * 100.0)], Vector3(opening_right - frame_width / 2.0, WALL_HEIGHT / 2.0, z), Vector3(frame_width, WALL_HEIGHT, frame_depth), materials["wall_trim"])
 		_add_box("%sFrameHeader%d" % [node_prefix, int(center * 100.0)], Vector3(center, WALL_HEIGHT - frame_height / 2.0, z), Vector3(opening_width, frame_height, frame_depth), materials["wall_trim"])
 		cursor = opening_right
 	if cursor < right:
-		_add_solid_box("%sEnd" % node_prefix, Vector3((cursor + right) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(right - cursor, WALL_HEIGHT, 0.26), materials["wall"])
+		_add_structural_wall(
+			"%sEnd" % node_prefix,
+			Vector3((cursor + right) / 2.0, WALL_HEIGHT / 2.0, z),
+			right - cursor,
+			true,
+		)
 
 
 func _build_static_furniture() -> void:

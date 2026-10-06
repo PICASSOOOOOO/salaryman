@@ -32,7 +32,7 @@ const MAX_WALK_SPEED = 600;
 const WALKING_TOLERANCE = 350;
 
 type Position = { x: number; y: number };
-export type BuildingPresenceRoom = "lobby" | "hallway" | "office";
+export type BuildingPresenceRoom = "lobby" | "hallway" | "office" | "executive_suite";
 type PresenceForValidation = Position & {
   room: string;
   roomKey: string;
@@ -48,6 +48,7 @@ const ROOM_BOUNDS: Record<string, { minX: number; maxX: number; minY: number; ma
   public: { minX: 13_000, maxX: 22_000, minY: 0, maxY: 11_000 },
   office_03: { minX: 0, maxX: 9_000, minY: 14_000, maxY: 25_000 },
   office_04: { minX: 13_000, maxX: 22_000, minY: 14_000, maxY: 25_000 },
+  executive_suite: { minX: 0, maxX: 2_500, minY: 4_000, maxY: 7_000 },
 };
 
 const ROOM_SPAWNS: Record<string, Position> = {
@@ -57,11 +58,13 @@ const ROOM_SPAWNS: Record<string, Position> = {
   public: { x: 17_500, y: 5_500 },
   office_03: { x: 4_500, y: 19_500 },
   office_04: { x: 17_500, y: 19_500 },
+  executive_suite: { x: 1_800, y: 5_500 },
 };
 
 export function catalogRoomForPresence(room: BuildingPresenceRoom, ownOfficeRoom: string | null): string | null {
   if (room === "lobby") return "lobby";
   if (room === "hallway") return "recreation";
+  if (room === "executive_suite") return ownOfficeRoom === "executive" ? "executive_suite" : null;
   return ownOfficeRoom && ROOM_BOUNDS[ownOfficeRoom] ? ownOfficeRoom : null;
 }
 
@@ -81,9 +84,9 @@ function pointIsWalkable(room: string, point: Position): boolean {
 
   if (room === "recreation") {
     const hallwayRegions = [
-      { x: 9_000, y: 0, width: 4_000, height: 25_000 },
-      { x: 0, y: 11_000, width: 9_000, height: 3_000 },
-      { x: 13_000, y: 11_000, width: 9_000, height: 3_000 },
+      { x: 9_030, y: 0, width: 3_940, height: 25_000 },
+      { x: 0, y: 11_030, width: 8_970, height: 2_940 },
+      { x: 13_030, y: 11_030, width: 8_970, height: 2_940 },
     ];
     if (!hallwayRegions.some((region) =>
       point.x >= region.x && point.x <= region.x + region.width
@@ -99,9 +102,14 @@ function pointIsWalkable(room: string, point: Position): boolean {
     ]
     : room === "recreation"
       ? [
-        { x: 12_800, y: 5_000, hx: 230, hy: 260 },
-        { x: 12_800, y: 8_000, hx: 230, hy: 260 },
+        { x: 12_500, y: 5_000, hx: 230, hy: 260 },
+        { x: 12_500, y: 8_000, hx: 230, hy: 260 },
       ]
+      : room === "executive_suite"
+        ? [
+          { x: 0, y: 5_500, hx: 220, hy: 90 },
+          { x: 2_500, y: 6_400, hx: 220, hy: 90 },
+        ]
       : [
         ...(room === "executive"
           ? [{ x: 1_200, y: 5_500, hx: 1_250, hy: 1_450 }]
@@ -110,6 +118,12 @@ function pointIsWalkable(room: string, point: Position): boolean {
   return !obstacles.some((obstacle) =>
     Math.abs(point.x - obstacle.x) < obstacle.hx
     && Math.abs(point.y - obstacle.y) < obstacle.hy);
+}
+
+const EXECUTIVE_SUITE_DOOR = { x: 2_500, y: 4_600 };
+
+function isNearExecutiveSuiteDoor(point: Position): boolean {
+  return Math.hypot(point.x - EXECUTIVE_SUITE_DOOR.x, point.y - EXECUTIVE_SUITE_DOOR.y) <= 600;
 }
 
 export function isWalkableBuildingPosition(room: string, point: Position): boolean {
@@ -133,6 +147,22 @@ export function validateBuildingPresence(
   if (!previous || previous.linkId !== next.linkId
     || previous.room !== next.room || previous.roomKey !== next.roomKey
     || previous.floorNumber !== next.floorNumber) {
+    if (next.room === "executive_suite") {
+      const officeKey = next.roomKey.endsWith(":suite")
+        ? next.roomKey.slice(0, -":suite".length)
+        : null;
+      if (!previous || previous.room !== "office" || previous.roomKey !== officeKey
+        || previous.floorNumber !== next.floorNumber || !isNearExecutiveSuiteDoor(previous)) {
+        return "Enter the executive suite through its marked door";
+      }
+    }
+    if (previous?.room === "executive_suite" && next.room === "office") {
+      if (previous.roomKey !== `${next.roomKey}:suite`
+        || previous.floorNumber !== next.floorNumber
+        || !isNearExecutiveSuiteDoor(previous)) {
+        return "Exit the executive suite through its marked door";
+      }
+    }
     return Math.hypot(next.x - spawn.x, next.y - spawn.y) <= 350
       ? null
       : "Enter the room through its marked entrance";

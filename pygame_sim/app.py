@@ -314,6 +314,9 @@ def run(argv: list[str] | None = None) -> int:
         building_sync.update_scene(scene)
         scene.set_building_object_states(building_sync.object_states())
         for sync_event in building_sync.drain_events():
+            if sync_event.code == "HTTP_403" and scene.return_from_denied_executive_suite():
+                state.notice = "EXECUTIVE SUITE ACCESS DENIED"
+                continue
             if sync_event.state is not None:
                 state_floor = sync_event.state.get("floorNumber")
                 object_id = sync_event.state.get("objectId")

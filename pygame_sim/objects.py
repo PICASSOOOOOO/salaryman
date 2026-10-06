@@ -221,27 +221,9 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, route="surveillance")
 
         if item.kind == "vending_machine":
-            label, cost = VENDING_ITEMS.get(vending_item, ("UNKNOWN ITEM", 0.0))
-            if vending_item not in VENDING_ITEMS:
-                return InteractionResult(False, "VENDING ITEM NOT FOUND")
-            if vending_item == "coffee" and state.selected_worker is not None:
-                worker_index = state.selected_worker
-                if not state.buy_coffee(worker_index):
-                    message = f"VENDING DENIED / ƒ{cost:.0f} REQUIRED"
-                    state.notice = message
-                    return InteractionResult(False, message)
-                scene.focus_on_interaction(item)
-                message = f"VENDING DISPENSED / COFFEE FOR {state.roster.workers[worker_index].name.upper()}"
-                state.notice = message
-                return InteractionResult(True, message, route="coffee-break")
-            if not state.purchase_office_item(vending_item, cost, f"VENDING / {label}"):
-                message = f"VENDING DENIED / ƒ{cost:.0f} REQUIRED"
-                state.notice = message
-                return InteractionResult(False, message)
-            scene.focus_on_interaction(item)
-            message = f"VENDING DISPENSED / {label}"
+            message = "VENDING DISABLED / SERVER-VERIFIED ITEM EFFECTS REQUIRED"
             state.notice = message
-            return InteractionResult(True, message)
+            return InteractionResult(False, message)
 
         if item.kind == "crt_terminal":
             permission_message = scene.workstation_permission(item.parent_id)
@@ -286,6 +268,9 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     """Create the fixed physical-object contract for the first tower slice."""
 
     registry = OfficeObjectRegistry()
+    # Historical workstation placements are deliberately kept inert; the active
+    # registry below is the only source of furniture and interactables.
+    """
     entries = [
         OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "SELECT FLOOR", destination_floor=1),
         OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "STAIRS / CHANGE FLOOR"),
@@ -373,6 +358,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("office4b-crt", "crt_terminal", "SYSTEMS TERMINAL", "office_04", (8_100, 6_500), "SIT TO USE COMPUTER", display_position=(8_100, 6_100), parent_id="office4b-desk"),
         OfficeObject("office4b-telephone", "telephone", "TELEPHONE", "office_04", (7_700, 6_250), "OPEN PHONE CENTER"),
     ]
+    """
     # Do not register the old free workstation sets or decorative corridor
     # props. Shared furniture is added only from server-owned office inventory.
     entries = [
@@ -385,16 +371,18 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),
         OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (11_000, 1_500), "SELECT FLOOR", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (11_000, 23_500), "UPPER FLOORS UNDER CONSTRUCTION"),
-        OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_800, 5_000), "CHECK BANCO OMBRA"),
-        OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_800, 8_000), "BUY OFFICE ASSETS"),
+        OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_500, 5_000), "CHECK BANCO OMBRA"),
+        OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_500, 8_000), "BUY OFFICE ASSETS"),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (4_500, 11_000), "ENTER OFFICE 01", destination_room="executive"),
         OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (17_500, 11_000), "ENTER OFFICE 02", destination_room="public"),
         OfficeObject("hall-office-3-door", "door", "OFFICE 03", "recreation", (4_500, 14_000), "ENTER OFFICE 03", destination_room="office_03"),
         OfficeObject("hall-office-4-door", "door", "OFFICE 04", "recreation", (17_500, 14_000), "ENTER OFFICE 04", destination_room="office_04"),
+        OfficeObject("executive-exit-door", "door", "HALLWAY", "executive", (4_500, 11_000), "EXIT TO HALLWAY", destination_room="recreation"),
+        OfficeObject("public-exit-door", "door", "HALLWAY", "public", (17_500, 11_000), "EXIT TO HALLWAY", destination_room="recreation"),
+        OfficeObject("office_03-exit-door", "door", "HALLWAY", "office_03", (4_500, 14_000), "EXIT TO HALLWAY", destination_room="recreation"),
+        OfficeObject("office_04-exit-door", "door", "HALLWAY", "office_04", (17_500, 14_000), "EXIT TO HALLWAY", destination_room="recreation"),
         OfficeObject("executive-suite-door", "door", "EXECUTIVE SUITE", "executive", (2_500, 4_600), "ENTER EXECUTIVE SUITE", destination_room="executive_suite"),
-        OfficeObject("executive-suite-exit", "door", "OFFICE 01", "executive_suite", (2_500, 5_500), "RETURN TO OFFICE", destination_room="executive"),
-        OfficeObject("executive-suite-window-outside", "window", "TOWER VIEW", "executive_suite", (0, 5_500), "LOOK OUTSIDE", interactive=False),
-        OfficeObject("executive-suite-window-office", "window", "OFFICE VIEW", "executive_suite", (2_500, 6_500), "LOOK INTO OFFICE", interactive=False),
+        OfficeObject("executive-suite-exit", "door", "OFFICE 01", "executive_suite", (2_500, 4_600), "RETURN TO OFFICE", destination_room="executive"),
     ]
     for entry in entries:
         registry.add(entry)

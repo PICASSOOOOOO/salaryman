@@ -7,12 +7,15 @@ import {
   desktopOfficePresenceTable,
   desktopWorkLeasesTable,
   deviceLinksTable,
+  hasRoleAccess,
+  orgDoorLocksTable,
   orgMembersTable,
   organizationsTable,
   shadowTowerFloorsTable,
   shadowTowerOfficeUnitsTable,
   shadowTowerWorkstationAssignmentsTable,
   usersTable,
+  type OrgRole,
 } from "@workspace/db";
 import { canAccess } from "./shadow-tower";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
@@ -60,6 +63,7 @@ const ROOM_LABEL: Record<string, string> = {
   hallway: "SHARED HALLWAY",
   elevator: "ELEVATOR",
   office: "ORGANIZATION OFFICE",
+  executive_suite: "EXECUTIVE SUITE",
 };
 const MAINTENANCE_REACH_PX = 1_250;
 const PUBLIC_WORK_SESSION_MAX_AGE_MS = 15 * 60 * 1_000;
@@ -77,6 +81,29 @@ type BuildingScopeResult =
   | { ok: true; value: BuildingScope }
   | { ok: false; status: 403 | 409; error: string };
 
+async function canEnterExecutiveSuite(
+  userId: string,
+  office: NonNullable<Awaited<ReturnType<typeof resolveUserOffice>>>,
+): Promise<boolean> {
+  if (office.ownerUserId === userId) return true;
+  if (office.orgId == null) return false;
+  const doorKey = `${office.key}:suite`;
+  const [lock] = await db.select().from(orgDoorLocksTable).where(and(
+    eq(orgDoorLocksTable.orgId, office.orgId),
+    eq(orgDoorLocksTable.doorKey, doorKey),
+  )).limit(1);
+  if (!lock) return true;
+  const [member] = await db.select({
+    role: orgMembersTable.role,
+    status: orgMembersTable.status,
+  }).from(orgMembersTable).where(and(
+    eq(orgMembersTable.orgId, office.orgId),
+    eq(orgMembersTable.userId, userId),
+  )).limit(1);
+  return member?.status === "active"
+    && hasRoleAccess(member.role as OrgRole, lock.minRole as OrgRole);
+}
+
 async function resolveBuildingScope(
   link: { id: string; userId: string },
   password: unknown,
@@ -90,14 +117,20 @@ async function resolveBuildingScope(
     return { ok: false, status: 409, error: "Fresh building presence is required" };
   }
 
-  const ownOffice = presence.room === "office"
+  const isOfficePresence = presence.room === "office" || presence.room === "executive_suite";
+  const ownOffice = isOfficePresence
     ? await resolveUserOffice(link.userId, password, presence.floorNumber)
     : null;
-  if (presence.room === "office" && (!ownOffice
+  if (isOfficePresence && (!ownOffice
     || ownOffice.floor.floorNumber !== presence.floorNumber
-    || ownOffice.key !== presence.roomKey
+    || (presence.room === "office" && ownOffice.key !== presence.roomKey)
+    || (presence.room === "executive_suite" && `${ownOffice.key}:suite` !== presence.roomKey)
     || ownOffice.city !== presence.city)) {
     return { ok: false, status: 403, error: "Authorized organization office access is required" };
+  }
+  if (presence.room === "executive_suite"
+    && (presence.floorNumber !== 1 || ownOffice?.room !== "executive")) {
+    return { ok: false, status: 403, error: "The executive suite is only available in Office 01 on Floor 1" };
   }
   if (presence.room === "lobby" && presence.floorNumber !== 1) {
     return { ok: false, status: 403, error: "The building lobby is on Floor 1" };
@@ -117,14 +150,14 @@ async function resolveBuildingScope(
     }
   }
   const room = catalogRoomForPresence(
-    presence.room as "lobby" | "hallway" | "office",
+    presence.room as "lobby" | "hallway" | "office" | "executive_suite",
     ownOffice?.room ?? null,
   );
   if (!room || !isWalkableBuildingPosition(room, { x: presence.x, y: presence.y })) {
     return { ok: false, status: 409, error: "Fresh, valid building room presence is required" };
   }
-  const scopeKey = presence.room === "office"
-    ? `${ownOffice!.key}:floor:${presence.floorNumber}:unit:${ownOffice!.unit.unitNumber}`
+  const scopeKey = isOfficePresence
+    ? `${ownOffice!.key}:floor:${presence.floorNumber}:unit:${ownOffice!.unit.unitNumber}${presence.room === "executive_suite" ? ":suite" : ""}`
     : `tower:${presence.city}:floor:${presence.floorNumber}:${presence.roomKey}`;
   return {
     ok: true,
@@ -132,8 +165,8 @@ async function resolveBuildingScope(
       presence,
       room,
       scopeKey,
-      orgId: presence.room === "office" ? ownOffice!.orgId : null,
-      ownerUserId: presence.room === "office" ? ownOffice!.ownerUserId : null,
+      orgId: isOfficePresence ? ownOffice!.orgId : null,
+      ownerUserId: isOfficePresence ? ownOffice!.ownerUserId : null,
     },
   };
 }
@@ -503,7 +536,7 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
   const y = Number(req.body?.y);
   const action = req.body?.action;
   const destinationFloor = req.body?.destinationFloor == null ? null : Number(req.body.destinationFloor);
-  if (!["lobby", "hallway", "elevator", "office"].includes(room)
+  if (!["lobby", "hallway", "elevator", "office", "executive_suite"].includes(room)
     || !Number.isInteger(floorNumber) || floorNumber < 1 || floorNumber > FLOOR_COUNT
     || !Number.isInteger(x) || x < 0 || x > 100_000_000
     || !Number.isInteger(y) || y < 0 || y > 100_000_000
@@ -521,6 +554,15 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
       : await resolveUserWorkstation(link.userId, currentOrgId, floorNumber);
     if (room === "office" && (!ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
       res.status(403).json({ error: "An authorized organization office is required to enter this room" });
+      return;
+    }
+    if (room === "executive_suite"
+      && (!ownOffice || ownOffice.floor.floorNumber !== 1 || ownOffice.room !== "executive")) {
+      res.status(403).json({ error: "The executive suite is only available in Office 01 on Floor 1" });
+      return;
+    }
+    if (room === "executive_suite" && !await canEnterExecutiveSuite(link.userId, ownOffice!)) {
+      res.status(403).json({ error: "Your organization role does not allow access to the executive suite" });
       return;
     }
     if (room === "lobby" && floorNumber !== 1) {
@@ -544,6 +586,8 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
       ?? "minx_city";
     const roomKey = room === "office"
       ? ownOffice!.key
+      : room === "executive_suite"
+        ? `${ownOffice!.key}:suite`
       : room === "lobby"
         ? `lobby:${city}`
         : room === "hallway"
@@ -563,7 +607,7 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
         presenceValidationError = validateBuildingPresence(
           previousPresence ?? null,
           {
-            room: room as "lobby" | "hallway" | "office",
+            room: room as "lobby" | "hallway" | "office" | "executive_suite",
             roomKey,
             floorNumber,
             linkId: link.id,
@@ -650,6 +694,15 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
     }
     const objects = buildingObjectsForRoom(scope.value.room);
     if (objects.length === 0) {
+      if (scope.value.room === "executive_suite") {
+        res.json({
+          floorNumber: scope.value.presence.floorNumber,
+          room: scope.value.room,
+          observedAt: new Date().toISOString(),
+          objects: [],
+        });
+        return;
+      }
       res.status(404).json({ error: "No maintainable objects are registered in this room" });
       return;
     }

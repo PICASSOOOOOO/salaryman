@@ -528,6 +528,17 @@ class TowerScene:
                 door.position[1] - self.player_position[1],
             ) > 600:
                 return False
+        self._place_at_room_spawn(room_id)
+        return True
+
+    def return_from_denied_executive_suite(self) -> bool:
+        """Undo the local room transition when the server rejects suite access."""
+        if self.current_room != "executive_suite":
+            return False
+        self._place_at_room_spawn("executive")
+        return True
+
+    def _place_at_room_spawn(self, room_id: str) -> None:
         self.camera_focus_object_id = None
         self.camera_focus_seconds = 0.0
         self.current_room = room_id
@@ -536,7 +547,6 @@ class TowerScene:
         self.velocity = (0.0, 0.0)
         self.motion_remainder = (0.0, 0.0)
         self.set_player_action("stand")
-        return True
 
     def select_floor(self, floor: int) -> bool:
         if floor < 1 or floor > self.floor_count:
