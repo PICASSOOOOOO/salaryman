@@ -112,7 +112,36 @@ def build_practical_app_url(server_url: str, domain: str) -> str | None:
         (candidate for candidate in AUTOMATION_CHARACTERS if candidate.domain == domain),
         None,
     )
-    if profile is None or not isinstance(server_url, str):
+    if profile is None:
+        return None
+    origin = _validated_server_origin(server_url)
+    if origin is None:
+        return None
+    scheme, netloc = origin
+    return urlunsplit((scheme, netloc, profile.app_path, "", ""))
+
+
+DESKTOP_APP_ROUTES = {
+    "systems": "/",
+    "calll_home": "/phone",
+    "comms": "/comms",
+}
+
+
+def build_desktop_app_url(server_url: str, destination: str) -> str | None:
+    """Build one of the fixed app links exposed by physical desktop objects."""
+    path = DESKTOP_APP_ROUTES.get(destination)
+    if path is None:
+        return None
+    origin = _validated_server_origin(server_url)
+    if origin is None:
+        return None
+    scheme, netloc = origin
+    return urlunsplit((scheme, netloc, path, "", ""))
+
+
+def _validated_server_origin(server_url: str) -> tuple[str, str] | None:
+    if not isinstance(server_url, str):
         return None
     try:
         parsed = urlsplit(server_url.strip())
@@ -130,7 +159,7 @@ def build_practical_app_url(server_url: str, domain: str) -> str | None:
         or parsed.fragment
     ):
         return None
-    return urlunsplit((parsed.scheme, parsed.netloc, profile.app_path, "", ""))
+    return parsed.scheme, parsed.netloc
 
 
 @dataclass(frozen=True)

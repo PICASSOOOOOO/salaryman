@@ -14,6 +14,7 @@ from .automation import (
     AUTOMATION_CHARACTERS,
     AutopilotPoller,
     AutopilotSnapshot,
+    build_desktop_app_url,
     build_practical_app_url,
     load_desktop_link,
 )
@@ -121,6 +122,26 @@ def run(argv: list[str] | None = None) -> int:
             else "COULD NOT OPEN DEFAULT BROWSER"
         )
 
+    def open_desktop_app_destination(destination: str) -> None:
+        url = build_desktop_app_url(practical_app_origin, destination)
+        if url is None:
+            state.notice = "SALARYMAN APP LINK UNAVAILABLE"
+            return
+        try:
+            opened = webbrowser.open(url, new=2)
+        except Exception:
+            opened = False
+        label = {
+            "systems": "SALARYMAN WORKSPACE",
+            "calll_home": "CALLL HOME",
+            "comms": "COMMS",
+        }.get(destination)
+        state.notice = (
+            f"OPENING {label}"
+            if opened and label is not None
+            else "COULD NOT OPEN DEFAULT BROWSER"
+        )
+
     coffee_rects: dict[int, pygame.Rect] = {}
     # The packaged client opens directly into the playable office. The business
     # dashboard remains one Tab press away.
@@ -205,6 +226,21 @@ def run(argv: list[str] | None = None) -> int:
                         and renderer.automation_app_rect.collidepoint(event.pos)
                     ):
                         open_selected_practical_app()
+                    elif (
+                        state.active_page == "phone"
+                        and renderer.phone_call_home_rect.collidepoint(event.pos)
+                    ):
+                        open_desktop_app_destination("calll_home")
+                    elif (
+                        state.active_page == "phone"
+                        and renderer.phone_comms_rect.collidepoint(event.pos)
+                    ):
+                        open_desktop_app_destination("comms")
+                    elif (
+                        state.active_page == "systems"
+                        and renderer.systems_workspace_rect.collidepoint(event.pos)
+                    ):
+                        open_desktop_app_destination("systems")
                     elif renderer.repair_rect.collidepoint(event.pos) and state.active_page == "tools":
                         state.repair_decay()
                     elif state.active_page == "customize":
@@ -320,6 +356,10 @@ def run(argv: list[str] | None = None) -> int:
                 state,
                 scene,
                 practical_app_available=selected_practical_app_url() is not None,
+            web_routes_available=build_desktop_app_url(
+                practical_app_origin,
+                "systems",
+            ) is not None,
             )
         else:
             renderer.draw(state, coffee_rects)

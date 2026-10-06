@@ -75,6 +75,9 @@ class SolarPunkRenderer:
         self.record_close_rect = pygame.Rect(0, 0, 0, 0)
         self.overlay_close_rect = pygame.Rect(0, 0, 0, 0)
         self.automation_app_rect = pygame.Rect(0, 0, 0, 0)
+        self.phone_call_home_rect = pygame.Rect(0, 0, 0, 0)
+        self.phone_comms_rect = pygame.Rect(0, 0, 0, 0)
+        self.systems_workspace_rect = pygame.Rect(0, 0, 0, 0)
         self.repair_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_economy_rect = pygame.Rect(0, 0, 0, 0)
@@ -177,6 +180,7 @@ class SolarPunkRenderer:
         scene: TowerScene,
         *,
         practical_app_available: bool = False,
+        web_routes_available: bool = False,
     ) -> None:
         """Render the authoritative scene as a camera-following pixel-art room."""
         self.screen.fill((8, 43, 49))
@@ -194,6 +198,8 @@ class SolarPunkRenderer:
                 )
             elif state.active_page == "customize":
                 self.draw_customization_page(state, scene)
+            elif state.active_page in {"phone", "systems"}:
+                self.draw_device_page(state, web_routes_available=web_routes_available)
             else:
                 self.draw_game_page(state, scene)
         elif state.tool_menu_open:
@@ -745,7 +751,6 @@ class SolarPunkRenderer:
             "tv": "furniture/PC/PC_FRONT_ON_1.png",
             "arcade": "furniture/PC/PC_FRONT_ON_2.png",
             "vending_machine": "furniture/PC/PC_FRONT_ON_3.png",
-            "crt_terminal": "furniture/PC/PC_FRONT_ON_1.png",
             "telephone": "furniture/COFFEE/COFFEE.png",
         }
         if kind == "desk_lamp":
@@ -787,7 +792,51 @@ class SolarPunkRenderer:
             else:
                 for dy in range(-7, 9, 5):
                     pygame.draw.line(self.screen, (239, 236, 214), (x - 6, y + dy), (x + 6, y + dy), 1)
-        elif kind in ("arcade", "vending_machine", "atm", "crt_terminal"):
+        elif kind == "crt_terminal":
+            width = max(46, int(94 * scale))
+            height = max(34, int(68 * scale))
+            case = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (161, 143, 104), case, border_radius=4)
+            pygame.draw.rect(self.screen, (88, 78, 57), case, 2, border_radius=4)
+            bezel = pygame.Rect(case.x + 4, case.y + 3, width - 8, max(17, int(height * 0.57)))
+            pygame.draw.rect(self.screen, (83, 76, 59), bezel, border_radius=3)
+            screen = bezel.inflate(-7, -6)
+            pygame.draw.rect(self.screen, (129, 153, 104), screen, border_radius=2)
+            pygame.draw.line(
+                self.screen,
+                (179, 194, 136),
+                (screen.x + 3, screen.y + 4),
+                (screen.right - 4, screen.y + 4),
+                1,
+            )
+            keyboard = pygame.Rect(case.x + 7, bezel.bottom + 3, width - 14, max(5, height - bezel.height - 9))
+            pygame.draw.rect(self.screen, (103, 91, 68), keyboard, border_radius=2)
+            key_count = 6
+            for key in range(key_count):
+                key_x = keyboard.x + 3 + key * max(3, (keyboard.width - 6) // key_count)
+                pygame.draw.line(self.screen, (190, 176, 137), (key_x, keyboard.y + 2), (key_x, keyboard.bottom - 2), 1)
+            pygame.draw.circle(self.screen, (223, 174, 88), (case.right - 7, case.bottom - 6), 2)
+            pygame.draw.line(self.screen, (119, 103, 73), (case.left + 5, case.bottom + 2), (case.right - 5, case.bottom + 2), 2)
+        elif kind == "pay_phone":
+            width = max(30, int(62 * scale))
+            height = max(60, int(122 * scale))
+            cabinet = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (190, 160, 115), cabinet, border_radius=4)
+            pygame.draw.rect(self.screen, (69, 84, 74), cabinet, 2, border_radius=4)
+            hood = pygame.Rect(cabinet.x - 2, cabinet.y - 3, width + 4, max(9, int(height * 0.16)))
+            pygame.draw.rect(self.screen, (169, 84, 57), hood, border_radius=3)
+            label = pygame.Rect(cabinet.x + 5, hood.bottom + 4, width - 10, max(8, int(height * 0.16)))
+            pygame.draw.rect(self.screen, (218, 202, 157), label, border_radius=2)
+            pygame.draw.line(self.screen, (74, 82, 66), (label.x + 2, label.centery), (label.right - 2, label.centery), 1)
+            dial = (cabinet.centerx, label.bottom + max(7, int(height * 0.2)))
+            pygame.draw.circle(self.screen, (83, 88, 71), dial, max(4, width // 5))
+            pygame.draw.circle(self.screen, (218, 202, 157), dial, max(2, width // 9), 1)
+            handset_x = cabinet.right - max(5, width // 5)
+            pygame.draw.line(self.screen, (51, 65, 58), (handset_x, cabinet.y + 10), (handset_x, cabinet.y + int(height * 0.39)), max(2, width // 12))
+            pygame.draw.circle(self.screen, (51, 65, 58), (handset_x, cabinet.y + 11), max(3, width // 9))
+            pygame.draw.circle(self.screen, (51, 65, 58), (handset_x, cabinet.y + int(height * 0.39)), max(3, width // 9))
+            pygame.draw.rect(self.screen, (213, 192, 147), (cabinet.x + 4, cabinet.bottom - 13, width - 8, 5), border_radius=1)
+        elif kind in ("arcade", "vending_machine", "atm"):
             pygame.draw.rect(self.screen, (57, 101, 105), (x - 9, y - 13, 18, 25), border_radius=3)
             pygame.draw.rect(self.screen, (117, 205, 210) if kind != "vending_machine" else (238, 185, 89), (x - 6, y - 9, 12, 8), border_radius=1)
             pygame.draw.circle(self.screen, (238, 244, 215), (x, y + 6), 2)
@@ -803,8 +852,8 @@ class SolarPunkRenderer:
             else:
                 pygame.draw.circle(self.screen, (83, 136, 146), (x, y - 3), 8)
                 pygame.draw.line(self.screen, (52, 89, 91), (x, y + 4), (x, y + 11), 3)
-        elif kind in ("telephone", "pay_phone"):
-            pygame.draw.rect(self.screen, (224, 117, 87) if kind == "pay_phone" else (67, 126, 113), (x - 9, y - 7, 18, 14), border_radius=4)
+        elif kind == "telephone":
+            pygame.draw.rect(self.screen, (67, 126, 113), (x - 9, y - 7, 18, 14), border_radius=4)
             pygame.draw.arc(self.screen, (246, 239, 207), (x - 7, y - 10, 14, 10), 3.3, 6.1, 2)
         elif kind == "tv":
             pygame.draw.rect(self.screen, (60, 88, 86), (x - 12, y - 8, 24, 16), border_radius=3)
@@ -1139,6 +1188,93 @@ class SolarPunkRenderer:
         self.text("This view is read-only. Manage work in the linked SALARYMAN module.", (panel.x + 30, panel.y + 408), self.font_sm, (186, 204, 187))
         if scene.autopilot_snapshot.state != "connected":
             self.text(scene.autopilot_snapshot.message or "STATUS SYNC UNAVAILABLE", (panel.x + 30, panel.y + 438), self.font_sm, (236, 203, 135))
+
+    def draw_device_page(
+        self,
+        state: OfficeState,
+        *,
+        web_routes_available: bool,
+    ) -> None:
+        """Render the deliberately small set of destinations available at each device."""
+        self.phone_call_home_rect = pygame.Rect(0, 0, 0, 0)
+        self.phone_comms_rect = pygame.Rect(0, 0, 0, 0)
+        self.systems_workspace_rect = pygame.Rect(0, 0, 0, 0)
+        dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        dim.fill((4, 13, 15, 214))
+        self.screen.blit(dim, (0, 0))
+
+        panel_width = min(self.width - 48, 650)
+        panel_height = 318 if state.active_page == "phone" else 284
+        panel = pygame.Rect(0, 0, panel_width, panel_height)
+        panel.center = (self.width // 2, self.height // 2 + 18)
+        self.panel(panel, (238, 239, 226), (84, 106, 96), radius=10, width=2)
+        self.overlay_close_rect = pygame.Rect(panel.right - 94, panel.y + 18, 68, 30)
+        self.panel(self.overlay_close_rect, (223, 227, 212), (120, 133, 116), radius=5, width=1)
+        self.text(
+            "CLOSE",
+            (self.overlay_close_rect.x + 13, self.overlay_close_rect.y + 8),
+            self.font_sm,
+            (45, 60, 53),
+        )
+
+        if state.active_page == "phone":
+            self.text("TOWER PAY PHONE", (panel.x + 30, panel.y + 28), self.font_xl, (25, 48, 42))
+            self.text(
+                "LIMITED LINE / TWO AVAILABLE SERVICES",
+                (panel.x + 32, panel.y + 70),
+                self.font_mono,
+                (74, 97, 84),
+            )
+            gap = 16
+            button_width = (panel.width - 64 - gap) // 2
+            button_y = panel.y + 142
+            self.phone_call_home_rect = pygame.Rect(panel.x + 32, button_y, button_width, 92)
+            self.phone_comms_rect = pygame.Rect(
+                self.phone_call_home_rect.right + gap,
+                button_y,
+                button_width,
+                92,
+            )
+            for rect, heading, detail in (
+                (self.phone_call_home_rect, "CALLL HOME", "PHONE SYSTEM"),
+                (self.phone_comms_rect, "COMMS", "MESSAGES"),
+            ):
+                fill = (223, 239, 221) if web_routes_available else (225, 226, 216)
+                accent = (69, 128, 93) if web_routes_available else (150, 153, 140)
+                self.panel(rect, fill, accent, radius=7, width=2)
+                self.text(heading, (rect.x + 18, rect.y + 21), self.font_lg, (36, 72, 53) if web_routes_available else (111, 114, 103))
+                self.text(detail if web_routes_available else "LINK UNAVAILABLE", (rect.x + 19, rect.y + 56), self.font_sm, (86, 109, 91))
+            self.text(
+                "SELECT CALLL HOME OR COMMS",
+                (panel.x + 32, panel.bottom - 36),
+                self.font_sm,
+                (82, 98, 84),
+            )
+            return
+
+        self.text("SALARYMAN SYSTEMS", (panel.x + 30, panel.y + 28), self.font_xl, (25, 48, 42))
+        self.text(
+            "FULL WORKSPACE ACCESS",
+            (panel.x + 32, panel.y + 70),
+            self.font_mono,
+            (74, 97, 84),
+        )
+        self.text(
+            "Open the complete SALARYMAN workspace in your browser.",
+            (panel.x + 32, panel.y + 112),
+            self.font_md,
+            (58, 75, 65),
+        )
+        self.systems_workspace_rect = pygame.Rect(panel.x + 32, panel.y + 168, panel.width - 64, 58)
+        fill = (223, 239, 221) if web_routes_available else (225, 226, 216)
+        accent = (69, 128, 93) if web_routes_available else (150, 153, 140)
+        self.panel(self.systems_workspace_rect, fill, accent, radius=7, width=2)
+        self.text(
+            "OPEN FULL WORKSPACE" if web_routes_available else "WORKSPACE LINK UNAVAILABLE",
+            (self.systems_workspace_rect.x + 18, self.systems_workspace_rect.y + 20),
+            self.font_md,
+            (36, 72, 53) if web_routes_available else (111, 114, 103),
+        )
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
         veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)

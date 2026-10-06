@@ -13,11 +13,11 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
   { id: "lobby-atm", room: "lobby", label: "Lobby ATM", x: 49_976_750, y: 50_000_800 },
   { id: "lobby-vending", room: "lobby", label: "Lobby vending machine", x: 49_978_750, y: 50_000_800 },
   { id: "lobby-pay-phone", room: "lobby", label: "Lobby pay phone", x: 49_976_200, y: 49_999_300 },
-  { id: "lobby-tv", room: "lobby", label: "Lobby television", x: 49_978_800, y: 49_998_000 },
   { id: "lobby-elevator", room: "lobby", label: "Lobby elevator", x: 49_977_000, y: 50_000_000 },
   { id: "lobby-stairs", room: "lobby", label: "Lobby staircase", x: 49_978_650, y: 50_000_800 },
   { id: "recreation-elevator", room: "recreation", label: "Hallway elevator", x: 1_100, y: 4_100 },
   { id: "recreation-stairs", room: "recreation", label: "Hallway staircase", x: 8_500, y: 4_100 },
+  { id: "recreation-pay-phone", room: "recreation", label: "Hallway pay phone", x: 4_900, y: 4_300 },
   { id: "hall-office-1-door", room: "recreation", label: "Office 01 door", x: 1_800, y: 5_100 },
   { id: "hall-office-2-door", room: "recreation", label: "Office 02 door", x: 3_900, y: 5_100 },
   { id: "hall-office-3-door", room: "recreation", label: "Office 03 door", x: 6_000, y: 5_100 },
@@ -47,13 +47,16 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
   { id: "office4-stairs", room: "public", label: "Office staircase", x: 4_600, y: 6_400 },
   { id: "office4-desk", room: "public", label: "Office desk", x: 3_900, y: 6_250 },
   { id: "office4-chair", room: "public", label: "Office chair", x: 3_900, y: 6_950 },
+  { id: "office4-crt", room: "public", label: "Systems terminal", x: 3_900, y: 6_500 },
   { id: "office4-telephone", room: "public", label: "Office telephone", x: 3_500, y: 6_250 },
   { id: "office4-vending", room: "public", label: "Office vending machine", x: 4_500, y: 6_950 },
   { id: "office3-desk", room: "office_03", label: "Office desk", x: 6_000, y: 6_250 },
   { id: "office3-chair", room: "office_03", label: "Office chair", x: 6_000, y: 6_950 },
+  { id: "office3-crt", room: "office_03", label: "Systems terminal", x: 6_000, y: 6_500 },
   { id: "office3-telephone", room: "office_03", label: "Office telephone", x: 5_600, y: 6_250 },
   { id: "office4b-desk", room: "office_04", label: "Office desk", x: 8_100, y: 6_250 },
   { id: "office4b-chair", room: "office_04", label: "Office chair", x: 8_100, y: 6_950 },
+  { id: "office4b-crt", room: "office_04", label: "Systems terminal", x: 8_100, y: 6_500 },
   { id: "office4b-telephone", room: "office_04", label: "Office telephone", x: 7_700, y: 6_250 },
 ];
 
@@ -116,11 +119,11 @@ function pointIsWalkable(room: string, point: Position): boolean {
       { x: 49_976_750, y: 50_000_800, hx: 230, hy: 260 },
       { x: 49_978_750, y: 50_000_800, hx: 230, hy: 260 },
       { x: 49_976_200, y: 49_999_300, hx: 100, hy: 100 },
-      { x: 49_978_800, y: 49_998_000, hx: 120, hy: 80 },
     ]
     : room === "recreation"
       ? [
         { x: 2_500, y: 4_300, hx: 240, hy: 260 },
+        { x: 4_900, y: 4_300, hx: 100, hy: 130 },
         { x: 1_800, y: 5_100, hx: 180, hy: 110 },
         { x: 3_900, y: 5_100, hx: 180, hy: 110 },
         { x: 6_000, y: 5_100, hx: 180, hy: 110 },

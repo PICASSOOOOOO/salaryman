@@ -221,6 +221,12 @@ describe("desktop office work settlement", () => {
     const floorThreeObjects = await desktopGet("/api/desktop-building/objects");
     expect(floorThreeObjects.status).toBe(200);
     expect(floorThreeObjects.body.floorNumber).toBe(3);
+    expect(floorThreeObjects.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "recreation-pay-phone",
+      floorNumber: 3,
+      cleanliness: 80,
+      condition: 85,
+    }));
 
     const cleaned = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "hall-office-2-door",
@@ -232,6 +238,16 @@ describe("desktop office work settlement", () => {
       floorNumber: 3,
       cleanliness: 100,
     });
+    const cleanedPayPhone = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "recreation-pay-phone",
+      action: "clean",
+    });
+    expect(cleanedPayPhone.status).toBe(200);
+    expect(cleanedPayPhone.body.state).toMatchObject({
+      objectId: "recreation-pay-phone",
+      floorNumber: 3,
+      cleanliness: 100,
+    });
 
     expect((await reportPresence("hallway", 2)).status).toBe(200);
     const floorTwoObjects = await desktopGet("/api/desktop-building/objects");
@@ -239,6 +255,12 @@ describe("desktop office work settlement", () => {
     expect(floorTwoObjects.body.floorNumber).toBe(2);
     expect(floorTwoObjects.body.objects).toContainEqual(expect.objectContaining({
       objectId: "hall-office-2-door",
+      floorNumber: 2,
+      cleanliness: 80,
+      condition: 85,
+    }));
+    expect(floorTwoObjects.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "recreation-pay-phone",
       floorNumber: 2,
       cleanliness: 80,
       condition: 85,
@@ -259,6 +281,12 @@ describe("desktop office work settlement", () => {
     expect(officeObjects.body.objects).toContainEqual(expect.objectContaining({
       objectId: "executive-chair",
       floorNumber: 5,
+    }));
+    expect(officeObjects.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "executive-crt",
+      floorNumber: 5,
+      cleanliness: 80,
+      condition: 85,
     }));
     const repaired = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "executive-chair",

@@ -59,6 +59,9 @@ EXECUTIVE_SHOWCASE_OBJECT_IDS = frozenset(
         "executive-desk-lamp-2",
         "executive-desk-lamp-3",
         "executive-desk-lamp-4",
+        "office4-crt",
+        "office3-crt",
+        "office4b-crt",
     }
 )
 

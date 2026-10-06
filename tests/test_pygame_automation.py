@@ -10,6 +10,7 @@ from pygame_sim.automation import (
     AutopilotDomainStatus,
     AutopilotSnapshot,
     DesktopLink,
+    build_desktop_app_url,
     build_practical_app_url,
     fetch_autopilot_snapshot,
     load_desktop_link,
@@ -54,6 +55,15 @@ class PygameAutomationTests(unittest.TestCase):
         self.assertIsNone(build_practical_app_url("https://user:secret@salaryman.example", "business_ops"))
         self.assertIsNone(build_practical_app_url("https://salaryman.example/?next=evil", "business_ops"))
         self.assertIsNone(build_practical_app_url("https://salaryman.example", "unknown_domain"))
+
+    def test_physical_phone_and_terminal_routes_are_fixed_and_origin_safe(self):
+        origin = "https://salaryman.example/"
+        self.assertEqual(build_desktop_app_url(origin, "systems"), "https://salaryman.example/")
+        self.assertEqual(build_desktop_app_url(origin, "calll_home"), "https://salaryman.example/phone")
+        self.assertEqual(build_desktop_app_url(origin, "comms"), "https://salaryman.example/comms")
+        self.assertIsNone(build_desktop_app_url(origin, "admin"))
+        self.assertIsNone(build_desktop_app_url("https://user:secret@salaryman.example", "comms"))
+        self.assertIsNone(build_desktop_app_url("https://salaryman.example/?next=evil", "systems"))
 
     def test_enabled_characters_walk_and_disabled_characters_wait_at_their_workstation(self):
         scene = build_tower_scene()
