@@ -108,7 +108,7 @@
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
 - [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.
-- [Release build heap cap](release-build-heap-cap.md) — keep the 3 GiB Node heap cap and single-worker Terser; parallel legacy minification can exceed shared-workspace memory.
+- [Release build heap cap](release-build-heap-cap.md) — keep the 3 GiB Node heap and single-worker Terser; use tracked background builds because legacy minification is slow and memory-heavy.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
 - [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ1,000=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
