@@ -293,7 +293,7 @@ def apply_command(
             page = "automation"
             source = f"{profile.name} / {profile.app_label}"
         elif choice == 7:
-            page = "economy"
+            page = "bank"
             source = "SYSTEMS TERMINAL"
         else:
             page = "phone"
@@ -305,6 +305,11 @@ def apply_command(
             source_object_id=state.active_object_id,
         ):
             return CommandResult(False, "TERMINAL OPTION UNAVAILABLE")
+        if choice == 7 and building_sync is not None:
+            state.fiat_balance = None
+            state.fiat_spendable = None
+            if building_sync.queue_game_request("bank"):
+                state.game_service_loading.add("bank")
         return CommandResult(True, f"OPENED {source}")
     if name == "close_page":
         state.close_page()

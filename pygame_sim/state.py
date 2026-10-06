@@ -25,7 +25,11 @@ SHIFT_START = 9
 SHIFT_END = 17
 BreakKind = Literal["short", "lunch"]
 GameRole = Literal["player", "moderator", "admin"]
-OverlayPage = Literal["tools", "economy", "customize", "systems", "phone"]
+OverlayPage = Literal[
+    "tools", "economy", "customize", "systems", "phone",
+    "player", "settings", "inventory", "vending", "bank",
+]
+PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone"})
 RECRUITMENT_REFRESH_COST = 50.0
 DECAY_PER_WORKSPACE_MINUTE = 0.07
 MAINTENANCE_BASE_COST = 40.0
@@ -106,6 +110,16 @@ class OfficeState:
     room_customizations: dict[str, dict[str, str]] = field(default_factory=dict)
     decay: float = 8.0
     maintenance_runs: int = 0
+    show_control_hints: bool = True
+    sprint_toggle_mode: bool = False
+    sprint_toggled: bool = False
+    movement_speed_preset: int = 1
+    game_inventory: list[dict[str, object]] | None = None
+    vending_catalog: list[dict[str, object]] | None = None
+    fiat_balance: int | None = None
+    fiat_spendable: int | None = None
+    selected_vending_index: int = 0
+    game_service_loading: set[str] = field(default_factory=set)
 
     @classmethod
     def with_default_roster(
@@ -191,7 +205,12 @@ class OfficeState:
         source_object_id: str | None = None,
     ) -> bool:
         """Open shared pages while keeping operator tools role-gated."""
-        if not from_object and not self.has_operator_access and page != "customize":
+        if (
+            not from_object
+            and not self.has_operator_access
+            and page != "customize"
+            and page not in PLAYER_PAGES
+        ):
             self.notice = "ACCESS DENIED / FIND THE LIVE OBJECT"
             return False
         self.active_page = page
@@ -381,6 +400,11 @@ class OfficeState:
             ),
             "decay": self.decay,
             "maintenance_runs": self.maintenance_runs,
+            "player_settings": {
+                "show_control_hints": self.show_control_hints,
+                "sprint_toggle_mode": self.sprint_toggle_mode,
+                "movement_speed_preset": self.movement_speed_preset,
+            },
             "workers": [
                 {
                     "name": worker.name,
@@ -447,6 +471,16 @@ class OfficeState:
             )
             state.decay = max(0.0, min(100.0, float(payload.get("decay", state.decay))))
             state.maintenance_runs = max(0, int(payload.get("maintenance_runs", 0)))
+            player_settings = payload.get("player_settings", {})
+            if isinstance(player_settings, dict):
+                state.show_control_hints = player_settings.get("show_control_hints") is not False
+                state.sprint_toggle_mode = player_settings.get("sprint_toggle_mode") is True
+                try:
+                    state.movement_speed_preset = max(
+                        0, min(2, int(player_settings.get("movement_speed_preset", 1)))
+                    )
+                except (TypeError, ValueError):
+                    state.movement_speed_preset = 1
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [

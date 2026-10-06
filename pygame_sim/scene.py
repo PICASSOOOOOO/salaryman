@@ -69,6 +69,7 @@ class TowerScene:
     objects: OfficeObjectRegistry = field(default_factory=build_tower_object_registry)
     input_vector: tuple[float, float] = (0.0, 0.0)
     sprint_input: bool = False
+    player_speed_scale: float = 1.0
     velocity: tuple[float, float] = (0.0, 0.0)
     motion_remainder: tuple[float, float] = (0.0, 0.0)
     npc_motion_seconds: float = 0.0
@@ -303,7 +304,7 @@ class TowerScene:
             self.idle_seconds = 0.0
             direction_x = input_x / input_length
             direction_y = input_y / input_length
-            target_speed = self.SPRINT_SPEED if self.sprint_input else self.MAX_SPEED
+            target_speed = (self.SPRINT_SPEED if self.sprint_input else self.MAX_SPEED) * self.player_speed_scale
             target_x = direction_x * target_speed
             target_y = direction_y * target_speed
             rate = self.ACCELERATION * delta_seconds

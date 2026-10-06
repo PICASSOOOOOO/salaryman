@@ -108,6 +108,131 @@ def run(argv: list[str] | None = None) -> int:
         scene.set_autopilot_snapshot(autopilot_poller.current())
     last_autopilot_revision = scene.autopilot_snapshot.revision
 
+    def request_page_data(page: str | None) -> None:
+        if page == "inventory":
+            state.game_inventory = None
+            if building_sync.queue_game_request("inventory"):
+                state.game_service_loading.add("inventory")
+            else:
+                state.notice = "LINK A GAME ACCOUNT TO LOAD INVENTORY"
+        elif page == "vending":
+            state.vending_catalog = None
+            state.fiat_balance = None
+            state.fiat_spendable = None
+            if building_sync.queue_game_request("vending_catalog"):
+                state.game_service_loading.add("vending_catalog")
+            else:
+                state.notice = "LINK A GAME ACCOUNT TO USE VENDING"
+            if building_sync.queue_game_request("bank"):
+                state.game_service_loading.add("bank")
+        elif page == "bank":
+            state.fiat_balance = None
+            state.fiat_spendable = None
+            if building_sync.queue_game_request("bank"):
+                state.game_service_loading.add("bank")
+            else:
+                state.notice = "LINK A GAME ACCOUNT TO VIEW BANCO OMBRA"
+
+    def open_player_page(page: str) -> None:
+        if state.open_page(page, source="PLAYER MENU"):
+            request_page_data(page)
+
+    def activate_game_page_action(action: str) -> None:
+        if action.startswith("nav:"):
+            open_player_page(action.split(":", 1)[1])
+        elif action.startswith("action:"):
+            character_action = action.split(":", 1)[1]
+            duration = {"jump": 0.9, "fight": 0.7, "sweep": 0.85}.get(character_action, 0.0)
+            scene.set_player_action(character_action, duration=duration)
+            state.notice = character_action.upper()
+            state.close_page()
+        elif action == "setting:sprint":
+            state.sprint_toggle_mode = not state.sprint_toggle_mode
+            state.sprint_toggled = False
+            state.notice = "SPRINT / TOGGLE" if state.sprint_toggle_mode else "SPRINT / HOLD"
+            state.save_to_file(args.save_file)
+        elif action == "setting:speed":
+            state.movement_speed_preset = (state.movement_speed_preset + 1) % 3
+            speed_label = ("RELAXED", "STANDARD", "QUICK")[state.movement_speed_preset]
+            state.notice = f"MOVEMENT / {speed_label}"
+            state.save_to_file(args.save_file)
+        elif action == "setting:hints":
+            state.show_control_hints = not state.show_control_hints
+            state.notice = f"CONTROL HINTS / {'ON' if state.show_control_hints else 'OFF'}"
+            state.save_to_file(args.save_file)
+        elif action.startswith("buy:"):
+            item_id = action.split(":", 1)[1]
+            if building_sync.queue_game_request("buy_vending", item_id):
+                state.notice = "PURCHASE SENT / WAITING FOR SERVER"
+            else:
+                state.notice = "PURCHASE UNAVAILABLE / CHECK GAME LINK"
+        elif action == "phone:call-home" or action == "phone:comms":
+            link = building_sync.link
+            if link is None:
+                state.notice = "LINK A GAME ACCOUNT TO OPEN THIS SERVICE"
+                return
+            route = "/phone" if action == "phone:call-home" else "/comms"
+            try:
+                opened = __import__("webbrowser").open(link.server_url.rstrip("/") + route)
+                state.notice = "CALLL HOME OPENED" if opened and route == "/phone" else (
+                    "COMMS OPENED" if opened else "COULD NOT OPEN SERVICE"
+                )
+            except Exception:
+                state.notice = "COULD NOT OPEN SERVICE"
+
+    def handle_page_key(key: int) -> bool:
+        if key == pygame.K_ESCAPE:
+            if state.active_page != "player" and state.page_source == "PLAYER MENU":
+                open_player_page("player")
+            else:
+                state.close_page()
+            return True
+        page = state.active_page
+        if page == "player":
+            destinations = {
+                pygame.K_1: "nav:inventory",
+                pygame.K_2: "nav:settings",
+                pygame.K_3: "nav:bank",
+                pygame.K_4: "nav:phone",
+                pygame.K_5: "action:jump",
+                pygame.K_6: "action:sit",
+                pygame.K_7: "action:fight",
+                pygame.K_8: "action:sweep",
+            }
+            if key in destinations:
+                activate_game_page_action(destinations[key])
+                return True
+        elif page == "settings":
+            actions = {pygame.K_1: "setting:sprint", pygame.K_2: "setting:speed", pygame.K_3: "setting:hints"}
+            if key in actions:
+                activate_game_page_action(actions[key])
+                return True
+        elif page == "vending":
+            items = state.vending_catalog or []
+            if key in (pygame.K_UP, pygame.K_DOWN) and items:
+                delta = -1 if key == pygame.K_UP else 1
+                state.selected_vending_index = (state.selected_vending_index + delta) % len(items)
+                return True
+            if key in (pygame.K_RETURN, pygame.K_KP_ENTER) and items:
+                state.selected_vending_index = max(0, min(state.selected_vending_index, len(items) - 1))
+                item_id = str(items[state.selected_vending_index].get("id", ""))
+                if item_id:
+                    activate_game_page_action(f"buy:{item_id}")
+                return True
+            if pygame.K_1 <= key <= pygame.K_6 and key - pygame.K_1 < len(items):
+                item_id = str(items[key - pygame.K_1].get("id", ""))
+                if item_id:
+                    activate_game_page_action(f"buy:{item_id}")
+                return True
+        elif page == "phone":
+            if key == pygame.K_1:
+                activate_game_page_action("phone:call-home")
+                return True
+            if key == pygame.K_2:
+                activate_game_page_action("phone:comms")
+                return True
+        return False
+
     coffee_rects: dict[int, pygame.Rect] = {}
     # The packaged client opens directly into the playable office. The business
     # dashboard remains one Tab press away.
@@ -150,14 +275,21 @@ def run(argv: list[str] | None = None) -> int:
                 if event.key == pygame.K_m:
                     state.toggle_tool_menu()
                 elif state.active_page is not None:
-                    if event.key == pygame.K_ESCAPE:
-                        state.close_page()
+                    if handle_page_key(event.key):
+                        pass
                     elif event.key == pygame.K_r and state.active_page == "tools":
                         state.repair_decay()
+                elif spatial_mode and event.key == pygame.K_p:
+                    open_player_page("player")
+                elif spatial_mode and event.key == pygame.K_i:
+                    open_player_page("inventory")
                 elif event.key == pygame.K_TAB:
                     spatial_mode = not spatial_mode
                 elif spatial_mode and event.key == pygame.K_b:
                     state.open_page("customize", source="ROOM CUSTOMIZATION")
+                elif spatial_mode and event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT) and state.sprint_toggle_mode:
+                    state.sprint_toggled = not state.sprint_toggled
+                    state.notice = "SPRINT ON" if state.sprint_toggled else "SPRINT OFF"
                 elif spatial_mode and event.key == pygame.K_e:
                     nearby = scene.nearby_object
                     if nearby is not None and nearby.kind == "elevator" and building_sync.link is not None:
@@ -169,9 +301,24 @@ def run(argv: list[str] | None = None) -> int:
                             state.notice = "ELEVATOR REQUEST UNAVAILABLE"
                     else:
                         scene.interact(state)
+                        request_page_data(state.active_page)
                 elif spatial_mode and event.key == pygame.K_SPACE:
                     scene.set_player_action("jump", duration=0.9)
                     state.notice = "JUMP"
+                elif spatial_mode and event.key == pygame.K_f:
+                    scene.set_player_action("fight", duration=0.7)
+                    state.notice = "FIGHT"
+                elif spatial_mode and event.key == pygame.K_g:
+                    scene.set_player_action("sweep", duration=0.85)
+                    state.notice = "SWEEP"
+                elif spatial_mode and event.key in (pygame.K_h, pygame.K_j):
+                    nearby = scene.nearby_object
+                    maintenance_action = "clean" if event.key == pygame.K_h else "repair"
+                    if nearby is not None and building_sync.queue_action(nearby.id, maintenance_action):
+                        scene.set_player_action("maintenance", duration=1.0)
+                        state.notice = f"{maintenance_action.upper()} REQUESTED"
+                    else:
+                        state.notice = f"NO SERVER MAINTENANCE TARGET FOR {maintenance_action.upper()}"
                 elif spatial_mode and event.key == pygame.K_c:
                     state.notice = "SIT" if scene.set_player_action("sit") else "NO CHAIR IN RANGE"
                 elif spatial_mode and event.key == pygame.K_l:
@@ -214,8 +361,16 @@ def run(argv: list[str] | None = None) -> int:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if state.active_page is not None:
                     if renderer.overlay_close_rect.collidepoint(event.pos):
-                        state.close_page()
-                    elif state.active_page == "systems":
+                        if state.active_page != "player" and state.page_source == "PLAYER MENU":
+                            open_player_page("player")
+                        else:
+                            state.close_page()
+                    else:
+                        for action, rect in renderer.game_page_actions.items():
+                            if rect.collidepoint(event.pos):
+                                activate_game_page_action(action)
+                                break
+                    if state.active_page == "systems":
                         for domain, rect in renderer.system_module_rects.items():
                             if rect.collidepoint(event.pos):
                                 profile = next(
@@ -307,7 +462,7 @@ def run(argv: list[str] | None = None) -> int:
         # Pygame uses the same continuous movement path as the Godot client.
         # Only the focused Pygame window writes keyboard input, so a connected
         # Godot renderer remains free to drive the authoritative scene.
-        if spatial_mode and pygame.key.get_focused():
+        if spatial_mode and pygame.key.get_focused() and state.active_page is None and not state.tool_menu_open:
             pressed = pygame.key.get_pressed()
             move_x = int(pressed[pygame.K_d] or pressed[pygame.K_RIGHT]) - int(
                 pressed[pygame.K_a] or pressed[pygame.K_LEFT]
@@ -315,14 +470,75 @@ def run(argv: list[str] | None = None) -> int:
             move_y = int(pressed[pygame.K_s] or pressed[pygame.K_DOWN]) - int(
                 pressed[pygame.K_w] or pressed[pygame.K_UP]
             )
-            scene.set_motion_input(move_x, move_y)
+            scene.set_motion_input(
+                move_x,
+                move_y,
+                sprint=(
+                    state.sprint_toggled
+                    if state.sprint_toggle_mode
+                    else bool(pressed[pygame.K_LSHIFT] or pressed[pygame.K_RSHIFT])
+                ),
+            )
+            scene.player_speed_scale = (0.8, 1.0, 1.2)[state.movement_speed_preset]
         elif args.no_bridge or not bridge.connected:
+            scene.set_motion_input(0.0, 0.0)
+        elif state.active_page is not None or state.tool_menu_open:
             scene.set_motion_input(0.0, 0.0)
         scene.update_motion(delta_seconds)
         scene.update_npc_motion(delta_seconds)
         building_sync.update_scene(scene)
         scene.set_building_object_states(building_sync.object_states())
         for sync_event in building_sync.drain_events():
+            if sync_event.source == "game_service":
+                data = sync_event.data or {}
+                action = data.get("action")
+                payload = data.get("payload")
+                if isinstance(action, str):
+                    state.game_service_loading.discard(action)
+                if sync_event.ok and isinstance(payload, dict):
+                    if action == "inventory":
+                        rows = payload.get("rows", [])
+                        state.game_inventory = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+                        state.notice = f"INVENTORY LOADED / {len(state.game_inventory)} ENTRIES"
+                    elif action == "vending_catalog":
+                        items = payload.get("items", [])
+                        state.vending_catalog = [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+                        state.selected_vending_index = max(
+                            0,
+                            min(state.selected_vending_index, max(0, len(state.vending_catalog) - 1)),
+                        )
+                        state.notice = f"VENDING STOCK LOADED / {len(state.vending_catalog)} ITEMS"
+                    elif action == "bank":
+                        balance = payload.get("balance")
+                        spendable = payload.get("spendable")
+                        if isinstance(balance, (int, float)) and isinstance(spendable, (int, float)):
+                            state.fiat_balance = int(balance)
+                            state.fiat_spendable = int(spendable)
+                            state.notice = "BANCO OMBRA / READ ONLY"
+                        else:
+                            state.notice = "FIAT WALLET RESPONSE INVALID"
+                    elif action == "buy_vending":
+                        if payload.get("alreadyOwned"):
+                            state.notice = "ITEM ALREADY OWNED"
+                        else:
+                            state.notice = f"PURCHASE COMPLETE / ƒ{int(payload.get('fiat', 0) or 0):,}"
+                        state.game_inventory = None
+                        state.fiat_balance = None
+                        state.fiat_spendable = None
+                        request_page_data("inventory")
+                        request_page_data("bank")
+                else:
+                    error_payload = data.get("errorPayload")
+                    if sync_event.code == "HTTP_402" and isinstance(error_payload, dict):
+                        required = error_payload.get("requiredFiat", error_payload.get("required"))
+                        spendable = error_payload.get("spendableFiat", error_payload.get("spendable"))
+                        if isinstance(required, (int, float)) and isinstance(spendable, (int, float)):
+                            state.notice = f"NOT ENOUGH FIAT / ƒ{int(spendable):,} AVAILABLE / ƒ{int(required):,} REQUIRED"
+                        else:
+                            state.notice = "NOT ENOUGH FIAT"
+                    else:
+                        state.notice = sync_event.message.upper()
+                continue
             if sync_event.source == "elevator":
                 if sync_event.ok and sync_event.destination_floor is not None:
                     if scene.select_floor(sync_event.destination_floor):

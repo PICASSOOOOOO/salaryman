@@ -219,9 +219,16 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, route="surveillance")
 
         if item.kind == "vending_machine":
-            message = "VENDING DISABLED / SERVER-VERIFIED ITEM EFFECTS REQUIRED"
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "vending",
+                from_object=True,
+                source="TOWER VENDING",
+                source_object_id=item.id,
+            )
+            message = "TOWER VENDING / SERVER-PRICED STOCK"
             state.notice = message
-            return InteractionResult(False, message)
+            return InteractionResult(True, message, route="tower-vending")
 
         if item.kind == "crt_terminal":
             permission_message = scene.workstation_permission(item.parent_id)
@@ -244,7 +251,7 @@ class OfficeObjectRegistry:
         messages = {
             "telephone": ("TELEPHONE READY / PHONE CENTER", "phone-center"),
             "crt_terminal": ("SYSTEMS TERMINAL / FULL WORKSPACE", "systems-terminal"),
-            "atm": (f"ATM / BANCO OMBRA ƒ{state.funds:,.2f}", "banking"),
+            "atm": ("ATM / BANCO OMBRA", "banking"),
             "desk": ("EXECUTIVE DESK / OFFICE READY", "office"),
             "chair": ("CHAIR / REST POSITION", "office"),
             "window": ("WINDOW / TOWER VIEW", "tower-view"),
@@ -252,7 +259,7 @@ class OfficeObjectRegistry:
         if item.kind == "atm":
             scene.focus_on_interaction(item)
             state.open_page(
-                "economy",
+                "bank",
                 from_object=True,
                 source="ATM",
                 source_object_id=item.id,

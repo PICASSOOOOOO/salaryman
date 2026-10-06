@@ -21,6 +21,41 @@ class FakeResponse:
 
 
 class BuildingSyncTests(unittest.TestCase):
+    def test_linked_game_requests_are_allowlisted_and_vending_uses_primary_slot(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            path = request.full_url.rsplit("/api", 1)[-1]
+            body = json.loads(request.data.decode("utf-8")) if request.data else None
+            requests.append((request.get_method(), path, body))
+            if path == "/desktop-game/bank":
+                return FakeResponse({"currency": "FIAT", "balance": 1250, "spendable": 1200})
+            return FakeResponse({"owned": True, "fiat": 50, "newBalance": 1200})
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        self.assertTrue(sync.queue_game_request("bank"))
+        self.assertFalse(sync.queue_game_request("arbitrary_path"))
+        sync._sync_once()
+        event = sync.drain_events()[0]
+        self.assertTrue(event.ok)
+        self.assertEqual(event.source, "game_service")
+        self.assertEqual(event.data["action"], "bank")
+
+        self.assertTrue(sync.queue_game_request("buy_vending", "water_bottle"))
+        sync._sync_once()
+        self.assertEqual(
+            requests[1],
+            (
+                "POST",
+                "/items/buy",
+                {"slot": 0, "itemId": "water_bottle", "qty": 1, "source": "tower_vending"},
+            ),
+        )
+
     def test_floor_state_is_scoped_and_queued_maintenance_cannot_follow_player(self):
         requests = []
 

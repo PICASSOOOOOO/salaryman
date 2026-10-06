@@ -98,6 +98,7 @@ class SolarPunkRenderer:
         self._camera_x = 0.0
         self._camera_y = 0.0
         self._camera_room: tuple[int, str] | None = None
+        self.game_page_actions: dict[str, pygame.Rect] = {}
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
         model = str(status.get("model") or "offline").upper()
@@ -193,8 +194,10 @@ class SolarPunkRenderer:
                 self.draw_automation_page(state, scene)
             elif state.active_page == "customize":
                 self.draw_customization_page(state, scene)
-            elif state.active_page in {"phone", "systems"}:
+            elif state.active_page == "systems":
                 self.draw_device_page(state, scene)
+            elif state.active_page in {"player", "settings", "inventory", "vending", "bank", "phone"}:
+                self.draw_player_service_page(state, scene)
             else:
                 self.draw_game_page(state, scene)
         elif state.tool_menu_open:
@@ -1440,6 +1443,147 @@ class SolarPunkRenderer:
                 (rect.x + 12, rect.y + 43),
                 self.font_sm,
                 profile.accent if status and status.enabled else Palette.MATRIX_DIM,
+            )
+
+    def draw_player_service_page(self, state: OfficeState, scene: TowerScene) -> None:
+        """Draw account/game controls on a neutral surface, separate from terminals."""
+        self.game_page_actions = {}
+        dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        dim.fill((4, 12, 14, 150))
+        self.screen.blit(dim, (0, 0))
+
+        panel_width = min(self.width - 48, 760)
+        panel_height = min(self.height - 48, 520)
+        panel = pygame.Rect(0, 0, panel_width, panel_height)
+        panel.center = (self.width // 2, self.height // 2)
+        pygame.draw.rect(self.screen, (239, 241, 234), panel, border_radius=10)
+        pygame.draw.rect(self.screen, (73, 109, 94), panel, 2, border_radius=10)
+        pygame.draw.rect(self.screen, (83, 143, 113), pygame.Rect(panel.x + 2, panel.y + 2, panel.width - 4, 5))
+
+        titles = {
+            "player": ("PLAYER MENU", "Character actions, inventory, and local game settings"),
+            "settings": ("GAME SETTINGS", "Saved on this device"),
+            "inventory": ("CHARACTER INVENTORY", "Primary character / live account inventory"),
+            "vending": ("TOWER VENDING", "Server-priced stock / purchases debit shared FIAT"),
+            "bank": ("BANCO OMBRA", "Shared FIAT wallet / read only"),
+            "phone": ("PAY PHONE", "CALLL HOME and COMMS entry points"),
+        }
+        title, subtitle = titles[state.active_page]
+        self.text(title, (panel.x + 26, panel.y + 20), self.font_xl, (27, 47, 41))
+        self.text(subtitle, (panel.x + 28, panel.y + 57), self.font_sm, (85, 103, 94))
+        self.overlay_close_rect = pygame.Rect(panel.right - 88, panel.y + 18, 62, 30)
+        pygame.draw.rect(self.screen, (222, 229, 218), self.overlay_close_rect, border_radius=5)
+        self.text("CLOSE", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_sm, (40, 69, 56))
+
+        def button(key: str, label: str, rect: pygame.Rect, *, active: bool = False) -> None:
+            self.game_page_actions[key] = rect
+            fill = (210, 229, 214) if active else (229, 234, 224)
+            pygame.draw.rect(self.screen, fill, rect, border_radius=6)
+            pygame.draw.rect(self.screen, (170, 190, 175), rect, 1, border_radius=6)
+            self.text(label, (rect.x + 13, rect.y + (rect.height - self.font_md.get_height()) // 2), self.font_md, (34, 62, 49))
+
+        content_y = panel.y + 102
+        if state.active_page == "player":
+            nav = (
+                ("nav:inventory", "INVENTORY"),
+                ("nav:settings", "SETTINGS"),
+                ("nav:bank", "BANK BALANCE"),
+                ("nav:phone", "PHONE / COMMS"),
+            )
+            button_width = (panel.width - 68) // 2
+            for index, (key, label) in enumerate(nav):
+                rect = pygame.Rect(
+                    panel.x + 26 + (index % 2) * (button_width + 16),
+                    content_y + (index // 2) * 54,
+                    button_width,
+                    42,
+                )
+                button(key, label, rect)
+            self.text("CHARACTER ACTIONS", (panel.x + 28, content_y + 124), self.font_md, (70, 100, 82))
+            action_specs = (("jump", "JUMP"), ("sit", "SIT"), ("fight", "FIGHT"), ("sweep", "SWEEP"))
+            action_width = (panel.width - 68) // 4
+            for index, (action, label) in enumerate(action_specs):
+                button(
+                    f"action:{action}",
+                    label,
+                    pygame.Rect(panel.x + 26 + index * (action_width + 4), content_y + 151, action_width, 38),
+                )
+            if state.show_control_hints:
+                sprint_hint = "SHIFT TOGGLE SPRINT" if state.sprint_toggle_mode else "SHIFT HOLD SPRINT"
+                self.text(
+                    f"WASD MOVE  ·  {sprint_hint}  ·  E INTERACT  ·  SPACE JUMP",
+                    (panel.x + 28, panel.bottom - 52),
+                    self.font_sm,
+                    (85, 103, 94),
+                )
+                self.text(
+                    "F FIGHT  ·  G SWEEP  ·  H CLEAN  ·  J REPAIR",
+                    (panel.x + 28, panel.bottom - 32),
+                    self.font_sm,
+                    (85, 103, 94),
+                )
+        elif state.active_page == "settings":
+            speed_names = ("RELAXED", "STANDARD", "QUICK")
+            rows = (
+                ("setting:sprint", f"SPRINT / {'TOGGLE' if state.sprint_toggle_mode else 'HOLD'}"),
+                ("setting:speed", f"MOVEMENT / {speed_names[state.movement_speed_preset]}"),
+                ("setting:hints", f"CONTROL HINTS / {'ON' if state.show_control_hints else 'OFF'}"),
+            )
+            for index, (key, label) in enumerate(rows):
+                button(key, label, pygame.Rect(panel.x + 26, content_y + index * 62, panel.width - 52, 46))
+            self.text("SHIFT toggles sprint in TOGGLE mode; otherwise hold it while moving.", (panel.x + 28, panel.bottom - 47), self.font_sm, (85, 103, 94))
+        elif state.active_page == "inventory":
+            entries = state.game_inventory
+            if entries is None:
+                message = "LOADING INVENTORY…" if "inventory" in state.game_service_loading else "CONNECT A LINKED GAME ACCOUNT TO LOAD INVENTORY"
+                self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            elif not entries:
+                self.text("NO ITEMS IN THIS CHARACTER SLOT", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            else:
+                for index, entry in enumerate(entries[:8]):
+                    item_id = str(entry.get("itemId", "unknown")).replace("_", " ").upper()
+                    quantity = max(1, int(entry.get("quantity", 1) or 1))
+                    row = pygame.Rect(panel.x + 26, content_y + index * 39, panel.width - 52, 32)
+                    pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
+                    self.text(item_id[:54], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
+                    self.text(f"×{quantity}", (row.right - 42, row.y + 9), self.font_sm, (61, 100, 74))
+        elif state.active_page == "vending":
+            entries = state.vending_catalog
+            if entries is None:
+                message = "LOADING LIVE VENDING STOCK…" if "vending_catalog" in state.game_service_loading else "LINK A GAME ACCOUNT TO LOAD STOCK"
+                self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            elif not entries:
+                self.text("NO VENDING STOCK AVAILABLE", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            else:
+                for index, entry in enumerate(entries[:7]):
+                    y = content_y + index * 51
+                    row = pygame.Rect(panel.x + 24, y, panel.width - 48, 44)
+                    pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=5)
+                    name = str(entry.get("name", entry.get("id", "Item")))
+                    description = str(entry.get("blurb", ""))
+                    price = int(entry.get("priceFiat", 0) or 0)
+                    self.text(name[:31], (row.x + 10, row.y + 5), self.font_md, (39, 64, 51))
+                    self.text(description[:58], (row.x + 10, row.y + 25), self.font_sm, (91, 107, 97))
+                    buy_rect = pygame.Rect(row.right - 126, row.y + 6, 116, 32)
+                    button(f"buy:{entry.get('id', '')}", f"BUY ƒ{price:,}", buy_rect)
+        elif state.active_page == "bank":
+            if state.fiat_balance is None or state.fiat_spendable is None:
+                value = "LOADING…" if "bank" in state.game_service_loading else "ACCOUNT LINK REQUIRED"
+                self.text(value, (panel.x + 28, content_y + 14), self.font_lg, (43, 75, 54))
+            else:
+                self.text("TOTAL FIAT", (panel.x + 28, content_y + 14), self.font_sm, (85, 103, 94))
+                self.text(f"ƒ{state.fiat_balance:,.0f}", (panel.x + 28, content_y + 43), self.font_xl, (35, 83, 58))
+                self.text("SPENDABLE", (panel.x + 28, content_y + 111), self.font_sm, (85, 103, 94))
+                self.text(f"ƒ{state.fiat_spendable:,.0f}", (panel.x + 28, content_y + 140), self.font_lg, (35, 83, 58))
+            self.text("View only. Transfers and cash-out are not available here.", (panel.x + 28, panel.bottom - 47), self.font_sm, (85, 103, 94))
+        elif state.active_page == "phone":
+            button("phone:call-home", "CALLL HOME / VOICE", pygame.Rect(panel.x + 26, content_y, panel.width - 52, 56))
+            button("phone:comms", "COMMS / TEAM MESSAGES", pygame.Rect(panel.x + 26, content_y + 70, panel.width - 52, 56))
+            self.text(
+                "Select a service to open its connected SALARYMAN screen.",
+                (panel.x + 28, content_y + 152),
+                self.font_sm,
+                (85, 103, 94),
             )
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:

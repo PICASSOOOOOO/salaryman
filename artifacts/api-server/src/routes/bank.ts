@@ -4,6 +4,7 @@ import { eq, and, desc, sql, inArray, asc } from "drizzle-orm";
 import { randomInt } from "node:crypto";
 import { ensureFiatAccounts, getSpendableFiat, STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
 import { restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 export { STARTER_CHECKING_BALANCE } from "../lib/fiat-wallet";
 
 const router: IRouter = Router();
@@ -44,6 +45,20 @@ router.get("/economy/bank/accounts", async (req, res) => {
   const accounts = await ensureSeeded(uid(req), emailOf(req));
   const wallet = await getSpendableFiat(uid(req));
   res.json({ accounts: accounts.filter((account) => account.kind !== "cash"), spendable: wallet.spendable });
+});
+
+// Minimal read-only wallet view for the linked downloadable game. Do not
+// return account numbers, transaction history, or any transfer controls.
+router.get("/desktop-game/bank", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  try {
+    const wallet = await getSpendableFiat(link.userId);
+    res.json({ currency: "FIAT", balance: wallet.balance, spendable: wallet.spendable, readOnly: true });
+  } catch (error) {
+    console.error("[Desktop game bank] wallet read failed:", error);
+    res.status(500).json({ error: "Could not read the FIAT wallet" });
+  }
 });
 
 async function nextAccountNumber(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<string> {

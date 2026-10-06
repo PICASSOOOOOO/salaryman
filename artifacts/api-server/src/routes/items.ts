@@ -10,6 +10,7 @@ import {
   bankAccountsTable,
   salarymanSavesTable,
   botsTable,
+  usersTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
   type InstallTargetType,
@@ -36,6 +37,7 @@ import { utilityKindForItem, findBatterySpec, ELECTRICITY_RATE_FIAT_PER_UNIT } f
 import { recordUtilityRevenue } from "../lib/utility-revenue";
 import { CRAFT_RECIPES, getCraftRecipe, isUtilityOutput } from "../lib/crafting-catalog";
 import { getResourceDef } from "../lib/resource-catalog";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { getMarketIndex } from "./real-estate";
 import {
   isBattery,
@@ -59,6 +61,29 @@ function requireAuth(req: Request, res: any): string | null {
     return null;
   }
   return id;
+}
+
+type GameItemsIdentity = { userId: string; email?: string | null; desktopLink: boolean };
+
+async function resolveGameItemsIdentity(req: Request, res: any): Promise<GameItemsIdentity | null> {
+  if ((req as any).isAuthenticated?.() && (req as any).user?.id) {
+    return {
+      userId: String((req as any).user.id),
+      email: (req as any).user.email,
+      desktopLink: false,
+    };
+  }
+  const link = await requireDesktopLink(req, res);
+  if (!link) return null;
+  const [user] = await db.select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, link.userId))
+    .limit(1);
+  if (!user) {
+    res.status(401).json({ error: "Desktop account is unavailable" });
+    return null;
+  }
+  return { userId: link.userId, email: user.email, desktopLink: true };
 }
 
 function parseSlot(raw: unknown): number {
@@ -158,11 +183,14 @@ router.get("/items/vending-catalog", async (_req, res) => {
 
 // ─── Inventory for a character save slot ──────────────────────────────────────
 router.get("/items/inventory", async (req, res) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
-  const slot = parseSlot(req.query.slot);
+  const identity = await resolveGameItemsIdentity(req, res);
+  if (!identity) return;
+  const userId = identity.userId;
+  // The linked desktop game is currently the primary character only. It
+  // cannot use a device link to inspect other save slots.
+  const slot = identity.desktopLink ? 0 : parseSlot(req.query.slot);
   try {
-    await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
+    await restoreLegacyRecoveryForUser(userId, identity.email);
     const rows = await db
       .select()
       .from(playerInventoryTable)
@@ -214,16 +242,25 @@ router.get("/items/loadout", async (req, res) => {
 
 // ─── Buy with in-game FIAT ────────────────────────────────────────────────────
 router.post("/items/buy", async (req, res) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
-  await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
-  const slot = parseSlot(req.body?.slot);
+  const identity = await resolveGameItemsIdentity(req, res);
+  if (!identity) return;
+  const userId = identity.userId;
+  const source = String(req.body?.source ?? "");
+  if (identity.desktopLink && source !== "tower_vending") {
+    res.status(403).json({ error: "Desktop purchases are limited to Tower vending stock." });
+    return;
+  }
+  if (identity.desktopLink && req.body?.slot !== undefined && parseSlot(req.body.slot) !== 0) {
+    res.status(403).json({ error: "The linked game can purchase only for the primary character." });
+    return;
+  }
+  await restoreLegacyRecoveryForUser(userId, identity.email);
+  const slot = identity.desktopLink ? 0 : parseSlot(req.body?.slot);
   const item = findCatalogItem(String(req.body?.itemId ?? ""));
   if (!item) {
     res.status(400).json({ error: "Unknown item" });
     return;
   }
-  const source = String(req.body?.source ?? "");
   if (requiresPhysicalBlackMarket(item) && source !== "black_market") {
     res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
     return;
@@ -239,7 +276,7 @@ router.post("/items/buy", async (req, res) => {
   if (isConsumable(item)) {
     const qtyRaw = Number(req.body?.qty ?? 1);
     const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
-    const email = (req as any).user?.email as string | undefined;
+    const email = identity.email ?? undefined;
 
     // Owners get consumables granted free.
     if (isOwnerEmail(email)) {
@@ -313,7 +350,7 @@ router.post("/items/buy", async (req, res) => {
   }
 
   // Owners get everything granted free.
-  const email = (req as any).user?.email as string | undefined;
+  const email = identity.email ?? undefined;
   if (isOwnerEmail(email)) {
     await db.insert(playerInventoryTable)
       .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" })

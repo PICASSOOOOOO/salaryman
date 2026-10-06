@@ -235,7 +235,7 @@ class PygameSpatialTests(unittest.TestCase):
         state.close_page()
         atm_result = scene.interact(state, "lobby-atm")
         self.assertTrue(atm_result.success)
-        self.assertEqual(state.active_page, "economy")
+        self.assertEqual(state.active_page, "bank")
         self.assertEqual(state.active_object_id, "lobby-atm")
 
         state.close_page()

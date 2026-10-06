@@ -26,6 +26,13 @@ class BuildingSyncEvent:
     code: str | None = None
     source: str = "presence"
     destination_floor: int | None = None
+    data: dict[str, Any] | None = None
+
+
+class _HttpJsonError(RuntimeError):
+    def __init__(self, code: str, payload: dict[str, Any] | None = None) -> None:
+        super().__init__(code)
+        self.payload = payload
 
 
 class DesktopBuildingSync:
@@ -47,6 +54,8 @@ class DesktopBuildingSync:
         self._scene_snapshot: tuple[int, str, int, int, str] | None = None
         self._object_states: dict[str, dict[str, Any]] = {}
         self._actions: queue.Queue[tuple[int, str, str, str]] = queue.Queue()
+        self._game_requests: queue.Queue[tuple[str, str, str, dict[str, Any] | None]] = queue.Queue()
+        self._pending_game_actions: set[str] = set()
         self._events: queue.Queue[BuildingSyncEvent] = queue.Queue()
         self._active_action: tuple[int, str, str, str, str | None] | None = None
         self._elevator_request: tuple[int, str, int, int, int] | None = None
@@ -55,6 +64,34 @@ class DesktopBuildingSync:
         self._thread: threading.Thread | None = None
         self._last_error: str | None = None
         self._waiting_for_payment = False
+
+    def queue_game_request(self, action: str, item_id: str | None = None) -> bool:
+        """Queue an allow-listed game-service request for the authenticated player."""
+        if self.link is None:
+            return False
+        requests = {
+            "inventory": ("GET", "/items/inventory", None),
+            "vending_catalog": ("GET", "/items/vending-catalog", None),
+            "bank": ("GET", "/desktop-game/bank", None),
+        }
+        if action == "buy_vending":
+            if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
+                return False
+            request = (
+                "POST",
+                "/items/buy",
+                {"slot": 0, "itemId": item_id, "qty": 1, "source": "tower_vending"},
+            )
+        else:
+            request = requests.get(action)
+            if request is None:
+                return False
+        with self._lock:
+            if action in self._pending_game_actions:
+                return False
+            self._pending_game_actions.add(action)
+        self._game_requests.put((action, request[0], request[1], request[2]))
+        return True
 
     def start(self) -> None:
         if self.link is None or self._thread is not None:
@@ -137,6 +174,34 @@ class DesktopBuildingSync:
 
     def _sync_once(self) -> None:
         if self.link is None:
+            return
+        try:
+            game_action, game_method, game_path, game_body = self._game_requests.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            try:
+                response = self._request_json(game_method, game_path, game_body)
+                self._events.put(BuildingSyncEvent(
+                    True,
+                    f"GAME SERVICE / {game_action.upper()}",
+                    source="game_service",
+                    data={"action": game_action, "payload": response},
+                ))
+            except RuntimeError as exc:
+                details: dict[str, Any] = {"action": game_action, "error": str(exc)}
+                if isinstance(exc, _HttpJsonError) and exc.payload:
+                    details["errorPayload"] = exc.payload
+                self._events.put(BuildingSyncEvent(
+                    False,
+                    _friendly_sync_error(str(exc)),
+                    code=str(exc),
+                    source="game_service",
+                    data=details,
+                ))
+            finally:
+                with self._lock:
+                    self._pending_game_actions.discard(game_action)
             return
         with self._lock:
             snapshot = self._scene_snapshot
@@ -330,7 +395,14 @@ class DesktopBuildingSync:
             with self.opener(request, timeout=self.timeout_seconds) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            raise RuntimeError(f"HTTP_{exc.code}") from None
+            try:
+                error_payload = json.loads(exc.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                error_payload = None
+            raise _HttpJsonError(
+                f"HTTP_{exc.code}",
+                error_payload if isinstance(error_payload, dict) else None,
+            ) from None
         except (URLError, TimeoutError, OSError):
             raise RuntimeError("NETWORK_UNAVAILABLE") from None
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -349,6 +421,8 @@ def _friendly_sync_error(code: str) -> str:
         return "OFFICE ACCESS DENIED"
     if code == "HTTP_404":
         return "OBJECT NOT MAINTAINABLE HERE"
+    if code == "HTTP_402":
+        return "INSUFFICIENT FIAT"
     if code == "HTTP_409":
         return "PRESENCE INVALID / MOVE CLOSER OR RE-ENTER ROOM"
     return "BUILDING SYNC FAILED"
