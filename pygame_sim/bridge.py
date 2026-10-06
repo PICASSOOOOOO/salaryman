@@ -19,8 +19,8 @@ from .state import OfficeState
 
 PROTOCOL_VERSION = 1
 MAX_LINE_BYTES = 64 * 1024
-ALLOWED_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04"}
-ALLOWED_VENDING_ITEMS = {"coffee", "desk_lamp", "office_chair"}
+ALLOWED_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite"}
+ALLOWED_VENDING_ITEMS = {"coffee"}
 COMMANDS = {
     "move",
     "set_input",

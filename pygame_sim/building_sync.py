@@ -13,8 +13,8 @@ from urllib.request import Request, urlopen
 from .automation import DesktopLink
 from .scene import TowerScene
 
-BUILDING_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04"}
-ROOM_API_NAME = {"lobby": "lobby", "recreation": "hallway"}
+BUILDING_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite"}
+ROOM_API_NAME = {"lobby": "lobby", "recreation": "hallway", "executive_suite": "office"}
 
 
 @dataclass(frozen=True)

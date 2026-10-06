@@ -4,8 +4,12 @@
     "height": 100000000
   },
   "floorCount": 67,
-  "officeCapacityDesks": 100,
+  "officeCapacityDesks": 200,
   "officesPerFloor": 4,
+  "floorBuildStatus": {
+    "1": "open",
+    "2-67": "under_construction"
+  },
   "floorProgram": {
     "lobby": 1,
     "mezzanine": 2,
@@ -28,75 +32,125 @@
     "startingOfficePriceFiat": 800000000000
   },
   "baseLayout": {
+    "unitsPerMeter": 100,
+    "officeDimensionsMeters": [90, 110],
+    "outerBounds": [0, 0, 22000, 25000],
     "elevator": {
-      "bounds": [49976500, 49999500, 1000, 1000],
-      "doorSide": "east"
+      "position": [11000, 1500],
+      "doorSide": "south"
     },
     "elevatorLobby": {
       "bounds": [49975000, 49997000, 4000, 6000],
       "spawn": [49978000, 50000000]
     },
     "hallways": [
-      [49979000, 49999000, 44000, 2000],
-      [49999000, 49979000, 2000, 44000]
+      [9000, 0, 4000, 25000],
+      [0, 11000, 9000, 3000],
+      [13000, 11000, 9000, 3000]
     ],
     "offices": [
-      {"id": "office_01", "bounds": [49979000, 49979000, 20000, 20000], "capacityDesks": 100, "entrance": [49995000, 49999000]},
-      {"id": "office_02", "bounds": [50001000, 49979000, 20000, 20000], "capacityDesks": 100, "entrance": [50005000, 49999000]},
-      {"id": "office_03", "bounds": [49979000, 50001000, 20000, 20000], "capacityDesks": 100, "entrance": [49995000, 50001000]},
-      {"id": "office_04", "bounds": [50001000, 50001000, 20000, 20000], "capacityDesks": 100, "entrance": [50005000, 50001000]}
+      {"id": "executive", "unitNumber": 1, "bounds": [0, 0, 9000, 11000], "capacityDesks": 200, "entrance": [4500, 11000], "doorSide": "south", "label": "OFFICE 01"},
+      {"id": "public", "unitNumber": 2, "bounds": [13000, 0, 9000, 11000], "capacityDesks": 200, "entrance": [17500, 11000], "doorSide": "south", "label": "OFFICE 02"},
+      {"id": "office_03", "unitNumber": 3, "bounds": [0, 14000, 9000, 11000], "capacityDesks": 200, "entrance": [4500, 14000], "doorSide": "north", "label": "OFFICE 03"},
+      {"id": "office_04", "unitNumber": 4, "bounds": [13000, 14000, 9000, 11000], "capacityDesks": 200, "entrance": [17500, 14000], "doorSide": "north", "label": "OFFICE 04"}
+    ],
+    "executiveSuite": {
+      "id": "executive_suite",
+      "officeId": "executive",
+      "bounds": [0, 4000, 2500, 3000],
+      "spawn": [1800, 5500],
+      "door": [2500, 4600],
+      "outsideWindow": [0, 5500],
+      "officeWindow": [2500, 6400]
+    },
+    "sharedObjects": [
+      {"id": "recreation-atm", "kind": "atm", "position": [12800, 5000]},
+      {"id": "recreation-vending", "kind": "vending_machine", "position": [12800, 8000]}
+    ],
+    "stairs": {
+      "position": [11000, 23500],
+      "underConstructionAboveFloor": 1
+    },
+    "walkableHallways": [
+      [9000, 0, 4000, 25000],
+      [0, 11000, 9000, 3000],
+      [13000, 11000, 9000, 3000]
     ]
   },
   "rooms": [
     {
       "id": "lobby",
       "label": "TOWER LOBBY",
-      "bounds": [0, 0, 100000000, 100000000],
+      "bounds": [49975000, 49997000, 4000, 6000],
       "accent": [27, 112, 110],
       "material": "lobby_floor",
       "spawn": [49978000, 50000000]
     },
     {
       "id": "recreation",
-      "label": "FLOOR 01 HALLWAY",
-      "bounds": [700, 3400, 8300, 1800],
+      "label": "FLOOR 01 OFFICE CONCOURSE",
+      "bounds": [0, 0, 22000, 25000],
       "accent": [72, 94, 130],
       "material": "hall_floor",
-      "spawn": [4800, 4550]
+      "spawn": [11000, 12500]
     },
     {
       "id": "executive",
       "label": "OFFICE 01",
-      "bounds": [900, 5200, 1800, 2200],
+      "bounds": [0, 0, 9000, 11000],
       "accent": [112, 83, 115],
       "material": "office_1",
-      "spawn": [1800, 6550]
+      "spawn": [4500, 5500],
+      "doorSide": "south",
+      "entrance": [4500, 11000],
+      "capacityDesks": 200
     },
     {
       "id": "public",
       "label": "OFFICE 02",
-      "bounds": [3000, 5200, 1800, 2200],
+      "bounds": [13000, 0, 9000, 11000],
       "accent": [38, 87, 94],
       "material": "office_2",
-      "spawn": [3900, 6650]
+      "spawn": [17500, 5500],
+      "doorSide": "south",
+      "entrance": [17500, 11000],
+      "capacityDesks": 200
     },
     {
       "id": "office_03",
       "label": "OFFICE 03",
-      "bounds": [5100, 5200, 1800, 2200],
+      "bounds": [0, 14000, 9000, 11000],
       "accent": [86, 98, 133],
       "material": "office_3",
-      "spawn": [6000, 6650]
+      "spawn": [4500, 19500],
+      "doorSide": "north",
+      "entrance": [4500, 14000],
+      "capacityDesks": 200
     },
     {
       "id": "office_04",
       "label": "OFFICE 04",
-      "bounds": [7200, 5200, 1800, 2200],
+      "bounds": [13000, 14000, 9000, 11000],
       "accent": [122, 88, 106],
       "material": "office_4",
-      "spawn": [8100, 6650]
+      "spawn": [17500, 19500],
+      "doorSide": "north",
+      "entrance": [17500, 14000],
+      "capacityDesks": 200
+    },
+    {
+      "id": "executive_suite",
+      "label": "EXECUTIVE SUITE",
+      "bounds": [0, 4000, 2500, 3000],
+      "accent": [117, 101, 71],
+      "material": "office_1",
+      "spawn": [1800, 5500],
+      "doorSide": "east",
+      "isLockable": true,
+      "outsideWindow": [0, 5500],
+      "officeWindow": [2500, 6400]
     }
   ],
   "lobbyHallwayOpening": 1800,
-  "officeDoorCenters": [1800, 3900, 6000, 8100]
+  "officeDoorCenters": [4500, 17500, 4500, 17500]
 }

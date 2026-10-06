@@ -29,28 +29,7 @@ with _FLOOR_PLAN_PATH.open(encoding="utf-8") as _floor_plan_file:
 FLOOR_COUNT = int(FLOOR_PLAN["floorCount"])
 
 
-NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {
-    "executive": (
-        ((1_000, 5_500), (1_000, 5_900), (1_000, 6_500), (1_000, 7_300)),
-        ((2_600, 5_500), (2_600, 5_900), (2_600, 6_500), (2_600, 7_300)),
-        ((1_800, 5_500), (1_800, 6_000), (1_800, 6_600), (1_800, 7_300)),
-    ),
-    "public": (
-        ((3_350, 6_850), (3_620, 6_850), (3_620, 7_080), (3_350, 7_080)),
-        ((4_150, 6_900), (4_400, 6_900), (4_400, 6_650), (4_150, 6_650)),
-        ((4_250, 6_150), (4_450, 6_150), (4_450, 6_380), (4_250, 6_380)),
-    ),
-    "office_03": (
-        ((5_450, 6_850), (5_720, 6_850), (5_720, 7_080), (5_450, 7_080)),
-        ((6_250, 6_900), (6_500, 6_900), (6_500, 6_650), (6_250, 6_650)),
-        ((6_350, 6_150), (6_550, 6_150), (6_550, 6_380), (6_350, 6_380)),
-    ),
-    "office_04": (
-        ((7_550, 6_850), (7_820, 6_850), (7_820, 7_080), (7_550, 7_080)),
-        ((8_350, 6_900), (8_600, 6_900), (8_600, 6_650), (8_350, 6_650)),
-        ((8_450, 6_150), (8_650, 6_150), (8_650, 6_380), (8_450, 6_380)),
-    ),
-}
+NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {}
 
 CharacterAction = Literal["stand", "jump", "sit", "sleep", "fight", "sweep", "maintenance"]
 
@@ -199,10 +178,10 @@ class TowerScene:
         x, y, width, height = self.floor_bounds
         current_x, current_y = self.player_position
         candidate_x = min(max(current_x + dx, x + 250), x + width - 250)
-        if not self._collides_with_object((candidate_x, current_y)):
+        if self._room_position_is_walkable((candidate_x, current_y)) and not self._collides_with_object((candidate_x, current_y)):
             current_x = candidate_x
         candidate_y = min(max(current_y + dy, y + 250), y + height - 250)
-        if not self._collides_with_object((current_x, candidate_y)):
+        if self._room_position_is_walkable((current_x, candidate_y)) and not self._collides_with_object((current_x, candidate_y)):
             current_y = candidate_y
         self.player_position = (current_x, current_y)
         # The lobby is the whole-world fallback room, so it contains every
@@ -238,6 +217,25 @@ class TowerScene:
             ):
                 return True
         return False
+
+    def _room_position_is_walkable(self, position: tuple[int, int]) -> bool:
+        if not self.room.contains(position):
+            return False
+        if self.current_room == "recreation":
+            regions = FLOOR_PLAN["baseLayout"]["walkableHallways"]
+            return any(
+                int(region[0]) <= position[0] <= int(region[0]) + int(region[2])
+                and int(region[1]) <= position[1] <= int(region[1]) + int(region[3])
+                for region in regions
+            )
+        if self.current_room == "executive":
+            suite = FLOOR_PLAN["baseLayout"]["executiveSuite"]["bounds"]
+            inside_suite = (
+                int(suite[0]) <= position[0] <= int(suite[0]) + int(suite[2])
+                and int(suite[1]) <= position[1] <= int(suite[1]) + int(suite[3])
+            )
+            return not inside_suite
+        return True
 
     def set_motion_input(self, x: float, y: float, *, sprint: bool = False) -> None:
         """Set bounded locomotion intent received from the Godot game client."""
@@ -516,6 +514,20 @@ class TowerScene:
     def select_room(self, room_id: str) -> bool:
         if not any(room.id == room_id for room in self.rooms):
             return False
+        if room_id == "executive_suite":
+            door = self.objects.get("executive-suite-door")
+            if self.current_room != "executive" or door is None or hypot(
+                door.position[0] - self.player_position[0],
+                door.position[1] - self.player_position[1],
+            ) > 600:
+                return False
+        elif room_id == "executive" and self.current_room == "executive_suite":
+            door = self.objects.get("executive-suite-exit")
+            if door is None or hypot(
+                door.position[0] - self.player_position[0],
+                door.position[1] - self.player_position[1],
+            ) > 600:
+                return False
         self.camera_focus_object_id = None
         self.camera_focus_seconds = 0.0
         self.current_room = room_id
@@ -528,6 +540,8 @@ class TowerScene:
 
     def select_floor(self, floor: int) -> bool:
         if floor < 1 or floor > self.floor_count:
+            return False
+        if floor != 1:
             return False
         self.current_floor = floor
         destination_room = (

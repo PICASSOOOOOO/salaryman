@@ -37,6 +37,16 @@ show practical services such as pipes and electrical conduits/wires; doors
 and elevators should be placed as parts of the building structure, not loose
 decorative props.
 
+Every building layout must reserve real space for wall thickness and wall
+interiors, crawl/service spaces, and foundational structural beams. Treat these
+as explicit building geometry, not zero-thickness visual boundaries.
+
+**Why:** the user asked to make room for these structural areas in buildings.
+
+**How to apply:** clarify whether stated room dimensions are clear interior sizes
+or full structural footprints before moving boundaries; keep support/service
+areas visible in the layout and out of usable floor space.
+
 Elevator travel should show entry from the lobby, a short camera zoom into a
 transparent isometric elevator interior, and arrival in the selected floor's
 hallway.
