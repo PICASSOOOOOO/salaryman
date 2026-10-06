@@ -1,16 +1,60 @@
 {
   "world": {
-    "width": 10000,
-    "height": 10000
+    "width": 100000000,
+    "height": 100000000
+  },
+  "floorCount": 67,
+  "officeCapacityDesks": 100,
+  "officesPerFloor": 4,
+  "floorProgram": {
+    "lobby": 1,
+    "mezzanine": 2,
+    "pabloCorp": [3, 4],
+    "publicSale": {"from": 5, "to": 62, "count": 58},
+    "picassoOnly": [63, 64, 65],
+    "medicareClub": 64,
+    "penthouse": 66,
+    "rooftopRestaurant": 67,
+    "hallways": {"from": 3, "to": 65, "count": 63}
+  },
+  "publicOfficeSales": {
+    "floorFrom": 5,
+    "floorTo": 62,
+    "floorCount": 58,
+    "officesPerFloor": 4,
+    "totalOffices": 232,
+    "pricePerPixelFiat": 2000,
+    "officeAreaPixels": 400000000,
+    "startingOfficePriceFiat": 800000000000
+  },
+  "baseLayout": {
+    "elevator": {
+      "bounds": [49976500, 49999500, 1000, 1000],
+      "doorSide": "east"
+    },
+    "elevatorLobby": {
+      "bounds": [49975000, 49997000, 4000, 6000],
+      "spawn": [49978000, 50000000]
+    },
+    "hallways": [
+      [49979000, 49999000, 44000, 2000],
+      [49999000, 49979000, 2000, 44000]
+    ],
+    "offices": [
+      {"id": "office_01", "bounds": [49979000, 49979000, 20000, 20000], "capacityDesks": 100, "entrance": [49995000, 49999000]},
+      {"id": "office_02", "bounds": [50001000, 49979000, 20000, 20000], "capacityDesks": 100, "entrance": [50005000, 49999000]},
+      {"id": "office_03", "bounds": [49979000, 50001000, 20000, 20000], "capacityDesks": 100, "entrance": [49995000, 50001000]},
+      {"id": "office_04", "bounds": [50001000, 50001000, 20000, 20000], "capacityDesks": 100, "entrance": [50005000, 50001000]}
+    ]
   },
   "rooms": [
     {
       "id": "lobby",
       "label": "TOWER LOBBY",
-      "bounds": [700, 1000, 2200, 2400],
+      "bounds": [0, 0, 100000000, 100000000],
       "accent": [27, 112, 110],
       "material": "lobby_floor",
-      "spawn": [1800, 2100]
+      "spawn": [49978000, 50000000]
     },
     {
       "id": "recreation",
@@ -26,7 +70,7 @@
       "bounds": [900, 5200, 1800, 2200],
       "accent": [112, 83, 115],
       "material": "office_1",
-      "spawn": [1800, 6650]
+      "spawn": [1800, 6550]
     },
     {
       "id": "public",

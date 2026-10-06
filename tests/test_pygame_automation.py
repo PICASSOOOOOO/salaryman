@@ -10,6 +10,7 @@ from pygame_sim.automation import (
     AutopilotDomainStatus,
     AutopilotSnapshot,
     DesktopLink,
+    build_practical_app_url,
     fetch_autopilot_snapshot,
     load_desktop_link,
 )
@@ -29,6 +30,30 @@ class PygameAutomationTests(unittest.TestCase):
             room = next(room for room in scene.rooms if room.id == profile.room_id)
             self.assertTrue(all(room.contains(point) for point in profile.route), profile.domain)
             self.assertTrue((asset_root / profile.sprite).is_file(), profile.sprite)
+
+    def test_each_npc_hands_off_to_its_real_practical_app_module(self):
+        expected_paths = {
+            "business_ops": "/business/job-command",
+            "accounting": "/business/accounting",
+            "crm_calls": "/business/contacts",
+            "marketing": "/marketing/command",
+            "creative_work": "/creative/darkroom",
+            "market_research": "/intel/reports",
+        }
+
+        for profile in AUTOMATION_CHARACTERS:
+            self.assertEqual(profile.app_path, expected_paths[profile.domain])
+            self.assertTrue(profile.app_label)
+            self.assertEqual(
+                build_practical_app_url("https://salaryman.example/", profile.domain),
+                f"https://salaryman.example{profile.app_path}",
+            )
+
+    def test_practical_app_handoff_rejects_unknown_domains_and_unsafe_origins(self):
+        self.assertIsNone(build_practical_app_url("javascript:alert(1)", "business_ops"))
+        self.assertIsNone(build_practical_app_url("https://user:secret@salaryman.example", "business_ops"))
+        self.assertIsNone(build_practical_app_url("https://salaryman.example/?next=evil", "business_ops"))
+        self.assertIsNone(build_practical_app_url("https://salaryman.example", "unknown_domain"))
 
     def test_enabled_characters_walk_and_disabled_characters_wait_at_their_workstation(self):
         scene = build_tower_scene()

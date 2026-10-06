@@ -67,6 +67,7 @@ class SolarPunkRenderer:
         self.record_rect = pygame.Rect(0, 0, 0, 0)
         self.record_close_rect = pygame.Rect(0, 0, 0, 0)
         self.overlay_close_rect = pygame.Rect(0, 0, 0, 0)
+        self.automation_app_rect = pygame.Rect(0, 0, 0, 0)
         self.repair_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_economy_rect = pygame.Rect(0, 0, 0, 0)
@@ -159,7 +160,13 @@ class SolarPunkRenderer:
         if state.drawer_open:
             self.draw_office_record(state)
 
-    def draw_tower(self, state: OfficeState, scene: TowerScene) -> None:
+    def draw_tower(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        *,
+        practical_app_available: bool = False,
+    ) -> None:
         """Render the authoritative scene as a camera-following pixel-art room."""
         self.screen.fill((8, 43, 49))
         self.draw_tower_header(state, scene)
@@ -169,7 +176,11 @@ class SolarPunkRenderer:
         self.draw_tower_footer(state, scene)
         if state.active_page is not None:
             if state.active_page == "automation":
-                self.draw_automation_page(state, scene)
+                self.draw_automation_page(
+                    state,
+                    scene,
+                    practical_app_available=practical_app_available,
+                )
             else:
                 self.draw_game_page(state, scene)
         elif state.tool_menu_open:
@@ -324,8 +335,17 @@ class SolarPunkRenderer:
             if len(accent) != 3:
                 accent = (146, 175, 161)
             enabled = agent.get("enabled")
-            label = "ON DUTY" if enabled is True else "PAUSED" if enabled is False else "LINK"
-            label_color = accent if enabled is True else (193, 197, 174) if enabled is False else (205, 173, 113)
+            sync_state = agent.get("syncState")
+            if enabled is True:
+                label, label_color = "ENABLED", accent
+            elif enabled is False:
+                label, label_color = "PAUSED", (193, 197, 174)
+            elif sync_state == "connecting":
+                label, label_color = "SYNCING", (205, 173, 113)
+            elif sync_state == "unlinked":
+                label, label_color = "UNLINKED", (173, 184, 166)
+            else:
+                label, label_color = "UNAVAILABLE", (196, 150, 125)
             frame = (int(scene.npc_motion_seconds * 12) + index * 3) % 7 if enabled is True else 0
             self._draw_npc(
                 screen_x,
@@ -337,7 +357,7 @@ class SolarPunkRenderer:
                 frame=frame,
                 character_asset=str(agent.get("sprite", "characters/char_1.png")),
             )
-            self.text(label, (screen_x - 28, screen_y + 12), self.font_sm, label_color)
+            self.text(label, (screen_x - 40, screen_y + 12), self.font_sm, label_color)
             if nearby is not None and nearby.domain == agent.get("domain"):
                 pygame.draw.circle(self.screen, (255, 224, 112), (screen_x, screen_y), 22, 2)
                 self.text(
@@ -965,8 +985,15 @@ class SolarPunkRenderer:
             self.panel(rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_DIM, radius=2, width=1)
             self.text(label, (rect.x + 10, rect.y + 7), self.font_mono, Palette.MATRIX_GREEN)
 
-    def draw_automation_page(self, state: OfficeState, scene: TowerScene) -> None:
+    def draw_automation_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        *,
+        practical_app_available: bool = False,
+    ) -> None:
         """Show the linked, read-only status of the selected automation character."""
+        self.automation_app_rect = pygame.Rect(0, 0, 0, 0)
         dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         dim.fill((4, 17, 20, 205))
         self.screen.blit(dim, (0, 0))
@@ -991,7 +1018,7 @@ class SolarPunkRenderer:
         self.text(profile.domain.replace("_", " ").upper(), (panel.x + 30, panel.y + 132), self.font_mono, (222, 228, 211))
         status = scene.automation_domain_status(profile)
         if status is not None:
-            status_label = "ENABLED · WALKING ROUTE" if status.enabled else "PAUSED · AT WORKSTATION"
+            status_label = "ENABLED · ROUTINE PREVIEW" if status.enabled else "PAUSED · AT WORKSTATION"
             status_color = (133, 224, 166) if status.enabled else (223, 194, 127)
             _, _, activity = scene.automation_pose(profile)
             last_run = "NO RUN RECORDED"
@@ -1009,12 +1036,49 @@ class SolarPunkRenderer:
             last_run = "HIDDEN OR NOT CONNECTED"
 
         self.text(status_label, (panel.x + 30, panel.y + 196), self.font_lg, status_color)
-        self.text(f"IN-WORLD TASK  /  {activity}", (panel.x + 30, panel.y + 244), self.font_mono, (227, 232, 215))
+        self.text(f"ROUTE PREVIEW  /  {activity}", (panel.x + 30, panel.y + 244), self.font_mono, (227, 232, 215))
         self.text(f"LAST SERVER RUN  /  {last_run}", (panel.x + 30, panel.y + 284), self.font_mono, (177, 195, 177))
-        self.text("The game can inspect status, but cannot start or change automations.", (panel.x + 30, panel.y + 354), self.font_sm, (186, 204, 187))
-        self.text("Press E near another character to inspect that automation.", (panel.x + 30, panel.y + 390), self.font_sm, (186, 204, 187))
+
+        self.automation_app_rect = pygame.Rect(panel.x + 30, panel.y + 326, 360, 40)
+        if practical_app_available:
+            self.panel(
+                self.automation_app_rect,
+                (29, 64, 48),
+                profile.accent,
+                radius=5,
+                width=1,
+            )
+            self.text(
+                f"OPEN {profile.app_label}",
+                (self.automation_app_rect.x + 14, self.automation_app_rect.y + 12),
+                self.font_md,
+                (226, 245, 220),
+            )
+            self.text(
+                "[O]",
+                (self.automation_app_rect.right - 34, self.automation_app_rect.y + 13),
+                self.font_mono,
+                profile.accent,
+            )
+        else:
+            self.panel(
+                self.automation_app_rect,
+                (27, 38, 36),
+                (83, 103, 88),
+                radius=5,
+                width=1,
+            )
+            self.text(
+                "SALARYMAN MODULE LINK UNAVAILABLE",
+                (self.automation_app_rect.x + 12, self.automation_app_rect.y + 13),
+                self.font_sm,
+                (173, 184, 166),
+            )
+
+        self.text("Live status comes from SALARYMAN; movement is only a representative route.", (panel.x + 30, panel.y + 382), self.font_sm, (186, 204, 187))
+        self.text("This view is read-only. Manage work in the linked SALARYMAN module.", (panel.x + 30, panel.y + 408), self.font_sm, (186, 204, 187))
         if scene.autopilot_snapshot.state != "connected":
-            self.text("Link a desktop in Device Link, then save its file to ~/.salaryman/desktop-link.json.", (panel.x + 30, panel.y + 430), self.font_sm, (236, 203, 135))
+            self.text(scene.autopilot_snapshot.message or "STATUS SYNC UNAVAILABLE", (panel.x + 30, panel.y + 438), self.font_sm, (236, 203, 135))
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
         veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)

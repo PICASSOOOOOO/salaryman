@@ -2,9 +2,9 @@
 
 ## Run the desktop app
 
-No Docker is required. Extract the archive, open the extracted
-`salaryman-office-linux-x86_64` folder, and double-click `START-SALARYMAN`.
-If your Linux file manager asks, choose **Run** or **Allow Launching**.
+No Docker is required. Extract the archive, open its folder,
+and double-click `START-SALARYMAN`. If your Linux file manager asks, choose
+**Run** or **Allow Launching**.
 
 You can also launch it from a terminal opened in this directory:
 

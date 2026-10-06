@@ -17,16 +17,21 @@ const CAMERA_DISTANCE_MAX := 22.0
 const CAMERA_ORTHO_SIZE_MIN := 9.0
 const CAMERA_ORTHO_SIZE_MAX := 18.0
 const CAMERA_ORTHO_SIZE_BASE := 13.0
+# Room floors are 0.16 units above the world origin (0.08 center + 0.08
+# half-height). Keep the player root on that same surface; the imported
+# character's feet are authored at its local origin.
+const PLAYER_GROUND_Y := FLOOR_HEIGHT + 0.08
 
 var connection := StreamPeerTCP.new()
 var receive_buffer := ""
 var snapshot: Dictionary = {}
 var connection_status := "connecting to Pygame…"
 var command_sequence := 0
-var visual_player_world := Vector3(0.0, 0.45, 0.0)
+var visual_player_world := Vector3(0.0, PLAYER_GROUND_Y, 0.0)
 var visual_player_ready := false
 var target_player_world := Vector3.ZERO
 var animation_clock := 0.0
+var player_pose_blend := 0.0
 var camera_distance := 14.0
 var last_room_id := ""
 var last_sequence := -1
@@ -283,6 +288,19 @@ func _set_player_animation(animation_name: String) -> void:
 		animation_player.play(animation_name)
 
 
+func _has_player_animation(animation_name: String) -> bool:
+	if player_root == null:
+		return false
+	var animation_player := player_root.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	return animation_player != null and animation_player.has_animation(animation_name)
+
+
+func _current_player_action() -> String:
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	var player: Dictionary = scene_data.get("player", {})
+	return str(player.get("action", "stand"))
+
+
 func _build_interface() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.name = "HUD"
@@ -326,14 +344,6 @@ func _build_interface() -> void:
 	notice_label.add_theme_font_size_override("font_size", 12)
 	notice_label.add_theme_color_override("font_color", Color("#a8c8b6"))
 	canvas.add_child(notice_label)
-
-	var controls := Label.new()
-	controls.text = "WASD / ARROWS MOVE    E INTERACT    1–6 ROOMS    +/- ZOOM    SPACE PAUSE    R RECONNECT"
-	controls.position = Vector2(30, 704)
-	controls.add_theme_font_size_override("font_size", 11)
-	controls.add_theme_color_override("font_color", Color("#8bb0aa"))
-	canvas.add_child(controls)
-
 
 func _connect_to_pygame() -> void:
 	var error := connection.connect_to_host(HOST, PORT)
@@ -410,7 +420,7 @@ func _apply_snapshot(message: Dictionary) -> void:
 
 
 func _pygame_to_world(x: float, y: float) -> Vector3:
-	return Vector3(x * WORLD_SCALE, 0.42, y * WORLD_SCALE)
+	return Vector3(x * WORLD_SCALE, PLAYER_GROUND_Y, y * WORLD_SCALE)
 
 
 func _smooth_visual_player(delta: float) -> void:
@@ -418,7 +428,18 @@ func _smooth_visual_player(delta: float) -> void:
 		return
 	visual_player_world = visual_player_world.lerp(target_player_world, min(1.0, delta * 14.0))
 	if player_root:
-		player_root.position = visual_player_world + Vector3(0.0, sin(animation_clock * 5.0) * 0.025, 0.0)
+		# Pygame owns the authoritative position. This renderer-only layer adds a
+		# small sit-down settle and quiet breathing without changing gameplay state.
+		var target_pose_blend := 1.0 if _current_player_action() == "sit" else 0.0
+		player_pose_blend = move_toward(player_pose_blend, target_pose_blend, delta * 7.5)
+		var eased_blend := player_pose_blend * player_pose_blend * (3.0 - 2.0 * player_pose_blend)
+		var breathing := sin(animation_clock * 1.8) * 0.012 + sin(animation_clock * 0.9 + 0.4) * 0.006
+		player_root.position = visual_player_world + Vector3(0.0, (-0.26 + breathing) * eased_blend, 0.0)
+		player_root.rotation = Vector3(
+			-0.16 * eased_blend,
+			sin(animation_clock * 0.75) * 0.018 * eased_blend,
+			sin(animation_clock * 1.15 + 0.5) * 0.012 * eased_blend,
+		)
 
 
 func _rebuild_bridge_objects(objects: Array) -> void:
@@ -528,10 +549,14 @@ func _update_art_motion(delta: float) -> void:
 
 
 func _update_player_animation() -> void:
-	var scene_data: Dictionary = snapshot.get("scene", {})
-	var player: Dictionary = scene_data.get("player", {})
+	var action := _current_player_action()
 	var moving := visual_player_world.distance_to(target_player_world) > 0.018
-	_set_player_animation("walk" if moving else "idle")
+	if action == "sit":
+		_set_player_animation("sit" if _has_player_animation("sit") else "idle")
+	elif action == "sleep":
+		_set_player_animation("sleep" if _has_player_animation("sleep") else "idle")
+	else:
+		_set_player_animation("walk" if moving else "idle")
 
 
 func _update_hud() -> void:

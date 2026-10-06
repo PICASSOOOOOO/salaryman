@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import threading
 from typing import Any, Callable
+from urllib.parse import urlsplit, urlunsplit
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -34,6 +35,8 @@ class AutomationCharacter:
     route: tuple[tuple[int, int], ...]
     work_stops: tuple[str, ...]
     speed: float
+    app_label: str
+    app_path: str
     phase_seconds: float = 0.0
 
 
@@ -45,44 +48,89 @@ AUTOMATION_CHARACTERS = (
         "characters/char_1.png", (91, 208, 155),
         ((5_250, 5_500), (6_700, 5_500), (6_700, 6_000), (5_250, 6_000)),
         ("SORT TASKS", "CHECK STAFFING", "ROUTE WORK", "UPDATE BOARD"),
-        76.0, 0.4,
+        76.0,
+        app_label="JOB COMMAND",
+        app_path="/business/job-command",
+        phase_seconds=0.4,
     ),
     AutomationCharacter(
         "accounting", "LEDGER", "BOOKKEEPER", "executive",
         "characters/char_2.png", (242, 194, 96),
         ((1_100, 5_450), (2_450, 5_450), (2_450, 7_250), (1_100, 7_250)),
         ("RECONCILE", "CHECK BILLS", "REVIEW RUN", "BALANCE BOOKS"),
-        66.0, 1.7,
+        66.0,
+        app_label="ACCOUNTING",
+        app_path="/business/accounting",
+        phase_seconds=1.7,
     ),
     AutomationCharacter(
         "crm_calls", "ECHO", "CLIENT CARE", "public",
         "characters/char_3.png", (105, 198, 207),
         ((3_150, 5_450), (4_650, 5_450), (4_650, 6_050), (3_150, 6_050)),
         ("SORT INBOX", "CHECK OPT-OUTS", "QUEUE FOLLOW-UP", "LOG ACTIVITY"),
-        82.0, 0.9,
+        82.0,
+        app_label="CONTACTS",
+        app_path="/business/contacts",
+        phase_seconds=0.9,
     ),
     AutomationCharacter(
         "marketing", "KITE", "CAMPAIGN DESIGNER", "office_04",
         "characters/char_4.png", (238, 139, 103),
         ((7_450, 5_450), (8_850, 5_450), (8_850, 6_050), (7_450, 6_050)),
         ("DRAFT CAMPAIGN", "CHECK CHANNELS", "REVIEW QUEUE", "PREPARE POST"),
-        79.0, 2.3,
+        79.0,
+        app_label="MARKETING",
+        app_path="/marketing/command",
+        phase_seconds=2.3,
     ),
     AutomationCharacter(
         "creative_work", "MUSE", "CREATIVE PARTNER", "recreation",
         "characters/char_5.png", (177, 153, 219),
         ((1_550, 3_700), (4_000, 3_700), (4_000, 4_900), (1_550, 4_900)),
         ("SHAPE A BRIEF", "REVIEW PROJECT", "SORT REFERENCES", "PREPARE DRAFT"),
-        72.0, 1.1,
+        72.0,
+        app_label="DARKROOM",
+        app_path="/creative/darkroom",
+        phase_seconds=1.1,
     ),
     AutomationCharacter(
         "market_research", "SCOUT", "MARKET ANALYST", "office_03",
         "characters/char_1.png", (114, 187, 231),
         ((5_300, 6_650), (6_700, 6_650), (6_700, 7_200), (5_300, 7_200)),
         ("SCAN SOURCES", "COMPARE SIGNALS", "BUILD BRIEF", "QUEUE REVIEW"),
-        70.0, 2.8,
+        70.0,
+        app_label="INTELLIGENCE REPORTS",
+        app_path="/intel/reports",
+        phase_seconds=2.8,
     ),
 )
+
+
+def build_practical_app_url(server_url: str, domain: str) -> str | None:
+    """Build a fixed SALARYMAN module URL without carrying credentials or query data."""
+    profile = next(
+        (candidate for candidate in AUTOMATION_CHARACTERS if candidate.domain == domain),
+        None,
+    )
+    if profile is None or not isinstance(server_url, str):
+        return None
+    try:
+        parsed = urlsplit(server_url.strip())
+        hostname = parsed.hostname
+        parsed.port  # Validate malformed port syntax before opening a browser.
+    except ValueError:
+        return None
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    return urlunsplit((parsed.scheme, parsed.netloc, profile.app_path, "", ""))
 
 
 @dataclass(frozen=True)
