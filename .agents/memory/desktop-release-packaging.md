@@ -38,3 +38,17 @@ layout plus available system fonts differ from Linux.
 
 **How to apply:** Build and smoke-test macOS on macOS; the Linux environment can
 only validate the launcher template and shared source behavior.
+
+## Supported-platform priorities
+
+macOS is the first user test target, while Windows remains required. Preserve
+Linux compatibility for now; discontinuing Linux is conditional on it adding
+substantial separate workload, not an approved removal.
+
+**Why:** The user said all platforms must work, selected macOS for their testing,
+and would discontinue Linux if it doubles the workload.
+
+**How to apply:** Share game code and assets across platforms, prioritize the
+macOS test release, and distinguish automated native checks from real-device
+playtesting. Do not remove Linux support without discussing the actual extra
+maintenance cost with the user.
