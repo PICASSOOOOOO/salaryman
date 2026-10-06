@@ -170,6 +170,7 @@ def apply_command(
             return CommandResult(False, "MOVE CLOSER TO THAT OBJECT")
         if building_sync is None or not building_sync.queue_action(object_id, payload["action"]):
             return CommandResult(False, "BUILDING SYNC UNAVAILABLE")
+        scene.set_player_action("maintenance", duration=12.0)
         state.notice = f"{payload['action'].upper()} REQUESTED / {nearby.label}"
         return CommandResult(True, state.notice)
     if name == "select_room":
@@ -287,6 +288,8 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "nearby": item == scene.nearby_object,
                     "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),
                     "condition": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("condition"),
+                    "publicWork": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("publicWork"),
+                    "activeWork": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("activeWork"),
                 }
                 for item in scene.objects.objects
             ],

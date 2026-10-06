@@ -52,7 +52,7 @@ NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {
     ),
 }
 
-CharacterAction = Literal["stand", "jump", "sit", "sleep", "fight", "sweep"]
+CharacterAction = Literal["stand", "jump", "sit", "sleep", "fight", "sweep", "maintenance"]
 
 
 @dataclass(frozen=True)
@@ -316,7 +316,7 @@ class TowerScene:
         reset_idle: bool = True,
     ) -> bool:
         """Set a grounded action; sitting attaches the player to a nearby chair."""
-        if action not in {"stand", "jump", "sit", "sleep", "fight", "sweep"}:
+        if action not in {"stand", "jump", "sit", "sleep", "fight", "sweep", "maintenance"}:
             return False
         if action == "sit":
             chairs = [

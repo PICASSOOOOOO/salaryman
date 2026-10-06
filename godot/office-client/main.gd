@@ -1481,11 +1481,33 @@ func _update_hud() -> void:
 		var cleanliness := int(maintenance_status.get("cleanliness", 0))
 		var condition := int(maintenance_status.get("condition", 0))
 		var target_name := str(maintenance_status.get("label", "OBJECT"))
-		controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nC CLEAN %d%%  ·  V REPAIR %d%%  ·  %s" % [
-			cleanliness,
-			condition,
-			target_name,
-		]
+		var active_work: Variant = maintenance_status.get("activeWork", null)
+		if active_work is Dictionary:
+			var work_action := str(active_work.get("action", "clean")).to_upper()
+			var progress := clampi(roundi(float(active_work.get("progress", 0.0)) * 100.0), 0, 100)
+			var reward := int(active_work.get("rewardFiat", 0))
+			var progress_blocks := int(round(float(progress) / 10.0))
+			var progress_bar := "■".repeat(progress_blocks) + "□".repeat(10 - progress_blocks)
+			controls_label.text = "%s  %s%%  %s\nSTAY WITHIN REACH  ·  %s" % [
+				work_action,
+				str(progress).pad_zeros(3),
+				progress_bar,
+				("PABLO PAYOUT ƒ%d" % reward) if reward > 0 else target_name,
+			]
+		else:
+			var public_work: Variant = maintenance_status.get("publicWork", {})
+			var clean_hint := "C CLEAN %d%%" % cleanliness
+			var repair_hint := "V REPAIR %d%%" % condition
+			if public_work is Dictionary:
+				if bool(public_work.get("cleanAvailable", false)):
+					clean_hint = "C CLEAN / ƒ%d" % int(public_work.get("cleanRewardFiat", 0))
+				if bool(public_work.get("repairAvailable", false)):
+					repair_hint = "V REPAIR / ƒ%d" % int(public_work.get("repairRewardFiat", 0))
+			controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\n%s  ·  %s  ·  %s" % [
+				clean_hint,
+				repair_hint,
+				target_name,
+			]
 		var worst_state := mini(cleanliness, condition)
 		var state_color := Color("#c4ddcb")
 		if worst_state < 35:
@@ -1523,6 +1545,8 @@ func _nearby_maintenance_status(scene_data: Dictionary) -> Dictionary:
 			"label": label,
 			"cleanliness": clampi(int(cleanliness), 0, 100),
 			"condition": clampi(int(condition), 0, 100),
+			"publicWork": object.get("publicWork", {}),
+			"activeWork": object.get("activeWork", null),
 		}
 	return {}
 

@@ -280,6 +280,10 @@ def run(argv: list[str] | None = None) -> int:
                         state_key: sync_event.state,
                     })
             state.notice = sync_event.message.upper()
+            if sync_event.message.startswith("WORKING /"):
+                scene.set_player_action("maintenance", duration=12.0)
+            elif not sync_event.ok or "PAID" in sync_event.message.upper() or "CLEANED" in sync_event.message.upper() or "REPAIRED" in sync_event.message.upper():
+                scene.set_player_action("stand", duration=0.0)
         autopilot_snapshot = autopilot_poller.current()
         if autopilot_snapshot.revision > last_autopilot_revision:
             scene.set_autopilot_snapshot(autopilot_snapshot)

@@ -23,6 +23,7 @@ var _local_action := ""
 var _action_lock := 0.0
 var _current_animation := ""
 var _facing := Vector3.FORWARD
+var _maintenance_clock := 0.0
 
 
 func configure_character(scene: PackedScene) -> void:
@@ -81,7 +82,7 @@ func set_bridge_connected(connected: bool) -> void:
 
 
 func requested_movement() -> Vector2:
-	if not bridge_connected or authoritative_action in ["sit", "sleep"]:
+	if not bridge_connected or authoritative_action in ["sit", "sleep", "maintenance"]:
 		return Vector2.ZERO
 	var x := float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT))
 	x -= float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
@@ -98,7 +99,7 @@ func wants_sprint() -> bool:
 
 
 func set_authoritative_action(action: String) -> void:
-	authoritative_action = action if action in ["sit", "sleep"] else "stand"
+	authoritative_action = action if action in ["sit", "sleep", "maintenance"] else "stand"
 	if authoritative_action in ["sit", "sleep"]:
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -179,6 +180,16 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= GRAVITY * delta
 
 	move_and_slide()
+	if authoritative_action == "maintenance":
+		_maintenance_clock += delta
+		if visual_root != null:
+			visual_root.position.y = sin(_maintenance_clock * 10.0) * 0.025
+			visual_root.rotation.z = sin(_maintenance_clock * 5.0) * 0.035
+	else:
+		_maintenance_clock = 0.0
+		if visual_root != null:
+			visual_root.position.y = 0.0
+			visual_root.rotation.z = 0.0
 	_update_locomotion_animation(sprinting)
 
 
@@ -190,6 +201,9 @@ func _update_locomotion_animation(sprinting: bool) -> void:
 		return
 	if authoritative_action == "sleep":
 		_play_animation("sit")
+		return
+	if authoritative_action == "maintenance":
+		_play_animation("idle")
 		return
 	if not is_on_floor():
 		_play_animation("jump" if velocity.y > 0.0 else "fall")

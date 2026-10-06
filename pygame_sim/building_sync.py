@@ -44,6 +44,7 @@ class DesktopBuildingSync:
         self._object_states: dict[str, dict[str, Any]] = {}
         self._actions: queue.Queue[tuple[int, str, str, str]] = queue.Queue()
         self._events: queue.Queue[BuildingSyncEvent] = queue.Queue()
+        self._active_action: tuple[int, str, str, str, str | None] | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_error: str | None = None
@@ -71,6 +72,8 @@ class DesktopBuildingSync:
 
     def queue_action(self, object_id: str, action: str) -> bool:
         if self.link is None or action not in {"clean", "repair"} or not object_id:
+            return False
+        if self._active_action is not None or not self._actions.empty():
             return False
         with self._lock:
             snapshot = self._scene_snapshot
@@ -148,18 +151,28 @@ class DesktopBuildingSync:
                 self._discard_one_pending_action(message)
             return
 
-        try:
-            action_floor, action_room, object_id, maintenance_action = self._actions.get_nowait()
-        except queue.Empty:
-            return
+        if self._active_action is None:
+            try:
+                queued = self._actions.get_nowait()
+            except queue.Empty:
+                return
+            action_floor, action_room, object_id, maintenance_action = queued
+            session_id = None
+        else:
+            action_floor, action_room, object_id, maintenance_action, session_id = self._active_action
+
         if action_floor != floor or action_room != scene_room:
-            self._events.put(BuildingSyncEvent(False, "PLAYER CHANGED FLOORS / ACTION CANCELLED"))
-            return
+            if session_id is None:
+                self._events.put(BuildingSyncEvent(False, "PLAYER CHANGED FLOORS / ACTION CANCELLED"))
+                return
         try:
+            body: dict[str, Any] = {"objectId": object_id, "action": maintenance_action}
+            if session_id is not None:
+                body["sessionId"] = session_id
             result = self._request_json(
                 "POST",
                 "/desktop-building/objects/action",
-                {"objectId": object_id, "action": maintenance_action},
+                body,
             )
             state = result.get("state")
             if not isinstance(state, dict) or not isinstance(state.get("objectId"), str):
@@ -169,12 +182,24 @@ class DesktopBuildingSync:
                 raise RuntimeError("INVALID_SERVER_RESPONSE")
             with self._lock:
                 self._object_states[f"{floor_number}:{state['objectId']}"] = state
-            self._events.put(BuildingSyncEvent(True, str(result.get("message", "Maintenance complete")), state))
+            if result.get("working") is True:
+                next_session = result.get("sessionId")
+                if not isinstance(next_session, str):
+                    raise RuntimeError("INVALID_SERVER_RESPONSE")
+                self._active_action = (action_floor, action_room, object_id, maintenance_action, next_session)
+                if session_id is None:
+                    self._events.put(BuildingSyncEvent(True, str(result.get("message", "WORK IN PROGRESS")), state))
+            else:
+                self._active_action = None
+                self._events.put(BuildingSyncEvent(True, str(result.get("message", "Maintenance complete")), state))
         except RuntimeError as exc:
             message = _friendly_sync_error(str(exc))
             self._events.put(BuildingSyncEvent(False, message))
             if message == "BUILDING SERVER OFFLINE":
-                self._actions.put((action_floor, action_room, object_id, maintenance_action))
+                if session_id is None:
+                    self._actions.put((action_floor, action_room, object_id, maintenance_action))
+            else:
+                self._active_action = None
 
     def _discard_one_pending_action(self, message: str) -> None:
         try:

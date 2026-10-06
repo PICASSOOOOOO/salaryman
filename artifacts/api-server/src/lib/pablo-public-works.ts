@@ -27,16 +27,18 @@ export type PublicWorkDemand = {
 
 type Transaction = Parameters<typeof creditFiat>[0];
 
-let cachedDemand: { expiresAt: number; value: PublicWorkDemand } | null = null;
+const cachedDemand = new Map<string, { expiresAt: number; value: PublicWorkDemand }>();
 
-export async function getPublicWorkDemand(): Promise<PublicWorkDemand> {
+export async function getPublicWorkDemand(city: string): Promise<PublicWorkDemand> {
   const nowMs = Date.now();
-  if (cachedDemand && cachedDemand.expiresAt > nowMs) return cachedDemand.value;
+  const cached = cachedDemand.get(city);
+  if (cached && cached.expiresAt > nowMs) return cached.value;
 
   const cutoff = new Date(nowMs - DEMAND_WINDOW_MS);
   const recentPresence = await db.select({ userId: desktopOfficePresenceTable.userId })
     .from(desktopOfficePresenceTable)
     .where(and(
+      eq(desktopOfficePresenceTable.city, city),
       gte(desktopOfficePresenceTable.lastSeenAt, cutoff),
       lte(desktopOfficePresenceTable.floorNumber, 4),
       inArray(desktopOfficePresenceTable.room, ["lobby", "hallway"]),
@@ -52,8 +54,9 @@ export async function getPublicWorkDemand(): Promise<PublicWorkDemand> {
     }).from(desktopBuildingObjectStatesTable)
       .where(and(
         gte(desktopBuildingObjectStatesTable.workCompletedAt, cutoff),
+        eq(desktopBuildingObjectStatesTable.city, city),
         lte(desktopBuildingObjectStatesTable.floorNumber, 4),
-        inArray(desktopBuildingObjectStatesTable.room, ["lobby", "recreation"]),
+        inArray(desktopBuildingObjectStatesTable.room, ["lobby", "hallway"]),
         isNotNull(desktopBuildingObjectStatesTable.workCompletedByUserId),
       ));
     recentWorkerResidents = new Set(
@@ -104,7 +107,7 @@ export async function getPublicWorkDemand(): Promise<PublicWorkDemand> {
       averageFiatWealth,
     }),
   };
-  cachedDemand = { expiresAt: nowMs + DEMAND_CACHE_MS, value };
+  cachedDemand.set(city, { expiresAt: nowMs + DEMAND_CACHE_MS, value });
   return value;
 }
 
@@ -137,22 +140,6 @@ export async function payPublicMaintenanceReward(
   const pabloAccount = await ensureCheckingAccount(tx, pablo.id);
   const now = new Date();
 
-  const [picassoFunded] = await tx.update(orgAccountsTable)
-    .set({
-      balanceFiat: sql`${orgAccountsTable.balanceFiat} + ${input.amountFiat}`,
-      updatedAt: now,
-    })
-    .where(eq(orgAccountsTable.id, picassoAccount.id))
-    .returning({ balanceFiat: orgAccountsTable.balanceFiat });
-  await tx.insert(orgAccountTransactionsTable).values({
-    orgId: picasso.id,
-    accountType: "checking",
-    delta: input.amountFiat,
-    balanceAfter: picassoFunded.balanceFiat,
-    description: `Game reward pool funding for public Tower ${input.action} work`,
-    category: "game_reward_pool",
-  });
-
   const [picassoDebited] = await tx.update(orgAccountsTable)
     .set({
       balanceFiat: sql`${orgAccountsTable.balanceFiat} - ${input.amountFiat}`,
@@ -169,8 +156,8 @@ export async function payPublicMaintenanceReward(
     accountType: "checking",
     delta: -input.amountFiat,
     balanceAfter: picassoDebited.balanceFiat,
-    description: `Funding Pablo Corp public Tower work session ${input.sessionId}`,
-    category: "public_work_funding",
+    description: `Game reward pool → Pablo Corp · public Tower work session ${input.sessionId}`,
+    category: "game_reward_pool",
   });
 
   const [pabloFunded] = await tx.update(orgAccountsTable)

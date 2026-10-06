@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   bankAccountsTable,
   bankTransactionsTable,
@@ -228,25 +228,25 @@ describe("desktop office work settlement", () => {
       condition: 85,
     }));
 
+    const [sharedDoor] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
+      eq(desktopBuildingObjectStatesTable.city, officeCity),
+      eq(desktopBuildingObjectStatesTable.floorNumber, 3),
+      eq(desktopBuildingObjectStatesTable.objectId, "hall-office-2-door"),
+    )).limit(1);
+    expect(sharedDoor).toBeDefined();
+    await db.update(desktopBuildingObjectStatesTable)
+      .set({ lastCleanedAt: new Date(Date.now() - 120 * 86_400_000) })
+      .where(eq(desktopBuildingObjectStatesTable.id, sharedDoor.id));
     const cleaned = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "hall-office-2-door",
       action: "clean",
     });
     expect(cleaned.status).toBe(200);
+    expect(cleaned.body).toMatchObject({ working: true, rewardFiat: 100 });
     expect(cleaned.body.state).toMatchObject({
       objectId: "hall-office-2-door",
       floorNumber: 3,
-      cleanliness: 100,
-    });
-    const cleanedPayPhone = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "recreation-pay-phone",
-      action: "clean",
-    });
-    expect(cleanedPayPhone.status).toBe(200);
-    expect(cleanedPayPhone.body.state).toMatchObject({
-      objectId: "recreation-pay-phone",
-      floorNumber: 3,
-      cleanliness: 100,
+      cleanliness: 0,
     });
 
     expect((await reportPresence("hallway", 2)).status).toBe(200);
@@ -265,13 +265,21 @@ describe("desktop office work settlement", () => {
       cleanliness: 80,
       condition: 85,
     }));
+    const movedSession = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "hall-office-2-door",
+      action: "clean",
+      sessionId: cleaned.body.sessionId,
+    });
+    expect(movedSession.status).toBe(409);
+    expect(movedSession.body.error).toMatch(/cancelled/i);
 
     expect((await reportPresence("hallway", 3)).status).toBe(200);
     const floorThreeAfterReturn = await desktopGet("/api/desktop-building/objects");
     expect(floorThreeAfterReturn.body.objects).toContainEqual(expect.objectContaining({
       objectId: "hall-office-2-door",
       floorNumber: 3,
-      cleanliness: 100,
+      cleanliness: 0,
+      activeWork: null,
     }));
 
     expect((await reportPresence("office")).status).toBe(200);
@@ -288,12 +296,32 @@ describe("desktop office work settlement", () => {
       cleanliness: 80,
       condition: 85,
     }));
+    const [officeChair] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
+      eq(desktopBuildingObjectStatesTable.city, officeCity),
+      eq(desktopBuildingObjectStatesTable.floorNumber, 5),
+      eq(desktopBuildingObjectStatesTable.objectId, "executive-chair"),
+    )).limit(1);
+    expect(officeChair).toBeDefined();
+    await db.update(desktopBuildingObjectStatesTable)
+      .set({ lastMaintainedAt: new Date(Date.now() - 120 * 86_400_000) })
+      .where(eq(desktopBuildingObjectStatesTable.id, officeChair.id));
     const repaired = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "executive-chair",
       action: "repair",
     });
     expect(repaired.status).toBe(200);
-    expect(repaired.body.state).toMatchObject({
+    expect(repaired.body).toMatchObject({ working: true, rewardFiat: 0 });
+    await db.update(desktopBuildingObjectStatesTable)
+      .set({ workStartedAt: new Date(Date.now() - repaired.body.durationMs - 1) })
+      .where(eq(desktopBuildingObjectStatesTable.workSessionId, repaired.body.sessionId));
+    const completedRepair = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "executive-chair",
+      action: "repair",
+      sessionId: repaired.body.sessionId,
+    });
+    expect(completedRepair.status).toBe(200);
+    expect(completedRepair.body).toMatchObject({ completed: true, rewardFiat: 0 });
+    expect(completedRepair.body.state).toMatchObject({
       objectId: "executive-chair",
       floorNumber: 5,
       cleanliness: 80,

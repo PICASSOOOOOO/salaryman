@@ -23,3 +23,13 @@ making the crew feel like perfect, unlimited automation.
 **How to apply:** model individual capability and work cadence when assigning,
 animating, and paying public maintenance jobs. Keep specialist automations
 distinct, and do not create separate game-only assistant backends.
+
+Public maintenance payouts are issued by receptionist Mila from the game reward
+pool. Private organization work is paid by that organization's receptionist only
+after verified completion. These payer roles do not create separate assistant
+backends.
+
+**Why:** the user assigned the public and private maintenance payment roles.
+
+**How to apply:** record the named receptionist as the payment agent, but settle
+money from the authoritative public pool or the owning organization's funds.

@@ -12,8 +12,8 @@ describe("Tower public maintenance policy", () => {
   it("decays object scores after a short grace period and never below zero", () => {
     const lastMaintainedAt = new Date("2026-01-01T00:00:00.000Z");
     const afterGrace = new Date("2026-01-05T00:00:00.000Z").getTime();
-    expect(decayBuildingScore(80, lastMaintainedAt, afterGrace, 2)).toBe(78);
-    expect(decayBuildingScore(1, lastMaintainedAt, afterGrace + 365 * 86_400_000, 2)).toBe(0);
+    expect(decayBuildingScore(80, lastMaintainedAt, 2, afterGrace)).toBe(78);
+    expect(decayBuildingScore(1, lastMaintainedAt, 2, afterGrace + 365 * 86_400_000)).toBe(0);
   });
 
   it("offers public work only for objects that need attention", () => {

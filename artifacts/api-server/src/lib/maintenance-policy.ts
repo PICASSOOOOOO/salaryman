@@ -9,8 +9,8 @@ export const PUBLIC_WORK_SCORE_THRESHOLD = 70;
 export function decayBuildingScore(
   score: number,
   lastMaintainedAt: Date | string | null | undefined,
-  nowMs = Date.now(),
   pointsPerDay: number,
+  nowMs = Date.now(),
 ): number {
   if (!lastMaintainedAt) return clampScore(score);
   const timestamp = lastMaintainedAt instanceof Date

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, count, desc, eq, gte, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
 import {
   db,
   desktopBuildingObjectStatesTable,
@@ -16,6 +17,16 @@ import {
 import { canAccess } from "./shadow-tower";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import {
+  CLEANLINESS_DECAY_PER_DAY,
+  CONDITION_DECAY_PER_DAY,
+  decayBuildingScore,
+  needsPublicMaintenance,
+  publicMaintenanceDurationMs,
+  publicMaintenanceReward,
+  workProgress,
+} from "../lib/maintenance-policy";
+import { getPublicWorkDemand, payPublicMaintenanceReward } from "../lib/pablo-public-works";
 import {
   BUILDING_MAINTAINABLE_OBJECTS,
   BUILDING_OBJECT_DEFAULTS,
@@ -44,6 +55,8 @@ const ROOM_LABEL: Record<string, string> = {
   office: "ORGANIZATION OFFICE",
 };
 const MAINTENANCE_REACH_PX = 1_250;
+const PUBLIC_WORK_SESSION_MAX_AGE_MS = 15 * 60 * 1_000;
+const PUBLIC_WORK_SLOT_LOCK_KEY = 731_904_218;
 
 type BuildingScope = {
   presence: typeof desktopOfficePresenceTable.$inferSelect;
@@ -122,15 +135,70 @@ function serializeBuildingObject(
   object: (typeof BUILDING_MAINTAINABLE_OBJECTS)[number],
   floorNumber: number,
   saved?: typeof desktopBuildingObjectStatesTable.$inferSelect,
+  options: { publicWork?: boolean; publicSlotsAvailable?: boolean; nowMs?: number } = {},
 ) {
+  const nowMs = options.nowMs ?? Date.now();
+  const cleanliness = decayBuildingScore(
+    saved?.cleanliness ?? BUILDING_OBJECT_DEFAULTS.cleanliness,
+    saved?.lastCleanedAt ?? saved?.createdAt,
+    CLEANLINESS_DECAY_PER_DAY,
+    nowMs,
+  );
+  const condition = decayBuildingScore(
+    saved?.condition ?? BUILDING_OBJECT_DEFAULTS.condition,
+    saved?.lastMaintainedAt ?? saved?.createdAt,
+    CONDITION_DECAY_PER_DAY,
+    nowMs,
+  );
+  const workStartedAt = saved?.workStartedAt ?? null;
+  const workIsActive = Boolean(saved?.workSessionId && saved?.workAction && workStartedAt);
+  const activeWork = workIsActive
+    ? {
+      action: saved!.workAction,
+      progress: workProgress(workStartedAt!, saved!.workDurationMs, nowMs),
+      startedAt: workStartedAt!.toISOString(),
+      durationMs: saved!.workDurationMs,
+      rewardFiat: saved!.workRewardFiat,
+    }
+    : null;
+  const cleanAvailable = Boolean(options.publicWork && options.publicSlotsAvailable
+    && !workIsActive && needsPublicMaintenance(cleanliness));
+  const repairAvailable = Boolean(options.publicWork && options.publicSlotsAvailable
+    && !workIsActive && needsPublicMaintenance(condition));
   return {
     objectId: object.id,
     room: object.room,
     label: object.label,
     floorNumber,
-    cleanliness: saved?.cleanliness ?? BUILDING_OBJECT_DEFAULTS.cleanliness,
-    condition: saved?.condition ?? BUILDING_OBJECT_DEFAULTS.condition,
+    cleanliness,
+    condition,
     updatedAt: saved?.updatedAt.toISOString() ?? null,
+    lastCleanedAt: (saved?.lastCleanedAt ?? null)?.toISOString() ?? null,
+    lastMaintainedAt: (saved?.lastMaintainedAt ?? null)?.toISOString() ?? null,
+    activeWork,
+    publicWork: {
+      cleanAvailable: cleanAvailable && needsPublicMaintenance(cleanliness),
+      cleanRewardFiat: cleanAvailable ? publicMaintenanceReward(cleanliness) : 0,
+      repairAvailable: repairAvailable && needsPublicMaintenance(condition),
+      repairRewardFiat: repairAvailable ? publicMaintenanceReward(condition) : 0,
+    },
+  };
+}
+
+function isPublicTowerWork(scope: BuildingScope): boolean {
+  return scope.orgId === null
+    && scope.presence.floorNumber <= 4
+    && (scope.presence.room === "lobby" || scope.presence.room === "hallway");
+}
+
+function clearActiveWorkFields() {
+  return {
+    workSessionId: null,
+    workAction: null,
+    workUserId: null,
+    workStartedAt: null,
+    workDurationMs: 0,
+    workRewardFiat: 0,
   };
 }
 
@@ -556,17 +624,55 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
       res.status(404).json({ error: "No maintainable objects are registered in this room" });
       return;
     }
+    const now = new Date();
+    await db.insert(desktopBuildingObjectStatesTable).values(objects.map((object) => ({
+      scopeKey: scope.value.scopeKey,
+      city: scope.value.presence.city,
+      floorNumber: scope.value.presence.floorNumber,
+      room: object.room,
+      objectId: object.id,
+      orgId: scope.value.orgId,
+      ownerUserId: scope.value.ownerUserId,
+      updatedByUserId: link.userId,
+      lastCleanedAt: now,
+      lastMaintainedAt: now,
+    }))).onConflictDoNothing({
+      target: [desktopBuildingObjectStatesTable.scopeKey, desktopBuildingObjectStatesTable.objectId],
+    });
     const saved = await db.select().from(desktopBuildingObjectStatesTable).where(and(
       eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
       inArray(desktopBuildingObjectStatesTable.objectId, objects.map((object) => object.id)),
     ));
     const savedById = new Map(saved.map((row) => [row.objectId, row]));
+    const publicWork = isPublicTowerWork(scope.value);
+    const demand = publicWork ? await getPublicWorkDemand(scope.value.presence.city) : null;
+    const [{ total: activePublicJobs }] = publicWork
+      ? await db.select({ total: count() }).from(desktopBuildingObjectStatesTable).where(and(
+        isNotNull(desktopBuildingObjectStatesTable.workStartedAt),
+        gte(desktopBuildingObjectStatesTable.workStartedAt, new Date(now.getTime() - PUBLIC_WORK_SESSION_MAX_AGE_MS)),
+        eq(desktopBuildingObjectStatesTable.city, scope.value.presence.city),
+        lte(desktopBuildingObjectStatesTable.floorNumber, 4),
+        inArray(desktopBuildingObjectStatesTable.room, ["lobby", "hallway"]),
+      ))
+      : [{ total: 0 }];
+    const publicSlotsAvailable = Boolean(demand && activePublicJobs < demand.maxConcurrentJobs);
     res.json({
       floorNumber: scope.value.presence.floorNumber,
       room: scope.value.room,
-      observedAt: new Date().toISOString(),
+      observedAt: now.toISOString(),
+      publicWorkDemand: demand
+        ? {
+          maxConcurrentJobs: demand.maxConcurrentJobs,
+          activeJobs: activePublicJobs,
+          availableSlots: Math.max(0, demand.maxConcurrentJobs - activePublicJobs),
+        }
+        : null,
       objects: objects.map((object) =>
-        serializeBuildingObject(object, scope.value.presence.floorNumber, savedById.get(object.id))),
+        serializeBuildingObject(object, scope.value.presence.floorNumber, savedById.get(object.id), {
+          publicWork,
+          publicSlotsAvailable,
+          nowMs: now.getTime(),
+        })),
     });
   } catch (error) {
     req.log.error({ err: error }, "Desktop building objects read failed");
@@ -579,9 +685,11 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
   if (!link) return;
   const objectId = req.body?.objectId;
   const action = req.body?.action;
+  const sessionId = req.body?.sessionId;
   if (typeof objectId !== "string" || objectId.length < 1 || objectId.length > 80
-    || (action !== "clean" && action !== "repair")) {
-    res.status(400).json({ error: "Provide a valid objectId and clean or repair action" });
+    || (action !== "clean" && action !== "repair")
+    || (sessionId !== undefined && (typeof sessionId !== "string" || sessionId.length > 64))) {
+    res.status(400).json({ error: "Provide a valid objectId, clean or repair action, and optional work session" });
     return;
   }
   try {
@@ -590,50 +698,239 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
       res.status(scope.status).json({ error: scope.error });
       return;
     }
-    const object = buildingObject(scope.value.room, objectId);
-    if (!object) {
-      res.status(404).json({ error: "Object is not maintainable in the current room" });
-      return;
-    }
-    const distance = Math.hypot(
-      scope.value.presence.x - object.x,
-      scope.value.presence.y - object.y,
-    );
-    if (distance > MAINTENANCE_REACH_PX) {
-      res.status(409).json({ error: "Move closer to the object before maintaining it" });
-      return;
-    }
-    const now = new Date();
-    const [saved] = await db.insert(desktopBuildingObjectStatesTable).values({
-      scopeKey: scope.value.scopeKey,
-      city: scope.value.presence.city,
-      floorNumber: scope.value.presence.floorNumber,
-      room: object.room,
-      objectId: object.id,
-      orgId: scope.value.orgId,
-      ownerUserId: scope.value.ownerUserId,
-      cleanliness: action === "clean" ? 100 : BUILDING_OBJECT_DEFAULTS.cleanliness,
-      condition: action === "repair" ? 100 : BUILDING_OBJECT_DEFAULTS.condition,
-      updatedByUserId: link.userId,
-      updatedAt: now,
-    }).onConflictDoUpdate({
-      target: [desktopBuildingObjectStatesTable.scopeKey, desktopBuildingObjectStatesTable.objectId],
-      set: {
-        cleanliness: action === "clean"
-          ? 100
-          : sql`${desktopBuildingObjectStatesTable.cleanliness}`,
-        condition: action === "repair"
-          ? 100
-          : sql`${desktopBuildingObjectStatesTable.condition}`,
+    const isPublic = isPublicTowerWork(scope.value);
+    const demand = isPublic ? await getPublicWorkDemand(scope.value.presence.city) : null;
+    const result = await db.transaction(async (tx) => {
+      const now = new Date();
+      const staleBefore = new Date(now.getTime() - PUBLIC_WORK_SESSION_MAX_AGE_MS);
+      await tx.update(desktopBuildingObjectStatesTable)
+        .set({ ...clearActiveWorkFields(), updatedAt: now })
+        .where(and(
+          isNotNull(desktopBuildingObjectStatesTable.workStartedAt),
+          lt(desktopBuildingObjectStatesTable.workStartedAt, staleBefore),
+        ));
+
+      if (typeof sessionId === "string") {
+        const [session] = await tx.select().from(desktopBuildingObjectStatesTable)
+          .where(and(
+            eq(desktopBuildingObjectStatesTable.workSessionId, sessionId),
+            eq(desktopBuildingObjectStatesTable.workUserId, link.userId),
+          ))
+          .for("update").limit(1);
+        if (!session || !session.workStartedAt || !session.workAction) {
+          return { kind: "error" as const, status: 409 as const, error: "Work session expired; start a new task" };
+        }
+        const sessionObject = buildingObject(session.room, session.objectId);
+        const wrongScope = session.scopeKey !== scope.value.scopeKey
+          || session.objectId !== objectId
+          || session.workAction !== action
+          || !sessionObject;
+        if (wrongScope) {
+          await tx.update(desktopBuildingObjectStatesTable)
+            .set({ ...clearActiveWorkFields(), updatedAt: now })
+            .where(eq(desktopBuildingObjectStatesTable.id, session.id));
+          return { kind: "error" as const, status: 409 as const, error: "Work cancelled after leaving the assigned area" };
+        }
+
+        const distance = Math.hypot(
+          scope.value.presence.x - sessionObject.x,
+          scope.value.presence.y - sessionObject.y,
+        );
+        if (distance > MAINTENANCE_REACH_PX) {
+          await tx.update(desktopBuildingObjectStatesTable)
+            .set({ ...clearActiveWorkFields(), updatedAt: now })
+            .where(eq(desktopBuildingObjectStatesTable.id, session.id));
+          return { kind: "error" as const, status: 409 as const, error: "Work cancelled; stay beside the object until it finishes" };
+        }
+
+        const elapsedMs = now.getTime() - session.workStartedAt.getTime();
+        if (elapsedMs < session.workDurationMs) {
+          return {
+            kind: "working" as const,
+            sessionId,
+            progress: workProgress(session.workStartedAt, session.workDurationMs, now.getTime()),
+            rewardFiat: session.workRewardFiat,
+            durationMs: session.workDurationMs,
+            state: serializeBuildingObject(sessionObject, session.floorNumber, session, {
+              publicWork: isPublic,
+              publicSlotsAvailable: false,
+              nowMs: now.getTime(),
+            }),
+          };
+        }
+
+        const rewardFiat = isPublic ? session.workRewardFiat : 0;
+        const [completed] = await tx.update(desktopBuildingObjectStatesTable)
+          .set({
+            ...(session.workAction === "clean"
+              ? { cleanliness: 100, lastCleanedAt: now }
+              : { condition: 100, lastMaintainedAt: now }),
+            workCompletedByUserId: isPublic ? link.userId : session.workCompletedByUserId,
+            workCompletedAt: isPublic ? now : session.workCompletedAt,
+            ...clearActiveWorkFields(),
+            updatedByUserId: link.userId,
+            updatedAt: now,
+          })
+          .where(eq(desktopBuildingObjectStatesTable.id, session.id))
+          .returning();
+        const wallet = rewardFiat > 0
+          ? await payPublicMaintenanceReward(tx, {
+            userId: link.userId,
+            amountFiat: rewardFiat,
+            sessionId,
+            action,
+            floorNumber: scope.value.presence.floorNumber,
+          })
+          : null;
+        return {
+          kind: "completed" as const,
+          rewardFiat,
+          balance: wallet?.balance ?? null,
+          spendable: wallet?.spendable ?? null,
+          state: serializeBuildingObject(sessionObject, session.floorNumber, completed, {
+            publicWork: isPublic,
+            publicSlotsAvailable: true,
+            nowMs: now.getTime(),
+          }),
+        };
+      }
+
+      const object = buildingObject(scope.value.room, objectId);
+      if (!object) {
+        return { kind: "error" as const, status: 404 as const, error: "Object is not maintainable in the current room" };
+      }
+      const distance = Math.hypot(
+        scope.value.presence.x - object.x,
+        scope.value.presence.y - object.y,
+      );
+      if (distance > MAINTENANCE_REACH_PX) {
+        return { kind: "error" as const, status: 409 as const, error: "Move closer to the object before maintaining it" };
+      }
+
+      if (isPublic) await tx.execute(sql`SELECT pg_advisory_xact_lock(${PUBLIC_WORK_SLOT_LOCK_KEY})`);
+      await tx.insert(desktopBuildingObjectStatesTable).values({
+        scopeKey: scope.value.scopeKey,
+        city: scope.value.presence.city,
+        floorNumber: scope.value.presence.floorNumber,
+        room: object.room,
+        objectId: object.id,
+        orgId: scope.value.orgId,
+        ownerUserId: scope.value.ownerUserId,
         updatedByUserId: link.userId,
-        updatedAt: now,
-      },
-    }).returning();
-    const message = action === "clean" ? "Object cleaned" : "Object repaired";
+        lastCleanedAt: now,
+        lastMaintainedAt: now,
+      }).onConflictDoNothing({
+        target: [desktopBuildingObjectStatesTable.scopeKey, desktopBuildingObjectStatesTable.objectId],
+      });
+      const [saved] = await tx.select().from(desktopBuildingObjectStatesTable)
+        .where(and(
+          eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+          eq(desktopBuildingObjectStatesTable.objectId, object.id),
+        ))
+        .for("update").limit(1);
+      if (!saved) {
+        return { kind: "error" as const, status: 500 as const, error: "Object state could not be initialized" };
+      }
+      if (saved.workSessionId && saved.workStartedAt && saved.workAction) {
+        if (saved.workUserId === link.userId && saved.workAction === action) {
+          return {
+            kind: "working" as const,
+            sessionId: saved.workSessionId,
+            progress: workProgress(saved.workStartedAt, saved.workDurationMs, now.getTime()),
+            rewardFiat: saved.workRewardFiat,
+            durationMs: saved.workDurationMs,
+            state: serializeBuildingObject(object, saved.floorNumber, saved, {
+              publicWork: isPublic,
+              publicSlotsAvailable: false,
+              nowMs: now.getTime(),
+            }),
+          };
+        }
+        return { kind: "error" as const, status: 409 as const, error: "Another worker is already maintaining this object" };
+      }
+
+      const score = action === "clean"
+        ? decayBuildingScore(saved.cleanliness, saved.lastCleanedAt, CLEANLINESS_DECAY_PER_DAY, now.getTime())
+        : decayBuildingScore(saved.condition, saved.lastMaintainedAt, CONDITION_DECAY_PER_DAY, now.getTime());
+      if (!needsPublicMaintenance(score)) {
+        return { kind: "error" as const, status: 409 as const, error: "This object does not need that work yet" };
+      }
+
+      let rewardFiat = 0;
+      if (isPublic) {
+        const [{ total: activePublicJobs }] = await tx.select({ total: count() })
+          .from(desktopBuildingObjectStatesTable)
+          .where(and(
+            isNotNull(desktopBuildingObjectStatesTable.workStartedAt),
+            gte(desktopBuildingObjectStatesTable.workStartedAt, staleBefore),
+            eq(desktopBuildingObjectStatesTable.city, scope.value.presence.city),
+            lte(desktopBuildingObjectStatesTable.floorNumber, 4),
+            inArray(desktopBuildingObjectStatesTable.room, ["lobby", "hallway"]),
+          ));
+        if (demand && activePublicJobs >= demand.maxConcurrentJobs) {
+          return { kind: "error" as const, status: 409 as const, error: "Pablo has enough public work in progress right now" };
+        }
+        rewardFiat = publicMaintenanceReward(score);
+      }
+
+      const workSessionId = randomUUID();
+      const durationMs = publicMaintenanceDurationMs(action, score);
+      const [started] = await tx.update(desktopBuildingObjectStatesTable)
+        .set({
+          workSessionId,
+          workAction: action,
+          workUserId: link.userId,
+          workStartedAt: now,
+          workDurationMs: durationMs,
+          workRewardFiat: rewardFiat,
+          updatedByUserId: link.userId,
+          updatedAt: now,
+        })
+        .where(eq(desktopBuildingObjectStatesTable.id, saved.id))
+        .returning();
+      return {
+        kind: "working" as const,
+        sessionId: workSessionId,
+        progress: 0,
+        rewardFiat,
+        durationMs,
+        state: serializeBuildingObject(object, saved.floorNumber, started, {
+          publicWork: isPublic,
+          publicSlotsAvailable: false,
+          nowMs: now.getTime(),
+        }),
+      };
+    });
+
+    if (result.kind === "error") {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    if (result.kind === "working") {
+      res.json({
+        ok: true,
+        working: true,
+        sessionId: result.sessionId,
+        progress: result.progress,
+        durationMs: result.durationMs,
+        rewardFiat: result.rewardFiat,
+        message: result.rewardFiat > 0
+          ? `WORKING / PABLO PAYS ƒ${result.rewardFiat}`
+          : "WORK IN PROGRESS",
+        state: result.state,
+      });
+      return;
+    }
     res.json({
       ok: true,
-      message,
-      state: serializeBuildingObject(object, scope.value.presence.floorNumber, saved),
+      completed: true,
+      rewardFiat: result.rewardFiat,
+      balance: result.balance,
+      spendable: result.spendable,
+      message: result.rewardFiat > 0
+        ? `PABLO CORP PAID ƒ${result.rewardFiat}`
+        : action === "clean" ? "Object cleaned" : "Object repaired",
+      state: result.state,
     });
   } catch (error) {
     req.log.error({ err: error }, "Desktop building object maintenance failed");
