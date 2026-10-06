@@ -193,18 +193,9 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, destination=f"room:{destination_room}")
 
         if item.kind == "stairs":
-            if scene.current_floor > 1:
-                scene.current_floor -= 1
-                scene.select_room("public")
-            else:
-                next_room = {
-                    "lobby": "recreation",
-                    "recreation": "executive",
-                    "executive": "public",
-                    "public": "lobby",
-                }.get(scene.current_room, "lobby")
-                scene.select_room(next_room)
-            message = f"STAIRS / {scene.room.label} / FLOOR {scene.current_floor:02d}"
+            if not scene.climb_stairs():
+                return InteractionResult(False, "TOP FLOOR / NO STAIRS ABOVE")
+            message = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
             state.notice = message
             return InteractionResult(True, message, destination=f"floor:{scene.current_floor}")
 
@@ -279,6 +270,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-stair-floor-sign", "floor_sign", "FLOOR 01", "lobby", (49_978_650, 50_000_800), "FLOOR NUMBER", interactive=False),
         OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (1_100, 4_100), "RETURN TO LOBBY", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (8_500, 4_100), "CLIMB / CHANGE FLOOR"),
+        OfficeObject("recreation-floor-number-sign", "floor_sign", "FLOOR 01", "recreation", (8_500, 3_800), "FLOOR NUMBER", interactive=False),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (1_800, 5_100), "ENTER OFFICE 01", destination_room="executive"),
         OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (3_900, 5_100), "ENTER OFFICE 02", destination_room="public"),
         OfficeObject("hall-office-3-door", "door", "OFFICE 03", "recreation", (6_000, 5_100), "ENTER OFFICE 03", destination_room="office_03"),

@@ -17,14 +17,14 @@ import { canAccess } from "./shadow-tower";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
 import {
-  FLOOR_ONE_DEFAULTS,
-  FLOOR_ONE_OBJECTS,
-  FLOOR_ONE_PRESENCE_MAX_AGE_MS,
+  BUILDING_MAINTAINABLE_OBJECTS,
+  BUILDING_OBJECT_DEFAULTS,
+  BUILDING_PRESENCE_MAX_AGE_MS,
+  buildingObject,
+  buildingObjectsForRoom,
   catalogRoomForPresence,
-  floorOneObject,
-  floorOneObjectsForRoom,
-  isWalkableFloorOnePosition,
-  validateFloorOnePresence,
+  isWalkableBuildingPosition,
+  validateBuildingPresence,
 } from "../lib/desktop-building-objects";
 
 const router = Router();
@@ -57,7 +57,7 @@ type FloorOneScopeResult =
   | { ok: true; value: FloorOneScope }
   | { ok: false; status: 403 | 409; error: string };
 
-async function resolveFloorOneScope(
+async function resolveBuildingScope(
   link: { id: string; userId: string },
   password: unknown,
 ): Promise<FloorOneScopeResult> {
@@ -66,29 +66,46 @@ async function resolveFloorOneScope(
     .limit(1);
   if (!presence || presence.linkId !== link.id
     || presence.floorNumber !== 1
-    || Date.now() - presence.lastSeenAt.getTime() > FLOOR_ONE_PRESENCE_MAX_AGE_MS) {
-    return { ok: false, status: 409, error: "Fresh Floor 1 presence is required" };
+    || presence.floorNumber < 1 || presence.floorNumber > FLOOR_COUNT
+    || Date.now() - presence.lastSeenAt.getTime() > BUILDING_PRESENCE_MAX_AGE_MS) {
+    return { ok: false, status: 409, error: "Fresh building presence is required" };
   }
 
   const ownOffice = presence.room === "office"
-    ? await resolveUserOffice(link.userId, password)
+    ? await resolveUserOffice(link.userId, password, presence.floorNumber)
     : null;
   if (presence.room === "office" && (!ownOffice
-    || ownOffice.floor.floorNumber !== 1
+    || ownOffice.floor.floorNumber !== presence.floorNumber
     || ownOffice.key !== presence.roomKey
     || ownOffice.city !== presence.city)) {
     return { ok: false, status: 403, error: "Authorized organization office access is required" };
+  }
+  if (presence.room === "lobby" && presence.floorNumber !== 1) {
+    return { ok: false, status: 403, error: "The building lobby is on Floor 1" };
+  }
+  if (presence.room === "hallway" && presence.floorNumber > 4) {
+    const orgId = await resolveCurrentOrgId(link.userId);
+    const assignedWorkstation = ownOffice
+      ? null
+      : await resolveUserWorkstation(link.userId, orgId, presence.floorNumber);
+    const hasOfficeAccess = ownOffice?.floor.floorNumber === presence.floorNumber
+      && ownOffice.city === presence.city;
+    const hasWorkstationAccess = assignedWorkstation?.floor.floorNumber === presence.floorNumber
+      && assignedWorkstation.floor.city === presence.city;
+    if (!hasOfficeAccess && !hasWorkstationAccess) {
+      return { ok: false, status: 403, error: "An assigned office or workstation is required for this floor" };
+    }
   }
   const room = catalogRoomForPresence(
     presence.room as "lobby" | "hallway" | "office",
     ownOffice?.room ?? null,
   );
-  if (!room || !isWalkableFloorOnePosition(room, { x: presence.x, y: presence.y })) {
-    return { ok: false, status: 409, error: "Fresh, valid Floor 1 room presence is required" };
+  if (!room || !isWalkableBuildingPosition(room, { x: presence.x, y: presence.y })) {
+    return { ok: false, status: 409, error: "Fresh, valid building room presence is required" };
   }
   const scopeKey = presence.room === "office"
     ? ownOffice!.key
-    : `tower:${presence.city}:floor:1:${presence.roomKey}`;
+    : `tower:${presence.city}:floor:${presence.floorNumber}:${presence.roomKey}`;
   return {
     ok: true,
     value: {
@@ -101,16 +118,17 @@ async function resolveFloorOneScope(
   };
 }
 
-function serializeFloorOneObject(
-  object: (typeof FLOOR_ONE_OBJECTS)[number],
+function serializeBuildingObject(
+  object: (typeof BUILDING_MAINTAINABLE_OBJECTS)[number],
   saved?: typeof desktopBuildingObjectStatesTable.$inferSelect,
 ) {
   return {
     objectId: object.id,
     room: object.room,
     label: object.label,
-    cleanliness: saved?.cleanliness ?? FLOOR_ONE_DEFAULTS.cleanliness,
-    condition: saved?.condition ?? FLOOR_ONE_DEFAULTS.condition,
+    floorNumber: saved?.floorNumber ?? null,
+    cleanliness: saved?.cleanliness ?? BUILDING_OBJECT_DEFAULTS.cleanliness,
+    condition: saved?.condition ?? BUILDING_OBJECT_DEFAULTS.condition,
     updatedAt: saved?.updatedAt.toISOString() ?? null,
   };
 }
@@ -159,7 +177,7 @@ function rowOfficeKey(row: ActiveOfficeRow): string | null {
   return officeKey(row.unit.orgId ?? row.floor.orgId, row.unit.ownerUserId ?? row.floor.ownerUserId);
 }
 
-async function resolveUserOffice(userId: string, password?: unknown) {
+async function resolveUserOffice(userId: string, password?: unknown, floorNumber?: number) {
   const orgId = await resolveCurrentOrgId(userId);
   const rows = await activeOfficeRows();
   const canManageOrgOffice = orgId != null
@@ -167,9 +185,9 @@ async function resolveUserOffice(userId: string, password?: unknown) {
   const candidates = rows.filter((row) => {
     const effectiveOrgId = row.unit.orgId ?? row.floor.orgId;
     const effectiveOwner = row.unit.ownerUserId ?? row.floor.ownerUserId;
-    return orgId != null
+    return (floorNumber == null || row.floor.floorNumber === floorNumber) && (orgId != null
       ? (effectiveOrgId === orgId && canManageOrgOffice) || effectiveOwner === userId
-      : effectiveOwner === userId;
+      : effectiveOwner === userId);
   });
   for (const row of candidates) {
     if (!await canAccess(userId, row.floor, password)) continue;
@@ -191,7 +209,7 @@ async function resolveUserOffice(userId: string, password?: unknown) {
   return null;
 }
 
-async function resolveUserWorkstation(userId: string, orgId: number | null) {
+async function resolveUserWorkstation(userId: string, orgId: number | null, floorNumber?: number) {
   const assignments = await db.select({
     assignment: shadowTowerWorkstationAssignmentsTable,
     floor: shadowTowerFloorsTable,
@@ -205,6 +223,7 @@ async function resolveUserWorkstation(userId: string, orgId: number | null) {
   const eligible = assignments
     .filter(({ floor }) =>
       (!floor.leaseExpiresAt || floor.leaseExpiresAt > now)
+      && (floorNumber == null || floor.floorNumber === floorNumber)
       && (floor.ownerUserId === userId || (orgId != null && floor.orgId === orgId)))
     .sort((a, b) => b.assignment.createdAt.getTime() - a.assignment.createdAt.getTime());
   return eligible[0] ?? null;

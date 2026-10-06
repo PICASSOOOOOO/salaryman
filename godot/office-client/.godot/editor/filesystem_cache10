@@ -1,8 +1,9 @@
 ea4bc82a6ad023ab7ee23ee620429895
-::res://::1791276992
+::res://::1791288241
 floor_plan.json::JSON/JSON::-1::1789223355::0::1::::<><><>0<>0<><>::
-main.gd::GDScript::305725880813587578::1791276992::0::1::::<>Node3D<><>0<>0<><>::
+main.gd::GDScript::305725880813587578::1791288241::0::1::::<>Node3D<><>0<>0<><>::
 Main.tscn::PackedScene/PackedScene::-1::1788762199::0::1::::<><><>0<>0<><>::res://main.gd
+player_controller.gd::GDScript::2005437564640608021::1791286084::0::1::::OfficePlayerController<>CharacterBody3D<><>0<>0<><>::
 README.md::TextFile/TextFile::-1::1788791503::0::1::::<><><>0<>0<><>::
 THIRD_PARTY_NOTICES.md::TextFile/TextFile::-1::1791275922::0::1::::<><><>0<>0<><>::
 ::res://agentshire-assets/::1788762131
@@ -22,8 +23,13 @@ lamp_standing.gltf::PackedScene/PackedScene::9113553359397480970::1788762131::17
 table_medium.gltf::PackedScene/PackedScene::5423038564286363553::1788762131::1788767130::1::::<><><>0<>0<>78f5c09e2ca64d7ad2bd61b91760ddbd<>res://.godot/imported/table_medium.gltf-64dc2c697729949fe44dfc2b90ddee65.scn::uid://4q3lenmt4v48::::res://agentshire-assets/furniture/furniturebits_texture.png
 ::res://pixel-agents/::1788757350
 ::res://pixel-agents/assets/::1788757350
-::res://pixel-agents/assets/characters/::1788767130
+::res://pixel-agents/assets/characters/::1791285912
 char_0.png::CompressedTexture2D/CompressedTexture2D::8389734022135929581::1788757350::1788767130::1::::<><><>0<>0<>85c08034d3546ed5575d6fbd804c1839<>res://.godot/imported/char_0.png-31916082a6544c0373297efab938a293.ctex::
+char_1.png::CompressedTexture2D::848964275924072703::1791282532::1791288258::1::::<><><>0<>0<>75ac21ad1606e2a185b21334a0549fe1<>res://.godot/imported/char_1.png-ab90a8d86e85ba6d6c40b5bea8ed7b00.ctex::
+char_2.png::CompressedTexture2D::4205588036531272411::1791282532::1791288258::1::::<><><>0<>0<>865a1761d1b39ee506cc5b6cabf11432<>res://.godot/imported/char_2.png-3da067382e3f57d88c0f36fb5330ce17.ctex::
+char_3.png::CompressedTexture2D::1100247938952968751::1791282532::1791288258::1::::<><><>0<>0<>ad43363460473066f7e402996317bd36<>res://.godot/imported/char_3.png-114d5f86ed830dc9301d564cdc6e5849.ctex::
+char_4.png::CompressedTexture2D::6679199274461599601::1791282532::1791288258::1::::<><><>0<>0<>f1cc55d533026f74d1e12cba196c8d82<>res://.godot/imported/char_4.png-5580e638bed6f127515df0fbb5be80f3.ctex::
+char_5.png::CompressedTexture2D::3955902635601549725::1791282532::1791288258::1::::<><><>0<>0<>91c5041b987986c85b0cab4d5c796692<>res://.godot/imported/char_5.png-10ba6a2e6264939678280f599b19da22.ctex::
 ::res://pixel-agents/assets/furniture/::1788757350
 ::res://pixel-agents/assets/furniture/BOOKSHELF/::1788767130
 BOOKSHELF.png::CompressedTexture2D/CompressedTexture2D::6458325151277070465::1788757350::1788767130::1::::<><><>0<>0<>61ceba1c1547b9751aa644a28456f3b2<>res://.godot/imported/BOOKSHELF.png-0d87c6704a7e95732ec3a6c9691531b4.ctex::

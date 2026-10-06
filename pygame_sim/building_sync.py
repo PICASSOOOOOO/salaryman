@@ -55,7 +55,7 @@ class DesktopBuildingSync:
         self._thread.start()
 
     def update_scene(self, scene: TowerScene) -> None:
-        if scene.current_floor != 1 or scene.current_room not in FLOOR_ONE_ROOMS:
+        if scene.current_floor < 1 or scene.current_floor > 67 or scene.current_room not in FLOOR_ONE_ROOMS:
             snapshot = (scene.current_floor, scene.current_room, 0, 0, "stand")
         else:
             moving = abs(scene.velocity[0]) + abs(scene.velocity[1]) > 2.0
@@ -74,7 +74,7 @@ class DesktopBuildingSync:
             return False
         with self._lock:
             snapshot = self._scene_snapshot
-        if snapshot is None or snapshot[0] != 1 or snapshot[1] not in FLOOR_ONE_ROOMS:
+        if snapshot is None or not 1 <= snapshot[0] <= 67 or snapshot[1] not in FLOOR_ONE_ROOMS:
             return False
         self._actions.put((object_id, action))
         return True
@@ -123,6 +123,8 @@ class DesktopBuildingSync:
                     "action": action,
                 },
             )
+            if floor != 1:
+                return
             payload = self._request_json("GET", "/desktop-building/objects")
             states = payload.get("objects", [])
             if not isinstance(states, list):

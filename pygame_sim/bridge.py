@@ -28,6 +28,7 @@ COMMANDS = {
     "maintain",
     "select_room",
     "select_floor",
+    "climb_stairs",
     "select_worker",
     "buy_coffee",
     "toggle_running",
@@ -179,7 +180,15 @@ def apply_command(
     if name == "select_floor":
         if not scene.select_floor(payload["floor"]):
             return CommandResult(False, "FLOOR NOT FOUND")
-        state.notice = f"FLOOR {scene.current_floor:02d} / BASE"
+        state.notice = f"ELEVATOR ARRIVED / FLOOR {scene.current_floor:02d}"
+        return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
+    if name == "climb_stairs":
+        nearby = scene.nearby_object
+        if nearby is None or nearby.kind != "stairs":
+            return CommandResult(False, "NO STAIRCASE IN RANGE")
+        if not scene.climb_stairs():
+            return CommandResult(False, "TOP FLOOR / NO STAIRS ABOVE")
+        state.notice = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
         return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
     if name == "select_worker":
         ok = state.select_worker(payload["index"])

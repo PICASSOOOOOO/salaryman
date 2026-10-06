@@ -1,6 +1,6 @@
-export type FloorOneObjectAction = "clean" | "repair";
+export type BuildingObjectAction = "clean" | "repair";
 
-export type FloorOneObjectDefinition = {
+export type BuildingObjectDefinition = {
   id: string;
   room: string;
   label: string;
@@ -8,7 +8,7 @@ export type FloorOneObjectDefinition = {
   y: number;
 };
 
-export const FLOOR_ONE_OBJECTS: readonly FloorOneObjectDefinition[] = [
+export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] = [
   { id: "lobby-reception-desk", room: "lobby", label: "Reception desk", x: 49_978_250, y: 49_999_600 },
   { id: "lobby-atm", room: "lobby", label: "Lobby ATM", x: 49_976_750, y: 50_000_800 },
   { id: "lobby-vending", room: "lobby", label: "Lobby vending machine", x: 49_978_750, y: 50_000_800 },
@@ -37,8 +37,8 @@ export const FLOOR_ONE_OBJECTS: readonly FloorOneObjectDefinition[] = [
   { id: "office-04-crt", room: "office_04", label: "Work terminal", x: 7_600, y: 5_950 },
 ];
 
-export const FLOOR_ONE_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
-export const FLOOR_ONE_PRESENCE_MAX_AGE_MS = 10_000;
+export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
+export const BUILDING_PRESENCE_MAX_AGE_MS = 10_000;
 const MAX_WALK_SPEED = 600;
 const WALKING_TOLERANCE = 350;
 
@@ -76,12 +76,12 @@ export function catalogRoomForPresence(room: BuildingPresenceRoom, ownOfficeRoom
   return ownOfficeRoom && ROOM_BOUNDS[ownOfficeRoom] ? ownOfficeRoom : null;
 }
 
-export function floorOneObjectsForRoom(room: string): readonly FloorOneObjectDefinition[] {
-  return FLOOR_ONE_OBJECTS.filter((object) => object.room === room);
+export function buildingObjectsForRoom(room: string): readonly BuildingObjectDefinition[] {
+  return BUILDING_MAINTAINABLE_OBJECTS.filter((object) => object.room === room);
 }
 
-export function floorOneObject(room: string, objectId: string): FloorOneObjectDefinition | null {
-  return FLOOR_ONE_OBJECTS.find((object) => object.room === room && object.id === objectId) ?? null;
+export function buildingObject(room: string, objectId: string): BuildingObjectDefinition | null {
+  return BUILDING_MAINTAINABLE_OBJECTS.find((object) => object.room === room && object.id === objectId) ?? null;
 }
 
 function pointIsWalkable(room: string, point: Position): boolean {
@@ -123,17 +123,19 @@ function pointIsWalkable(room: string, point: Position): boolean {
     && Math.abs(point.y - obstacle.y) < obstacle.hy);
 }
 
-export function isWalkableFloorOnePosition(room: string, point: Position): boolean {
+export function isWalkableBuildingPosition(room: string, point: Position): boolean {
   return pointIsWalkable(room, point);
 }
 
-export function validateFloorOnePresence(
+export function validateBuildingPresence(
   previous: PresenceForValidation | null,
   next: { room: BuildingPresenceRoom; roomKey: string; floorNumber: number; linkId: string; x: number; y: number },
   now: Date,
   ownOfficeRoom: string | null,
 ): string | null {
-  if (next.floorNumber !== 1) return null;
+  if (!Number.isInteger(next.floorNumber) || next.floorNumber < 1 || next.floorNumber > 67) {
+    return "Floor is outside the supported building";
+  }
   const catalogRoom = catalogRoomForPresence(next.room, ownOfficeRoom);
   if (!catalogRoom || !pointIsWalkable(catalogRoom, next)) {
     return "Position is outside the walkable Floor 1 room";

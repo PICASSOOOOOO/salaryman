@@ -516,13 +516,24 @@ class TowerScene:
         if floor < 1 or floor > self.floor_count:
             return False
         self.current_floor = floor
-        self.current_room = "lobby"
-        self.player_position = self.room_spawn("lobby")
+        destination_room = (
+            "recreation"
+            if floor > 1 or (self.current_floor == 1 and self.current_room == "lobby")
+            else "lobby"
+        )
+        self.current_room = destination_room
+        self.player_position = self.room_spawn(destination_room)
         self.input_vector = (0.0, 0.0)
         self.velocity = (0.0, 0.0)
         self.motion_remainder = (0.0, 0.0)
         self.set_player_action("stand")
         return True
+
+    def climb_stairs(self) -> bool:
+        """Advance one physical floor without invoking the elevator transition."""
+        if self.current_floor >= self.floor_count:
+            return False
+        return self.select_floor(self.current_floor + 1)
 
 
 def build_tower_scene() -> TowerScene:

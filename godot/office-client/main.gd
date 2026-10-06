@@ -40,6 +40,7 @@ var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
 var camera_distance := 12.0
 var last_room_id := ""
+var last_floor_number := -1
 var last_sequence := -1
 var lobby_light: OmniLight3D
 var rim_light: OmniLight3D
@@ -61,6 +62,18 @@ var mission_label: Label
 var notice_label: Label
 var controls_label: Label
 var camera_target := Vector3.ZERO
+var elevator_floor_panel: ColorRect
+var elevator_floor_label: Label
+var selected_elevator_floor := 1
+var elevator_transition_active := false
+var elevator_transition_phase := ""
+var elevator_origin_floor := 1
+var elevator_destination_floor := 1
+var elevator_origin_room := ""
+var elevator_destination_room := ""
+var elevator_return_camera_distance := 12.0
+var elevator_transition_root: Node3D
+var elevator_transition_doors: Array[MeshInstance3D] = []
 
 var materials: Dictionary = {}
 var imported_scenes: Dictionary = {}
@@ -638,10 +651,43 @@ func _build_interface() -> void:
 	controls_label = Label.new()
 	controls_label.position = Vector2(636, 646)
 	controls_label.size = Vector2(512, 48)
-controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nCLICK FIGHT  ·  Q SWEEP  ·  E USE  ·  C CLEAN  ·  V REPAIR"
+	controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nE USE / STAIRS  ·  C CLEAN  ·  V REPAIR"
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
+
+	elevator_floor_panel = ColorRect.new()
+	elevator_floor_panel.name = "ElevatorFloorPicker"
+	elevator_floor_panel.color = Color("#07151af2")
+	elevator_floor_panel.position = Vector2(390, 230)
+	elevator_floor_panel.size = Vector2(400, 230)
+	elevator_floor_panel.visible = false
+	elevator_floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	interface_root.add_child(elevator_floor_panel)
+
+	var elevator_title := Label.new()
+	elevator_title.text = "ELEVATOR  /  SELECT DESTINATION"
+	elevator_title.position = Vector2(28, 25)
+	elevator_title.add_theme_font_size_override("font_size", 17)
+	elevator_title.add_theme_color_override("font_color", Color("#eff8df"))
+	elevator_floor_panel.add_child(elevator_title)
+
+	elevator_floor_label = Label.new()
+	elevator_floor_label.position = Vector2(28, 76)
+	elevator_floor_label.size = Vector2(340, 56)
+	elevator_floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	elevator_floor_label.add_theme_font_size_override("font_size", 32)
+	elevator_floor_label.add_theme_color_override("font_color", Color("#fff0ae"))
+	elevator_floor_panel.add_child(elevator_floor_label)
+
+	var elevator_instructions := Label.new()
+	elevator_instructions.text = "UP / DOWN  ·  CHOOSE FLOOR\nENTER  ·  RIDE     ESC  ·  CLOSE"
+	elevator_instructions.position = Vector2(28, 154)
+	elevator_instructions.size = Vector2(340, 54)
+	elevator_instructions.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	elevator_instructions.add_theme_font_size_override("font_size", 13)
+	elevator_instructions.add_theme_color_override("font_color", Color("#9fd3bd"))
+	elevator_floor_panel.add_child(elevator_instructions)
 
 	get_viewport().size_changed.connect(_update_interface_scale)
 	_update_interface_scale()
@@ -724,14 +770,24 @@ func _apply_snapshot(message: Dictionary) -> void:
 	var scene_data: Dictionary = message.get("scene", {})
 	var player: Dictionary = scene_data.get("player", {})
 	var target := _pygame_to_world(float(player.get("x", 0)), float(player.get("y", 0)))
+	var room_id := str(scene_data.get("room", ""))
+	var floor_number := int(scene_data.get("floor", 1))
+	if elevator_transition_active:
+		if elevator_transition_phase == "waiting_destination" \
+			and floor_number == elevator_destination_floor \
+			and room_id == elevator_destination_room:
+			_start_elevator_arrival(target, message)
+		return
+
 	target_player_world = target
 	player_root.reconcile_authoritative_position(target)
 	player_root.set_authoritative_action(str(player.get("action", "stand")))
 	visual_player_ready = true
 
-	var room_id := str(scene_data.get("room", ""))
-	if room_id != last_room_id:
-		last_room_id = room_id
+	var location_id := "%02d:%s" % [floor_number, room_id]
+	if location_id != last_room_id:
+		last_room_id = location_id
+		last_floor_number = floor_number
 		_rebuild_bridge_objects(scene_data.get("objects", []))
 	_sync_automation_characters(scene_data.get("automationCharacters", []))
 
@@ -799,7 +855,7 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 	elif kind == "elevator":
 		return _build_elevator_visual(position, object_id)
 	elif kind == "stairs":
-return _build_staircase(position, object_id)
+		return _build_staircase(position, object_id)
 	elif kind == "telephone" or kind == "pay_phone" or kind == "tv" or kind == "atm" or kind == "vending_machine" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	if packed_name != "":
@@ -864,7 +920,8 @@ func _build_floor_sign(position: Vector3, object_id: String) -> MeshInstance3D:
 	)
 	var number := Label3D.new()
 	number.name = object_id + "-number"
-	number.text = "FLOOR 01"
+	var floor_number := int(snapshot.get("scene", {}).get("floor", 1))
+	number.text = "FLOOR %02d" % floor_number
 	number.font_size = 72
 	number.pixel_size = 0.004
 	number.position = position + Vector3(0.0, 2.23, 0.0)
@@ -873,6 +930,189 @@ func _build_floor_sign(position: Vector3, object_id: String) -> MeshInstance3D:
 	number.outline_modulate = Color("#14211e")
 	dynamic_root.add_child(number)
 	return plaque
+
+
+func _nearby_object_kind() -> String:
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	for item in scene_data.get("objects", []):
+		if item is Dictionary and bool(item.get("nearby", false)):
+			return str(item.get("kind", ""))
+	return ""
+
+
+func _open_elevator_floor_picker() -> void:
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	selected_elevator_floor = clampi(int(scene_data.get("floor", 1)), 1, 67)
+	_refresh_elevator_floor_label()
+	elevator_floor_panel.visible = true
+	player_root.set_physics_process(false)
+
+
+func _refresh_elevator_floor_label() -> void:
+	if elevator_floor_label != null:
+		elevator_floor_label.text = "FLOOR %02d" % selected_elevator_floor
+
+
+func _handle_elevator_picker_key(keycode: int) -> bool:
+	if elevator_floor_panel == null or not elevator_floor_panel.visible:
+		return false
+	match keycode:
+		KEY_UP, KEY_KP_ADD:
+			selected_elevator_floor = mini(67, selected_elevator_floor + 1)
+			_refresh_elevator_floor_label()
+		KEY_DOWN, KEY_KP_SUBTRACT:
+			selected_elevator_floor = maxi(1, selected_elevator_floor - 1)
+			_refresh_elevator_floor_label()
+		KEY_ENTER, KEY_KP_ENTER:
+			_commit_elevator_floor()
+		KEY_ESCAPE:
+			elevator_floor_panel.visible = false
+			player_root.set_physics_process(true)
+	return true
+
+
+func _commit_elevator_floor() -> void:
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	elevator_origin_floor = int(scene_data.get("floor", 1))
+	elevator_origin_room = str(scene_data.get("room", ""))
+	elevator_destination_floor = selected_elevator_floor
+	elevator_destination_room = "recreation" if elevator_destination_floor > 1 \
+		or (elevator_origin_floor == 1 and elevator_origin_room == "lobby") else "lobby"
+	if elevator_destination_floor == elevator_origin_floor \
+		and elevator_destination_room == elevator_origin_room:
+		elevator_floor_panel.visible = false
+		player_root.set_physics_process(true)
+		notice_label.text = "ALREADY ON FLOOR %02d" % elevator_destination_floor
+		return
+
+	elevator_floor_panel.visible = false
+	elevator_transition_active = true
+	elevator_transition_phase = "closing"
+	elevator_return_camera_distance = camera_distance
+	player_root.set_physics_process(false)
+	_build_elevator_transition_car(player_root.global_position)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "camera_distance", CAMERA_DISTANCE_MIN, 0.45)
+	if elevator_transition_doors.size() == 2:
+		tween.tween_property(elevator_transition_doors[0], "position:x", -0.34, 0.4)
+		tween.tween_property(elevator_transition_doors[1], "position:x", 0.34, 0.4)
+	tween.set_parallel(false)
+	tween.tween_interval(0.25)
+	tween.tween_callback(_send_elevator_destination_command.bind(elevator_destination_floor))
+
+
+func _build_elevator_transition_car(origin: Vector3) -> void:
+	elevator_transition_root = Node3D.new()
+	elevator_transition_root.name = "TransparentIsometricElevator"
+	elevator_transition_root.global_position = origin + Vector3(0.0, -0.04, 0.0)
+	dynamic_root.add_child(elevator_transition_root)
+	elevator_transition_doors.clear()
+
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.46, 0.83, 0.77, 0.25)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glass.roughness = 0.24
+
+	var car_floor := _material(Color("#59776f"), 0.82)
+	_add_transition_box("ElevatorFloor", Vector3(0.0, 0.06, 0.0), Vector3(2.3, 0.12, 2.3), car_floor)
+	_add_transition_box("ElevatorRearGlass", Vector3(0.0, 1.38, -1.1), Vector3(2.3, 2.64, 0.06), glass)
+	_add_transition_box("ElevatorLeftGlass", Vector3(-1.1, 1.38, 0.0), Vector3(0.06, 2.64, 2.3), glass)
+	_add_transition_box("ElevatorRightGlass", Vector3(1.1, 1.38, 0.0), Vector3(0.06, 2.64, 2.3), glass)
+	_add_transition_box("ElevatorCanopy", Vector3(0.0, 2.74, 0.0), Vector3(2.3, 0.08, 2.3), glass)
+
+	var door_material := _material(Color("#b7d6c5"), 0.38)
+	var left_door := _add_transition_box(
+		"ElevatorLeftDoor",
+		Vector3(-0.72, 1.25, 1.08),
+		Vector3(0.72, 2.4, 0.07),
+		door_material,
+	)
+	var right_door := _add_transition_box(
+		"ElevatorRightDoor",
+		Vector3(0.72, 1.25, 1.08),
+		Vector3(0.72, 2.4, 0.07),
+		door_material,
+	)
+	elevator_transition_doors.append(left_door)
+	elevator_transition_doors.append(right_door)
+
+	var floor_display := Label3D.new()
+	floor_display.name = "ElevatorDestinationDisplay"
+	floor_display.text = "FLOOR %02d" % elevator_destination_floor
+	floor_display.font_size = 56
+	floor_display.pixel_size = 0.005
+	floor_display.position = Vector3(0.0, 2.35, 1.0)
+	floor_display.modulate = Color("#fff0ae")
+	floor_display.outline_size = 6
+	floor_display.outline_modulate = Color("#14211e")
+	elevator_transition_root.add_child(floor_display)
+
+
+func _add_transition_box(
+	node_name: String,
+	position: Vector3,
+	size: Vector3,
+	material: Material,
+) -> MeshInstance3D:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mesh.material = material
+	var instance := MeshInstance3D.new()
+	instance.name = node_name
+	instance.mesh = mesh
+	instance.position = position
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	elevator_transition_root.add_child(instance)
+	return instance
+
+
+func _send_elevator_destination_command(floor_number: int) -> void:
+	elevator_transition_phase = "waiting_destination"
+	_send_command("select_floor", {"floor": floor_number})
+
+
+func _start_elevator_arrival(target: Vector3, message: Dictionary) -> void:
+	elevator_transition_phase = "riding"
+	var travel_height := clampf(
+		2.4 + absf(float(elevator_destination_floor - elevator_origin_floor)) * 0.12,
+		2.4,
+		5.0,
+	)
+	var lift := Vector3(0.0, travel_height, 0.0)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(elevator_transition_root, "position", elevator_transition_root.position + lift, 0.7)
+	tween.tween_property(player_root, "position", player_root.position + lift, 0.7)
+	tween.set_parallel(false)
+	tween.tween_interval(0.2)
+	tween.tween_callback(_open_elevator_at_destination.bind(message))
+
+
+func _open_elevator_at_destination(message: Dictionary) -> void:
+	elevator_transition_phase = "opening"
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "camera_distance", elevator_return_camera_distance, 0.5)
+	if elevator_transition_doors.size() == 2:
+		tween.tween_property(elevator_transition_doors[0], "position:x", -0.72, 0.4)
+		tween.tween_property(elevator_transition_doors[1], "position:x", 0.72, 0.4)
+	tween.set_parallel(false)
+	tween.tween_interval(0.15)
+	tween.tween_callback(_finish_elevator_transition.bind(message))
+
+
+func _finish_elevator_transition(message: Dictionary) -> void:
+	if is_instance_valid(elevator_transition_root):
+		elevator_transition_root.queue_free()
+	elevator_transition_root = null
+	elevator_transition_doors.clear()
+	elevator_transition_active = false
+	elevator_transition_phase = ""
+	player_root.set_physics_process(true)
+	last_room_id = ""
+	_apply_snapshot(message)
 
 
 func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
@@ -1176,13 +1416,25 @@ func _send_command(name: String, payload: Dictionary = {}) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if _handle_elevator_picker_key(event.keycode):
+			get_viewport().set_input_as_handled()
+			return
+		if elevator_transition_active:
+			get_viewport().set_input_as_handled()
+			return
 		match event.keycode:
 			KEY_E:
-				_send_command("interact")
-KEY_C:
-_send_command("maintain", {"action": "clean"})
-KEY_V:
-_send_command("maintain", {"action": "repair"})
+				var nearby_kind := _nearby_object_kind()
+				if nearby_kind == "elevator":
+					_open_elevator_floor_picker()
+				elif nearby_kind == "stairs":
+					_send_command("climb_stairs")
+				else:
+					_send_command("interact")
+			KEY_C:
+				_send_command("maintain", {"action": "clean"})
+			KEY_V:
+				_send_command("maintain", {"action": "repair"})
 			KEY_SPACE:
 				player_root.try_jump()
 			KEY_F:
@@ -1206,6 +1458,11 @@ _send_command("maintain", {"action": "repair"})
 				connection = StreamPeerTCP.new()
 				_connect_to_pygame()
 	elif event is InputEventMouseButton and event.pressed:
+		if elevator_transition_active or (
+			elevator_floor_panel != null and elevator_floor_panel.visible
+		):
+			get_viewport().set_input_as_handled()
+			return
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			player_root.try_fight()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
@@ -1217,6 +1474,11 @@ _send_command("maintain", {"action": "repair"})
 
 
 func _send_current_input() -> void:
+	if elevator_transition_active or (
+		elevator_floor_panel != null and elevator_floor_panel.visible
+	):
+		_send_command("set_input", {"x": 0.0, "y": 0.0, "sprint": false})
+		return
 	var movement := player_root.requested_movement()
 	_send_command(
 		"set_input",
