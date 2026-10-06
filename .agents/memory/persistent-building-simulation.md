@@ -61,13 +61,17 @@ said physical action, elapsed work time, organization hiring, and deep stories
 are central to the building simulation.
 
 The game company should have a construction office in the Tower that creates
-real estate. Each building is its own server; people can create offices from
-SALARYMAN assets or new Godot designs. NPCs or public players can participate
-in construction. Unready Story Mode areas may remain locked, and created
-buildings follow the Tower's rules.
+real estate. Each building is an isolated logical instance in the shared
+authoritative server, not a separate server process. People can create offices
+from SALARYMAN assets or new Godot designs; NPCs or public players can
+participate in construction. The public contributor project exposes a Godot
+building kit only, not the proprietary full-game source. Unready Story Mode
+areas may remain locked, and created buildings follow the Tower's rules.
 
 **Why:** the user wants developers and players to build new real estate inside
-the shared world without bypassing the established Tower rules or story locks.
+the shared world without bypassing the established Tower rules or story locks,
+and selected a Godot-only contributor kit with shared-server building
+instances.
 
 **How to apply:** Resolve each action's scope from server-validated room
 presence and office ownership. Preserve object and character state; validate
