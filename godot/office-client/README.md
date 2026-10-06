@@ -1,36 +1,38 @@
-# SALARYMAN Godot office client
+# SALARYMAN Godot game client
 
-This is the optional high-resolution 2.5D isometric renderer for the standalone
-Pygame office simulation. It keeps the pixel-art silhouette language while
-using real 3D depth, shadows, and animation. It is intentionally separate from
-`godot/art-dev`.
+Godot is the native, player-facing game runtime for the downloadable SALARYMAN
+OS application: it renders the building and owns real-time movement, collision,
+and animation. It is not an optional renderer or a separate product. The Python
+office simulation runs with it and remains authoritative for interaction rules,
+finance, workers, and persistent state.
+
+This game client is intentionally separate from `godot/art-dev`.
 
 ## Runtime boundary
 
 - Pygame owns `OfficeState`, `TowerScene`, FIAT, workers, wages, persistence,
-  and all interaction validation.
+  and authoritative interaction validation.
 - Godot receives versioned newline-delimited JSON snapshots over localhost TCP.
 - Godot sends commands back over the same connection.
 - Godot never writes finance, worker, or save data directly.
-- The 3D scene is presentation-only: room layout, movement, doors, and object
-  outcomes still come from the Pygame snapshot/command protocol.
+- Godot movement and animation are essential game features; requests and shared
+  outcomes are validated by the Python simulation through the bridge.
+- A complete downloadable SALARYMAN OS game runs both runtimes together. Neither
+  the Godot client without its simulation nor a Python-only desktop bundle
+  represents the complete game.
 
-## Run
+## Run in development
 
-Start the authoritative simulation first:
+Install Godot 4 for your development OS and make `godot` available on `PATH`.
+Run the Python launcher once; it starts the simulation and Godot game client as
+a pair:
 
 ```bash
-python -m pygame_sim --bridge-port 4242
+python -m pygame_sim
 ```
 
-Then launch this project with Godot 4:
-
-```bash
-godot --path godot/office-client
-```
-
-The existing Pygame dashboard continues to work if Godot is closed. Use
-`--no-bridge` when the bridge is not needed.
+`--no-bridge` is reserved for isolated tests and is not the complete game
+experience.
 
 ## Controls
 
@@ -65,7 +67,9 @@ Parts have local pivots for later action
 animations. Surface wear reflects the Python snapshot's condition/cleanliness;
 the renderer does not advance decay or change interaction outcomes.
 
-Run the focused native checks:
+Run the focused native checks. Headless tests validate scripts and object
+assembly, but a complete interactive build must run Godot with the Python
+simulation connected:
 
 ```bash
 godot --headless --path godot/office-client --script res://tests/office_props_test.gd
@@ -78,4 +82,6 @@ godot --path godot/office-client --resolution 1600x1000 \
   --script res://review/office_props_review.gd -- /absolute/path/office-props.png
 ```
 
-The review scene is not gameplay footage or a published desktop build.
+The review scene is not gameplay footage or a published desktop build. Release
+packages include the matching Godot runtime and launch it with the Python
+simulation as one coordinated app.

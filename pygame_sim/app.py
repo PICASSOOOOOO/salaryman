@@ -1,9 +1,10 @@
-"""Pygame desktop entry point for the SALARYMAN office simulation."""
+"""Pygame simulation entry point for the SALARYMAN desktop game."""
 
 from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 
 import pygame
@@ -16,6 +17,13 @@ from .automation import (
     load_desktop_link,
 )
 from .building_sync import DesktopBuildingSync
+from .godot_runtime import (
+    GodotRuntime,
+    godot_process_exited,
+    launch_godot,
+    resolve_godot_runtime,
+    stop_process,
+)
 from .pablo import fetch_pablo_status
 from .state import OfficeState
 from .scene import build_tower_scene
@@ -27,8 +35,17 @@ WINDOW_SIZE = (1180, 720)
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="SALARYMAN solar-punk office simulation")
-    parser.add_argument("--headless", action="store_true", help="Use SDL's dummy video driver.")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Hide the Python simulation window; Godot remains the player-facing game.",
+    )
     parser.add_argument("--frames", type=int, default=0, help="Exit after N frames; useful for smoke tests.")
+    parser.add_argument(
+        "--paired-smoke",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument(
         "--save-file",
         default="~/.salaryman/office.json",
@@ -36,7 +53,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--bridge-host", default="127.0.0.1", help="Godot bridge bind address.")
     parser.add_argument("--bridge-port", type=int, default=4242, help="Godot bridge TCP port.")
-    parser.add_argument("--no-bridge", action="store_true", help="Disable the optional Godot bridge.")
+    parser.add_argument("--no-bridge", action="store_true", help="Disable the local Godot bridge (tests only).")
+    parser.add_argument("--godot-executable", help="Godot 4 executable (normally resolved from the paired release).")
+    parser.add_argument("--godot-project", help="Godot office-client project directory.")
     parser.add_argument(
         "--server-url",
         default=os.environ.get("SALARYMAN_SERVER_URL", ""),
@@ -58,8 +77,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def run(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.paired_smoke and (not args.headless or args.no_bridge or args.frames < 1):
+        raise SystemExit("--paired-smoke requires --headless, --frames N, and the local bridge.")
     if args.headless:
-        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
 
     pygame.init()
     pygame.font.init()
@@ -93,13 +114,34 @@ def run(argv: list[str] | None = None) -> int:
     spatial_mode = True
     previous_day = state.day
     bridge = OfficeBridge(args.bridge_host, args.bridge_port)
+    launch_error = ""
     if not args.no_bridge:
-        bridge.start()
+        if not bridge.start():
+            launch_error = bridge.status
+            print(launch_error, file=sys.stderr)
     bridge_elapsed = 0.0
+    godot_process: subprocess.Popen[bytes] | None = None
+    if not args.no_bridge and not launch_error:
+        try:
+            godot_runtime: GodotRuntime = resolve_godot_runtime(
+                godot_executable=args.godot_executable,
+                project_dir=args.godot_project,
+                module_file=__file__,
+            )
+            godot_process = launch_godot(godot_runtime, headless=args.headless)
+        except (FileNotFoundError, ValueError, RuntimeError) as error:
+            launch_error = str(error)
+            print(launch_error, file=sys.stderr)
 
-    running = True
+    running = not launch_error
     frame_count = 0
+    pair_connected = False
+    godot_exited_early = False
     while running:
+        if godot_process is not None and godot_process_exited(godot_process):
+            godot_exited_early = True
+            running = False
+            continue
         delta_seconds = clock.tick(60) / 1000.0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -248,6 +290,8 @@ def run(argv: list[str] | None = None) -> int:
             for command in bridge.poll_commands():
                 result = apply_command(command, state, scene, building_sync)
                 bridge.send_result(command, result)
+            if bridge.connected:
+                pair_connected = True
             if not bridge.connected:
                 scene.set_motion_input(0.0, 0.0)
 
@@ -300,21 +344,31 @@ def run(argv: list[str] | None = None) -> int:
         if state.day != previous_day:
             state.save_to_file(args.save_file)
             previous_day = state.day
-        if spatial_mode:
-            renderer.draw_tower(state, scene, delta_seconds=delta_seconds)
-        else:
-            renderer.draw(state, coffee_rects)
-        pygame.display.flip()
+        if not args.headless:
+            if spatial_mode:
+                renderer.draw_tower(state, scene, delta_seconds=delta_seconds)
+            else:
+                renderer.draw(state, coffee_rects)
+            pygame.display.flip()
         frame_count += 1
         if args.frames and frame_count >= args.frames:
             running = False
 
-    state.save_to_file(args.save_file)
-    building_sync.close()
-    autopilot_poller.close()
-    bridge.close()
-    pygame.quit()
-    return 0
+    try:
+        state.save_to_file(args.save_file)
+    finally:
+        if godot_process is not None:
+            stop_process(godot_process)
+        building_sync.close()
+        autopilot_poller.close()
+        bridge.close()
+        pygame.quit()
+    paired_smoke_failed = args.paired_smoke and (
+        not pair_connected or godot_exited_early or godot_process is None
+    )
+    if paired_smoke_failed:
+        print("The Python simulation and Godot game client did not stay connected.", file=sys.stderr)
+    return 1 if launch_error or paired_smoke_failed else 0
 
 
 def main() -> None:

@@ -9,6 +9,18 @@ downloadable product for business simulation and practical systems; React
 continues to use the shared browser APIs. Keep the local bridge and server
 validation, especially for MMO access, movement bounds, and shared placements.
 
+Godot is the essential player-facing runtime of the downloadable SALARYMAN OS
+app, not an optional renderer or a separate product. Its playable game and the
+Python-authoritative simulation go hand in hand and must be treated as one
+coordinated desktop experience.
+
+**Why:** The user corrected this explicitly: “Godot this direction is the app
+itself. They go hand and hand.”
+
+**How to apply:** Do not describe Godot as optional or position Python-only and
+Godot-only launches as complete product builds. Preserve each runtime's
+authority boundary while developing and packaging them together.
+
 The Godot client can be inspected and tested structurally, but source checks and
 Python bridge tests are not enough to verify gameplay feel or 3D presentation.
 A live Godot launch is required before claiming camera framing, model scale,

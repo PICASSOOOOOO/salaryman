@@ -1,8 +1,9 @@
-"""Local Pygame ↔ Godot bridge.
+"""The local SALARYMAN OS simulation ↔ Godot game-client bridge.
 
 Pygame remains the authority for simulation, finance, and interaction rules.
-Godot is a renderer and input client. Messages are newline-delimited JSON so
-TCP packet boundaries never become application message boundaries.
+Godot is the player-facing movement, action, and building runtime; both are
+required parts of the downloadable game. Messages are newline-delimited JSON
+so TCP packet boundaries never become application message boundaries.
 """
 
 from __future__ import annotations
@@ -343,7 +344,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
 
 
 class OfficeBridge:
-    """Non-blocking localhost server used by the optional Godot renderer."""
+    """Non-blocking localhost server used by the paired Godot game client."""
 
     def __init__(self, host: str = "127.0.0.1", port: int = 4242) -> None:
         self.host = host
