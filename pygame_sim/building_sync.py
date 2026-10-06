@@ -48,6 +48,7 @@ class DesktopBuildingSync:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_error: str | None = None
+        self._waiting_for_payment = False
 
     def start(self) -> None:
         if self.link is None or self._thread is not None:
@@ -187,14 +188,19 @@ class DesktopBuildingSync:
                 if not isinstance(next_session, str):
                     raise RuntimeError("INVALID_SERVER_RESPONSE")
                 self._active_action = (action_floor, action_room, object_id, maintenance_action, next_session)
-                if session_id is None:
+                waiting_for_payment = result.get("waitingForPayment") is True
+                should_announce = session_id is None or (waiting_for_payment and not self._waiting_for_payment)
+                self._waiting_for_payment = waiting_for_payment
+                if should_announce:
                     self._events.put(BuildingSyncEvent(True, str(result.get("message", "WORK IN PROGRESS")), state))
             else:
                 self._active_action = None
+                self._waiting_for_payment = False
                 self._events.put(BuildingSyncEvent(True, str(result.get("message", "Maintenance complete")), state))
         except RuntimeError as exc:
             message = _friendly_sync_error(str(exc))
             self._events.put(BuildingSyncEvent(False, message))
+            self._waiting_for_payment = False
             if message == "BUILDING SERVER OFFLINE":
                 if session_id is None:
                     self._actions.put((action_floor, action_room, object_id, maintenance_action))

@@ -1486,16 +1486,24 @@ func _update_hud() -> void:
 			var work_action := str(active_work.get("action", "clean")).to_upper()
 			var progress := clampi(roundi(float(active_work.get("progress", 0.0)) * 100.0), 0, 100)
 			var reward := int(active_work.get("rewardFiat", 0))
+			var payer := str(active_work.get("payer", "RECEPTIONIST"))
 			var progress_blocks := int(round(float(progress) / 10.0))
 			var progress_bar := "■".repeat(progress_blocks) + "□".repeat(10 - progress_blocks)
-			controls_label.text = "%s  %s%%  %s\nSTAY WITHIN REACH  ·  %s" % [
-				work_action,
-				str(progress).pad_zeros(3),
-				progress_bar,
-				("PABLO PAYOUT ƒ%d" % reward) if reward > 0 else target_name,
-			]
+			if bool(active_work.get("waitingForPayment", false)):
+				controls_label.text = "WORK COMPLETE / WAITING FOR PAYMENT\n%s WILL PAY ƒ%d  ·  %s" % [
+					payer,
+					reward,
+					target_name,
+				]
+			else:
+				controls_label.text = "%s  %s%%  %s\nSTAY WITHIN REACH  ·  %s" % [
+					work_action,
+					str(progress).pad_zeros(3),
+					progress_bar,
+					("%s PAYS ƒ%d" % [payer, reward]) if reward > 0 else target_name,
+				]
 		else:
-			var public_work: Variant = maintenance_status.get("publicWork", {})
+			var public_work: Variant = maintenance_status.get("maintenanceWork", maintenance_status.get("publicWork", {}))
 			var clean_hint := "C CLEAN %d%%" % cleanliness
 			var repair_hint := "V REPAIR %d%%" % condition
 			if public_work is Dictionary:

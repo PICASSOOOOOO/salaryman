@@ -13,7 +13,6 @@ import { creditFiat } from "./fiat-wallet";
 import { publicMaintenanceSlotLimit } from "./maintenance-policy";
 
 const PICASSO_ORG_NAME = "picasso";
-const PABLO_PUBLIC_WORKS_ORG_NAME = "PABLO CORP · TOWER PUBLIC WORKS";
 const DEMAND_WINDOW_MS = 30 * 24 * 60 * 60 * 1_000;
 const DEMAND_CACHE_MS = 15_000;
 const FUNDING_LOCK_KEY = 731_904_217;
@@ -123,6 +122,10 @@ export async function getPublicWorkDemand(city: string): Promise<PublicWorkDeman
     }),
   };
   cachedDemand.set(city, { expiresAt: nowMs + DEMAND_CACHE_MS, value });
+  if (cachedDemand.size > 64) {
+    const oldestCity = cachedDemand.keys().next().value;
+    if (oldestCity !== undefined) cachedDemand.delete(oldestCity);
+  }
   return value;
 }
 
@@ -165,7 +168,6 @@ export async function payPublicMaintenanceReward(
     balanceAfter: poolDebited.balanceFiat,
     description: `Receptionist Mila paid public Tower ${input.action} work · session ${input.sessionId}`,
     category: "game_reward_pool",
-    actorUserId: input.userId,
   });
 
   const credit = await creditFiat(tx, {
@@ -173,7 +175,7 @@ export async function payPublicMaintenanceReward(
     amountFiat: input.amountFiat,
     description: `Receptionist Mila · public Tower ${input.action} · Floor ${input.floorNumber}`,
     kind: "tower_public_work",
-    idempotencyKey: `pablo-public-work:${input.sessionId}`,
+    idempotencyKey: `mila-public-work:${input.sessionId}`,
   });
   return { balance: credit.newBalance, spendable: credit.spendable };
 }
@@ -208,6 +210,16 @@ export async function hasOrganizationMaintenanceFunds(
     ))
     .for("update").limit(1);
   return Boolean(account && account.balanceFiat >= amountFiat);
+}
+
+export async function getOrganizationMaintenanceBalance(orgId: number): Promise<number> {
+  const [account] = await db.select({ balanceFiat: orgAccountsTable.balanceFiat }).from(orgAccountsTable)
+    .where(and(
+      eq(orgAccountsTable.orgId, orgId),
+      eq(orgAccountsTable.type, "checking"),
+    ))
+    .limit(1);
+  return Math.max(0, account?.balanceFiat ?? 0);
 }
 
 export async function payOrganizationMaintenanceReward(
@@ -250,7 +262,6 @@ export async function payOrganizationMaintenanceReward(
     balanceAfter: debited.balanceFiat,
     description: `Organization receptionist paid ${input.action} work · session ${input.sessionId}`,
     category: "private_maintenance_payroll",
-    actorUserId: input.userId,
   });
   const credit = await creditFiat(tx, {
     userId: input.userId,

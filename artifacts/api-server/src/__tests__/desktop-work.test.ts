@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   bankAccountsTable,
   bankTransactionsTable,
@@ -12,6 +12,9 @@ import {
   desktopWorkClaimsTable,
   desktopWorkLeasesTable,
   deviceLinksTable,
+  orgAccountTransactionsTable,
+  orgAccountsTable,
+  organizationsTable,
   shadowTowerFloorsTable,
   shadowTowerOfficeUnitsTable,
   usersTable,
@@ -27,10 +30,20 @@ app.use("/api", desktopBuildingRouter);
 const userIds: string[] = [];
 const linkIds: string[] = [];
 const floorIds: number[] = [];
+const maintenanceSessionIds: string[] = [];
 let userId = "";
 let deviceId = "";
 let token = "";
 let officeCity = "";
+let privateOrgId = 0;
+let privateOrgAccountId = 0;
+let privateOrgCreated = false;
+let privateOrgAccountCreated = false;
+let picassoOrgId = 0;
+let picassoAccountId = 0;
+let picassoOrgCreated = false;
+let picassoAccountCreated = false;
+let originalPicassoBalance: number | null = null;
 
 function desktopPost(path: string) {
   return request(app).post(path)
@@ -56,6 +69,58 @@ beforeAll(async () => {
     balance: 0,
   });
 
+  const [picasso] = await db.select().from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) = 'picasso'`).limit(1);
+  if (picasso) {
+    picassoOrgId = picasso.id;
+  } else {
+    const [createdPicasso] = await db.insert(organizationsTable).values({
+      name: "PICASSO",
+      ownerUserId: userId,
+      isDeveloper: false,
+    }).returning();
+    picassoOrgId = createdPicasso.id;
+    picassoOrgCreated = true;
+  }
+  const [picassoChecking] = await db.select().from(orgAccountsTable).where(and(
+    eq(orgAccountsTable.orgId, picassoOrgId),
+    eq(orgAccountsTable.type, "checking"),
+  )).limit(1);
+  if (picassoChecking) {
+    picassoAccountId = picassoChecking.id;
+    originalPicassoBalance = picassoChecking.balanceFiat;
+    await db.update(orgAccountsTable)
+      .set({ balanceFiat: picassoChecking.balanceFiat + 1_000, updatedAt: new Date() })
+      .where(eq(orgAccountsTable.id, picassoChecking.id));
+  } else {
+    const [createdAccount] = await db.insert(orgAccountsTable).values({
+      orgId: picassoOrgId,
+      type: "checking",
+      label: "TEST REWARD POOL",
+      balanceFiat: 1_000,
+      apyBps: 0,
+    }).returning();
+    picassoAccountId = createdAccount.id;
+    picassoAccountCreated = true;
+  }
+
+  const [privateOrg] = await db.insert(organizationsTable).values({
+    name: `Desktop Work Test ${randomUUID()}`,
+    ownerUserId: userId,
+    isDeveloper: false,
+  }).returning();
+  privateOrgId = privateOrg.id;
+  privateOrgCreated = true;
+  const [privateAccount] = await db.insert(orgAccountsTable).values({
+    orgId: privateOrgId,
+    type: "checking",
+    label: "TEST OFFICE CHECKING",
+    balanceFiat: 1_000,
+    apyBps: 0,
+  }).returning();
+  privateOrgAccountId = privateAccount.id;
+  privateOrgAccountCreated = true;
+
   deviceId = `desktop-${randomUUID()}`;
   token = `test-token-${randomUUID()}`;
   officeCity = `test-${randomUUID().slice(0, 8)}`;
@@ -73,6 +138,7 @@ beforeAll(async () => {
   const [floor] = await db.insert(shadowTowerFloorsTable).values({
     city: officeCity,
     floorNumber: 5,
+    orgId: privateOrgId,
     ownerUserId: userId,
     tenure: "own",
     archetype: "founder_team",
@@ -98,6 +164,35 @@ afterAll(async () => {
   }
   if (floorIds.length) {
     await db.delete(shadowTowerFloorsTable).where(inArray(shadowTowerFloorsTable.id, floorIds));
+  }
+  if (maintenanceSessionIds.length) {
+    const publicDescriptions = maintenanceSessionIds.map((id) =>
+      `Receptionist Mila paid public Tower clean work · session ${id}`);
+    await db.delete(orgAccountTransactionsTable).where(inArray(
+      orgAccountTransactionsTable.description,
+      publicDescriptions,
+    ));
+    await db.delete(orgAccountTransactionsTable).where(and(
+      eq(orgAccountTransactionsTable.orgId, privateOrgId),
+      inArray(orgAccountTransactionsTable.description, maintenanceSessionIds.map((id) =>
+        `Organization receptionist paid repair work · session ${id}`)),
+    ));
+  }
+  if (privateOrgAccountCreated) {
+    await db.delete(orgAccountsTable).where(eq(orgAccountsTable.id, privateOrgAccountId));
+  }
+  if (privateOrgCreated) {
+    await db.delete(organizationsTable).where(eq(organizationsTable.id, privateOrgId));
+  }
+  if (picassoAccountCreated) {
+    await db.delete(orgAccountsTable).where(eq(orgAccountsTable.id, picassoAccountId));
+  } else if (picassoAccountId && originalPicassoBalance != null) {
+    await db.update(orgAccountsTable)
+      .set({ balanceFiat: originalPicassoBalance, updatedAt: new Date() })
+      .where(eq(orgAccountsTable.id, picassoAccountId));
+  }
+  if (picassoOrgCreated) {
+    await db.delete(organizationsTable).where(eq(organizationsTable.id, picassoOrgId));
   }
   if (userIds.length) {
     await db.delete(bankTransactionsTable).where(inArray(bankTransactionsTable.userId, userIds));
@@ -282,6 +377,34 @@ describe("desktop office work settlement", () => {
       activeWork: null,
     }));
 
+    const publicStart = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "hall-office-2-door",
+      action: "clean",
+    });
+    expect(publicStart.status).toBe(200);
+    expect(publicStart.body).toMatchObject({
+      working: true,
+      rewardFiat: 100,
+      payerLabel: "MILA",
+    });
+    const publicSessionId = publicStart.body.sessionId as string;
+    maintenanceSessionIds.push(publicSessionId);
+    await db.update(desktopBuildingObjectStatesTable)
+      .set({ workStartedAt: new Date(Date.now() - publicStart.body.durationMs - 1) })
+      .where(eq(desktopBuildingObjectStatesTable.workSessionId, publicSessionId));
+    const publicCompleted = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "hall-office-2-door",
+      action: "clean",
+      sessionId: publicSessionId,
+    });
+    expect(publicCompleted.status).toBe(200);
+    expect(publicCompleted.body).toMatchObject({
+      completed: true,
+      rewardFiat: 100,
+      payerLabel: "MILA",
+      message: "MILA PAID ƒ100",
+    });
+
     expect((await reportPresence("office")).status).toBe(200);
     const officeObjects = await desktopGet("/api/desktop-building/objects");
     expect(officeObjects.status).toBe(200);
@@ -310,17 +433,31 @@ describe("desktop office work settlement", () => {
       action: "repair",
     });
     expect(repaired.status).toBe(200);
-    expect(repaired.body).toMatchObject({ working: true, rewardFiat: 0 });
+    expect(repaired.body).toMatchObject({
+      working: true,
+      rewardFiat: 100,
+      payerLabel: "ORGANIZATION RECEPTIONIST",
+    });
+    const privateSessionId = repaired.body.sessionId as string;
+    maintenanceSessionIds.push(privateSessionId);
     await db.update(desktopBuildingObjectStatesTable)
       .set({ workStartedAt: new Date(Date.now() - repaired.body.durationMs - 1) })
-      .where(eq(desktopBuildingObjectStatesTable.workSessionId, repaired.body.sessionId));
+      .where(eq(desktopBuildingObjectStatesTable.workSessionId, privateSessionId));
     const completedRepair = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "executive-chair",
       action: "repair",
-      sessionId: repaired.body.sessionId,
+      sessionId: privateSessionId,
     });
     expect(completedRepair.status).toBe(200);
-    expect(completedRepair.body).toMatchObject({ completed: true, rewardFiat: 0 });
+    expect(completedRepair.body).toMatchObject({
+      completed: true,
+      rewardFiat: 100,
+      payerLabel: "ORGANIZATION RECEPTIONIST",
+      message: "ORGANIZATION RECEPTIONIST PAID ƒ100",
+    });
+    const [privateAccountAfterPay] = await db.select().from(orgAccountsTable)
+      .where(eq(orgAccountsTable.id, privateOrgAccountId)).limit(1);
+    expect(privateAccountAfterPay.balanceFiat).toBe(900);
     expect(completedRepair.body.state).toMatchObject({
       objectId: "executive-chair",
       floorNumber: 5,

@@ -21,12 +21,19 @@ import {
   CLEANLINESS_DECAY_PER_DAY,
   CONDITION_DECAY_PER_DAY,
   decayBuildingScore,
+  maintenanceTaskReward,
   needsPublicMaintenance,
   publicMaintenanceDurationMs,
-  publicMaintenanceReward,
   workProgress,
 } from "../lib/maintenance-policy";
-import { getPublicWorkDemand, payPublicMaintenanceReward } from "../lib/pablo-public-works";
+import {
+  getOrganizationMaintenanceBalance,
+  getPublicWorkDemand,
+  hasOrganizationMaintenanceFunds,
+  hasPublicMaintenanceFunds,
+  payOrganizationMaintenanceReward,
+  payPublicMaintenanceReward,
+} from "../lib/pablo-public-works";
 import {
   BUILDING_MAINTAINABLE_OBJECTS,
   BUILDING_OBJECT_DEFAULTS,
@@ -135,7 +142,15 @@ function serializeBuildingObject(
   object: (typeof BUILDING_MAINTAINABLE_OBJECTS)[number],
   floorNumber: number,
   saved?: typeof desktopBuildingObjectStatesTable.$inferSelect,
-  options: { publicWork?: boolean; publicSlotsAvailable?: boolean; nowMs?: number } = {},
+  options: {
+    publicWork?: boolean;
+    publicSlotsAvailable?: boolean;
+    publicPoolBalanceFiat?: number;
+    privateOrganizationWork?: boolean;
+    organizationBalanceFiat?: number;
+    payerLabel?: string | null;
+    nowMs?: number;
+  } = {},
 ) {
   const nowMs = options.nowMs ?? Date.now();
   const cleanliness = decayBuildingScore(
@@ -152,19 +167,37 @@ function serializeBuildingObject(
   );
   const workStartedAt = saved?.workStartedAt ?? null;
   const workIsActive = Boolean(saved?.workSessionId && saved?.workAction && workStartedAt);
+  const progress = workIsActive
+    ? workProgress(workStartedAt!, saved!.workDurationMs, nowMs)
+    : 0;
   const activeWork = workIsActive
     ? {
       action: saved!.workAction,
-      progress: workProgress(workStartedAt!, saved!.workDurationMs, nowMs),
+      progress,
       startedAt: workStartedAt!.toISOString(),
       durationMs: saved!.workDurationMs,
       rewardFiat: saved!.workRewardFiat,
+      payer: options.payerLabel ?? null,
+      waitingForPayment: progress >= 1,
     }
     : null;
-  const cleanAvailable = Boolean(options.publicWork && options.publicSlotsAvailable
-    && !workIsActive && needsPublicMaintenance(cleanliness));
-  const repairAvailable = Boolean(options.publicWork && options.publicSlotsAvailable
-    && !workIsActive && needsPublicMaintenance(condition));
+  const cleanRewardFiat = maintenanceTaskReward(cleanliness);
+  const repairRewardFiat = maintenanceTaskReward(condition);
+  const canFundClean = options.publicWork
+    ? Boolean(options.publicSlotsAvailable && (options.publicPoolBalanceFiat ?? 0) >= cleanRewardFiat)
+    : Boolean(options.privateOrganizationWork && (options.organizationBalanceFiat ?? 0) >= cleanRewardFiat);
+  const canFundRepair = options.publicWork
+    ? Boolean(options.publicSlotsAvailable && (options.publicPoolBalanceFiat ?? 0) >= repairRewardFiat)
+    : Boolean(options.privateOrganizationWork && (options.organizationBalanceFiat ?? 0) >= repairRewardFiat);
+  const cleanAvailable = Boolean(!workIsActive && canFundClean && needsPublicMaintenance(cleanliness));
+  const repairAvailable = Boolean(!workIsActive && canFundRepair && needsPublicMaintenance(condition));
+  const maintenanceWork = {
+    cleanAvailable,
+    cleanRewardFiat: cleanAvailable ? cleanRewardFiat : 0,
+    repairAvailable,
+    repairRewardFiat: repairAvailable ? repairRewardFiat : 0,
+    payerLabel: options.payerLabel ?? null,
+  };
   return {
     objectId: object.id,
     room: object.room,
@@ -176,12 +209,8 @@ function serializeBuildingObject(
     lastCleanedAt: (saved?.lastCleanedAt ?? null)?.toISOString() ?? null,
     lastMaintainedAt: (saved?.lastMaintainedAt ?? null)?.toISOString() ?? null,
     activeWork,
-    publicWork: {
-      cleanAvailable: cleanAvailable && needsPublicMaintenance(cleanliness),
-      cleanRewardFiat: cleanAvailable ? publicMaintenanceReward(cleanliness) : 0,
-      repairAvailable: repairAvailable && needsPublicMaintenance(condition),
-      repairRewardFiat: repairAvailable ? publicMaintenanceReward(condition) : 0,
-    },
+    maintenanceWork,
+    publicWork: maintenanceWork,
   };
 }
 
@@ -646,6 +675,11 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
     const savedById = new Map(saved.map((row) => [row.objectId, row]));
     const publicWork = isPublicTowerWork(scope.value);
     const demand = publicWork ? await getPublicWorkDemand(scope.value.presence.city) : null;
+    const privateOrganizationWork = !publicWork && scope.value.orgId != null;
+    const organizationBalanceFiat = privateOrganizationWork
+      ? await getOrganizationMaintenanceBalance(scope.value.orgId!)
+      : 0;
+    const payerLabel = publicWork ? "MILA" : privateOrganizationWork ? "ORGANIZATION RECEPTIONIST" : null;
     const [{ total: activePublicJobs }] = publicWork
       ? await db.select({ total: count() }).from(desktopBuildingObjectStatesTable).where(and(
         isNotNull(desktopBuildingObjectStatesTable.workStartedAt),
@@ -671,6 +705,10 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
         serializeBuildingObject(object, scope.value.presence.floorNumber, savedById.get(object.id), {
           publicWork,
           publicSlotsAvailable,
+          publicPoolBalanceFiat: demand?.rewardPoolBalanceFiat ?? 0,
+          privateOrganizationWork,
+          organizationBalanceFiat,
+          payerLabel,
           nowMs: now.getTime(),
         })),
     });
@@ -700,6 +738,11 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
     }
     const isPublic = isPublicTowerWork(scope.value);
     const demand = isPublic ? await getPublicWorkDemand(scope.value.presence.city) : null;
+    const privateOrganizationWork = !isPublic && scope.value.orgId != null;
+    const payerLabel = isPublic ? "MILA" : privateOrganizationWork ? "ORGANIZATION RECEPTIONIST" : null;
+    const organizationBalanceFiat = privateOrganizationWork
+      ? await getOrganizationMaintenanceBalance(scope.value.orgId!)
+      : 0;
     const result = await db.transaction(async (tx) => {
       const now = new Date();
       const staleBefore = new Date(now.getTime() - PUBLIC_WORK_SESSION_MAX_AGE_MS);
@@ -754,42 +797,80 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
             state: serializeBuildingObject(sessionObject, session.floorNumber, session, {
               publicWork: isPublic,
               publicSlotsAvailable: false,
+              publicPoolBalanceFiat: demand?.rewardPoolBalanceFiat ?? 0,
+              privateOrganizationWork,
+              organizationBalanceFiat,
+              payerLabel,
               nowMs: now.getTime(),
             }),
           };
         }
 
-        const rewardFiat = isPublic ? session.workRewardFiat : 0;
+        const rewardFiat = session.workRewardFiat;
+        const wallet = rewardFiat > 0
+          ? isPublic
+            ? await payPublicMaintenanceReward(tx, {
+              userId: link.userId,
+              amountFiat: rewardFiat,
+              sessionId,
+              action,
+              floorNumber: scope.value.presence.floorNumber,
+            })
+            : session.orgId != null
+              ? await payOrganizationMaintenanceReward(tx, {
+                orgId: session.orgId,
+                userId: link.userId,
+                amountFiat: rewardFiat,
+                sessionId,
+                action,
+                floorNumber: scope.value.presence.floorNumber,
+              })
+              : null
+          : null;
+        if (rewardFiat > 0 && !wallet) {
+          return {
+            kind: "payment-wait" as const,
+            sessionId,
+            rewardFiat,
+            durationMs: session.workDurationMs,
+            payerLabel: payerLabel ?? "RECEPTIONIST",
+            state: serializeBuildingObject(sessionObject, session.floorNumber, session, {
+              publicWork: isPublic,
+              publicSlotsAvailable: false,
+              publicPoolBalanceFiat: demand?.rewardPoolBalanceFiat ?? 0,
+              privateOrganizationWork,
+              organizationBalanceFiat,
+              payerLabel,
+              nowMs: now.getTime(),
+            }),
+          };
+        }
         const [completed] = await tx.update(desktopBuildingObjectStatesTable)
           .set({
             ...(session.workAction === "clean"
               ? { cleanliness: 100, lastCleanedAt: now }
               : { condition: 100, lastMaintainedAt: now }),
-            workCompletedByUserId: isPublic ? link.userId : session.workCompletedByUserId,
-            workCompletedAt: isPublic ? now : session.workCompletedAt,
+            workCompletedByUserId: link.userId,
+            workCompletedAt: now,
             ...clearActiveWorkFields(),
             updatedByUserId: link.userId,
             updatedAt: now,
           })
           .where(eq(desktopBuildingObjectStatesTable.id, session.id))
           .returning();
-        const wallet = rewardFiat > 0
-          ? await payPublicMaintenanceReward(tx, {
-            userId: link.userId,
-            amountFiat: rewardFiat,
-            sessionId,
-            action,
-            floorNumber: scope.value.presence.floorNumber,
-          })
-          : null;
         return {
           kind: "completed" as const,
           rewardFiat,
+          payerLabel,
           balance: wallet?.balance ?? null,
           spendable: wallet?.spendable ?? null,
           state: serializeBuildingObject(sessionObject, session.floorNumber, completed, {
             publicWork: isPublic,
             publicSlotsAvailable: true,
+            publicPoolBalanceFiat: Math.max(0, (demand?.rewardPoolBalanceFiat ?? 0) - rewardFiat),
+            privateOrganizationWork,
+            organizationBalanceFiat: Math.max(0, organizationBalanceFiat - rewardFiat),
+            payerLabel,
             nowMs: now.getTime(),
           }),
         };
@@ -842,6 +923,10 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
             state: serializeBuildingObject(object, saved.floorNumber, saved, {
               publicWork: isPublic,
               publicSlotsAvailable: false,
+              publicPoolBalanceFiat: demand?.rewardPoolBalanceFiat ?? 0,
+              privateOrganizationWork,
+              organizationBalanceFiat,
+              payerLabel,
               nowMs: now.getTime(),
             }),
           };
@@ -856,7 +941,7 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
         return { kind: "error" as const, status: 409 as const, error: "This object does not need that work yet" };
       }
 
-      let rewardFiat = 0;
+      const rewardFiat = isPublic || scope.value.orgId != null ? maintenanceTaskReward(score) : 0;
       if (isPublic) {
         const [{ total: activePublicJobs }] = await tx.select({ total: count() })
           .from(desktopBuildingObjectStatesTable)
@@ -867,10 +952,25 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
             lte(desktopBuildingObjectStatesTable.floorNumber, 4),
             inArray(desktopBuildingObjectStatesTable.room, ["lobby", "hallway"]),
           ));
-        if (demand && activePublicJobs >= demand.maxConcurrentJobs) {
-          return { kind: "error" as const, status: 409 as const, error: "Pablo has enough public work in progress right now" };
+        if (!demand || activePublicJobs >= demand.maxConcurrentJobs) {
+          return { kind: "error" as const, status: 409 as const, error: "Mila has enough public work in progress right now" };
         }
-        rewardFiat = publicMaintenanceReward(score);
+      }
+      if (rewardFiat > 0) {
+        const hasFunds = isPublic
+          ? await hasPublicMaintenanceFunds(tx, rewardFiat)
+          : scope.value.orgId != null
+            ? await hasOrganizationMaintenanceFunds(tx, scope.value.orgId, rewardFiat)
+            : false;
+        if (!hasFunds) {
+          return {
+            kind: "error" as const,
+            status: 409 as const,
+            error: isPublic
+              ? "Mila's public maintenance reward pool does not have enough FIAT"
+              : "The organization's receptionist cannot fund this task right now",
+          };
+        }
       }
 
       const workSessionId = randomUUID();
@@ -893,10 +993,15 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
         sessionId: workSessionId,
         progress: 0,
         rewardFiat,
+        payerLabel,
         durationMs,
         state: serializeBuildingObject(object, saved.floorNumber, started, {
           publicWork: isPublic,
           publicSlotsAvailable: false,
+          publicPoolBalanceFiat: demand?.rewardPoolBalanceFiat ?? 0,
+          privateOrganizationWork,
+          organizationBalanceFiat,
+          payerLabel,
           nowMs: now.getTime(),
         }),
       };
@@ -914,9 +1019,25 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
         progress: result.progress,
         durationMs: result.durationMs,
         rewardFiat: result.rewardFiat,
+        payerLabel: result.payerLabel,
         message: result.rewardFiat > 0
-          ? `WORKING / PABLO PAYS ƒ${result.rewardFiat}`
+          ? `WORKING / ${result.payerLabel} PAYS ƒ${result.rewardFiat}`
           : "WORK IN PROGRESS",
+        state: result.state,
+      });
+      return;
+    }
+    if (result.kind === "payment-wait") {
+      res.json({
+        ok: true,
+        working: true,
+        waitingForPayment: true,
+        sessionId: result.sessionId,
+        progress: 1,
+        durationMs: result.durationMs,
+        rewardFiat: result.rewardFiat,
+        payerLabel: result.payerLabel,
+        message: `WORK COMPLETE / WAITING FOR ${result.payerLabel} PAYMENT`,
         state: result.state,
       });
       return;
@@ -927,8 +1048,9 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
       rewardFiat: result.rewardFiat,
       balance: result.balance,
       spendable: result.spendable,
+      payerLabel: result.payerLabel,
       message: result.rewardFiat > 0
-        ? `PABLO CORP PAID ƒ${result.rewardFiat}`
+        ? `${result.payerLabel} PAID ƒ${result.rewardFiat}`
         : action === "clean" ? "Object cleaned" : "Object repaired",
       state: result.state,
     });
