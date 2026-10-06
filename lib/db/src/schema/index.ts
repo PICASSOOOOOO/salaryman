@@ -137,4 +137,5 @@ export * from "./device-links";
 export * from "./legacy-recovery";
 export * from "./desktop-work";
 export * from "./desktop-office-presence";
+export * from "./desktop-building-objects";
 export * from "./business-data";

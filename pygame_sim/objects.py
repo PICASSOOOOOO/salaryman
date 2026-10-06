@@ -31,6 +31,8 @@ ObjectKind = Literal[
     "window",
     "door",
     "desk_lamp",
+    "receptionist",
+    "floor_sign",
 ]
 
 VENDING_ITEMS: dict[str, tuple[str, float]] = {
@@ -105,6 +107,8 @@ class OfficeObject:
             "telephone": (0, 0),
             "crt_terminal": (0, 0),
             "desk_lamp": (0, 0),
+            "receptionist": (0, 0),
+            "floor_sign": (0, 0),
             "pay_phone": (100, 100),
             "tv": (140, 100),
             "arcade": (140, 160),
@@ -239,6 +243,11 @@ class OfficeObjectRegistry:
                 return InteractionResult(False, permission_message)
             state.open_page("tools", from_object=True, source="CRT TERMINAL")
 
+        if item.id == "lobby-reception-desk":
+            message = "RECEPTION / TOWER INFORMATION READY"
+            state.notice = message
+            return InteractionResult(True, message)
+
         messages = {
             "telephone": ("TELEPHONE READY / PHONE CENTER", "phone-center"),
             "pay_phone": ("PAY PHONE READY / PHONE CENTER", "phone-center"),
@@ -262,10 +271,12 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     registry = OfficeObjectRegistry()
     entries = [
         OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "SELECT FLOOR", destination_floor=1),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_979_500, 50_001_500), "STAIRS / CHANGE FLOOR"),
-        OfficeObject("lobby-atm", "atm", "ATM", "lobby", (50_000_900, 50_000_300), "CHECK BANCO OMBRA"),
-        OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_998_500, 50_000_300), "CALL PHONE CENTER"),
-        OfficeObject("lobby-tv", "tv", "TV", "lobby", (49_999_100, 50_000_300), "WATCH SHADOW RADIO"),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_900, 50_001_400), "STAIRS / CHANGE FLOOR"),
+        OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
+        OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
+        OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
+        OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE SUPPLIES"),
+        OfficeObject("lobby-stair-floor-sign", "floor_sign", "FLOOR 01", "lobby", (49_979_100, 50_001_250), "FLOOR NUMBER", interactive=False),
         OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (1_100, 4_100), "RETURN TO LOBBY", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (8_500, 4_100), "CLIMB / CHANGE FLOOR"),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (1_800, 5_100), "ENTER OFFICE 01", destination_room="executive"),
