@@ -1381,8 +1381,8 @@ func _commit_elevator_floor() -> void:
 func _build_elevator_transition_car(origin: Vector3) -> void:
 	elevator_transition_root = Node3D.new()
 	elevator_transition_root.name = "ElevatorCabin"
-	elevator_transition_root.global_position = origin + Vector3(0.0, -0.04, 0.0)
 	dynamic_root.add_child(elevator_transition_root)
+	elevator_transition_root.global_position = origin + Vector3(0.0, -0.04, 0.0)
 	elevator_transition_doors.clear()
 
 	var glass := StandardMaterial3D.new()

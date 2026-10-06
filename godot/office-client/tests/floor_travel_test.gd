@@ -30,7 +30,7 @@ func _run_tests() -> void:
 	assert(OfficeClient.elevator_travel_offset(6, 6) == Vector3.ZERO)
 
 	client.dynamic_root = Node3D.new()
-	client.add_child(client.dynamic_root)
+	root.add_child(client.dynamic_root)
 	client._build_elevator_transition_car(Vector3.ZERO)
 	var cabin: Node3D = client.elevator_transition_root
 	assert(cabin.name == "ElevatorCabin")
@@ -53,5 +53,7 @@ func _run_tests() -> void:
 	trash_can.free()
 
 	print("Godot checks passed: floors 1/6, two-way cabin travel, cabin geometry, and trash-can model.")
+	var dynamic_root: Node3D = client.dynamic_root
 	client.free()
+	dynamic_root.free()
 	quit(0)
