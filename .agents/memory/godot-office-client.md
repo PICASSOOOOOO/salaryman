@@ -30,6 +30,9 @@ a real rendering context under Xvfb with the OpenGL compatibility renderer; the
 Xvfb binary may exist in the Nix store even when xvfb-run is unavailable.
 Match Xvfb's virtual resolution to Godot's configured window size; a smaller
 screen can clip the game window and hide HUD elements from the capture.
+In this workspace, Xvfb is not on PATH, and the installed FFmpeg does not
+provide the x11grab input; check both capabilities before choosing a capture
+command.
 
 **Why:** A Pygame/bridge pass cannot prove responsive Godot movement or an
 enjoyable 3D client, and the dummy headless renderer cannot validate or capture
@@ -40,6 +43,8 @@ and local bridge behavior, then launch it with `godot` or `godot4`. For visual
 captures, start Xvfb and run Godot with `DISPLAY`, `--display-driver x11`,
 `--rendering-method gl_compatibility`, and `--rendering-driver opengl3`; use a
 virtual screen at least as large as the configured game window.
+Locate Xvfb in the Nix store if it is not on PATH, and verify that the selected
+screenshot tool supports X11 capture rather than assuming FFmpeg has x11grab.
 
 The product is an open-world office-simulation MMO. Make player interaction and
 communication easy to discover across shared spaces and office devices; preserve

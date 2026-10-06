@@ -13,6 +13,7 @@ import socket
 from dataclasses import dataclass
 from typing import Any
 
+from .automation import AUTOMATION_CHARACTERS
 from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
 
@@ -38,6 +39,7 @@ COMMANDS = {
     "toggle_recruitment",
     "refresh_recruitment",
     "hire_candidate",
+    "terminal_choice",
     "toggle_drawer",
 }
 
@@ -97,6 +99,10 @@ def validate_command(command: object) -> tuple[bool, str]:
         kind = payload.get("kind", "short")
         if not isinstance(kind, str) or kind not in {"short", "lunch"}:
             return False, "BREAK KIND NOT ALLOWED"
+    elif name == "terminal_choice":
+        choice = payload.get("choice")
+        if not _is_int(choice) or not 1 <= choice <= 9:
+            return False, "TERMINAL CHOICE MUST BE 1-9"
     elif name == "interact":
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
@@ -274,6 +280,32 @@ def apply_command(
     if name == "toggle_drawer":
         state.toggle_drawer()
         return CommandResult(True, state.notice)
+    if name == "terminal_choice":
+        if state.active_page != "systems":
+            return CommandResult(False, "SYSTEMS TERMINAL NOT ACTIVE")
+        choice = payload["choice"]
+        if choice == 9:
+            state.close_page()
+            return CommandResult(True, "SYSTEMS TERMINAL CLOSED")
+        if 1 <= choice <= len(AUTOMATION_CHARACTERS):
+            profile = AUTOMATION_CHARACTERS[choice - 1]
+            scene.selected_automation_domain = profile.domain
+            page = "automation"
+            source = f"{profile.name} / {profile.app_label}"
+        elif choice == 7:
+            page = "economy"
+            source = "SYSTEMS TERMINAL"
+        else:
+            page = "phone"
+            source = "SYSTEMS TERMINAL"
+        if not state.open_page(
+            page,
+            from_object=True,
+            source=source,
+            source_object_id=state.active_object_id,
+        ):
+            return CommandResult(False, "TERMINAL OPTION UNAVAILABLE")
+        return CommandResult(True, f"OPENED {source}")
     if name == "close_page":
         state.close_page()
         return CommandResult(True, "PAGE CLOSED")

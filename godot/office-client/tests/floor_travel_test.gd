@@ -23,6 +23,9 @@ func _run_tests() -> void:
 	assert(OfficeClient.next_camera_zoom_level(1, 1) == 2)
 	assert(OfficeClient.next_camera_zoom_level(0, -1) == 0)
 	assert(OfficeClient.next_camera_zoom_level(2, 1) == 2)
+	assert(OfficeClient.terminal_choice_for_key(KEY_1) == 1)
+	assert(OfficeClient.terminal_choice_for_key(KEY_9) == 9)
+	assert(OfficeClient.terminal_choice_for_key(KEY_ESCAPE) == 0)
 	for zooming_in in [true, false]:
 		var tone: AudioStreamWAV = CameraSfx.make_zoom_tone(zooming_in)
 		assert(tone.mix_rate == 22050)
@@ -37,6 +40,15 @@ func _run_tests() -> void:
 	assert(client._tower_floor_status(0) == "under_construction")
 	for floor_number in [2, 3, 4, 5, 7, 67]:
 		assert(client._tower_floor_status(floor_number) == "under_construction")
+	client.elevator_floor_panel = ColorRect.new()
+	client.elevator_floor_panel.visible = true
+	client.selected_elevator_floor = 1
+	assert(client._handle_elevator_picker_key(KEY_UP))
+	assert(client.selected_elevator_floor == 6)
+	assert(client._handle_elevator_picker_key(KEY_DOWN))
+	assert(client.selected_elevator_floor == 1)
+	client.elevator_floor_panel.free()
+	client.elevator_floor_panel = null
 
 	var up_offset: Vector3 = OfficeClient.elevator_travel_offset(1, 6)
 	var down_offset: Vector3 = OfficeClient.elevator_travel_offset(6, 1)

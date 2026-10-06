@@ -132,20 +132,68 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.scene.player_position, before)
 
     def test_interaction_uses_existing_object_authority(self):
-        self.scene.select_room("executive")
         result = apply_command(
             {
                 "type": "command",
                 "version": PROTOCOL_VERSION,
                 "id": "interact-1",
                 "name": "interact",
-                "payload": {"object_id": "executive-desk"},
+                "payload": {"object_id": "lobby-reception-desk"},
             },
             self.state,
             self.scene,
         )
         self.assertTrue(result.ok)
-        self.assertIn("EXECUTIVE DESK", result.message)
+        self.assertIn("RECEPTION", result.message)
+
+    def test_systems_terminal_numbered_choices_open_only_existing_game_panels(self):
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "terminal-1",
+            "name": "terminal_choice",
+            "payload": {"choice": 1},
+        }
+        valid, reason = validate_command(command)
+        self.assertTrue(valid, reason)
+
+        command["payload"]["choice"] = True
+        self.assertFalse(validate_command(command)[0])
+        command["payload"]["choice"] = 10
+        self.assertFalse(validate_command(command)[0])
+
+        self.state.open_page(
+            "systems",
+            from_object=True,
+            source="SYSTEMS TERMINAL",
+            source_object_id="test-terminal",
+        )
+        command["payload"]["choice"] = 1
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "automation")
+        self.assertEqual(self.scene.selected_automation_domain, "business_ops")
+
+        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
+        command["payload"]["choice"] = 7
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "economy")
+
+        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
+        command["payload"]["choice"] = 8
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "phone")
+
+        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
+        command["payload"]["choice"] = 9
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertIsNone(self.state.active_page)
+
+        result = apply_command(command, self.state, self.scene)
+        self.assertFalse(result.ok)
 
     def test_unknown_or_wrong_version_commands_do_not_mutate_state(self):
         before = self.state.running

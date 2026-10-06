@@ -174,6 +174,7 @@ func _trash_can(brass: Material, dark: Material) -> void:
 	_cylinder("TrashCanOpening", Vector3(0, 0.806, 0), 0.145, 0.008, _finish("#161f1b"))
 	_box("TrashCanHighlight", Vector3(0.0, 0.42, 0.286), Vector3(0.035, 0.40, 0.012), brass)
 	_box("TrashCanPedal", Vector3(0.31, 0.07, 0.02), Vector3(0.16, 0.04, 0.11), brass)
+	_wear_detail(Vector3(0.0, 0.42, 0.295), Vector3(0.12, 0.003, 0.008), brass)
 
 
 func _wear_detail(at: Vector3, size: Vector3, material: Material) -> void:

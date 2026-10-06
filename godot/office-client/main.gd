@@ -2045,12 +2045,12 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_footer.text = "CALLS AND MESSAGES ARE NOT STARTED HERE  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
-			native_app_body.text = "CONNECTED GAME MODULES\n%s\nTEAM  %d  ·  GAME FIAT  ƒ%.2f\n\nJOB COMMAND  ·  ACCOUNTING  ·  CONTACTS\nMARKETING  ·  DARKROOM  ·  INTELLIGENCE REPORTS" % [
+			native_app_body.text = "CONNECTED GAME MODULES\n%s  /  TEAM %d  /  FIAT ƒ%.2f\n1 JOB COMMAND  2 ACCOUNTING  3 CONTACTS\n4 MARKETING  5 DARKROOM  6 INTELLIGENCE\n7 BANK VIEW  8 CALLL HOME / COMMS  9 CLOSE" % [
 				location,
 				workers.size(),
 				float(office.get("funds", 0.0)),
 			]
-			native_app_footer.text = "GAME-NATIVE WORKSPACE  ·  READ-ONLY DATA  ·  ESC CLOSE"
+			native_app_footer.text = "1–8 OPEN MODULES  ·  9 OR ESC CLOSE"
 		"economy":
 			native_app_title.text = "BANCO OMBRA"
 			native_app_body.text = "%s\nGAME FIAT  ƒ%.2f\n\nThis is the Tower game wallet view. No transfer or payout is initiated from this screen." % [
@@ -2082,6 +2082,29 @@ func _active_page_name() -> String:
 	return "" if page_value == null else str(page_value)
 
 
+static func terminal_choice_for_key(keycode: int) -> int:
+	match keycode:
+		KEY_1:
+			return 1
+		KEY_2:
+			return 2
+		KEY_3:
+			return 3
+		KEY_4:
+			return 4
+		KEY_5:
+			return 5
+		KEY_6:
+			return 6
+		KEY_7:
+			return 7
+		KEY_8:
+			return 8
+		KEY_9:
+			return 9
+	return 0
+
+
 func _send_command(name: String, payload: Dictionary = {}) -> String:
 	if connection.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		return ""
@@ -2106,6 +2129,10 @@ func _input(event: InputEvent) -> void:
 		if not _active_page_name().is_empty():
 			if event.keycode == KEY_ESCAPE:
 				_send_command("close_page")
+			elif _active_page_name() == "systems":
+				var choice := terminal_choice_for_key(event.keycode)
+				if choice > 0:
+					_send_command("terminal_choice", {"choice": choice})
 			get_viewport().set_input_as_handled()
 			return
 		if elevator_transition_active:
