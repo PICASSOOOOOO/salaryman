@@ -14,7 +14,15 @@ electrical tools.
 
 **Why:** the user stated that these systems are required for the game.
 
-**How to apply:** Build a complete Tower vertical slice, preserving object and
-character state and validating destructive actions against the owner of each
-space. Use server-authoritative persistence for shared Tower state rather than
-treating the local Godot/Python bridge save as shared world truth.
+The user chose this persistence boundary: lobby and hallway changes are shared
+Tower-wide; each private office's changes are shared only with its organization.
+Development proceeds floor by floor, starting with Floor 1.
+
+**Why:** the user selected both the sharing boundary and real-building,
+floor-by-floor development order.
+
+**How to apply:** Resolve each action's scope from server-validated room
+presence and office ownership. Preserve object and character state; validate
+destructive actions against the owner of each space. Use server-authoritative
+persistence for shared Tower state rather than treating the local
+Godot/Python bridge save as shared world truth.
