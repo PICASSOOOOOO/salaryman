@@ -17,6 +17,7 @@ class PygameCustomizationTests(unittest.TestCase):
         poses = [character_pose(4, tick, moving=True) for tick in range(0, 120)]
 
         self.assertEqual({pose[0] for pose in poses}, {4})
+        self.assertEqual({pose[1] for pose in poses}, {0})
         self.assertGreater(len({pose[1:] for pose in poses}), 1)
         self.assertEqual(character_pose(4, 80, moving=False), (4, 0, 0))
 

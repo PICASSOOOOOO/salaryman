@@ -14,7 +14,7 @@ def character_pose(
     if not moving:
         return variant, 0, 0
 
-    stride = ((0, 0), (1, -1), (0, 0), (-1, 1))
+    stride = ((0, 0), (0, -1), (0, 0), (0, 1))
     phase = (max(0, int(animation_tick)) // 15) % len(stride)
     offset_x, offset_y = stride[phase]
     return variant, offset_x, offset_y

@@ -294,6 +294,21 @@ class PygameSpatialTests(unittest.TestCase):
         pygame.display.flip()
         self.assertEqual(screen.get_size(), (1180, 720))
 
+    def test_player_walk_pose_tracks_actual_movement_not_velocity(self):
+        screen = pygame.display.set_mode((1180, 720))
+        renderer = SolarPunkRenderer(screen)
+        state = OfficeState.with_default_roster()
+        scene = build_tower_scene()
+        scene.velocity = (300.0, 0.0)
+
+        renderer.draw_tower(state, scene)
+        renderer.draw_tower(state, scene)
+        self.assertEqual(renderer._anim_tick, 0)
+
+        scene.player_position = (scene.player_position[0] + 1, scene.player_position[1])
+        renderer.draw_tower(state, scene)
+        self.assertEqual(renderer._anim_tick, 1)
+
     def test_character_frames_use_full_sprite_cells(self):
         screen = pygame.display.set_mode((1180, 720))
         renderer = SolarPunkRenderer(screen)

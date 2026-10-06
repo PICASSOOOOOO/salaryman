@@ -9,6 +9,12 @@ Keep the desktop game orthogonal/top-down, preserve one grounded scale for actor
 
 **How to apply:** Keep the game bright and solar-punk at the start, preserve camera and actor-grounding rules, and open the specialized notes below for the affected subsystem.
 
+For player movement, keep the sprite horizontally anchored and advance its pose only when the world position changes; velocity alone can animate a character that is blocked, and sideways sprite shifts can look like streaking. Keep labels and shadows anchored to the actor.
+
+**Why:** The player should not appear to slide or leave a visual trail while stopped against a collision boundary.
+
+**How to apply:** Use actual per-frame position changes to drive Pygame walk poses, and prefer subtle vertical movement until real walk-cycle frames exist.
+
 - [Spatial-object authority](pygame-spatial-objects.md) — registry and room-state boundary.
 - [Office camera](desktop-office-camera.md) — straight top-down orthogonal framing.
 - [Character grounding](pygame-character-grounding.md) — actor scale, baseline, and clipping.

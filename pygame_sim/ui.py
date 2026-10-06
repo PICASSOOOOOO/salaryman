@@ -87,6 +87,7 @@ class SolarPunkRenderer:
         self.candidate_rects: dict[int, pygame.Rect] = {}
         self._pixel_assets: dict[str, pygame.Surface] = {}
         self._last_actor_positions: dict[str, tuple[int, int]] = {}
+        self._last_player_room: str | None = None
         self.pablo_status = "PABLO CORE / OFFLINE"
         self.pablo_status_color = Palette.MATRIX_DIM
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
@@ -288,11 +289,16 @@ class SolarPunkRenderer:
         if scene.velocity != (0.0, 0.0):
             vx, vy = scene.velocity
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
+        player_position = scene.player_position
+        player_moving = self._actor_is_moving("player", player_position)
+        player_moving = player_moving and self._last_player_room == scene.current_room
+        self._last_player_room = scene.current_room
+        if player_moving:
             self._anim_tick += 1
         self._draw_player(
-            *point(scene.player_position),
+            *point(player_position),
             scale=scale,
-            moving=scene.velocity != (0.0, 0.0),
+            moving=player_moving,
             action=scene.player_action,
             action_elapsed=scene.player_action_elapsed,
         )
@@ -433,7 +439,7 @@ class SolarPunkRenderer:
                     y + 7 - bounds.bottom + offset_y,
                 ),
             )
-            label_y = y + 7 - bounds.bottom - 15 + offset_y
+            label_y = y + 7 - bounds.bottom - 15
         else:
             label_y = y - 52
         pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
