@@ -43,6 +43,7 @@ var world_root: Node3D
 var dynamic_root: Node3D
 var player_root: Node3D
 var camera: Camera3D
+var interface_root: Control
 var status_label: Label
 var room_label: Label
 var mission_label: Label
@@ -317,11 +318,17 @@ func _build_interface() -> void:
 	canvas.name = "HUD"
 	add_child(canvas)
 
+	interface_root = Control.new()
+	interface_root.name = "DesignResolutionHUD"
+	interface_root.size = Vector2(1180.0, 720.0)
+	interface_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(interface_root)
+
 	var top_bar := ColorRect.new()
 	top_bar.color = Color("#07151aee")
 	top_bar.position = Vector2(18, 18)
 	top_bar.size = Vector2(1144, 78)
-	canvas.add_child(top_bar)
+	interface_root.add_child(top_bar)
 
 	var title := Label.new()
 	title.text = "SALARYMAN  /  SHADOW TOWER"
@@ -348,13 +355,29 @@ func _build_interface() -> void:
 	mission_label.position = Vector2(30, 650)
 	mission_label.add_theme_font_size_override("font_size", 14)
 	mission_label.add_theme_color_override("font_color", Color("#fff0ae"))
-	canvas.add_child(mission_label)
+	interface_root.add_child(mission_label)
 
 	notice_label = Label.new()
 	notice_label.position = Vector2(30, 678)
 	notice_label.add_theme_font_size_override("font_size", 12)
 	notice_label.add_theme_color_override("font_color", Color("#a8c8b6"))
-	canvas.add_child(notice_label)
+	interface_root.add_child(notice_label)
+
+	get_viewport().size_changed.connect(_update_interface_scale)
+	_update_interface_scale()
+
+
+func _update_interface_scale() -> void:
+	if interface_root == null:
+		return
+	var viewport_size := get_viewport().get_visible_rect().size
+	var scale_factor := minf(viewport_size.x / 1180.0, viewport_size.y / 720.0)
+	if scale_factor <= 0.0:
+		return
+	var scaled_size := Vector2(1180.0, 720.0) * scale_factor
+	interface_root.scale = Vector2.ONE * scale_factor
+	interface_root.position = (viewport_size - scaled_size) / 2.0
+
 
 func _connect_to_pygame() -> void:
 	var error := connection.connect_to_host(HOST, PORT)
