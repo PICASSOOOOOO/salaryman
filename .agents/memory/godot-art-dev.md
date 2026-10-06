@@ -35,3 +35,16 @@ errors.
 **How to apply:** Validate the bundle's required source assets in the desktop
 build script, run `godot --headless --editor --quit` once in a clean copy, then
 run the headless runtime smoke test.
+
+## Pygame coordinate fidelity in visual previews
+
+Pygame snapshots may use a large absolute origin in the lobby and room-local
+coordinates elsewhere. Godot may rebase that origin for rendering only; never
+rewrite snapshot or command coordinates. Visual fixtures should use actual
+Pygame coordinates and cover both the large-origin lobby and a local room.
+
+**Why:** A hand-authored small position can make a Godot screenshot look correct
+while concealing a mismatch with the live lobby spawn.
+
+**How to apply:** Build review frames from a Pygame snapshot (or an exact fixture
+from its contract), and test lobby and local-room placement before delivery.

@@ -10,6 +10,8 @@ const PROTOCOL_VERSION := 1
 const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
+const WORLD_ORIGIN_REBASE_THRESHOLD := 1_000_000.0
+const LOBBY_RENDER_ANCHOR_PX := Vector2i(2250, 2200)
 const FLOOR_HEIGHT := 0.08
 const WALL_HEIGHT := 1.65
 const CAMERA_DISTANCE_MIN := 8.0
@@ -17,6 +19,11 @@ const CAMERA_DISTANCE_MAX := 22.0
 const CAMERA_ORTHO_SIZE_MIN := 9.0
 const CAMERA_ORTHO_SIZE_MAX := 18.0
 const CAMERA_ORTHO_SIZE_BASE := 13.0
+const CAMERA_FOLLOW_RESPONSE := 5.0
+const CAMERA_ZOOM_RESPONSE := 6.0
+const CAMERA_LOOK_AHEAD_SECONDS := 0.18
+const CAMERA_LOOK_AHEAD_MAX_SPEED := 3.2
+const PLAYER_RENDER_HEIGHT := 1.55
 # Room floors are 0.16 units above the world origin (0.08 center + 0.08
 # half-height). Keep the player root on that same surface; the imported
 # character's feet are authored at its local origin.
@@ -30,9 +37,10 @@ var command_sequence := 0
 var visual_player_world := Vector3(0.0, PLAYER_GROUND_Y, 0.0)
 var visual_player_ready := false
 var target_player_world := Vector3.ZERO
+var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
 var player_pose_blend := 0.0
-var camera_distance := 14.0
+var camera_distance := 12.0
 var last_room_id := ""
 var last_sequence := -1
 var lobby_light: OmniLight3D
@@ -43,7 +51,10 @@ var world_root: Node3D
 var dynamic_root: Node3D
 var player_root: Node3D
 var camera: Camera3D
+var camera_has_tracking_target := false
 var interface_root: Control
+var warm_lamp_light: OmniLight3D
+var lobby_render_origin_px := Vector2i.ZERO
 var status_label: Label
 var room_label: Label
 var mission_label: Label
@@ -68,7 +79,10 @@ func _ready() -> void:
 func _build_materials() -> void:
 	materials["floor"] = _material(Color("#d4b98b"), 0.92)
 	materials["hall_floor"] = _material(Color("#7998a8"), 0.84)
-	materials["lobby_floor"] = _material(Color("#3b9990"), 0.72)
+	materials["lobby_floor"] = _material(Color("#3d655a"), 0.78)
+	materials["lobby_rug"] = _material(Color("#55433c"), 0.96)
+	materials["lobby_rug_field"] = _material(Color("#705949"), 0.96)
+	materials["lobby_rug_trim"] = _material(Color("#a6814d"), 0.86)
 	materials["office_1"] = _material(Color("#8f6e8f"), 0.82)
 	materials["office_2"] = _material(Color("#3e8790"), 0.82)
 	materials["office_3"] = _material(Color("#60759e"), 0.82)
@@ -111,7 +125,7 @@ func _build_lighting() -> void:
 	environment_data.background_color = Color("#08191e")
 	environment_data.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment_data.ambient_light_color = Color("#b9d4ce")
-	environment_data.ambient_light_energy = 0.72
+	environment_data.ambient_light_energy = 0.42
 	environment_data.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.environment = environment_data
 	add_child(environment)
@@ -119,7 +133,7 @@ func _build_lighting() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52.0, -32.0, 0.0)
 	sun.light_color = Color("#ffe4b0")
-	sun.light_energy = 1.25
+	sun.light_energy = 0.78
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
@@ -127,7 +141,7 @@ func _build_lighting() -> void:
 	lobby_light = OmniLight3D.new()
 	lobby_light.position = Vector3(10.0, 4.5, 15.0)
 	lobby_light.light_color = Color("#7ee0c5")
-	lobby_light.light_energy = 2.2
+	lobby_light.light_energy = 1.45
 	lobby_light.omni_range = 13.0
 	lobby_light.shadow_enabled = true
 	add_child(lobby_light)
@@ -135,10 +149,19 @@ func _build_lighting() -> void:
 	rim_light = OmniLight3D.new()
 	rim_light.position = Vector3(-7.0, 5.5, -5.0)
 	rim_light.light_color = Color("#68b8ff")
-	rim_light.light_energy = 1.35
+	rim_light.light_energy = 0.8
 	rim_light.omni_range = 19.0
 	rim_light.shadow_enabled = true
 	add_child(rim_light)
+
+	warm_lamp_light = OmniLight3D.new()
+	warm_lamp_light.name = "LobbyLampGlow"
+	warm_lamp_light.position = Vector3(27.0, 2.25, 18.5)
+	warm_lamp_light.light_color = Color("#ffd095")
+	warm_lamp_light.light_energy = 0.95
+	warm_lamp_light.omni_range = 5.5
+	warm_lamp_light.shadow_enabled = false
+	add_child(warm_lamp_light)
 
 
 func _build_building_shell() -> void:
@@ -151,6 +174,11 @@ func _build_building_shell() -> void:
 	world_root.add_child(dynamic_root)
 
 	var floor_plan := _load_floor_plan()
+	var base_layout: Dictionary = floor_plan.get("baseLayout", {})
+	var elevator_lobby: Dictionary = base_layout.get("elevatorLobby", {})
+	var lobby_spawn: Array = elevator_lobby.get("spawn", [])
+	if lobby_spawn.size() >= 2:
+		lobby_render_origin_px = Vector2i(int(lobby_spawn[0]), int(lobby_spawn[1])) - LOBBY_RENDER_ANCHOR_PX
 	var room_specs: Array = []
 	for room_data in floor_plan["rooms"]:
 		var bounds: Array = room_data["bounds"]
@@ -182,14 +210,19 @@ func _load_floor_plan() -> Dictionary:
 func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var rect: Rect2 = spec["rect"]
 	var room_id: String = spec["id"]
-	var center := Vector3((rect.position.x + rect.size.x / 2.0) * WORLD_SCALE, FLOOR_HEIGHT, (rect.position.y + rect.size.y / 2.0) * WORLD_SCALE)
-	var size := Vector3(rect.size.x * WORLD_SCALE, 0.16, rect.size.y * WORLD_SCALE)
+	var rect_size_px := Vector2i(roundi(rect.size.x), roundi(rect.size.y))
+	var render_position_px := Vector2i(roundi(rect.position.x), roundi(rect.position.y))
+	if room_id == "lobby":
+		render_position_px -= lobby_render_origin_px
+	var center_px := render_position_px + rect_size_px / 2
+	var center := Vector3(float(center_px.x) * WORLD_SCALE, FLOOR_HEIGHT, float(center_px.y) * WORLD_SCALE)
+	var size := Vector3(float(rect_size_px.x) * WORLD_SCALE, 0.16, float(rect_size_px.y) * WORLD_SCALE)
 	_add_box("%sFloor" % room_id, center, size, materials[spec["material"]])
 
-	var left := rect.position.x * WORLD_SCALE
-	var right := rect.end.x * WORLD_SCALE
-	var top := rect.position.y * WORLD_SCALE
-	var bottom := rect.end.y * WORLD_SCALE
+	var left := float(render_position_px.x) * WORLD_SCALE
+	var right := float(render_position_px.x + rect_size_px.x) * WORLD_SCALE
+	var top := float(render_position_px.y) * WORLD_SCALE
+	var bottom := float(render_position_px.y + rect_size_px.y) * WORLD_SCALE
 	var wall_thickness := 0.26
 	_add_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, rect.size.y * WORLD_SCALE), materials["wall"])
 	_add_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, rect.size.y * WORLD_SCALE), materials["wall"])
@@ -233,8 +266,21 @@ func _build_static_furniture() -> void:
 	shadow_tower_textures["vending"] = _load_shadow_tower_texture("vending")
 	shadow_tower_textures["desk-terminal"] = _load_shadow_tower_texture("desk-terminal")
 
+	_add_lobby_rug()
 	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5), 1.25)
 	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5), 1.1)
+
+
+func _add_lobby_rug() -> void:
+	# Renderer-only lounge detail. Pygame still owns all collisions and objects.
+	_add_box("LobbyRug", Vector3(22.5, 0.164, 22.0), Vector3(12.0, 0.008, 10.0), materials["lobby_rug"])
+	_add_box("LobbyRugInset", Vector3(22.5, 0.169, 22.0), Vector3(11.65, 0.003, 9.65), materials["lobby_rug_field"])
+	var trim_y := 0.171
+	var trim_height := 0.003
+	_add_box("LobbyRugTrimNorth", Vector3(22.5, trim_y, 17.18), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimSouth", Vector3(22.5, trim_y, 26.82), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimWest", Vector3(16.68, trim_y, 22.0), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimEast", Vector3(28.32, trim_y, 22.0), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
 
 
 func _load_shadow_tower_texture(asset_name: String) -> Texture2D:
@@ -273,7 +319,6 @@ func _load_player() -> void:
 	if player_scene:
 		player_root = player_scene.instantiate()
 		player_root.name = "AuthoritativePlayer"
-		player_root.scale = Vector3.ONE * 1.15
 		world_root.add_child(player_root)
 	else:
 		player_root = Node3D.new()
@@ -287,7 +332,33 @@ func _load_player() -> void:
 		fallback_instance.mesh = fallback_mesh
 		fallback_instance.position = Vector3(0.0, 0.75, 0.0)
 		player_root.add_child(fallback_instance)
+	_fit_player_render_height()
 	_set_player_animation("idle")
+
+
+func _fit_player_render_height() -> void:
+	if player_root == null:
+		return
+	var minimum_y := INF
+	var maximum_y := -INF
+	var root_inverse := player_root.global_transform.affine_inverse()
+	var mesh_count := 0
+	for candidate in player_root.find_children("*", "MeshInstance3D", true, false):
+		var mesh_node := candidate as MeshInstance3D
+		if mesh_node == null or mesh_node.mesh == null:
+			continue
+		mesh_count += 1
+		var bounds := mesh_node.get_aabb()
+		var relative_transform := root_inverse * mesh_node.global_transform
+		for x in [bounds.position.x, bounds.end.x]:
+			for y in [bounds.position.y, bounds.end.y]:
+				for z in [bounds.position.z, bounds.end.z]:
+					var point := relative_transform * Vector3(x, y, z)
+					minimum_y = minf(minimum_y, point.y)
+					maximum_y = maxf(maximum_y, point.y)
+	var source_height := maximum_y - minimum_y
+	if mesh_count > 0 and source_height > 0.0:
+		player_root.scale *= PLAYER_RENDER_HEIGHT / source_height
 
 
 func _set_player_animation(animation_name: String) -> void:
@@ -329,6 +400,14 @@ func _build_interface() -> void:
 	top_bar.position = Vector2(18, 18)
 	top_bar.size = Vector2(1144, 78)
 	interface_root.add_child(top_bar)
+
+	var mission_plate := ColorRect.new()
+	mission_plate.name = "MissionStatusPlate"
+	mission_plate.color = Color("#07151ae0")
+	mission_plate.position = Vector2(18, 638)
+	mission_plate.size = Vector2(585, 64)
+	mission_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	interface_root.add_child(mission_plate)
 
 	var title := Label.new()
 	title.text = "SALARYMAN  /  SHADOW TOWER"
@@ -454,13 +533,23 @@ func _apply_snapshot(message: Dictionary) -> void:
 
 
 func _pygame_to_world(x: float, y: float) -> Vector3:
-	return Vector3(x * WORLD_SCALE, PLAYER_GROUND_Y, y * WORLD_SCALE)
+	var render_position_px := Vector2i(roundi(x), roundi(y))
+	if maxf(absf(x), absf(y)) >= WORLD_ORIGIN_REBASE_THRESHOLD:
+		# The lobby uses large Pygame world coordinates. Rebase only the view;
+		# snapshots and all commands remain in Pygame's authoritative space.
+		render_position_px -= lobby_render_origin_px
+	return Vector3(float(render_position_px.x) * WORLD_SCALE, PLAYER_GROUND_Y, float(render_position_px.y) * WORLD_SCALE)
 
 
 func _smooth_visual_player(delta: float) -> void:
 	if not visual_player_ready:
 		return
+	var previous_position := visual_player_world
 	visual_player_world = visual_player_world.lerp(target_player_world, min(1.0, delta * 14.0))
+	if delta > 0.0:
+		var measured_velocity := (visual_player_world - previous_position) / delta
+		var velocity_blend := 1.0 - exp(-delta * 8.0)
+		visual_player_velocity = visual_player_velocity.lerp(measured_velocity, velocity_blend)
 	if player_root:
 		# Pygame owns the authoritative position. This renderer-only layer adds a
 		# small sit-down settle and quiet breathing without changing gameplay state.
@@ -604,17 +693,29 @@ func _update_camera(delta: float) -> void:
 		camera.far = 120.0
 		add_child(camera)
 		camera.current = true
-	var desired_target := visual_player_world + Vector3(0.0, 0.2, 0.0)
-	camera_target = camera_target.lerp(desired_target, min(1.0, delta * 5.0))
-	var offset := Vector3(camera_distance * 0.78, camera_distance * 0.82, camera_distance * 0.78)
-	var desired_position := camera_target + offset
-	camera.position = camera.position.lerp(desired_position, min(1.0, delta * 5.0))
+	var horizontal_velocity := Vector3(visual_player_velocity.x, 0.0, visual_player_velocity.z)
+	var look_ahead := horizontal_velocity.limit_length(CAMERA_LOOK_AHEAD_MAX_SPEED) * CAMERA_LOOK_AHEAD_SECONDS
+	var desired_target := visual_player_world + Vector3(0.0, 0.2, 0.0) + look_ahead
+	var offset := Vector3(camera_distance * 0.72, camera_distance * 1.02, camera_distance * 0.72)
+	var desired_position := desired_target + offset
+	if visual_player_ready and not camera_has_tracking_target:
+		camera_target = desired_target
+		camera.position = desired_position
+		camera_has_tracking_target = true
+	elif camera_has_tracking_target:
+		var follow_blend := 1.0 - exp(-CAMERA_FOLLOW_RESPONSE * delta)
+		camera_target = camera_target.lerp(desired_target, follow_blend)
+		camera.position = camera.position.lerp(desired_target + offset, follow_blend)
+	else:
+		camera_target = desired_target
+		camera.position = desired_position
 	var desired_size: float = clampf(
 		CAMERA_ORTHO_SIZE_BASE + (camera_distance - 14.0) * 0.55,
 		CAMERA_ORTHO_SIZE_MIN,
 		CAMERA_ORTHO_SIZE_MAX,
 	)
-	camera.size = lerp(camera.size, desired_size, min(1.0, delta * 6.0))
+	var zoom_blend := 1.0 - exp(-CAMERA_ZOOM_RESPONSE * delta)
+	camera.size = lerpf(camera.size, desired_size, zoom_blend)
 	camera.look_at(camera_target, Vector3.UP)
 
 
@@ -622,9 +723,9 @@ func _update_art_motion(delta: float) -> void:
 	# These accents are renderer-only. Pygame remains the authority for all
 	# positions and interactions; this layer adds a tactile 2.5D presentation.
 	if lobby_light:
-		lobby_light.light_energy = 2.15 + sin(animation_clock * 1.7) * 0.12
+		lobby_light.light_energy = 1.42 + sin(animation_clock * 1.7) * 0.06
 	if rim_light:
-		rim_light.light_energy = 1.3 + sin(animation_clock * 1.1 + 0.8) * 0.1
+		rim_light.light_energy = 0.77 + sin(animation_clock * 1.1 + 0.8) * 0.05
 	for index in range(interaction_rings.size()):
 		var ring := interaction_rings[index]
 		if not is_instance_valid(ring):

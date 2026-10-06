@@ -1635,3 +1635,17 @@ mtime_ms = 1791273953816
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ec4c9db9-adf3-46be-aacf-a19b529c8d12/57182028-1b32-4f6d-b5eb-72ac2c8c98c8"
 storage_version_token = "1791274516122654"
 content_type = "image/png"
+
+[[outputs]]
+id = "va17lYtFB0sc-O98cgJkZ"
+uri = "file://screenshots/godot-office-1080p-visual-pass.png"
+type = "image"
+title = "Godot office — 1080p visual review"
+description = "1920×1080 Godot render using the authoritative lobby spawn coordinates. Static review frame; no live Pygame session."
+logical_id = "8750be26-50fe-4215-b617-460a690cf8d2"
+content_hash = "sha256:915565dd5e7552646c1e29ad5d781d32399a542b2a86fc2f76aa32184c121c19"
+size = 310891
+mtime_ms = 1791280300738
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8750be26-50fe-4215-b617-460a690cf8d2/2311959c-60bc-4a8c-8fdb-fa952a571968"
+storage_version_token = "1791280406433073"
+content_type = "image/png"
