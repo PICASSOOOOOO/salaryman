@@ -14,3 +14,15 @@ Reuse the established onboarding, receptionist, elevator, office-discovery, stor
 **Why:** Previous work expanded breadth before one place had enough depth, leaving disconnected systems and placeholder presentation. The owner wants this building to be a polished vertical slice that proves the complete game loop and is enjoyable for workers to explore.
 
 **How to apply:** Reject city expansion until this single building has an end-to-end new-user intro, Godot-driven playable movement/actions, persistent objects/economy, NPC life, authoritative API connections, story progression, and production-quality solar-punk art.
+
+Keep work on this first building until its complete loop is polished before
+starting another building or geographic expansion. Building ownership should
+support organization-hired NPC or human workers whose physical construction,
+repair, electrical, concrete, plumbing, decay remediation, renovation, and
+customization work takes time and is animated live. Hiring, firing, permissions,
+and the work itself should generate coherent stories and reusable in-game
+income loops.
+
+**Why:** the user confirmed that one-building-first is the product strategy and
+that physical building work, organization hiring, time, animation, and stories
+are core economic activities.
