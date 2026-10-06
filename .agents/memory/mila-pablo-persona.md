@@ -22,3 +22,16 @@ without deleting stored records; compatibility code may remain hidden.
 
 Pablo's approved orb and signature voice remain visually and aurally stable unless
 the user explicitly asks to redesign them.
+
+## One assistant backend across browser and game
+
+The browser-side persona is the one canonical assistant backend. Its in-game
+character is a visual representation of that same assistant, not a separate
+game-only agent. Keep its identity and automation singular across browser and
+game surfaces; the presentation may change by surface.
+
+**Why:** the user said the browser persona backend must connect to its visual
+representation in-game and remain singular, not limited to the game.
+
+**How to apply:** route browser and game interactions through the same persona
+backend and bridge. Do not create a duplicate assistant brain for the game.

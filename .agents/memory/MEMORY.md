@@ -34,7 +34,7 @@
 - [Pablo voice output gating](pablo-voice-output-gating.md) — text stays free; Pablo TTS needs an active paid product or approved tester, and iOS unlock must match its actual playback path.
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — /pablo: voice needs an explicit labeled "Tap to talk" button (orb-tap is invisible); bottom controls share a safe lane — keep reply/idle bubbles well above the talk button + give it higher z, or they overlap/intercept taps.
 - [Tester program](tester-program.md) — 20-slot cap (owners exempt), advisory-lock atomic approval, 3-day inactivity sweep (max(lastActive,decidedAt)), GENTLE dismissible Discord banner (not hard-gated), auto-mod on approve; Discord login breaks only on missing DISCORD_* env.
-- [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — Pixel Agents are consolidated into Pablo; Mila is a game character, not a phone-system assistant; the downloadable game currently does not work.
+- [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser and game use one canonical assistant backend; keep its in-game character a visual representation, not a duplicate agent.
 - [Per-user Google Calendar](google-calendar-user-oauth.md) — each user links their own Google account in-app; never use the owner’s Replit Google connection for customer calendars.
 - [Pablo emotion nebula orb](pablo-nebula-orb.md) — screenshot browser forces 2D fallback (reduce-motion) so /pablo screenshots NEVER show the WebGL orb; cap fallback core in px not %; additive overlap blows out to white; variant system for Mila reuse.
 - [Org door locks](org-door-locks.md) — server-authoritative passcode/role gating; client holds hint only (no passcodes). door_lock object routes HQ→WS, personal home→HOME_PASSWORDS, else org-member→org-manage. Vans/tents enforced via tryEnter gate but not yet manageable in-world.
@@ -126,7 +126,7 @@
 - [Godot and Unreal art development](godot-art-dev.md) — Godot supports world-building contributions from external developers; preserve the shared art pipeline and in-game paid gates.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
-- [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
+- [NPC economic agents](npc-economic-agents.md) — NPCs need food, income, wealth, routes, breaks, and uneven work quality; keep public maintenance staffing small.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
