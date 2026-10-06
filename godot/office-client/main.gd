@@ -8,6 +8,7 @@ extends Node3D
 const PROTOCOL_VERSION := 1
 const PlayerController = preload("res://player_controller.gd")
 const OfficeProp = preload("res://office_prop.gd")
+const ServiceProp = preload("res://office_service_prop.gd")
 const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
@@ -301,7 +302,6 @@ func _add_horizontal_wall_segments(node_prefix: String, left: float, right: floa
 
 func _build_static_furniture() -> void:
 	imported_scenes["table"] = load("res://agentshire-assets/furniture/table_medium.gltf")
-	imported_scenes["chair"] = load("res://agentshire-assets/furniture/chair_A.gltf")
 	imported_scenes["couch"] = load("res://agentshire-assets/furniture/couch.gltf")
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
 	imported_scenes["character"] = load("res://agentshire-assets/characters/character-male-a.glb")
@@ -882,20 +882,19 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 		prop.position = position
 		dynamic_root.add_child(prop)
 		return prop
+	if kind in ServiceProp.SERVICE_KINDS:
+		var prop := ServiceProp.create_service(kind)
+		prop.name = object_id
+		prop.position = position
+		dynamic_root.add_child(prop)
+		return prop
 	if kind == "receptionist":
 		return _build_receptionist(position, object_id)
 	if kind == "floor_sign":
 		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
-	if kind == "atm":
-		return _build_atm(position, object_id)
-	if kind == "vending_machine":
-		return _build_vending_machine(position, object_id)
-	var packed_name := ""
-	if kind == "chair":
-		packed_name = "chair"
-	elif kind == "window":
+	if kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
 	elif kind == "door":
@@ -906,14 +905,6 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 		return _build_staircase(position, object_id)
 	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
-	if packed_name != "":
-		var packed: PackedScene = imported_scenes.get(packed_name)
-		if packed:
-			var instance := packed.instantiate()
-			instance.position = position
-			instance.scale = Vector3.ONE * 0.7
-			dynamic_root.add_child(instance)
-			return instance
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
 
 
@@ -1171,41 +1162,6 @@ func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
 			materials["wall_trim"],
 		)
 	return first_step
-
-
-func _build_atm(position: Vector3, object_id: String) -> MeshInstance3D:
-	var body := _add_box_to_dynamic(
-		object_id,
-		position + Vector3(0.0, 0.62, 0.0),
-		Vector3(0.72, 1.24, 0.56),
-		materials["metal"],
-	)
-	_add_box_to_dynamic(object_id + "-screen", position + Vector3(0.0, 1.02, 0.292), Vector3(0.42, 0.28, 0.035), materials["glass"])
-	_add_box_to_dynamic(object_id + "-keypad", position + Vector3(0.19, 0.70, 0.30), Vector3(0.20, 0.17, 0.035), materials["wall_trim"])
-	_add_box_to_dynamic(object_id + "-slot", position + Vector3(-0.12, 0.43, 0.30), Vector3(0.25, 0.045, 0.035), materials["lamp_glow"])
-	return body
-
-
-func _build_vending_machine(position: Vector3, object_id: String) -> MeshInstance3D:
-	var body := _add_box_to_dynamic(
-		object_id,
-		position + Vector3(0.0, 0.94, 0.0),
-		Vector3(0.92, 1.88, 0.62),
-		materials["metal"],
-	)
-	_add_box_to_dynamic(object_id + "-glass", position + Vector3(-0.14, 1.08, 0.322), Vector3(0.55, 1.28, 0.035), materials["glass"])
-	for row in range(3):
-		for column in range(3):
-			var x := -0.34 + float(column) * 0.18
-			var y := 1.48 - float(row) * 0.34
-			_add_box_to_dynamic(
-				"%s-item-%d-%d" % [object_id, row, column],
-				position + Vector3(x, y, 0.35),
-				Vector3(0.10, 0.18, 0.08),
-				materials["lamp_glow"] if (row + column) % 2 == 0 else materials["wall_trim"],
-			)
-	_add_box_to_dynamic(object_id + "-controls", position + Vector3(0.34, 1.10, 0.322), Vector3(0.12, 0.55, 0.04), materials["wall_trim"])
-	return body
 
 
 func _build_crt_terminal(position: Vector3, object_id: String) -> MeshInstance3D:

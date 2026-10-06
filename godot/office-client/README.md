@@ -59,7 +59,9 @@ The existing Pygame dashboard continues to work if Godot is closed. Use
 ## Native office prop review
 
 `office_prop.gd` authors the desk, reception counter, rotary telephone, pedestal
-phone, and task lamp directly in Godot. Parts have local pivots for later action
+phone, and task lamp directly in Godot. `office_service_prop.gd` extends the same
+material and surface-state family to the chair, ATM, and vending machine.
+Parts have local pivots for later action
 animations. Surface wear reflects the Python snapshot's condition/cleanliness;
 the renderer does not advance decay or change interaction outcomes.
 

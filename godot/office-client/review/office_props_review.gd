@@ -2,6 +2,7 @@ extends SceneTree
 ## Actual Godot render of native models; this is an asset review, not gameplay footage.
 
 const Prop = preload("res://office_prop.gd")
+const Service = preload("res://office_service_prop.gd")
 
 
 func _initialize() -> void:
@@ -26,7 +27,7 @@ func _box(parent: Node3D, at: Vector3, size: Vector3, color: String) -> void:
 
 
 func _place(parent: Node3D, kind: String, at: Vector3, reception := false) -> Node3D:
-	var prop := Prop.create(kind, reception)
+	var prop := Service.create_service(kind) if kind in Service.SERVICE_KINDS else Prop.create(kind, reception)
 	prop.position = at
 	parent.add_child(prop)
 	return prop
@@ -60,19 +61,17 @@ func _render() -> void:
 	_place(world, "desk", Vector3(-1.0, 0, 1.4))
 	_place(world, "telephone", Vector3(-1.75, 0, 1.08))
 	_place(world, "desk_lamp", Vector3(-0.05, 0, 1.10))
-	_place(world, "pay_phone", Vector3(3.5, 0, -1.0))
+	_place(world, "atm", Vector3(1.30, 0, -2.80))
+	_place(world, "vending_machine", Vector3(2.65, 0, -2.80))
+	_place(world, "pay_phone", Vector3(4.0, 0, -2.30))
 	var worn_desk := _place(world, "desk", Vector3(2.85, 0, 2.6))
 	worn_desk.set_surface_state(45, 55)
 	var worn_phone := _place(world, "telephone", Vector3(2.15, 0, 2.30))
 	worn_phone.set_surface_state(45, 55)
 	_place(world, "desk_lamp", Vector3(3.75, 0, 2.30))
-	var chair_scene := load("res://agentshire-assets/furniture/chair_A.gltf") as PackedScene
-	if chair_scene != null:
-		var chair := chair_scene.instantiate() as Node3D
-		chair.position = Vector3(-1.0, 0, 2.8)
-		chair.rotation.y = PI
-		chair.scale = Vector3.ONE * 0.7
-		world.add_child(chair)
+	_place(world, "chair", Vector3(-1.0, 0, 2.65))
+	var worn_chair := _place(world, "chair", Vector3(2.85, 0, 3.85))
+	worn_chair.set_surface_state(45, 55)
 
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -90,7 +89,7 @@ func _render() -> void:
 	title.add_theme_color_override("font_color", Color("#f0e3c7"))
 	canvas.add_child(title)
 	var caption := Label.new()
-	caption.text = "RECEPTION COUNTER  ·  WALNUT DESK  ·  ROTARY PHONE  ·  TASK LAMP\nRight-hand workstation shows existing wear data. Review scene only; not a released build."
+	caption.text = "WALNUT + BRASS  ·  GREEN ENAMEL  ·  UPHOLSTERED CHAIR  ·  ATM  ·  VENDING\nRight-hand workstation shows existing wear data. Review scene only; not a released build."
 	caption.position = Vector2(38, 910)
 	caption.add_theme_font_size_override("font_size", 18)
 	caption.add_theme_color_override("font_color", Color("#f0e3c7"))

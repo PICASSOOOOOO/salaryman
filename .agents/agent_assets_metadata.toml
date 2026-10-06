@@ -1705,3 +1705,17 @@ mtime_ms = 1791302442902
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6f9c050f-1f4e-47f1-a6b3-8907e158dfcf/bdf284c9-3ce9-4b8b-be99-1ccc48dd3446"
 storage_version_token = "1791302537220387"
 content_type = "image/png"
+
+[[outputs]]
+id = "zwg9RpS60ixIQltEdo_VQ"
+uri = "file://screenshots/salaryman-native-office-services.png"
+type = "image"
+title = "SALARYMAN OS — matching office and service props"
+description = "Actual Godot render with the approved wood, brass, and green-enamel finishes extended to upholstered chairs, the ATM, and vending machine. Integrated native models; review scene only, not a published desktop build."
+logical_id = "28e28a8f-319d-464f-b3b8-6da79d496969"
+content_hash = "sha256:6a035b969dc95c097c4776b255212b30a06726115b746e5eb9e7fd41f398aaca"
+size = 164310
+mtime_ms = 1791303348453
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/28e28a8f-319d-464f-b3b8-6da79d496969/49593e5e-d0c9-4839-b561-810c3f1c34fb"
+storage_version_token = "1791303364687643"
+content_type = "image/png"
