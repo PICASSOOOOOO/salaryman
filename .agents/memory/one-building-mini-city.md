@@ -26,3 +26,10 @@ income loops.
 **Why:** the user confirmed that one-building-first is the product strategy and
 that physical building work, organization hiring, time, animation, and stories
 are core economic activities.
+
+The established mechanics, world rules, laws, and art direction apply
+consistently throughout the full building and eventually to the exterior world.
+Exterior-world development is not a priority until this building is complete.
+
+**Why:** the user clarified that this scope covers the entire building and
+outside world, while explicitly deferring exterior work.

@@ -160,8 +160,8 @@ def apply_command(
         )
         return CommandResult(result.success, result.message, result.destination, result.route)
     if name == "maintain":
-        if scene.current_floor != 1:
-            return CommandResult(False, "MAINTENANCE IS AVAILABLE ON FLOOR 1")
+        if scene.current_floor < 1 or scene.current_floor > scene.floor_count:
+            return CommandResult(False, "MAINTENANCE IS UNAVAILABLE ON THIS FLOOR")
         nearby = scene.nearby_object
         if nearby is None:
             return CommandResult(False, "NO MAINTAINABLE OBJECT IN RANGE")
@@ -278,8 +278,8 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "displayY": item.visual_position[1],
                     "interactive": item.interactive,
                     "nearby": item == scene.nearby_object,
-                    "cleanliness": scene.building_object_states.get(item.id, {}).get("cleanliness"),
-                    "condition": scene.building_object_states.get(item.id, {}).get("condition"),
+                    "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),
+                    "condition": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("condition"),
                 }
                 for item in scene.objects.objects
             ],

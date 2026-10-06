@@ -292,9 +292,12 @@ def run(argv: list[str] | None = None) -> int:
         scene.set_building_object_states(building_sync.object_states())
         for sync_event in building_sync.drain_events():
             if sync_event.state is not None:
+                state_floor = sync_event.state.get("floorNumber")
+                object_id = sync_event.state.get("objectId")
+                state_key = f"{state_floor}:{object_id}"
                 scene.set_building_object_states({
                     **scene.building_object_states,
-                    str(sync_event.state.get("objectId", "")): sync_event.state,
+                    state_key: sync_event.state,
                 })
             state.notice = sync_event.message.upper()
         autopilot_snapshot = autopilot_poller.current()

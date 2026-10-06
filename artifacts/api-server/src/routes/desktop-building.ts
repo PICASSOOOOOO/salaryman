@@ -85,11 +85,12 @@ async function resolveBuildingScope(
   }
   if (presence.room === "hallway" && presence.floorNumber > 4) {
     const orgId = await resolveCurrentOrgId(link.userId);
-    const assignedWorkstation = ownOffice
+    const floorOffice = await resolveUserOffice(link.userId, password, presence.floorNumber);
+    const assignedWorkstation = floorOffice
       ? null
       : await resolveUserWorkstation(link.userId, orgId, presence.floorNumber);
-    const hasOfficeAccess = ownOffice?.floor.floorNumber === presence.floorNumber
-      && ownOffice.city === presence.city;
+    const hasOfficeAccess = floorOffice?.floor.floorNumber === presence.floorNumber
+      && floorOffice.city === presence.city;
     const hasWorkstationAccess = assignedWorkstation?.floor.floorNumber === presence.floorNumber
       && assignedWorkstation.floor.city === presence.city;
     if (!hasOfficeAccess && !hasWorkstationAccess) {
@@ -104,7 +105,7 @@ async function resolveBuildingScope(
     return { ok: false, status: 409, error: "Fresh, valid building room presence is required" };
   }
   const scopeKey = presence.room === "office"
-    ? ownOffice!.key
+    ? `${ownOffice!.key}:floor:${presence.floorNumber}:unit:${ownOffice!.unit.unitNumber}`
     : `tower:${presence.city}:floor:${presence.floorNumber}:${presence.roomKey}`;
   return {
     ok: true,
@@ -120,13 +121,14 @@ async function resolveBuildingScope(
 
 function serializeBuildingObject(
   object: (typeof BUILDING_MAINTAINABLE_OBJECTS)[number],
+  floorNumber: number,
   saved?: typeof desktopBuildingObjectStatesTable.$inferSelect,
 ) {
   return {
     objectId: object.id,
     room: object.room,
     label: object.label,
-    floorNumber: saved?.floorNumber ?? null,
+    floorNumber,
     cleanliness: saved?.cleanliness ?? BUILDING_OBJECT_DEFAULTS.cleanliness,
     condition: saved?.condition ?? BUILDING_OBJECT_DEFAULTS.condition,
     updatedAt: saved?.updatedAt.toISOString() ?? null,
@@ -315,11 +317,6 @@ router.get("/desktop-building/snapshot", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   try {
-    const ownOffice = await resolveUserOffice(link.userId, req.header("x-shadow-tower-password"));
-    const orgId = ownOffice?.orgId ?? await resolveCurrentOrgId(link.userId);
-    const assignedWorkstation = ownOffice
-      ? null
-      : await resolveUserWorkstation(link.userId, orgId);
     const requestedFloor = req.query.floorNumber == null
       ? null
       : Number(req.query.floorNumber);
@@ -327,6 +324,15 @@ router.get("/desktop-building/snapshot", async (req, res): Promise<void> => {
       res.status(400).json({ error: "floorNumber must be between 1 and 67" });
       return;
     }
+    const ownOffice = await resolveUserOffice(
+      link.userId,
+      req.header("x-shadow-tower-password"),
+      requestedFloor ?? undefined,
+    );
+    const orgId = ownOffice?.orgId ?? await resolveCurrentOrgId(link.userId);
+    const assignedWorkstation = ownOffice
+      ? null
+      : await resolveUserWorkstation(link.userId, orgId, requestedFloor ?? undefined);
     const initialVisit = requestedFloor == null;
     const floorNumber = requestedFloor ?? ownOffice?.floor.floorNumber ?? assignedWorkstation?.floor.floorNumber ?? 1;
     const city = ownOffice?.city ?? assignedWorkstation?.floor.city ?? "minx_city";
@@ -403,10 +409,10 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
   }
   try {
     const currentOrgId = await resolveCurrentOrgId(link.userId);
-    const ownOffice = await resolveUserOffice(link.userId, req.header("x-shadow-tower-password"));
+    const ownOffice = await resolveUserOffice(link.userId, req.header("x-shadow-tower-password"), floorNumber);
     const assignedWorkstation = ownOffice
       ? null
-      : await resolveUserWorkstation(link.userId, currentOrgId);
+      : await resolveUserWorkstation(link.userId, currentOrgId, floorNumber);
     if (room === "office" && (!ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
       res.status(403).json({ error: "An authorized organization office is required to enter this room" });
       return;
@@ -440,7 +446,7 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
         .for("update")
         .limit(1);
       if (room !== "elevator") {
-        presenceValidationError = validateFloorOnePresence(
+        presenceValidationError = validateBuildingPresence(
           previousPresence ?? null,
           {
             room: room as "lobby" | "hallway" | "office",
@@ -451,7 +457,7 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
             y,
           },
           now,
-          ownOffice?.floor.floorNumber === 1 ? ownOffice.room : null,
+          ownOffice?.room ?? null,
         );
       }
       if (presenceValidationError) return;
@@ -523,12 +529,12 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   try {
-    const scope = await resolveFloorOneScope(link, req.header("x-shadow-tower-password"));
+    const scope = await resolveBuildingScope(link, req.header("x-shadow-tower-password"));
     if (!scope.ok) {
       res.status(scope.status).json({ error: scope.error });
       return;
     }
-    const objects = floorOneObjectsForRoom(scope.value.room);
+    const objects = buildingObjectsForRoom(scope.value.room);
     if (objects.length === 0) {
       res.status(404).json({ error: "No maintainable objects are registered in this room" });
       return;
@@ -539,10 +545,11 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
     ));
     const savedById = new Map(saved.map((row) => [row.objectId, row]));
     res.json({
-      floorNumber: 1,
+      floorNumber: scope.value.presence.floorNumber,
       room: scope.value.room,
       observedAt: new Date().toISOString(),
-      objects: objects.map((object) => serializeFloorOneObject(object, savedById.get(object.id))),
+      objects: objects.map((object) =>
+        serializeBuildingObject(object, scope.value.presence.floorNumber, savedById.get(object.id))),
     });
   } catch (error) {
     req.log.error({ err: error }, "Desktop building objects read failed");
@@ -561,12 +568,12 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
     return;
   }
   try {
-    const scope = await resolveFloorOneScope(link, req.header("x-shadow-tower-password"));
+    const scope = await resolveBuildingScope(link, req.header("x-shadow-tower-password"));
     if (!scope.ok) {
       res.status(scope.status).json({ error: scope.error });
       return;
     }
-    const object = floorOneObject(scope.value.room, objectId);
+    const object = buildingObject(scope.value.room, objectId);
     if (!object) {
       res.status(404).json({ error: "Object is not maintainable in the current room" });
       return;
@@ -583,13 +590,13 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
     const [saved] = await db.insert(desktopBuildingObjectStatesTable).values({
       scopeKey: scope.value.scopeKey,
       city: scope.value.presence.city,
-      floorNumber: 1,
+      floorNumber: scope.value.presence.floorNumber,
       room: object.room,
       objectId: object.id,
       orgId: scope.value.orgId,
       ownerUserId: scope.value.ownerUserId,
-      cleanliness: action === "clean" ? 100 : FLOOR_ONE_DEFAULTS.cleanliness,
-      condition: action === "repair" ? 100 : FLOOR_ONE_DEFAULTS.condition,
+      cleanliness: action === "clean" ? 100 : BUILDING_OBJECT_DEFAULTS.cleanliness,
+      condition: action === "repair" ? 100 : BUILDING_OBJECT_DEFAULTS.condition,
       updatedByUserId: link.userId,
       updatedAt: now,
     }).onConflictDoUpdate({
@@ -609,7 +616,7 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
     res.json({
       ok: true,
       message,
-      state: serializeFloorOneObject(object, saved),
+      state: serializeBuildingObject(object, scope.value.presence.floorNumber, saved),
     });
   } catch (error) {
     req.log.error({ err: error }, "Desktop building object maintenance failed");

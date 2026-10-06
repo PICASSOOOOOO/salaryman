@@ -21,6 +21,13 @@ Development proceeds floor by floor, starting with Floor 1.
 **Why:** the user selected both the sharing boundary and real-building,
 floor-by-floor development order.
 
+Maintenance and object condition apply on every floor. Include the floor in the
+server-resolved state scope so a repeated hallway object ID does not leak
+condition between floors.
+
+**Why:** the user clarified that maintenance is building-wide rather than
+limited to the initial Floor 1 slice.
+
 Floor 1 is one large lobby centered on a receptionist's desk area, with one ATM
 and one vending machine. Elevator access and a staircase are grouped in a
 clearly marked area with floor numbers on the walls. The building plan must
