@@ -13,7 +13,7 @@ const WORLD_SCALE := 0.01
 const WORLD_ORIGIN_REBASE_THRESHOLD := 1_000_000.0
 const LOBBY_RENDER_ANCHOR_PX := Vector2i(2250, 2200)
 const FLOOR_HEIGHT := 0.08
-const WALL_HEIGHT := 1.65
+const WALL_HEIGHT := 2.7
 const CAMERA_DISTANCE_MIN := 8.0
 const CAMERA_DISTANCE_MAX := 22.0
 const CAMERA_ORTHO_SIZE_MIN := 9.0
@@ -207,6 +207,7 @@ func _build_building_shell() -> void:
 	for spec in room_specs:
 		_add_room_shell(spec, floor_plan)
 	_build_room_lighting()
+	_build_lobby_building_services()
 
 
 func _load_floor_plan() -> Dictionary:
@@ -332,6 +333,78 @@ func _build_room_lighting() -> void:
 	_add_wall_sconce("HallwaySconceEast", Vector3(89.8, 2.25, 47.0))
 	for room_center_x in [18.0, 39.0, 60.0, 81.0]:
 		_add_room_light("OfficeLight%d" % int(room_center_x), Vector3(room_center_x, 3.0, 63.0), Color("#f3c88d"), 0.42, 10.0)
+
+
+func _build_lobby_building_services() -> void:
+	# Exposed service runs follow the lobby wall lines instead of floating in
+	# the room. They are visual building infrastructure, not walkable props.
+	var lobby_left := -7.3
+	var lobby_right := 32.3
+	var lobby_back := -7.8
+	var lobby_front := 33.6
+	var pipe_height := 2.35
+	_add_service_pipe(
+		"LobbyWaterMain",
+		Vector3(lobby_left, pipe_height, lobby_back),
+		Vector3(lobby_right, pipe_height, lobby_back),
+		0.075,
+		materials["metal"],
+	)
+	_add_service_pipe(
+		"LobbyWaterBranch",
+		Vector3(lobby_right, pipe_height, lobby_back),
+		Vector3(lobby_right, pipe_height, lobby_front),
+		0.075,
+		materials["metal"],
+	)
+	_add_service_pipe(
+		"LobbyElectricalConduit",
+		Vector3(lobby_left, 2.12, lobby_back + 0.24),
+		Vector3(lobby_right, 2.12, lobby_back + 0.24),
+		0.035,
+		materials["wall_trim"],
+	)
+	_add_service_pipe(
+		"LobbyElevatorRiser",
+		Vector3(7.0, 0.34, 21.0),
+		Vector3(7.0, 2.55, 21.0),
+		0.055,
+		materials["metal"],
+	)
+	for bracket_index in range(8):
+		var bracket_x := lobby_left + 4.0 + float(bracket_index) * 4.5
+		_add_box(
+			"LobbyPipeBracket%d" % bracket_index,
+			Vector3(bracket_x, pipe_height, lobby_back + 0.08),
+			Vector3(0.12, 0.2, 0.32),
+			materials["wall_trim"],
+		)
+
+
+func _add_service_pipe(
+	node_name: String,
+	start: Vector3,
+	finish: Vector3,
+	radius: float,
+	material: Material,
+) -> void:
+	var direction := finish - start
+	var pipe := MeshInstance3D.new()
+	pipe.name = node_name
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius
+	mesh.bottom_radius = radius
+	mesh.height = direction.length()
+	mesh.radial_segments = 10
+	mesh.material = material
+	pipe.mesh = mesh
+	pipe.position = (start + finish) / 2.0
+	if absf(direction.x) >= absf(direction.z) and absf(direction.x) > 0.001:
+		pipe.rotation.z = PI / 2.0
+	elif absf(direction.z) > 0.001:
+		pipe.rotation.x = PI / 2.0
+	pipe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	world_root.add_child(pipe)
 
 
 func _add_room_light(light_name: String, position: Vector3, color: Color, energy: float, range: float) -> void:

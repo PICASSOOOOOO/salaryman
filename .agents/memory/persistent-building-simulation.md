@@ -25,10 +25,13 @@ Floor 1 is one large lobby centered on a receptionist's desk area, with one ATM
 and one vending machine. Elevator access and a staircase are grouped in a
 clearly marked area with floor numbers on the walls. The building plan must
 also retain below-grade basements, air ducts, and operations areas such as
-shipping/receiving and a garage.
+shipping/receiving and a garage. Building geometry should use 3D walls and
+show practical services such as pipes and electrical conduits/wires; doors
+and elevators should be placed as parts of the building structure, not loose
+decorative props.
 
-**Why:** the user clarified the lobby layout and named building areas that must
-remain in the long-term scope.
+**Why:** the user clarified the lobby layout, required 3D building systems, and
+named below-grade and operational areas that must remain in the long-term scope.
 
 **How to apply:** Resolve each action's scope from server-validated room
 presence and office ownership. Preserve object and character state; validate
