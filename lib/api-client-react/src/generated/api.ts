@@ -43,6 +43,9 @@ import type {
   CrmSourceInput,
   CrmSyncConflictResolutionInput,
   DeleteCrmSource200,
+  DesktopBuildingObjectActionInput,
+  DesktopBuildingObjectActionResponse,
+  DesktopBuildingObjectsResponse,
   ErrorEnvelope,
   GetSecureCallRecordingParams,
   HealthStatus,
@@ -3651,6 +3654,163 @@ export const useSendPabloInternalDelivery = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSendPabloInternalDeliveryMutationOptions(options));
+    }
+
+export const getListDesktopBuildingObjectsUrl = () => {
+
+
+
+
+  return `/api/desktop-building/objects`
+}
+
+/**
+ * @summary Read persistent condition for objects in the linked desktop's current building floor and room
+ */
+export const listDesktopBuildingObjects = async ( options?: Parameters<typeof customFetch>[1]): Promise<DesktopBuildingObjectsResponse> => {
+
+  return customFetch<DesktopBuildingObjectsResponse>(getListDesktopBuildingObjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDesktopBuildingObjectsQueryKey = () => {
+    return [
+    `/api/desktop-building/objects`
+    ] as const;
+    }
+
+
+export const getListDesktopBuildingObjectsQueryOptions = <TData = Awaited<ReturnType<typeof listDesktopBuildingObjects>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDesktopBuildingObjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDesktopBuildingObjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDesktopBuildingObjects>>> = ({ signal }) => listDesktopBuildingObjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDesktopBuildingObjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDesktopBuildingObjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listDesktopBuildingObjects>>>
+export type ListDesktopBuildingObjectsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read persistent condition for objects in the linked desktop's current building floor and room
+ */
+
+export function useListDesktopBuildingObjects<TData = Awaited<ReturnType<typeof listDesktopBuildingObjects>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDesktopBuildingObjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDesktopBuildingObjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMaintainDesktopBuildingObjectUrl = () => {
+
+
+
+
+  return `/api/desktop-building/objects/action`
+}
+
+/**
+ * @summary Clean or repair a nearby object on any authorized building floor
+ */
+export const maintainDesktopBuildingObject = async (desktopBuildingObjectActionInput: DesktopBuildingObjectActionInput, options?: Parameters<typeof customFetch>[1]): Promise<DesktopBuildingObjectActionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<DesktopBuildingObjectActionResponse>(getMaintainDesktopBuildingObjectUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(desktopBuildingObjectActionInput)
+  }
+);}
+
+
+
+
+
+export const getMaintainDesktopBuildingObjectMutationKey = () => ['maintainDesktopBuildingObject'] as const;
+
+export const getMaintainDesktopBuildingObjectMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof maintainDesktopBuildingObject>>, TError,MaintainDesktopBuildingObjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof maintainDesktopBuildingObject>>, TError,MaintainDesktopBuildingObjectMutationVariables, TContext> => {
+
+const mutationKey = getMaintainDesktopBuildingObjectMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof maintainDesktopBuildingObject>>, MaintainDesktopBuildingObjectMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  maintainDesktopBuildingObject(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MaintainDesktopBuildingObjectMutationResult = NonNullable<Awaited<ReturnType<typeof maintainDesktopBuildingObject>>>
+    export type MaintainDesktopBuildingObjectMutationBody = BodyType<DesktopBuildingObjectActionInput>
+    export type MaintainDesktopBuildingObjectMutationError = ErrorType<void>
+    export type MaintainDesktopBuildingObjectMutationVariables = {data: BodyType<DesktopBuildingObjectActionInput>}
+
+    /**
+ * @summary Clean or repair a nearby object on any authorized building floor
+ */
+export const useMaintainDesktopBuildingObject = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof maintainDesktopBuildingObject>>, TError,MaintainDesktopBuildingObjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof maintainDesktopBuildingObject>>,
+        TError,
+        MaintainDesktopBuildingObjectMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMaintainDesktopBuildingObjectMutationOptions(options));
     }
 
 export const getGetAutopilotBriefUrl = () => {

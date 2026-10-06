@@ -280,8 +280,8 @@ class PygameSpatialTests(unittest.TestCase):
         scene.current_floor = 3
         stairs = scene.objects.get("executive-stairs")
         result = scene.interact(state, stairs.id)
-        self.assertEqual(result.destination, "floor:2")
-        self.assertEqual(scene.current_room, "public")
+        self.assertEqual(result.destination, "floor:4")
+        self.assertEqual(scene.current_room, "recreation")
 
     def test_headless_spatial_scene_renders(self):
         screen = pygame.display.set_mode((1180, 720))

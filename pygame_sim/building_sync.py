@@ -1,4 +1,4 @@
-"""Off-thread sync for server-authoritative Floor 1 object maintenance."""
+"""Off-thread sync for server-authoritative building object maintenance."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 from .automation import DesktopLink
 from .scene import TowerScene
 
-FLOOR_ONE_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04"}
+BUILDING_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04"}
 ROOM_API_NAME = {"lobby": "lobby", "recreation": "hallway"}
 
 
@@ -42,7 +42,7 @@ class DesktopBuildingSync:
         self._lock = threading.Lock()
         self._scene_snapshot: tuple[int, str, int, int, str] | None = None
         self._object_states: dict[str, dict[str, Any]] = {}
-        self._actions: queue.Queue[tuple[str, str]] = queue.Queue()
+        self._actions: queue.Queue[tuple[int, str, str, str]] = queue.Queue()
         self._events: queue.Queue[BuildingSyncEvent] = queue.Queue()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -55,7 +55,7 @@ class DesktopBuildingSync:
         self._thread.start()
 
     def update_scene(self, scene: TowerScene) -> None:
-        if scene.current_floor < 1 or scene.current_floor > 67 or scene.current_room not in FLOOR_ONE_ROOMS:
+        if scene.current_floor < 1 or scene.current_floor > 67 or scene.current_room not in BUILDING_ROOMS:
             snapshot = (scene.current_floor, scene.current_room, 0, 0, "stand")
         else:
             moving = abs(scene.velocity[0]) + abs(scene.velocity[1]) > 2.0
@@ -74,9 +74,9 @@ class DesktopBuildingSync:
             return False
         with self._lock:
             snapshot = self._scene_snapshot
-        if snapshot is None or not 1 <= snapshot[0] <= 67 or snapshot[1] not in FLOOR_ONE_ROOMS:
+        if snapshot is None or not 1 <= snapshot[0] <= 67 or snapshot[1] not in BUILDING_ROOMS:
             return False
-        self._actions.put((object_id, action))
+        self._actions.put((snapshot[0], snapshot[1], object_id, action))
         return True
 
     def object_states(self) -> dict[str, dict[str, Any]]:
@@ -107,7 +107,7 @@ class DesktopBuildingSync:
             return
         with self._lock:
             snapshot = self._scene_snapshot
-        if snapshot is None or snapshot[0] != 1 or snapshot[1] not in FLOOR_ONE_ROOMS:
+        if snapshot is None or not 1 <= snapshot[0] <= 67 or snapshot[1] not in BUILDING_ROOMS:
             return
         floor, scene_room, x, y, action = snapshot
         api_room = ROOM_API_NAME.get(scene_room, "office")
@@ -123,17 +123,16 @@ class DesktopBuildingSync:
                     "action": action,
                 },
             )
-            if floor != 1:
-                return
             payload = self._request_json("GET", "/desktop-building/objects")
             states = payload.get("objects", [])
             if not isinstance(states, list):
                 raise RuntimeError("INVALID_SERVER_RESPONSE")
             normalized = {
-                state["objectId"]: state
+                f"{state['floorNumber']}:{state['objectId']}": state
                 for state in states
                 if isinstance(state, dict)
                 and isinstance(state.get("objectId"), str)
+                and isinstance(state.get("floorNumber"), int)
                 and isinstance(state.get("cleanliness"), int)
                 and isinstance(state.get("condition"), int)
             }
@@ -150,8 +149,11 @@ class DesktopBuildingSync:
             return
 
         try:
-            object_id, maintenance_action = self._actions.get_nowait()
+            action_floor, action_room, object_id, maintenance_action = self._actions.get_nowait()
         except queue.Empty:
+            return
+        if action_floor != floor or action_room != scene_room:
+            self._events.put(BuildingSyncEvent(False, "PLAYER CHANGED FLOORS / ACTION CANCELLED"))
             return
         try:
             result = self._request_json(
@@ -162,12 +164,17 @@ class DesktopBuildingSync:
             state = result.get("state")
             if not isinstance(state, dict) or not isinstance(state.get("objectId"), str):
                 raise RuntimeError("INVALID_SERVER_RESPONSE")
+            floor_number = state.get("floorNumber")
+            if not isinstance(floor_number, int):
+                raise RuntimeError("INVALID_SERVER_RESPONSE")
             with self._lock:
-                self._object_states[state["objectId"]] = state
+                self._object_states[f"{floor_number}:{state['objectId']}"] = state
             self._events.put(BuildingSyncEvent(True, str(result.get("message", "Maintenance complete")), state))
         except RuntimeError as exc:
             message = _friendly_sync_error(str(exc))
             self._events.put(BuildingSyncEvent(False, message))
+            if message == "BUILDING SERVER OFFLINE":
+                self._actions.put((action_floor, action_room, object_id, maintenance_action))
 
     def _discard_one_pending_action(self, message: str) -> None:
         try:

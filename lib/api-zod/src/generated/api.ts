@@ -1056,6 +1056,84 @@ export const SendPabloInternalDeliveryResponse = zod.object({
 
 
 /**
+ * @summary Read persistent condition for objects in the linked desktop's current building floor and room
+ */
+export const ListDesktopBuildingObjectsHeader = zod.object({
+  "Authorization": zod.string(),
+  "x-salaryman-device-id": zod.string()
+})
+
+export const listDesktopBuildingObjectsResponseFloorNumberMax = 67;
+
+export const listDesktopBuildingObjectsResponseObjectsItemFloorNumberMax = 67;
+
+export const listDesktopBuildingObjectsResponseObjectsItemCleanlinessMin = 0;
+export const listDesktopBuildingObjectsResponseObjectsItemCleanlinessMax = 100;
+
+export const listDesktopBuildingObjectsResponseObjectsItemConditionMin = 0;
+export const listDesktopBuildingObjectsResponseObjectsItemConditionMax = 100;
+
+
+
+export const ListDesktopBuildingObjectsResponse = zod.object({
+  "floorNumber": zod.number().int().min(1).max(listDesktopBuildingObjectsResponseFloorNumberMax),
+  "room": zod.string(),
+  "objects": zod.array(zod.object({
+  "objectId": zod.string(),
+  "room": zod.string(),
+  "label": zod.string(),
+  "floorNumber": zod.number().int().min(1).max(listDesktopBuildingObjectsResponseObjectsItemFloorNumberMax),
+  "cleanliness": zod.number().int().min(listDesktopBuildingObjectsResponseObjectsItemCleanlinessMin).max(listDesktopBuildingObjectsResponseObjectsItemCleanlinessMax),
+  "condition": zod.number().int().min(listDesktopBuildingObjectsResponseObjectsItemConditionMin).max(listDesktopBuildingObjectsResponseObjectsItemConditionMax),
+  "updatedAt": zod.date().nullable()
+})),
+  "observedAt": zod.date()
+})
+
+
+/**
+ * @summary Clean or repair a nearby object on any authorized building floor
+ */
+export const MaintainDesktopBuildingObjectHeader = zod.object({
+  "Authorization": zod.string(),
+  "x-salaryman-device-id": zod.string()
+})
+
+export const maintainDesktopBuildingObjectBodyObjectIdMax = 80;
+
+
+
+export const MaintainDesktopBuildingObjectBody = zod.object({
+  "objectId": zod.string().min(1).max(maintainDesktopBuildingObjectBodyObjectIdMax),
+  "action": zod.enum(['clean', 'repair'])
+})
+
+export const maintainDesktopBuildingObjectResponseStateFloorNumberMax = 67;
+
+export const maintainDesktopBuildingObjectResponseStateCleanlinessMin = 0;
+export const maintainDesktopBuildingObjectResponseStateCleanlinessMax = 100;
+
+export const maintainDesktopBuildingObjectResponseStateConditionMin = 0;
+export const maintainDesktopBuildingObjectResponseStateConditionMax = 100;
+
+
+
+export const MaintainDesktopBuildingObjectResponse = zod.object({
+  "ok": zod.literal(true),
+  "message": zod.string(),
+  "state": zod.object({
+  "objectId": zod.string(),
+  "room": zod.string(),
+  "label": zod.string(),
+  "floorNumber": zod.number().int().min(1).max(maintainDesktopBuildingObjectResponseStateFloorNumberMax),
+  "cleanliness": zod.number().int().min(maintainDesktopBuildingObjectResponseStateCleanlinessMin).max(maintainDesktopBuildingObjectResponseStateCleanlinessMax),
+  "condition": zod.number().int().min(maintainDesktopBuildingObjectResponseStateConditionMin).max(maintainDesktopBuildingObjectResponseStateConditionMax),
+  "updatedAt": zod.date().nullable()
+})
+})
+
+
+/**
  * @summary Read a 24-hour organization business brief and recent call candidates
  */
 export const GetAutopilotBriefResponse = zod.object({

@@ -206,6 +206,17 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(True, message, route=f"/arcade/{game_id}")
 
+        if item.kind == "pay_phone":
+            state.open_page("phone", from_object=True, source="PAY PHONE")
+            message = "PAY PHONE / CALLL HOME + COMMS ONLY"
+            state.notice = message
+            return InteractionResult(True, message, route="payphone-console")
+
+        if item.kind == "tv":
+            message = "CCTV MONITOR / SURVEILLANCE"
+            state.notice = message
+            return InteractionResult(True, message, route="surveillance")
+
         if item.kind == "vending_machine":
             label, cost = VENDING_ITEMS.get(vending_item, ("UNKNOWN ITEM", 0.0))
             if vending_item not in VENDING_ITEMS:
@@ -232,7 +243,7 @@ class OfficeObjectRegistry:
             if permission_message is not None:
                 state.notice = permission_message
                 return InteractionResult(False, permission_message)
-            state.open_page("tools", from_object=True, source="CRT TERMINAL")
+            state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
 
         if item.id == "lobby-reception-desk":
             message = "RECEPTION / TOWER INFORMATION READY"
@@ -241,9 +252,7 @@ class OfficeObjectRegistry:
 
         messages = {
             "telephone": ("TELEPHONE READY / PHONE CENTER", "phone-center"),
-            "pay_phone": ("PAY PHONE READY / PHONE CENTER", "phone-center"),
-            "crt_terminal": ("CRT TERMINAL / OFFICE RECORD", "office-record"),
-            "tv": ("TV / SHADOW RADIO", "shadow-radio"),
+            "crt_terminal": ("SYSTEMS TERMINAL / FULL WORKSPACE", "systems-terminal"),
             "atm": (f"ATM / BANCO OMBRA ƒ{state.funds:,.2f}", "banking"),
             "desk": ("EXECUTIVE DESK / OFFICE READY", "office"),
             "chair": ("CHAIR / REST POSITION", "office"),
@@ -267,9 +276,11 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE SUPPLIES"),
+        OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "CALLL HOME / COMMS ONLY"),
         OfficeObject("lobby-stair-floor-sign", "floor_sign", "FLOOR 01", "lobby", (49_978_650, 50_000_800), "FLOOR NUMBER", interactive=False),
         OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (1_100, 4_100), "RETURN TO LOBBY", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (8_500, 4_100), "CLIMB / CHANGE FLOOR"),
+        OfficeObject("recreation-pay-phone", "pay_phone", "PAY PHONE", "recreation", (4_900, 4_300), "CALLL HOME / COMMS ONLY"),
         OfficeObject("recreation-floor-number-sign", "floor_sign", "FLOOR 01", "recreation", (8_500, 3_800), "FLOOR NUMBER", interactive=False),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (1_800, 5_100), "ENTER OFFICE 01", destination_room="executive"),
         OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (3_900, 5_100), "ENTER OFFICE 02", destination_room="public"),
@@ -333,13 +344,16 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("office4-stairs", "stairs", "STAIRS", "public", (4_600, 6_400), "RETURN TO HALLWAY"),
         OfficeObject("office4-desk", "desk", "WORK DESK", "public", (3_900, 6_250), "USE WORK DESK"),
         OfficeObject("office4-chair", "chair", "CHAIR", "public", (3_900, 6_950), "SIT / REST"),
+        OfficeObject("office4-crt", "crt_terminal", "SYSTEMS TERMINAL", "public", (3_900, 6_500), "SIT TO USE COMPUTER", display_position=(3_900, 6_100), parent_id="office4-desk"),
         OfficeObject("office4-telephone", "telephone", "TELEPHONE", "public", (3_500, 6_250), "OPEN PHONE CENTER"),
         OfficeObject("office4-vending", "vending_machine", "VENDING", "public", (4_500, 6_950), "BUY OFFICE SUPPLIES"),
         OfficeObject("office3-desk", "desk", "WORK DESK", "office_03", (6_000, 6_250), "USE WORK DESK"),
         OfficeObject("office3-chair", "chair", "CHAIR", "office_03", (6_000, 6_950), "SIT / REST"),
+        OfficeObject("office3-crt", "crt_terminal", "SYSTEMS TERMINAL", "office_03", (6_000, 6_500), "SIT TO USE COMPUTER", display_position=(6_000, 6_100), parent_id="office3-desk"),
         OfficeObject("office3-telephone", "telephone", "TELEPHONE", "office_03", (5_600, 6_250), "OPEN PHONE CENTER"),
         OfficeObject("office4b-desk", "desk", "WORK DESK", "office_04", (8_100, 6_250), "USE WORK DESK"),
         OfficeObject("office4b-chair", "chair", "CHAIR", "office_04", (8_100, 6_950), "SIT / REST"),
+        OfficeObject("office4b-crt", "crt_terminal", "SYSTEMS TERMINAL", "office_04", (8_100, 6_500), "SIT TO USE COMPUTER", display_position=(8_100, 6_100), parent_id="office4b-desk"),
         OfficeObject("office4b-telephone", "telephone", "TELEPHONE", "office_04", (7_700, 6_250), "OPEN PHONE CENTER"),
     ]
     for entry in entries:

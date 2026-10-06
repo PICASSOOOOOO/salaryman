@@ -5,6 +5,63 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type DesktopBuildingObjectActionInputAction = typeof DesktopBuildingObjectActionInputAction[keyof typeof DesktopBuildingObjectActionInputAction];
+
+
+export const DesktopBuildingObjectActionInputAction = {
+  clean: 'clean',
+  repair: 'repair',
+} as const;
+
+export interface DesktopBuildingObjectActionInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  objectId: string;
+  action: DesktopBuildingObjectActionInputAction;
+}
+
+export interface DesktopBuildingObjectState {
+  objectId: string;
+  room: string;
+  label: string;
+  /**
+     * @minimum 1
+     * @maximum 67
+     */
+  floorNumber: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  cleanliness: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  condition: number;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export interface DesktopBuildingObjectsResponse {
+  /**
+     * @minimum 1
+     * @maximum 67
+     */
+  floorNumber: number;
+  room: string;
+  objects: DesktopBuildingObjectState[];
+  observedAt: string;
+}
+
+export interface DesktopBuildingObjectActionResponse {
+  ok: true;
+  message: string;
+  state: DesktopBuildingObjectState;
+}
+
 /**
  * @nullable
  */

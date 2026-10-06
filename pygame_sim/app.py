@@ -294,11 +294,12 @@ def run(argv: list[str] | None = None) -> int:
             if sync_event.state is not None:
                 state_floor = sync_event.state.get("floorNumber")
                 object_id = sync_event.state.get("objectId")
-                state_key = f"{state_floor}:{object_id}"
-                scene.set_building_object_states({
-                    **scene.building_object_states,
-                    state_key: sync_event.state,
-                })
+                if isinstance(state_floor, int) and not isinstance(state_floor, bool) and isinstance(object_id, str):
+                    state_key = f"{state_floor}:{object_id}"
+                    scene.set_building_object_states({
+                        **scene.building_object_states,
+                        state_key: sync_event.state,
+                    })
             state.notice = sync_event.message.upper()
         autopilot_snapshot = autopilot_poller.current()
         if autopilot_snapshot.revision > last_autopilot_revision:

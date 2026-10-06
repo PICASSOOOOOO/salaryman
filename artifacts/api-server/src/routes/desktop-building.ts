@@ -45,7 +45,7 @@ const ROOM_LABEL: Record<string, string> = {
 };
 const MAINTENANCE_REACH_PX = 1_250;
 
-type FloorOneScope = {
+type BuildingScope = {
   presence: typeof desktopOfficePresenceTable.$inferSelect;
   room: string;
   scopeKey: string;
@@ -53,19 +53,18 @@ type FloorOneScope = {
   ownerUserId: string | null;
 };
 
-type FloorOneScopeResult =
-  | { ok: true; value: FloorOneScope }
+type BuildingScopeResult =
+  | { ok: true; value: BuildingScope }
   | { ok: false; status: 403 | 409; error: string };
 
 async function resolveBuildingScope(
   link: { id: string; userId: string },
   password: unknown,
-): Promise<FloorOneScopeResult> {
+): Promise<BuildingScopeResult> {
   const [presence] = await db.select().from(desktopOfficePresenceTable)
     .where(eq(desktopOfficePresenceTable.userId, link.userId))
     .limit(1);
   if (!presence || presence.linkId !== link.id
-    || presence.floorNumber !== 1
     || presence.floorNumber < 1 || presence.floorNumber > FLOOR_COUNT
     || Date.now() - presence.lastSeenAt.getTime() > BUILDING_PRESENCE_MAX_AGE_MS) {
     return { ok: false, status: 409, error: "Fresh building presence is required" };
@@ -324,18 +323,27 @@ router.get("/desktop-building/snapshot", async (req, res): Promise<void> => {
       res.status(400).json({ error: "floorNumber must be between 1 and 67" });
       return;
     }
-    const ownOffice = await resolveUserOffice(
-      link.userId,
-      req.header("x-shadow-tower-password"),
-      requestedFloor ?? undefined,
-    );
-    const orgId = ownOffice?.orgId ?? await resolveCurrentOrgId(link.userId);
+    const password = req.header("x-shadow-tower-password");
+    const primaryOffice = await resolveUserOffice(link.userId, password);
+    const orgId = primaryOffice?.orgId ?? await resolveCurrentOrgId(link.userId);
+    const primaryWorkstation = primaryOffice
+      ? null
+      : await resolveUserWorkstation(link.userId, orgId);
+    const ownOffice = requestedFloor == null
+      ? primaryOffice
+      : await resolveUserOffice(link.userId, password, requestedFloor);
     const assignedWorkstation = ownOffice
       ? null
-      : await resolveUserWorkstation(link.userId, orgId, requestedFloor ?? undefined);
+      : requestedFloor == null
+        ? primaryWorkstation
+        : await resolveUserWorkstation(link.userId, orgId, requestedFloor);
     const initialVisit = requestedFloor == null;
     const floorNumber = requestedFloor ?? ownOffice?.floor.floorNumber ?? assignedWorkstation?.floor.floorNumber ?? 1;
-    const city = ownOffice?.city ?? assignedWorkstation?.floor.city ?? "minx_city";
+    const city = ownOffice?.city
+      ?? assignedWorkstation?.floor.city
+      ?? primaryOffice?.city
+      ?? primaryWorkstation?.floor.city
+      ?? "minx_city";
     const rows = (await activeOfficeRows()).filter((row) =>
       row.floor.city === city && row.floor.floorNumber === floorNumber);
     const seenKeys = new Set<string>();
@@ -409,7 +417,8 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
   }
   try {
     const currentOrgId = await resolveCurrentOrgId(link.userId);
-    const ownOffice = await resolveUserOffice(link.userId, req.header("x-shadow-tower-password"), floorNumber);
+    const password = req.header("x-shadow-tower-password");
+    const ownOffice = await resolveUserOffice(link.userId, password, floorNumber);
     const assignedWorkstation = ownOffice
       ? null
       : await resolveUserWorkstation(link.userId, currentOrgId, floorNumber);
@@ -427,7 +436,15 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
       res.status(403).json({ error: "An assigned office or workstation is required for this floor" });
       return;
     }
-    const city = ownOffice?.city ?? assignedWorkstation?.floor.city ?? "minx_city";
+    const primaryOffice = ownOffice ?? await resolveUserOffice(link.userId, password);
+    const primaryWorkstation = assignedWorkstation ?? (primaryOffice
+      ? null
+      : await resolveUserWorkstation(link.userId, currentOrgId));
+    const city = ownOffice?.city
+      ?? assignedWorkstation?.floor.city
+      ?? primaryOffice?.city
+      ?? primaryWorkstation?.floor.city
+      ?? "minx_city";
     const roomKey = room === "office"
       ? ownOffice!.key
       : room === "lobby"

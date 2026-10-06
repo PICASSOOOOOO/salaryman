@@ -804,7 +804,7 @@ paths:
     get:
       operationId: listDesktopBuildingObjects
       tags: [desktopBuilding]
-      summary: Read persistent condition for objects in the linked desktop's current Floor 1 room
+      summary: Read persistent condition for objects in the linked desktop's current building floor and room
       parameters:
         - { name: Authorization, in: header, required: true, schema: { type: string } }
         - { name: x-salaryman-device-id, in: header, required: true, schema: { type: string } }
@@ -816,12 +816,12 @@ paths:
               schema: { $ref: "#/components/schemas/DesktopBuildingObjectsResponse" }
         "401": { description: Linked desktop credential required }
         "403": { description: Authorized office access required }
-        "409": { description: Fresh Floor 1 room presence required }
+        "409": { description: "Fresh, walkable building-floor presence required" }
   /desktop-building/objects/action:
     post:
       operationId: maintainDesktopBuildingObject
       tags: [desktopBuilding]
-      summary: Clean or repair a nearby Floor 1 object in the linked desktop's current room
+      summary: Clean or repair a nearby object on any authorized building floor
       parameters:
         - { name: Authorization, in: header, required: true, schema: { type: string } }
         - { name: x-salaryman-device-id, in: header, required: true, schema: { type: string } }
@@ -840,7 +840,7 @@ paths:
         "401": { description: Linked desktop credential required }
         "403": { description: Authorized office access required }
         "404": { description: Object is not maintainable in the current room }
-        "409": { description: Fresh, nearby Floor 1 presence required }
+        "409": { description: "Fresh presence within reach of the object required" }
   /autopilot/brief:
     get:
       operationId: getAutopilotBrief
@@ -949,11 +949,12 @@ components:
           enum: [clean, repair]
     DesktopBuildingObjectState:
       type: object
-      required: [objectId, room, label, cleanliness, condition, updatedAt]
+      required: [objectId, room, label, floorNumber, cleanliness, condition, updatedAt]
       properties:
         objectId: { type: string }
         room: { type: string }
         label: { type: string }
+        floorNumber: { type: integer, minimum: 1, maximum: 67 }
         cleanliness: { type: integer, minimum: 0, maximum: 100 }
         condition: { type: integer, minimum: 0, maximum: 100 }
         updatedAt: { type: ["string", "null"], format: date-time }
@@ -961,7 +962,7 @@ components:
       type: object
       required: [floorNumber, room, objects, observedAt]
       properties:
-        floorNumber: { type: integer, const: 1 }
+        floorNumber: { type: integer, minimum: 1, maximum: 67 }
         room: { type: string }
         objects:
           type: array

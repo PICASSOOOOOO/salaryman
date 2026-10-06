@@ -12,6 +12,8 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
   { id: "lobby-reception-desk", room: "lobby", label: "Reception desk", x: 49_978_250, y: 49_999_600 },
   { id: "lobby-atm", room: "lobby", label: "Lobby ATM", x: 49_976_750, y: 50_000_800 },
   { id: "lobby-vending", room: "lobby", label: "Lobby vending machine", x: 49_978_750, y: 50_000_800 },
+  { id: "lobby-pay-phone", room: "lobby", label: "Lobby pay phone", x: 49_976_200, y: 49_999_300 },
+  { id: "lobby-tv", room: "lobby", label: "Lobby television", x: 49_978_800, y: 49_998_000 },
   { id: "lobby-elevator", room: "lobby", label: "Lobby elevator", x: 49_977_000, y: 50_000_000 },
   { id: "lobby-stairs", room: "lobby", label: "Lobby staircase", x: 49_978_650, y: 50_000_800 },
   { id: "recreation-elevator", room: "recreation", label: "Hallway elevator", x: 1_100, y: 4_100 },
@@ -20,21 +22,39 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
   { id: "hall-office-2-door", room: "recreation", label: "Office 02 door", x: 3_900, y: 5_100 },
   { id: "hall-office-3-door", room: "recreation", label: "Office 03 door", x: 6_000, y: 5_100 },
   { id: "hall-office-4-door", room: "recreation", label: "Office 04 door", x: 8_100, y: 5_100 },
-  { id: "arcade-cyber-serpent", room: "recreation", label: "Arcade cabinet", x: 2_500, y: 4_300 },
+  { id: "arcade-cyber-serpent", room: "recreation", label: "Cyber Serpent cabinet", x: 2_500, y: 4_300 },
+  { id: "arcade-void-invaders", room: "recreation", label: "Void Invaders cabinet", x: 2_900, y: 4_300 },
+  { id: "arcade-barrel-runner", room: "recreation", label: "Barrel Runner cabinet", x: 3_300, y: 4_300 },
+  { id: "arcade-neon-breaker", room: "recreation", label: "Neon Breaker cabinet", x: 3_700, y: 4_300 },
   { id: "executive-desk", room: "executive", label: "Office desk", x: 1_300, y: 6_100 },
-  { id: "executive-chair", room: "executive", label: "Office chair", x: 1_800, y: 6_550 },
-  { id: "executive-crt", room: "executive", label: "Work terminal", x: 1_300, y: 5_950 },
-  { id: "executive-atm", room: "executive", label: "Office ATM", x: 2_400, y: 5_800 },
-  { id: "executive-vending", room: "executive", label: "Office vending machine", x: 2_400, y: 6_200 },
-  { id: "public-desk", room: "public", label: "Office desk", x: 3_500, y: 6_100 },
-  { id: "public-chair", room: "public", label: "Office chair", x: 4_000, y: 6_550 },
-  { id: "public-crt", room: "public", label: "Work terminal", x: 3_500, y: 5_950 },
-  { id: "office-03-desk", room: "office_03", label: "Office desk", x: 5_500, y: 6_100 },
-  { id: "office-03-chair", room: "office_03", label: "Office chair", x: 6_000, y: 6_550 },
-  { id: "office-03-crt", room: "office_03", label: "Work terminal", x: 5_500, y: 5_950 },
-  { id: "office-04-desk", room: "office_04", label: "Office desk", x: 7_600, y: 6_100 },
-  { id: "office-04-chair", room: "office_04", label: "Office chair", x: 8_100, y: 6_550 },
-  { id: "office-04-crt", room: "office_04", label: "Work terminal", x: 7_600, y: 5_950 },
+  { id: "executive-chair", room: "executive", label: "Office chair", x: 1_300, y: 6_380 },
+  { id: "executive-crt", room: "executive", label: "Work terminal", x: 1_750, y: 6_350 },
+  { id: "executive-telephone", room: "executive", label: "Office telephone", x: 1_400, y: 6_250 },
+  { id: "executive-atm", room: "executive", label: "Office ATM", x: 2_700, y: 6_150 },
+  { id: "executive-vending", room: "executive", label: "Office vending machine", x: 2_700, y: 6_950 },
+  { id: "executive-window-west", room: "executive", label: "West window", x: 1_400, y: 5_750 },
+  { id: "executive-window-east", room: "executive", label: "East window", x: 2_800, y: 5_750 },
+  { id: "executive-desk-2", room: "executive", label: "Office desk", x: 2_300, y: 6_100 },
+  { id: "executive-chair-2", room: "executive", label: "Office chair", x: 2_300, y: 6_380 },
+  { id: "executive-crt-2", room: "executive", label: "Work terminal", x: 2_300, y: 6_380 },
+  { id: "executive-desk-3", room: "executive", label: "Office desk", x: 1_300, y: 6_800 },
+  { id: "executive-chair-3", room: "executive", label: "Office chair", x: 1_300, y: 7_080 },
+  { id: "executive-crt-3", room: "executive", label: "Work terminal", x: 1_300, y: 7_080 },
+  { id: "executive-desk-4", room: "executive", label: "Office desk", x: 2_300, y: 6_800 },
+  { id: "executive-chair-4", room: "executive", label: "Office chair", x: 2_300, y: 7_080 },
+  { id: "executive-crt-4", room: "executive", label: "Work terminal", x: 2_300, y: 7_080 },
+  { id: "office4-elevator", room: "public", label: "Office elevator", x: 3_200, y: 6_400 },
+  { id: "office4-stairs", room: "public", label: "Office staircase", x: 4_600, y: 6_400 },
+  { id: "office4-desk", room: "public", label: "Office desk", x: 3_900, y: 6_250 },
+  { id: "office4-chair", room: "public", label: "Office chair", x: 3_900, y: 6_950 },
+  { id: "office4-telephone", room: "public", label: "Office telephone", x: 3_500, y: 6_250 },
+  { id: "office4-vending", room: "public", label: "Office vending machine", x: 4_500, y: 6_950 },
+  { id: "office3-desk", room: "office_03", label: "Office desk", x: 6_000, y: 6_250 },
+  { id: "office3-chair", room: "office_03", label: "Office chair", x: 6_000, y: 6_950 },
+  { id: "office3-telephone", room: "office_03", label: "Office telephone", x: 5_600, y: 6_250 },
+  { id: "office4b-desk", room: "office_04", label: "Office desk", x: 8_100, y: 6_250 },
+  { id: "office4b-chair", room: "office_04", label: "Office chair", x: 8_100, y: 6_950 },
+  { id: "office4b-telephone", room: "office_04", label: "Office telephone", x: 7_700, y: 6_250 },
 ];
 
 export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
@@ -95,6 +115,8 @@ function pointIsWalkable(room: string, point: Position): boolean {
       { x: 49_978_250, y: 49_999_600, hx: 380, hy: 230 },
       { x: 49_976_750, y: 50_000_800, hx: 230, hy: 260 },
       { x: 49_978_750, y: 50_000_800, hx: 230, hy: 260 },
+      { x: 49_976_200, y: 49_999_300, hx: 100, hy: 100 },
+      { x: 49_978_800, y: 49_998_000, hx: 120, hy: 80 },
     ]
     : room === "recreation"
       ? [
@@ -138,7 +160,7 @@ export function validateBuildingPresence(
   }
   const catalogRoom = catalogRoomForPresence(next.room, ownOfficeRoom);
   if (!catalogRoom || !pointIsWalkable(catalogRoom, next)) {
-    return "Position is outside the walkable Floor 1 room";
+    return "Position is outside the walkable building room";
   }
   const spawn = ROOM_SPAWNS[catalogRoom];
   if (!previous || previous.linkId !== next.linkId

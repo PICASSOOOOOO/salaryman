@@ -7,6 +7,7 @@ import {
   bankAccountsTable,
   bankTransactionsTable,
   db,
+  desktopBuildingObjectStatesTable,
   desktopOfficePresenceTable,
   desktopWorkClaimsTable,
   desktopWorkLeasesTable,
@@ -33,6 +34,12 @@ let officeCity = "";
 
 function desktopPost(path: string) {
   return request(app).post(path)
+    .set("Authorization", `Bearer ${token}`)
+    .set("x-salaryman-device-id", deviceId);
+}
+
+function desktopGet(path: string) {
+  return request(app).get(path)
     .set("Authorization", `Bearer ${token}`)
     .set("x-salaryman-device-id", deviceId);
 }
@@ -81,6 +88,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db.delete(desktopBuildingObjectStatesTable)
+    .where(eq(desktopBuildingObjectStatesTable.updatedByUserId, userId));
   await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
   if (linkIds.length) {
     await db.delete(desktopWorkClaimsTable).where(inArray(desktopWorkClaimsTable.linkId, linkIds));
@@ -97,13 +106,14 @@ afterAll(async () => {
   }
 });
 
-function reportPresence(room: "office" | "lobby" = "office") {
+function reportPresence(room: "office" | "lobby" | "hallway" = "office", requestedFloor?: number) {
   const isOffice = room === "office";
+  const floorNumber = requestedFloor ?? (isOffice ? 5 : room === "lobby" ? 1 : 2);
   return desktopPost("/api/desktop-building/presence").send({
     room,
-    floorNumber: isOffice ? 5 : 1,
-    x: 0,
-    y: 0,
+    floorNumber,
+    x: isOffice ? 1_800 : room === "lobby" ? 49_978_000 : 4_800,
+    y: isOffice ? 6_550 : room === "lobby" ? 50_000_000 : 4_550,
     action: isOffice ? "sit" : "stand",
   });
 }
@@ -203,5 +213,65 @@ describe("desktop office work settlement", () => {
 
     const [account] = await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
     expect(account.balance).toBe(15);
+  });
+
+  it("maintains shared hallway objects on every floor and private office objects on their assigned floor", async () => {
+    const floorThreeEntry = await reportPresence("hallway", 3);
+    expect(floorThreeEntry.status).toBe(200);
+    const floorThreeObjects = await desktopGet("/api/desktop-building/objects");
+    expect(floorThreeObjects.status).toBe(200);
+    expect(floorThreeObjects.body.floorNumber).toBe(3);
+
+    const cleaned = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "hall-office-2-door",
+      action: "clean",
+    });
+    expect(cleaned.status).toBe(200);
+    expect(cleaned.body.state).toMatchObject({
+      objectId: "hall-office-2-door",
+      floorNumber: 3,
+      cleanliness: 100,
+    });
+
+    expect((await reportPresence("hallway", 2)).status).toBe(200);
+    const floorTwoObjects = await desktopGet("/api/desktop-building/objects");
+    expect(floorTwoObjects.status).toBe(200);
+    expect(floorTwoObjects.body.floorNumber).toBe(2);
+    expect(floorTwoObjects.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "hall-office-2-door",
+      floorNumber: 2,
+      cleanliness: 80,
+      condition: 85,
+    }));
+
+    expect((await reportPresence("hallway", 3)).status).toBe(200);
+    const floorThreeAfterReturn = await desktopGet("/api/desktop-building/objects");
+    expect(floorThreeAfterReturn.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "hall-office-2-door",
+      floorNumber: 3,
+      cleanliness: 100,
+    }));
+
+    expect((await reportPresence("office")).status).toBe(200);
+    const officeObjects = await desktopGet("/api/desktop-building/objects");
+    expect(officeObjects.status).toBe(200);
+    expect(officeObjects.body.floorNumber).toBe(5);
+    expect(officeObjects.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "executive-chair",
+      floorNumber: 5,
+    }));
+    const repaired = await desktopPost("/api/desktop-building/objects/action").send({
+      objectId: "executive-chair",
+      action: "repair",
+    });
+    expect(repaired.status).toBe(200);
+    expect(repaired.body.state).toMatchObject({
+      objectId: "executive-chair",
+      floorNumber: 5,
+      cleanliness: 80,
+      condition: 100,
+    });
+
+    expect((await reportPresence("hallway", 6)).status).toBe(403);
   });
 });
