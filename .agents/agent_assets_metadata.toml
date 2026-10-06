@@ -1649,3 +1649,45 @@ mtime_ms = 1791280300738
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8750be26-50fe-4215-b617-460a690cf8d2/2311959c-60bc-4a8c-8fdb-fa952a571968"
 storage_version_token = "1791280406433073"
 content_type = "image/png"
+
+[[outputs]]
+id = "iw_Ei9NEPEWmyGnd-LWCz"
+uri = "file://screenshots/godot-office-lobby-1080p.png"
+type = "image"
+title = "Godot office — elevator lobby"
+description = "1920×1080 render from a Pygame snapshot, showing the elevator lobby, pixel player, lounge rug, couch, and lamp."
+logical_id = "434c0fd1-f681-4229-8789-eb212ad5e7d8"
+content_hash = "sha256:1d236cea5fcf9f7c7c08134eaa32fc003401d7466350134dfe5d294f65b2e966"
+size = 270423
+mtime_ms = 1791283618992
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/434c0fd1-f681-4229-8789-eb212ad5e7d8/e8b68965-c206-4c88-8028-0be4c66a5cb0"
+storage_version_token = "1791283735979109"
+content_type = "image/png"
+
+[[outputs]]
+id = "1Z8Md8b1qzM5cC0cP-Oho"
+uri = "file://screenshots/godot-office-recreation-1080p.png"
+type = "image"
+title = "Godot office — connected hallway"
+description = "1920×1080 render from a Pygame snapshot, showing the hallway, MUSE pixel character, runner, and doorway openings."
+logical_id = "8abafb7f-73e8-4120-acb6-845bb339b1c5"
+content_hash = "sha256:5c9c6b49a15dae723609767d1bb53ad356c285acffceed1b1207a82a95d3a900"
+size = 168817
+mtime_ms = 1791283625046
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8abafb7f-73e8-4120-acb6-845bb339b1c5/da7172dd-fe39-46bc-821d-7fbb10e4d4f1"
+storage_version_token = "1791283736820670"
+content_type = "image/png"
+
+[[outputs]]
+id = "hBkQGJwoFdlpBW7cLrEkm"
+uri = "file://screenshots/godot-office-executive-1080p.png"
+type = "image"
+title = "Godot office — executive office"
+description = "1920×1080 render from a Pygame snapshot, showing pixel characters, workstations, chairs, desk terminal, ATM, vending machine, and office lighting."
+logical_id = "b2ad2b32-4dca-469e-883f-0d8cf3a39e5d"
+content_hash = "sha256:8961b305a3829b879dea8f6566aa07a6445f649db217a96eae63925bf7d9050d"
+size = 323150
+mtime_ms = 1791283630904
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b2ad2b32-4dca-469e-883f-0d8cf3a39e5d/a081f8eb-ec7e-4d06-b149-733d7348ea89"
+storage_version_token = "1791283737762057"
+content_type = "image/png"

@@ -49,7 +49,9 @@ var interaction_rings: Array[MeshInstance3D] = []
 
 var world_root: Node3D
 var dynamic_root: Node3D
+var automation_root: Node3D
 var player_root: Node3D
+var player_sprite: Sprite3D
 var camera: Camera3D
 var camera_has_tracking_target := false
 var interface_root: Control
@@ -64,6 +66,12 @@ var camera_target := Vector3.ZERO
 var materials: Dictionary = {}
 var imported_scenes: Dictionary = {}
 var shadow_tower_textures: Dictionary = {}
+var pixel_character_textures: Dictionary = {}
+var automation_actors: Dictionary = {}
+var automation_sprites: Dictionary = {}
+var automation_targets: Dictionary = {}
+var player_facing_row := 0
+var player_facing_left := false
 
 
 func _ready() -> void:
@@ -78,11 +86,17 @@ func _ready() -> void:
 
 func _build_materials() -> void:
 	materials["floor"] = _material(Color("#d4b98b"), 0.92)
-	materials["hall_floor"] = _material(Color("#7998a8"), 0.84)
+	materials["hall_floor"] = _material(Color("#415965"), 0.84)
 	materials["lobby_floor"] = _material(Color("#3d655a"), 0.78)
 	materials["lobby_rug"] = _material(Color("#55433c"), 0.96)
 	materials["lobby_rug_field"] = _material(Color("#705949"), 0.96)
 	materials["lobby_rug_trim"] = _material(Color("#a6814d"), 0.86)
+	materials["office_rug"] = _material(Color("#4b3d38"), 0.94)
+	materials["office_rug_field"] = _material(Color("#665247"), 0.94)
+	materials["office_rug_trim"] = _material(Color("#a18155"), 0.84)
+	materials["crt_screen"] = _material(Color("#9c733d"), 0.3, false, 0.0, Color("#9c733d"))
+	materials["lamp_glow"] = _material(Color("#ffd28d"), 0.28, false, 0.0, Color("#ffd28d"))
+	materials["character_shadow"] = _material(Color(0.06, 0.09, 0.08, 0.28), 0.95, true)
 	materials["office_1"] = _material(Color("#8f6e8f"), 0.82)
 	materials["office_2"] = _material(Color("#3e8790"), 0.82)
 	materials["office_3"] = _material(Color("#60759e"), 0.82)
@@ -173,15 +187,22 @@ func _build_building_shell() -> void:
 	dynamic_root.name = "BridgeObjects"
 	world_root.add_child(dynamic_root)
 
+	automation_root = Node3D.new()
+	automation_root.name = "PygameAutomationCharacters"
+	world_root.add_child(automation_root)
+
 	var floor_plan := _load_floor_plan()
 	var base_layout: Dictionary = floor_plan.get("baseLayout", {})
 	var elevator_lobby: Dictionary = base_layout.get("elevatorLobby", {})
 	var lobby_spawn: Array = elevator_lobby.get("spawn", [])
+	var lobby_bounds: Array = elevator_lobby.get("bounds", [])
 	if lobby_spawn.size() >= 2:
 		lobby_render_origin_px = Vector2i(int(lobby_spawn[0]), int(lobby_spawn[1])) - LOBBY_RENDER_ANCHOR_PX
 	var room_specs: Array = []
 	for room_data in floor_plan["rooms"]:
 		var bounds: Array = room_data["bounds"]
+		if room_data["id"] == "lobby" and lobby_bounds.size() >= 4:
+			bounds = lobby_bounds
 		room_specs.append({
 			"id": room_data["id"],
 			"label": room_data["label"],
@@ -190,12 +211,7 @@ func _build_building_shell() -> void:
 		})
 	for spec in room_specs:
 		_add_room_shell(spec, floor_plan)
-
-	# A readable central circulation spine makes the building topology visible
-	# even when no snapshot has arrived yet.
-	_add_box("LobbyElevator", Vector3(18.0, 0.95, 30.0), Vector3(1.8, 1.9, 1.2), materials["metal"])
-	_add_box("HallwayElevator", Vector3(11.0, 0.95, 41.0), Vector3(1.8, 1.9, 1.2), materials["metal"])
-	_add_box("LobbyDesk", Vector3(11.5, 0.5, 22.2), Vector3(3.7, 1.0, 0.9), materials["metal"])
+	_build_room_lighting()
 
 
 func _load_floor_plan() -> Dictionary:
@@ -214,6 +230,13 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var render_position_px := Vector2i(roundi(rect.position.x), roundi(rect.position.y))
 	if room_id == "lobby":
 		render_position_px -= lobby_render_origin_px
+		for room_data in floor_plan["rooms"]:
+			if room_data["id"] == "recreation":
+				var hallway_bounds: Array = room_data["bounds"]
+				var hallway_top_px := int(hallway_bounds[1])
+				if hallway_top_px > render_position_px.y:
+					rect_size_px.y = mini(rect_size_px.y, hallway_top_px - render_position_px.y)
+				break
 	var center_px := render_position_px + rect_size_px / 2
 	var center := Vector3(float(center_px.x) * WORLD_SCALE, FLOOR_HEIGHT, float(center_px.y) * WORLD_SCALE)
 	var size := Vector3(float(rect_size_px.x) * WORLD_SCALE, 0.16, float(rect_size_px.y) * WORLD_SCALE)
@@ -224,8 +247,8 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var top := float(render_position_px.y) * WORLD_SCALE
 	var bottom := float(render_position_px.y + rect_size_px.y) * WORLD_SCALE
 	var wall_thickness := 0.26
-	_add_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, rect.size.y * WORLD_SCALE), materials["wall"])
-	_add_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, rect.size.y * WORLD_SCALE), materials["wall"])
+	_add_box("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
+	_add_box("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), Vector3(wall_thickness, WALL_HEIGHT, float(rect_size_px.y) * WORLD_SCALE), materials["wall"])
 
 	if room_id == "recreation":
 		var door_centers: Array = []
@@ -233,12 +256,10 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 			door_centers.append(float(door_x) * WORLD_SCALE)
 		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, door_centers, 1.55)
 	elif room_id == "lobby":
+		_add_box("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), Vector3(float(rect_size_px.x) * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
 		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, [float(floor_plan["lobbyHallwayOpening"]) * WORLD_SCALE], 1.8)
 	elif room_id.begins_with("office") or room_id == "executive" or room_id == "public":
-		_add_box("%sBackWall" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
-		for door_x in [18.0, 39.0, 60.0, 81.0]:
-			if door_x * WORLD_SCALE > left and door_x * WORLD_SCALE < right:
-				_add_box("%sDoorLintel" % room_id, Vector3(door_x, WALL_HEIGHT - 0.18, top), Vector3(1.55, 0.36, wall_thickness + 0.04), materials["wall_trim"])
+		_add_box("%sBackWall" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), Vector3(float(rect_size_px.x) * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
 	else:
 		_add_box("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
 		_add_box("%sWallBottom" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), Vector3(rect.size.x * WORLD_SCALE, WALL_HEIGHT, wall_thickness), materials["wall"])
@@ -252,6 +273,12 @@ func _add_horizontal_wall_segments(node_prefix: String, left: float, right: floa
 		var opening_right := center + opening_width / 2.0
 		if opening_left > cursor:
 			_add_box("%sSegment%d" % [node_prefix, int(cursor * 100.0)], Vector3((cursor + opening_left) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(opening_left - cursor, WALL_HEIGHT, 0.26), materials["wall"])
+		var frame_width := 0.13
+		var frame_depth := 0.34
+		var frame_height := 0.18
+		_add_box("%sFrameLeft%d" % [node_prefix, int(center * 100.0)], Vector3(opening_left + frame_width / 2.0, WALL_HEIGHT / 2.0, z), Vector3(frame_width, WALL_HEIGHT, frame_depth), materials["wall_trim"])
+		_add_box("%sFrameRight%d" % [node_prefix, int(center * 100.0)], Vector3(opening_right - frame_width / 2.0, WALL_HEIGHT / 2.0, z), Vector3(frame_width, WALL_HEIGHT, frame_depth), materials["wall_trim"])
+		_add_box("%sFrameHeader%d" % [node_prefix, int(center * 100.0)], Vector3(center, WALL_HEIGHT - frame_height / 2.0, z), Vector3(opening_width, frame_height, frame_depth), materials["wall_trim"])
 		cursor = opening_right
 	if cursor < right:
 		_add_box("%sEnd" % node_prefix, Vector3((cursor + right) / 2.0, WALL_HEIGHT / 2.0, z), Vector3(right - cursor, WALL_HEIGHT, 0.26), materials["wall"])
@@ -267,6 +294,8 @@ func _build_static_furniture() -> void:
 	shadow_tower_textures["desk-terminal"] = _load_shadow_tower_texture("desk-terminal")
 
 	_add_lobby_rug()
+	_add_hallway_runner_rug()
+	_add_office_rugs()
 	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5), 1.25)
 	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5), 1.1)
 
@@ -281,6 +310,51 @@ func _add_lobby_rug() -> void:
 	_add_box("LobbyRugTrimSouth", Vector3(22.5, trim_y, 26.82), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
 	_add_box("LobbyRugTrimWest", Vector3(16.68, trim_y, 22.0), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
 	_add_box("LobbyRugTrimEast", Vector3(28.32, trim_y, 22.0), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
+
+
+func _add_hallway_runner_rug() -> void:
+	var center := Vector3(48.5, 0.164, 43.0)
+	var length := 70.0
+	var width := 2.6
+	_add_box("HallwayRunner", center, Vector3(length, 0.008, width), materials["office_rug"])
+	_add_box("HallwayRunnerField", center + Vector3(0.0, 0.005, 0.0), Vector3(length - 0.32, 0.003, width - 0.32), materials["office_rug_field"])
+	for end_sign in [-1.0, 1.0]:
+		_add_box("HallwayRunnerEndTrim%s" % str(end_sign), center + Vector3(end_sign * (length / 2.0 - 0.12), 0.009, 0.0), Vector3(0.10, 0.003, width - 0.15), materials["office_rug_trim"])
+
+
+func _add_office_rugs() -> void:
+	for room_center_x in [18.0, 39.0, 60.0, 81.0]:
+		var rug_name := "OfficeRug%d" % int(room_center_x)
+		var center := Vector3(room_center_x, 0.164, 63.0)
+		_add_box(rug_name, center, Vector3(14.0, 0.008, 12.0), materials["office_rug"])
+		_add_box(rug_name + "Field", center + Vector3(0.0, 0.005, 0.0), Vector3(13.65, 0.003, 11.65), materials["office_rug_field"])
+		_add_box(rug_name + "TrimNorth", center + Vector3(0.0, 0.009, -5.88), Vector3(13.7, 0.003, 0.10), materials["office_rug_trim"])
+		_add_box(rug_name + "TrimSouth", center + Vector3(0.0, 0.009, 5.88), Vector3(13.7, 0.003, 0.10), materials["office_rug_trim"])
+
+
+func _build_room_lighting() -> void:
+	_add_room_light("HallwayLightWest", Vector3(28.0, 3.2, 43.0), Color("#ffd29a"), 0.52, 13.0)
+	_add_room_light("HallwayLightEast", Vector3(69.0, 3.2, 43.0), Color("#ffd29a"), 0.52, 13.0)
+	_add_wall_sconce("HallwaySconceWest", Vector3(7.2, 2.25, 39.0))
+	_add_wall_sconce("HallwaySconceEast", Vector3(89.8, 2.25, 47.0))
+	for room_center_x in [18.0, 39.0, 60.0, 81.0]:
+		_add_room_light("OfficeLight%d" % int(room_center_x), Vector3(room_center_x, 3.0, 63.0), Color("#f3c88d"), 0.42, 10.0)
+
+
+func _add_room_light(light_name: String, position: Vector3, color: Color, energy: float, range: float) -> void:
+	var light := OmniLight3D.new()
+	light.name = light_name
+	light.position = position
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = range
+	light.shadow_enabled = false
+	world_root.add_child(light)
+
+
+func _add_wall_sconce(sconce_name: String, position: Vector3) -> void:
+	_add_box(sconce_name + "Base", position, Vector3(0.22, 0.42, 0.16), materials["metal"])
+	_add_box(sconce_name + "Glow", position + Vector3(0.0, 0.0, 0.12), Vector3(0.14, 0.24, 0.07), materials["lamp_glow"])
 
 
 func _load_shadow_tower_texture(asset_name: String) -> Texture2D:
@@ -315,73 +389,155 @@ func _add_box(node_name: String, position: Vector3, size: Vector3, material: Mat
 
 
 func _load_player() -> void:
-	var player_scene: PackedScene = load("res://agentshire-assets/characters/character-male-a.glb")
-	if player_scene:
-		player_root = player_scene.instantiate()
-		player_root.name = "AuthoritativePlayer"
-		world_root.add_child(player_root)
-	else:
-		player_root = Node3D.new()
-		player_root.name = "AuthoritativePlayer"
-		world_root.add_child(player_root)
-		var fallback_mesh := BoxMesh.new()
-		fallback_mesh.size = Vector3(0.65, 1.5, 0.65)
-		fallback_mesh.material = materials["door"]
-		var fallback_instance := MeshInstance3D.new()
-		fallback_instance.name = "PlayerFallback"
-		fallback_instance.mesh = fallback_mesh
-		fallback_instance.position = Vector3(0.0, 0.75, 0.0)
-		player_root.add_child(fallback_instance)
-	_fit_player_render_height()
-	_set_player_animation("idle")
-
-
-func _fit_player_render_height() -> void:
-	if player_root == null:
+	player_root = Node3D.new()
+	player_root.name = "AuthoritativePlayer"
+	world_root.add_child(player_root)
+	var texture := _load_pixel_character_texture("characters/char_0.png")
+	if texture == null:
+		push_error("Missing Pygame player sprite sheet: characters/char_0.png")
 		return
-	var minimum_y := INF
-	var maximum_y := -INF
-	var root_inverse := player_root.global_transform.affine_inverse()
-	var mesh_count := 0
-	for candidate in player_root.find_children("*", "MeshInstance3D", true, false):
-		var mesh_node := candidate as MeshInstance3D
-		if mesh_node == null or mesh_node.mesh == null:
-			continue
-		mesh_count += 1
-		var bounds := mesh_node.get_aabb()
-		var relative_transform := root_inverse * mesh_node.global_transform
-		for x in [bounds.position.x, bounds.end.x]:
-			for y in [bounds.position.y, bounds.end.y]:
-				for z in [bounds.position.z, bounds.end.z]:
-					var point := relative_transform * Vector3(x, y, z)
-					minimum_y = minf(minimum_y, point.y)
-					maximum_y = maxf(maximum_y, point.y)
-	var source_height := maximum_y - minimum_y
-	if mesh_count > 0 and source_height > 0.0:
-		player_root.scale *= PLAYER_RENDER_HEIGHT / source_height
+	player_sprite = _new_pixel_character_sprite(texture, 0, PLAYER_RENDER_HEIGHT)
+	player_sprite.name = "PlayerPixelSprite"
+	player_sprite.position = Vector3(0.0, PLAYER_RENDER_HEIGHT / 2.0, 0.0)
+	player_root.add_child(player_sprite)
+	_add_character_shadow(player_root, 0.38)
 
 
-func _set_player_animation(animation_name: String) -> void:
-	if player_root == null:
+func _load_pixel_character_texture(sprite_path: String) -> Texture2D:
+	var file_name := sprite_path.get_file()
+	if file_name not in ["char_0.png", "char_1.png", "char_2.png", "char_3.png", "char_4.png", "char_5.png"]:
+		push_error("Unsupported Pygame character sprite: %s" % sprite_path)
+		return null
+	if pixel_character_textures.has(file_name):
+		return pixel_character_textures[file_name] as Texture2D
+	var texture := load("res://pixel-agents/assets/characters/%s" % file_name) as Texture2D
+	if texture == null:
+		push_error("Could not load Pygame character sprite: %s" % file_name)
+		return null
+	pixel_character_textures[file_name] = texture
+	return texture
+
+
+func _new_pixel_character_sprite(texture: Texture2D, identity_variant: int, height: float) -> Sprite3D:
+	var sprite := Sprite3D.new()
+	sprite.texture = texture
+	sprite.hframes = 7
+	sprite.vframes = 3
+	sprite.frame = clampi(identity_variant, 0, 6)
+	sprite.pixel_size = height / 32.0
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.shaded = false
+	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return sprite
+
+
+func _set_pixel_character_facing(sprite: Sprite3D, facing: String, identity_variant: int) -> void:
+	if sprite == null:
 		return
-	var animation_player := player_root.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	if animation_player == null or not animation_player.has_animation(animation_name):
-		return
-	if animation_player.current_animation != animation_name:
-		animation_player.play(animation_name)
+	var row := 0
+	match facing:
+		"up":
+			row = 1
+		"left", "right":
+			row = 2
+		_:
+			row = 0
+	sprite.frame = row * 7 + clampi(identity_variant, 0, 6)
+	sprite.flip_h = facing == "left"
 
 
-func _has_player_animation(animation_name: String) -> bool:
-	if player_root == null:
-		return false
-	var animation_player := player_root.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	return animation_player != null and animation_player.has_animation(animation_name)
+func _add_character_shadow(parent: Node3D, radius: float) -> void:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius * 0.78
+	mesh.bottom_radius = radius
+	mesh.height = 0.025
+	mesh.radial_segments = 20
+	mesh.material = materials["character_shadow"]
+	var shadow := MeshInstance3D.new()
+	shadow.name = "PixelCharacterGroundingShadow"
+	shadow.mesh = mesh
+	shadow.position = Vector3(0.0, 0.02, 0.0)
+	shadow.scale = Vector3(1.35, 1.0, 0.78)
+	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(shadow)
 
 
 func _current_player_action() -> String:
 	var scene_data: Dictionary = snapshot.get("scene", {})
 	var player: Dictionary = scene_data.get("player", {})
 	return str(player.get("action", "stand"))
+
+
+func _sync_automation_characters(characters: Array) -> void:
+	var active_domains: Dictionary = {}
+	for index in range(characters.size()):
+		var character: Dictionary = characters[index]
+		var domain := str(character.get("domain", ""))
+		if domain.is_empty():
+			continue
+		active_domains[domain] = true
+		var identity_variant := int(abs(hash(domain)) % 7)
+		var target := _pygame_to_world(float(character.get("x", 0)), float(character.get("y", 0)))
+		var actor_root: Node3D = automation_actors.get(domain)
+		var sprite: Sprite3D = automation_sprites.get(domain)
+		if actor_root == null or not is_instance_valid(actor_root):
+			var texture := _load_pixel_character_texture(str(character.get("sprite", "characters/char_0.png")))
+			if texture == null:
+				continue
+			actor_root = Node3D.new()
+			actor_root.name = "Automation-" + domain
+			actor_root.position = target
+			sprite = _new_pixel_character_sprite(texture, identity_variant, 1.42)
+			sprite.name = "PixelSprite"
+			sprite.position = Vector3(0.0, 0.71, 0.0)
+			actor_root.add_child(sprite)
+			_add_character_shadow(actor_root, 0.34)
+
+			var name_tag := Label3D.new()
+			name_tag.name = "NameTag"
+			name_tag.text = str(character.get("name", domain)).to_upper()
+			name_tag.font_size = 24
+			name_tag.pixel_size = 0.006
+			name_tag.position = Vector3(0.0, 1.62, 0.0)
+			name_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			name_tag.outline_size = 7
+			name_tag.outline_modulate = Color("#14211e")
+			var accent: Array = character.get("accent", [])
+			if accent.size() >= 3:
+				name_tag.modulate = Color8(int(accent[0]), int(accent[1]), int(accent[2]))
+			actor_root.add_child(name_tag)
+			automation_root.add_child(actor_root)
+			automation_actors[domain] = actor_root
+			automation_sprites[domain] = sprite
+		automation_targets[domain] = target
+		var facing := str(character.get("facing", "down"))
+		_set_pixel_character_facing(sprite, facing, identity_variant)
+
+	for domain in automation_actors.keys():
+		if active_domains.has(domain):
+			continue
+		var stale_root: Node3D = automation_actors[domain]
+		if is_instance_valid(stale_root):
+			stale_root.queue_free()
+		automation_actors.erase(domain)
+		automation_sprites.erase(domain)
+		automation_targets.erase(domain)
+
+
+func _smooth_automation_characters(delta: float) -> void:
+	for domain in automation_actors.keys():
+		var actor_root: Node3D = automation_actors.get(domain)
+		var sprite: Sprite3D = automation_sprites.get(domain)
+		if actor_root == null or sprite == null or not is_instance_valid(actor_root) or not is_instance_valid(sprite):
+			continue
+		var target: Vector3 = automation_targets.get(domain, actor_root.position)
+		var blend := 1.0 - exp(-10.0 * delta)
+		actor_root.position = actor_root.position.lerp(target, blend)
+		var moving := actor_root.position.distance_to(target) > 0.035
+		var phase := float(abs(hash(str(domain))) % 17) * 0.24
+		var bob := absf(sin(animation_clock * 8.5 + phase)) * 0.035 if moving else sin(animation_clock * 1.6 + phase) * 0.008
+		sprite.position.y = 0.71 + bob
 
 
 func _build_interface() -> void:
@@ -530,6 +686,7 @@ func _apply_snapshot(message: Dictionary) -> void:
 	if room_id != last_room_id:
 		last_room_id = room_id
 		_rebuild_bridge_objects(scene_data.get("objects", []))
+	_sync_automation_characters(scene_data.get("automationCharacters", []))
 
 
 func _pygame_to_world(x: float, y: float) -> Vector3:
@@ -563,6 +720,13 @@ func _smooth_visual_player(delta: float) -> void:
 			sin(animation_clock * 0.75) * 0.018 * eased_blend,
 			sin(animation_clock * 1.15 + 0.5) * 0.012 * eased_blend,
 		)
+		if player_sprite:
+			var height_scale := lerpf(1.0, 0.72, eased_blend)
+			var moving := visual_player_velocity.length() > 0.08 and _current_player_action() == "stand"
+			var bob := absf(sin(animation_clock * 9.0)) * 0.04 if moving else sin(animation_clock * 1.7) * 0.008
+			player_sprite.scale = Vector3(1.0, height_scale, 1.0)
+			player_sprite.position = Vector3(0.0, PLAYER_RENDER_HEIGHT * height_scale / 2.0 + bob, 0.0)
+	_smooth_automation_characters(delta)
 
 
 func _rebuild_bridge_objects(objects: Array) -> void:
@@ -575,12 +739,10 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 		var position := _pygame_to_world(float(object.get("x", 0)), float(object.get("y", 0)))
 		var kind := str(object.get("kind", ""))
 		var object_id := str(object.get("id", "bridge-object"))
-		var render_position := position
-		if object_id == "executive-crt":
-			render_position = _pygame_to_world(
-				float(object.get("displayX", object.get("x", 0))),
-				float(object.get("displayY", object.get("y", 0))),
-			)
+		var render_position := _pygame_to_world(
+			float(object.get("displayX", object.get("x", 0))),
+			float(object.get("displayY", object.get("y", 0))),
+		)
 		var owner_terminal_replaces_object := has_owner_terminal_art and (
 			object_id == "executive-desk" or object_id == "executive-telephone"
 		)
@@ -613,6 +775,10 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 			position,
 			3.4,
 		)
+	if kind == "crt_terminal":
+		return _build_crt_terminal(position, object_id)
+	if kind == "desk_lamp":
+		return _build_desk_lamp(position, object_id)
 	var packed_name := ""
 	if kind == "desk" or kind == "chair":
 		packed_name = "chair" if kind == "chair" else "table"
@@ -620,10 +786,12 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
 	elif kind == "door":
-		return _add_box_to_dynamic("Door", position + Vector3(0, 0.85, 0), Vector3(1.4, 1.7, 0.18), materials["door"])
-	elif kind == "elevator" or kind == "stairs":
+		return _build_door_visual(position, object_id)
+	elif kind == "elevator":
+		return _build_elevator_visual(position, object_id)
+	elif kind == "stairs":
 		return _add_box_to_dynamic("Circulation", position + Vector3(0, 0.55, 0), Vector3(1.6, 1.1, 1.4), materials["metal"])
-	elif kind == "telephone" or kind == "pay_phone" or kind == "crt_terminal" or kind == "tv" or kind == "atm" or kind == "vending_machine" or kind == "arcade":
+	elif kind == "telephone" or kind == "pay_phone" or kind == "tv" or kind == "atm" or kind == "vending_machine" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	if packed_name != "":
 		var packed: PackedScene = imported_scenes.get(packed_name)
@@ -634,6 +802,144 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 			dynamic_root.add_child(instance)
 			return instance
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
+
+
+func _build_crt_terminal(position: Vector3, object_id: String) -> MeshInstance3D:
+	var body := _add_box_to_dynamic(
+		object_id + "-monitor",
+		position + Vector3(0.0, 1.04, 0.0),
+		Vector3(0.96, 0.72, 0.42),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-screen",
+		position + Vector3(0.0, 1.06, 0.216),
+		Vector3(0.76, 0.50, 0.018),
+		materials["crt_screen"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-stand",
+		position + Vector3(0.0, 0.62, -0.015),
+		Vector3(0.24, 0.20, 0.24),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-keyboard",
+		position + Vector3(0.0, 0.78, 0.37),
+		Vector3(0.68, 0.06, 0.24),
+		materials["wall_trim"],
+	)
+	return body
+
+
+func _build_desk_lamp(position: Vector3, object_id: String) -> MeshInstance3D:
+	var stem_mesh := CylinderMesh.new()
+	stem_mesh.top_radius = 0.035
+	stem_mesh.bottom_radius = 0.045
+	stem_mesh.height = 0.38
+	stem_mesh.material = materials["metal"]
+	var stem := MeshInstance3D.new()
+	stem.name = object_id + "-stem"
+	stem.mesh = stem_mesh
+	stem.position = position + Vector3(0.0, 0.91, 0.0)
+	dynamic_root.add_child(stem)
+	var shade := _add_box_to_dynamic(
+		object_id + "-shade",
+		position + Vector3(0.0, 1.14, 0.02),
+		Vector3(0.28, 0.16, 0.25),
+		materials["lamp_glow"],
+	)
+	var task_light := OmniLight3D.new()
+	task_light.name = object_id + "-light"
+	task_light.position = position + Vector3(0.0, 1.15, 0.06)
+	task_light.light_color = Color("#ffd095")
+	task_light.light_energy = 0.22
+	task_light.omni_range = 2.4
+	task_light.shadow_enabled = false
+	dynamic_root.add_child(task_light)
+	return shade
+
+
+func _build_door_visual(position: Vector3, object_id: String) -> MeshInstance3D:
+	var doorway_position := position + Vector3(0.0, 0.0, 0.84)
+	var leaf := _add_box_to_dynamic(
+		object_id + "-leaf",
+		doorway_position + Vector3(0.0, 1.0, 0.0),
+		Vector3(1.28, 1.95, 0.12),
+		materials["door"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-window",
+		doorway_position + Vector3(0.0, 1.52, 0.068),
+		Vector3(0.58, 0.38, 0.018),
+		materials["glass"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-handle",
+		doorway_position + Vector3(0.43, 0.92, 0.085),
+		Vector3(0.06, 0.13, 0.035),
+		materials["metal"],
+	)
+	return leaf
+
+
+func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstance3D:
+	var opening_position := position + Vector3(0.0, 0.0, 0.18)
+	_add_box_to_dynamic(
+		object_id + "-backplate",
+		opening_position + Vector3(0.0, 1.22, -0.16),
+		Vector3(2.12, 2.56, 0.18),
+		materials["wall"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-floor-indicator",
+		opening_position + Vector3(0.0, 2.55, 0.06),
+		Vector3(0.38, 0.16, 0.06),
+		materials["crt_screen"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-frame-left",
+		opening_position + Vector3(-0.84, 1.22, 0.0),
+		Vector3(0.16, 2.44, 0.34),
+		materials["wall_trim"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-frame-right",
+		opening_position + Vector3(0.84, 1.22, 0.0),
+		Vector3(0.16, 2.44, 0.34),
+		materials["wall_trim"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-header",
+		opening_position + Vector3(0.0, 2.36, 0.0),
+		Vector3(1.84, 0.16, 0.34),
+		materials["wall_trim"],
+	)
+	var elevator_door := _add_box_to_dynamic(
+		object_id + "-left-door",
+		opening_position + Vector3(-0.34, 1.12, 0.025),
+		Vector3(0.66, 2.08, 0.14),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-right-door",
+		opening_position + Vector3(0.34, 1.12, 0.025),
+		Vector3(0.66, 2.08, 0.14),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-call-panel",
+		opening_position + Vector3(1.02, 1.24, 0.02),
+		Vector3(0.17, 0.45, 0.10),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-call-button",
+		opening_position + Vector3(1.02, 1.34, 0.08),
+		Vector3(0.07, 0.07, 0.035),
+		materials["lamp_glow"],
+	)
+	return elevator_door
 
 
 func _add_shadow_tower_sprite_to_dynamic(
@@ -737,14 +1043,16 @@ func _update_art_motion(delta: float) -> void:
 
 
 func _update_player_animation() -> void:
-	var action := _current_player_action()
-	var moving := visual_player_world.distance_to(target_player_world) > 0.018
-	if action == "sit":
-		_set_player_animation("sit" if _has_player_animation("sit") else "idle")
-	elif action == "sleep":
-		_set_player_animation("sleep" if _has_player_animation("sleep") else "idle")
+	if player_sprite == null or visual_player_velocity.length() <= 0.08:
+		return
+	if absf(visual_player_velocity.x) > absf(visual_player_velocity.z):
+		player_facing_row = 2
+		player_facing_left = visual_player_velocity.x < 0.0
 	else:
-		_set_player_animation("walk" if moving else "idle")
+		player_facing_row = 1 if visual_player_velocity.z < 0.0 else 0
+		player_facing_left = false
+	player_sprite.frame = player_facing_row * 7
+	player_sprite.flip_h = player_facing_left
 
 
 func _update_hud() -> void:
