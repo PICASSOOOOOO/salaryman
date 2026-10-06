@@ -124,6 +124,7 @@
 - [Tower physical floor shells](tower-floor-physical-shells.md) — every elevator stop renders a physical shell; vacant/sealed/restricted addresses hold access at the boundary instead of disappearing.
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
 - [Godot and Unreal art development](godot-art-dev.md) — Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
+- [Persistent building simulation](persistent-building-simulation.md) — object, character, clothing, weather, and building-system changes stay until people act on them.
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
 - [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.

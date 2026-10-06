@@ -70,8 +70,10 @@ def validate_command(command: object) -> tuple[bool, str]:
             return False, "INPUT REQUIRES NUMERIC X AND Y"
         if abs(float(payload["x"])) > 1 or abs(float(payload["y"])) > 1:
             return False, "INPUT VECTOR OUT OF RANGE"
+        if "sprint" in payload and not isinstance(payload["sprint"], bool):
+            return False, "SPRINT MUST BE A BOOLEAN"
     elif name == "set_action":
-        if payload.get("action") not in {"stand", "jump", "sit", "sleep"}:
+        if payload.get("action") not in {"stand", "jump", "sit", "sleep", "fight", "sweep"}:
             return False, "ACTION NOT ALLOWED"
     elif name == "select_room":
         room = payload.get("room")
@@ -118,11 +120,21 @@ def apply_command(command: object, state: OfficeState, scene: TowerScene) -> Com
         state.notice = f"POSITION / {scene.room.label}"
         return CommandResult(True, state.notice)
     if name == "set_input":
-        scene.set_motion_input(payload["x"], payload["y"])
+        scene.set_motion_input(payload["x"], payload["y"], sprint=payload.get("sprint", False))
         return CommandResult(True, "MOTION INPUT ACCEPTED")
     if name == "set_action":
         action = payload["action"]
-        duration = 0.9 if action == "jump" else 4.0 if action == "sleep" else 0.0
+        duration = (
+            0.9
+            if action == "jump"
+            else 4.0
+            if action == "sleep"
+            else 0.7
+            if action == "fight"
+            else 0.85
+            if action == "sweep"
+            else 0.0
+        )
         if not scene.set_player_action(action, duration=duration):
             return CommandResult(False, "NO CHAIR IN RANGE")
         state.notice = action.upper()

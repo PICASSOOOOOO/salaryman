@@ -16,6 +16,8 @@ physics, animation, or lighting are verified. Headless mode selects the dummy
 renderer, so Viewport.get_texture() returns no image. For visual captures, use
 a real rendering context under Xvfb with the OpenGL compatibility renderer; the
 Xvfb binary may exist in the Nix store even when xvfb-run is unavailable.
+Match Xvfb's virtual resolution to Godot's configured window size; a smaller
+screen can clip the game window and hide HUD elements from the capture.
 
 **Why:** A Pygame/bridge pass cannot prove responsive Godot movement or an
 enjoyable 3D client, and the dummy headless renderer cannot validate or capture
@@ -24,4 +26,15 @@ the actual presentation.
 **How to apply:** When changing the Godot client, test its real-time controls
 and local bridge behavior, then launch it with `godot` or `godot4`. For visual
 captures, start Xvfb and run Godot with `DISPLAY`, `--display-driver x11`,
-`--rendering-method gl_compatibility`, and `--rendering-driver opengl3`.
+`--rendering-method gl_compatibility`, and `--rendering-driver opengl3`; use a
+virtual screen at least as large as the configured game window.
+
+For entry scripts that instantiate a newly added controller, preload the script
+by resource path instead of relying only on its `class_name`; a clean direct
+launch can happen before Godot generates the global script-class cache.
+
+**Why:** An editor-assisted launch can populate `.godot` metadata and hide a
+missing cold-start dependency.
+
+**How to apply:** Keep direct, clean-project launch in verification and use a
+preload constant when a runtime entry script needs the new controller type.

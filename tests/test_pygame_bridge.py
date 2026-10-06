@@ -68,6 +68,53 @@ class PygameBridgeTests(unittest.TestCase):
             self.scene.update_motion(1 / 60)
         self.assertLess((self.scene.velocity[0] ** 2 + self.scene.velocity[1] ** 2) ** 0.5, 1.0)
 
+    def test_sprint_input_uses_the_higher_authoritative_speed(self):
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "sprint-1",
+                "name": "set_input",
+                "payload": {"x": 1, "y": 0, "sprint": True},
+            },
+            self.state,
+            self.scene,
+        )
+        self.assertTrue(result.ok)
+        for _ in range(30):
+            self.scene.update_motion(1 / 60)
+        self.assertAlmostEqual(abs(self.scene.velocity[0]), self.scene.SPRINT_SPEED, delta=1.0)
+
+    def test_godot_action_commands_reach_python_state(self):
+        for action in ("jump", "fight", "sweep"):
+            result = apply_command(
+                {
+                    "type": "command",
+                    "version": PROTOCOL_VERSION,
+                    "id": f"action-{action}",
+                    "name": "set_action",
+                    "payload": {"action": action},
+                },
+                self.state,
+                self.scene,
+            )
+            self.assertTrue(result.ok)
+            self.assertEqual(self.scene.player_action, action)
+        self.assertGreater(self.scene.player_action_remaining, 0.0)
+
+    def test_invalid_sprint_flag_is_rejected(self):
+        valid, reason = validate_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "sprint-invalid",
+                "name": "set_input",
+                "payload": {"x": 1, "y": 0, "sprint": "yes"},
+            }
+        )
+        self.assertFalse(valid)
+        self.assertEqual(reason, "SPRINT MUST BE A BOOLEAN")
+
     def test_oversized_move_is_rejected_without_mutating_scene(self):
         before = self.scene.player_position
         command = {

@@ -52,7 +52,7 @@ NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {
     ),
 }
 
-CharacterAction = Literal["stand", "jump", "sit", "sleep"]
+CharacterAction = Literal["stand", "jump", "sit", "sleep", "fight", "sweep"]
 
 
 @dataclass(frozen=True)
@@ -89,6 +89,7 @@ class TowerScene:
     )
     objects: OfficeObjectRegistry = field(default_factory=build_tower_object_registry)
     input_vector: tuple[float, float] = (0.0, 0.0)
+    sprint_input: bool = False
     velocity: tuple[float, float] = (0.0, 0.0)
     motion_remainder: tuple[float, float] = (0.0, 0.0)
     npc_motion_seconds: float = 0.0
@@ -103,6 +104,7 @@ class TowerScene:
     selected_automation_domain: str | None = None
 
     MAX_SPEED: float = 300.0
+    SPRINT_SPEED: float = 500.0
     ACCELERATION: float = 1_500.0
     FRICTION: float = 2_000.0
     AUTO_SLEEP_AFTER_SECONDS: float = 5 * 60
@@ -218,12 +220,13 @@ class TowerScene:
                 return True
         return False
 
-    def set_motion_input(self, x: float, y: float) -> None:
-        """Set a bounded input vector received from the Godot renderer."""
+    def set_motion_input(self, x: float, y: float, *, sprint: bool = False) -> None:
+        """Set bounded locomotion intent received from the Godot game client."""
         self.input_vector = (
             max(-1.0, min(1.0, float(x))),
             max(-1.0, min(1.0, float(y))),
         )
+        self.sprint_input = bool(sprint)
         if hypot(*self.input_vector) > 0:
             self.idle_seconds = 0.0
             if self.player_action in {"sit", "sleep"}:
@@ -250,8 +253,9 @@ class TowerScene:
             self.idle_seconds = 0.0
             direction_x = input_x / input_length
             direction_y = input_y / input_length
-            target_x = direction_x * self.MAX_SPEED
-            target_y = direction_y * self.MAX_SPEED
+            target_speed = self.SPRINT_SPEED if self.sprint_input else self.MAX_SPEED
+            target_x = direction_x * target_speed
+            target_y = direction_y * target_speed
             rate = self.ACCELERATION * delta_seconds
         else:
             target_x = 0.0
@@ -287,7 +291,7 @@ class TowerScene:
         reset_idle: bool = True,
     ) -> bool:
         """Set a grounded action; sitting attaches the player to a nearby chair."""
-        if action not in {"stand", "jump", "sit", "sleep"}:
+        if action not in {"stand", "jump", "sit", "sleep", "fight", "sweep"}:
             return False
         if action == "sit":
             chairs = [
