@@ -50,15 +50,20 @@ finish the work; this is a world-door rule, not a site-wide route gate.
 named below-grade, operational, elevator, stair, and story-lockdown details
 that must remain in the building plan.
 
-For this building, repair, construction, electrical, concrete, plumbing,
+Everything should decay over time. Cleaning and repair should be profitable
+business services. Repair, construction, electrical, concrete, plumbing,
 natural-decay remediation, renovation, and customization should become
 organization work and income loops. An NPC or real person must physically do
 the work over time with live animations; office permissions govern renovation
 and customization, and employment changes should carry story consequences.
 
-**Why:** the user described these as intended circular income activities and
-said physical action, elapsed work time, organization hiring, and deep stories
-are central to the building simulation.
+**Why:** the user said all game state should decay and cleaning/repair businesses
+should profit, and described the wider activities as organization income loops
+that require physical action, elapsed work time, hiring, and story consequences.
+
+**How to apply:** Apply decay broadly across simulated world state; design
+cleaning and repair as profitable organization services, not fixture-only
+actions.
 
 The game company should have a construction office in the Tower that creates
 real estate. Each building is an isolated logical instance in the shared
