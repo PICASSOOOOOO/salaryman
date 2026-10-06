@@ -1607,3 +1607,31 @@ mtime_ms = 1789278287954
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/bb0e596b-71bc-4ecd-bda5-1d85fffb58a7/8ce29538-ffad-4450-9ce1-e85049476927"
 storage_version_token = "1789278299213002"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Q5yT_4FH_4or8wbdH9gdF"
+uri = "file://screenshots/pygame-room-customizer.png"
+type = "image"
+title = "Pygame room customizer"
+description = "Headless desktop render showing the four wall finishes and four decor sets."
+logical_id = "11c094c0-5443-468f-876f-f3c2ac5b55fd"
+content_hash = "sha256:0aa8803bd1e7b84d5acdec822b57989d5bf555700b7bf59539509e0e8b7ad7c0"
+size = 52845
+mtime_ms = 1791273953784
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/11c094c0-5443-468f-876f-f3c2ac5b55fd/f94ea08e-1a0b-46e9-9bae-c03ed60a2136"
+storage_version_token = "1791274515100482"
+content_type = "image/png"
+
+[[outputs]]
+id = "qV-WbrbUsXJs7qx6-gkzN"
+uri = "file://screenshots/pygame-custom-room.png"
+type = "image"
+title = "Customized Pygame room"
+description = "Room preview with the selected Sunrise wall finish and Greenhouse decor."
+logical_id = "ec4c9db9-adf3-46be-aacf-a19b529c8d12"
+content_hash = "sha256:d24194368fffa8917490ec3887d42cbf40560430c915a5fb8e4d4695dea3eccc"
+size = 41407
+mtime_ms = 1791273953816
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ec4c9db9-adf3-46be-aacf-a19b529c8d12/57182028-1b32-4f6d-b5eb-72ac2c8c98c8"
+storage_version_token = "1791274516122654"
+content_type = "image/png"

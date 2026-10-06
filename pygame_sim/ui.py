@@ -9,7 +9,14 @@ from pathlib import Path
 
 import pygame
 
+from .animation import character_pose
 from .automation import AUTOMATION_CHARACTERS
+from .customization import (
+    DECOR_PRESETS,
+    WALL_FINISHES,
+    WALL_FINISH_BY_ID,
+    room_decor_placements,
+)
 from .models import Worker
 from .objects import EXECUTIVE_SHOWCASE_OBJECT_IDS
 from .scene import FLOOR_PLAN, TowerScene
@@ -72,11 +79,14 @@ class SolarPunkRenderer:
         self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_economy_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_maintenance_rect = pygame.Rect(0, 0, 0, 0)
+        self.customize_wall_rects: dict[str, pygame.Rect] = {}
+        self.customize_decor_rects: dict[str, pygame.Rect] = {}
         self.worker_rects: dict[int, pygame.Rect] = {}
         self.recruitment_rect = pygame.Rect(0, 0, 0, 0)
         self.refresh_rect = pygame.Rect(0, 0, 0, 0)
         self.candidate_rects: dict[int, pygame.Rect] = {}
         self._pixel_assets: dict[str, pygame.Surface] = {}
+        self._last_actor_positions: dict[str, tuple[int, int]] = {}
         self.pablo_status = "PABLO CORE / OFFLINE"
         self.pablo_status_color = Palette.MATRIX_DIM
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
@@ -181,6 +191,8 @@ class SolarPunkRenderer:
                     scene,
                     practical_app_available=practical_app_available,
                 )
+            elif state.active_page == "customize":
+                self.draw_customization_page(state, scene)
             else:
                 self.draw_game_page(state, scene)
         elif state.tool_menu_open:
@@ -197,6 +209,8 @@ class SolarPunkRenderer:
         camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
         camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
+        appearance = state.get_room_customization(scene.current_room)
+        wall_finish = WALL_FINISH_BY_ID[appearance["wall_style"]]
         self._draw_square_office_floor(
             viewport,
             scene.room.bounds,
@@ -214,14 +228,26 @@ class SolarPunkRenderer:
         # the tiny source wall tile becomes visual noise and collides with the
         # room label, so use a clean structural beam instead.
         beam = pygame.Rect(viewport.x + 8, viewport.y, viewport.width - 16, 42)
-        pygame.draw.rect(self.screen, (29, 52, 54), beam)
-        pygame.draw.line(self.screen, (164, 201, 158), beam.topleft, beam.topright, 2)
-        pygame.draw.line(self.screen, (74, 112, 100), beam.bottomleft, beam.bottomright, 2)
+        pygame.draw.rect(self.screen, wall_finish.beam, beam)
+        pygame.draw.line(self.screen, wall_finish.edge, beam.topleft, beam.topright, 2)
+        pygame.draw.line(self.screen, wall_finish.detail, beam.bottomleft, beam.bottomright, 2)
         for x in range(beam.left + 10, beam.right, 34):
-            pygame.draw.line(self.screen, (55, 87, 82), (x, beam.top + 6), (x, beam.bottom - 5), 1)
+            pygame.draw.line(
+                self.screen,
+                wall_finish.detail,
+                (x, beam.top + 6),
+                (x, beam.bottom - 5),
+                1,
+            )
         lower_beam = pygame.Rect(viewport.x + 8, viewport.bottom - 13, viewport.width - 16, 13)
-        pygame.draw.rect(self.screen, (48, 67, 62), lower_beam)
-        pygame.draw.line(self.screen, (164, 201, 158), lower_beam.topleft, lower_beam.topright, 2)
+        pygame.draw.rect(self.screen, wall_finish.lower_beam, lower_beam)
+        pygame.draw.line(
+            self.screen,
+            wall_finish.edge,
+            lower_beam.topleft,
+            lower_beam.topright,
+            2,
+        )
         self.text(f"FLOOR {scene.current_floor:02d} / BASE", (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
 
         content_clip = pygame.Rect(
@@ -233,25 +259,14 @@ class SolarPunkRenderer:
         previous_clip = self.screen.get_clip()
         self.screen.set_clip(content_clip)
 
-        # Decorative room composition uses real furniture sprites, while the
-        # interaction registry remains the sole authority for object behavior.
-        placements = {
-            "lobby": [],
-            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 4200)),
-                           ("furniture/PLANT/PLANT.png", (8500, 4200)),
-                           ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 4300))],
-            "executive": [],
-            "public": [("furniture/BOOKSHELF/BOOKSHELF.png", (4550, 6400)),
-                       ("furniture/PLANT/PLANT.png", (4550, 7000)),
-                       ("furniture/WHITEBOARD/WHITEBOARD.png", (3200, 6400))],
-            "office_03": [("furniture/BOOKSHELF/BOOKSHELF.png", (6650, 6400)),
-                          ("furniture/PLANT/PLANT.png", (6650, 7000)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5300, 6400))],
-            "office_04": [("furniture/BOOKSHELF/BOOKSHELF.png", (8750, 6400)),
-                          ("furniture/PLANT/PLANT.png", (8750, 7000)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (7400, 6400))],
-        }
-        for asset, position in placements.get(scene.current_room, []):
+        # Personal decor is visual-only. The scene's object registry remains
+        # the authority for interaction and collision.
+        placements = room_decor_placements(
+            scene.current_room,
+            scene.room.bounds,
+            appearance["decor_style"],
+        )
+        for asset, position in placements:
             screen_position = point(position)
             depth = max(0.72, min(1.28, 0.72 + (screen_position[1] - viewport.top) / max(1, viewport.height) * 0.56))
             self._draw_sprite_shadow(screen_position, depth)
@@ -304,7 +319,8 @@ class SolarPunkRenderer:
                 continue
             (npc_x, npc_y), facing = pose
             screen_x, screen_y = point((npc_x, npc_y))
-            frame = (int(scene.npc_motion_seconds * 12) + index * 2) % 7
+            character_variant = index % 7
+            moving = self._actor_is_moving(f"worker:{index}:{worker.name}", (npc_x, npc_y))
             self._draw_npc(
                 screen_x,
                 screen_y,
@@ -312,7 +328,9 @@ class SolarPunkRenderer:
                 worker.accent,
                 scale,
                 facing=facing,
-                frame=frame,
+                character_variant=character_variant,
+                animation_tick=int(scene.npc_motion_seconds * 60),
+                moving=moving,
                 character_asset=character_assets[index],
             )
 
@@ -325,7 +343,8 @@ class SolarPunkRenderer:
         """Render linked automation roles as inspectable, moving coworkers."""
         nearby = scene.nearby_automation_character
         for index, agent in enumerate(scene.automation_character_states()):
-            screen_x, screen_y = point((int(agent["x"]), int(agent["y"])))
+            world_position = (int(agent["x"]), int(agent["y"]))
+            screen_x, screen_y = point(world_position)
             raw_accent = agent.get("accent")
             accent = (
                 tuple(int(channel) for channel in raw_accent)
@@ -346,7 +365,11 @@ class SolarPunkRenderer:
                 label, label_color = "UNLINKED", (173, 184, 166)
             else:
                 label, label_color = "UNAVAILABLE", (196, 150, 125)
-            frame = (int(scene.npc_motion_seconds * 12) + index * 3) % 7 if enabled is True else 0
+            character_variant = index % 7
+            moving = self._actor_is_moving(
+                f"automation:{agent.get('domain', index)}",
+                world_position,
+            )
             self._draw_npc(
                 screen_x,
                 screen_y,
@@ -354,7 +377,9 @@ class SolarPunkRenderer:
                 accent,
                 scale,
                 facing=str(agent.get("facing", "down")),
-                frame=frame,
+                character_variant=character_variant,
+                animation_tick=int(scene.npc_motion_seconds * 60),
+                moving=moving,
                 character_asset=str(agent.get("sprite", "characters/char_1.png")),
             )
             self.text(label, (screen_x - 40, screen_y + 12), self.font_sm, label_color)
@@ -367,6 +392,11 @@ class SolarPunkRenderer:
                     Palette.SUN,
                 )
 
+    def _actor_is_moving(self, actor_id: str, position: tuple[int, int]) -> bool:
+        previous = self._last_actor_positions.get(actor_id)
+        self._last_actor_positions[actor_id] = position
+        return previous is not None and previous != position
+
     def _draw_npc(
         self,
         x: int,
@@ -376,13 +406,20 @@ class SolarPunkRenderer:
         scale: float,
         *,
         facing: str,
-        frame: int,
+        character_variant: int,
+        animation_tick: int,
+        moving: bool,
         character_asset: str,
     ) -> None:
         """Draw a moving teammate with the same stable sprite path as the player."""
+        variant, offset_x, offset_y = character_pose(
+            character_variant,
+            animation_tick,
+            moving=moving,
+        )
         rendered, bounds, sprite_scale = self._character_sprite(
             facing,
-            frame,
+            variant,
             scale,
             npc=True,
             character_asset=character_asset,
@@ -392,11 +429,11 @@ class SolarPunkRenderer:
             self.screen.blit(
                 rendered,
                 (
-                    round(x - (bounds.left + bounds.width / 2.0)),
-                    y + 7 - bounds.bottom,
+                    round(x - (bounds.left + bounds.width / 2.0)) + offset_x,
+                    y + 7 - bounds.bottom + offset_y,
                 ),
             )
-            label_y = y + 7 - bounds.bottom - 15
+            label_y = y + 7 - bounds.bottom - 15 + offset_y
         else:
             label_y = y - 52
         pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
@@ -779,11 +816,15 @@ class SolarPunkRenderer:
         action: str = "stand",
         action_elapsed: float = 0.0,
     ) -> None:
-        """Draw a real 16-bit character frame, facing the scene's movement."""
-        frame = (self._anim_tick // 3) % 7 if moving else 0
+        """Draw one fixed avatar variant with a separate low-amplitude walk pose."""
+        character_variant, step_x, step_y = character_pose(
+            0,
+            self._anim_tick,
+            moving=moving and action == "stand",
+        )
         rendered, rendered_bounds, sprite_scale = self._character_sprite(
             self._facing,
-            frame,
+            character_variant,
             scale,
             character_asset="characters/char_0.png",
         )
@@ -818,8 +859,8 @@ class SolarPunkRenderer:
             self.screen.blit(
                 displayed,
                 (
-                    round(x - rendered_center_x + seated_offset_x),
-                    y + 7 - rendered_bottom + jump_offset + seated_offset_y,
+                    round(x - rendered_center_x + seated_offset_x + step_x),
+                    y + 7 - rendered_bottom + jump_offset + seated_offset_y + step_y,
                 ),
             )
             if action == "sleep":
@@ -834,23 +875,26 @@ class SolarPunkRenderer:
     def _character_sprite(
         self,
         facing: str,
-        frame: int,
+        character_variant: int,
         scale: float,
         *,
         npc: bool = False,
         character_asset: str = "characters/char_0.png",
     ) -> tuple[pygame.Surface | None, pygame.Rect | None, float]:
-        """Extract the actual 16x32 character cells without row-boundary tearing."""
+        """Extract one 16x32 avatar cell; sheet columns identify looks, not walk frames."""
         sheet = self._asset(character_asset)
         if sheet is None:
             return None, None, 0.0
-        # char_0.png is 7 columns x 3 rows: front, back, and right profile.
+        # Character sheets are 7 identity variants x 3 facing rows.
+        character_variant = max(0, min(6, int(character_variant)))
         row_by_facing = {"down": 0, "up": 1, "left": 2, "right": 2}
         row = row_by_facing.get(facing, 0)
-        cache_key = (character_asset, facing, frame)
+        cache_key = (character_asset, facing, character_variant)
         crop = self._character_frame_cache.get(cache_key)
         if crop is None:
-            source = sheet.subsurface(pygame.Rect(frame * 16, row * 32, 16, 32))
+            source = sheet.subsurface(
+                pygame.Rect(character_variant * 16, row * 32, 16, 32)
+            )
             if facing == "left":
                 source = pygame.transform.flip(source, True, False)
             crop = pygame.Surface((16, 32), pygame.SRCALPHA)
@@ -909,10 +953,20 @@ class SolarPunkRenderer:
             if nearby.kind == "crt_terminal" and scene.is_seated_at_workstation(nearby.parent_id):
                 prompt_text = "USE COMPUTER"
             self.text(f"[E] {prompt_text}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)
-            self.text(f"ROOM  {scene.room.label}  /  OBJECT  {nearby.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
+            self.text(
+                f"ROOM  {scene.room.label}  ·  [B] CUSTOMIZE",
+                (274, 661),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
         else:
             self.text("WALK CLOSER TO A LIVE OBJECT", (274, 628), self.font_md, Palette.MATRIX_BRIGHT)
-            self.text(f"ROOM  {scene.room.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
+            self.text(
+                f"ROOM  {scene.room.label}  ·  [B] CUSTOMIZE",
+                (274, 661),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
         self.text(state.notice, (720, 625), self.font_mono, Palette.MATRIX_GREEN)
         self.draw_tool_inventory(state, pygame.Rect(self.width - 286, 616, 256, 76))
 
@@ -1102,6 +1156,134 @@ class SolarPunkRenderer:
             self.draw_economy_page(state, page)
         else:
             self.draw_tools_page(state, page)
+
+    def draw_customization_page(self, state: OfficeState, scene: TowerScene) -> None:
+        """Present saved, non-interactive wall and decor choices for this room."""
+        veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        pygame.draw.rect(
+            veil,
+            (2, 8, 10, 210),
+            pygame.Rect(0, 58, self.width, self.height - 58),
+        )
+        self.screen.blit(veil, (0, 0))
+
+        page_width = max(360, self.width - 84)
+        page_height = min(514, max(360, self.height - 106))
+        page = pygame.Rect(0, 0, page_width, page_height)
+        page.center = (self.width // 2, self.height // 2 + 18)
+        self.matrix_panel(page, Palette.SEAFOAM)
+        self.text(
+            "ROOM PERSONALIZATION",
+            (page.x + 24, page.y + 18),
+            self.font_xl,
+            Palette.MATRIX_BRIGHT,
+        )
+        self.text(
+            f"{scene.room.label}  /  VISUAL CHOICES ONLY",
+            (page.x + 26, page.y + 54),
+            self.font_mono,
+            Palette.MATRIX_DIM,
+        )
+
+        self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
+        self.panel(
+            self.overlay_close_rect,
+            Palette.MATRIX_PANEL_2,
+            Palette.SEAFOAM,
+            radius=2,
+            width=1,
+        )
+        self.text(
+            "CLOSE  ESC",
+            (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8),
+            self.font_mono,
+            Palette.SEAFOAM,
+        )
+
+        customization = state.get_room_customization(scene.current_room)
+        self.customize_wall_rects = {}
+        self.customize_decor_rects = {}
+        left = page.x + 24
+        available_width = page.width - 48
+
+        self.text("WALL FINISH", (left, page.y + 96), self.font_md, Palette.MATRIX_BRIGHT)
+        wall_gap = 10
+        wall_width = (
+            available_width - wall_gap * (len(WALL_FINISHES) - 1)
+        ) // len(WALL_FINISHES)
+        for index, finish in enumerate(WALL_FINISHES):
+            rect = pygame.Rect(
+                left + index * (wall_width + wall_gap),
+                page.y + 122,
+                wall_width,
+                54,
+            )
+            selected = customization["wall_style"] == finish.id
+            self.customize_wall_rects[finish.id] = rect
+            self.panel(
+                rect,
+                finish.beam,
+                finish.edge if selected else finish.detail,
+                radius=5,
+                width=3 if selected else 1,
+            )
+            pygame.draw.rect(
+                self.screen,
+                finish.edge,
+                pygame.Rect(rect.x + 10, rect.y + 10, 18, 18),
+            )
+            self.text(
+                finish.label,
+                (rect.x + 36, rect.y + 14),
+                self.font_sm,
+                Palette.GLASS_BRIGHT,
+            )
+            self.text(
+                "SELECTED" if selected else "WALL",
+                (rect.x + 10, rect.y + 34),
+                self.font_mono,
+                finish.edge,
+            )
+
+        self.text("DECOR SET", (left, page.y + 202), self.font_md, Palette.MATRIX_BRIGHT)
+        decor_gap = 12
+        decor_width = (available_width - decor_gap) // 2
+        for index, preset in enumerate(DECOR_PRESETS):
+            rect = pygame.Rect(
+                left + (index % 2) * (decor_width + decor_gap),
+                page.y + 228 + (index // 2) * 62,
+                decor_width,
+                52,
+            )
+            selected = customization["decor_style"] == preset.id
+            self.customize_decor_rects[preset.id] = rect
+            self.panel(
+                rect,
+                Palette.MATRIX_PANEL_2,
+                Palette.MATRIX_AMBER if selected else Palette.MATRIX_GRID,
+                radius=4,
+                width=2 if selected else 1,
+            )
+            self.text(
+                preset.label,
+                (rect.x + 14, rect.y + 10),
+                self.font_md,
+                Palette.MATRIX_BRIGHT,
+            )
+            detail = "CURRENT ROOM" if selected else "WALL ART  ·  PLANTS  ·  SHELVING"
+            self.text(
+                detail,
+                (rect.x + 14, rect.y + 32),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
+
+        self.text(
+            "Saved to this game profile. Furniture stays decorative; live objects and collision are unchanged.",
+            (left, page.bottom - 42),
+            self.font_sm,
+            (186, 204, 187),
+        )
 
     def draw_economy_page(self, state: OfficeState, page: pygame.Rect) -> None:
         cards = (

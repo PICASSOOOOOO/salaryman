@@ -147,6 +147,8 @@ def run(argv: list[str] | None = None) -> int:
                         open_selected_practical_app()
                 elif event.key == pygame.K_TAB:
                     spatial_mode = not spatial_mode
+                elif spatial_mode and event.key == pygame.K_b:
+                    state.open_page("customize", source="ROOM CUSTOMIZATION")
                 elif spatial_mode and event.key == pygame.K_e:
                     scene.interact(state)
                 elif spatial_mode and event.key == pygame.K_SPACE:
@@ -187,7 +189,7 @@ def run(argv: list[str] | None = None) -> int:
                     state.select_worker(event.key - pygame.K_1)
                 elif event.key == pygame.K_c and state.selected_worker is not None:
                     state.buy_coffee(state.selected_worker)
-                elif event.key == pygame.K_b and not state.drawer_open:
+                elif event.key == pygame.K_b and not spatial_mode and not state.drawer_open:
                     state.start_break()
                 elif event.key == pygame.K_t:
                     state.toggle_auto_breaks()
@@ -202,6 +204,24 @@ def run(argv: list[str] | None = None) -> int:
                         open_selected_practical_app()
                     elif renderer.repair_rect.collidepoint(event.pos) and state.active_page == "tools":
                         state.repair_decay()
+                    elif state.active_page == "customize":
+                        for wall_style, rect in renderer.customize_wall_rects.items():
+                            if rect.collidepoint(event.pos):
+                                if state.set_room_customization(
+                                    scene.current_room,
+                                    wall_style=wall_style,
+                                ):
+                                    state.save_to_file(args.save_file)
+                                break
+                        else:
+                            for decor_style, rect in renderer.customize_decor_rects.items():
+                                if rect.collidepoint(event.pos):
+                                    if state.set_room_customization(
+                                        scene.current_room,
+                                        decor_style=decor_style,
+                                    ):
+                                        state.save_to_file(args.save_file)
+                                    break
                     continue
                 if renderer.admin_tools_rect.collidepoint(event.pos):
                     state.toggle_tool_menu()

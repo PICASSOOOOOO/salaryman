@@ -9,6 +9,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
+from .customization import (
+    DEFAULT_ROOM_CUSTOMIZATION,
+    DECOR_PRESET_BY_ID,
+    ROOM_IDS,
+    WALL_FINISH_BY_ID,
+    sanitize_room_customizations,
+)
 from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Worker
 
 
@@ -18,7 +25,7 @@ SHIFT_START = 9
 SHIFT_END = 17
 BreakKind = Literal["short", "lunch"]
 GameRole = Literal["player", "moderator", "admin"]
-OverlayPage = Literal["tools", "economy"]
+OverlayPage = Literal["tools", "economy", "customize"]
 RECRUITMENT_REFRESH_COST = 50.0
 DECAY_PER_WORKSPACE_MINUTE = 0.07
 MAINTENANCE_BASE_COST = 40.0
@@ -95,6 +102,7 @@ class OfficeState:
     active_page: OverlayPage | Literal["automation"] | None = None
     page_source: str | None = None
     tool_menu_open: bool = False
+    room_customizations: dict[str, dict[str, str]] = field(default_factory=dict)
     decay: float = 8.0
     maintenance_runs: int = 0
 
@@ -181,13 +189,45 @@ class OfficeState:
         source: str = "OBJECT",
     ) -> bool:
         """Open shared pages while keeping operator tools role-gated."""
-        if not from_object and not self.has_operator_access:
+        if not from_object and not self.has_operator_access and page != "customize":
             self.notice = "ACCESS DENIED / FIND THE LIVE OBJECT"
             return False
         self.active_page = page
         self.page_source = source
         self.tool_menu_open = False
         self.notice = f"{page.upper()} PAGE / {source}"
+        return True
+
+    def get_room_customization(self, room_id: str) -> dict[str, str]:
+        """Return a validated room appearance, using defaults for unknown data."""
+        if room_id not in ROOM_IDS:
+            return dict(DEFAULT_ROOM_CUSTOMIZATION)
+        room_customizations = sanitize_room_customizations(self.room_customizations)
+        return room_customizations.get(room_id, dict(DEFAULT_ROOM_CUSTOMIZATION))
+
+    def set_room_customization(
+        self,
+        room_id: str,
+        *,
+        wall_style: str | None = None,
+        decor_style: str | None = None,
+    ) -> bool:
+        """Update only known visual presets; room geometry stays authoritative."""
+        if room_id not in ROOM_IDS:
+            return False
+        current = self.get_room_customization(room_id)
+        if wall_style is not None:
+            if not isinstance(wall_style, str) or wall_style not in WALL_FINISH_BY_ID:
+                return False
+            current["wall_style"] = wall_style
+        if decor_style is not None:
+            if not isinstance(decor_style, str) or decor_style not in DECOR_PRESET_BY_ID:
+                return False
+            current["decor_style"] = decor_style
+        self.room_customizations = sanitize_room_customizations(
+            {**self.room_customizations, room_id: current}
+        )
+        self.notice = f"{room_id.upper()} CUSTOMIZATION SAVED"
         return True
 
     def close_page(self) -> None:
@@ -325,13 +365,16 @@ class OfficeState:
         destination = Path(path).expanduser()
         destination.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "version": 1,
+            "version": 2,
             "funds": self.funds,
             "day": self.day,
             "hour": self.hour,
             "minute": self.minute,
             "selected_worker": self.selected_worker,
             "office_inventory": self.office_inventory,
+            "room_customizations": sanitize_room_customizations(
+                self.room_customizations
+            ),
             "decay": self.decay,
             "maintenance_runs": self.maintenance_runs,
             "workers": [
@@ -395,6 +438,9 @@ class OfficeState:
                 str(key): max(0, int(value))
                 for key, value in payload.get("office_inventory", {}).items()
             }
+            state.room_customizations = sanitize_room_customizations(
+                payload.get("room_customizations", {})
+            )
             state.decay = max(0.0, min(100.0, float(payload.get("decay", state.decay))))
             state.maintenance_runs = max(0, int(payload.get("maintenance_runs", 0)))
             entries = payload.get("ledger", [])

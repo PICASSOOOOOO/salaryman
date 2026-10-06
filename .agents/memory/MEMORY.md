@@ -30,7 +30,7 @@
 - [Browser auth routing](newuser-funnel-gate.md) — public homepage stays at `/`; missing/expired sessions go directly to compact sign-in with returnTo, never through Pablo.
 - [Public route auth gating](public-route-auth-gating.md) — shared providers must wait for resolved auth before protected reads, polling, or user-scoped metadata caching.
 - [Preview OIDC callback origin](replit-auth-preview-origin.md) — loopback callbacks use REPLIT_DEV_DOMAIN; iframe handoff and expired guest cookies must not block OIDC callback.
-- [Pablo nebula canonical](pablo-nebula-canonical.md) — approved /pablo nebula is the shader purple "emotion/wavy orb" (659-line PabloNebula3D w/ variants), NOT the 7f0d717 starfield (which full-bleed = broken white blob). Match the `Published your App` commit, not "older = original".
+- [Pablo nebula visual direction](pablo-nebula-canonical.md) — the approved `/pablo` design is a painterly fullscreen wave-field shader, not a particle orb; the editor preview cannot verify WebGL rendering.
 - [Pablo voice output gating](pablo-voice-output-gating.md) — text stays free; Pablo TTS needs an active paid product or approved tester, and iOS unlock must match its actual playback path.
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — /pablo: voice needs an explicit labeled "Tap to talk" button (orb-tap is invisible); bottom controls share a safe lane — keep reply/idle bubbles well above the talk button + give it higher z, or they overlap/intercept taps.
 - [Tester program](tester-program.md) — 20-slot cap (owners exempt), advisory-lock atomic approval, 3-day inactivity sweep (max(lastActive,decidedAt)), GENTLE dismissible Discord banner (not hard-gated), auto-mod on approve; Discord login breaks only on missing DISCORD_* env.
@@ -52,10 +52,7 @@
 - [Org deletion / disband](org-deletion.md) — deleting an org cascades members/invites/partnerships/feature_grants/door_locks/org chat/tickets; non-FK org_id cols (phone_numbers, users.current_org_id, bots, leads…) orphan — null them in-tx. Per-org delete = owner-only + mandatory confirmName.
 - [Pablo live-data grounding](pablo-live.ts) — Pablo/Mila get real "today" + web facts via buildLiveContext (pablo-live.ts). Web search MUST use Responses API web_search tool (proxy supports it; gpt-4o-search-preview chat model is 400). Brief is untrusted → keep the injection fence.
 - [Office interactables + camera](office-interactables.md) — /office stations = PORTALS to existing routes (PixelOffice `stations`/`frozen`); camera = discrete near/mid/far zoom (far=fit-floor, surveillance forced, sub-1 allowed); footsteps via sfxStep.
-- [Pygame spatial object boundary](pygame-spatial-objects.md) — standalone tower objects are registry data and route through OfficeState; keep persistence/web inventory sync as a separate boundary.
-- [Desktop office camera](desktop-office-camera.md) — Pygame office uses a straight top-down camera with square office flooring; never describe or redraw it as diagonal isometric.
-- [Pygame character grounding](pygame-character-grounding.md) — use one sprite scale/baseline for player and NPCs, clip room actors between the header beam and footer, and reserve offsets for intentional actions only.
-- [Pygame idle sleep](pygame-idle-sleep.md) — the authoritative scene sleeps the player after five minutes fully stopped; movement input or bridge movement wakes and resets the timer.
+- [Pygame client rules](pygame-client-rules.md) — preserve top-down framing and grounded actors; avatar-sheet columns are identity variants, while movement animation stays separate from collision and object authority.
 - [Office ambient bed](office-ambient-bed.md) — /office's own quiet bed (startOfficeAmbient), gated via shared `_musicVol` chokepoint; transient swell/chime voices MUST be tracked or they ring ~11s + leak after stop.
 - [Pablo Radio global station](pablo-radio-global.md) — exactly one app-wide Call Home player serves all non-phone routes; HUDs and settings only change shared radio state.
 - [Marketplace bot roster](marketplace-bot-roster.md) — CURATED to 9 bots (pablo-assistant/claw-bot/rick-underboss/prompt-sensei/finance-tracker/music-bot/social-media-bot/movie-bot/research-bot); access gate = isOwnerEmail||isActiveDeveloperOrgMember (NOT claw_bot PRIME); seed deactivates removed entries, never deletes bot rows.
@@ -114,9 +111,7 @@
 - [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ1,000=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — Pablo must fail closed when ElevenLabs rejects his assigned voice; never substitute generic speech without user approval.
 - [Pablo outbound campaign consent](pablo-outbound-campaign-consent.md) — Campaigns and direct Pablo calls require an owned saved contact with recorded call permission; spoken STOP opts out and the assigned ElevenLabs voice must pass preflight.
-- [Shadow Tower floor authority](shadow-tower-floor-authority.md) — listings, rendered geometry, collisions, assignments, capacity, upgrades, access, and FIAT prices must derive from one shared playable floor contract.
-- [Shadow Tower hierarchy](shadow-tower-hierarchy.md) — 67 floors; floors 5–54 are the 50 sale floors with four office addresses each, while 55–67 remain reserved.
-- [Organization office assignment](organization-office-assignment.md) — qualifying org admins get one shared office; employee workstations are separately funded, with arrival through the lobby and elevator.
+- [Shadow Tower rules](shadow-tower-rules.md) — floor geometry, assignments, services, access, and prices must agree across the playable Tower.
 - [Cross-client economy](cross-client-economy.md) — browser Credits are server FIAT; desktop and browser share ledgers, and rewards require server-verified settlement.
 - [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
@@ -125,22 +120,17 @@
 - [Paid custom phone numbers](paid-custom-phone-numbers.md) — CALLL HOME is fixed; internal employee calls reuse client identities and assigned office lines, never extra numbers.
 - [Replit session identity bridge](replit-session-identity-bridge.md) — OIDC sessions use the database-backed sid cookie; callback matches existing local users by email before creating a new app identity.
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
-- [Shadow Tower named art](shadow-tower-named-art.md) — finished Tower spaces use a named asset manifest; procedural shapes are interaction scaffolding, not final art.
 - [VendKing utility rule](vendking-utility-rule.md) — vending stock must provide authoritative stamina, work-income, skill, protection, or low-cost automation value; never sell decorative dead items.
-- [Tower floor defaults](tower-floor-defaults.md) — sale floors have four office addresses; adjacent units can merge, and employee stations remain paid organization fit-outs.
 - [Tower physical floor shells](tower-floor-physical-shells.md) — every elevator stop renders a physical shell; vacant/sealed/restricted addresses hold access at the boundary instead of disappearing.
-- [Tower service scopes](tower-service-scopes.md) — only fixed-suite tenants have service counters; lobby/every-floor businesses resolve empty instead of falling back to shared listings.
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
 - [Godot and Unreal art development](godot-art-dev.md) — Godot handles sprite/animation and spatial blocking; Unreal handles production 3D/spatial/cinematic assets behind the shared art pipeline.
-- [Tower office access](tower-office-access.md) — suite doors use the existing floor-level server access authority; vacant/sealed shells must not invent locks.
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
-- [Pygame real-time wage floor](pygame-real-time-wages.md) — production clock follows local wall time; $3/hour is ƒ3,000/hour minimum, with employer rates allowed above the floor.
 - [NPC economic agents](npc-economic-agents.md) — NPCs need food, consume resources, earn income, and grow or lose wealth; they are not decorative props.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
-- [Pygame solar-punk decay arc](pygame-solarpunk-decay.md) — desktop gameplay starts bright, lively, and gamified; darkness and deterioration emerge only as the office/world decays.
+- [Browser API and game scope](browser-game-scope.md) — the public API belongs in the browser experience; other work in this request belongs on the game side.
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
 - [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.
@@ -148,7 +138,6 @@
 - [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is a cream/black floating terminal widget; its live socket drives Pablo working/offline status.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
-- [Pygame lobby room resolution](pygame-lobby-room-resolution.md) — lobby is a whole-world fallback; room detection must prefer the smallest playable room or movement snaps back to the empty lobby.
 - [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.
 - [AdSense verification](adsense-verification.md) — keep ownership static, gate scripts by route, and use a clean document for strict ad-free routes after SPA AdSense loading.
 - [Orval Zod output target](orval-zod-output-target.md) — Keep generated validators on Zod 3; Orval's automatic Zod 4 output crashes API startup.
@@ -156,4 +145,3 @@
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
 - [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
 - [SALARYMAN support routing](salaryman-support-routing.md) — public support uses salaryman.io Contact Us; submissions go privately to OWNER_EMAILS until an official support inbox exists.
-- [Pygame automation bridge](pygame-automation-bridge.md) — desktop characters mirror only permission-filtered server status; game inspection stays read-only and fails closed when sync is unavailable.
