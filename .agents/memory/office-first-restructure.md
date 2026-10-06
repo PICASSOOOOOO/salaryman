@@ -22,6 +22,10 @@ The owner wants the city (`/world`, `/world/play`) reachable **only when `story.
 
 **Key design:** the office CTA only OPENS the gate optimistically and hops to the city — it does NOT itself commit `story.active`. Commitment stays the in-city MAKE CONTACT button. Erring toward access (intent keeps city open even if contact isn't made) is intentional to avoid soft-lock; returning to the office clears intent and re-applies confinement on the next city entry.
 
+Separately, the physical Tower lobby front door may remain locked during the
+story lockdown while the player completes the required work. This local world
+door rule does not replace or widen the `/world` route gate above.
+
 `GET /api/salaryman/story/:slot` returns `{ story, eligible, reason }` (401 unauth). Eligibility = has a job OR business (`computeStoryEligibility`), both achievable in-office, so a player is never permanently stuck.
 
 `story.active` lives on the save blob (`data.story.active`); WorldPlay seeds it synchronously from the local save snapshot.

@@ -17,6 +17,7 @@ from .automation import (
     build_practical_app_url,
     load_desktop_link,
 )
+from .building_sync import DesktopBuildingSync
 from .pablo import fetch_pablo_status
 from .state import OfficeState
 from .scene import build_tower_scene
@@ -85,6 +86,8 @@ def run(argv: list[str] | None = None) -> int:
         autopilot_poller = AutopilotPoller(None)
         scene.set_autopilot_snapshot(AutopilotSnapshot("error", {}, "INVALID GAME LINK FILE", 1))
     autopilot_poller.start()
+    building_sync = DesktopBuildingSync(desktop_link)
+    building_sync.start()
     if scene.autopilot_snapshot.state != "error":
         scene.set_autopilot_snapshot(autopilot_poller.current())
     last_autopilot_revision = scene.autopilot_snapshot.revision
@@ -264,7 +267,7 @@ def run(argv: list[str] | None = None) -> int:
 
         if not args.no_bridge:
             for command in bridge.poll_commands():
-                result = apply_command(command, state, scene)
+                result = apply_command(command, state, scene, building_sync)
                 bridge.send_result(command, result)
             if not bridge.connected:
                 scene.set_motion_input(0.0, 0.0)
@@ -285,6 +288,15 @@ def run(argv: list[str] | None = None) -> int:
             scene.set_motion_input(0.0, 0.0)
         scene.update_motion(delta_seconds)
         scene.update_npc_motion(delta_seconds)
+        building_sync.update_scene(scene)
+        scene.set_building_object_states(building_sync.object_states())
+        for sync_event in building_sync.drain_events():
+            if sync_event.state is not None:
+                scene.set_building_object_states({
+                    **scene.building_object_states,
+                    str(sync_event.state.get("objectId", "")): sync_event.state,
+                })
+            state.notice = sync_event.message.upper()
         autopilot_snapshot = autopilot_poller.current()
         if autopilot_snapshot.revision > last_autopilot_revision:
             scene.set_autopilot_snapshot(autopilot_snapshot)
@@ -313,6 +325,7 @@ def run(argv: list[str] | None = None) -> int:
             running = False
 
     state.save_to_file(args.save_file)
+    building_sync.close()
     autopilot_poller.close()
     bridge.close()
     pygame.quit()

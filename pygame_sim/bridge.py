@@ -25,6 +25,7 @@ COMMANDS = {
     "set_input",
     "set_action",
     "interact",
+    "maintain",
     "select_room",
     "select_floor",
     "select_worker",
@@ -75,6 +76,12 @@ def validate_command(command: object) -> tuple[bool, str]:
     elif name == "set_action":
         if payload.get("action") not in {"stand", "jump", "sit", "sleep", "fight", "sweep"}:
             return False, "ACTION NOT ALLOWED"
+    elif name == "maintain":
+        if payload.get("action") not in {"clean", "repair"}:
+            return False, "MAINTENANCE ACTION NOT ALLOWED"
+        object_id = payload.get("object_id")
+        if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
+            return False, "OBJECT ID NOT VALID"
     elif name == "select_room":
         room = payload.get("room")
         if not isinstance(room, str) or room not in ALLOWED_ROOMS:
@@ -106,7 +113,12 @@ class CommandResult:
     route: str | None = None
 
 
-def apply_command(command: object, state: OfficeState, scene: TowerScene) -> CommandResult:
+def apply_command(
+    command: object,
+    state: OfficeState,
+    scene: TowerScene,
+    building_sync: Any | None = None,
+) -> CommandResult:
     """Apply one validated renderer command through existing domain methods."""
     valid, reason = validate_command(command)
     if not valid:
@@ -146,6 +158,19 @@ def apply_command(command: object, state: OfficeState, scene: TowerScene) -> Com
             vending_item=payload.get("vending_item", "coffee"),
         )
         return CommandResult(result.success, result.message, result.destination, result.route)
+    if name == "maintain":
+        if scene.current_floor != 1:
+            return CommandResult(False, "MAINTENANCE IS AVAILABLE ON FLOOR 1")
+        nearby = scene.nearby_object
+        if nearby is None:
+            return CommandResult(False, "NO MAINTAINABLE OBJECT IN RANGE")
+        object_id = payload.get("object_id", nearby.id)
+        if object_id != nearby.id:
+            return CommandResult(False, "MOVE CLOSER TO THAT OBJECT")
+        if building_sync is None or not building_sync.queue_action(object_id, payload["action"]):
+            return CommandResult(False, "BUILDING SYNC UNAVAILABLE")
+        state.notice = f"{payload['action'].upper()} REQUESTED / {nearby.label}"
+        return CommandResult(True, state.notice)
     if name == "select_room":
         if not scene.select_room(payload["room"]):
             return CommandResult(False, "ROOM NOT FOUND")
@@ -244,6 +269,8 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "displayY": item.visual_position[1],
                     "interactive": item.interactive,
                     "nearby": item == scene.nearby_object,
+                    "cleanliness": scene.building_object_states.get(item.id, {}).get("cleanliness"),
+                    "condition": scene.building_object_states.get(item.id, {}).get("condition"),
                 }
                 for item in scene.objects.objects
             ],

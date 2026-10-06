@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   db,
+  desktopBuildingObjectStatesTable,
   desktopOfficePresenceTable,
   desktopWorkLeasesTable,
   deviceLinksTable,
@@ -15,6 +16,16 @@ import {
 import { canAccess } from "./shadow-tower";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import {
+  FLOOR_ONE_DEFAULTS,
+  FLOOR_ONE_OBJECTS,
+  FLOOR_ONE_PRESENCE_MAX_AGE_MS,
+  catalogRoomForPresence,
+  floorOneObject,
+  floorOneObjectsForRoom,
+  isWalkableFloorOnePosition,
+  validateFloorOnePresence,
+} from "../lib/desktop-building-objects";
 
 const router = Router();
 const FLOOR_COUNT = 67;
@@ -32,6 +43,77 @@ const ROOM_LABEL: Record<string, string> = {
   elevator: "ELEVATOR",
   office: "ORGANIZATION OFFICE",
 };
+const MAINTENANCE_REACH_PX = 1_250;
+
+type FloorOneScope = {
+  presence: typeof desktopOfficePresenceTable.$inferSelect;
+  room: string;
+  scopeKey: string;
+  orgId: number | null;
+  ownerUserId: string | null;
+};
+
+type FloorOneScopeResult =
+  | { ok: true; value: FloorOneScope }
+  | { ok: false; status: 403 | 409; error: string };
+
+async function resolveFloorOneScope(
+  link: { id: string; userId: string },
+  password: unknown,
+): Promise<FloorOneScopeResult> {
+  const [presence] = await db.select().from(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, link.userId))
+    .limit(1);
+  if (!presence || presence.linkId !== link.id
+    || presence.floorNumber !== 1
+    || Date.now() - presence.lastSeenAt.getTime() > FLOOR_ONE_PRESENCE_MAX_AGE_MS) {
+    return { ok: false, status: 409, error: "Fresh Floor 1 presence is required" };
+  }
+
+  const ownOffice = presence.room === "office"
+    ? await resolveUserOffice(link.userId, password)
+    : null;
+  if (presence.room === "office" && (!ownOffice
+    || ownOffice.floor.floorNumber !== 1
+    || ownOffice.key !== presence.roomKey
+    || ownOffice.city !== presence.city)) {
+    return { ok: false, status: 403, error: "Authorized organization office access is required" };
+  }
+  const room = catalogRoomForPresence(
+    presence.room as "lobby" | "hallway" | "office",
+    ownOffice?.room ?? null,
+  );
+  if (!room || !isWalkableFloorOnePosition(room, { x: presence.x, y: presence.y })) {
+    return { ok: false, status: 409, error: "Fresh, valid Floor 1 room presence is required" };
+  }
+  const scopeKey = presence.room === "office"
+    ? ownOffice!.key
+    : `tower:${presence.city}:floor:1:${presence.roomKey}`;
+  return {
+    ok: true,
+    value: {
+      presence,
+      room,
+      scopeKey,
+      orgId: presence.room === "office" ? ownOffice!.orgId : null,
+      ownerUserId: presence.room === "office" ? ownOffice!.ownerUserId : null,
+    },
+  };
+}
+
+function serializeFloorOneObject(
+  object: (typeof FLOOR_ONE_OBJECTS)[number],
+  saved?: typeof desktopBuildingObjectStatesTable.$inferSelect,
+) {
+  return {
+    objectId: object.id,
+    room: object.room,
+    label: object.label,
+    cleanliness: saved?.cleanliness ?? FLOOR_ONE_DEFAULTS.cleanliness,
+    condition: saved?.condition ?? FLOOR_ONE_DEFAULTS.condition,
+    updatedAt: saved?.updatedAt.toISOString() ?? null,
+  };
+}
 
 function personName(user: { firstName: string | null; lastName: string | null; username: string | null }): string {
   return [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.username || "Employee";
@@ -332,7 +414,29 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
     const isWorkPresence = action === "sit"
       && ((room === "office" && ownOffice?.floor.floorNumber === floorNumber)
         || (room === "hallway" && assignedWorkstation?.floor.floorNumber === floorNumber));
+    let presenceValidationError: string | null = null;
     await db.transaction(async (tx) => {
+      const [previousPresence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId))
+        .for("update")
+        .limit(1);
+      if (room !== "elevator") {
+        presenceValidationError = validateFloorOnePresence(
+          previousPresence ?? null,
+          {
+            room: room as "lobby" | "hallway" | "office",
+            roomKey,
+            floorNumber,
+            linkId: link.id,
+            x,
+            y,
+          },
+          now,
+          ownOffice?.floor.floorNumber === 1 ? ownOffice.room : null,
+        );
+      }
+      if (presenceValidationError) return;
+
       await tx.insert(desktopOfficePresenceTable).values({
         userId: link.userId,
         linkId: link.id,
@@ -385,10 +489,112 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
         presenceLastSeenAt: isWorkPresence ? now : null,
       }).where(eq(desktopWorkLeasesTable.id, lease.id));
     });
+    if (presenceValidationError) {
+      res.status(409).json({ error: presenceValidationError });
+      return;
+    }
     res.json({ ok: true, observedAt: now.toISOString(), roomKey, workPresence: isWorkPresence });
   } catch (error) {
     req.log.error({ err: error }, "Desktop building presence update failed");
     res.status(500).json({ error: "Could not update desktop presence" });
+  }
+});
+
+router.get("/desktop-building/objects", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  try {
+    const scope = await resolveFloorOneScope(link, req.header("x-shadow-tower-password"));
+    if (!scope.ok) {
+      res.status(scope.status).json({ error: scope.error });
+      return;
+    }
+    const objects = floorOneObjectsForRoom(scope.value.room);
+    if (objects.length === 0) {
+      res.status(404).json({ error: "No maintainable objects are registered in this room" });
+      return;
+    }
+    const saved = await db.select().from(desktopBuildingObjectStatesTable).where(and(
+      eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+      inArray(desktopBuildingObjectStatesTable.objectId, objects.map((object) => object.id)),
+    ));
+    const savedById = new Map(saved.map((row) => [row.objectId, row]));
+    res.json({
+      floorNumber: 1,
+      room: scope.value.room,
+      observedAt: new Date().toISOString(),
+      objects: objects.map((object) => serializeFloorOneObject(object, savedById.get(object.id))),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop building objects read failed");
+    res.status(500).json({ error: "Could not load building object state" });
+  }
+});
+
+router.post("/desktop-building/objects/action", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const objectId = req.body?.objectId;
+  const action = req.body?.action;
+  if (typeof objectId !== "string" || objectId.length < 1 || objectId.length > 80
+    || (action !== "clean" && action !== "repair")) {
+    res.status(400).json({ error: "Provide a valid objectId and clean or repair action" });
+    return;
+  }
+  try {
+    const scope = await resolveFloorOneScope(link, req.header("x-shadow-tower-password"));
+    if (!scope.ok) {
+      res.status(scope.status).json({ error: scope.error });
+      return;
+    }
+    const object = floorOneObject(scope.value.room, objectId);
+    if (!object) {
+      res.status(404).json({ error: "Object is not maintainable in the current room" });
+      return;
+    }
+    const distance = Math.hypot(
+      scope.value.presence.x - object.x,
+      scope.value.presence.y - object.y,
+    );
+    if (distance > MAINTENANCE_REACH_PX) {
+      res.status(409).json({ error: "Move closer to the object before maintaining it" });
+      return;
+    }
+    const now = new Date();
+    const [saved] = await db.insert(desktopBuildingObjectStatesTable).values({
+      scopeKey: scope.value.scopeKey,
+      city: scope.value.presence.city,
+      floorNumber: 1,
+      room: object.room,
+      objectId: object.id,
+      orgId: scope.value.orgId,
+      ownerUserId: scope.value.ownerUserId,
+      cleanliness: action === "clean" ? 100 : FLOOR_ONE_DEFAULTS.cleanliness,
+      condition: action === "repair" ? 100 : FLOOR_ONE_DEFAULTS.condition,
+      updatedByUserId: link.userId,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: [desktopBuildingObjectStatesTable.scopeKey, desktopBuildingObjectStatesTable.objectId],
+      set: {
+        cleanliness: action === "clean"
+          ? 100
+          : sql`${desktopBuildingObjectStatesTable.cleanliness}`,
+        condition: action === "repair"
+          ? 100
+          : sql`${desktopBuildingObjectStatesTable.condition}`,
+        updatedByUserId: link.userId,
+        updatedAt: now,
+      },
+    }).returning();
+    const message = action === "clean" ? "Object cleaned" : "Object repaired";
+    res.json({
+      ok: true,
+      message,
+      state: serializeFloorOneObject(object, saved),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop building object maintenance failed");
+    res.status(500).json({ error: "Could not save building object maintenance" });
   }
 });
 

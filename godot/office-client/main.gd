@@ -638,7 +638,7 @@ func _build_interface() -> void:
 	controls_label = Label.new()
 	controls_label.position = Vector2(636, 646)
 	controls_label.size = Vector2(512, 48)
-	controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nCLICK FIGHT  ·  Q SWEEP  ·  E INTERACT"
+controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nCLICK FIGHT  ·  Q SWEEP  ·  E USE  ·  C CLEAN  ·  V REPAIR"
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
@@ -774,6 +774,12 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 
 
 func _build_bridge_object(kind: String, position: Vector3, object_id: String) -> Node3D:
+	if object_id == "lobby-reception-desk":
+		return _build_reception_desk(position, object_id)
+	if kind == "receptionist":
+		return _build_receptionist(position, object_id)
+	if kind == "floor_sign":
+		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
 	if kind == "desk_lamp":
@@ -793,7 +799,7 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 	elif kind == "elevator":
 		return _build_elevator_visual(position, object_id)
 	elif kind == "stairs":
-		return _add_box_to_dynamic("Circulation", position + Vector3(0, 0.55, 0), Vector3(1.6, 1.1, 1.4), materials["metal"])
+return _build_staircase(position, object_id)
 	elif kind == "telephone" or kind == "pay_phone" or kind == "tv" or kind == "atm" or kind == "vending_machine" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	if packed_name != "":
@@ -805,6 +811,89 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 			dynamic_root.add_child(instance)
 			return instance
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
+
+
+func _build_reception_desk(position: Vector3, object_id: String) -> MeshInstance3D:
+	_add_box_to_dynamic(
+		object_id + "-front",
+		position + Vector3(0.0, 0.48, 0.0),
+		Vector3(3.6, 0.96, 0.72),
+		materials["wall_trim"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-counter",
+		position + Vector3(0.0, 1.0, 0.08),
+		Vector3(3.9, 0.14, 1.05),
+		materials["wall_trim"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-back",
+		position + Vector3(0.0, 0.5, -0.52),
+		Vector3(3.6, 1.0, 0.16),
+		materials["metal"],
+	)
+	return dynamic_root.get_node(object_id + "-front") as MeshInstance3D
+
+
+func _build_receptionist(position: Vector3, object_id: String) -> Node3D:
+	var packed := imported_scenes.get("character") as PackedScene
+	if packed == null:
+		return _add_box_to_dynamic(
+			object_id,
+			position + Vector3(0.0, 0.8, 0.0),
+			Vector3(0.45, 1.6, 0.45),
+			materials["wall_trim"],
+		)
+	var receptionist := packed.instantiate() as Node3D
+	receptionist.name = object_id
+	receptionist.position = position
+	receptionist.scale = Vector3.ONE * 0.72
+	dynamic_root.add_child(receptionist)
+	var receptionist_animation := PlayerController.configure_character_model(receptionist)
+	if receptionist_animation != null and receptionist_animation.has_animation("idle"):
+		receptionist_animation.play("idle")
+	return receptionist
+
+
+func _build_floor_sign(position: Vector3, object_id: String) -> MeshInstance3D:
+	var plaque := _add_box_to_dynamic(
+		object_id,
+		position + Vector3(0.0, 2.25, -0.12),
+		Vector3(1.25, 0.72, 0.12),
+		materials["metal"],
+	)
+	var number := Label3D.new()
+	number.name = object_id + "-number"
+	number.text = "FLOOR 01"
+	number.font_size = 72
+	number.pixel_size = 0.004
+	number.position = position + Vector3(0.0, 2.23, 0.0)
+	number.modulate = Color("#fff0ae")
+	number.outline_size = 8
+	number.outline_modulate = Color("#14211e")
+	dynamic_root.add_child(number)
+	return plaque
+
+
+func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
+	var first_step: MeshInstance3D
+	for step_index in range(10):
+		var step := _add_box_to_dynamic(
+			object_id + "-step-%02d" % step_index,
+			position + Vector3(0.0, 0.12 + float(step_index) * 0.16, -float(step_index) * 0.28),
+			Vector3(2.25, 0.24, 0.34),
+			materials["metal"],
+		)
+		if step_index == 0:
+			first_step = step
+	for side in [-1.0, 1.0]:
+		_add_box_to_dynamic(
+			object_id + "-rail-%s" % str(side),
+			position + Vector3(side * 1.18, 1.0, -1.28),
+			Vector3(0.08, 1.85, 3.1),
+			materials["wall_trim"],
+		)
+	return first_step
 
 
 func _build_atm(position: Vector3, object_id: String) -> MeshInstance3D:
@@ -1090,6 +1179,10 @@ func _input(event: InputEvent) -> void:
 		match event.keycode:
 			KEY_E:
 				_send_command("interact")
+KEY_C:
+_send_command("maintain", {"action": "clean"})
+KEY_V:
+_send_command("maintain", {"action": "repair"})
 			KEY_SPACE:
 				player_root.try_jump()
 			KEY_F:

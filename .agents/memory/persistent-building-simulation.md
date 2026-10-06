@@ -34,9 +34,14 @@ Elevator travel should show entry from the lobby, a short camera zoom into a
 transparent isometric elevator interior, and arrival in the selected floor's
 hallway.
 
+This elevator ride is the only special zoom/scene transition at this stage.
+Stairs are direct physical climbs between floors. During the story lockdown,
+the lobby's exterior front door stays locked and the player remains inside to
+finish the work; this is a world-door rule, not a site-wide route gate.
+
 **Why:** the user clarified the lobby layout, required 3D building systems, and
-named below-grade, operational, and elevator-transition details that must
-remain in the long-term scope.
+named below-grade, operational, elevator, stair, and story-lockdown details
+that must remain in the building plan.
 
 **How to apply:** Resolve each action's scope from server-validated room
 presence and office ownership. Preserve object and character state; validate

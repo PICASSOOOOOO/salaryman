@@ -98,6 +98,7 @@ class TowerScene:
     player_action_remaining: float = 0.0
     idle_seconds: float = 0.0
     seated_chair_id: str | None = None
+    building_object_states: dict[str, dict[str, int]] = field(default_factory=dict)
     autopilot_snapshot: AutopilotSnapshot = field(
         default_factory=lambda: AutopilotSnapshot("unlinked", {}, "NO DESKTOP LINK", 0)
     )
@@ -112,6 +113,27 @@ class TowerScene:
     @property
     def room(self) -> Room:
         return next(room for room in self.rooms if room.id == self.current_room)
+
+    def set_building_object_states(self, states: dict[str, dict[str, object]]) -> None:
+        normalized: dict[str, dict[str, int]] = {}
+        for object_id, state in states.items():
+            if not isinstance(object_id, str) or not isinstance(state, dict):
+                continue
+            cleanliness = state.get("cleanliness")
+            condition = state.get("condition")
+            if (
+                isinstance(cleanliness, int)
+                and not isinstance(cleanliness, bool)
+                and isinstance(condition, int)
+                and not isinstance(condition, bool)
+                and 0 <= cleanliness <= 100
+                and 0 <= condition <= 100
+            ):
+                normalized[object_id] = {
+                    "cleanliness": cleanliness,
+                    "condition": condition,
+                }
+        self.building_object_states = normalized
 
     @property
     def floor_bounds(self) -> tuple[int, int, int, int]:

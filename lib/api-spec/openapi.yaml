@@ -21,6 +21,8 @@ tags:
     description: Organization CRM operations
   - name: customApps
     description: Published organization-only custom pages and their records
+  - name: desktopBuilding
+    description: Linked desktop presence and persistent Tower object maintenance
   - name: autopilot
     description: Pablo automation review and read-only business insights
   - name: Auth
@@ -798,6 +800,47 @@ paths:
                 $ref: "#/components/schemas/PabloInternalDeliveryResult"
         "403":
           description: CALLL HOME or Pablo PRIME paid access is required
+  /desktop-building/objects:
+    get:
+      operationId: listDesktopBuildingObjects
+      tags: [desktopBuilding]
+      summary: Read persistent condition for objects in the linked desktop's current Floor 1 room
+      parameters:
+        - { name: Authorization, in: header, required: true, schema: { type: string } }
+        - { name: x-salaryman-device-id, in: header, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Current room objects and their saved maintenance state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DesktopBuildingObjectsResponse" }
+        "401": { description: Linked desktop credential required }
+        "403": { description: Authorized office access required }
+        "409": { description: Fresh Floor 1 room presence required }
+  /desktop-building/objects/action:
+    post:
+      operationId: maintainDesktopBuildingObject
+      tags: [desktopBuilding]
+      summary: Clean or repair a nearby Floor 1 object in the linked desktop's current room
+      parameters:
+        - { name: Authorization, in: header, required: true, schema: { type: string } }
+        - { name: x-salaryman-device-id, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DesktopBuildingObjectActionInput" }
+      responses:
+        "200":
+          description: Persistent object state after the maintenance action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DesktopBuildingObjectActionResponse" }
+        "400": { description: Invalid maintenance action }
+        "401": { description: Linked desktop credential required }
+        "403": { description: Authorized office access required }
+        "404": { description: Object is not maintainable in the current room }
+        "409": { description: Fresh, nearby Floor 1 presence required }
   /autopilot/brief:
     get:
       operationId: getAutopilotBrief
@@ -893,6 +936,44 @@ paths:
           description: Review item was already decided
 components:
   schemas:
+    DesktopBuildingObjectActionInput:
+      type: object
+      required: [objectId, action]
+      properties:
+        objectId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        action:
+          type: string
+          enum: [clean, repair]
+    DesktopBuildingObjectState:
+      type: object
+      required: [objectId, room, label, cleanliness, condition, updatedAt]
+      properties:
+        objectId: { type: string }
+        room: { type: string }
+        label: { type: string }
+        cleanliness: { type: integer, minimum: 0, maximum: 100 }
+        condition: { type: integer, minimum: 0, maximum: 100 }
+        updatedAt: { type: ["string", "null"], format: date-time }
+    DesktopBuildingObjectsResponse:
+      type: object
+      required: [floorNumber, room, objects, observedAt]
+      properties:
+        floorNumber: { type: integer, const: 1 }
+        room: { type: string }
+        objects:
+          type: array
+          items: { $ref: "#/components/schemas/DesktopBuildingObjectState" }
+        observedAt: { type: string, format: date-time }
+    DesktopBuildingObjectActionResponse:
+      type: object
+      required: [ok, message, state]
+      properties:
+        ok: { type: boolean, const: true }
+        message: { type: string }
+        state: { $ref: "#/components/schemas/DesktopBuildingObjectState" }
     AutopilotRecentCall:
       type: object
       required: [id, leadName, startedAt, summary, hasProposal, proposalStatus]
