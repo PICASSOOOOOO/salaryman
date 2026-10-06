@@ -147,3 +147,4 @@
 - [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
 - [SALARYMAN support routing](salaryman-support-routing.md) — public support uses salaryman.io Contact Us; submissions go privately to OWNER_EMAILS until an official support inbox exists.
 - [Godot visual continuity](godot-visual-continuity.md) — preserve asset, animation, and mechanics continuity while bridging SALARYMAN’s established old-world feel with new features.
+- [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.

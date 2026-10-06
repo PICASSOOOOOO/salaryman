@@ -9,11 +9,13 @@ import {
 } from "../lib/maintenance-policy";
 
 describe("Tower public maintenance policy", () => {
-  it("decays object scores after a short grace period and never below zero", () => {
+  it("decays object scores very slowly after a grace period and never below zero", () => {
     const lastMaintainedAt = new Date("2026-01-01T00:00:00.000Z");
-    const afterGrace = new Date("2026-01-05T00:00:00.000Z").getTime();
-    expect(decayBuildingScore(80, lastMaintainedAt, 2, afterGrace)).toBe(78);
-    expect(decayBuildingScore(1, lastMaintainedAt, 2, afterGrace + 365 * 86_400_000)).toBe(0);
+    const afterGrace = new Date("2026-01-08T00:00:00.000Z").getTime();
+    expect(decayBuildingScore(80, lastMaintainedAt, 0.1, afterGrace)).toBe(80);
+    expect(decayBuildingScore(80, lastMaintainedAt, 0.1, afterGrace + 10 * 86_400_000)).toBe(79);
+    expect(decayBuildingScore(85, lastMaintainedAt, 0.05, afterGrace + 20 * 86_400_000)).toBe(84);
+    expect(decayBuildingScore(1, lastMaintainedAt, 0.1, afterGrace + 365 * 86_400_000)).toBe(0);
   });
 
   it("offers public work only for objects that need attention", () => {

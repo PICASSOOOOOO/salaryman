@@ -330,7 +330,7 @@ describe("desktop office work settlement", () => {
     )).limit(1);
     expect(sharedDoor).toBeDefined();
     await db.update(desktopBuildingObjectStatesTable)
-      .set({ lastCleanedAt: new Date(Date.now() - 120 * 86_400_000) })
+      .set({ lastCleanedAt: new Date(Date.now() - 10 * 365 * 86_400_000) })
       .where(eq(desktopBuildingObjectStatesTable.id, sharedDoor.id));
     const cleaned = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "hall-office-2-door",
@@ -426,7 +426,7 @@ describe("desktop office work settlement", () => {
     )).limit(1);
     expect(officeChair).toBeDefined();
     await db.update(desktopBuildingObjectStatesTable)
-      .set({ lastMaintainedAt: new Date(Date.now() - 120 * 86_400_000) })
+      .set({ lastMaintainedAt: new Date(Date.now() - 10 * 365 * 86_400_000) })
       .where(eq(desktopBuildingObjectStatesTable.id, officeChair.id));
     const repaired = await desktopPost("/api/desktop-building/objects/action").send({
       objectId: "executive-chair",

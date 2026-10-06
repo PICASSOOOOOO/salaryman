@@ -1,9 +1,9 @@
 import type { BuildingObjectAction } from "./desktop-building-objects";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
-export const BUILDING_DECAY_GRACE_DAYS = 3;
-export const CLEANLINESS_DECAY_PER_DAY = 2;
-export const CONDITION_DECAY_PER_DAY = 1.5;
+export const BUILDING_DECAY_GRACE_DAYS = 7;
+export const CLEANLINESS_DECAY_PER_DAY = 0.1;
+export const CONDITION_DECAY_PER_DAY = 0.05;
 export const PUBLIC_WORK_SCORE_THRESHOLD = 70;
 
 export function decayBuildingScore(
@@ -19,7 +19,8 @@ export function decayBuildingScore(
   if (!Number.isFinite(timestamp)) return clampScore(score);
   const elapsedDays = Math.max(0, Math.floor((nowMs - timestamp) / DAY_MS));
   const decayDays = Math.max(0, elapsedDays - BUILDING_DECAY_GRACE_DAYS);
-  return clampScore(Math.floor(score - decayDays * pointsPerDay));
+  const lostPoints = Math.floor(decayDays * pointsPerDay);
+  return clampScore(Math.floor(score) - lostPoints);
 }
 
 export function needsPublicMaintenance(score: number): boolean {
