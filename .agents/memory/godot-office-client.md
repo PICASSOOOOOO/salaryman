@@ -41,6 +41,26 @@ captures, start Xvfb and run Godot with `DISPLAY`, `--display-driver x11`,
 `--rendering-method gl_compatibility`, and `--rendering-driver opengl3`; use a
 virtual screen at least as large as the configured game window.
 
+The product is an open-world office-simulation MMO. Make player interaction and
+communication easy to discover across shared spaces and office devices; preserve
+the distinction between proximity voice/video meetings and phone calls.
+
+**Why:** The user explicitly described SALARYMAN as an open-world office sim MMO
+and said players need easy ways to interact and communicate.
+
+**How to apply:** Keep shared spaces populated and interaction-focused, with
+communication entry points integrated into the relevant in-world devices.
+
+For this game initiative, changes stay in the downloadable game and its game-side
+services; do not modify browser versions, which the user says are good for now.
+
+**Why:** The user explicitly limited the current work to the game and asked to
+leave browser versions unchanged.
+
+**How to apply:** Before editing a shared frontend or API surface, verify the
+change serves only the native game flow; avoid browser UI changes unless the
+user later asks for them.
+
 For entry scripts that instantiate a newly added controller, preload the script
 by resource path instead of relying only on its `class_name`; a clean direct
 launch can happen before Godot generates the global script-class cache.

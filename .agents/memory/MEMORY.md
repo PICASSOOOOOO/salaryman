@@ -97,7 +97,7 @@
 - [Global multi-broker trade bot](global-trade-bot.md) — Trade Bot (owned by claw-bot, no separate slug) is now broker-agnostic/multi-exchange/currency-aware; adapters in lib/brokers (schwab+alpaca live, ibkr/ssi/japan/europe paper); cents = native major×100; catalog setupFields use `type:"password"` not `secret`; analysis/screener are POST (GET=404); UI in BotFactory.tsx TradingConsole.
 - [Real banking + net-worth overview](real-banking-overview.md) — VIEW-ONLY Plaid (hosted Link, tokens encrypted) in routes/banking.ts + real_bank_connections; "NET WORTH" tab in TradingConsole aggregates banks + botBrokerConnections/legacy schwab into combined home-currency total. Strictly separate from in-game FIAT bank.
 - [Office discovery onboarding](office-discovery-onboarding.md) — story starts by stepping into the office ELEVATOR (no BEGIN STORY button); cue-at-a-time discovery state machine in lib/office-discovery.ts; MISSION MENU lists quarter scenes; elevator onInteract is the trigger (reads storyGateRef).
-- [No CRT visual language](no-crt-visual-language.md) — SALARYMAN uses modern dark UI with Inter/Fira Code; do not reintroduce scanlines, phosphor effects, flicker, grain, or retro terminal fonts.
+- [Terminal display exception](no-crt-visual-language.md) — in-world Godot terminals may use crisp green DOS/CCTV text with 1–9 choices; keep that style confined to terminal panels.
 - [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
 - [SALARYMAN product manifesto](pablo-creation-workspace.md) — automation and communication through a gamified office simulation; browser funnels users to desktop, with free SALARYMAN-only creator features.
 - [Lab naming](lab-name-1999.md) — the lab is called 1999; preserve established project names and do not rename them.
@@ -132,7 +132,7 @@
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Browser API and game scope](browser-game-scope.md) — `/desktop` is the only browser companion; macOS/Windows/Linux builds use native game UI and keep paid gates.
-- [Godot office client runtime](godot-office-client.md) — Godot is the player-facing game; bundle and supervise Python’s authoritative simulation as its hidden paired runtime.
+- [Godot office client runtime](godot-office-client.md) — Godot/Python form the open-world office MMO; make shared player interaction and communication easy to find.
 - [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.
 - [Shared menu route deduplication](shared-menu-route-dedupe.md) — merge identical paths; preserve same-label destinations with explicit context hints.
@@ -146,6 +146,7 @@
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
 - [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
 - [SALARYMAN support routing](salaryman-support-routing.md) — public support uses salaryman.io Contact Us; submissions go privately to OWNER_EMAILS until an official support inbox exists.
-- [Godot visual continuity](godot-visual-continuity.md) — preserve asset, animation, and mechanics continuity while bridging SALARYMAN’s established old-world feel with new features.
+- [Godot visual continuity](godot-visual-continuity.md) — preserve visual/gameplay continuity; elevator zoom SFX and active-room fog reinforce the Tower's playable space.
+- [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
 - [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
 - [Desktop release packaging](desktop-release-packaging.md) — macOS-first testing, Windows required; retain Linux unless its separate workload warrants discussing removal.

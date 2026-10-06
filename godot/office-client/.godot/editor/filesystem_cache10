@@ -1,9 +1,10 @@
 ea4bc82a6ad023ab7ee23ee620429895
-::res://::1791309882
-floor_plan.json::JSON::-1::1791309882::0::1::::<><><>0<>0<><>::
-main.gd::GDScript::305725880813587578::1791309832::0::1::::<>Node3D<><>0<>0<><>::
+::res://::1791315544
+camera_sfx.gd::GDScript::4093617119774753385::1791315532::0::1::::<>Node<><>0<>0<><>::
+floor_plan.json::JSON::-1::1791311228::0::1::::<><><>0<>0<><>::
+main.gd::GDScript::305725880813587578::1791315544::0::1::::<>Node3D<><>0<>0<><>::
 Main.tscn::PackedScene/PackedScene::-1::1788762199::0::1::::<><><>0<>0<><>::res://main.gd
-office_prop.gd::GDScript/GDScript::7600762799296081248::1791302266::0::1::::<>Node3D<><>0<>0<><>::
+office_prop.gd::GDScript::7600762799296081248::1791311222::0::1::::<>Node3D<><>0<>0<><>::
 office_service_prop.gd::GDScript/GDScript::8282882472184075262::1791303278::0::1::::<>Node3D<><>0<>0<><>::
 player_controller.gd::GDScript/GDScript::2005437564640608021::1791298187::0::1::::OfficePlayerController<>CharacterBody3D<><>0<>0<><>::
 README.md::TextFile/TextFile::-1::1791303879::0::1::::<><><>0<>0<><>::
@@ -56,6 +57,6 @@ atm.png::CompressedTexture2D/CompressedTexture2D::8996727416355689073::179127589
 desk-terminal.png::CompressedTexture2D/CompressedTexture2D::3317872627285632721::1791275898::1791276593::1::::<><><>0<>0<>9ddabeef48abdcfb9f006c9145f4d553<>res://.godot/imported/desk-terminal.png-20a650199aed3eae7f0ab1428b9908e3.ctex::
 README.md::TextFile/TextFile::-1::1791275898::0::1::::<><><>0<>0<><>::
 vending.png::CompressedTexture2D/CompressedTexture2D::4896004165002646429::1791275898::1791276593::1::::<><><>0<>0<>bf3b963fc9275460881c4167a9ad36d1<>res://.godot/imported/vending.png-5613db000a4106f2ec4d3e354d09e3a9.ctex::
-::res://tests/::1791310154
-floor_travel_test.gd::GDScript::9094154476509940198::1791310064::0::1::::<>SceneTree<><>0<>0<><>::
+::res://tests/::1791315535
+floor_travel_test.gd::GDScript::9094154476509940198::1791315535::0::1::::<>SceneTree<><>0<>0<><>::
 office_props_test.gd::GDScript/GDScript::7518882031716376026::1791303314::0::1::::<>SceneTree<><>0<>0<><>::

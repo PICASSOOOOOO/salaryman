@@ -17,3 +17,15 @@ office prop render and said, “Looks good.”
 
 **How to apply:** Extend this material language consistently to the remaining
 Tower props; do not replace it with a different visual direction without asking.
+
+For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
+
+**Why:** The user explicitly said the camera zoom at transitions is important for making travel feel like a game, and requested sound effects for zooming in and out.
+
+**How to apply:** Preserve the camera push and zoom cues when changing elevator travel or camera controls in this scene.
+
+Keep the player's current room completely clear. Place fog only beyond its boundary: closed office doors obscure private interiors from the hallway, while an open door reveals only a limited view. Keep the elevator cabin clear and fog the outside view during travel, fading back to the destination as its doors open. Fog is presentation only; server-side authorization remains the privacy boundary.
+
+**Why:** The user requested fog around rooms for privacy and to focus attention on the player's location.
+
+**How to apply:** Keep the active room legible and do not rely on fog to protect room or player data.

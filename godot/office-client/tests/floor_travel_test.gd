@@ -2,6 +2,7 @@ extends SceneTree
 
 const OfficeClient = preload("res://main.gd")
 const OfficeProp = preload("res://office_prop.gd")
+const CameraSfx = preload("res://camera_sfx.gd")
 
 
 func _initialize() -> void:
@@ -13,6 +14,21 @@ func _run_tests() -> void:
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)
 	client.floor_plan_data = floor_plan
+
+	assert(OfficeClient.CAMERA_DISTANCE_LEVELS.size() == 3)
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(0), 8.0))
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(1), 13.0))
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(2), 21.0))
+	assert(OfficeClient.next_camera_zoom_level(1, -1) == 0)
+	assert(OfficeClient.next_camera_zoom_level(1, 1) == 2)
+	assert(OfficeClient.next_camera_zoom_level(0, -1) == 0)
+	assert(OfficeClient.next_camera_zoom_level(2, 1) == 2)
+	for zooming_in in [true, false]:
+		var tone: AudioStreamWAV = CameraSfx.make_zoom_tone(zooming_in)
+		assert(tone.mix_rate == 22050)
+		assert(tone.data.size() > 0)
+	assert(is_equal_approx(OfficeClient.door_swing_angle(false), 0.0))
+	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -0.42))
 
 	var open_floors: Array[int] = client._available_elevator_floors()
 	assert(open_floors == [1, 6])
@@ -31,6 +47,13 @@ func _run_tests() -> void:
 
 	client.dynamic_root = Node3D.new()
 	root.add_child(client.dynamic_root)
+	client.materials["door"] = StandardMaterial3D.new()
+	client.materials["door_glass"] = StandardMaterial3D.new()
+	client.materials["metal"] = StandardMaterial3D.new()
+	var door: Node3D = client._build_door_visual(Vector3.ZERO, "test-door")
+	assert(door.get_node_or_null("DoorPivot/DoorLeaf") is MeshInstance3D)
+	assert(door.get_node_or_null("DoorPivot/DoorWindow") is MeshInstance3D)
+	assert(client.dynamic_root.get_node_or_null("test-door/DoorPivot") is Node3D)
 	client._build_elevator_transition_car(Vector3.ZERO)
 	var cabin: Node3D = client.elevator_transition_root
 	assert(cabin.name == "ElevatorCabin")
@@ -40,11 +63,15 @@ func _run_tests() -> void:
 		"ElevatorLeftGlass",
 		"ElevatorRightGlass",
 		"ElevatorCanopy",
+		"ElevatorRearFog",
+		"ElevatorLeftFog",
+		"ElevatorRightFog",
 		"ElevatorLeftDoor",
 		"ElevatorRightDoor",
 		"ElevatorDestinationDisplay",
 	]:
 		assert(cabin.get_node_or_null(part_name) != null, part_name)
+	assert(client.elevator_transition_fog_material.albedo_color.a > 0.8)
 
 	var trash_can: Node3D = OfficeProp.create("trash_can")
 	assert(trash_can.get_node_or_null("TrashCanBody") is MeshInstance3D)
@@ -52,7 +79,7 @@ func _run_tests() -> void:
 	assert(trash_can.get_node_or_null("TrashCanPedal") is MeshInstance3D)
 	trash_can.free()
 
-	print("Godot checks passed: floors 1/6, two-way cabin travel, cabin geometry, and trash-can model.")
+	print("Godot checks passed: camera levels/cues, privacy doors, floors 1/6, two-way cabin travel, cabin geometry, and trash-can model.")
 	var dynamic_root: Node3D = client.dynamic_root
 	client.free()
 	dynamic_root.free()

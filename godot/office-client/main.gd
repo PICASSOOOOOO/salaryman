@@ -18,6 +18,7 @@ const FLOOR_HEIGHT := 0.08
 const WALL_HEIGHT := 2.7
 const CAMERA_DISTANCE_MIN := 8.0
 const CAMERA_DISTANCE_MAX := 22.0
+const CAMERA_DISTANCE_LEVELS := [8.0, 13.0, 21.0]
 const CAMERA_ORTHO_SIZE_MIN := 9.0
 const CAMERA_ORTHO_SIZE_MAX := 18.0
 const CAMERA_ORTHO_SIZE_BASE := 13.0
@@ -40,7 +41,9 @@ var visual_player_ready := false
 var target_player_world := Vector3.ZERO
 var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
-var camera_distance := 12.0
+var camera_distance := 13.0
+var camera_zoom_index := 1
+var camera_sfx: Node
 var last_room_id := ""
 var last_floor_number := -1
 var last_sequence := -1
@@ -86,6 +89,8 @@ var elevator_destination_room := ""
 var elevator_return_camera_distance := 12.0
 var elevator_transition_root: Node3D
 var elevator_transition_doors: Array[MeshInstance3D] = []
+var elevator_transition_fog_panels: Array[MeshInstance3D] = []
+var elevator_transition_fog_material: StandardMaterial3D
 
 var materials: Dictionary = {}
 var floor_plan_data: Dictionary = {}
@@ -100,6 +105,9 @@ var wall_service_cavity := 0.12
 func _ready() -> void:
 	_build_materials()
 	_build_lighting()
+	camera_sfx = preload("res://camera_sfx.gd").new()
+	camera_sfx.name = "CameraSfx"
+	add_child(camera_sfx)
 	_build_building_shell()
 	_build_static_furniture()
 	_build_interface()
@@ -129,6 +137,7 @@ func _build_materials() -> void:
 	materials["foundation"] = _material(Color("#48534f"), 0.9)
 	materials["wall_trim"] = _material(Color("#2f8f82"), 0.62)
 	materials["door"] = _material(Color("#e8b45d"), 0.66)
+	materials["door_glass"] = _material(Color(0.63, 0.72, 0.66, 0.50), 0.58, true)
 	materials["glass"] = _material(Color("#8ed6d2"), 0.18, true)
 	materials["metal"] = _material(Color("#52676d"), 0.36, false, 0.28)
 	materials["marker"] = _material(Color("#f8b957"), 0.34, true, 0.0, Color("#f8b957"))
@@ -929,7 +938,7 @@ func _build_interface() -> void:
 	controls_label = Label.new()
 	controls_label.position = Vector2(636, 646)
 	controls_label.size = Vector2(512, 48)
-	controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nE USE / STAIRS  ·  C CLEAN  ·  V REPAIR"
+	controls_label.text = "WASD MOVE · SHIFT SPRINT · SPACE JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
@@ -1123,6 +1132,7 @@ func _apply_snapshot(message: Dictionary) -> void:
 		last_floor_number = floor_number
 		_rebuild_bridge_objects(scene_data.get("objects", []))
 	_sync_prop_surfaces(scene_data.get("objects", []))
+	_sync_door_states(scene_data.get("objects", []))
 	_sync_automation_characters(scene_data.get("automationCharacters", []))
 
 
@@ -1384,6 +1394,7 @@ func _build_elevator_transition_car(origin: Vector3) -> void:
 	dynamic_root.add_child(elevator_transition_root)
 	elevator_transition_root.global_position = origin + Vector3(0.0, -0.04, 0.0)
 	elevator_transition_doors.clear()
+	elevator_transition_fog_panels.clear()
 
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.46, 0.83, 0.77, 0.25)
@@ -1397,6 +1408,22 @@ func _build_elevator_transition_car(origin: Vector3) -> void:
 	_add_transition_box("ElevatorLeftGlass", Vector3(-1.1, 1.38, 0.0), Vector3(0.06, 2.64, 2.3), glass)
 	_add_transition_box("ElevatorRightGlass", Vector3(1.1, 1.38, 0.0), Vector3(0.06, 2.64, 2.3), glass)
 	_add_transition_box("ElevatorCanopy", Vector3(0.0, 2.74, 0.0), Vector3(2.3, 0.08, 2.3), glass)
+
+	elevator_transition_fog_material = StandardMaterial3D.new()
+	elevator_transition_fog_material.albedo_color = Color(0.72, 0.82, 0.74, 0.84)
+	elevator_transition_fog_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	elevator_transition_fog_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	elevator_transition_fog_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	elevator_transition_fog_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	var fog_panels := [
+		["ElevatorRearFog", Vector3(0.0, 1.38, -1.055), Vector3(2.16, 2.46, 0.025)],
+		["ElevatorLeftFog", Vector3(-1.055, 1.38, 0.0), Vector3(0.025, 2.46, 2.16)],
+		["ElevatorRightFog", Vector3(1.055, 1.38, 0.0), Vector3(0.025, 2.46, 2.16)],
+	]
+	for fog_panel in fog_panels:
+		elevator_transition_fog_panels.append(
+			_add_transition_box(fog_panel[0], fog_panel[1], fog_panel[2], elevator_transition_fog_material)
+		)
 
 	var door_material := _material(Color("#b7d6c5"), 0.38)
 	var left_door := _add_transition_box(
@@ -1478,6 +1505,8 @@ func _open_elevator_at_destination(message: Dictionary) -> void:
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "camera_distance", elevator_return_camera_distance, 0.5)
+	if elevator_transition_fog_material != null:
+		tween.tween_property(elevator_transition_fog_material, "albedo_color:a", 0.14, 0.4)
 	if elevator_transition_doors.size() == 2:
 		tween.tween_property(elevator_transition_doors[0], "position:x", -0.72, 0.4)
 		tween.tween_property(elevator_transition_doors[1], "position:x", 0.72, 0.4)
@@ -1491,6 +1520,8 @@ func _finish_elevator_transition(message: Dictionary) -> void:
 		elevator_transition_root.queue_free()
 	elevator_transition_root = null
 	elevator_transition_doors.clear()
+	elevator_transition_fog_panels.clear()
+	elevator_transition_fog_material = null
 	elevator_transition_active = false
 	elevator_transition_phase = ""
 	elevator_wait_remaining = 0.0
@@ -1513,6 +1544,8 @@ func _abort_elevator_transition(message: String) -> void:
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "camera_distance", elevator_return_camera_distance, 0.45)
+	if elevator_transition_fog_material != null:
+		tween.tween_property(elevator_transition_fog_material, "albedo_color:a", 0.14, 0.38)
 	if elevator_transition_doors.size() == 2:
 		tween.tween_property(elevator_transition_doors[0], "position:x", -0.72, 0.38)
 		tween.tween_property(elevator_transition_doors[1], "position:x", 0.72, 0.38)
@@ -1526,6 +1559,8 @@ func _finish_elevator_abort() -> void:
 		elevator_transition_root.queue_free()
 	elevator_transition_root = null
 	elevator_transition_doors.clear()
+	elevator_transition_fog_panels.clear()
+	elevator_transition_fog_material = null
 	elevator_transition_active = false
 	elevator_transition_phase = ""
 	elevator_wait_remaining = 0.0
@@ -1536,6 +1571,30 @@ func _finish_elevator_abort() -> void:
 func _show_transient_notice(message: String, duration_seconds := 5.0) -> void:
 	transient_notice_text = message
 	transient_notice_remaining = duration_seconds
+
+
+static func camera_distance_for_level(level: int) -> float:
+	return float(CAMERA_DISTANCE_LEVELS[clampi(level, 0, CAMERA_DISTANCE_LEVELS.size() - 1)])
+
+
+static func next_camera_zoom_level(current_level: int, direction: int) -> int:
+	if direction == 0:
+		return clampi(current_level, 0, CAMERA_DISTANCE_LEVELS.size() - 1)
+	return clampi(
+		current_level + (1 if direction > 0 else -1),
+		0,
+		CAMERA_DISTANCE_LEVELS.size() - 1,
+	)
+
+
+func _step_camera_zoom(direction: int) -> void:
+	var next_level := next_camera_zoom_level(camera_zoom_index, direction)
+	if next_level == camera_zoom_index:
+		return
+	camera_zoom_index = next_level
+	camera_distance = camera_distance_for_level(camera_zoom_index)
+	if is_instance_valid(camera_sfx):
+		camera_sfx.play_zoom(direction < 0)
 
 
 func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
@@ -1617,27 +1676,77 @@ func _build_crt_terminal(position: Vector3, object_id: String) -> MeshInstance3D
 	return body
 
 
-func _build_door_visual(position: Vector3, object_id: String) -> MeshInstance3D:
-	var doorway_position := position + Vector3(0.0, 0.0, 0.84)
-	var leaf := _add_box_to_dynamic(
-		object_id + "-leaf",
-		doorway_position + Vector3(0.0, 1.0, 0.0),
+func _build_door_visual(position: Vector3, object_id: String) -> Node3D:
+	var door_root := Node3D.new()
+	door_root.name = object_id
+	door_root.position = position
+	door_root.set_meta("door_open", false)
+	dynamic_root.add_child(door_root)
+
+	var pivot := Node3D.new()
+	pivot.name = "DoorPivot"
+	pivot.position = Vector3(-0.64, 0.0, 0.84)
+	door_root.add_child(pivot)
+
+	var leaf := _door_panel(
+		"DoorLeaf",
+		Vector3(0.64, 1.0, 0.0),
 		Vector3(1.28, 1.95, 0.12),
 		materials["door"],
 	)
-	_add_box_to_dynamic(
-		object_id + "-window",
-		doorway_position + Vector3(0.0, 1.52, 0.068),
+	pivot.add_child(leaf)
+	var window := _door_panel(
+		"DoorWindow",
+		Vector3(0.64, 1.52, 0.068),
 		Vector3(0.58, 0.38, 0.018),
-		materials["glass"],
+		materials["door_glass"],
 	)
-	_add_box_to_dynamic(
-		object_id + "-handle",
-		doorway_position + Vector3(0.43, 0.92, 0.085),
+	pivot.add_child(window)
+	var handle := _door_panel(
+		"DoorHandle",
+		Vector3(1.07, 0.92, 0.085),
 		Vector3(0.06, 0.13, 0.035),
 		materials["metal"],
 	)
-	return leaf
+	pivot.add_child(handle)
+	return door_root
+
+
+func _door_panel(panel_name: String, position: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mesh.material = material
+	var panel := MeshInstance3D.new()
+	panel.name = panel_name
+	panel.position = position
+	panel.mesh = mesh
+	panel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return panel
+
+
+static func door_swing_angle(is_open: bool) -> float:
+	return -0.42 if is_open else 0.0
+
+
+func _sync_door_states(objects: Array) -> void:
+	for value in objects:
+		if not value is Dictionary:
+			continue
+		var object: Dictionary = value
+		if str(object.get("kind", "")) != "door":
+			continue
+		var door_root := dynamic_root.get_node_or_null(NodePath(str(object.get("id", ""))))
+		if door_root == null:
+			continue
+		var pivot := door_root.get_node_or_null("DoorPivot") as Node3D
+		if pivot == null:
+			continue
+		var is_open := bool(object.get("nearby", false))
+		if bool(door_root.get_meta("door_open", false)) == is_open:
+			continue
+		door_root.set_meta("door_open", is_open)
+		var tween := create_tween()
+		tween.tween_property(pivot, "rotation:y", door_swing_angle(is_open), 0.18)
 
 
 func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstance3D:
@@ -1877,7 +1986,7 @@ func _update_hud() -> void:
 			state_color = Color("#f8b957")
 		controls_label.add_theme_color_override("font_color", state_color)
 	else:
-		controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\nE USE / STAIRS  ·  C CLEAN  ·  V REPAIR"
+		controls_label.text = "WASD MOVE · SHIFT SPRINT · SPACE JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
@@ -2029,10 +2138,10 @@ func _input(event: InputEvent) -> void:
 				_send_command("start_break", {"kind": "short"})
 			KEY_T:
 				_send_command("toggle_auto_breaks")
-			KEY_EQUAL, KEY_KP_ADD:
-				camera_distance = max(CAMERA_DISTANCE_MIN, camera_distance - 1.5)
-			KEY_MINUS, KEY_KP_SUBTRACT:
-				camera_distance = min(CAMERA_DISTANCE_MAX, camera_distance + 1.5)
+			KEY_Z, KEY_EQUAL, KEY_KP_ADD:
+				_step_camera_zoom(-1)
+			KEY_X, KEY_MINUS, KEY_KP_SUBTRACT:
+				_step_camera_zoom(1)
 			KEY_R:
 				connection.disconnect_from_host()
 				connection = StreamPeerTCP.new()
@@ -2051,9 +2160,9 @@ func _input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			player_root.try_sweep()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera_distance = max(CAMERA_DISTANCE_MIN, camera_distance - 1.5)
+			_step_camera_zoom(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera_distance = min(CAMERA_DISTANCE_MAX, camera_distance + 1.5)
+			_step_camera_zoom(1)
 
 
 func _send_current_input() -> void:
