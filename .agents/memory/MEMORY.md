@@ -131,7 +131,7 @@
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
-- [Browser API and game scope](browser-game-scope.md) — the public API belongs in the browser experience; other work in this request belongs on the game side.
+- [Browser API and game scope](browser-game-scope.md) — `/desktop` is the only browser page connected to the computer-only game; build for macOS, Windows, and Linux, with native game UI.
 - [Godot office client runtime](godot-office-client.md) — bridge/tests can pass without a Godot executable; live launch is still required to verify 3D framing, imported scale, animation, and lighting.
 - [GitHub workflow write scope](github-workflow-write-scope.md) — the regular GitHub connector can sync repository source but cannot write `.github/workflows`; stage the YAML elsewhere for an owner to move.
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.

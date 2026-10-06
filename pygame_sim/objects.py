@@ -11,6 +11,11 @@ from dataclasses import dataclass, field
 from math import hypot
 from typing import TYPE_CHECKING, Literal
 
+from .approved_content import (
+    APPROVED_CAMERA_FOCUS_KINDS,
+    APPROVED_INTERACTIVE_OBJECT_KINDS,
+)
+
 if TYPE_CHECKING:
     from .scene import TowerScene
     from .state import OfficeState
@@ -41,31 +46,6 @@ VENDING_ITEMS: dict[str, tuple[str, float]] = {
     "office_chair": ("OFFICE CHAIR", 160.0),
 }
 
-EXECUTIVE_SHOWCASE_OBJECT_IDS = frozenset(
-    {
-        "executive-desk",
-        "executive-desk-2",
-        "executive-desk-3",
-        "executive-desk-4",
-        "executive-chair",
-        "executive-chair-2",
-        "executive-chair-3",
-        "executive-chair-4",
-        "executive-crt",
-        "executive-crt-2",
-        "executive-crt-3",
-        "executive-crt-4",
-        "executive-desk-lamp",
-        "executive-desk-lamp-2",
-        "executive-desk-lamp-3",
-        "executive-desk-lamp-4",
-        "office4-crt",
-        "office3-crt",
-        "office4b-crt",
-    }
-)
-
-
 @dataclass(frozen=True)
 class InteractionResult:
     """The small result shared by input handlers, tests, and renderers."""
@@ -94,6 +74,10 @@ class OfficeObject:
     @property
     def visual_position(self) -> tuple[int, int]:
         return self.display_position or self.position
+
+    @property
+    def camera_focus_enabled(self) -> bool:
+        return self.interactive and self.kind in APPROVED_CAMERA_FOCUS_KINDS
 
     @property
     def collision_half_extents(self) -> tuple[int, int]:
@@ -127,6 +111,13 @@ class OfficeObjectRegistry:
     def add(self, office_object: OfficeObject) -> None:
         if self.get(office_object.id) is not None:
             raise ValueError(f"duplicate office object id: {office_object.id}")
+        if (
+            office_object.interactive
+            and office_object.kind not in APPROVED_INTERACTIVE_OBJECT_KINDS
+        ):
+            raise ValueError(
+                f"interactive object kind is not approved: {office_object.kind}"
+            )
         self.objects.append(office_object)
 
     def get(self, object_id: str) -> OfficeObject | None:
@@ -169,6 +160,7 @@ class OfficeObjectRegistry:
             return InteractionResult(False, f"{item.label.upper()} IS DECORATIVE")
 
         if item.kind == "elevator":
+            state.close_page()
             floor = item.destination_floor or scene.current_floor
             scene.current_floor = floor
             if floor == 1:
@@ -188,6 +180,7 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, destination=f"floor:{floor}")
 
         if item.kind == "door":
+            state.close_page()
             destination_room = item.destination_room
             if destination_room is None or not scene.select_room(destination_room):
                 return InteractionResult(False, "OFFICE NOT AVAILABLE")
@@ -196,6 +189,7 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, destination=f"room:{destination_room}")
 
         if item.kind == "stairs":
+            state.close_page()
             if not scene.climb_stairs():
                 return InteractionResult(False, "TOP FLOOR / NO STAIRS ABOVE")
             message = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
@@ -203,6 +197,7 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, destination=f"floor:{scene.current_floor}")
 
         if item.kind == "arcade":
+            scene.focus_on_interaction(item)
             game_id = item.arcade_game_id or "cyber_serpent"
             state.last_arcade_game = game_id
             message = f"ARCADE ROUTE / {game_id.upper()}"
@@ -210,12 +205,19 @@ class OfficeObjectRegistry:
             return InteractionResult(True, message, route=f"/arcade/{game_id}")
 
         if item.kind == "pay_phone":
-            state.open_page("phone", from_object=True, source="PAY PHONE")
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "phone",
+                from_object=True,
+                source="PAY PHONE",
+                source_object_id=item.id,
+            )
             message = "PAY PHONE / CALLL HOME + COMMS ONLY"
             state.notice = message
             return InteractionResult(True, message, route="payphone-console")
 
         if item.kind == "tv":
+            scene.focus_on_interaction(item)
             message = "CCTV MONITOR / SURVEILLANCE"
             state.notice = message
             return InteractionResult(True, message, route="surveillance")
@@ -230,6 +232,7 @@ class OfficeObjectRegistry:
                     message = f"VENDING DENIED / ƒ{cost:.0f} REQUIRED"
                     state.notice = message
                     return InteractionResult(False, message)
+                scene.focus_on_interaction(item)
                 message = f"VENDING DISPENSED / COFFEE FOR {state.roster.workers[worker_index].name.upper()}"
                 state.notice = message
                 return InteractionResult(True, message, route="coffee-break")
@@ -237,6 +240,7 @@ class OfficeObjectRegistry:
                 message = f"VENDING DENIED / ƒ{cost:.0f} REQUIRED"
                 state.notice = message
                 return InteractionResult(False, message)
+            scene.focus_on_interaction(item)
             message = f"VENDING DISPENSED / {label}"
             state.notice = message
             return InteractionResult(True, message)
@@ -246,7 +250,13 @@ class OfficeObjectRegistry:
             if permission_message is not None:
                 state.notice = permission_message
                 return InteractionResult(False, permission_message)
-            state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "systems",
+                from_object=True,
+                source="SYSTEMS TERMINAL",
+                source_object_id=item.id,
+            )
 
         if item.id == "lobby-reception-desk":
             message = "RECEPTION / TOWER INFORMATION READY"
@@ -262,7 +272,13 @@ class OfficeObjectRegistry:
             "window": ("WINDOW / TOWER VIEW", "tower-view"),
         }
         if item.kind == "atm":
-            state.open_page("economy", from_object=True, source="ATM")
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "economy",
+                from_object=True,
+                source="ATM",
+                source_object_id=item.id,
+            )
         message, route = messages[item.kind]
         state.notice = message
         return InteractionResult(True, message, route=route)

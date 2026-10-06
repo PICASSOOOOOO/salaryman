@@ -9,7 +9,6 @@ from pathlib import Path
 import re
 import threading
 from typing import Any, Callable
-from urllib.parse import urlsplit, urlunsplit
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -36,7 +35,6 @@ class AutomationCharacter:
     work_stops: tuple[str, ...]
     speed: float
     app_label: str
-    app_path: str
     phase_seconds: float = 0.0
 
 
@@ -50,7 +48,6 @@ AUTOMATION_CHARACTERS = (
         ("SORT TASKS", "CHECK STAFFING", "ROUTE WORK", "UPDATE BOARD"),
         76.0,
         app_label="JOB COMMAND",
-        app_path="/business/job-command",
         phase_seconds=0.4,
     ),
     AutomationCharacter(
@@ -60,7 +57,6 @@ AUTOMATION_CHARACTERS = (
         ("RECONCILE", "CHECK BILLS", "REVIEW RUN", "BALANCE BOOKS"),
         66.0,
         app_label="ACCOUNTING",
-        app_path="/business/accounting",
         phase_seconds=1.7,
     ),
     AutomationCharacter(
@@ -70,7 +66,6 @@ AUTOMATION_CHARACTERS = (
         ("SORT INBOX", "CHECK OPT-OUTS", "QUEUE FOLLOW-UP", "LOG ACTIVITY"),
         82.0,
         app_label="CONTACTS",
-        app_path="/business/contacts",
         phase_seconds=0.9,
     ),
     AutomationCharacter(
@@ -80,7 +75,6 @@ AUTOMATION_CHARACTERS = (
         ("DRAFT CAMPAIGN", "CHECK CHANNELS", "REVIEW QUEUE", "PREPARE POST"),
         79.0,
         app_label="MARKETING",
-        app_path="/marketing/command",
         phase_seconds=2.3,
     ),
     AutomationCharacter(
@@ -90,7 +84,6 @@ AUTOMATION_CHARACTERS = (
         ("SHAPE A BRIEF", "REVIEW PROJECT", "SORT REFERENCES", "PREPARE DRAFT"),
         72.0,
         app_label="DARKROOM",
-        app_path="/creative/darkroom",
         phase_seconds=1.1,
     ),
     AutomationCharacter(
@@ -100,66 +93,9 @@ AUTOMATION_CHARACTERS = (
         ("SCAN SOURCES", "COMPARE SIGNALS", "BUILD BRIEF", "QUEUE REVIEW"),
         70.0,
         app_label="INTELLIGENCE REPORTS",
-        app_path="/intel/reports",
         phase_seconds=2.8,
     ),
 )
-
-
-def build_practical_app_url(server_url: str, domain: str) -> str | None:
-    """Build a fixed SALARYMAN module URL without carrying credentials or query data."""
-    profile = next(
-        (candidate for candidate in AUTOMATION_CHARACTERS if candidate.domain == domain),
-        None,
-    )
-    if profile is None:
-        return None
-    origin = _validated_server_origin(server_url)
-    if origin is None:
-        return None
-    scheme, netloc = origin
-    return urlunsplit((scheme, netloc, profile.app_path, "", ""))
-
-
-DESKTOP_APP_ROUTES = {
-    "systems": "/",
-    "calll_home": "/phone",
-    "comms": "/comms",
-}
-
-
-def build_desktop_app_url(server_url: str, destination: str) -> str | None:
-    """Build one of the fixed app links exposed by physical desktop objects."""
-    path = DESKTOP_APP_ROUTES.get(destination)
-    if path is None:
-        return None
-    origin = _validated_server_origin(server_url)
-    if origin is None:
-        return None
-    scheme, netloc = origin
-    return urlunsplit((scheme, netloc, path, "", ""))
-
-
-def _validated_server_origin(server_url: str) -> tuple[str, str] | None:
-    if not isinstance(server_url, str):
-        return None
-    try:
-        parsed = urlsplit(server_url.strip())
-        hostname = parsed.hostname
-        parsed.port  # Validate malformed port syntax before opening a browser.
-    except ValueError:
-        return None
-    if (
-        parsed.scheme not in {"http", "https"}
-        or not parsed.netloc
-        or not hostname
-        or parsed.username is not None
-        or parsed.password is not None
-        or parsed.query
-        or parsed.fragment
-    ):
-        return None
-    return parsed.scheme, parsed.netloc
 
 
 @dataclass(frozen=True)

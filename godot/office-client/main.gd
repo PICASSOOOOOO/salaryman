@@ -62,8 +62,13 @@ var mission_label: Label
 var notice_label: Label
 var controls_label: Label
 var camera_target := Vector3.ZERO
+var camera_focus_amount := 0.0
 var elevator_floor_panel: ColorRect
 var elevator_floor_label: Label
+var native_app_panel: ColorRect
+var native_app_title: Label
+var native_app_body: Label
+var native_app_footer: Label
 var selected_elevator_floor := 1
 var elevator_transition_active := false
 var elevator_transition_phase := ""
@@ -655,6 +660,44 @@ func _build_interface() -> void:
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
+
+	native_app_panel = ColorRect.new()
+	native_app_panel.name = "NativeGameAppPanel"
+	native_app_panel.color = Color("#07151af5")
+	native_app_panel.position = Vector2(300, 184)
+	native_app_panel.size = Vector2(580, 352)
+	native_app_panel.visible = false
+	native_app_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	interface_root.add_child(native_app_panel)
+
+	var app_panel_accent := ColorRect.new()
+	app_panel_accent.color = Color("#f8b957")
+	app_panel_accent.position = Vector2(0, 0)
+	app_panel_accent.size = Vector2(580, 4)
+	app_panel_accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	native_app_panel.add_child(app_panel_accent)
+
+	native_app_title = Label.new()
+	native_app_title.position = Vector2(28, 24)
+	native_app_title.size = Vector2(524, 34)
+	native_app_title.add_theme_font_size_override("font_size", 21)
+	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
+	native_app_panel.add_child(native_app_title)
+
+	native_app_body = Label.new()
+	native_app_body.position = Vector2(28, 78)
+	native_app_body.size = Vector2(524, 215)
+	native_app_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	native_app_body.add_theme_font_size_override("font_size", 16)
+	native_app_body.add_theme_color_override("font_color", Color("#c4ddcb"))
+	native_app_panel.add_child(native_app_body)
+
+	native_app_footer = Label.new()
+	native_app_footer.position = Vector2(28, 311)
+	native_app_footer.size = Vector2(524, 22)
+	native_app_footer.add_theme_font_size_override("font_size", 12)
+	native_app_footer.add_theme_color_override("font_color", Color("#f8b957"))
+	native_app_panel.add_child(native_app_footer)
 
 	elevator_floor_panel = ColorRect.new()
 	elevator_floor_panel.name = "ElevatorFloorPicker"
@@ -1349,7 +1392,45 @@ func _update_camera(delta: float) -> void:
 	var horizontal_velocity := Vector3(visual_player_velocity.x, 0.0, visual_player_velocity.z)
 	var look_ahead := horizontal_velocity.limit_length(CAMERA_LOOK_AHEAD_MAX_SPEED) * CAMERA_LOOK_AHEAD_SECONDS
 	var desired_target := visual_player_world + Vector3(0.0, 0.2, 0.0) + look_ahead
-	var offset := Vector3(camera_distance * 0.72, camera_distance * 1.02, camera_distance * 0.72)
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	var focus_world := Vector3.ZERO
+	var focus_found := false
+	var focus_value: Variant = scene_data.get("cameraFocusObjectId")
+	var focus_id := "" if focus_value == null else str(focus_value)
+	if not focus_id.is_empty():
+		for item in scene_data.get("objects", []):
+			var object: Dictionary = item
+			if (
+				str(object.get("id", "")) == focus_id
+				and bool(object.get("cameraFocusEnabled", false))
+			):
+				focus_world = _pygame_to_world(
+					float(object.get("displayX", object.get("x", 0))),
+					float(object.get("displayY", object.get("y", 0))),
+				)
+				focus_found = true
+				break
+	var focus_blend_target := 1.0 if focus_found else 0.0
+	camera_focus_amount = lerpf(
+		camera_focus_amount,
+		focus_blend_target,
+		1.0 - exp(-CAMERA_FOLLOW_RESPONSE * delta),
+	)
+	if focus_found:
+		desired_target = desired_target.lerp(
+			focus_world + Vector3(0.0, 0.55, 0.0),
+			camera_focus_amount,
+		)
+	var effective_camera_distance := lerpf(
+		camera_distance,
+		CAMERA_DISTANCE_MIN,
+		camera_focus_amount,
+	)
+	var offset := Vector3(
+		effective_camera_distance * 0.72,
+		effective_camera_distance * 1.02,
+		effective_camera_distance * 0.72,
+	)
 	var desired_position := desired_target + offset
 	if visual_player_ready and not camera_has_tracking_target:
 		camera_target = desired_target
@@ -1363,7 +1444,7 @@ func _update_camera(delta: float) -> void:
 		camera_target = desired_target
 		camera.position = desired_position
 	var desired_size: float = clampf(
-		CAMERA_ORTHO_SIZE_BASE + (camera_distance - 14.0) * 0.55,
+		CAMERA_ORTHO_SIZE_BASE + (effective_camera_distance - 14.0) * 0.55,
 		CAMERA_ORTHO_SIZE_MIN,
 		CAMERA_ORTHO_SIZE_MAX,
 	)
@@ -1398,6 +1479,66 @@ func _update_hud() -> void:
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
 	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), str(office.get("notice", "WAITING FOR PYGAME"))]
+	_update_native_app_panel(office, scene_data)
+
+
+func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> void:
+	if native_app_panel == null:
+		return
+	var page := _active_page_name()
+	native_app_panel.visible = not page.is_empty()
+	if page.is_empty():
+		return
+
+	var page_source_value: Variant = office.get("pageSource")
+	var page_source := "" if page_source_value == null else str(page_source_value)
+	var workers: Array = office.get("workers", [])
+	var location := "FLOOR %02d  /  %s" % [
+		int(scene_data.get("floor", 1)),
+		str(scene_data.get("room", "UNKNOWN")).replace("_", " ").to_upper(),
+	]
+	match page:
+		"phone":
+			native_app_title.text = "TOWER PAY PHONE"
+			native_app_body.text = "CALLL HOME\nCOMMS\n\nThis line is limited to those two services. The game screen is read-only in this pass."
+			native_app_footer.text = "CALLS AND MESSAGES ARE NOT STARTED HERE  ·  ESC CLOSE"
+		"systems":
+			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
+			native_app_body.text = "CONNECTED GAME MODULES\n%s\nTEAM  %d  ·  GAME FIAT  ƒ%.2f\n\nJOB COMMAND  ·  ACCOUNTING  ·  CONTACTS\nMARKETING  ·  DARKROOM  ·  INTELLIGENCE REPORTS" % [
+				location,
+				workers.size(),
+				float(office.get("funds", 0.0)),
+			]
+			native_app_footer.text = "GAME-NATIVE WORKSPACE  ·  READ-ONLY DATA  ·  ESC CLOSE"
+		"economy":
+			native_app_title.text = "BANCO OMBRA"
+			native_app_body.text = "%s\nGAME FIAT  ƒ%.2f\n\nThis is the Tower game wallet view. No transfer or payout is initiated from this screen." % [
+				location,
+				float(office.get("funds", 0.0)),
+			]
+			native_app_footer.text = "READ-ONLY  ·  ESC CLOSE"
+		"automation":
+			native_app_title.text = "AUTOMATION  /  " + page_source.to_upper()
+			native_app_body.text = "LIVE STATUS IS SHARED WITH THE GAME CLIENT.\nMovement in the Tower represents the selected automation coworker; this view does not start external work."
+			native_app_footer.text = "READ-ONLY GAME MODULE  ·  ESC CLOSE"
+		"tools":
+			native_app_title.text = "OFFICE MAINTENANCE"
+			native_app_body.text = "This game panel is read-only. It does not start cleaning or repair work."
+			native_app_footer.text = "READ-ONLY  ·  ESC CLOSE"
+		"customize":
+			native_app_title.text = "ROOM CUSTOMIZATION"
+			native_app_body.text = "Room finishes and decor are part of the game world. Editing is disabled in this read-only view."
+			native_app_footer.text = "READ-ONLY  ·  ESC CLOSE"
+		_:
+			native_app_title.text = page_source.to_upper() if not page_source.is_empty() else page.to_upper()
+			native_app_body.text = location + "\n\nThis view is rendered by the game client."
+			native_app_footer.text = "ESC CLOSE"
+
+
+func _active_page_name() -> String:
+	var office: Dictionary = snapshot.get("office", {})
+	var page_value: Variant = office.get("activePage")
+	return "" if page_value == null else str(page_value)
 
 
 func _send_command(name: String, payload: Dictionary = {}) -> void:
@@ -1417,6 +1558,11 @@ func _send_command(name: String, payload: Dictionary = {}) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if _handle_elevator_picker_key(event.keycode):
+			get_viewport().set_input_as_handled()
+			return
+		if not _active_page_name().is_empty():
+			if event.keycode == KEY_ESCAPE:
+				_send_command("close_page")
 			get_viewport().set_input_as_handled()
 			return
 		if elevator_transition_active:
@@ -1458,6 +1604,9 @@ func _input(event: InputEvent) -> void:
 				connection = StreamPeerTCP.new()
 				_connect_to_pygame()
 	elif event is InputEventMouseButton and event.pressed:
+		if native_app_panel != null and native_app_panel.visible:
+			get_viewport().set_input_as_handled()
+			return
 		if elevator_transition_active or (
 			elevator_floor_panel != null and elevator_floor_panel.visible
 		):
@@ -1474,8 +1623,12 @@ func _input(event: InputEvent) -> void:
 
 
 func _send_current_input() -> void:
-	if elevator_transition_active or (
+	if (
+		not _active_page_name().is_empty()
+		or elevator_transition_active
+		or (
 		elevator_floor_panel != null and elevator_floor_panel.visible
+		)
 	):
 		_send_command("set_input", {"x": 0.0, "y": 0.0, "sprint": false})
 		return

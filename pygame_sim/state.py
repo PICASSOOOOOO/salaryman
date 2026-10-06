@@ -101,6 +101,7 @@ class OfficeState:
     role: GameRole = "player"
     active_page: OverlayPage | Literal["automation"] | None = None
     page_source: str | None = None
+    active_object_id: str | None = None
     tool_menu_open: bool = False
     room_customizations: dict[str, dict[str, str]] = field(default_factory=dict)
     decay: float = 8.0
@@ -187,6 +188,7 @@ class OfficeState:
         *,
         from_object: bool = False,
         source: str = "OBJECT",
+        source_object_id: str | None = None,
     ) -> bool:
         """Open shared pages while keeping operator tools role-gated."""
         if not from_object and not self.has_operator_access and page != "customize":
@@ -194,6 +196,7 @@ class OfficeState:
             return False
         self.active_page = page
         self.page_source = source
+        self.active_object_id = source_object_id if from_object else None
         self.tool_menu_open = False
         self.notice = f"{page.upper()} PAGE / {source}"
         return True
@@ -233,6 +236,7 @@ class OfficeState:
     def close_page(self) -> None:
         self.active_page = None
         self.page_source = None
+        self.active_object_id = None
         self.tool_menu_open = False
 
     def toggle_tool_menu(self) -> bool:
@@ -547,6 +551,7 @@ class OfficeState:
         self.recruitment_open = False
         self.active_page = None
         self.page_source = None
+        self.active_object_id = None
         self.tool_menu_open = False
         self.decay = fresh.decay
         self.maintenance_runs = 0

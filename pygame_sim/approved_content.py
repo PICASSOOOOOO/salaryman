@@ -21,9 +21,6 @@ APPROVED_PYGAME_OBJECT_ASSETS = (
 )
 
 APPROVED_GODOT_TOWER_ASSETS = (
-    "godot/office-client/shadow-tower-assets/public-terminal.png",
-    "godot/office-client/shadow-tower-assets/directory.png",
-    "godot/office-client/shadow-tower-assets/secretary.png",
     "godot/office-client/shadow-tower-assets/desk-terminal.png",
     "godot/office-client/shadow-tower-assets/atm.png",
     "godot/office-client/shadow-tower-assets/vending.png",
@@ -61,7 +58,6 @@ APPROVED_INTERACTIVE_OBJECT_KINDS = frozenset(
         "telephone",
         "pay_phone",
         "crt_terminal",
-        "tv",
         "atm",
         "vending_machine",
         "elevator",
@@ -81,7 +77,6 @@ APPROVED_CAMERA_FOCUS_KINDS = frozenset(
         "telephone",
         "pay_phone",
         "crt_terminal",
-        "tv",
         "atm",
         "vending_machine",
         "arcade",

@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Literal
 
 from .objects import (
-    EXECUTIVE_SHOWCASE_OBJECT_IDS,
     InteractionResult,
     OfficeObject,
     OfficeObjectRegistry,
@@ -21,6 +20,7 @@ from .automation import (
     AutopilotSnapshot,
     AutomationCharacter,
 )
+from .objects import OfficeObject
 
 
 _FLOOR_PLAN_PATH = Path(__file__).resolve().parent.parent / "godot" / "office-client" / "floor_plan.json"
@@ -103,6 +103,8 @@ class TowerScene:
         default_factory=lambda: AutopilotSnapshot("unlinked", {}, "NO DESKTOP LINK", 0)
     )
     selected_automation_domain: str | None = None
+    camera_focus_object_id: str | None = None
+    camera_focus_seconds: float = 0.0
 
     MAX_SPEED: float = 300.0
     SPRINT_SPEED: float = 500.0
@@ -226,11 +228,6 @@ class TowerScene:
         for item in self.objects.objects:
             if item.room != self.current_room:
                 continue
-            if (
-                self.current_room == "executive"
-                and item.id not in EXECUTIVE_SHOWCASE_OBJECT_IDS
-            ):
-                continue
             object_half_width, object_half_height = item.collision_half_extents
             if object_half_width <= 0 or object_half_height <= 0:
                 continue
@@ -258,6 +255,12 @@ class TowerScene:
         """Apply normalized acceleration/friction without duplicating authority."""
         if delta_seconds <= 0:
             return
+        if self.camera_focus_seconds > 0:
+            self.camera_focus_seconds = max(
+                0.0, self.camera_focus_seconds - delta_seconds
+            )
+            if self.camera_focus_seconds == 0:
+                self.camera_focus_object_id = None
         self.player_action_elapsed += delta_seconds
         if self.player_action_remaining > 0:
             self.player_action_remaining = max(
@@ -501,9 +504,20 @@ class TowerScene:
             return InteractionResult(False, message)
         return self.objects.interact(target, state, self, vending_item=vending_item)
 
+    def focus_on_interaction(self, office_object: OfficeObject) -> None:
+        """Briefly focus an approved service object after a game interaction."""
+        if office_object.camera_focus_enabled:
+            self.camera_focus_object_id = office_object.id
+            self.camera_focus_seconds = 2.25
+        else:
+            self.camera_focus_object_id = None
+            self.camera_focus_seconds = 0.0
+
     def select_room(self, room_id: str) -> bool:
         if not any(room.id == room_id for room in self.rooms):
             return False
+        self.camera_focus_object_id = None
+        self.camera_focus_seconds = 0.0
         self.current_room = room_id
         self.player_position = self.room_spawn(room_id)
         self.input_vector = (0.0, 0.0)

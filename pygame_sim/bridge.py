@@ -173,11 +173,13 @@ def apply_command(
         state.notice = f"{payload['action'].upper()} REQUESTED / {nearby.label}"
         return CommandResult(True, state.notice)
     if name == "select_room":
+        state.close_page()
         if not scene.select_room(payload["room"]):
             return CommandResult(False, "ROOM NOT FOUND")
         state.notice = f"ROOM / {scene.room.label}"
         return CommandResult(True, state.notice)
     if name == "select_floor":
+        state.close_page()
         if not scene.select_floor(payload["floor"]):
             return CommandResult(False, "FLOOR NOT FOUND")
         state.notice = f"ELEVATOR ARRIVED / FLOOR {scene.current_floor:02d}"
@@ -186,6 +188,7 @@ def apply_command(
         nearby = scene.nearby_object
         if nearby is None or nearby.kind != "stairs":
             return CommandResult(False, "NO STAIRCASE IN RANGE")
+        state.close_page()
         if not scene.climb_stairs():
             return CommandResult(False, "TOP FLOOR / NO STAIRS ABOVE")
         state.notice = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
@@ -217,6 +220,9 @@ def apply_command(
     if name == "toggle_drawer":
         state.toggle_drawer()
         return CommandResult(True, state.notice)
+    if name == "close_page":
+        state.close_page()
+        return CommandResult(True, "PAGE CLOSED")
     return CommandResult(False, "COMMAND NOT IMPLEMENTED")
 
 
@@ -277,6 +283,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "displayX": item.visual_position[0],
                     "displayY": item.visual_position[1],
                     "interactive": item.interactive,
+                    "cameraFocusEnabled": item.camera_focus_enabled,
                     "nearby": item == scene.nearby_object,
                     "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),
                     "condition": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("condition"),
@@ -288,6 +295,9 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                 "message": scene.autopilot_snapshot.message,
             },
             "automationCharacters": scene.automation_character_states(),
+            "cameraFocusObjectId": (
+                state.active_object_id or scene.camera_focus_object_id
+            ),
             # MiniGrid-inspired observation data: the client can render and
             # navigate a room graph without becoming the simulation authority.
             # Coordinates remain in Pygame's world space so no second movement
@@ -309,6 +319,9 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "time": state.time_label,
             "running": state.running,
             "notice": state.notice,
+            "activePage": state.active_page,
+            "pageSource": state.page_source,
+            "activeObjectId": state.active_object_id,
             "drawer_open": state.drawer_open,
             "recruitment_open": state.recruitment_open,
             "selected_worker": state.selected_worker,

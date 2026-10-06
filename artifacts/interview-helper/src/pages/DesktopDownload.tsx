@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Bot, BriefcaseBusiness, CircleDollarSign, Download, FileText, Laptop, Phone, Settings, Users, X } from "lucide-react";
+import { ArrowRight, Download, Laptop, X } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { trackEvent } from "@/lib/analytics";
@@ -8,10 +8,16 @@ import "./desktop-download.css";
 type DesktopPlatform = "windows" | "macos" | "linux" | "other";
 
 function detectDesktopPlatform(): DesktopPlatform {
-  const platform = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
-  if (platform.includes("win")) return "windows";
-  if (platform.includes("mac")) return "macos";
-  if (platform.includes("linux") && !platform.includes("android")) return "linux";
+  const userAgent = navigator.userAgent.toLowerCase();
+  const platform = navigator.platform.toLowerCase();
+  const touchMac = platform.includes("mac") && navigator.maxTouchPoints > 1;
+  if (
+    touchMac
+    || /android|iphone|ipad|ipod|mobile|tablet/.test(userAgent)
+  ) return "other";
+  if (platform.includes("win") || userAgent.includes("windows")) return "windows";
+  if (platform.includes("mac") || userAgent.includes("macintosh")) return "macos";
+  if (platform.includes("linux")) return "linux";
   return "other";
 }
 
@@ -40,16 +46,6 @@ const platforms = [
     tone: "sun",
     archiveName: "salaryman-office-linux-x86_64.tar.gz",
   },
-] as const;
-
-const desktopFeatures = [
-  ["PABLO AI", "Chat with Pablo and run enabled business workflows through one assistant.", Bot, "/pablo", null],
-  ["CALLL HOME", "Calls, shared numbers, routing, and remote conversations.", Phone, "/phone", `${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`],
-  ["CRM & SALES", "Keep customers, leads, and every relationship moving.", Users, "/business/contacts", null],
-  ["BUSINESS", "Run daily operations, teams, and company workflows.", BriefcaseBusiness, "/business", null],
-  ["KNOWLEDGE", "Keep working files and company context in one place.", FileText, "/console/vault", null],
-  ["ECONOMY", "See the financial systems connected to the company.", CircleDollarSign, "/business/accounts", null],
-  ["SETTINGS", "Control identity, devices, audio, and desktop preferences.", Settings, "/settings", null],
 ] as const;
 
 type AvailablePlatform = Exclude<DesktopPlatform, "other">;
@@ -120,10 +116,10 @@ export default function DesktopDownload() {
   const gameplayDetailVideoHref = supportsVp9Webm ? gameplayDetailVideoWebmHref : gameplayDetailVideoMp4Href;
   const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer-poster.jpg?v=${trailerAssetVersion}`;
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
-  const platformMessage = !downloadAllowed
-    ? "Desktop alpha · approved testers"
-    : clientPlatform === "other"
-      ? "Desktop only · choose a build below"
+  const platformMessage = clientPlatform === "other"
+    ? "Computer only · macOS, Windows, or Linux · no phone app"
+    : !downloadAllowed
+      ? "Desktop alpha · approved testers"
       : !clientBuildAvailable
         ? `${clientRelease?.name ?? "Desktop"} build unavailable`
         : `${clientRelease?.name} build ready`;
@@ -135,10 +131,10 @@ export default function DesktopDownload() {
     <main className="desktop-download">
       <section className="desktop-download-hero" id="client">
         <div className="desktop-download-hero-copy">
-          <p className="desktop-download-eyebrow">NATIVE 2.5D OFFICE / WINDOWS · MACOS · LINUX</p>
-          <h1>Your remote team.<br /><em>In the room.</em></h1>
+          <p className="desktop-download-eyebrow">DESKTOP OS ONLY / MACOS · WINDOWS · LINUX / NO PHONE APP</p>
+          <h1>A living office.<br /><em>Inside SALARYMAN OS.</em></h1>
           <p className="desktop-download-lede">
-            Move through a shared office, communicate with remote teammates interactively, and keep the work connected without living inside browser tabs.
+            The browser is built for professional workflows. SALARYMAN OS is bringing the full SALARYMAN toolkit into native gameplay screens, starting with a free office simulation.
           </p>
           <div className="desktop-download-actions">
             {clientBuildAvailable && clientRelease ? (
@@ -177,19 +173,19 @@ export default function DesktopDownload() {
             poster={gameplayPosterHref}
             aria-label="Current SALARYMAN desktop client preview"
           />
-          <span className="desktop-download-promo-tag">DESKTOP PROMO</span>
+          <span className="desktop-download-promo-tag">FREE OFFICE SIM</span>
           <figcaption>
-             36-SECOND FAST CUT / LIVE GAMEPLAY / CALL HOME SOUNDTRACK
+             36-SECOND FAST CUT / ACTIVE GAMEPLAY / CALL HOME SOUNDTRACK
           </figcaption>
         </figure>
       </section>
 
       <section className="desktop-download-promo" aria-labelledby="desktop-team-title">
         <div className="desktop-download-section-heading">
-          <p className="desktop-download-eyebrow">REMOTE WORK SHOULD FEEL PRESENT</p>
-          <h2 id="desktop-team-title">Not another chat window.<br />A shared place to work.</h2>
+          <p className="desktop-download-eyebrow">A GAME-NATIVE WAY TO EXPLORE WORK</p>
+          <h2 id="desktop-team-title">Meet the office from the inside.</h2>
           <p>
-            The web workspace organizes the business. The desktop client turns your remote team into an interactive office you can move through, communicate inside, and return to each day.
+            Enter the Tower, meet its characters, and explore connected systems through native game screens—not browser pages dressed up as gameplay.
           </p>
         </div>
 
@@ -206,12 +202,12 @@ export default function DesktopDownload() {
               controls
               aria-label="SALARYMAN shared office desktop preview"
             />
-            <figcaption><span>01</span><strong>MOVE TOGETHER</strong><small>Navigate the same 2.5D office instead of disappearing into separate tabs.</small></figcaption>
+            <figcaption><span>01</span><strong>EXPLORE THE TOWER</strong><small>Move through a playable office built as part of SALARYMAN OS.</small></figcaption>
           </figure>
           <article className="desktop-download-signal-card">
-            <span>LIVE TEAM SIGNAL</span>
-            <strong>SEE WHO IS THERE.<br />TALK WHERE THE WORK HAPPENS.</strong>
-            <p>Presence, communication, and the office environment become one continuous team experience.</p>
+            <span>FREE GAME FEATURE</span>
+            <strong>EXPLORE.<br />DISCOVER.<br />WORK A NEW WAY.</strong>
+            <p>The office simulation is free. SALARYMAN OS is being built to bring professional tools into game-native screens.</p>
             <div aria-hidden>
               <i>YOU</i><b />
               <i>TEAM</i><b />
@@ -221,58 +217,10 @@ export default function DesktopDownload() {
         </div>
       </section>
 
-      <section className="desktop-download-compare" aria-labelledby="desktop-better-title">
-        <div className="desktop-download-section-heading">
-          <p className="desktop-download-eyebrow">WHY DESKTOP</p>
-          <h2 id="desktop-better-title">The web runs the company.<br />Desktop brings the team to life.</h2>
-        </div>
-        <div className="desktop-download-compare-grid">
-          <article>
-            <span>WEB WORKSPACE</span>
-            <h3>Operate the business.</h3>
-            <p>Manage customers, calls, files, settings, and structured workflows from any browser.</p>
-            <Link href="/business">START WORK <ArrowRight size={14} aria-hidden /></Link>
-          </article>
-          <article className="is-desktop">
-            <span>2.5D DESKTOP CLIENT</span>
-            <h3>Operate as a team.</h3>
-            <p>Share an interactive office with remote teammates, communicate in context, and experience the company as a place—not a stack of pages.</p>
-            <button type="button" onClick={() => setDownloadsOpen(true)}>CHOOSE YOUR BUILD <ArrowRight size={14} aria-hidden /></button>
-          </article>
-        </div>
-      </section>
-
-      <section className="desktop-download-features" aria-labelledby="desktop-features-title">
-        <div className="desktop-download-section-heading">
-          <p className="desktop-download-eyebrow">THE WHOLE SALARYMAN SYSTEM</p>
-          <h2 id="desktop-features-title">Every main feature.<br />One connected company.</h2>
-          <p>Start in the browser, continue through the interactive desktop office, and keep the same business systems within reach.</p>
-        </div>
-        <div className="desktop-download-feature-grid">
-          {desktopFeatures.map(([title, description, Icon, href, logoSrc], index) => (
-            <Link href={href} className="desktop-download-feature" key={title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {logoSrc ? (
-                <img
-                  src={logoSrc}
-                  alt=""
-                  className="desktop-download-feature-logo"
-                />
-              ) : (
-                <Icon size={22} aria-hidden />
-              )}
-              <h3>{title}</h3>
-              <p>{description}</p>
-              <b>OPEN <ArrowRight size={13} aria-hidden /></b>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       <section className="desktop-download-final-cta">
         <div>
           <p className="desktop-download-eyebrow">THE OFFICE IS OPEN</p>
-          <h2>Bring your remote team inside.</h2>
+          <h2>Step into the office.</h2>
         </div>
         <button className="desktop-download-primary" type="button" onClick={() => setDownloadsOpen(true)}>
           <Download size={16} aria-hidden /> DESKTOP DOWNLOADS <ArrowRight size={15} aria-hidden />
@@ -294,7 +242,7 @@ export default function DesktopDownload() {
           >
             <header>
               <div>
-                <span>DESKTOP ONLY</span>
+                <span>COMPUTER ONLY · NO PHONE APP</span>
                 <h2 id="desktop-download-modal-title">Choose a build.</h2>
               </div>
               <button type="button" onClick={() => setDownloadsOpen(false)} aria-label="Close downloads">

@@ -25,7 +25,6 @@ class PygameSpatialTests(unittest.TestCase):
                 "telephone",
                 "pay_phone",
                 "crt_terminal",
-                "tv",
                 "atm",
                 "vending_machine",
                 "elevator",
@@ -35,6 +34,7 @@ class PygameSpatialTests(unittest.TestCase):
                 "chair",
             }.issubset(kinds)
         )
+        self.assertNotIn("tv", kinds)
         self.assertEqual((scene.width, scene.height), (100_000_000, 100_000_000))
 
     def test_floor_plan_is_continuous_and_office_doors_land_on_boundary(self):
@@ -97,8 +97,8 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertTrue(scene.set_player_action("sit"))
         result = scene.interact(state)
         self.assertTrue(result.success)
-        self.assertEqual(result.route, "office-record")
-        self.assertEqual(state.active_page, "tools")
+        self.assertEqual(result.route, "systems-terminal")
+        self.assertEqual(state.active_page, "systems")
 
     def test_executive_workstation_children_belong_to_their_desk(self):
         scene = build_tower_scene()
@@ -188,7 +188,7 @@ class PygameSpatialTests(unittest.TestCase):
         player.close_page()
         crt_result = scene.objects.interact("executive-crt", player, scene)
         self.assertTrue(crt_result.success)
-        self.assertEqual(player.active_page, "tools")
+        self.assertEqual(player.active_page, "systems")
 
     def test_vending_purchase_uses_the_existing_ledger_boundary(self):
         state = OfficeState.with_default_roster()
@@ -221,28 +221,33 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertGreater(worker.stamina, 30.0)
         self.assertNotIn("coffee", state.office_inventory)
 
-    def test_physical_service_objects_return_shared_routes_and_decor_is_not_interactive(self):
+    def test_physical_service_objects_open_native_game_panels_and_decor_is_not_interactive(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
+        self.assertIsNone(scene.objects.get("lobby-tv"))
+
+        phone_result = scene.interact(state, "lobby-pay-phone")
+        self.assertTrue(phone_result.success)
+        self.assertEqual(state.active_page, "phone")
+        self.assertEqual(state.active_object_id, "lobby-pay-phone")
+        self.assertEqual(scene.camera_focus_object_id, "lobby-pay-phone")
+
+        state.close_page()
+        atm_result = scene.interact(state, "lobby-atm")
+        self.assertTrue(atm_result.success)
+        self.assertEqual(state.active_page, "economy")
+        self.assertEqual(state.active_object_id, "lobby-atm")
+
+        state.close_page()
         scene.select_room("executive")
-
-        expected_routes = {
-            "lobby-pay-phone": "phone-center",
-            "executive-telephone": "phone-center",
-            "lobby-tv": "shadow-radio",
-            "lobby-atm": "banking",
-        }
-        for object_id, route in expected_routes.items():
-            result = scene.interact(state, object_id)
-            self.assertTrue(result.success, object_id)
-            self.assertEqual(result.route, route)
-
         scene.player_position = scene.objects.get("executive-chair").position
         self.assertTrue(scene.set_player_action("sit"))
         crt_result = scene.interact(state, "executive-crt")
         self.assertTrue(crt_result.success)
-        self.assertEqual(crt_result.route, "office-record")
+        self.assertEqual(state.active_page, "systems")
+        self.assertEqual(state.active_object_id, "executive-crt")
 
+        state.close_page()
         result = scene.interact(state, "executive-desk-lamp")
         self.assertFalse(result.success)
         self.assertIn("DECORATIVE", result.message)
@@ -266,8 +271,27 @@ class PygameSpatialTests(unittest.TestCase):
 
         matching = scene.interact(state, "executive-crt")
         self.assertTrue(matching.success)
-        self.assertEqual(matching.route, "office-record")
-        self.assertEqual(state.active_page, "tools")
+        self.assertEqual(matching.route, "systems-terminal")
+        self.assertEqual(state.active_page, "systems")
+        self.assertEqual(state.active_object_id, "executive-crt")
+
+    def test_device_camera_focus_is_timed_and_denied_terminal_use_does_not_focus(self):
+        state = OfficeState.with_default_roster()
+        scene = build_tower_scene()
+        scene.select_room("executive")
+
+        denied = scene.interact(state, "executive-crt")
+        self.assertFalse(denied.success)
+        self.assertIsNone(scene.camera_focus_object_id)
+
+        terminal = scene.objects.get("executive-crt")
+        scene.focus_on_interaction(terminal)
+        self.assertEqual(scene.camera_focus_object_id, "executive-crt")
+        scene.update_motion(1.0)
+        self.assertGreater(scene.camera_focus_seconds, 0)
+        scene.update_motion(2.0)
+        self.assertIsNone(scene.camera_focus_object_id)
+        self.assertEqual(scene.camera_focus_seconds, 0)
 
     def test_elevator_and_stairs_update_physical_floor(self):
         state = OfficeState.with_default_roster()

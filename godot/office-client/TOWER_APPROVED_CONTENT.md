@@ -7,15 +7,14 @@ embed or open the browser's React pages.
 
 ## Approved assets
 
-- Godot Tower kit: `public-terminal.png`, `directory.png`, `secretary.png`,
-  `desk-terminal.png`, `atm.png`, and `vending.png`.
+- Godot Tower kit: `desk-terminal.png`, `atm.png`, and `vending.png`.
 - Godot actor/furniture: `character-male-a.glb`, `chair_A.gltf`, and
   `table_medium.gltf`.
 - Pygame actor sheets: `char_0.png` through `char_5.png`.
 - Pygame workstation props: front-facing desk, cushioned/wooden chairs, and
   the three existing PC front sprites.
-- Pay phone and 1970s systems terminal: the currently approved procedural
-  game-side models/drawings requested for this Tower slice.
+- Pay phone, reception counter/character, and the 1970s systems terminal use
+  the currently approved procedural game-side models/drawings.
 
 ## Approved characters
 
@@ -36,12 +35,12 @@ embed or open the browser's React pages.
   ATMs where installed, and the workstation CRTs. A CRT opens only from its
   matching occupied chair.
 - Camera-focus devices: pay phones, CRT systems terminals, ATMs, vending
-  machines, office telephones, arcade cabinets, and any later approved CCTV TV.
+  machines, office telephones, and arcade cabinets.
 - Static set dressing (including floor signs and desk lamps) is not interactive.
 
-There is no default lobby TV. Radios, copiers, fax machines, satellite phones,
-and CCTV sets are not installed in the default floor; their purchase/placement
-path remains separate and is not implied by this allowlist.
+Radios, copiers, fax machines, satellite phones, TVs/CCTV sets are not installed
+in the default floor; their purchase/placement path remains separate and is not
+implied by this allowlist.
 
 ## Interaction scope
 

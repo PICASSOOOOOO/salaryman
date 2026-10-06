@@ -18,7 +18,6 @@ from .customization import (
     room_decor_placements,
 )
 from .models import Worker
-from .objects import EXECUTIVE_SHOWCASE_OBJECT_IDS
 from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
 
@@ -74,10 +73,7 @@ class SolarPunkRenderer:
         self.record_rect = pygame.Rect(0, 0, 0, 0)
         self.record_close_rect = pygame.Rect(0, 0, 0, 0)
         self.overlay_close_rect = pygame.Rect(0, 0, 0, 0)
-        self.automation_app_rect = pygame.Rect(0, 0, 0, 0)
-        self.phone_call_home_rect = pygame.Rect(0, 0, 0, 0)
-        self.phone_comms_rect = pygame.Rect(0, 0, 0, 0)
-        self.systems_workspace_rect = pygame.Rect(0, 0, 0, 0)
+        self.system_module_rects: dict[str, pygame.Rect] = {}
         self.repair_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_economy_rect = pygame.Rect(0, 0, 0, 0)
@@ -98,6 +94,10 @@ class SolarPunkRenderer:
         self._anim_tick = 0
         self._character_frame_cache: dict[tuple[str, str, int], pygame.Surface] = {}
         self._asset_root = self._find_pixel_assets()
+        self._camera_scale = 0.0
+        self._camera_x = 0.0
+        self._camera_y = 0.0
+        self._camera_room: tuple[int, str] | None = None
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
         model = str(status.get("model") or "offline").upper()
@@ -179,42 +179,95 @@ class SolarPunkRenderer:
         state: OfficeState,
         scene: TowerScene,
         *,
-        practical_app_available: bool = False,
-        web_routes_available: bool = False,
+        delta_seconds: float = 1 / 60,
     ) -> None:
         """Render the authoritative scene as a camera-following pixel-art room."""
         self.screen.fill((8, 43, 49))
         self.draw_tower_header(state, scene)
         viewport = pygame.Rect(18, 68, self.width - 36, 520)
-        self._draw_pixel_room(viewport, scene, state)
+        self._draw_pixel_room(viewport, scene, state, delta_seconds=delta_seconds)
 
         self.draw_tower_footer(state, scene)
         if state.active_page is not None:
             if state.active_page == "automation":
-                self.draw_automation_page(
-                    state,
-                    scene,
-                    practical_app_available=practical_app_available,
-                )
+                self.draw_automation_page(state, scene)
             elif state.active_page == "customize":
                 self.draw_customization_page(state, scene)
             elif state.active_page in {"phone", "systems"}:
-                self.draw_device_page(state, web_routes_available=web_routes_available)
+                self.draw_device_page(state, scene)
             else:
                 self.draw_game_page(state, scene)
         elif state.tool_menu_open:
             self.draw_operator_menu(state)
 
-    def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene, state: OfficeState) -> None:
-        room_x, room_y, room_w, room_h = scene.floor_bounds
-        scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
+    def _draw_pixel_room(
+        self,
+        viewport: pygame.Rect,
+        scene: TowerScene,
+        state: OfficeState,
+        *,
+        delta_seconds: float,
+    ) -> None:
+        room_x, room_y, room_w, room_h = scene.room.bounds
         # Keep the playable office readable at trailer scale. The prior broad
         # framing left too much empty floor around the salaryman, making the
         # real object prompts and NPC actions look static at a glance.
-        scale = max(0.32, min(0.58, scale * 2.0))
+        base_scale = max(
+            0.32,
+            min(
+                0.58,
+                min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
+                * 2.0,
+            ),
+        )
+        focus_id = state.active_object_id
+        focus_object = scene.objects.get(focus_id) if focus_id else None
+        if focus_object is None and scene.camera_focus_seconds > 0:
+            focus_object = scene.objects.get(scene.camera_focus_object_id or "")
+        if (
+            focus_object is not None
+            and focus_object.room == scene.current_room
+            and focus_object.camera_focus_enabled
+        ):
+            target_scale = max(base_scale, 0.88)
+            target_center = focus_object.visual_position
+        else:
+            target_scale = base_scale
+            target_center = scene.player_position
+
+        room_key = (scene.current_floor, scene.current_room)
+        view_w = viewport.width / max(0.01, target_scale)
+        view_h = viewport.height / max(0.01, target_scale)
+
+        def camera_origin(center: float, size: float, origin: float, extent: float) -> float:
+            if size >= extent:
+                return origin + (extent - size) / 2
+            return max(origin, min(center - size / 2, origin + extent - size))
+
+        target_x = camera_origin(target_center[0], view_w, room_x, room_w)
+        target_y = camera_origin(target_center[1], view_h, room_y, room_h)
+        if self._camera_room != room_key or self._camera_scale <= 0:
+            self._camera_room = room_key
+            self._camera_scale = base_scale
+            base_view_w = viewport.width / base_scale
+            base_view_h = viewport.height / base_scale
+            self._camera_x = camera_origin(
+                scene.player_position[0], base_view_w, room_x, room_w
+            )
+            self._camera_y = camera_origin(
+                scene.player_position[1], base_view_h, room_y, room_h
+            )
+        blend = 1.0 - math.exp(-7.0 * max(0.0, delta_seconds))
+        self._camera_scale += (target_scale - self._camera_scale) * blend
+        view_w = viewport.width / max(0.01, self._camera_scale)
+        view_h = viewport.height / max(0.01, self._camera_scale)
+        target_x = camera_origin(target_center[0], view_w, room_x, room_w)
+        target_y = camera_origin(target_center[1], view_h, room_y, room_h)
+        self._camera_x += (target_x - self._camera_x) * blend
+        self._camera_y += (target_y - self._camera_y) * blend
+        scale = self._camera_scale
+        camera_x, camera_y = self._camera_x, self._camera_y
         view_w, view_h = viewport.width / scale, viewport.height / scale
-        camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
-        camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
         appearance = state.get_room_customization(scene.current_room)
         wall_finish = WALL_FINISH_BY_ID[appearance["wall_style"]]
@@ -280,8 +333,6 @@ class SolarPunkRenderer:
             self._blit_furniture(asset, screen_position, scale, depth_scale=depth)
         for item in scene.objects.objects:
             if item.room != scene.current_room:
-                continue
-            if scene.current_room == "executive" and item.id not in EXECUTIVE_SHOWCASE_OBJECT_IDS:
                 continue
             ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
@@ -1098,11 +1149,8 @@ class SolarPunkRenderer:
         self,
         state: OfficeState,
         scene: TowerScene,
-        *,
-        practical_app_available: bool = False,
     ) -> None:
-        """Show the linked, read-only status of the selected automation character."""
-        self.automation_app_rect = pygame.Rect(0, 0, 0, 0)
+        """Show live read-only status in the native game interface."""
         dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         dim.fill((4, 17, 20, 205))
         self.screen.blit(dim, (0, 0))
@@ -1147,134 +1195,211 @@ class SolarPunkRenderer:
         self.text(status_label, (panel.x + 30, panel.y + 196), self.font_lg, status_color)
         self.text(f"ROUTE PREVIEW  /  {activity}", (panel.x + 30, panel.y + 244), self.font_mono, (227, 232, 215))
         self.text(f"LAST SERVER RUN  /  {last_run}", (panel.x + 30, panel.y + 284), self.font_mono, (177, 195, 177))
-
-        self.automation_app_rect = pygame.Rect(panel.x + 30, panel.y + 326, 360, 40)
-        if practical_app_available:
-            self.panel(
-                self.automation_app_rect,
-                (29, 64, 48),
-                profile.accent,
-                radius=5,
-                width=1,
-            )
-            self.text(
-                f"OPEN {profile.app_label}",
-                (self.automation_app_rect.x + 14, self.automation_app_rect.y + 12),
-                self.font_md,
-                (226, 245, 220),
-            )
-            self.text(
-                "[O]",
-                (self.automation_app_rect.right - 34, self.automation_app_rect.y + 13),
-                self.font_mono,
-                profile.accent,
-            )
-        else:
-            self.panel(
-                self.automation_app_rect,
-                (27, 38, 36),
-                (83, 103, 88),
-                radius=5,
-                width=1,
-            )
-            self.text(
-                "SALARYMAN MODULE LINK UNAVAILABLE",
-                (self.automation_app_rect.x + 12, self.automation_app_rect.y + 13),
-                self.font_sm,
-                (173, 184, 166),
-            )
-
-        self.text("Live status comes from SALARYMAN; movement is only a representative route.", (panel.x + 30, panel.y + 382), self.font_sm, (186, 204, 187))
-        self.text("This view is read-only. Manage work in the linked SALARYMAN module.", (panel.x + 30, panel.y + 408), self.font_sm, (186, 204, 187))
+        self.text(
+            f"NATIVE GAME MODULE  /  {profile.app_label}",
+            (panel.x + 30, panel.y + 334),
+            self.font_md,
+            profile.accent,
+        )
+        self.text(
+            "Read-only status from SALARYMAN. No external action starts here.",
+            (panel.x + 30, panel.y + 382),
+            self.font_sm,
+            (186, 204, 187),
+        )
         if scene.autopilot_snapshot.state != "connected":
             self.text(scene.autopilot_snapshot.message or "STATUS SYNC UNAVAILABLE", (panel.x + 30, panel.y + 438), self.font_sm, (236, 203, 135))
 
     def draw_device_page(
         self,
         state: OfficeState,
-        *,
-        web_routes_available: bool,
+        scene: TowerScene,
     ) -> None:
-        """Render the deliberately small set of destinations available at each device."""
-        self.phone_call_home_rect = pygame.Rect(0, 0, 0, 0)
-        self.phone_comms_rect = pygame.Rect(0, 0, 0, 0)
-        self.systems_workspace_rect = pygame.Rect(0, 0, 0, 0)
+        """Render game-native, read-only screens for physical Tower devices."""
+        self.system_module_rects = {}
         dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        dim.fill((4, 13, 15, 214))
+        dim.fill((3, 9, 13, 224))
         self.screen.blit(dim, (0, 0))
 
-        panel_width = min(self.width - 48, 650)
-        panel_height = 318 if state.active_page == "phone" else 284
+        panel_width = min(self.width - 48, 760)
+        panel_height = 326 if state.active_page == "phone" else 416
         panel = pygame.Rect(0, 0, panel_width, panel_height)
         panel.center = (self.width // 2, self.height // 2 + 18)
-        self.panel(panel, (238, 239, 226), (84, 106, 96), radius=10, width=2)
+        self.panel(panel, Palette.MATRIX_BG, Palette.MATRIX_GREEN, radius=8, width=2)
+        pygame.draw.rect(
+            self.screen,
+            Palette.MATRIX_AMBER,
+            pygame.Rect(panel.x + 2, panel.y + 2, panel.width - 4, 4),
+        )
         self.overlay_close_rect = pygame.Rect(panel.right - 94, panel.y + 18, 68, 30)
-        self.panel(self.overlay_close_rect, (223, 227, 212), (120, 133, 116), radius=5, width=1)
+        self.panel(
+            self.overlay_close_rect,
+            Palette.MATRIX_PANEL_2,
+            Palette.MATRIX_DIM,
+            radius=4,
+            width=1,
+        )
         self.text(
             "CLOSE",
             (self.overlay_close_rect.x + 13, self.overlay_close_rect.y + 8),
             self.font_sm,
-            (45, 60, 53),
+            Palette.MATRIX_BRIGHT,
         )
 
         if state.active_page == "phone":
-            self.text("TOWER PAY PHONE", (panel.x + 30, panel.y + 28), self.font_xl, (25, 48, 42))
             self.text(
-                "LIMITED LINE / TWO AVAILABLE SERVICES",
+                "PAY PHONE",
+                (panel.x + 30, panel.y + 28),
+                self.font_xl,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                "TOWER LINE  /  TWO APPROVED SERVICES",
                 (panel.x + 32, panel.y + 70),
                 self.font_mono,
-                (74, 97, 84),
+                Palette.MATRIX_AMBER,
             )
             gap = 16
-            button_width = (panel.width - 64 - gap) // 2
-            button_y = panel.y + 142
-            self.phone_call_home_rect = pygame.Rect(panel.x + 32, button_y, button_width, 92)
-            self.phone_comms_rect = pygame.Rect(
-                self.phone_call_home_rect.right + gap,
-                button_y,
-                button_width,
-                92,
-            )
-            for rect, heading, detail in (
-                (self.phone_call_home_rect, "CALLL HOME", "PHONE SYSTEM"),
-                (self.phone_comms_rect, "COMMS", "MESSAGES"),
+            tile_width = (panel.width - 64 - gap) // 2
+            tile_y = panel.y + 128
+            for index, (heading, detail) in enumerate(
+                (
+                    ("CALLL HOME", "VOICE SYSTEM"),
+                    ("COMMS", "TEAM MESSAGES"),
+                )
             ):
-                fill = (223, 239, 221) if web_routes_available else (225, 226, 216)
-                accent = (69, 128, 93) if web_routes_available else (150, 153, 140)
-                self.panel(rect, fill, accent, radius=7, width=2)
-                self.text(heading, (rect.x + 18, rect.y + 21), self.font_lg, (36, 72, 53) if web_routes_available else (111, 114, 103))
-                self.text(detail if web_routes_available else "LINK UNAVAILABLE", (rect.x + 19, rect.y + 56), self.font_sm, (86, 109, 91))
+                rect = pygame.Rect(
+                    panel.x + 32 + index * (tile_width + gap),
+                    tile_y,
+                    tile_width,
+                    96,
+                )
+                self.panel(
+                    rect,
+                    Palette.MATRIX_PANEL,
+                    Palette.MATRIX_DIM,
+                    radius=6,
+                    width=1,
+                )
+                self.text(
+                    f"0{index + 1}",
+                    (rect.x + 15, rect.y + 13),
+                    self.font_sm,
+                    Palette.MATRIX_AMBER,
+                )
+                self.text(
+                    heading,
+                    (rect.x + 15, rect.y + 37),
+                    self.font_lg,
+                    Palette.MATRIX_BRIGHT,
+                )
+                self.text(
+                    detail,
+                    (rect.x + 15, rect.y + 68),
+                    self.font_sm,
+                    Palette.MATRIX_GREEN,
+                )
             self.text(
-                "SELECT CALLL HOME OR COMMS",
-                (panel.x + 32, panel.bottom - 36),
+                "READ-ONLY CONNECTION PASS  /  ESC TO RETURN",
+                (panel.x + 32, panel.bottom - 35),
                 self.font_sm,
-                (82, 98, 84),
+                Palette.MATRIX_DIM,
             )
             return
 
-        self.text("SALARYMAN SYSTEMS", (panel.x + 30, panel.y + 28), self.font_xl, (25, 48, 42))
         self.text(
-            "FULL WORKSPACE ACCESS",
+            "SALARYMAN OS",
+            (panel.x + 30, panel.y + 28),
+            self.font_xl,
+            Palette.MATRIX_BRIGHT,
+        )
+        self.text(
+            "SYSTEMS TERMINAL  /  NATIVE GAME INTERFACE",
             (panel.x + 32, panel.y + 70),
             self.font_mono,
-            (74, 97, 84),
+            Palette.MATRIX_AMBER,
         )
+        metric_y = panel.y + 108
+        metrics = (
+            ("LOCATION", f"FLOOR {scene.current_floor:02d} / {scene.room.label.upper()}"),
+            ("TEAM", f"{len(state.roster.workers)} OFFICE STAFF"),
+            ("GAME FIAT", f"ƒ{state.funds:,.2f}"),
+        )
+        metric_gap = 10
+        metric_width = (panel.width - 64 - metric_gap * 2) // 3
+        for index, (label, value) in enumerate(metrics):
+            metric_rect = pygame.Rect(
+                panel.x + 32 + index * (metric_width + metric_gap),
+                metric_y,
+                metric_width,
+                52,
+            )
+            self.panel(
+                metric_rect,
+                Palette.MATRIX_PANEL,
+                Palette.MATRIX_GRID,
+                radius=4,
+                width=1,
+            )
+            self.text(
+                label,
+                (metric_rect.x + 10, metric_rect.y + 7),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            self.text(
+                value[:25],
+                (metric_rect.x + 10, metric_rect.y + 28),
+                self.font_sm,
+                Palette.MATRIX_BRIGHT,
+            )
+
         self.text(
-            "Open the complete SALARYMAN workspace in your browser.",
-            (panel.x + 32, panel.y + 112),
+            "CONNECTED GAME MODULES",
+            (panel.x + 32, panel.y + 174),
             self.font_md,
-            (58, 75, 65),
+            Palette.MATRIX_GREEN,
         )
-        self.systems_workspace_rect = pygame.Rect(panel.x + 32, panel.y + 168, panel.width - 64, 58)
-        fill = (223, 239, 221) if web_routes_available else (225, 226, 216)
-        accent = (69, 128, 93) if web_routes_available else (150, 153, 140)
-        self.panel(self.systems_workspace_rect, fill, accent, radius=7, width=2)
-        self.text(
-            "OPEN FULL WORKSPACE" if web_routes_available else "WORKSPACE LINK UNAVAILABLE",
-            (self.systems_workspace_rect.x + 18, self.systems_workspace_rect.y + 20),
-            self.font_md,
-            (36, 72, 53) if web_routes_available else (111, 114, 103),
-        )
+        gap_x, gap_y = 10, 9
+        tile_width = (panel.width - 64 - gap_x * 2) // 3
+        tile_height = 72
+        for index, profile in enumerate(AUTOMATION_CHARACTERS):
+            column = index % 3
+            row = index // 3
+            rect = pygame.Rect(
+                panel.x + 32 + column * (tile_width + gap_x),
+                panel.y + 200 + row * (tile_height + gap_y),
+                tile_width,
+                tile_height,
+            )
+            self.system_module_rects[profile.domain] = rect
+            status = scene.automation_domain_status(profile)
+            status_text = (
+                "ACTIVE"
+                if status is not None and status.enabled
+                else "PAUSED"
+                if status is not None
+                else "STATUS NOT SYNCED"
+            )
+            self.panel(
+                rect,
+                Palette.MATRIX_PANEL,
+                profile.accent if status and status.enabled else Palette.MATRIX_GRID,
+                radius=4,
+                width=1,
+            )
+            self.text(
+                profile.app_label,
+                (rect.x + 12, rect.y + 12),
+                self.font_md,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                status_text,
+                (rect.x + 12, rect.y + 43),
+                self.font_sm,
+                profile.accent if status and status.enabled else Palette.MATRIX_DIM,
+            )
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
         veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)

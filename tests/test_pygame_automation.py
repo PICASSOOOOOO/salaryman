@@ -10,11 +10,10 @@ from pygame_sim.automation import (
     AutopilotDomainStatus,
     AutopilotSnapshot,
     DesktopLink,
-    build_desktop_app_url,
-    build_practical_app_url,
     fetch_autopilot_snapshot,
     load_desktop_link,
 )
+from pygame_sim.approved_content import APPROVED_AUTOMATION_CHARACTERS
 from pygame_sim.bridge import build_snapshot
 from pygame_sim.scene import build_tower_scene
 from pygame_sim.state import OfficeState
@@ -32,38 +31,16 @@ class PygameAutomationTests(unittest.TestCase):
             self.assertTrue(all(room.contains(point) for point in profile.route), profile.domain)
             self.assertTrue((asset_root / profile.sprite).is_file(), profile.sprite)
 
-    def test_each_npc_hands_off_to_its_real_practical_app_module(self):
-        expected_paths = {
-            "business_ops": "/business/job-command",
-            "accounting": "/business/accounting",
-            "crm_calls": "/business/contacts",
-            "marketing": "/marketing/command",
-            "creative_work": "/creative/darkroom",
-            "market_research": "/intel/reports",
-        }
-
-        for profile in AUTOMATION_CHARACTERS:
-            self.assertEqual(profile.app_path, expected_paths[profile.domain])
-            self.assertTrue(profile.app_label)
-            self.assertEqual(
-                build_practical_app_url("https://salaryman.example/", profile.domain),
-                f"https://salaryman.example{profile.app_path}",
-            )
-
-    def test_practical_app_handoff_rejects_unknown_domains_and_unsafe_origins(self):
-        self.assertIsNone(build_practical_app_url("javascript:alert(1)", "business_ops"))
-        self.assertIsNone(build_practical_app_url("https://user:secret@salaryman.example", "business_ops"))
-        self.assertIsNone(build_practical_app_url("https://salaryman.example/?next=evil", "business_ops"))
-        self.assertIsNone(build_practical_app_url("https://salaryman.example", "unknown_domain"))
-
-    def test_physical_phone_and_terminal_routes_are_fixed_and_origin_safe(self):
-        origin = "https://salaryman.example/"
-        self.assertEqual(build_desktop_app_url(origin, "systems"), "https://salaryman.example/")
-        self.assertEqual(build_desktop_app_url(origin, "calll_home"), "https://salaryman.example/phone")
-        self.assertEqual(build_desktop_app_url(origin, "comms"), "https://salaryman.example/comms")
-        self.assertIsNone(build_desktop_app_url(origin, "admin"))
-        self.assertIsNone(build_desktop_app_url("https://user:secret@salaryman.example", "comms"))
-        self.assertIsNone(build_desktop_app_url("https://salaryman.example/?next=evil", "systems"))
+    def test_automation_characters_open_native_game_modules_not_browser_routes(self):
+        self.assertEqual(
+            tuple(profile.name for profile in AUTOMATION_CHARACTERS),
+            APPROVED_AUTOMATION_CHARACTERS,
+        )
+        self.assertEqual(
+            {profile.domain for profile in AUTOMATION_CHARACTERS},
+            set(AUTOPILOT_DOMAINS),
+        )
+        self.assertTrue(all(profile.app_label for profile in AUTOMATION_CHARACTERS))
 
     def test_enabled_characters_walk_and_disabled_characters_wait_at_their_workstation(self):
         scene = build_tower_scene()

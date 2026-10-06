@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import webbrowser
 
 import pygame
 
@@ -14,8 +13,6 @@ from .automation import (
     AUTOMATION_CHARACTERS,
     AutopilotPoller,
     AutopilotSnapshot,
-    build_desktop_app_url,
-    build_practical_app_url,
     load_desktop_link,
 )
 from .building_sync import DesktopBuildingSync
@@ -74,14 +71,11 @@ def run(argv: list[str] | None = None) -> int:
     renderer.set_pablo_status(fetch_pablo_status(args.server_url))
     scene = build_tower_scene()
     desktop_link = None
-    practical_app_origin = args.server_url
     try:
         desktop_link = load_desktop_link(
             args.desktop_link_file,
             fallback_server_url=args.server_url,
         )
-        if desktop_link is not None:
-            practical_app_origin = desktop_link.server_url
         autopilot_poller = AutopilotPoller(desktop_link)
     except ValueError:
         autopilot_poller = AutopilotPoller(None)
@@ -92,55 +86,6 @@ def run(argv: list[str] | None = None) -> int:
     if scene.autopilot_snapshot.state != "error":
         scene.set_autopilot_snapshot(autopilot_poller.current())
     last_autopilot_revision = scene.autopilot_snapshot.revision
-
-    def selected_practical_app_url() -> str | None:
-        domain = scene.selected_automation_domain
-        if domain is None:
-            return None
-        return build_practical_app_url(practical_app_origin, domain)
-
-    def open_selected_practical_app() -> None:
-        profile = next(
-            (
-                candidate
-                for candidate in AUTOMATION_CHARACTERS
-                if candidate.domain == scene.selected_automation_domain
-            ),
-            None,
-        )
-        url = selected_practical_app_url()
-        if profile is None or url is None:
-            state.notice = "SALARYMAN MODULE LINK UNAVAILABLE"
-            return
-        try:
-            opened = webbrowser.open(url, new=2)
-        except Exception:
-            opened = False
-        state.notice = (
-            f"OPENING {profile.app_label}"
-            if opened
-            else "COULD NOT OPEN DEFAULT BROWSER"
-        )
-
-    def open_desktop_app_destination(destination: str) -> None:
-        url = build_desktop_app_url(practical_app_origin, destination)
-        if url is None:
-            state.notice = "SALARYMAN APP LINK UNAVAILABLE"
-            return
-        try:
-            opened = webbrowser.open(url, new=2)
-        except Exception:
-            opened = False
-        label = {
-            "systems": "SALARYMAN WORKSPACE",
-            "calll_home": "CALLL HOME",
-            "comms": "COMMS",
-        }.get(destination)
-        state.notice = (
-            f"OPENING {label}"
-            if opened and label is not None
-            else "COULD NOT OPEN DEFAULT BROWSER"
-        )
 
     coffee_rects: dict[int, pygame.Rect] = {}
     # The packaged client opens directly into the playable office. The business
@@ -167,8 +112,6 @@ def run(argv: list[str] | None = None) -> int:
                         state.close_page()
                     elif event.key == pygame.K_r and state.active_page == "tools":
                         state.repair_decay()
-                    elif event.key == pygame.K_o and state.active_page == "automation":
-                        open_selected_practical_app()
                 elif event.key == pygame.K_TAB:
                     spatial_mode = not spatial_mode
                 elif spatial_mode and event.key == pygame.K_b:
@@ -221,26 +164,26 @@ def run(argv: list[str] | None = None) -> int:
                 if state.active_page is not None:
                     if renderer.overlay_close_rect.collidepoint(event.pos):
                         state.close_page()
-                    elif (
-                        state.active_page == "automation"
-                        and renderer.automation_app_rect.collidepoint(event.pos)
-                    ):
-                        open_selected_practical_app()
-                    elif (
-                        state.active_page == "phone"
-                        and renderer.phone_call_home_rect.collidepoint(event.pos)
-                    ):
-                        open_desktop_app_destination("calll_home")
-                    elif (
-                        state.active_page == "phone"
-                        and renderer.phone_comms_rect.collidepoint(event.pos)
-                    ):
-                        open_desktop_app_destination("comms")
-                    elif (
-                        state.active_page == "systems"
-                        and renderer.systems_workspace_rect.collidepoint(event.pos)
-                    ):
-                        open_desktop_app_destination("systems")
+                    elif state.active_page == "systems":
+                        for domain, rect in renderer.system_module_rects.items():
+                            if rect.collidepoint(event.pos):
+                                profile = next(
+                                    (
+                                        candidate
+                                        for candidate in AUTOMATION_CHARACTERS
+                                        if candidate.domain == domain
+                                    ),
+                                    None,
+                                )
+                                if profile is not None:
+                                    scene.selected_automation_domain = domain
+                                    state.open_page(
+                                        "automation",
+                                        from_object=True,
+                                        source=f"{profile.name} / {profile.app_label}",
+                                        source_object_id=state.active_object_id,
+                                    )
+                                break
                     elif renderer.repair_rect.collidepoint(event.pos) and state.active_page == "tools":
                         state.repair_decay()
                     elif state.active_page == "customize":
@@ -352,15 +295,7 @@ def run(argv: list[str] | None = None) -> int:
             state.save_to_file(args.save_file)
             previous_day = state.day
         if spatial_mode:
-            renderer.draw_tower(
-                state,
-                scene,
-                practical_app_available=selected_practical_app_url() is not None,
-            web_routes_available=build_desktop_app_url(
-                practical_app_origin,
-                "systems",
-            ) is not None,
-            )
+            renderer.draw_tower(state, scene, delta_seconds=delta_seconds)
         else:
             renderer.draw(state, coffee_rects)
         pygame.display.flip()
