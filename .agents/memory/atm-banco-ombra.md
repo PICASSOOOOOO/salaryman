@@ -12,6 +12,9 @@ description: The server-authoritative FIAT wallet, settlement rules, and ATM pla
 - **Rule:** server-bank FIAT is the only spendable wallet for vending, food, cosmetics, items/power, salary, top-ups, and legitimate earnings. Plaid-linked balances are display-only.
 - **Why:** client-save salary and legacy cosmetic crypto were forgeable parallel affordability paths and could grant goods without an authoritative debit.
 - **How to apply:** money mutations must run through the shared wallet transaction, lock accounts, write bank transaction records, and commit the debit with the grant/effect. Mutating clients use `apiFetch` so global FIAT surfaces refresh immediately.
+- **Withdrawal boundary:** FIAT/Credits are usable only within SALARYMAN and cannot be withdrawn at an ATM. Real-world payout setup is separate and available only to verified real organizations.
+- **Why:** the user stated this product and money boundary.
+- **How to apply:** keep game earnings and task rewards in the SALARYMAN wallet; never treat an ATM, FIAT balance, or a personal account as a real-money payout rail.
 
 ## EXCHANGE counter — USD is real money, never a free swap
 - **The hard line:** USD may never participate in a free client-side swap. USD→ƒ must use confirmed Stripe settlement. GOLD cash-out is disabled until GOLD itself is server-authoritative and can be atomically debited.

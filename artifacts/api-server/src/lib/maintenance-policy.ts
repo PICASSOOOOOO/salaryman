@@ -34,6 +34,8 @@ export function publicMaintenanceReward(score: number): number {
   return 25;
 }
 
+export const maintenanceTaskReward = publicMaintenanceReward;
+
 export function publicMaintenanceDurationMs(action: BuildingObjectAction, score: number): number {
   const severity = 100 - clampScore(score);
   const baseMs = action === "clean" ? 3_500 : 5_000;

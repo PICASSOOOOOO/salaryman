@@ -23,6 +23,7 @@ export type PublicWorkDemand = {
   recentWorkerResidents: number;
   averageFiatWealth: number;
   maxConcurrentJobs: number;
+  rewardPoolBalanceFiat: number;
 };
 
 type Transaction = Parameters<typeof creditFiat>[0];
@@ -48,6 +49,19 @@ export async function getPublicWorkDemand(city: string): Promise<PublicWorkDeman
 
   let recentWorkerResidents = 0;
   let averageFiatWealth = 0;
+  let rewardPoolBalanceFiat = 0;
+  const [picasso] = await db.select({ id: organizationsTable.id }).from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) = ${PICASSO_ORG_NAME}`)
+    .limit(1);
+  if (picasso) {
+    const [pool] = await db.select({ balanceFiat: orgAccountsTable.balanceFiat }).from(orgAccountsTable)
+      .where(and(
+        eq(orgAccountsTable.orgId, picasso.id),
+        eq(orgAccountsTable.type, "checking"),
+      ))
+      .limit(1);
+    rewardPoolBalanceFiat = Math.max(0, pool?.balanceFiat ?? 0);
+  }
   if (residentIds.length > 0) {
     const completedWork = await db.select({
       userId: desktopBuildingObjectStatesTable.workCompletedByUserId,
@@ -101,6 +115,7 @@ export async function getPublicWorkDemand(city: string): Promise<PublicWorkDeman
     recentResidents: residentIds.length,
     recentWorkerResidents,
     averageFiatWealth,
+    rewardPoolBalanceFiat,
     maxConcurrentJobs: publicMaintenanceSlotLimit({
       recentResidents: residentIds.length,
       recentWorkerResidents,
@@ -114,7 +129,7 @@ export async function getPublicWorkDemand(city: string): Promise<PublicWorkDeman
 export async function payPublicMaintenanceReward(
   tx: Transaction,
   input: { userId: string; amountFiat: number; sessionId: string; action: string; floorNumber: number },
-): Promise<{ balance: number; spendable: number }> {
+): Promise<{ balance: number; spendable: number } | null> {
   if (!Number.isInteger(input.amountFiat) || input.amountFiat <= 0 || input.amountFiat > 100) {
     throw new Error("Public Tower maintenance payout must be between 1 and 100 FIAT");
   }
@@ -123,101 +138,126 @@ export async function payPublicMaintenanceReward(
   const [picasso] = await tx.select().from(organizationsTable)
     .where(sql`lower(${organizationsTable.name}) = ${PICASSO_ORG_NAME}`)
     .for("update").limit(1);
-  if (!picasso) throw new Error("Picasso funding organization is not configured");
-
-  let [pablo] = await tx.select().from(organizationsTable)
-    .where(sql`lower(${organizationsTable.name}) = lower(${PABLO_PUBLIC_WORKS_ORG_NAME})`)
+  if (!picasso) return null;
+  const [pool] = await tx.select().from(orgAccountsTable)
+    .where(and(
+      eq(orgAccountsTable.orgId, picasso.id),
+      eq(orgAccountsTable.type, "checking"),
+    ))
     .for("update").limit(1);
-  if (!pablo) {
-    [pablo] = await tx.insert(organizationsTable).values({
-      name: PABLO_PUBLIC_WORKS_ORG_NAME,
-      ownerUserId: "system",
-      isDeveloper: false,
-    }).returning();
-  }
-
-  const picassoAccount = await ensureCheckingAccount(tx, picasso.id);
-  const pabloAccount = await ensureCheckingAccount(tx, pablo.id);
+  if (!pool || pool.balanceFiat < input.amountFiat) return null;
   const now = new Date();
-
-  const [picassoDebited] = await tx.update(orgAccountsTable)
+  const [poolDebited] = await tx.update(orgAccountsTable)
     .set({
       balanceFiat: sql`${orgAccountsTable.balanceFiat} - ${input.amountFiat}`,
       updatedAt: now,
     })
     .where(and(
-      eq(orgAccountsTable.id, picassoAccount.id),
+      eq(orgAccountsTable.id, pool.id),
       gte(orgAccountsTable.balanceFiat, input.amountFiat),
     ))
     .returning({ balanceFiat: orgAccountsTable.balanceFiat });
-  if (!picassoDebited) throw new Error("Picasso could not fund this public work order");
+  if (!poolDebited) return null;
   await tx.insert(orgAccountTransactionsTable).values({
     orgId: picasso.id,
     accountType: "checking",
     delta: -input.amountFiat,
-    balanceAfter: picassoDebited.balanceFiat,
-    description: `Game reward pool → Pablo Corp · public Tower work session ${input.sessionId}`,
+    balanceAfter: poolDebited.balanceFiat,
+    description: `Receptionist Mila paid public Tower ${input.action} work · session ${input.sessionId}`,
     category: "game_reward_pool",
-  });
-
-  const [pabloFunded] = await tx.update(orgAccountsTable)
-    .set({
-      balanceFiat: sql`${orgAccountsTable.balanceFiat} + ${input.amountFiat}`,
-      updatedAt: now,
-    })
-    .where(eq(orgAccountsTable.id, pabloAccount.id))
-    .returning({ balanceFiat: orgAccountsTable.balanceFiat });
-  await tx.insert(orgAccountTransactionsTable).values({
-    orgId: pablo.id,
-    accountType: "checking",
-    delta: input.amountFiat,
-    balanceAfter: pabloFunded.balanceFiat,
-    description: `Picasso public Tower work funding · session ${input.sessionId}`,
-    category: "public_work_funding",
-  });
-
-  const [pabloDebited] = await tx.update(orgAccountsTable)
-    .set({
-      balanceFiat: sql`${orgAccountsTable.balanceFiat} - ${input.amountFiat}`,
-      updatedAt: now,
-    })
-    .where(and(
-      eq(orgAccountsTable.id, pabloAccount.id),
-      gte(orgAccountsTable.balanceFiat, input.amountFiat),
-    ))
-    .returning({ balanceFiat: orgAccountsTable.balanceFiat });
-  if (!pabloDebited) throw new Error("Pablo Corp could not settle this public work order");
-  await tx.insert(orgAccountTransactionsTable).values({
-    orgId: pablo.id,
-    accountType: "checking",
-    delta: -input.amountFiat,
-    balanceAfter: pabloDebited.balanceFiat,
-    description: `Public Tower ${input.action} payroll · Floor ${input.floorNumber}`,
-    category: "public_work_payroll",
     actorUserId: input.userId,
   });
 
   const credit = await creditFiat(tx, {
     userId: input.userId,
     amountFiat: input.amountFiat,
-    description: `Pablo Corp public Tower ${input.action} · Floor ${input.floorNumber}`,
+    description: `Receptionist Mila · public Tower ${input.action} · Floor ${input.floorNumber}`,
     kind: "tower_public_work",
     idempotencyKey: `pablo-public-work:${input.sessionId}`,
   });
   return { balance: credit.newBalance, spendable: credit.spendable };
 }
 
-async function ensureCheckingAccount(tx: Transaction, orgId: number) {
-  await tx.insert(orgAccountsTable).values({
-    orgId,
-    type: "checking",
-    label: "ORG CHECKING",
-    balanceFiat: 0,
-    apyBps: 0,
-  }).onConflictDoNothing();
-  const [account] = await tx.select().from(orgAccountsTable)
-    .where(and(eq(orgAccountsTable.orgId, orgId), eq(orgAccountsTable.type, "checking")))
+export async function hasPublicMaintenanceFunds(
+  tx: Transaction,
+  amountFiat: number,
+): Promise<boolean> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${FUNDING_LOCK_KEY})`);
+  const [picasso] = await tx.select({ id: organizationsTable.id }).from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) = ${PICASSO_ORG_NAME}`)
     .for("update").limit(1);
-  if (!account) throw new Error("Organization checking account could not be initialized");
-  return account;
+  if (!picasso) return false;
+  const [pool] = await tx.select({ balanceFiat: orgAccountsTable.balanceFiat }).from(orgAccountsTable)
+    .where(and(
+      eq(orgAccountsTable.orgId, picasso.id),
+      eq(orgAccountsTable.type, "checking"),
+    ))
+    .for("update").limit(1);
+  return Boolean(pool && pool.balanceFiat >= amountFiat);
+}
+
+export async function hasOrganizationMaintenanceFunds(
+  tx: Transaction,
+  orgId: number,
+  amountFiat: number,
+): Promise<boolean> {
+  const [account] = await tx.select({ balanceFiat: orgAccountsTable.balanceFiat }).from(orgAccountsTable)
+    .where(and(
+      eq(orgAccountsTable.orgId, orgId),
+      eq(orgAccountsTable.type, "checking"),
+    ))
+    .for("update").limit(1);
+  return Boolean(account && account.balanceFiat >= amountFiat);
+}
+
+export async function payOrganizationMaintenanceReward(
+  tx: Transaction,
+  input: {
+    orgId: number;
+    userId: string;
+    amountFiat: number;
+    sessionId: string;
+    action: string;
+    floorNumber: number;
+  },
+): Promise<{ balance: number; spendable: number } | null> {
+  if (!Number.isInteger(input.amountFiat) || input.amountFiat <= 0) {
+    throw new Error("Organization maintenance payout must be a positive integer");
+  }
+  const [account] = await tx.select().from(orgAccountsTable)
+    .where(and(
+      eq(orgAccountsTable.orgId, input.orgId),
+      eq(orgAccountsTable.type, "checking"),
+    ))
+    .for("update").limit(1);
+  if (!account || account.balanceFiat < input.amountFiat) return null;
+  const now = new Date();
+  const [debited] = await tx.update(orgAccountsTable)
+    .set({
+      balanceFiat: sql`${orgAccountsTable.balanceFiat} - ${input.amountFiat}`,
+      updatedAt: now,
+    })
+    .where(and(
+      eq(orgAccountsTable.id, account.id),
+      gte(orgAccountsTable.balanceFiat, input.amountFiat),
+    ))
+    .returning({ balanceFiat: orgAccountsTable.balanceFiat });
+  if (!debited) return null;
+  await tx.insert(orgAccountTransactionsTable).values({
+    orgId: input.orgId,
+    accountType: "checking",
+    delta: -input.amountFiat,
+    balanceAfter: debited.balanceFiat,
+    description: `Organization receptionist paid ${input.action} work · session ${input.sessionId}`,
+    category: "private_maintenance_payroll",
+    actorUserId: input.userId,
+  });
+  const credit = await creditFiat(tx, {
+    userId: input.userId,
+    amountFiat: input.amountFiat,
+    description: `Organization receptionist · private ${input.action} · Floor ${input.floorNumber}`,
+    kind: "tower_private_work",
+    idempotencyKey: `organization-maintenance:${input.sessionId}`,
+  });
+  return { balance: credit.newBalance, spendable: credit.spendable };
 }

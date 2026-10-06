@@ -5,6 +5,21 @@ description: How the ATM gold cash-out maps client gold to the server "real mone
 
 # Gold cash-out / "real money" USD
 
+## Current product boundary
+
+FIAT/Credits are for use inside SALARYMAN and cannot be withdrawn from an ATM.
+Real-world payout setup is separate and may only be configured by verified real
+organizations. Treat the ATM GOLD-to-server-balance behavior described below as
+legacy in-game conversion, not authorization for a user-level cash-out or
+external payout.
+
+**Why:** the user explicitly limited FIAT/Credits to SALARYMAN and restricted
+real-world payout setup to verified organizations.
+
+**How to apply:** keep task and gameplay rewards internal. Any external payout
+flow must be organization-owned and verification-gated; do not add ATM
+withdrawals or personal cash-out.
+
 The game runs **two separate money ledgers**, and "real money $" in the UI is the SERVER one:
 
 - **Client save ledger** — `g.goldBalance` (oz) and `g.salary` (checking ƒ) live in the client save blob (`salaryman_saves.data`). Gold is **client-authoritative**; the server keeps no canonical gold balance.
