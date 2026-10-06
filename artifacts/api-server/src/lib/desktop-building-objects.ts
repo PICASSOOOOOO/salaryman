@@ -28,6 +28,12 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
 
 export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
 export const BUILDING_PRESENCE_MAX_AGE_MS = 10_000;
+export const PLAYABLE_TOWER_FLOORS: ReadonlySet<number> = new Set([1, 6]);
+export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: number }>> = {
+  1: { x: 49_977_000, y: 50_000_000 },
+  6: { x: 11_000, y: 1_500 },
+};
+export const TOWER_ELEVATOR_INTERACTION_RADIUS = 1_250;
 const MAX_WALK_SPEED = 600;
 const WALKING_TOLERANCE = 350;
 
@@ -37,6 +43,7 @@ type PresenceForValidation = Position & {
   room: string;
   roomKey: string;
   floorNumber: number;
+  destinationFloor?: number | null;
   linkId: string;
   lastSeenAt: Date;
 };
@@ -53,7 +60,7 @@ const ROOM_BOUNDS: Record<string, { minX: number; maxX: number; minY: number; ma
 
 const ROOM_SPAWNS: Record<string, Position> = {
   lobby: { x: 49_978_000, y: 50_000_000 },
-  recreation: { x: 11_000, y: 12_500 },
+  recreation: { x: 11_000, y: 1_500 },
   executive: { x: 4_500, y: 5_500 },
   public: { x: 17_500, y: 5_500 },
   office_03: { x: 4_500, y: 19_500 },
@@ -130,20 +137,46 @@ export function isWalkableBuildingPosition(room: string, point: Position): boole
   return pointIsWalkable(room, point);
 }
 
+export function isNearTowerElevator(floorNumber: number, point: Position): boolean {
+  const elevator = TOWER_ELEVATOR_POSITIONS[floorNumber];
+  return elevator != null && Math.hypot(point.x - elevator.x, point.y - elevator.y)
+    <= TOWER_ELEVATOR_INTERACTION_RADIUS;
+}
+
 export function validateBuildingPresence(
   previous: PresenceForValidation | null,
   next: { room: BuildingPresenceRoom; roomKey: string; floorNumber: number; linkId: string; x: number; y: number },
   now: Date,
   ownOfficeRoom: string | null,
 ): string | null {
-  if (!Number.isInteger(next.floorNumber) || next.floorNumber < 1 || next.floorNumber > 67) {
-    return "Floor is outside the supported building";
+  if (!Number.isInteger(next.floorNumber) || !PLAYABLE_TOWER_FLOORS.has(next.floorNumber)) {
+    return "Floor is under construction";
   }
   const catalogRoom = catalogRoomForPresence(next.room, ownOfficeRoom);
   if (!catalogRoom || !pointIsWalkable(catalogRoom, next)) {
     return "Position is outside the walkable building room";
   }
   const spawn = ROOM_SPAWNS[catalogRoom];
+  const elevatorAuthorized = previous?.linkId === next.linkId
+    && previous.room === "elevator"
+    && previous.destinationFloor === next.floorNumber;
+  const previousIsStale = previous != null
+    && (previous.linkId !== next.linkId
+      || now.getTime() - previous.lastSeenAt.getTime() > BUILDING_PRESENCE_MAX_AGE_MS);
+  const canRecoverToLobby = next.floorNumber === 1
+    && previousIsStale
+    && Math.hypot(next.x - spawn.x, next.y - spawn.y) <= 350;
+  if (next.floorNumber === 6 && previous?.floorNumber !== 6 && !elevatorAuthorized) {
+    return "Use the elevator to enter Floor 06";
+  }
+  if (previous?.room === "elevator" && !elevatorAuthorized && !canRecoverToLobby) {
+    return "The elevator is not traveling to this floor";
+  }
+  if (previous && previous.floorNumber !== next.floorNumber && !elevatorAuthorized) {
+    if (!canRecoverToLobby) {
+      return "Use the elevator to travel between floors";
+    }
+  }
   if (!previous || previous.linkId !== next.linkId
     || previous.room !== next.room || previous.roomKey !== next.roomKey
     || previous.floorNumber !== next.floorNumber) {

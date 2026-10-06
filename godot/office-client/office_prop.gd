@@ -2,7 +2,7 @@ extends Node3D
 ## Native office props: grounded origins, separable moving parts, no game authority.
 ## Surface aging only reflects incoming simulation state; it never advances time.
 
-const SUPPORTED_KINDS := ["desk", "telephone", "pay_phone", "desk_lamp"]
+const SUPPORTED_KINDS := ["desk", "telephone", "pay_phone", "desk_lamp", "trash_can"]
 var finish: StandardMaterial3D
 var surface_base := Color("#35574a")
 var dust_marks: Array[MeshInstance3D] = []
@@ -40,6 +40,8 @@ func _build(kind: String, reception: bool) -> void:
 			_phone(kind == "pay_phone", brass, charcoal, cream)
 		"desk_lamp":
 			_lamp(brass, charcoal, cream)
+		"trash_can":
+			_trash_can(brass, charcoal)
 	set_surface_state(100, 100)
 
 
@@ -159,6 +161,19 @@ func _lamp(brass: Material, dark: Material, cream: Material) -> void:
 	light.shadow_enabled = false
 	add_child(light)
 	_wear_detail(Vector3(0.08, 0.878, 0.10), Vector3(0.08, 0.003, 0.012), brass)
+
+
+func _trash_can(brass: Material, dark: Material) -> void:
+	var enamel := _finish("#40574e")
+	finish = enamel
+	surface_base = Color("#40574e")
+	_cylinder("TrashCanFoot", Vector3(0, 0.07, 0), 0.255, 0.08, dark)
+	_cylinder("TrashCanBody", Vector3(0, 0.40, 0), 0.29, 0.62, enamel)
+	_cylinder("TrashCanRim", Vector3(0, 0.73, 0), 0.305, 0.055, brass)
+	_cylinder("TrashCanLid", Vector3(0, 0.78, 0), 0.30, 0.045, dark)
+	_cylinder("TrashCanOpening", Vector3(0, 0.806, 0), 0.145, 0.008, _finish("#161f1b"))
+	_box("TrashCanHighlight", Vector3(0.0, 0.42, 0.286), Vector3(0.035, 0.40, 0.012), brass)
+	_box("TrashCanPedal", Vector3(0.31, 0.07, 0.02), Vector3(0.16, 0.04, 0.11), brass)
 
 
 func _wear_detail(at: Vector3, size: Vector3, material: Material) -> void:

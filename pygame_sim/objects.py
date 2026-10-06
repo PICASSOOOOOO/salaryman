@@ -38,6 +38,7 @@ ObjectKind = Literal[
     "desk_lamp",
     "receptionist",
     "floor_sign",
+    "trash_can",
 ]
 
 VENDING_ITEMS: dict[str, tuple[str, float]] = {
@@ -97,6 +98,7 @@ class OfficeObject:
             "pay_phone": (100, 100),
             "tv": (140, 100),
             "arcade": (140, 160),
+            "trash_can": (300, 300),
         }.get(self.kind, (120, 120))
 
 
@@ -160,19 +162,8 @@ class OfficeObjectRegistry:
         if item.kind == "elevator":
             state.close_page()
             floor = item.destination_floor or scene.current_floor
-            scene.current_floor = floor
-            if floor == 1:
-                next_room = {
-                    "lobby": "recreation",
-                    "recreation": "executive",
-                    "executive": "recreation",
-                    "public": "recreation",
-                    "office_03": "recreation",
-                    "office_04": "recreation",
-                }.get(scene.current_room, "lobby")
-                scene.select_room(next_room)
-            else:
-                scene.select_room("public")
+            if not scene.select_floor(floor):
+                return InteractionResult(False, f"FLOOR {floor:02d} IS UNDER CONSTRUCTION")
             message = f"ELEVATOR ARRIVED / {scene.room.label} / FLOOR {floor:02d}"
             state.notice = message
             return InteractionResult(True, message, destination=f"floor:{floor}")
@@ -189,7 +180,14 @@ class OfficeObjectRegistry:
         if item.kind == "stairs":
             state.close_page()
             if not scene.climb_stairs():
-                return InteractionResult(False, "TOP FLOOR / NO STAIRS ABOVE")
+                next_floor = scene.current_floor + 1
+                message = (
+                    f"FLOOR {next_floor:02d} IS UNDER CONSTRUCTION"
+                    if next_floor <= scene.floor_count
+                    else "NO STAIR ACCESS ABOVE THIS FLOOR"
+                )
+                state.notice = message
+                return InteractionResult(False, message)
             message = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
             state.notice = message
             return InteractionResult(True, message, destination=f"floor:{scene.current_floor}")
@@ -272,8 +270,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     # registry below is the only source of furniture and interactables.
     """
     entries = [
-        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "SELECT FLOOR", destination_floor=1),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "STAIRS / CHANGE FLOOR"),
+        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "RIDE TO FLOOR 06", destination_floor=6),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "BASEMENT & FLOORS 02–05 UNDER CONSTRUCTION"),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
@@ -362,17 +360,19 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     # Do not register the old free workstation sets or decorative corridor
     # props. Shared furniture is added only from server-owned office inventory.
     entries = [
-        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "SELECT FLOOR", destination_floor=1),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "STAIRS / CHANGE FLOOR"),
+        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "RIDE TO FLOOR 06", destination_floor=6),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "BASEMENT & FLOORS 02–05 UNDER CONSTRUCTION"),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),
-        OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (11_000, 1_500), "SELECT FLOOR", destination_floor=1),
-        OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (11_000, 23_500), "UPPER FLOORS UNDER CONSTRUCTION"),
+        OfficeObject("lobby-trash-can", "trash_can", "TRASH CAN", "lobby", (49_975_600, 50_002_300), "TRASH CAN", interactive=False),
+        OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (11_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
+        OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (11_000, 23_500), "FLOORS 07–67 UNDER CONSTRUCTION"),
         OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_500, 5_000), "CHECK BANCO OMBRA"),
         OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_500, 8_000), "BUY OFFICE ASSETS"),
+        OfficeObject("recreation-trash-can", "trash_can", "TRASH CAN", "recreation", (9_550, 9_000), "TRASH CAN", interactive=False),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (4_500, 11_000), "ENTER OFFICE 01", destination_room="executive"),
         OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (17_500, 11_000), "ENTER OFFICE 02", destination_room="public"),
         OfficeObject("hall-office-3-door", "door", "OFFICE 03", "recreation", (4_500, 14_000), "ENTER OFFICE 03", destination_room="office_03"),

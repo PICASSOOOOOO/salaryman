@@ -8,12 +8,20 @@
   "officesPerFloor": 4,
   "floorBuildStatus": {
     "1": "open",
-    "2-67": "under_construction"
+    "basement": "under_construction",
+    "2-5": "under_construction",
+    "6": "open",
+    "7-67": "under_construction"
+  },
+  "playableFloors": {
+    "1": {"room": "lobby", "label": "TOWER LOBBY"},
+    "6": {"room": "recreation", "label": "OFFICE CONCOURSE"}
   },
   "floorProgram": {
     "lobby": 1,
     "mezzanine": 2,
     "pabloCorp": [3, 4],
+    "firstOfficeFloor": 6,
     "publicSale": {"from": 5, "to": 62, "count": 58},
     "picassoOnly": [63, 64, 65],
     "medicareClub": 64,
@@ -74,11 +82,14 @@
     },
     "sharedObjects": [
       {"id": "recreation-atm", "kind": "atm", "position": [12500, 5000]},
-      {"id": "recreation-vending", "kind": "vending_machine", "position": [12500, 8000]}
+      {"id": "recreation-vending", "kind": "vending_machine", "position": [12500, 8000]},
+      {"id": "recreation-trash-can", "kind": "trash_can", "position": [9550, 9000]}
     ],
     "stairs": {
       "position": [11000, 23500],
-      "underConstructionAboveFloor": 1
+      "lobbyNextFloor": 2,
+      "officeFloorNextFloor": 7,
+      "basement": "under_construction"
     },
     "walkableHallways": [
       [9030, 0, 3940, 25000],
@@ -97,11 +108,11 @@
     },
     {
       "id": "recreation",
-      "label": "FLOOR 01 OFFICE CONCOURSE",
+      "label": "FLOOR 06 OFFICE CONCOURSE",
       "bounds": [0, 0, 22000, 25000],
       "accent": [72, 94, 130],
       "material": "hall_floor",
-      "spawn": [11000, 12500]
+      "spawn": [11000, 1500]
     },
     {
       "id": "executive",

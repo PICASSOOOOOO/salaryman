@@ -115,6 +115,45 @@ class CommandResult:
     route: str | None = None
 
 
+def _request_tower_floor(
+    floor: int,
+    state: OfficeState,
+    scene: TowerScene,
+    building_sync: Any | None,
+) -> CommandResult:
+    if not scene.is_playable_floor(floor):
+        status = scene.floor_status(floor).replace("_", " ").upper()
+        message = "BASEMENT IS UNDER CONSTRUCTION" if floor < 1 else f"FLOOR {floor:02d} IS {status}"
+        state.notice = message
+        return CommandResult(False, message)
+    if floor == scene.current_floor:
+        message = f"ALREADY ON FLOOR {floor:02d}"
+        state.notice = message
+        return CommandResult(False, message)
+    nearby = scene.nearby_object
+    if nearby is None or nearby.kind != "elevator":
+        message = "MOVE TO AN ELEVATOR TO CHANGE FLOORS"
+        state.notice = message
+        return CommandResult(False, message)
+
+    state.close_page()
+    if building_sync is not None and getattr(building_sync, "link", None) is not None:
+        if not building_sync.queue_elevator(floor, scene):
+            message = "ELEVATOR REQUEST UNAVAILABLE"
+            state.notice = message
+            return CommandResult(False, message)
+        message = f"ELEVATOR REQUESTED / FLOOR {floor:02d}"
+        state.notice = message
+        return CommandResult(True, message, destination=f"elevator:{floor}")
+
+    if not scene.select_floor(floor):
+        message = f"FLOOR {floor:02d} IS UNDER CONSTRUCTION"
+        state.notice = message
+        return CommandResult(False, message)
+    state.notice = f"ELEVATOR ARRIVED / FLOOR {scene.current_floor:02d}"
+    return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
+
+
 def apply_command(
     command: object,
     state: OfficeState,
@@ -154,14 +193,24 @@ def apply_command(
         state.notice = action.upper()
         return CommandResult(True, state.notice)
     if name == "interact":
+        nearby = scene.nearby_object
+        requested_object_id = payload.get("object_id")
+        if nearby is not None and nearby.kind == "elevator" \
+            and requested_object_id in (None, nearby.id):
+            return _request_tower_floor(
+                nearby.destination_floor or scene.current_floor,
+                state,
+                scene,
+                building_sync,
+            )
         result = scene.interact(
             state,
-            payload.get("object_id"),
+            requested_object_id,
             vending_item=payload.get("vending_item", "coffee"),
         )
         return CommandResult(result.success, result.message, result.destination, result.route)
     if name == "maintain":
-        if scene.current_floor < 1 or scene.current_floor > scene.floor_count:
+        if not scene.is_playable_floor(scene.current_floor):
             return CommandResult(False, "MAINTENANCE IS UNAVAILABLE ON THIS FLOOR")
         nearby = scene.nearby_object
         if nearby is None:
@@ -177,22 +226,25 @@ def apply_command(
     if name == "select_room":
         state.close_page()
         if not scene.select_room(payload["room"]):
-            return CommandResult(False, "ROOM NOT FOUND")
+            return CommandResult(False, "ROOM NOT AVAILABLE ON THIS FLOOR")
         state.notice = f"ROOM / {scene.room.label}"
         return CommandResult(True, state.notice)
     if name == "select_floor":
-        state.close_page()
-        if not scene.select_floor(payload["floor"]):
-            return CommandResult(False, "FLOOR NOT FOUND")
-        state.notice = f"ELEVATOR ARRIVED / FLOOR {scene.current_floor:02d}"
-        return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
+        return _request_tower_floor(payload["floor"], state, scene, building_sync)
     if name == "climb_stairs":
         nearby = scene.nearby_object
         if nearby is None or nearby.kind != "stairs":
             return CommandResult(False, "NO STAIRCASE IN RANGE")
         state.close_page()
         if not scene.climb_stairs():
-            return CommandResult(False, "TOP FLOOR / NO STAIRS ABOVE")
+            next_floor = scene.current_floor + 1
+            message = (
+                f"FLOOR {next_floor:02d} IS UNDER CONSTRUCTION"
+                if next_floor <= scene.floor_count
+                else "NO STAIR ACCESS ABOVE THIS FLOOR"
+            )
+            state.notice = message
+            return CommandResult(False, message)
         state.notice = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
         return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
     if name == "select_worker":

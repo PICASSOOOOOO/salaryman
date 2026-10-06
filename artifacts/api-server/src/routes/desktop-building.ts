@@ -41,9 +41,11 @@ import {
   BUILDING_MAINTAINABLE_OBJECTS,
   BUILDING_OBJECT_DEFAULTS,
   BUILDING_PRESENCE_MAX_AGE_MS,
+  PLAYABLE_TOWER_FLOORS,
   buildingObject,
   buildingObjectsForRoom,
   catalogRoomForPresence,
+  isNearTowerElevator,
   isWalkableBuildingPosition,
   validateBuildingPresence,
 } from "../lib/desktop-building-objects";
@@ -113,6 +115,8 @@ async function resolveBuildingScope(
     .limit(1);
   if (!presence || presence.linkId !== link.id
     || presence.floorNumber < 1 || presence.floorNumber > FLOOR_COUNT
+    || !PLAYABLE_TOWER_FLOORS.has(presence.floorNumber)
+    || presence.room === "elevator"
     || Date.now() - presence.lastSeenAt.getTime() > BUILDING_PRESENCE_MAX_AGE_MS) {
     return { ok: false, status: 409, error: "Fresh building presence is required" };
   }
@@ -541,24 +545,32 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
     || !Number.isInteger(x) || x < 0 || x > 100_000_000
     || !Number.isInteger(y) || y < 0 || y > 100_000_000
     || !["stand", "walk", "sit", "sleep", "ride"].includes(action)
+    || (room === "elevator" && action !== "ride")
     || (room === "elevator" && (!Number.isInteger(destinationFloor) || destinationFloor! < 1 || destinationFloor! > FLOOR_COUNT))) {
     res.status(400).json({ error: "Invalid desktop building presence" });
+    return;
+  }
+  if (!PLAYABLE_TOWER_FLOORS.has(floorNumber)
+    || (room === "elevator" && !PLAYABLE_TOWER_FLOORS.has(destinationFloor!))
+    || (room === "elevator" && destinationFloor === floorNumber)) {
+    res.status(403).json({ error: "That floor is under construction or is already selected" });
     return;
   }
   try {
     const currentOrgId = await resolveCurrentOrgId(link.userId);
     const password = req.header("x-shadow-tower-password");
-    const ownOffice = await resolveUserOffice(link.userId, password, floorNumber);
+    const accessFloorNumber = room === "elevator" ? destinationFloor! : floorNumber;
+    const ownOffice = await resolveUserOffice(link.userId, password, accessFloorNumber);
     const assignedWorkstation = ownOffice
       ? null
-      : await resolveUserWorkstation(link.userId, currentOrgId, floorNumber);
-    if (room === "office" && (!ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
+      : await resolveUserWorkstation(link.userId, currentOrgId, accessFloorNumber);
+    if (room === "office" && (floorNumber !== 6 || !ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
       res.status(403).json({ error: "An authorized organization office is required to enter this room" });
       return;
     }
     if (room === "executive_suite"
-      && (!ownOffice || ownOffice.floor.floorNumber !== 1 || ownOffice.room !== "executive")) {
-      res.status(403).json({ error: "The executive suite is only available in Office 01 on Floor 1" });
+      && (!ownOffice || ownOffice.floor.floorNumber !== 6 || ownOffice.room !== "executive")) {
+      res.status(403).json({ error: "The executive suite is only available in Office 01 on Floor 6" });
       return;
     }
     if (room === "executive_suite" && !await canEnterExecutiveSuite(link.userId, ownOffice!)) {
@@ -567,6 +579,16 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
     }
     if (room === "lobby" && floorNumber !== 1) {
       res.status(400).json({ error: "The lobby is on floor 1" });
+      return;
+    }
+    if (room === "hallway" && floorNumber !== 6) {
+      res.status(403).json({ error: "The first office hallway is on Floor 06" });
+      return;
+    }
+    if (room === "elevator" && destinationFloor === 6
+      && ownOffice?.floor.floorNumber !== 6
+      && assignedWorkstation?.floor.floorNumber !== 6) {
+      res.status(403).json({ error: "An assigned office or workstation is required for Floor 06" });
       return;
     }
     if (room === "hallway" && floorNumber > 4
@@ -603,7 +625,22 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
         .where(eq(desktopOfficePresenceTable.userId, link.userId))
         .for("update")
         .limit(1);
-      if (room !== "elevator") {
+      if (room === "elevator") {
+        const expectedOriginRoom = floorNumber === 1 ? "lobby" : "hallway";
+        const ageMs = previousPresence
+          ? now.getTime() - previousPresence.lastSeenAt.getTime()
+          : null;
+        if (!previousPresence
+          || previousPresence.linkId !== link.id
+          || previousPresence.floorNumber !== floorNumber
+          || previousPresence.room !== expectedOriginRoom
+          || ageMs == null || ageMs < 0 || ageMs > BUILDING_PRESENCE_MAX_AGE_MS) {
+          presenceValidationError = "Approach the elevator from the lobby or Floor 06 hallway";
+        } else if (!isNearTowerElevator(floorNumber, previousPresence)
+          || !isNearTowerElevator(floorNumber, { x, y })) {
+          presenceValidationError = "Stand beside the elevator before selecting a floor";
+        }
+      } else {
         presenceValidationError = validateBuildingPresence(
           previousPresence ?? null,
           {

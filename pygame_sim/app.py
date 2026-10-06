@@ -159,7 +159,16 @@ def run(argv: list[str] | None = None) -> int:
                 elif spatial_mode and event.key == pygame.K_b:
                     state.open_page("customize", source="ROOM CUSTOMIZATION")
                 elif spatial_mode and event.key == pygame.K_e:
-                    scene.interact(state)
+                    nearby = scene.nearby_object
+                    if nearby is not None and nearby.kind == "elevator" and building_sync.link is not None:
+                        state.close_page()
+                        target_floor = nearby.destination_floor or scene.current_floor
+                        if building_sync.queue_elevator(target_floor, scene):
+                            state.notice = f"ELEVATOR REQUESTED / FLOOR {target_floor:02d}"
+                        else:
+                            state.notice = "ELEVATOR REQUEST UNAVAILABLE"
+                    else:
+                        scene.interact(state)
                 elif spatial_mode and event.key == pygame.K_SPACE:
                     scene.set_player_action("jump", duration=0.9)
                     state.notice = "JUMP"
@@ -314,8 +323,26 @@ def run(argv: list[str] | None = None) -> int:
         building_sync.update_scene(scene)
         scene.set_building_object_states(building_sync.object_states())
         for sync_event in building_sync.drain_events():
+            if sync_event.source == "elevator":
+                if sync_event.ok and sync_event.destination_floor is not None:
+                    if scene.select_floor(sync_event.destination_floor):
+                        state.notice = f"ELEVATOR ARRIVED / FLOOR {scene.current_floor:02d}"
+                    else:
+                        state.notice = f"FLOOR {sync_event.destination_floor:02d} IS UNDER CONSTRUCTION"
+                else:
+                    if sync_event.code == "HTTP_403" and scene.current_floor == 6:
+                        scene.select_floor(1)
+                        state.notice = "ELEVATOR ACCESS DENIED / RETURNED TO LOBBY"
+                    else:
+                        state.notice = sync_event.message.upper()
+                scene.set_player_action("stand", duration=0.0)
+                continue
             if sync_event.code == "HTTP_403" and scene.return_from_denied_executive_suite():
                 state.notice = "EXECUTIVE SUITE ACCESS DENIED"
+                continue
+            if sync_event.source == "presence" and sync_event.code == "HTTP_403" and scene.current_floor == 6:
+                scene.select_floor(1)
+                state.notice = "FLOOR ACCESS DENIED / RETURNED TO LOBBY"
                 continue
             if sync_event.state is not None:
                 state_floor = sync_event.state.get("floorNumber")

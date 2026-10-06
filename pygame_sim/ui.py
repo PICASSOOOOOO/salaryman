@@ -836,6 +836,47 @@ class SolarPunkRenderer:
                 (window.right - 10, window.top + 8),
                 max(1, int(2 * scale)),
             )
+        elif kind == "trash_can":
+            width = max(12, int(360 * scale))
+            height = max(16, int(480 * scale))
+            body = pygame.Rect(
+                x - width // 2,
+                y - height // 2 + 3,
+                width,
+                height - 5,
+            )
+            pygame.draw.ellipse(
+                self.screen,
+                (38, 49, 44),
+                (body.left - 1, body.bottom - 5, width + 2, 9),
+            )
+            pygame.draw.rect(
+                self.screen,
+                (71, 96, 81),
+                body,
+                border_radius=max(2, int(5 * scale)),
+            )
+            pygame.draw.rect(
+                self.screen,
+                (42, 62, 53),
+                body,
+                width=1,
+                border_radius=max(2, int(5 * scale)),
+            )
+            lid = pygame.Rect(body.left - 2, body.top - 2, width + 4, max(6, int(8 * scale)))
+            pygame.draw.ellipse(self.screen, (166, 151, 113), lid)
+            pygame.draw.ellipse(
+                self.screen,
+                (42, 53, 48),
+                lid.inflate(-max(4, int(8 * scale)), -max(3, int(5 * scale))),
+            )
+            pygame.draw.line(
+                self.screen,
+                (173, 158, 120),
+                (body.left + 3, body.top + 5),
+                (body.left + 3, body.bottom - 4),
+                1,
+            )
         elif kind in ("elevator", "stairs"):
             pygame.draw.rect(self.screen, (121, 150, 151), (x - 10, y - 12, 20, 24), border_radius=2)
             if kind == "elevator":

@@ -67,11 +67,16 @@ var camera_target := Vector3.ZERO
 var camera_focus_amount := 0.0
 var elevator_floor_panel: ColorRect
 var elevator_floor_label: Label
+var elevator_floor_status_label: Label
 var native_app_panel: ColorRect
 var native_app_title: Label
 var native_app_body: Label
 var native_app_footer: Label
 var selected_elevator_floor := 1
+var elevator_wait_remaining := 0.0
+var elevator_command_id := ""
+var transient_notice_text := ""
+var transient_notice_remaining := 0.0
 var elevator_transition_active := false
 var elevator_transition_phase := ""
 var elevator_origin_floor := 1
@@ -83,6 +88,7 @@ var elevator_transition_root: Node3D
 var elevator_transition_doors: Array[MeshInstance3D] = []
 
 var materials: Dictionary = {}
+var floor_plan_data: Dictionary = {}
 var imported_scenes: Dictionary = {}
 var automation_actors: Dictionary = {}
 var automation_animations: Dictionary = {}
@@ -199,7 +205,7 @@ func _build_lighting() -> void:
 
 func _build_building_shell() -> void:
 	world_root = Node3D.new()
-	world_root.name = "ShadowTowerFloor01"
+	world_root.name = "ShadowTower"
 	add_child(world_root)
 
 	dynamic_root = Node3D.new()
@@ -210,7 +216,8 @@ func _build_building_shell() -> void:
 	automation_root.name = "AutomationCharacters"
 	world_root.add_child(automation_root)
 
-	var floor_plan := _load_floor_plan()
+	floor_plan_data = _load_floor_plan()
+	var floor_plan := floor_plan_data
 	var base_layout: Dictionary = floor_plan.get("baseLayout", {})
 	var structure: Dictionary = base_layout.get("structure", {})
 	structural_wall_thickness = maxf(float(structure.get("wallThicknessMeters", 0.3)), 0.12)
@@ -251,7 +258,13 @@ func _load_floor_plan() -> Dictionary:
 	var parsed = JSON.parse_string(raw)
 	if not parsed is Dictionary or not parsed.has("rooms"):
 		push_error("floor_plan.json is missing or invalid")
-		return {"rooms": [], "lobbyHallwayOpening": 1800, "officeDoorCenters": []}
+		return {
+			"rooms": [],
+			"playableFloors": {},
+			"floorBuildStatus": {},
+			"lobbyHallwayOpening": 1800,
+			"officeDoorCenters": [],
+		}
 	return parsed
 
 
@@ -963,7 +976,7 @@ func _build_interface() -> void:
 	elevator_floor_panel.name = "ElevatorFloorPicker"
 	elevator_floor_panel.color = Color("#07151af2")
 	elevator_floor_panel.position = Vector2(390, 230)
-	elevator_floor_panel.size = Vector2(400, 230)
+	elevator_floor_panel.size = Vector2(400, 270)
 	elevator_floor_panel.visible = false
 	elevator_floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	interface_root.add_child(elevator_floor_panel)
@@ -983,9 +996,17 @@ func _build_interface() -> void:
 	elevator_floor_label.add_theme_color_override("font_color", Color("#fff0ae"))
 	elevator_floor_panel.add_child(elevator_floor_label)
 
+	elevator_floor_status_label = Label.new()
+	elevator_floor_status_label.position = Vector2(28, 128)
+	elevator_floor_status_label.size = Vector2(340, 28)
+	elevator_floor_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	elevator_floor_status_label.add_theme_font_size_override("font_size", 14)
+	elevator_floor_status_label.add_theme_color_override("font_color", Color("#9fd3bd"))
+	elevator_floor_panel.add_child(elevator_floor_status_label)
+
 	var elevator_instructions := Label.new()
-	elevator_instructions.text = "UP / DOWN  ·  CHOOSE FLOOR\nENTER  ·  RIDE     ESC  ·  CLOSE"
-	elevator_instructions.position = Vector2(28, 154)
+	elevator_instructions.text = "UP / DOWN  ·  OPEN STOPS ONLY\nENTER  ·  RIDE     ESC  ·  CLOSE"
+	elevator_instructions.position = Vector2(28, 174)
 	elevator_instructions.size = Vector2(340, 54)
 	elevator_instructions.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	elevator_instructions.add_theme_font_size_override("font_size", 13)
@@ -1032,6 +1053,12 @@ func _process(delta: float) -> void:
 			connection_status = "bridge offline · press R to reconnect"
 			player_root.set_bridge_connected(false)
 
+	if transient_notice_remaining > 0.0:
+		transient_notice_remaining = maxf(0.0, transient_notice_remaining - delta)
+	if elevator_transition_active and elevator_transition_phase == "waiting_destination":
+		elevator_wait_remaining -= delta
+		if elevator_wait_remaining <= 0.0:
+			_abort_elevator_transition("ELEVATOR REQUEST TIMED OUT")
 	_smooth_visual_player(delta)
 	_update_camera(delta)
 	_update_hud()
@@ -1067,6 +1094,9 @@ func _handle_message(message: Dictionary) -> void:
 				_apply_snapshot(message)
 		"error":
 			connection_status = "bridge error · %s" % message.get("message", "unknown")
+		"result":
+			if str(message.get("id", "")) == elevator_command_id and not bool(message.get("ok", false)):
+				_abort_elevator_transition(str(message.get("message", "ELEVATOR REQUEST FAILED")))
 
 
 func _apply_snapshot(message: Dictionary) -> void:
@@ -1229,15 +1259,69 @@ func _nearby_object_kind() -> String:
 
 func _open_elevator_floor_picker() -> void:
 	var scene_data: Dictionary = snapshot.get("scene", {})
-	selected_elevator_floor = clampi(int(scene_data.get("floor", 1)), 1, 67)
+	var open_floors := _available_elevator_floors()
+	var current_floor := int(scene_data.get("floor", 1))
+	selected_elevator_floor = current_floor if open_floors.has(current_floor) \
+		else (open_floors[0] if not open_floors.is_empty() else 1)
 	_refresh_elevator_floor_label()
 	elevator_floor_panel.visible = true
 	player_root.set_physics_process(false)
 
 
+func _available_elevator_floors() -> Array[int]:
+	var playable: Variant = floor_plan_data.get("playableFloors", {})
+	if not playable is Dictionary:
+		return []
+	var floors: Array[int] = []
+	for floor_key in playable.keys():
+		var floor_number := int(str(floor_key))
+		if _tower_floor_status(floor_number) == "open":
+			floors.append(floor_number)
+	floors.sort()
+	return floors
+
+
+func _tower_floor_status(floor_number: int) -> String:
+	var statuses: Dictionary = floor_plan_data.get("floorBuildStatus", {})
+	if floor_number < 1:
+		return str(statuses.get("basement", "under_construction"))
+	var exact_status: Variant = statuses.get(str(floor_number))
+	if exact_status != null:
+		return str(exact_status)
+	for floor_range in statuses.keys():
+		var endpoints := str(floor_range).split("-", false)
+		if endpoints.size() != 2:
+			continue
+		var first_floor := int(endpoints[0])
+		var last_floor := int(endpoints[1])
+		if first_floor <= floor_number and floor_number <= last_floor:
+			return str(statuses[floor_range])
+	return "under_construction"
+
+
 func _refresh_elevator_floor_label() -> void:
 	if elevator_floor_label != null:
 		elevator_floor_label.text = "FLOOR %02d" % selected_elevator_floor
+	if elevator_floor_status_label != null:
+		var playable: Dictionary = floor_plan_data.get("playableFloors", {})
+		var stop: Dictionary = playable.get(str(selected_elevator_floor), {})
+		elevator_floor_status_label.text = str(stop.get("label", "UNDER CONSTRUCTION"))
+
+
+func _advance_elevator_floor(direction: int) -> void:
+	var open_floors := _available_elevator_floors()
+	var current_index := open_floors.find(selected_elevator_floor)
+	if current_index < 0:
+		current_index = 0
+	var next_index := current_index + direction
+	if next_index < 0:
+		_show_transient_notice("BASEMENT AND FLOORS 02–05 ARE UNDER CONSTRUCTION")
+		return
+	if next_index >= open_floors.size():
+		_show_transient_notice("FLOORS 07–67 ARE UNDER CONSTRUCTION")
+		return
+	selected_elevator_floor = open_floors[next_index]
+	_refresh_elevator_floor_label()
 
 
 func _handle_elevator_picker_key(keycode: int) -> bool:
@@ -1245,11 +1329,9 @@ func _handle_elevator_picker_key(keycode: int) -> bool:
 		return false
 	match keycode:
 		KEY_UP, KEY_KP_ADD:
-			selected_elevator_floor = mini(67, selected_elevator_floor + 1)
-			_refresh_elevator_floor_label()
+			_advance_elevator_floor(1)
 		KEY_DOWN, KEY_KP_SUBTRACT:
-			selected_elevator_floor = maxi(1, selected_elevator_floor - 1)
-			_refresh_elevator_floor_label()
+			_advance_elevator_floor(-1)
 		KEY_ENTER, KEY_KP_ENTER:
 			_commit_elevator_floor()
 		KEY_ESCAPE:
@@ -1263,8 +1345,15 @@ func _commit_elevator_floor() -> void:
 	elevator_origin_floor = int(scene_data.get("floor", 1))
 	elevator_origin_room = str(scene_data.get("room", ""))
 	elevator_destination_floor = selected_elevator_floor
-	elevator_destination_room = "recreation" if elevator_destination_floor > 1 \
-		or (elevator_origin_floor == 1 and elevator_origin_room == "lobby") else "lobby"
+	if not _available_elevator_floors().has(elevator_destination_floor):
+		_show_transient_notice("THAT FLOOR IS UNDER CONSTRUCTION")
+		return
+	var playable: Dictionary = floor_plan_data.get("playableFloors", {})
+	var destination: Dictionary = playable.get(str(elevator_destination_floor), {})
+	elevator_destination_room = str(destination.get("room", ""))
+	if elevator_destination_room.is_empty():
+		_show_transient_notice("ELEVATOR DESTINATION IS UNAVAILABLE")
+		return
 	if elevator_destination_floor == elevator_origin_floor \
 		and elevator_destination_room == elevator_origin_room:
 		elevator_floor_panel.visible = false
@@ -1291,7 +1380,7 @@ func _commit_elevator_floor() -> void:
 
 func _build_elevator_transition_car(origin: Vector3) -> void:
 	elevator_transition_root = Node3D.new()
-	elevator_transition_root.name = "TransparentIsometricElevator"
+	elevator_transition_root.name = "ElevatorCabin"
 	elevator_transition_root.global_position = origin + Vector3(0.0, -0.04, 0.0)
 	dynamic_root.add_child(elevator_transition_root)
 	elevator_transition_doors.clear()
@@ -1357,17 +1446,24 @@ func _add_transition_box(
 
 func _send_elevator_destination_command(floor_number: int) -> void:
 	elevator_transition_phase = "waiting_destination"
-	_send_command("select_floor", {"floor": floor_number})
+	elevator_wait_remaining = 7.0
+	elevator_command_id = _send_command("select_floor", {"floor": floor_number})
+
+
+static func elevator_travel_offset(origin_floor: int, destination_floor: int) -> Vector3:
+	var floor_delta := destination_floor - origin_floor
+	if floor_delta == 0:
+		return Vector3.ZERO
+	var travel_height := clampf(2.4 + absf(float(floor_delta)) * 0.12, 2.4, 5.0)
+	var direction := 1.0 if floor_delta > 0 else -1.0
+	return Vector3(0.0, travel_height * direction, 0.0)
 
 
 func _start_elevator_arrival(target: Vector3, message: Dictionary) -> void:
 	elevator_transition_phase = "riding"
-	var travel_height := clampf(
-		2.4 + absf(float(elevator_destination_floor - elevator_origin_floor)) * 0.12,
-		2.4,
-		5.0,
-	)
-	var lift := Vector3(0.0, travel_height, 0.0)
+	elevator_wait_remaining = 0.0
+	elevator_command_id = ""
+	var lift := elevator_travel_offset(elevator_origin_floor, elevator_destination_floor)
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(elevator_transition_root, "position", elevator_transition_root.position + lift, 0.7)
@@ -1397,9 +1493,49 @@ func _finish_elevator_transition(message: Dictionary) -> void:
 	elevator_transition_doors.clear()
 	elevator_transition_active = false
 	elevator_transition_phase = ""
+	elevator_wait_remaining = 0.0
+	elevator_command_id = ""
 	player_root.set_physics_process(true)
 	last_room_id = ""
 	_apply_snapshot(message)
+
+
+func _abort_elevator_transition(message: String) -> void:
+	if not elevator_transition_active:
+		return
+	elevator_wait_remaining = 0.0
+	elevator_command_id = ""
+	elevator_transition_phase = "canceling"
+	_show_transient_notice(message.to_upper())
+	if not is_instance_valid(elevator_transition_root):
+		_finish_elevator_abort()
+		return
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "camera_distance", elevator_return_camera_distance, 0.45)
+	if elevator_transition_doors.size() == 2:
+		tween.tween_property(elevator_transition_doors[0], "position:x", -0.72, 0.38)
+		tween.tween_property(elevator_transition_doors[1], "position:x", 0.72, 0.38)
+	tween.set_parallel(false)
+	tween.tween_interval(0.1)
+	tween.tween_callback(_finish_elevator_abort)
+
+
+func _finish_elevator_abort() -> void:
+	if is_instance_valid(elevator_transition_root):
+		elevator_transition_root.queue_free()
+	elevator_transition_root = null
+	elevator_transition_doors.clear()
+	elevator_transition_active = false
+	elevator_transition_phase = ""
+	elevator_wait_remaining = 0.0
+	player_root.set_physics_process(true)
+	last_room_id = ""
+
+
+func _show_transient_notice(message: String, duration_seconds := 5.0) -> void:
+	transient_notice_text = message
+	transient_notice_remaining = duration_seconds
 
 
 func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
@@ -1420,6 +1556,36 @@ func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
 			Vector3(0.08, 1.85, 3.1),
 			materials["wall_trim"],
 		)
+	var locked_gate := StaticBody3D.new()
+	locked_gate.name = object_id + "-locked-landing"
+	locked_gate.position = position + Vector3(0.0, 0.0, 0.36)
+	dynamic_root.add_child(locked_gate)
+	var gate_shape := BoxShape3D.new()
+	gate_shape.size = Vector3(2.2, 2.25, 0.28)
+	var gate_collision := CollisionShape3D.new()
+	gate_collision.position = Vector3(0.0, 1.125, 0.0)
+	gate_collision.shape = gate_shape
+	locked_gate.add_child(gate_collision)
+	var gate_mesh := BoxMesh.new()
+	gate_mesh.size = gate_shape.size
+	gate_mesh.material = materials["door"]
+	var gate_visual := MeshInstance3D.new()
+	gate_visual.name = object_id + "-locked-gate-visual"
+	gate_visual.mesh = gate_mesh
+	gate_visual.position = Vector3(0.0, 1.125, 0.0)
+	locked_gate.add_child(gate_visual)
+	var landing_notice := Label3D.new()
+	landing_notice.name = object_id + "-construction-sign"
+	landing_notice.text = "UNDER CONSTRUCTION\nBASEMENT + FLOORS 02–05" \
+		if object_id.begins_with("lobby") \
+		else "UNDER CONSTRUCTION\nFLOORS 07–67"
+	landing_notice.font_size = 28
+	landing_notice.pixel_size = 0.006
+	landing_notice.position = position + Vector3(0.0, 2.45, 0.58)
+	landing_notice.modulate = Color("#fff0ae")
+	landing_notice.outline_size = 8
+	landing_notice.outline_modulate = Color("#14211e")
+	dynamic_root.add_child(landing_notice)
 	return first_step
 
 
@@ -1656,7 +1822,13 @@ func _update_hud() -> void:
 	var scene_data: Dictionary = snapshot.get("scene", {})
 	var office: Dictionary = snapshot.get("office", {})
 	var room_id := str(scene_data.get("room", "waiting for bridge"))
-	room_label.text = "FLOOR %02d  ·  %s" % [int(scene_data.get("floor", 1)), room_id.to_upper()]
+	var floor_number := int(scene_data.get("floor", 1))
+	var playable: Dictionary = floor_plan_data.get("playableFloors", {})
+	var floor_stop: Dictionary = playable.get(str(floor_number), {})
+	var room_name := room_id.replace("_", " ").to_upper()
+	if room_id == str(floor_stop.get("room", "")):
+		room_name = str(floor_stop.get("label", room_name))
+	room_label.text = "FLOOR %02d  ·  %s" % [floor_number, room_name]
 	var maintenance_status := _nearby_maintenance_status(scene_data)
 	if not maintenance_status.is_empty():
 		var cleanliness := int(maintenance_status.get("cleanliness", 0))
@@ -1709,7 +1881,9 @@ func _update_hud() -> void:
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
-	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), str(office.get("notice", "WAITING FOR PYGAME"))]
+	var notice := transient_notice_text if transient_notice_remaining > 0.0 \
+		else str(office.get("notice", "WAITING FOR PYGAME"))
+	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), notice]
 	_update_native_app_panel(office, scene_data)
 
 
@@ -1799,18 +1973,20 @@ func _active_page_name() -> String:
 	return "" if page_value == null else str(page_value)
 
 
-func _send_command(name: String, payload: Dictionary = {}) -> void:
+func _send_command(name: String, payload: Dictionary = {}) -> String:
 	if connection.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-		return
+		return ""
 	command_sequence += 1
+	var command_id := "godot-%d" % command_sequence
 	var message := {
 		"type": "command",
 		"version": PROTOCOL_VERSION,
-		"id": "godot-%d" % command_sequence,
+		"id": command_id,
 		"name": name,
 		"payload": payload,
 	}
 	connection.put_data((JSON.stringify(message) + "\n").to_utf8_buffer())
+	return command_id
 
 
 func _input(event: InputEvent) -> void:

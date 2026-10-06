@@ -124,6 +124,33 @@ class TowerScene:
     def floor_count(self) -> int:
         return FLOOR_COUNT
 
+    def floor_status(self, floor_number: int) -> str:
+        statuses: dict[str, str] = FLOOR_PLAN.get("floorBuildStatus", {})
+        if floor_number < 1:
+            return str(statuses.get("basement", "under_construction"))
+        exact_status = statuses.get(str(floor_number))
+        if exact_status is not None:
+            return str(exact_status)
+        for floor_range, status in statuses.items():
+            endpoints = floor_range.split("-", maxsplit=1)
+            if len(endpoints) != 2:
+                continue
+            try:
+                first_floor, last_floor = (int(endpoint) for endpoint in endpoints)
+            except ValueError:
+                continue
+            if first_floor <= floor_number <= last_floor:
+                return str(status)
+        return "under_construction"
+
+    def is_playable_floor(self, floor_number: int) -> bool:
+        playable_floors: dict[str, dict[str, str]] = FLOOR_PLAN.get("playableFloors", {})
+        return (
+            1 <= floor_number <= self.floor_count
+            and self.floor_status(floor_number) == "open"
+            and str(floor_number) in playable_floors
+        )
+
     @property
     def nearby_object(self) -> OfficeObject | None:
         if self.seated_workstation_id is not None:
@@ -514,6 +541,17 @@ class TowerScene:
     def select_room(self, room_id: str) -> bool:
         if not any(room.id == room_id for room in self.rooms):
             return False
+        room_floors = {
+            "lobby": 1,
+            "recreation": 6,
+            "executive": 6,
+            "public": 6,
+            "office_03": 6,
+            "office_04": 6,
+            "executive_suite": 6,
+        }
+        if room_id in room_floors and self.current_floor != room_floors[room_id]:
+            return False
         if room_id == "executive_suite":
             door = self.objects.get("executive-suite-door")
             if self.current_room != "executive" or door is None or hypot(
@@ -549,29 +587,20 @@ class TowerScene:
         self.set_player_action("stand")
 
     def select_floor(self, floor: int) -> bool:
-        if floor < 1 or floor > self.floor_count:
+        if not self.is_playable_floor(floor):
             return False
-        if floor != 1:
-            return False
+        floor_data: dict[str, dict[str, str]] = FLOOR_PLAN["playableFloors"][str(floor)]
+        destination_room = floor_data["room"]
         self.current_floor = floor
-        destination_room = (
-            "recreation"
-            if floor > 1 or (self.current_floor == 1 and self.current_room == "lobby")
-            else "lobby"
-        )
-        self.current_room = destination_room
-        self.player_position = self.room_spawn(destination_room)
-        self.input_vector = (0.0, 0.0)
-        self.velocity = (0.0, 0.0)
-        self.motion_remainder = (0.0, 0.0)
-        self.set_player_action("stand")
+        self._place_at_room_spawn(destination_room)
         return True
 
     def climb_stairs(self) -> bool:
         """Advance one physical floor without invoking the elevator transition."""
-        if self.current_floor >= self.floor_count:
+        next_floor = self.current_floor + 1
+        if not self.is_playable_floor(next_floor):
             return False
-        return self.select_floor(self.current_floor + 1)
+        return self.select_floor(next_floor)
 
 
 def build_tower_scene() -> TowerScene:

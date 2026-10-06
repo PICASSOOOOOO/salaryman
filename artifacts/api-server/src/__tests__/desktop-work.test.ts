@@ -137,7 +137,7 @@ beforeAll(async () => {
 
   const [floor] = await db.insert(shadowTowerFloorsTable).values({
     city: officeCity,
-    floorNumber: 5,
+    floorNumber: 6,
     orgId: privateOrgId,
     ownerUserId: userId,
     tenure: "own",
@@ -201,15 +201,30 @@ afterAll(async () => {
   }
 });
 
-function reportPresence(room: "office" | "lobby" | "hallway" = "office", requestedFloor?: number) {
+function reportPresence(
+  room: "office" | "lobby" | "hallway" = "office",
+  requestedFloor?: number,
+  position?: { x: number; y: number },
+) {
   const isOffice = room === "office";
-  const floorNumber = requestedFloor ?? (isOffice ? 5 : room === "lobby" ? 1 : 2);
+  const floorNumber = requestedFloor ?? (isOffice ? 6 : room === "lobby" ? 1 : 6);
   return desktopPost("/api/desktop-building/presence").send({
     room,
     floorNumber,
-    x: isOffice ? 1_800 : room === "lobby" ? 49_978_000 : 4_800,
-    y: isOffice ? 6_550 : room === "lobby" ? 50_000_000 : 4_550,
+    x: position?.x ?? (isOffice ? 4_500 : room === "lobby" ? 49_978_000 : 11_000),
+    y: position?.y ?? (isOffice ? 5_500 : room === "lobby" ? 50_000_000 : 1_500),
     action: isOffice ? "sit" : "stand",
+  });
+}
+
+function reportElevator(originFloor: 1 | 6, destinationFloor: 1 | 6) {
+  return desktopPost("/api/desktop-building/presence").send({
+    room: "elevator",
+    floorNumber: originFloor,
+    destinationFloor,
+    x: originFloor === 1 ? 49_977_000 : 11_000,
+    y: originFloor === 1 ? 50_000_000 : 1_500,
+    action: "ride",
   });
 }
 
@@ -237,7 +252,10 @@ describe("desktop office work settlement", () => {
       .set({ issuedAt: new Date(Date.now() - 5 * 60_000) })
       .where(eq(desktopWorkLeasesTable.id, leaseId));
 
-    const initialPresence = await reportPresence();
+    expect((await reportPresence("lobby", 1)).status).toBe(200);
+    expect((await reportElevator(1, 6)).status).toBe(200);
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
+    const initialPresence = await reportPresence("office", 6);
     expect(initialPresence.status).toBe(200);
     expect(initialPresence.body.workPresence).toBe(true);
 
@@ -266,11 +284,15 @@ describe("desktop office work settlement", () => {
     });
     expect(partialClaim.status).toBe(422);
     expect(partialClaim.body.reason).toBe("work_presence_not_verified");
-    const leftOffice = await reportPresence("lobby");
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
+    expect((await reportElevator(6, 1)).status).toBe(200);
+    const leftOffice = await reportPresence("lobby", 1);
     expect(leftOffice.status).toBe(200);
     [lease] = await db.select().from(desktopWorkLeasesTable).where(eq(desktopWorkLeasesTable.id, leaseId));
     expect(lease.presenceLastSeenAt).toBeNull();
-    expect((await reportPresence()).status).toBe(200);
+    expect((await reportElevator(1, 6)).status).toBe(200);
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
+    expect((await reportPresence("office", 6)).status).toBe(200);
 
     // Simulate five more 30-second server heartbeat intervals after returning.
     for (let beat = 0; beat < 5; beat += 1) {
@@ -310,75 +332,87 @@ describe("desktop office work settlement", () => {
     expect(account.balance).toBe(15);
   });
 
-  it("maintains shared hallway objects on every floor and private office objects on their assigned floor", async () => {
-    const floorThreeEntry = await reportPresence("hallway", 3);
-    expect(floorThreeEntry.status).toBe(200);
-    const floorThreeObjects = await desktopGet("/api/desktop-building/objects");
-    expect(floorThreeObjects.status).toBe(200);
-    expect(floorThreeObjects.body.floorNumber).toBe(3);
-    expect(floorThreeObjects.body.objects).toContainEqual(expect.objectContaining({
-      objectId: "recreation-pay-phone",
-      floorNumber: 3,
+  it("keeps only Floor 6 open for office work and locks every other tower floor", async () => {
+    await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
+    expect((await reportPresence("lobby", 1)).status).toBe(200);
+    expect((await reportElevator(1, 6)).status).toBe(200);
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
+    const floorSixObjects = await desktopGet("/api/desktop-building/objects");
+    expect(floorSixObjects.status).toBe(200);
+    expect(floorSixObjects.body.floorNumber).toBe(6);
+    expect(floorSixObjects.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "recreation-vending",
+      floorNumber: 6,
       cleanliness: 80,
       condition: 85,
     }));
 
-    const [sharedDoor] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
+    const [sharedAtm] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
       eq(desktopBuildingObjectStatesTable.city, officeCity),
-      eq(desktopBuildingObjectStatesTable.floorNumber, 3),
-      eq(desktopBuildingObjectStatesTable.objectId, "hall-office-2-door"),
+      eq(desktopBuildingObjectStatesTable.floorNumber, 6),
+      eq(desktopBuildingObjectStatesTable.objectId, "recreation-atm"),
     )).limit(1);
-    expect(sharedDoor).toBeDefined();
+    expect(sharedAtm).toBeDefined();
     await db.update(desktopBuildingObjectStatesTable)
       .set({ lastCleanedAt: new Date(Date.now() - 10 * 365 * 86_400_000) })
-      .where(eq(desktopBuildingObjectStatesTable.id, sharedDoor.id));
+      .where(eq(desktopBuildingObjectStatesTable.id, sharedAtm.id));
+    await db.update(desktopOfficePresenceTable)
+      .set({ lastSeenAt: new Date(Date.now() - 10_000) })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
+    expect((await reportPresence("hallway", 6, { x: 12_000, y: 5_000 })).status).toBe(200);
     const cleaned = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "hall-office-2-door",
+      objectId: "recreation-atm",
       action: "clean",
     });
-    expect(cleaned.status).toBe(200);
-    expect(cleaned.body).toMatchObject({ working: true, rewardFiat: 100 });
+    expect(cleaned.status, JSON.stringify(cleaned.body)).toBe(200);
+    expect(cleaned.body).toMatchObject({ working: true, rewardFiat: 0 });
     expect(cleaned.body.state).toMatchObject({
-      objectId: "hall-office-2-door",
-      floorNumber: 3,
+      objectId: "recreation-atm",
+      floorNumber: 6,
       cleanliness: 0,
     });
 
-    expect((await reportPresence("hallway", 2)).status).toBe(200);
-    const floorTwoObjects = await desktopGet("/api/desktop-building/objects");
-    expect(floorTwoObjects.status).toBe(200);
-    expect(floorTwoObjects.body.floorNumber).toBe(2);
-    expect(floorTwoObjects.body.objects).toContainEqual(expect.objectContaining({
-      objectId: "hall-office-2-door",
-      floorNumber: 2,
-      cleanliness: 80,
+    for (const closedFloor of [2, 3, 4, 5, 7, 67]) {
+      expect((await reportPresence("hallway", closedFloor)).status).toBe(403);
+    }
+    const stillOnFloorSix = await desktopGet("/api/desktop-building/objects");
+    expect(stillOnFloorSix.status).toBe(200);
+    expect(stillOnFloorSix.body.floorNumber).toBe(6);
+    expect(stillOnFloorSix.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "recreation-atm",
+      floorNumber: 6,
+      cleanliness: 0,
       condition: 85,
     }));
-    expect(floorTwoObjects.body.objects).toContainEqual(expect.objectContaining({
-      objectId: "recreation-pay-phone",
-      floorNumber: 2,
-      cleanliness: 80,
-      condition: 85,
-    }));
+
+    await db.update(desktopOfficePresenceTable)
+      .set({ lastSeenAt: new Date(Date.now() - 10_000) })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
+    expect((await reportElevator(6, 1)).status).toBe(200);
+    expect((await reportPresence("lobby", 1)).status).toBe(200);
     const movedSession = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "hall-office-2-door",
+      objectId: "recreation-atm",
       action: "clean",
       sessionId: cleaned.body.sessionId,
     });
     expect(movedSession.status).toBe(409);
     expect(movedSession.body.error).toMatch(/cancelled/i);
 
-    expect((await reportPresence("hallway", 3)).status).toBe(200);
-    const floorThreeAfterReturn = await desktopGet("/api/desktop-building/objects");
-    expect(floorThreeAfterReturn.body.objects).toContainEqual(expect.objectContaining({
-      objectId: "hall-office-2-door",
-      floorNumber: 3,
-      cleanliness: 0,
-      activeWork: null,
-    }));
-
+    const lobbyObjects = await desktopGet("/api/desktop-building/objects");
+    expect(lobbyObjects.status).toBe(200);
+    expect(lobbyObjects.body.floorNumber).toBe(1);
+    const [lobbyReception] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
+      eq(desktopBuildingObjectStatesTable.city, officeCity),
+      eq(desktopBuildingObjectStatesTable.floorNumber, 1),
+      eq(desktopBuildingObjectStatesTable.objectId, "lobby-reception-desk"),
+    )).limit(1);
+    expect(lobbyReception).toBeDefined();
+    await db.update(desktopBuildingObjectStatesTable)
+      .set({ lastCleanedAt: new Date(Date.now() - 10 * 365 * 86_400_000) })
+      .where(eq(desktopBuildingObjectStatesTable.id, lobbyReception.id));
     const publicStart = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "hall-office-2-door",
+      objectId: "lobby-reception-desk",
       action: "clean",
     });
     expect(publicStart.status).toBe(200);
@@ -393,7 +427,7 @@ describe("desktop office work settlement", () => {
       .set({ workStartedAt: new Date(Date.now() - publicStart.body.durationMs - 1) })
       .where(eq(desktopBuildingObjectStatesTable.workSessionId, publicSessionId));
     const publicCompleted = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "hall-office-2-door",
+      objectId: "lobby-reception-desk",
       action: "clean",
       sessionId: publicSessionId,
     });
@@ -405,31 +439,39 @@ describe("desktop office work settlement", () => {
       message: "MILA PAID ƒ100",
     });
 
-    expect((await reportPresence("office")).status).toBe(200);
+    expect((await reportElevator(1, 6)).status).toBe(200);
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
+    const floorSixAfterReturn = await desktopGet("/api/desktop-building/objects");
+    expect(floorSixAfterReturn.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "recreation-atm",
+      floorNumber: 6,
+      cleanliness: 0,
+      activeWork: null,
+    }));
+
+    expect((await reportPresence("office", 6)).status).toBe(200);
     const officeObjects = await desktopGet("/api/desktop-building/objects");
     expect(officeObjects.status).toBe(200);
-    expect(officeObjects.body.floorNumber).toBe(5);
+    expect(officeObjects.body.floorNumber).toBe(6);
     expect(officeObjects.body.objects).toContainEqual(expect.objectContaining({
-      objectId: "executive-chair",
-      floorNumber: 5,
+      objectId: "executive-suite-door",
+      floorNumber: 6,
     }));
-    expect(officeObjects.body.objects).toContainEqual(expect.objectContaining({
-      objectId: "executive-crt",
-      floorNumber: 5,
-      cleanliness: 80,
-      condition: 85,
-    }));
-    const [officeChair] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
+    const [suiteDoorState] = await db.select().from(desktopBuildingObjectStatesTable).where(and(
       eq(desktopBuildingObjectStatesTable.city, officeCity),
-      eq(desktopBuildingObjectStatesTable.floorNumber, 5),
-      eq(desktopBuildingObjectStatesTable.objectId, "executive-chair"),
+      eq(desktopBuildingObjectStatesTable.floorNumber, 6),
+      eq(desktopBuildingObjectStatesTable.objectId, "executive-suite-door"),
     )).limit(1);
-    expect(officeChair).toBeDefined();
+    expect(suiteDoorState).toBeDefined();
     await db.update(desktopBuildingObjectStatesTable)
       .set({ lastMaintainedAt: new Date(Date.now() - 10 * 365 * 86_400_000) })
-      .where(eq(desktopBuildingObjectStatesTable.id, officeChair.id));
+      .where(eq(desktopBuildingObjectStatesTable.id, suiteDoorState.id));
+    await db.update(desktopOfficePresenceTable)
+      .set({ lastSeenAt: new Date(Date.now() - 5_000) })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
+    expect((await reportPresence("office", 6, { x: 3_000, y: 4_800 })).status).toBe(200);
     const repaired = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "executive-chair",
+      objectId: "executive-suite-door",
       action: "repair",
     });
     expect(repaired.status).toBe(200);
@@ -444,7 +486,7 @@ describe("desktop office work settlement", () => {
       .set({ workStartedAt: new Date(Date.now() - repaired.body.durationMs - 1) })
       .where(eq(desktopBuildingObjectStatesTable.workSessionId, privateSessionId));
     const completedRepair = await desktopPost("/api/desktop-building/objects/action").send({
-      objectId: "executive-chair",
+      objectId: "executive-suite-door",
       action: "repair",
       sessionId: privateSessionId,
     });
@@ -459,12 +501,12 @@ describe("desktop office work settlement", () => {
       .where(eq(orgAccountsTable.id, privateOrgAccountId)).limit(1);
     expect(privateAccountAfterPay.balanceFiat).toBe(900);
     expect(completedRepair.body.state).toMatchObject({
-      objectId: "executive-chair",
-      floorNumber: 5,
+      objectId: "executive-suite-door",
+      floorNumber: 6,
       cleanliness: 80,
       condition: 100,
     });
 
-    expect((await reportPresence("hallway", 6)).status).toBe(403);
+    expect((await reportPresence("hallway", 6)).status).toBe(200);
   });
 });
