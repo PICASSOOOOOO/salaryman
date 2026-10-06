@@ -1691,3 +1691,17 @@ mtime_ms = 1791283630904
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b2ad2b32-4dca-469e-883f-0d8cf3a39e5d/a081f8eb-ec7e-4d06-b149-733d7348ea89"
 storage_version_token = "1791283737762057"
 content_type = "image/png"
+
+[[outputs]]
+id = "WXtZNVWRLDHg-0in6gab-"
+uri = "file://screenshots/salaryman-native-office-props.png"
+type = "image"
+title = "SALARYMAN OS — native office prop review"
+description = "Rendered directly in Godot. Walnut-and-brass desks, slatted reception counter, enamel rotary phones, and articulated task lamps. Asset review, not a published build."
+logical_id = "6f9c050f-1f4e-47f1-a6b3-8907e158dfcf"
+content_hash = "sha256:36608166a8fd0bd28ada708d92fcab313e3d02a6ebfcde8c7b0ddeaa18ef4df5"
+size = 152600
+mtime_ms = 1791302442902
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6f9c050f-1f4e-47f1-a6b3-8907e158dfcf/bdf284c9-3ce9-4b8b-be99-1ccc48dd3446"
+storage_version_token = "1791302537220387"
+content_type = "image/png"

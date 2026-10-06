@@ -7,6 +7,7 @@ extends Node3D
 
 const PROTOCOL_VERSION := 1
 const PlayerController = preload("res://player_controller.gd")
+const OfficeProp = preload("res://office_prop.gd")
 const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
@@ -832,6 +833,7 @@ func _apply_snapshot(message: Dictionary) -> void:
 		last_room_id = location_id
 		last_floor_number = floor_number
 		_rebuild_bridge_objects(scene_data.get("objects", []))
+	_sync_prop_surfaces(scene_data.get("objects", []))
 	_sync_automation_characters(scene_data.get("automationCharacters", []))
 
 
@@ -855,6 +857,7 @@ func _smooth_visual_player(delta: float) -> void:
 
 func _rebuild_bridge_objects(objects: Array) -> void:
 	for child in dynamic_root.get_children():
+		dynamic_root.remove_child(child)
 		child.queue_free()
 	interaction_rings.clear()
 	for item in objects:
@@ -873,23 +876,25 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 
 
 func _build_bridge_object(kind: String, position: Vector3, object_id: String) -> Node3D:
-	if object_id == "lobby-reception-desk":
-		return _build_reception_desk(position, object_id)
+	if kind in OfficeProp.SUPPORTED_KINDS:
+		var prop := OfficeProp.create(kind, object_id == "lobby-reception-desk")
+		prop.name = object_id
+		prop.position = position
+		dynamic_root.add_child(prop)
+		return prop
 	if kind == "receptionist":
 		return _build_receptionist(position, object_id)
 	if kind == "floor_sign":
 		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
-	if kind == "desk_lamp":
-		return _build_desk_lamp(position, object_id)
 	if kind == "atm":
 		return _build_atm(position, object_id)
 	if kind == "vending_machine":
 		return _build_vending_machine(position, object_id)
 	var packed_name := ""
-	if kind == "desk" or kind == "chair":
-		packed_name = "chair" if kind == "chair" else "table"
+	if kind == "chair":
+		packed_name = "chair"
 	elif kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
@@ -899,7 +904,7 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 		return _build_elevator_visual(position, object_id)
 	elif kind == "stairs":
 		return _build_staircase(position, object_id)
-	elif kind == "telephone" or kind == "pay_phone" or kind == "tv" or kind == "atm" or kind == "vending_machine" or kind == "arcade":
+	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	if packed_name != "":
 		var packed: PackedScene = imported_scenes.get(packed_name)
@@ -912,26 +917,15 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
 
 
-func _build_reception_desk(position: Vector3, object_id: String) -> MeshInstance3D:
-	_add_box_to_dynamic(
-		object_id + "-front",
-		position + Vector3(0.0, 0.48, 0.0),
-		Vector3(3.6, 0.96, 0.72),
-		materials["wall_trim"],
-	)
-	_add_box_to_dynamic(
-		object_id + "-counter",
-		position + Vector3(0.0, 1.0, 0.08),
-		Vector3(3.9, 0.14, 1.05),
-		materials["wall_trim"],
-	)
-	_add_box_to_dynamic(
-		object_id + "-back",
-		position + Vector3(0.0, 0.5, -0.52),
-		Vector3(3.6, 1.0, 0.16),
-		materials["metal"],
-	)
-	return dynamic_root.get_node(object_id + "-front") as MeshInstance3D
+func _sync_prop_surfaces(objects: Array) -> void:
+	for value in objects:
+		if not value is Dictionary:
+			continue
+		var object: Dictionary = value
+		var prop := dynamic_root.get_node_or_null(NodePath(str(object.get("id", ""))))
+		if prop is OfficeProp and typeof(object.get("condition")) == TYPE_INT \
+			and typeof(object.get("cleanliness")) == TYPE_INT:
+			prop.set_surface_state(int(object["condition"]), int(object["cleanliness"]))
 
 
 func _build_receptionist(position: Vector3, object_id: String) -> Node3D:
@@ -1240,34 +1234,6 @@ func _build_crt_terminal(position: Vector3, object_id: String) -> MeshInstance3D
 		materials["wall_trim"],
 	)
 	return body
-
-
-func _build_desk_lamp(position: Vector3, object_id: String) -> MeshInstance3D:
-	var stem_mesh := CylinderMesh.new()
-	stem_mesh.top_radius = 0.035
-	stem_mesh.bottom_radius = 0.045
-	stem_mesh.height = 0.38
-	stem_mesh.material = materials["metal"]
-	var stem := MeshInstance3D.new()
-	stem.name = object_id + "-stem"
-	stem.mesh = stem_mesh
-	stem.position = position + Vector3(0.0, 0.91, 0.0)
-	dynamic_root.add_child(stem)
-	var shade := _add_box_to_dynamic(
-		object_id + "-shade",
-		position + Vector3(0.0, 1.14, 0.02),
-		Vector3(0.28, 0.16, 0.25),
-		materials["lamp_glow"],
-	)
-	var task_light := OmniLight3D.new()
-	task_light.name = object_id + "-light"
-	task_light.position = position + Vector3(0.0, 1.15, 0.06)
-	task_light.light_color = Color("#ffd095")
-	task_light.light_energy = 0.22
-	task_light.omni_range = 2.4
-	task_light.shadow_enabled = false
-	dynamic_root.add_child(task_light)
-	return shade
 
 
 func _build_door_visual(position: Vector3, object_id: String) -> MeshInstance3D:

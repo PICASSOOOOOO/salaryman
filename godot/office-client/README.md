@@ -55,3 +55,25 @@ The existing Pygame dashboard continues to work if Godot is closed. Use
   `THIRD_PARTY_NOTICES.md`.
 - Small Ambitions is GPL-3.0 and is used only as a visual reference; no code or
   assets from it are included.
+
+## Native office prop review
+
+`office_prop.gd` authors the desk, reception counter, rotary telephone, pedestal
+phone, and task lamp directly in Godot. Parts have local pivots for later action
+animations. Surface wear reflects the Python snapshot's condition/cleanliness;
+the renderer does not advance decay or change interaction outcomes.
+
+Run the focused native checks:
+
+```bash
+godot --headless --path godot/office-client --script res://tests/office_props_test.gd
+```
+
+Render an isolated asset-review image with a graphics display available:
+
+```bash
+godot --path godot/office-client --resolution 1600x1000 \
+  --script res://review/office_props_review.gd -- /absolute/path/office-props.png
+```
+
+The review scene is not gameplay footage or a published desktop build.
