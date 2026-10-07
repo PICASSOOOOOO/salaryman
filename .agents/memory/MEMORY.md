@@ -151,3 +151,4 @@
 - [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
 - [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
 - [Desktop release packaging](desktop-release-packaging.md) — macOS-first testing, Windows required; retain Linux unless its separate workload warrants discussing removal.
+- [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
