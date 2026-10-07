@@ -313,6 +313,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
 
   const now = new Date();
   try {
+    let accessMode: "stairs" | "service_elevator" = "stairs";
     const result = await db.transaction(async (tx) => {
       const [previous] = await tx.select().from(desktopBasementPresenceTable)
         .where(eq(desktopBasementPresenceTable.userId, link.userId))
@@ -328,6 +329,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
           if (!byStairs && !byServiceElevator) {
             return { error: "Use the basement stairs or service elevator to change levels" } as const;
           }
+          accessMode = byServiceElevator ? "service_elevator" : "stairs";
         } else {
           const elapsedMs = now.getTime() - previous.lastSeenAt.getTime();
           const maxStep = MAX_MOVEMENT_PER_SECOND * Math.max(1, elapsedMs / 1_000) + 350;
@@ -347,6 +349,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
           return { error: "Approach a lobby stairwell or the service elevator before entering the basement" } as const;
         }
         const enteredByServiceElevator = isNearTowerServiceElevator(office.floorNumber, office);
+        accessMode = enteredByServiceElevator ? "service_elevator" : "stairs";
         if (enteredByServiceElevator
           ? !isNearBasementServiceElevator({ x, y })
           : !isNearBasementStairs({ x, y })) {
@@ -374,7 +377,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
         },
       });
       await advanceNpcCrew(tx, level, now);
-      return { ok: true as const };
+      return { ok: true as const, accessMode };
     });
     if ("error" in result) {
       res.status(409).json({ error: result.error });
@@ -383,7 +386,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
     res.json({
       ok: true,
       observedAt: now.toISOString(),
-      accessMode: BASEMENT_ACCESS_MODE,
+      accessMode: result.accessMode,
       accessModeTemporary: BASEMENT_ACCESS_MODE_TEMPORARY,
     });
   } catch (error) {

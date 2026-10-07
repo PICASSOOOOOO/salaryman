@@ -76,6 +76,14 @@ NPCs between parts of the building.
 too; do not implement NPC movement as an unvalidated teleport or treat these
 routes as player-only interactions.
 
+The service elevator is for building staff only; ordinary tenant access is not
+sufficient.
+
+**Why:** The user clarified the service elevator's restricted audience.
+
+**How to apply:** Check a server-authoritative building-staff assignment for
+every service-elevator trip, separate from passenger elevator and stair access.
+
 **Why:** the user clarified the lobby layout, required 3D building systems, and
 named below-grade, operational, elevator, stair, and story-lockdown details
 that must remain in the building plan.
