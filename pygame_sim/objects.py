@@ -15,6 +15,7 @@ from .approved_content import (
     APPROVED_CAMERA_FOCUS_KINDS,
     APPROVED_INTERACTIVE_OBJECT_KINDS,
 )
+from .world_layout import FLOOR_PLAN
 
 if TYPE_CHECKING:
     from .scene import TowerScene
@@ -46,6 +47,8 @@ ObjectKind = Literal[
     "partition_h",
     "partition_h_short",
     "partition_v",
+    "tunnel_wall_h",
+    "tunnel_wall_v",
     "window",
     "door",
     "desk_lamp",
@@ -105,6 +108,8 @@ class OfficeObject:
             "partition_h": (750, 60),
             "partition_h_short": (250, 60),
             "partition_v": (60, 750),
+            "tunnel_wall_h": (500, 70),
+            "tunnel_wall_v": (70, 500),
             "window": (220, 90),
             "atm": (150, 180),
             "vending_machine": (150, 180),
@@ -151,6 +156,9 @@ class OfficeObjectRegistry:
             )
         self.objects.append(office_object)
 
+    def remove(self, object_id: str) -> None:
+        self.objects[:] = [item for item in self.objects if item.id != object_id]
+
     def get(self, object_id: str) -> OfficeObject | None:
         return next((item for item in self.objects if item.id == object_id), None)
 
@@ -189,6 +197,16 @@ class OfficeObjectRegistry:
             return InteractionResult(False, "OBJECT NOT FOUND")
         if not item.interactive:
             return InteractionResult(False, f"{item.label.upper()} IS DECORATIVE")
+
+        if item.id == "tower-ghost":
+            proximity = hypot(
+                scene.player_position[0] - item.position[0],
+                scene.player_position[1] - item.position[1],
+            )
+            if item.room != scene.current_room or proximity > 1_250:
+                message = "THE GHOST IS NOT CLOSE ENOUGH TO SPEAK"
+                state.notice = message
+                return InteractionResult(False, message)
 
         if item.kind in {"elevator", "service_elevator"}:
             state.close_page()
@@ -277,6 +295,18 @@ class OfficeObjectRegistry:
                 source="SYSTEMS TERMINAL",
                 source_object_id=item.id,
             )
+
+        if item.id == "tower-ghost":
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "merchant",
+                from_object=True,
+                source="THE GHOST",
+                source_object_id=item.id,
+            )
+            message = "THE GHOST / YOU DIDN'T SEE HIM"
+            state.notice = message
+            return InteractionResult(True, message, route="merchant")
 
         if item.id == "lobby-reception-desk":
             message = "RECEPTION / TOWER INFORMATION READY"
@@ -685,4 +715,39 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             registry.add(OfficeObject("basement-b5-power", "utility_station", "POWER / GENERATORS", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"))
         elif level == 6:
             registry.add(OfficeObject("basement-b6-plumbing", "utility_station", "WATER / PLUMBING", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"))
+    cell_size = 1_000
+    for room_data in FLOOR_PLAN["rooms"]:
+        room = str(room_data.get("id", ""))
+        raw_cells = room_data.get("mazeCells")
+        if not room.startswith("basement_b") or not isinstance(raw_cells, list):
+            continue
+        level = int(room.rsplit("b", 1)[-1])
+        walkable = {
+            (int(cell[0]), int(cell[1]))
+            for cell in raw_cells
+            if isinstance(cell, list) and len(cell) == 2
+        }
+        for col, row in sorted(walkable):
+            center_x = col * cell_size + cell_size // 2
+            center_y = row * cell_size + cell_size // 2
+            walls = (
+                ("north", (0, -1), "tunnel_wall_h", (center_x, center_y - cell_size // 2)),
+                ("east", (1, 0), "tunnel_wall_v", (center_x + cell_size // 2, center_y)),
+                ("south", (0, 1), "tunnel_wall_h", (center_x, center_y + cell_size // 2)),
+                ("west", (-1, 0), "tunnel_wall_v", (center_x - cell_size // 2, center_y)),
+            )
+            for side, (dx, dy), kind, position in walls:
+                if (col + dx, row + dy) in walkable:
+                    continue
+                registry.add(
+                    OfficeObject(
+                        f"basement-b{level}-maze-{col}-{row}-{side}",
+                        kind,  # type: ignore[arg-type]
+                        "TUNNEL WALL",
+                        room,
+                        position,
+                        "",
+                        interactive=False,
+                    )
+                )
     return registry

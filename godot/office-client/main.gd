@@ -77,6 +77,8 @@ var native_app_panel: ColorRect
 var native_app_title: Label
 var native_app_body: Label
 var native_app_footer: Label
+var last_native_app_page := ""
+var ghost_dialogue_line := ""
 var selected_elevator_floor := 1
 var elevator_wait_remaining := 0.0
 var elevator_command_id := ""
@@ -1468,10 +1470,18 @@ collision_extents: Array = [],
 		return _build_staircase(position, object_id)
 	elif kind == "construction_task":
 		return _build_construction_marker(position, object_id, label, construction_complete, interactive)
-	elif kind == "partition_h" or kind == "partition_h_short" or kind == "partition_v":
+	elif kind == "partition_h" or kind == "partition_h_short" or kind == "partition_v" \
+			or kind == "tunnel_wall_h" or kind == "tunnel_wall_v":
 		var half_x := float(collision_extents[0]) if collision_extents.size() > 0 else 750.0
 		var half_z := float(collision_extents[1]) if collision_extents.size() > 1 else 60.0
 		var partition_size := Vector3(maxf(0.2, half_x * 0.02), 2.4, maxf(0.2, half_z * 0.02))
+		if kind == "tunnel_wall_h" or kind == "tunnel_wall_v":
+			return _add_solid_box_to_dynamic(
+				object_id,
+				position + Vector3(0.0, 1.1, 0.0),
+				partition_size,
+				materials["wall_trim"],
+			)
 		return _add_box_to_dynamic(object_id, position + Vector3(0.0, 1.1, 0.0), partition_size, materials["wall_trim"])
 	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
@@ -2127,6 +2137,34 @@ func _add_box_to_dynamic(node_name: String, position: Vector3, size: Vector3, ma
 	return instance
 
 
+func _add_solid_box_to_dynamic(
+	node_name: String,
+	position: Vector3,
+	size: Vector3,
+	material: Material,
+) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = node_name
+	body.position = position
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	body.add_child(collision)
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mesh.material = material
+	var instance := MeshInstance3D.new()
+	instance.name = node_name + "-mesh"
+	instance.mesh = mesh
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	body.add_child(instance)
+	dynamic_root.add_child(body)
+	return body
+
+
 func _add_interaction_ring(position: Vector3) -> void:
 	var ring := CylinderMesh.new()
 	ring.top_radius = 0.78
@@ -2367,7 +2405,15 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	var page := _active_page_name()
 	native_app_panel.visible = not page.is_empty()
 	if page.is_empty():
+		last_native_app_page = ""
 		return
+	if page == "merchant" and last_native_app_page != "merchant":
+		ghost_dialogue_line = "You didn't see me. People rarely notice what they expect to find."
+	last_native_app_page = page
+	native_app_panel.color = Color("#07151af5")
+	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
+	native_app_body.add_theme_color_override("font_color", Color("#c4ddcb"))
+	native_app_footer.add_theme_color_override("font_color", Color("#f8b957"))
 
 	var page_source_value: Variant = office.get("pageSource")
 	var page_source := "" if page_source_value == null else str(page_source_value)
@@ -2377,6 +2423,17 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		str(scene_data.get("room", "UNKNOWN")).replace("_", " ").to_upper(),
 	]
 	match page:
+		"merchant":
+			native_app_panel.color = Color("#f0eee8")
+			native_app_title.add_theme_color_override("font_color", Color("#171717"))
+			native_app_body.add_theme_color_override("font_color", Color("#30302d"))
+			native_app_footer.add_theme_color_override("font_color", Color("#76543d"))
+			native_app_title.text = "THE GHOST  /  PRIVATE CONVERSATION"
+			native_app_body.text = "%s\n\n%s\n\n1  You worked for Pablo?\n2  How do you stay unnoticed?\n3  I should go." % [
+				location,
+				ghost_dialogue_line,
+			]
+			native_app_footer.text = "1–2 ASK  ·  3 OR ESC LEAVE"
 		"phone":
 			native_app_title.text = "TOWER PAY PHONE"
 			native_app_body.text = "CALLL HOME\nCOMMS\n\nThis line is limited to those two services. The game screen is read-only in this pass."
@@ -2570,6 +2627,13 @@ func _input(event: InputEvent) -> void:
 					not bool(office.get("utilityWorkActive", false))
 					and not bool(office.get("relocationCutscenePending", false))
 				):
+					_send_command("close_page")
+			elif active_page == "merchant":
+				if event.keycode == KEY_1:
+					ghost_dialogue_line = "I advised Pablo on security once. That ended years ago."
+				elif event.keycode == KEY_2:
+					ghost_dialogue_line = "I stand where people expect a worker. The rest is timing."
+				elif event.keycode == KEY_3:
 					_send_command("close_page")
 			elif active_page == "systems":
 				var choice := terminal_choice_for_key(event.keycode)

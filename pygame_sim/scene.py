@@ -109,6 +109,7 @@ class TowerScene:
 
     def set_basement_snapshot(self, snapshot: object) -> None:
         """Keep only bounded fields consumed by local game rendering and actions."""
+        self.objects.remove("tower-ghost")
         if not self.is_basement or not isinstance(snapshot, dict):
             self.basement_snapshot = None
             return
@@ -197,6 +198,36 @@ class TowerScene:
                 if isinstance(operations.get(key), int) and not isinstance(operations.get(key), bool)
             }
         drop_point = snapshot.get("carcassDropPoint")
+        raw_ghost = snapshot.get("ghost")
+        normalized_ghost: dict[str, object] | None = None
+        if (
+            isinstance(raw_ghost, dict)
+            and raw_ghost.get("id") == "tower-ghost"
+            and isinstance(raw_ghost.get("x"), int)
+            and not isinstance(raw_ghost.get("x"), bool)
+            and isinstance(raw_ghost.get("y"), int)
+            and not isinstance(raw_ghost.get("y"), bool)
+        ):
+            ghost_x = max(0, min(10_000, int(raw_ghost["x"])))
+            ghost_y = max(0, min(10_000, int(raw_ghost["y"])))
+            if self._room_position_is_walkable((ghost_x, ghost_y)):
+                normalized_ghost = {
+                    "id": "tower-ghost",
+                    "label": "THE GHOST",
+                    "x": ghost_x,
+                    "y": ghost_y,
+                    "location": str(raw_ghost.get("location", "UNKNOWN"))[:40],
+                }
+                self.objects.add(
+                    OfficeObject(
+                        "tower-ghost",
+                        "receptionist",
+                        "THE GHOST",
+                        self.current_room,
+                        (ghost_x, ghost_y),
+                        "TALK TO THE GHOST",
+                    )
+                )
         if not (
             isinstance(drop_point, dict)
             and isinstance(drop_point.get("x"), int)
@@ -210,6 +241,7 @@ class TowerScene:
             "towerOperations": safe_operations,
             "pests": normalized_pests,
             "npcCrew": normalized_crew,
+            "ghost": normalized_ghost,
             "carcassDropPoint": {
                 "x": max(0, min(10_000, int(drop_point["x"]))),
                 "y": max(0, min(10_000, int(drop_point["y"]))),
@@ -507,6 +539,21 @@ class TowerScene:
     def _room_position_is_walkable(self, position: tuple[int, int]) -> bool:
         if not self.room.contains(position):
             return False
+        if self.current_room in {"basement_b4", "basement_b5", "basement_b6"}:
+            room_data = next(
+                (room for room in FLOOR_PLAN["rooms"] if room["id"] == self.current_room),
+                None,
+            )
+            maze_cells = room_data.get("mazeCells") if room_data else None
+            if not isinstance(maze_cells, list):
+                return False
+            cell = (position[0] // 1_000, position[1] // 1_000)
+            return any(
+                isinstance(maze_cell, list)
+                and len(maze_cell) == 2
+                and (int(maze_cell[0]), int(maze_cell[1])) == cell
+                for maze_cell in maze_cells
+            )
         if self.current_room == "recreation":
             regions = FLOOR_PLAN["baseLayout"]["walkableHallways"]
             return any(

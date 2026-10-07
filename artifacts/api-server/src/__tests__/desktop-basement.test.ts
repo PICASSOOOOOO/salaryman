@@ -211,7 +211,7 @@ describe("desktop basement survival authority", () => {
     expect(allowed.body.accessModeTemporary).toBe(true);
   });
 
-  it("requires adjacent stair landings and returns to the lobby only from B1", async () => {
+  it("reaches B4-B6 through each stair landing and returns to the lobby only from B1", async () => {
     await setLobbyPresence();
     expect((await enterBasement()).status).toBe(200);
     const skipLevel = await desktopPost("/api/desktop-building/basement/presence")
@@ -225,11 +225,24 @@ describe("desktop basement survival authority", () => {
       .send({ level: 4, x: 5_000, y: 5_000, action: "stand" });
     expect(b4.status).toBe(409);
 
-    const exitFromB2 = await desktopPost("/api/desktop-building/basement/exit").send({});
-    expect(exitFromB2.status).toBe(409);
-    const b1 = await desktopPost("/api/desktop-building/basement/presence")
-      .send({ level: 1, x: 5_000, y: 5_000, action: "stand" });
-    expect(b1.status).toBe(200);
+    for (const level of [3, 4, 5, 6]) {
+      const landing = await desktopPost("/api/desktop-building/basement/presence")
+        .send({ level, x: 5_000, y: 5_000, action: "stand" });
+      expect(landing.status).toBe(200);
+      expect(landing.body.ok).toBe(true);
+    }
+    const b7 = await desktopPost("/api/desktop-building/basement/presence")
+      .send({ level: 7, x: 5_000, y: 5_000, action: "stand" });
+    expect(b7.status).toBe(400);
+    const exitFromB6 = await desktopPost("/api/desktop-building/basement/exit").send({});
+    expect(exitFromB6.status).toBe(409);
+
+    for (const level of [5, 4, 3, 2, 1]) {
+      const landing = await desktopPost("/api/desktop-building/basement/presence")
+        .send({ level, x: 5_000, y: 5_000, action: "stand" });
+      expect(landing.status).toBe(200);
+      expect(landing.body.ok).toBe(true);
+    }
     const exit = await desktopPost("/api/desktop-building/basement/exit").send({});
     expect(exit.status).toBe(200);
     expect(exit.body.floor).toBe(1);

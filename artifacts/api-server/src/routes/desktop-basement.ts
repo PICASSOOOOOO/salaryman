@@ -32,6 +32,11 @@ import {
 } from "../lib/tower-basement-layout";
 import { TOWER_BASEMENT_STATIONS } from "../lib/tower-basement-layout";
 import {
+  getTowerGhostHideout,
+  isTowerBasementMazePointWalkable,
+  isTowerBasementMazeSegmentWalkable,
+} from "../lib/tower-basement-layout";
+import {
   advanceTowerOperations,
   towerOperationsSnapshot,
   wasteNpcLocation,
@@ -122,7 +127,7 @@ const BASEMENT_WAVES: Record<number, Array<{
     { kind: "snake", x: 7_100, y: 6_700, health: 64, bountyFiat: 3_500 },
   ],
   6: [
-    { kind: "rat", x: 3_300, y: 6_600, health: 56, bountyFiat: 1_500 },
+    { kind: "rat", x: 3_500, y: 7_500, health: 56, bountyFiat: 1_500 },
     { kind: "snake", x: 6_800, y: 3_400, health: 68, bountyFiat: 3_500 },
   ],
 };
@@ -158,9 +163,10 @@ function isNearTowerBasementStairs(floorNumber: number, point: { x: number; y: n
     distance(point, stairwell) <= STAIRS_RADIUS);
 }
 
-function positionIsValid(x: number, y: number): boolean {
+function positionIsValid(level: number, x: number, y: number): boolean {
   return Number.isInteger(x) && Number.isInteger(y)
-    && x >= 0 && x <= BASEMENT_SIZE && y >= 0 && y <= BASEMENT_SIZE;
+    && x >= 0 && x <= BASEMENT_SIZE && y >= 0 && y <= BASEMENT_SIZE
+    && isTowerBasementMazePointWalkable(level, x, y);
 }
 
 function fresh(lastSeenAt: Date, now: Date): boolean {
@@ -357,7 +363,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
   const x = asInteger(req.body?.x);
   const y = asInteger(req.body?.y);
   const action = req.body?.action;
-  if (level == null || level < 1 || level > 6 || x == null || y == null || !positionIsValid(x, y)
+  if (level == null || level < 1 || level > 6 || x == null || y == null || !positionIsValid(level, x, y)
     || !["stand", "walk", "attack", "maintenance"].includes(action)) {
     res.status(400).json({ error: "Provide a valid basement level, position, and action" });
     return;
@@ -390,6 +396,9 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
           const maxStep = MAX_MOVEMENT_PER_SECOND * Math.max(1, elapsedMs / 1_000) + 350;
           if (distance(previous, { x, y }) > maxStep) {
             return { error: "Basement movement exceeded the walk boundary" } as const;
+          }
+          if (!isTowerBasementMazeSegmentWalkable(level, previous, { x, y })) {
+            return { error: "Basement movement crossed a blocked tunnel wall" } as const;
           }
         }
       } else {
@@ -614,6 +623,17 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
       )).limit(1);
     const vitals = vitalsRow ? vitalValues(vitalsRow, now) : null;
     const npcCrew: Array<{ id: string; label: string; x: number; y: number }> = [...API_NPC_CREW];
+    const ghostHideout = getTowerGhostHideout(now);
+    const ghost = ghostHideout.level === level
+      ? {
+        id: "tower-ghost",
+        label: "THE GHOST",
+        x: ghostHideout.x,
+        y: ghostHideout.y,
+        location: ghostHideout.location,
+        neverCaught: true,
+      }
+      : null;
     const maintenanceRoute = operations.npcs.maintenanceRoute;
     if (maintenanceRoute.floorNumber === level) {
       npcCrew.push({
@@ -672,6 +692,7 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
       },
       pests: pests.map((pest) => serializePest(pest, link.userId, now)),
       npcCrew,
+      ghost,
       carcassDropPoint: CARCASS_DROP_POINT,
       workStations: WORK_STATIONS,
     });

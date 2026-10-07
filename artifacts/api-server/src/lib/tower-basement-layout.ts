@@ -18,11 +18,31 @@ export const TOWER_BASEMENT_MAZES: Record<number, readonly (readonly [number, nu
 };
 
 export function isTowerBasementMazePointWalkable(level: number, x: number, y: number): boolean {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > 10_000 || y < 0 || y > 10_000) {
+    return false;
+  }
+  if (!Number.isInteger(level) || level < 1 || level > 6) return false;
   const cells = TOWER_BASEMENT_MAZES[level];
   if (!cells) return true;
   const col = Math.min(9, Math.floor(x / TOWER_BASEMENT_MAZE_CELL_SIZE));
   const row = Math.min(9, Math.floor(y / TOWER_BASEMENT_MAZE_CELL_SIZE));
   return cells.some(([cellX, cellY]) => cellX === col && cellY === row);
+}
+
+export function isTowerBasementMazeSegmentWalkable(
+  level: number,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): boolean {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const steps = Math.max(1, Math.ceil(length / (TOWER_BASEMENT_MAZE_CELL_SIZE / 4)));
+  for (let step = 0; step <= steps; step += 1) {
+    const ratio = step / steps;
+    const x = Math.round(from.x + (to.x - from.x) * ratio);
+    const y = Math.round(from.y + (to.y - from.y) * ratio);
+    if (!isTowerBasementMazePointWalkable(level, x, y)) return false;
+  }
+  return true;
 }
 
 export const TOWER_GHOST_HIDEOUTS = [
