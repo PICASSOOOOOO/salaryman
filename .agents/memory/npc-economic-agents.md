@@ -37,17 +37,22 @@ money from the authoritative public pool or the owning organization's funds.
 ## NPCs as purposeful automation characters
 
 NPCs should extend existing API automations rather than use separate game-only
-assistant backends. Each should be a useful, recognizable character with a real
-job, a destination or route, and a concrete responsibility. Prefer a small cast
-with meaningful roles over many generic background NPCs. NPC-operated businesses
-may grow into specialized sellers and develop improved versions of their products;
-do not imply that this progression is active until it has a real simulation.
+assistant backends. Fraction each automation into narrow NPC roles: no NPC should
+have broad, all-purpose authority. Each should be a useful, recognizable character
+with one real job, a destination or route, and a concrete responsibility, and may
+innovate only within that job's domain. Prefer a small cast with meaningful roles
+over many generic background NPCs. NPC-operated businesses may grow into
+specialized sellers and develop improved versions of their products; do not imply
+that this progression is active until it has a real simulation.
 
 **Why:** the user wants NPCs to be useful characters with purpose and ongoing
-activity, not decorative population, and wants business growth to produce better
-products.
+activity, not decorative population. They also require API automations to be
+fractioned into narrow roles so each NPC can only do its job and innovate within
+that scope.
 
 **How to apply:** reuse the corresponding API automation as the source of truth
-for NPC work; keep identity, job, goal, and route connected. Structure business
-stock with stable product families and version metadata so future NPC growth can
-build on it, while clearly distinguishing data readiness from live behavior.
+for each NPC's bounded work; keep identity, job, goal, and route connected.
+Structure business stock with stable product families and version metadata so
+future NPC growth can build on it, while clearly distinguishing data readiness
+from live behavior. Keep each NPC's tools and decisions limited to its own job
+and improvement domain.

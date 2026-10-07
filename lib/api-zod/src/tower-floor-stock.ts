@@ -31,6 +31,7 @@ export type TowerMarketplaceListing = {
   npcExpansion: {
     ready: true;
     simulationEnabled: false;
+    scope: "specialty_only";
     improvementAxes: readonly TowerMarketplaceImprovement[];
   };
 };
@@ -54,7 +55,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["beauty"],
     npcProductFamily: "flooring",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["quality", "durability"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["quality", "durability"] },
   },
   {
     id: "lamps",
@@ -69,7 +70,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["beauty", "income"],
     npcProductFamily: "lighting",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["effectiveness", "quality"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["effectiveness", "quality"] },
   },
   {
     id: "desks",
@@ -84,7 +85,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["income"],
     npcProductFamily: "desks",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["comfort", "durability", "quality"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["comfort", "durability", "quality"] },
   },
   {
     id: "chairs",
@@ -99,7 +100,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["income"],
     npcProductFamily: "chairs",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["comfort", "durability"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["comfort", "durability"] },
   },
   {
     id: "terminals",
@@ -114,7 +115,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["income", "skills"],
     npcProductFamily: "terminals",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["effectiveness", "capacity", "quality"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["effectiveness", "capacity", "quality"] },
   },
   {
     id: "aquariums-and-fish",
@@ -129,7 +130,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["beauty"],
     npcProductFamily: "aquariums",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["quality", "capacity"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["quality", "capacity"] },
   },
   {
     id: "water-coolers",
@@ -144,7 +145,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["health", "infrastructure"],
     npcProductFamily: "water-coolers",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["effectiveness", "capacity", "durability"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["effectiveness", "capacity", "durability"] },
   },
   {
     id: "vending-machines",
@@ -159,7 +160,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["income", "infrastructure"],
     npcProductFamily: "vending-machines",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["capacity", "effectiveness", "durability"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["capacity", "effectiveness", "durability"] },
   },
   {
     id: "atms",
@@ -174,7 +175,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["infrastructure", "income"],
     npcProductFamily: "atms",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["capacity", "effectiveness", "durability"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["capacity", "effectiveness", "durability"] },
   },
   {
     id: "education-books",
@@ -189,7 +190,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     valueDrivers: ["skills", "income"],
     npcProductFamily: "education-books",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, improvementAxes: ["effectiveness", "quality"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["effectiveness", "quality"] },
   },
 ];
 
