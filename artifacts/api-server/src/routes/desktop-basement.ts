@@ -16,6 +16,7 @@ import {
   towerWasteHaulsTable,
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
+import { advanceTowerFinance } from "../lib/tower-finance";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
 import {
   BUILDING_PRESENCE_MAX_AGE_MS,
@@ -30,7 +31,12 @@ import {
   TOWER_TRASH_BINS,
 } from "../lib/tower-basement-layout";
 import { TOWER_BASEMENT_STATIONS } from "../lib/tower-basement-layout";
-import { advanceTowerOperations, wasteNpcLocation, utilityNpcLocation } from "../lib/tower-operations";
+import {
+  advanceTowerOperations,
+  towerOperationsSnapshot,
+  wasteNpcLocation,
+  utilityNpcLocation,
+} from "../lib/tower-operations";
 import { recordVerifiedCareerWork } from "../lib/career-progression";
 
 const router = Router();
@@ -226,6 +232,15 @@ async function ensureVitals(tx: Parameters<Parameters<typeof db.transaction>[0]>
     .limit(1);
   if (!row) throw new Error("tower vitality row unavailable");
   return row;
+}
+
+async function towerWaterOperational(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  now: Date,
+): Promise<boolean> {
+  const vitals = await ensureVitals(tx);
+  const finance = await advanceTowerFinance(tx, now);
+  return vitalValues(vitals, now).plumbingCondition > 0 && finance.waterBillPaid;
 }
 
 async function ensurePestWave(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], level: number, now: Date): Promise<void> {
@@ -578,7 +593,7 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
     const operations = await db.transaction(async (tx) => {
       await ensurePestWave(tx, level, now);
       await ensureVitals(tx);
-      return advanceTowerOperations(tx, now);
+      return towerOperationsSnapshot(tx, now, link.userId);
     });
     const [vitalsRow] = await db.select().from(towerBuildingVitalsTable)
       .where(eq(towerBuildingVitalsTable.buildingKey, BUILDING_KEY)).limit(1);
@@ -629,19 +644,31 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         x: presence.x,
         y: presence.y,
         carriedTrash: activeHaul?.units ?? 0,
+        backupPowerPowered: operations.backup.currentUserPowered,
       },
       building: vitals ? {
         powerCondition: vitals.powerCondition,
         plumbingCondition: vitals.plumbingCondition,
         upkeepCondition: vitals.upkeepCondition,
-        powerOperational: vitals.powerCondition > 0,
-        waterOperational: vitals.plumbingCondition > 0,
+        gridPowerOperational: vitals.powerCondition > 0 && operations.finance.powerBillPaid,
+        powerOperational: (vitals.powerCondition > 0 && operations.finance.powerBillPaid)
+          || operations.backup.poweredInfrastructureUnits > 0,
+        emergencyBackupActive: operations.backup.active,
+        infrastructureBackupPowered: operations.backup.poweredInfrastructureUnits > 0,
+        waterOperational: vitals.plumbingCondition > 0 && operations.finance.waterBillPaid,
       } : null,
       towerOperations: {
         accumulatedTrash: operations.state.accumulatedTrash,
         incomingSupplyCrates: operations.state.incomingSupplyCrates,
         storedSupplyCrates: operations.state.storedSupplyCrates,
         processedTrash: operations.state.processedTrash,
+        operatingBalanceFiat: operations.finance.operatingBalanceFiat,
+        powerBillDueFiat: operations.finance.powerBillDueFiat,
+        waterBillDueFiat: operations.finance.waterBillDueFiat,
+        backupFuelDays: operations.finance.backupFuelDays,
+        priceMultiplierPct: operations.finance.priceMultiplierPct,
+        backupCustomerUnitsPowered: operations.backup.poweredCustomers,
+        backupInfrastructureUnitsPowered: operations.backup.poweredInfrastructureUnits,
       },
       pests: pests.map((pest) => serializePest(pest, link.userId, now)),
       npcCrew,
@@ -686,6 +713,11 @@ router.post("/desktop-building/restroom/start", async (req, res): Promise<void> 
       )) {
         return { error: "Move beside an open restroom stall first" } as const;
       }
+      if (!await towerWaterOperational(tx, now)) {
+        await tx.delete(towerRestroomSessionsTable)
+          .where(eq(towerRestroomSessionsTable.userId, link.userId));
+        return { error: "Tower water is offline; restroom use is unavailable", outage: true } as const;
+      }
       const [existing] = await tx.select().from(towerRestroomSessionsTable)
         .where(eq(towerRestroomSessionsTable.userId, link.userId)).for("update").limit(1);
       if (existing) {
@@ -717,7 +749,7 @@ router.post("/desktop-building/restroom/start", async (req, res): Promise<void> 
       };
     });
     if ("error" in result) {
-      res.status(409).json(result);
+      res.status("outage" in result && result.outage ? 503 : 409).json(result);
       return;
     }
     res.json(result);
@@ -763,6 +795,11 @@ router.post("/desktop-building/restroom/complete", async (req, res): Promise<voi
           eq(towerRestroomSessionsTable.stallKey, stallKey),
         )).for("update").limit(1);
       if (!session) return { error: "That restroom session is no longer active" } as const;
+      if (!await towerWaterOperational(tx, now)) {
+        await tx.delete(towerRestroomSessionsTable)
+          .where(eq(towerRestroomSessionsTable.userId, link.userId));
+        return { error: "Tower water outage interrupted restroom use", outage: true } as const;
+      }
       const elapsedMs = now.getTime() - session.startedAt.getTime();
       if (elapsedMs < RESTROOM_USE_DURATION_MS) {
         return {
@@ -850,7 +887,7 @@ router.post("/desktop-building/waste/pickup", async (req, res): Promise<void> =>
       return { ok: true as const, haulId: haul.id, units, pickedUpFloor: expectedFloor };
     });
     if ("error" in result) {
-      res.status(409).json(result);
+      res.status("outage" in result && result.outage ? 503 : 409).json(result);
       return;
     }
     res.json(result);

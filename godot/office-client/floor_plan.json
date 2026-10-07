@@ -11,7 +11,7 @@
     "basement": "open",
     "2-5": "construction_open",
     "6": "open",
-    "7-67": "under_construction"
+    "7-67": "open"
   },
   "playableFloors": {
     "1": {"room": "lobby", "label": "TOWER LOBBY"},
@@ -19,7 +19,68 @@
     "3": {"room": "construction_f03", "label": "FLOOR 03 / CONSTRUCTION"},
     "4": {"room": "construction_f04", "label": "FLOOR 04 / CONSTRUCTION"},
     "5": {"room": "construction_f05", "label": "FLOOR 05 / CONSTRUCTION"},
-    "6": {"room": "recreation", "label": "OFFICE CONCOURSE"}
+    "6": {"room": "recreation", "label": "OFFICE CONCOURSE"},
+    "7": {"room": "commercial_floor", "label": "FLOOR 07 / COMMERCIAL OFFICES"},
+    "8": {"room": "commercial_floor", "label": "FLOOR 08 / COMMERCIAL OFFICES"},
+    "9": {"room": "commercial_floor", "label": "FLOOR 09 / COMMERCIAL OFFICES"},
+    "10": {"room": "commercial_floor", "label": "FLOOR 10 / COMMERCIAL OFFICES"},
+    "11": {"room": "commercial_floor", "label": "FLOOR 11 / COMMERCIAL OFFICES"},
+    "12": {"room": "commercial_floor", "label": "FLOOR 12 / COMMERCIAL OFFICES"},
+    "13": {"room": "commercial_floor", "label": "FLOOR 13 / COMMERCIAL OFFICES"},
+    "14": {"room": "commercial_floor", "label": "FLOOR 14 / COMMERCIAL OFFICES"},
+    "15": {"room": "commercial_floor", "label": "FLOOR 15 / COMMERCIAL OFFICES"},
+    "16": {"room": "commercial_floor", "label": "FLOOR 16 / COMMERCIAL OFFICES"},
+    "17": {"room": "commercial_floor", "label": "FLOOR 17 / COMMERCIAL OFFICES"},
+    "18": {"room": "commercial_floor", "label": "FLOOR 18 / COMMERCIAL OFFICES"},
+    "19": {"room": "commercial_floor", "label": "FLOOR 19 / COMMERCIAL OFFICES"},
+    "20": {"room": "commercial_floor", "label": "FLOOR 20 / COMMERCIAL OFFICES"},
+    "21": {"room": "commercial_floor", "label": "FLOOR 21 / COMMERCIAL OFFICES"},
+    "22": {"room": "commercial_floor", "label": "FLOOR 22 / COMMERCIAL OFFICES"},
+    "23": {"room": "commercial_floor", "label": "FLOOR 23 / COMMERCIAL OFFICES"},
+    "24": {"room": "commercial_floor", "label": "FLOOR 24 / COMMERCIAL OFFICES"},
+    "25": {"room": "commercial_floor", "label": "FLOOR 25 / COMMERCIAL OFFICES"},
+    "26": {"room": "commercial_floor", "label": "FLOOR 26 / COMMERCIAL OFFICES"},
+    "27": {"room": "commercial_floor", "label": "FLOOR 27 / COMMERCIAL OFFICES"},
+    "28": {"room": "commercial_floor", "label": "FLOOR 28 / COMMERCIAL OFFICES"},
+    "29": {"room": "commercial_floor", "label": "FLOOR 29 / COMMERCIAL OFFICES"},
+    "30": {"room": "commercial_floor", "label": "FLOOR 30 / COMMERCIAL OFFICES"},
+    "31": {"room": "commercial_floor", "label": "FLOOR 31 / COMMERCIAL OFFICES"},
+    "32": {"room": "commercial_floor", "label": "FLOOR 32 / COMMERCIAL OFFICES"},
+    "33": {"room": "commercial_floor", "label": "FLOOR 33 / COMMERCIAL OFFICES"},
+    "34": {"room": "commercial_floor", "label": "FLOOR 34 / COMMERCIAL OFFICES"},
+    "35": {"room": "commercial_floor", "label": "FLOOR 35 / COMMERCIAL OFFICES"},
+    "36": {"room": "commercial_floor", "label": "FLOOR 36 / COMMERCIAL OFFICES"},
+    "37": {"room": "commercial_floor", "label": "FLOOR 37 / COMMERCIAL OFFICES"},
+    "38": {"room": "commercial_floor", "label": "FLOOR 38 / COMMERCIAL OFFICES"},
+    "39": {"room": "commercial_floor", "label": "FLOOR 39 / COMMERCIAL OFFICES"},
+    "40": {"room": "commercial_floor", "label": "FLOOR 40 / COMMERCIAL OFFICES"},
+    "41": {"room": "commercial_floor", "label": "FLOOR 41 / COMMERCIAL OFFICES"},
+    "42": {"room": "commercial_floor", "label": "FLOOR 42 / COMMERCIAL OFFICES"},
+    "43": {"room": "commercial_floor", "label": "FLOOR 43 / COMMERCIAL OFFICES"},
+    "44": {"room": "commercial_floor", "label": "FLOOR 44 / COMMERCIAL OFFICES"},
+    "45": {"room": "commercial_floor", "label": "FLOOR 45 / COMMERCIAL OFFICES"},
+    "46": {"room": "commercial_floor", "label": "FLOOR 46 / COMMERCIAL OFFICES"},
+    "47": {"room": "commercial_floor", "label": "FLOOR 47 / COMMERCIAL OFFICES"},
+    "48": {"room": "commercial_floor", "label": "FLOOR 48 / COMMERCIAL OFFICES"},
+    "49": {"room": "commercial_floor", "label": "FLOOR 49 / COMMERCIAL OFFICES"},
+    "50": {"room": "commercial_floor", "label": "FLOOR 50 / COMMERCIAL OFFICES"},
+    "51": {"room": "commercial_floor", "label": "FLOOR 51 / COMMERCIAL OFFICES"},
+    "52": {"room": "commercial_floor", "label": "FLOOR 52 / COMMERCIAL OFFICES"},
+    "53": {"room": "commercial_floor", "label": "FLOOR 53 / COMMERCIAL OFFICES"},
+    "54": {"room": "commercial_floor", "label": "FLOOR 54 / COMMERCIAL OFFICES"},
+    "55": {"room": "commercial_floor", "label": "FLOOR 55 / COMMERCIAL OFFICES"},
+    "56": {"room": "commercial_floor", "label": "FLOOR 56 / COMMERCIAL OFFICES"},
+    "57": {"room": "commercial_floor", "label": "FLOOR 57 / COMMERCIAL OFFICES"},
+    "58": {"room": "commercial_floor", "label": "FLOOR 58 / COMMERCIAL OFFICES"},
+    "59": {"room": "commercial_floor", "label": "FLOOR 59 / COMMERCIAL OFFICES"},
+    "60": {"room": "commercial_floor", "label": "FLOOR 60 / COMMERCIAL OFFICES"},
+    "61": {"room": "commercial_floor", "label": "FLOOR 61 / COMMERCIAL OFFICES"},
+    "62": {"room": "commercial_floor", "label": "FLOOR 62 / COMMERCIAL OFFICES"},
+    "63": {"room": "pablo_operations", "label": "FLOOR 63 / PABLO CORP"},
+    "64": {"room": "pablo_operations", "label": "FLOOR 64 / MEDICARE CLUB"},
+    "65": {"room": "pablo_operations", "label": "FLOOR 65 / PABLO CORP"},
+    "66": {"room": "penthouse", "label": "FLOOR 66 / PENTHOUSE"},
+    "67": {"room": "rooftop_restaurant", "label": "FLOOR 67 / ROOFTOP RESTAURANT"}
   },
   "floorProgram": {
     "lobby": 1,
@@ -30,7 +91,13 @@
     "medicareClub": 64,
     "penthouse": 66,
     "rooftopRestaurant": 67,
-    "hallways": {"from": 3, "to": 65, "count": 63}
+    "hallways": {"from": 3, "to": 65, "count": 63},
+    "floor6Businesses": [
+      {"id": "bank-office", "label": "BANCO OMBRA BANK OFFICE", "service": "bank"},
+      {"id": "real-estate-office", "label": "PABLO CORP REAL ESTATE", "service": "real_estate"},
+      {"id": "fish-store", "label": "FISH STORE", "service": "aquariums", "stock": ["decor_aquarium"]},
+      {"id": "furniture-store", "label": "FURNITURE STORE", "service": "furniture"}
+    ]
   },
   "publicOfficeSales": {
     "floorFrom": 5,
@@ -65,8 +132,8 @@
     },
     "serviceElevator": {
       "position": [12500, 1500],
-      "stops": ["B6", "B5", "B4", "B3", "B2", "B1", 1, 2, 3, 4, 5, 6],
-      "highestOpenFloor": 6
+      "stops": ["B6", "B5", "B4", "B3", "B2", "B1", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67],
+      "highestOpenFloor": 67
     },
     "elevatorLobby": {
       "bounds": [49975000, 49997000, 4000, 6000],
@@ -101,8 +168,8 @@
       "positions": [[9500, 12500], [12500, 12500]],
       "lobbyNextFloor": 2,
       "basement": "B1-B6",
-      "highestOpenFloor": 6,
-      "restrictedLandings": [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]
+      "highestOpenFloor": 67,
+      "restrictedLandings": []
     },
     "basementEntryStairs": {
       "room": "lobby",
@@ -129,6 +196,38 @@
       "label": "FLOOR 06 OFFICE CONCOURSE",
       "bounds": [0, 0, 22000, 25000],
       "accent": [72, 94, 130],
+      "material": "hall_floor",
+      "spawn": [11000, 1500]
+    },
+    {
+      "id": "commercial_floor",
+      "label": "COMMERCIAL OFFICE FLOOR",
+      "bounds": [0, 0, 22000, 25000],
+      "accent": [68, 88, 103],
+      "material": "hall_floor",
+      "spawn": [11000, 1500]
+    },
+    {
+      "id": "pablo_operations",
+      "label": "PABLO CORP OPERATIONS",
+      "bounds": [0, 0, 22000, 25000],
+      "accent": [76, 66, 76],
+      "material": "hall_floor",
+      "spawn": [11000, 1500]
+    },
+    {
+      "id": "penthouse",
+      "label": "PENTHOUSE",
+      "bounds": [0, 0, 22000, 25000],
+      "accent": [115, 94, 65],
+      "material": "hall_floor",
+      "spawn": [11000, 1500]
+    },
+    {
+      "id": "rooftop_restaurant",
+      "label": "ROOFTOP RESTAURANT",
+      "bounds": [0, 0, 22000, 25000],
+      "accent": [79, 110, 93],
       "material": "hall_floor",
       "spawn": [11000, 1500]
     },

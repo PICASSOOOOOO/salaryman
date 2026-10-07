@@ -6,6 +6,7 @@ import {
   towerOperationsStateTable,
 } from "@workspace/db";
 import { ensureCareerPosition } from "./career-progression";
+import { advanceTowerFinance, towerBackupAllocation } from "./tower-finance";
 import {
   TOWER_BASEMENT_STATIONS,
   TOWER_SERVICE_ELEVATOR_BASEMENT,
@@ -233,17 +234,30 @@ export async function advanceTowerOperations(tx: DbTx, now = new Date()) {
   };
 }
 
-export async function towerOperationsSnapshot(tx: DbTx, now = new Date()) {
+export async function towerOperationsSnapshot(tx: DbTx, now = new Date(), currentUserId = "") {
   const advanced = await advanceTowerOperations(tx, now);
+  const finance = await advanceTowerFinance(tx, now);
+  const powerOutage = (advanced.vitals?.powerCondition ?? 100) <= 0 || !finance.powerBillPaid;
+  const backup = await towerBackupAllocation(
+    tx,
+    now,
+    currentUserId,
+    powerOutage,
+    finance.backupFuelDays,
+  );
   const [maintenancePosition] = await tx.select().from(careerPositionsTable)
     .where(eq(careerPositionsTable.positionKey, "pablo-corp:tower:maintenance"))
     .limit(1);
   return {
+    state: advanced.state,
+    vitals: advanced.vitals,
     accumulatedTrash: advanced.state.accumulatedTrash,
     incomingSupplyCrates: advanced.state.incomingSupplyCrates,
     storedSupplyCrates: advanced.state.storedSupplyCrates,
     processedTrash: advanced.state.processedTrash,
     observedAt: now.toISOString(),
+    finance,
+    backup,
     utilityWork: {
       generator: advanced.state.lastGeneratorWorkAt.toISOString(),
       pump: advanced.state.lastPumpWorkAt.toISOString(),

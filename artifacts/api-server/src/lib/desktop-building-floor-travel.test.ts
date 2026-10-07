@@ -31,7 +31,8 @@ describe("desktop tower floor travel", () => {
   };
 
   it("opens the lobby, construction Floors 2–5, and Floor 6 while keeping upper floors closed", () => {
-    expect([...PLAYABLE_TOWER_FLOORS].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6]);
+  expect([...PLAYABLE_TOWER_FLOORS].sort((a, b) => a - b))
+    .toEqual(Array.from({ length: 67 }, (_, index) => index + 1));
     expect(isNearTowerElevator(1, lobby)).toBe(true);
     expect(isNearTowerElevator(6, floorSixHallway)).toBe(true);
     expect(isNearTowerElevator(2, TOWER_PASSENGER_ELEVATOR_POSITIONS[2][0])).toBe(true);

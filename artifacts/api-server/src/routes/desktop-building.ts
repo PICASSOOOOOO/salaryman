@@ -219,7 +219,7 @@ async function resolveBuildingScope(
   if (presence.room === "lobby" && presence.floorNumber !== 1) {
     return { ok: false, status: 403, error: "The building lobby is on Floor 1" };
   }
-  if (presence.room === "hallway" && presence.floorNumber === 6) {
+  if (presence.room === "hallway" && presence.floorNumber >= 6) {
     const orgId = await resolveCurrentOrgId(link.userId);
     const floorOffice = await resolveUserOffice(link.userId, password, presence.floorNumber);
     const assignedWorkstation = floorOffice
@@ -644,7 +644,7 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
     const assignedWorkstation = ownOffice
       ? null
       : await resolveUserWorkstation(link.userId, currentOrgId, accessFloorNumber);
-    if (room === "office" && (floorNumber !== 6 || !ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
+    if (room === "office" && (!ownOffice || ownOffice.floor.floorNumber !== floorNumber)) {
       res.status(403).json({ error: "An authorized organization office is required to enter this room" });
       return;
     }
@@ -661,13 +661,13 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
       res.status(400).json({ error: "The lobby is on floor 1" });
       return;
     }
-    if (room === "hallway" && floorNumber !== 6 && !(floorNumber >= 2 && floorNumber <= 5)) {
+    if (room === "hallway" && floorNumber < 6 && !(floorNumber >= 2 && floorNumber <= 5)) {
       res.status(403).json({ error: "No walkable hallway is available on this floor" });
       return;
     }
-    if (room === "elevator" && destinationFloor === 6
-      && ownOffice?.floor.floorNumber !== 6
-      && assignedWorkstation?.floor.floorNumber !== 6) {
+    if (room === "elevator" && destinationFloor! >= 6
+      && ownOffice?.floor.floorNumber !== destinationFloor
+      && assignedWorkstation?.floor.floorNumber !== destinationFloor) {
       res.status(403).json({ error: "An assigned office or workstation is required for Floor 06" });
       return;
     }
