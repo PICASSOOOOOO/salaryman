@@ -40,7 +40,7 @@ import { getResourceDef } from "../lib/resource-catalog";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { getMarketIndex } from "./real-estate";
 import {
-  TOWER_FLOOR_MARKETPLACE_LISTINGS,
+  TOWER_BUSINESS_STOCK_LINES,
   TOWER_GHOST_LISTING,
 } from "@workspace/api-zod";
 import {
@@ -183,7 +183,7 @@ router.get("/items/vending-catalog", async (_req, res) => {
   const allowed = new Set<string>(PUBLIC_VENDING_ITEM_IDS);
   const catalog = await marketCatalogItems();
   const catalogById = new Map(catalog.items.map((item) => [item.id, item] as const));
-  const listings = TOWER_FLOOR_MARKETPLACE_LISTINGS.map((listing) => ({
+  const lines = TOWER_BUSINESS_STOCK_LINES.map((listing) => ({
     ...listing,
     items: listing.itemIds
       .map((itemId) => catalogById.get(itemId))
@@ -198,7 +198,7 @@ router.get("/items/vending-catalog", async (_req, res) => {
         sellerBusinessKey: "tower_vending",
         sellerName: "NIGHT PANTRY NETWORK",
       })),
-    marketplace: { floor: 7, listings },
+    businessStock: { lines },
     ghost: TOWER_GHOST_LISTING,
   });
 });

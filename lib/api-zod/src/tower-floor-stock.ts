@@ -1,30 +1,31 @@
-export type TowerMarketplaceValueDriver =
+export type TowerBusinessValueDriver =
   | "health"
   | "income"
   | "skills"
   | "beauty"
   | "infrastructure";
 
-export type TowerMarketplaceImprovement =
+export type TowerBusinessImprovement =
   | "effectiveness"
   | "durability"
   | "comfort"
   | "quality"
   | "capacity";
 
-export type TowerMarketplaceListing = {
+export type TowerBusinessStockLine = {
   id: string;
   label: string;
   specialty: string;
   sellerBusinessKey: string | null;
   sellerName: string | null;
+  sellerLocationLabel: string | null;
   /** IDs are resolved against the live item catalog; an empty list is a category-only listing. */
   itemIds: readonly string[];
   quoteCategories: readonly string[];
   priceSource: "catalog_item" | "seller_quote";
   /** Relative product value; higher-value health/income/skill items should price higher. */
   valueRank: 1 | 2 | 3 | 4 | 5;
-  valueDrivers: readonly TowerMarketplaceValueDriver[];
+  valueDrivers: readonly TowerBusinessValueDriver[];
   /** Stable family/version fields let future NPC businesses publish improved stock. */
   npcProductFamily: string;
   npcVersion: 1;
@@ -32,22 +33,23 @@ export type TowerMarketplaceListing = {
     ready: true;
     simulationEnabled: false;
     scope: "specialty_only";
-    improvementAxes: readonly TowerMarketplaceImprovement[];
+    improvementAxes: readonly TowerBusinessImprovement[];
   };
 };
 
 /**
- * Floor 07 is the first marketplace directory, not a single all-purpose store.
- * Existing seller IDs come from the Tower floor plan; unset sellers stay
- * unassigned rather than inventing a shop or owner.
+ * These are read-only business-stock and quote lines shown at vending machines.
+ * Physical locations are included only when an existing business is assigned.
+ * No marketplace, seller, stock, or price is invented for unassigned lines.
  */
-export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[] = [
+export const TOWER_BUSINESS_STOCK_LINES: readonly TowerBusinessStockLine[] = [
   {
     id: "fine-rugs",
     label: "Fine rugs",
     specialty: "flooring",
     sellerBusinessKey: "furniture-store",
     sellerName: "FURNITURE STORE",
+    sellerLocationLabel: "FLOOR 06 / OFFICE 04",
     itemIds: [],
     quoteCategories: ["Fine rugs"],
     priceSource: "seller_quote",
@@ -63,6 +65,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "lighting",
     sellerBusinessKey: "furniture-store",
     sellerName: "FURNITURE STORE",
+    sellerLocationLabel: "FLOOR 06 / OFFICE 04",
     itemIds: [],
     quoteCategories: ["Desk lamps", "Floor lamps"],
     priceSource: "seller_quote",
@@ -78,6 +81,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "office-furniture",
     sellerBusinessKey: "furniture-store",
     sellerName: "FURNITURE STORE",
+    sellerLocationLabel: "FLOOR 06 / OFFICE 04",
     itemIds: ["furn_desk"],
     quoteCategories: ["Additional desk styles"],
     priceSource: "catalog_item",
@@ -93,6 +97,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "office-furniture",
     sellerBusinessKey: "furniture-store",
     sellerName: "FURNITURE STORE",
+    sellerLocationLabel: "FLOOR 06 / OFFICE 04",
     itemIds: [],
     quoteCategories: ["Office chairs"],
     priceSource: "seller_quote",
@@ -108,6 +113,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "office-technology",
     sellerBusinessKey: null,
     sellerName: null,
+    sellerLocationLabel: null,
     itemIds: [],
     quoteCategories: ["Work terminals"],
     priceSource: "seller_quote",
@@ -123,6 +129,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "aquatics",
     sellerBusinessKey: "fish-store",
     sellerName: "FISH STORE",
+    sellerLocationLabel: "FLOOR 06 / OFFICE 03",
     itemIds: ["decor_aquarium"],
     quoteCategories: ["Fish"],
     priceSource: "catalog_item",
@@ -138,6 +145,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "hydration-equipment",
     sellerBusinessKey: null,
     sellerName: null,
+    sellerLocationLabel: null,
     itemIds: [],
     quoteCategories: ["Water coolers and replacement supplies"],
     priceSource: "seller_quote",
@@ -153,6 +161,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "retail-equipment",
     sellerBusinessKey: "tower_vending",
     sellerName: "TOWER VENDING",
+    sellerLocationLabel: "FLOOR 01 / LOBBY VENDING",
     itemIds: [],
     quoteCategories: ["Vending machines and stock"],
     priceSource: "seller_quote",
@@ -168,6 +177,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "banking-equipment",
     sellerBusinessKey: "tower_atm",
     sellerName: "OMBRA TOWER CASH",
+    sellerLocationLabel: "FLOOR 01 / LOBBY ATM",
     itemIds: [],
     quoteCategories: ["ATM equipment"],
     priceSource: "seller_quote",
@@ -183,6 +193,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     specialty: "education",
     sellerBusinessKey: null,
     sellerName: null,
+    sellerLocationLabel: null,
     itemIds: ["vend_interview_drill", "vend_trade_cert"],
     quoteCategories: [],
     priceSource: "catalog_item",

@@ -15,13 +15,13 @@
     "8-67": "under_construction"
   },
   "playableFloors": {
-    "1": {"room": "lobby", "label": "TOWER LOBBY"},
-    "2": {"room": "construction_f02", "label": "FLOOR 02 / CONSTRUCTION"},
-    "3": {"room": "construction_f03", "label": "FLOOR 03 / CONSTRUCTION"},
-    "4": {"room": "construction_f04", "label": "FLOOR 04 / CONSTRUCTION"},
-    "5": {"room": "construction_f05", "label": "FLOOR 05 / CONSTRUCTION"},
-    "6": {"room": "recreation", "label": "OFFICE CONCOURSE"},
-    "7": {"room": "floor07_marketplace", "label": "FLOOR 07 / BUSINESS MARKETPLACE"},
+    "1": {"room": "lobby", "label": "TOWER LOBBY", "initialBusinessOperator": "PABLO CORP"},
+    "2": {"room": "construction_f02", "label": "FLOOR 02 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
+    "3": {"room": "construction_f03", "label": "FLOOR 03 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
+    "4": {"room": "construction_f04", "label": "FLOOR 04 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
+    "5": {"room": "construction_f05", "label": "FLOOR 05 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
+    "6": {"room": "recreation", "label": "OFFICE CONCOURSE", "initialBusinessOperator": "PABLO CORP"},
+    "7": {"room": "floor07_business", "label": "FLOOR 07 / PABLO CORP BUSINESS FLOOR", "initialBusinessOperator": "PABLO CORP"},
     "8": {"room": "commercial_floor", "label": "FLOOR 08 / COMMERCIAL OFFICES"},
     "9": {"room": "commercial_floor", "label": "FLOOR 09 / COMMERCIAL OFFICES"},
     "10": {"room": "commercial_floor", "label": "FLOOR 10 / COMMERCIAL OFFICES"},
@@ -93,11 +93,44 @@
     "penthouse": 66,
     "rooftopRestaurant": 67,
     "hallways": {"from": 3, "to": 65, "count": 63},
+    "pabloCorpBusinessArea": {
+      "initialOperator": "PABLO CORP",
+      "floors": [1, 2, 3, 4, 5, 6, 7],
+      "basementFloors": ["B1", "B2", "B3", "B4", "B5", "B6"],
+      "rearShipping": {
+        "floor": "B1",
+        "room": "basement_b1",
+        "objectIds": ["basement-b1-shipping-waste", "basement-b1-loading-gate"]
+      },
+      "maximumSeparateBusinessesByArea": {
+        "1": 4,
+        "2": 4,
+        "3": 4,
+        "4": 4,
+        "5": 4,
+        "6": 4,
+        "7": 4,
+        "B1": 8,
+        "B2": 8,
+        "B3": 5,
+        "B4": 4,
+        "B5": 4,
+        "B6": 4
+      },
+      "minimumBusinessesWhenConsolidated": 1,
+      "adjacentBusinessUnitsCanBeConsolidated": true
+    },
     "floor6Businesses": [
-      {"id": "bank-office", "label": "BANCO OMBRA BANK OFFICE", "service": "bank"},
-      {"id": "real-estate-office", "label": "PABLO CORP REAL ESTATE", "service": "real_estate"},
-      {"id": "fish-store", "label": "FISH STORE", "service": "aquariums", "stock": ["decor_aquarium"]},
-      {"id": "furniture-store", "label": "FURNITURE STORE", "service": "furniture"}
+      {"id": "bank-office", "label": "BANCO OMBRA BANK OFFICE", "service": "bank", "floor": 6, "officeNumber": 1, "initialOperator": "PABLO CORP"},
+      {"id": "real-estate-office", "label": "PABLO CORP REAL ESTATE", "service": "real_estate", "floor": 6, "officeNumber": 2, "initialOperator": "PABLO CORP"},
+      {"id": "fish-store", "label": "FISH STORE", "service": "aquariums", "stock": ["decor_aquarium"], "floor": 6, "officeNumber": 3, "initialOperator": "PABLO CORP"},
+      {"id": "furniture-store", "label": "FURNITURE STORE", "service": "furniture", "floor": 6, "officeNumber": 4, "initialOperator": "PABLO CORP"}
+    ],
+    "floor7BusinessUnits": [
+      {"id": "floor07-office-01", "officeNumber": 1, "initialOperator": "PABLO CORP", "businessType": null},
+      {"id": "floor07-office-02", "officeNumber": 2, "initialOperator": "PABLO CORP", "businessType": null},
+      {"id": "floor07-office-03", "officeNumber": 3, "initialOperator": "PABLO CORP", "businessType": null},
+      {"id": "floor07-office-04", "officeNumber": 4, "initialOperator": "PABLO CORP", "businessType": null}
     ]
   },
   "publicOfficeSales": {
@@ -209,8 +242,8 @@
       "spawn": [11000, 1500]
     },
     {
-      "id": "floor07_marketplace",
-      "label": "FLOOR 07 BUSINESS MARKETPLACE",
+      "id": "floor07_business",
+      "label": "FLOOR 07 / PABLO CORP BUSINESS FLOOR",
       "bounds": [0, 0, 22000, 25000],
       "accent": [88, 105, 89],
       "material": "hall_floor",

@@ -5,7 +5,7 @@ import {
   getTowerBusinessPlacement,
   sortTowerBusinessesByExitPriority,
   TOWER_INFRASTRUCTURE_BUSINESSES,
-  TOWER_FLOOR_MARKETPLACE_LISTINGS,
+  TOWER_BUSINESS_STOCK_LINES,
   TOWER_GHOST_LISTING,
 } from "./index";
 
@@ -58,7 +58,7 @@ describe("Tower business exit placement", () => {
 
 describe("Floor 07 marketplace catalog", () => {
   it("keeps product families specialized and ready for bounded NPC improvements", () => {
-    const listingIds = TOWER_FLOOR_MARKETPLACE_LISTINGS.map((listing) => listing.id);
+    const listingIds = TOWER_BUSINESS_STOCK_LINES.map((listing) => listing.id);
     expect(new Set(listingIds).size).toBe(listingIds.length);
     expect(listingIds).toEqual(
       expect.arrayContaining([
@@ -74,7 +74,7 @@ describe("Floor 07 marketplace catalog", () => {
         "education-books",
       ]),
     );
-    for (const listing of TOWER_FLOOR_MARKETPLACE_LISTINGS) {
+    for (const listing of TOWER_BUSINESS_STOCK_LINES) {
       expect(listing.npcProductFamily).toBeTruthy();
       expect(listing.npcVersion).toBe(1);
       expect(listing.npcExpansion.scope).toBe("specialty_only");

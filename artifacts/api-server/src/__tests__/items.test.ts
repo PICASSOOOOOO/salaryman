@@ -71,13 +71,14 @@ describe("GET /items/vending-catalog", () => {
     expect(stockById.get("vend_snack_bar")).toBeGreaterThan(stockById.get("vend_coffee")!);
   });
 
-  it("adds Floor 07 business listings without making them vending stock", async () => {
+  it("shows known business stock locations separately from purchasable vending stock", async () => {
     const res = await request(app).get("/api/items/vending-catalog");
     expect(res.status).toBe(200);
-    expect(res.body.marketplace.floor).toBe(7);
-    const listings = res.body.marketplace.listings as Array<{
+    expect(res.body.marketplace).toBeUndefined();
+    const listings = res.body.businessStock.lines as Array<{
       id: string;
       sellerBusinessKey: string | null;
+      sellerLocationLabel: string | null;
       npcExpansion: { simulationEnabled: boolean; scope: string };
       items: Array<{ id: string; priceFiat: number; basePriceFiat: number; useEffect?: { skillGrant?: string } }>;
     }>;
@@ -92,6 +93,7 @@ describe("GET /items/vending-catalog", () => {
     expect(education?.items[0].basePriceFiat).toBe(450_000);
     expect(education?.items[1].basePriceFiat).toBe(900_000);
     expect(education?.sellerBusinessKey).toBeNull();
+    expect(education?.sellerLocationLabel).toBeNull();
     expect(education?.npcExpansion).toEqual({
       ready: true,
       simulationEnabled: false,
@@ -101,7 +103,10 @@ describe("GET /items/vending-catalog", () => {
 
     const aquarium = listings.find((listing) => listing.id === "aquariums-and-fish");
     expect(aquarium?.sellerBusinessKey).toBe("fish-store");
+    expect(aquarium?.sellerLocationLabel).toBe("FLOOR 06 / OFFICE 03");
     expect(aquarium?.items[0].id).toBe("decor_aquarium");
+    const furniture = listings.find((listing) => listing.id === "desks");
+    expect(furniture?.sellerLocationLabel).toBe("FLOOR 06 / OFFICE 04");
     expect(res.body.ghost).toMatchObject({
       availability: "direct_npc",
       requiresProximityInteraction: true,

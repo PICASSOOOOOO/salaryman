@@ -40,6 +40,7 @@ export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: n
   4: { x: 11_000, y: 1_500 },
   5: { x: 11_000, y: 1_500 },
   6: { x: 11_000, y: 1_500 },
+  7: { x: 11_000, y: 1_500 },
 };
 export const TOWER_PASSENGER_ELEVATOR_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
   1: [
@@ -53,6 +54,7 @@ export const TOWER_PASSENGER_ELEVATOR_POSITIONS: Readonly<Record<number, readonl
   4: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
   5: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
   6: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  7: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
 };
 export const TOWER_SERVICE_ELEVATOR_POSITIONS: Readonly<Record<number, Position>> = {
   1: TOWER_SERVICE_ELEVATOR_LOBBY,
@@ -61,6 +63,7 @@ export const TOWER_SERVICE_ELEVATOR_POSITIONS: Readonly<Record<number, Position>
   4: { x: 12_500, y: 1_500 },
   5: { x: 12_500, y: 1_500 },
   6: { x: 12_500, y: 1_500 },
+  7: { x: 12_500, y: 1_500 },
 };
 export const TOWER_STAIRWELL_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
   1: [
@@ -72,6 +75,7 @@ export const TOWER_STAIRWELL_POSITIONS: Readonly<Record<number, readonly Positio
   4: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
   5: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
   6: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  7: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
 };
 export const TOWER_ELEVATOR_INTERACTION_RADIUS = 1_250;
 export const TOWER_STAIRWELL_INTERACTION_RADIUS = 1_250;
