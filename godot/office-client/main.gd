@@ -938,7 +938,7 @@ func _build_interface() -> void:
 	controls_label = Label.new()
 	controls_label.position = Vector2(636, 646)
 	controls_label.size = Vector2(512, 48)
-controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+	controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
@@ -1111,6 +1111,7 @@ func _handle_message(message: Dictionary) -> void:
 func _apply_snapshot(message: Dictionary) -> void:
 	var scene_data: Dictionary = message.get("scene", {})
 	var player: Dictionary = scene_data.get("player", {})
+	player_root.set_danger_state(bool(player.get("inDanger", false)))
 	var target := _pygame_to_world(float(player.get("x", 0)), float(player.get("y", 0)))
 	var room_id := str(scene_data.get("room", ""))
 	var floor_number := int(scene_data.get("floor", 1))
@@ -1973,7 +1974,7 @@ func _update_hud() -> void:
 					clean_hint = "C CLEAN / ƒ%d" % int(public_work.get("cleanRewardFiat", 0))
 				if bool(public_work.get("repairAvailable", false)):
 					repair_hint = "V REPAIR / ƒ%d" % int(public_work.get("repairRewardFiat", 0))
-controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\n%s  ·  %s  ·  %s" % [
+			controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\n%s  ·  %s  ·  %s" % [
 				clean_hint,
 				repair_hint,
 				target_name,
@@ -1986,7 +1987,7 @@ controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL
 			state_color = Color("#f8b957")
 		controls_label.add_theme_color_override("font_color", state_color)
 	else:
-controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+		controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
@@ -2190,7 +2191,9 @@ func _input(event: InputEvent) -> void:
 		):
 			get_viewport().set_input_as_handled()
 			return
-		if event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_LEFT and _active_page_name().is_empty():
+			player_root.try_fight()
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			player_root.try_sweep()
 		elif event.button_index == MOUSE_BUTTON_MIDDLE and _active_page_name().is_empty():
 			player_root.toggle_mouse_sprint()
