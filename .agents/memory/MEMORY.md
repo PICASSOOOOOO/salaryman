@@ -154,4 +154,5 @@
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
 - [Tower building vitality](tower-building-vitality.md) — the MMO shares one server-owned building state for electrical power, plumbing, and upkeep; custom servers are opt-in.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
-- [Temporary basement access](basement-access-temporary.md) — basement elevators are disabled only temporarily; preserve server-validated adjacent stair landings and B1-only lobby exit.
+- [Tower basement layout and access](tower-basement-layout.md) — B1–B6 departments, one full-height service lift, four lobby passenger lifts, two stairwells, and activity-driven pest pressure.
+- [Tower wealth paths](tower-wealth-paths.md) — jobs, story/adventure, and crime should all connect to wealth and increasingly expensive offices; make the ATM ironclad and add private lending.

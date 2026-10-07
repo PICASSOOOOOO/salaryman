@@ -104,6 +104,7 @@ export * from "./subway";
 export * from "./world-addresses";
 export * from "./item-rarity";
 export * from "./world-build-plans";
+export * from "./tower-construction";
 export * from "./agent-projects";
 export * from "./ad-creatives";
 export * from "./education";

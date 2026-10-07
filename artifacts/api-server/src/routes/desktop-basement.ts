@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import { TOWER_BASEMENT_STATIONS } from "../lib/tower-basement-layout";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
@@ -54,9 +55,9 @@ type VitalRow = typeof towerBuildingVitalsTable.$inferSelect;
 type PestRow = typeof desktopBasementPestsTable.$inferSelect;
 
 const WORK_STATIONS: Record<WorkTarget, { level: number; x: number; y: number }> = {
-  power: { level: 1, x: 7_500, y: 2_000 },
-  plumbing: { level: 1, x: 2_500, y: 7_500 },
-  upkeep: { level: 1, x: 7_500, y: 7_500 },
+  power: TOWER_BASEMENT_STATIONS.power,
+  plumbing: TOWER_BASEMENT_STATIONS.plumbing,
+  upkeep: TOWER_BASEMENT_STATIONS.upkeep,
 };
 
 const BASEMENT_WAVES: Record<number, Array<{

@@ -28,12 +28,28 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
 
 export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
 export const BUILDING_PRESENCE_MAX_AGE_MS = 10_000;
-export const PLAYABLE_TOWER_FLOORS: ReadonlySet<number> = new Set([1, 6]);
+export const PLAYABLE_TOWER_FLOORS: ReadonlySet<number> = new Set([1, 2, 3, 4, 5, 6]);
 export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: number }>> = {
   1: { x: 49_977_000, y: 50_000_000 },
+  2: { x: 11_000, y: 1_500 },
+  3: { x: 11_000, y: 1_500 },
+  4: { x: 11_000, y: 1_500 },
+  5: { x: 11_000, y: 1_500 },
   6: { x: 11_000, y: 1_500 },
 };
+export const TOWER_STAIRWELL_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
+  1: [
+    { x: 49_978_450, y: 50_000_350 },
+    { x: 49_978_450, y: 50_001_050 },
+  ],
+  2: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  3: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  4: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  5: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  6: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+};
 export const TOWER_ELEVATOR_INTERACTION_RADIUS = 1_250;
+export const TOWER_STAIRWELL_INTERACTION_RADIUS = 1_250;
 const MAX_WALK_SPEED = 600;
 const WALKING_TOLERANCE = 350;
 
@@ -44,6 +60,7 @@ type PresenceForValidation = Position & {
   roomKey: string;
   floorNumber: number;
   destinationFloor?: number | null;
+  action?: string;
   linkId: string;
   lastSeenAt: Date;
 };
@@ -143,6 +160,12 @@ export function isNearTowerElevator(floorNumber: number, point: Position): boole
     <= TOWER_ELEVATOR_INTERACTION_RADIUS;
 }
 
+export function isNearTowerStairwell(floorNumber: number, point: Position, stairwell: number): boolean {
+  const position = TOWER_STAIRWELL_POSITIONS[floorNumber]?.[stairwell - 1];
+  return position != null && Math.hypot(point.x - position.x, point.y - position.y)
+    <= TOWER_STAIRWELL_INTERACTION_RADIUS;
+}
+
 export function validateBuildingPresence(
   previous: PresenceForValidation | null,
   next: { room: BuildingPresenceRoom; roomKey: string; floorNumber: number; linkId: string; x: number; y: number },
@@ -160,21 +183,27 @@ export function validateBuildingPresence(
   const elevatorAuthorized = previous?.linkId === next.linkId
     && previous.room === "elevator"
     && previous.destinationFloor === next.floorNumber;
+  const stairAuthorized = previous?.linkId === next.linkId
+    && previous.action === "stair"
+    && previous.destinationFloor === next.floorNumber
+    && Math.abs(previous.floorNumber - next.floorNumber) === 1;
   const previousIsStale = previous != null
     && (previous.linkId !== next.linkId
       || now.getTime() - previous.lastSeenAt.getTime() > BUILDING_PRESENCE_MAX_AGE_MS);
   const canRecoverToLobby = next.floorNumber === 1
     && previousIsStale
     && Math.hypot(next.x - spawn.x, next.y - spawn.y) <= 350;
-  if (next.floorNumber === 6 && previous?.floorNumber !== 6 && !elevatorAuthorized) {
-    return "Use the elevator to enter Floor 06";
+  if (next.floorNumber >= 2 && next.floorNumber <= 6
+    && previous?.floorNumber !== next.floorNumber
+    && !elevatorAuthorized && !stairAuthorized) {
+    return "Use an elevator or stairwell to enter this floor";
   }
   if (previous?.room === "elevator" && !elevatorAuthorized && !canRecoverToLobby) {
     return "The elevator is not traveling to this floor";
   }
-  if (previous && previous.floorNumber !== next.floorNumber && !elevatorAuthorized) {
+  if (previous && previous.floorNumber !== next.floorNumber && !elevatorAuthorized && !stairAuthorized) {
     if (!canRecoverToLobby) {
-      return "Use the elevator to travel between floors";
+      return "Use an elevator or stairwell to travel between floors";
     }
   }
   if (!previous || previous.linkId !== next.linkId

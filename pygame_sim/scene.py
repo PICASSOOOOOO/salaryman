@@ -307,7 +307,7 @@ class TowerScene:
         playable_floors: dict[str, dict[str, str]] = FLOOR_PLAN.get("playableFloors", {})
         return (
             1 <= floor_number <= self.floor_count
-            and self.floor_status(floor_number) == "open"
+            and self.floor_status(floor_number) in {"open", "construction_open"}
             and str(floor_number) in playable_floors
         )
 

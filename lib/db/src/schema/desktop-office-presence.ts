@@ -39,7 +39,7 @@ export const desktopOfficePresenceTable = pgTable(
     index("desktop_office_presence_room_seen_idx").on(table.roomKey, table.lastSeenAt),
     index("desktop_office_presence_city_elevator_idx").on(table.city, table.room, table.lastSeenAt),
     check("desktop_office_presence_room_check", sql`${table.room} in ('lobby', 'hallway', 'elevator', 'office')`),
-    check("desktop_office_presence_action_check", sql`${table.action} in ('stand', 'walk', 'sit', 'sleep', 'ride')`),
+    check("desktop_office_presence_action_check", sql`${table.action} in ('stand', 'walk', 'sit', 'sleep', 'ride', 'stair')`),
     check("desktop_office_presence_floor_check", sql`${table.floorNumber} between 1 and 67`),
     check("desktop_office_presence_destination_floor_check", sql`${table.destinationFloor} is null or ${table.destinationFloor} between 1 and 67`),
     check("desktop_office_presence_x_check", sql`${table.x} between 0 and 100000000`),

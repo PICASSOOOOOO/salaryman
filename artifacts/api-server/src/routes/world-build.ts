@@ -96,7 +96,9 @@ router.get("/world-build/plans", async (req: Request, res: Response) => {
   const userId = uid(req);
 
   if (admin) {
-    const rows = await db.select().from(worldBuildPlansTable).orderBy(desc(worldBuildPlansTable.updatedAt));
+     const rows = await db.select().from(worldBuildPlansTable)
+       .where(isNull(worldBuildPlansTable.targetBuildingKey))
+       .orderBy(desc(worldBuildPlansTable.updatedAt));
     const planIds = rows.map((r) => r.id);
     const contribRows =
       planIds.length > 0
@@ -125,23 +127,24 @@ router.get("/world-build/plans", async (req: Request, res: Response) => {
     rows = await db.select().from(worldBuildPlansTable).where(
       or(
         // Active Pablo plans (no owning org)
-        and(eq(worldBuildPlansTable.status, "active"), isNull(worldBuildPlansTable.owningOrgId)),
+        and(eq(worldBuildPlansTable.status, "active"), isNull(worldBuildPlansTable.owningOrgId), isNull(worldBuildPlansTable.targetBuildingKey)),
         // Active org plans open to all debtors
-        and(eq(worldBuildPlansTable.status, "active"), eq(worldBuildPlansTable.openToDebtorLabor, true)),
+        and(eq(worldBuildPlansTable.status, "active"), eq(worldBuildPlansTable.openToDebtorLabor, true), isNull(worldBuildPlansTable.targetBuildingKey)),
         // This org's own plans (any status) for management
-        eq(worldBuildPlansTable.owningOrgId, String(orgCtx.orgId)),
+        and(eq(worldBuildPlansTable.owningOrgId, String(orgCtx.orgId)), isNull(worldBuildPlansTable.targetBuildingKey)),
       )
     ).orderBy(desc(worldBuildPlansTable.updatedAt));
   } else {
     rows = await db.select().from(worldBuildPlansTable).where(
       or(
         // Active Pablo plans
-        and(eq(worldBuildPlansTable.status, "active"), isNull(worldBuildPlansTable.owningOrgId)),
+        and(eq(worldBuildPlansTable.status, "active"), isNull(worldBuildPlansTable.owningOrgId), isNull(worldBuildPlansTable.targetBuildingKey)),
         // Active org-directed plans open to debtor labor
         and(
           eq(worldBuildPlansTable.status, "active"),
           eq(worldBuildPlansTable.openToDebtorLabor, true),
           isNotNull(worldBuildPlansTable.owningOrgId),
+          isNull(worldBuildPlansTable.targetBuildingKey),
         ),
       )
     ).orderBy(desc(worldBuildPlansTable.updatedAt));
@@ -173,6 +176,7 @@ router.get("/world-build/plans/:id", async (req: Request, res: Response) => {
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Bad id" }); return; }
   const [plan] = await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id)).limit(1);
   if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
+  if (plan.targetBuildingKey) { res.status(404).json({ error: "Plan not found" }); return; }
 
   const admin = isAdmin(req);
   if (plan.status !== "active" && !admin) {
@@ -248,6 +252,7 @@ router.patch("/world-build/plans/:id", async (req: Request, res: Response) => {
 
   const [existing] = await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id)).limit(1);
   if (!existing) { res.status(404).json({ error: "Plan not found" }); return; }
+  if (existing.targetBuildingKey) { res.status(403).json({ error: "Tower construction plans are managed by the desktop construction system" }); return; }
 
   let canEdit = admin;
   if (!canEdit && existing.owningOrgId) {
@@ -292,6 +297,7 @@ router.delete("/world-build/plans/:id", async (req: Request, res: Response) => {
 
   const [existing] = await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id)).limit(1);
   if (!existing) { res.status(404).json({ error: "Plan not found" }); return; }
+  if (existing.targetBuildingKey) { res.status(403).json({ error: "Tower construction plans cannot be deleted here" }); return; }
 
   let canDelete = admin;
   if (!canDelete && existing.owningOrgId) {
@@ -325,6 +331,9 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
   const result = await db.transaction(async (tx) => {
     const [plan] = await tx.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, planId)).for("update").limit(1);
     if (!plan) return { ok: false as const, status: 404, error: "Plan not found" };
+    if (plan.targetBuildingKey) {
+      return { ok: false as const, status: 403, error: "Tower construction uses the desktop work-session route." };
+    }
     if (plan.status !== "active") return { ok: false as const, status: 400, error: "Plan not active" };
     const tasks = (plan.tasks as WorldBuildTask[] | null) ?? [];
     const idx = tasks.findIndex(t => t.id === taskId);

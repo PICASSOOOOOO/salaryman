@@ -1531,7 +1531,7 @@ func _available_elevator_floors() -> Array[int]:
 	var floors: Array[int] = []
 	for floor_key in playable.keys():
 		var floor_number := int(str(floor_key))
-		if _tower_floor_status(floor_number) == "open":
+if _tower_floor_status(floor_number) in ["open", "construction_open"]:
 			floors.append(floor_number)
 	floors.sort()
 	return floors

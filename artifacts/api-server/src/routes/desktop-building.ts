@@ -20,6 +20,7 @@ import {
 import { canAccess } from "./shadow-tower";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import desktopConstructionRouter from "./desktop-construction";
 import {
   CLEANLINESS_DECAY_PER_DAY,
   CONDITION_DECAY_PER_DAY,
@@ -46,11 +47,13 @@ import {
   buildingObjectsForRoom,
   catalogRoomForPresence,
   isNearTowerElevator,
+  isNearTowerStairwell,
   isWalkableBuildingPosition,
   validateBuildingPresence,
 } from "../lib/desktop-building-objects";
 
 const router = Router();
+router.use(desktopConstructionRouter);
 const FLOOR_COUNT = 67;
 const ONLINE_WINDOW_MS = 45_000;
 const HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1_000;
@@ -139,7 +142,7 @@ async function resolveBuildingScope(
   if (presence.room === "lobby" && presence.floorNumber !== 1) {
     return { ok: false, status: 403, error: "The building lobby is on Floor 1" };
   }
-  if (presence.room === "hallway" && presence.floorNumber > 4) {
+  if (presence.room === "hallway" && presence.floorNumber === 6) {
     const orgId = await resolveCurrentOrgId(link.userId);
     const floorOffice = await resolveUserOffice(link.userId, password, presence.floorNumber);
     const assignedWorkstation = floorOffice
@@ -581,8 +584,8 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
       res.status(400).json({ error: "The lobby is on floor 1" });
       return;
     }
-    if (room === "hallway" && floorNumber !== 6) {
-      res.status(403).json({ error: "The first office hallway is on Floor 06" });
+    if (room === "hallway" && floorNumber !== 6 && !(floorNumber >= 2 && floorNumber <= 5)) {
+      res.status(403).json({ error: "No walkable hallway is available on this floor" });
       return;
     }
     if (room === "elevator" && destinationFloor === 6
@@ -591,7 +594,7 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
       res.status(403).json({ error: "An assigned office or workstation is required for Floor 06" });
       return;
     }
-    if (room === "hallway" && floorNumber > 4
+    if (room === "hallway" && floorNumber === 6
       && ownOffice?.floor.floorNumber !== floorNumber
       && assignedWorkstation?.floor.floorNumber !== floorNumber) {
       res.status(403).json({ error: "An assigned office or workstation is required for this floor" });
@@ -717,6 +720,52 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.error({ err: error }, "Desktop building presence update failed");
     res.status(500).json({ error: "Could not update desktop presence" });
+  }
+});
+
+router.post("/desktop-building/stairs", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const destinationFloor = Number(req.body?.destinationFloor);
+  const stairwell = Number(req.body?.stairwell);
+  if (!Number.isInteger(destinationFloor) || !PLAYABLE_TOWER_FLOORS.has(destinationFloor)
+    || !Number.isInteger(stairwell) || (stairwell !== 1 && stairwell !== 2)) {
+    res.status(400).json({ error: "Choose a valid adjacent floor and stairwell" });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId))
+        .for("update").limit(1);
+      if (!presence || presence.linkId !== link.id
+        || !PLAYABLE_TOWER_FLOORS.has(presence.floorNumber)
+        || now.getTime() - presence.lastSeenAt.getTime() < 0
+        || now.getTime() - presence.lastSeenAt.getTime() > BUILDING_PRESENCE_MAX_AGE_MS) {
+        return { error: "Fresh building presence is required before using the stairwell" } as const;
+      }
+      if (Math.abs(presence.floorNumber - destinationFloor) !== 1) {
+        return { error: "Stairwells connect only adjacent open floors" } as const;
+      }
+      if (!isNearTowerStairwell(presence.floorNumber, presence, stairwell)) {
+        return { error: "Approach the selected stairwell first" } as const;
+      }
+      await tx.update(desktopOfficePresenceTable).set({
+        action: "stair",
+        destinationFloor,
+        lastSeenAt: now,
+      }).where(eq(desktopOfficePresenceTable.userId, link.userId));
+      return { ok: true as const, destinationFloor };
+    });
+    if ("error" in result) {
+      res.status(409).json({ error: result.error });
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Tower stairwell authorization failed");
+    res.status(500).json({ error: "Could not authorize stairwell travel" });
   }
 });
 

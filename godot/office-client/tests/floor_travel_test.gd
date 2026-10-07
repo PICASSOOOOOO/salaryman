@@ -64,12 +64,16 @@ func _run_tests() -> void:
 	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -0.42))
 
 	var open_floors: Array[int] = client._available_elevator_floors()
-	assert(open_floors == [1, 6])
+assert(open_floors == [1, 2, 3, 4, 5, 6])
 	assert(client._tower_floor_status(1) == "open")
+assert(client._tower_floor_status(2) == "construction_open")
+assert(client._tower_floor_status(3) == "construction_open")
+assert(client._tower_floor_status(4) == "construction_open")
+assert(client._tower_floor_status(5) == "construction_open")
 	assert(client._tower_floor_status(6) == "open")
 	assert(client._tower_floor_status(0) == "open")
 	assert(not open_floors.has(0))
-	for floor_number in [2, 3, 4, 5, 7, 67]:
+for floor_number in [7, 67]:
 		assert(client._tower_floor_status(floor_number) == "under_construction")
 	client.elevator_floor_panel = ColorRect.new()
 	client.elevator_floor_panel.visible = true

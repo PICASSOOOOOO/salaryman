@@ -505,6 +505,13 @@
       "when": 1791343500000,
       "tag": "0071_desktop_basement_survival",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791352800000,
+      "tag": "0072_tower_construction_contracts",
+      "breakpoints": true
     }
   ]
 }
