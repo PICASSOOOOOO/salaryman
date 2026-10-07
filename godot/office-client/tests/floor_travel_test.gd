@@ -62,10 +62,28 @@ func _run_tests() -> void:
 		assert(tone.data.size() > 0)
 	assert(is_equal_approx(OfficeClient.door_swing_angle(false), 0.0))
 	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -0.42))
+	for kind in [
+		"fire_extinguisher", "temple_tree", "reflection_screen", "meditation_cushion",
+		"temple_audio_control", "chapel_pew", "chapel_altar", "library_shelf",
+		"reading_table", "museum_case",
+	]:
+		assert(OfficeProp.SUPPORTED_KINDS.has(kind))
+		var prop: Node3D = OfficeProp.create(kind)
+		assert(prop is Node3D)
+		prop.free()
+	var temple_midpoint: Vector2 = client._temple_music_sample(0)
+	assert(absf(temple_midpoint.x) < 0.05)
+	assert(absf(temple_midpoint.y) < 0.05)
+	assert(client._temple_music_sample(12_345).length() > 0.001)
+	assert(not client.temple_music_enabled)
+	client._toggle_temple_music()
+	assert(client.temple_music_enabled)
+	client._toggle_temple_music()
+	assert(not client.temple_music_enabled)
 
 	var open_floors: Array[int] = client._available_elevator_floors()
-	assert(open_floors.size() == 7)
-	for floor_number in range(1, 8):
+	assert(open_floors.size() == 12)
+	for floor_number in range(1, 13):
 		assert(open_floors.has(floor_number))
 	assert(client._tower_floor_status(1) == "open")
 	assert(client._tower_floor_status(2) == "construction_open")
@@ -76,7 +94,9 @@ func _run_tests() -> void:
 	assert(client._tower_floor_status(0) == "open")
 	assert(not open_floors.has(0))
 	assert(client._tower_floor_status(7) == "open")
-	assert(client._tower_floor_status(8) == "under_construction")
+	for floor_number in range(8, 13):
+		assert(client._tower_floor_status(floor_number) == "open")
+	assert(client._tower_floor_status(13) == "under_construction")
 	assert(client._tower_floor_status(67) == "under_construction")
 	client.elevator_floor_panel = ColorRect.new()
 	client.elevator_floor_panel.visible = true
@@ -129,7 +149,7 @@ func _run_tests() -> void:
 	assert(trash_can.get_node_or_null("TrashCanPedal") is MeshInstance3D)
 	trash_can.free()
 
-	print("Godot checks passed: camera levels/cues, privacy doors, floors 1/6, two-way cabin travel, cabin geometry, and trash-can model.")
+	print("Godot checks passed: camera cues, privacy doors, Floors 1–12, tower props, temple audio, cabin travel, and hallway fixtures.")
 	var dynamic_root: Node3D = client.dynamic_root
 	client.free()
 	dynamic_root.free()

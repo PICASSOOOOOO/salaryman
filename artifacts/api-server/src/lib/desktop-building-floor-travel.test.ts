@@ -4,8 +4,10 @@ import {
   TOWER_ELEVATOR_POSITIONS,
   TOWER_PASSENGER_ELEVATOR_POSITIONS,
   TOWER_SERVICE_ELEVATOR_POSITIONS,
+  TOWER_STAIRWELL_POSITIONS,
   isNearTowerElevator,
   isNearTowerServiceElevator,
+  isNearTowerStairwell,
   validateBuildingPresence,
 } from "./desktop-building-objects";
 
@@ -30,12 +32,16 @@ describe("desktop tower floor travel", () => {
     lastSeenAt: now,
   };
 
-  it("opens the lobby, construction Floors 2–5, and Floors 6–7 while keeping upper floors closed", () => {
+  it("opens Floors 1–12, retains the construction-open Floors 2–5, and locks upper floors", () => {
     expect([...PLAYABLE_TOWER_FLOORS].sort((a, b) => a - b))
-      .toEqual(Array.from({ length: 7 }, (_, index) => index + 1));
+      .toEqual(Array.from({ length: 12 }, (_, index) => index + 1));
     expect(isNearTowerElevator(1, lobby)).toBe(true);
     expect(isNearTowerElevator(6, floorSixHallway)).toBe(true);
     expect(isNearTowerElevator(2, TOWER_PASSENGER_ELEVATOR_POSITIONS[2][0])).toBe(true);
+    expect(isNearTowerElevator(8, TOWER_PASSENGER_ELEVATOR_POSITIONS[8][0])).toBe(true);
+    expect(TOWER_STAIRWELL_POSITIONS[12]).toHaveLength(1);
+    expect(isNearTowerStairwell(12, TOWER_STAIRWELL_POSITIONS[12][0], 1)).toBe(true);
+    expect(isNearTowerStairwell(12, { x: 12_500, y: 12_500 }, 2)).toBe(false);
     expect(isNearTowerElevator(7, lobby)).toBe(false);
     expect(isNearTowerServiceElevator(2, TOWER_SERVICE_ELEVATOR_POSITIONS[2])).toBe(true);
     expect(isNearTowerServiceElevator(2, TOWER_PASSENGER_ELEVATOR_POSITIONS[2][0])).toBe(false);
@@ -54,11 +60,11 @@ describe("desktop tower floor travel", () => {
     expect(validateBuildingPresence(elevatorAtLobby, floorSixHallway, now, "executive")).toBeNull();
   });
 
-  it("allows Floor 7 and keeps Floors 8–67 under construction", () => {
-    expect(PLAYABLE_TOWER_FLOORS.has(7)).toBe(true);
-    expect(PLAYABLE_TOWER_FLOORS.has(8)).toBe(false);
-    const floorSevenHallway = { ...floorSixHallway, floorNumber: 7 };
-    const floorEightHallway = { ...floorSixHallway, floorNumber: 8 };
+  it("allows Floors 7–12 only through elevator or stair travel and keeps Floors 13–67 under construction", () => {
+    const floorSevenHallway = { ...floorSixHallway, floorNumber: 7, roomKey: "hallway:minx_city:7" };
+    const floorEightHallway = { ...floorSixHallway, floorNumber: 8, roomKey: "hallway:minx_city:8" };
+    const floorTwelveHallway = { ...floorSixHallway, floorNumber: 12, roomKey: "hallway:minx_city:12" };
+    const floorThirteenHallway = { ...floorSixHallway, floorNumber: 13, roomKey: "hallway:minx_city:13" };
     const elevatorAtLobby = {
       ...lobby,
       room: "elevator" as const,
@@ -68,7 +74,18 @@ describe("desktop tower floor travel", () => {
     };
     expect(validateBuildingPresence(elevatorAtLobby, floorSevenHallway, now, "executive")).toBeNull();
     expect(validateBuildingPresence(lobby, floorEightHallway, now, "executive"))
+      .toBe("Use a passenger elevator or stairwell to enter this floor");
+    expect(validateBuildingPresence(lobby, floorThirteenHallway, now, "executive"))
       .toBe("Floor is under construction");
+
+    const elevatorToFloorEight = {
+      ...lobby,
+      room: "elevator" as const,
+      destinationFloor: 8,
+      x: TOWER_ELEVATOR_POSITIONS[1].x,
+      y: TOWER_ELEVATOR_POSITIONS[1].y,
+    };
+    expect(validateBuildingPresence(elevatorToFloorEight, floorEightHallway, now, "executive")).toBeNull();
 
     const elevatorAtFloorSeven = {
       ...floorSevenHallway,
@@ -78,6 +95,25 @@ describe("desktop tower floor travel", () => {
       y: TOWER_ELEVATOR_POSITIONS[7].y,
     };
     expect(validateBuildingPresence(elevatorAtFloorSeven, lobby, now, null)).toBeNull();
+    const stairToFloorTwelve = {
+      ...floorSevenHallway,
+      floorNumber: 11,
+      roomKey: "hallway:minx_city:11",
+      room: "elevator" as const,
+      action: "stair",
+      destinationFloor: 12,
+      x: TOWER_STAIRWELL_POSITIONS[11][1].x,
+      y: TOWER_STAIRWELL_POSITIONS[11][1].y,
+    };
+    expect(validateBuildingPresence(stairToFloorTwelve, floorTwelveHallway, now, "executive")).toBeNull();
+  });
+
+  it("provides passenger and service elevator stops through Floor 12 without opening Floor 13", () => {
+    expect(PLAYABLE_TOWER_FLOORS.has(6)).toBe(true);
+    expect(PLAYABLE_TOWER_FLOORS.has(8)).toBe(true);
+    expect(PLAYABLE_TOWER_FLOORS.has(12)).toBe(true);
+    expect(PLAYABLE_TOWER_FLOORS.has(13)).toBe(false);
+    expect(isNearTowerServiceElevator(12, TOWER_SERVICE_ELEVATOR_POSITIONS[12])).toBe(true);
   });
 
   it("allows stale elevator presence to recover only at the lobby spawn", () => {

@@ -63,6 +63,16 @@ ObjectKind = Literal[
     "forklift",
     "pallet",
     "supply_crate",
+    "fire_extinguisher",
+    "temple_tree",
+    "reflection_screen",
+    "meditation_cushion",
+    "temple_audio_control",
+    "chapel_pew",
+    "chapel_altar",
+    "library_shelf",
+    "reading_table",
+    "museum_case",
 ]
 
 VENDING_ITEMS: dict[str, tuple[str, float]] = {
@@ -157,6 +167,16 @@ class OfficeObject:
             "forklift": (300, 450),
             "pallet": (300, 220),
             "supply_crate": (250, 250),
+            "fire_extinguisher": (0, 0),
+            "temple_tree": (320, 320),
+            "reflection_screen": (450, 80),
+            "meditation_cushion": (90, 90),
+            "temple_audio_control": (0, 0),
+            "chapel_pew": (260, 90),
+            "chapel_altar": (280, 160),
+            "library_shelf": (300, 100),
+            "reading_table": (250, 180),
+            "museum_case": (350, 180),
         }.get(self.kind, (120, 120))
 
 
@@ -471,7 +491,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-stair-floor-sign", "floor_sign", "FLOOR 01", "lobby", (49_978_650, 50_000_800), "FLOOR NUMBER", interactive=False),
         OfficeObject("recreation-elevator", "elevator", "ELEVATOR", "recreation", (1_100, 4_100), "RETURN TO LOBBY", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRS", "recreation", (8_500, 4_100), "CLIMB / CHANGE FLOOR"),
-        OfficeObject("recreation-pay-phone", "pay_phone", "PAY PHONE", "recreation", (4_900, 4_300), "CALLL HOME / COMMS ONLY"),
+        OfficeObject("recreation-pay-phone", "pay_phone", "PAY PHONE", "recreation", (9_200, 5_000), "CALLL HOME / COMMS ONLY"),
         OfficeObject("recreation-floor-number-sign", "floor_sign", "FLOOR 01", "recreation", (8_500, 3_800), "FLOOR NUMBER", interactive=False),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (1_800, 5_100), "ENTER OFFICE 01", destination_room="executive"),
         OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (3_900, 5_100), "ENTER OFFICE 02", destination_room="public"),
@@ -610,14 +630,14 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("recreation-elevator-4", "elevator", "PASSENGER ELEVATOR", "recreation", (12_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("recreation-service-elevator", "service_elevator", "SERVICE ELEVATOR", "recreation", (12_500, 1_500), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRWELL 01", "recreation", (9_500, 12_500), "STAIRS / DOWN TO FLOOR 05", destination_floor=5, stairwell_number=1),
-        OfficeObject("recreation-stairwell-2", "stairs", "STAIRWELL 02", "recreation", (12_500, 12_500), "STAIRS / DOWN TO FLOOR 05", destination_floor=5, stairwell_number=2),
+        OfficeObject("recreation-stairwell-2", "stairs", "STAIRWELL 02", "recreation", (12_500, 12_500), "STAIRS / UP TO FLOOR 07", destination_floor=7, stairwell_number=2),
         OfficeObject("floor07-elevator", "elevator", "PASSENGER ELEVATOR", "floor07_business", (11_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("floor07-elevator-1", "elevator", "PASSENGER ELEVATOR", "floor07_business", (9_300, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("floor07-elevator-2", "elevator", "PASSENGER ELEVATOR", "floor07_business", (10_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("floor07-elevator-4", "elevator", "PASSENGER ELEVATOR", "floor07_business", (12_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("floor07-service-elevator", "service_elevator", "SERVICE ELEVATOR", "floor07_business", (12_500, 1_500), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=1),
         OfficeObject("floor07-stairs", "stairs", "STAIRWELL 01", "floor07_business", (9_500, 12_500), "STAIRS / DOWN TO FLOOR 06", destination_floor=6, stairwell_number=1),
-        OfficeObject("floor07-stairwell-2", "stairs", "STAIRWELL 02", "floor07_business", (12_500, 12_500), "STAIRS / DOWN TO FLOOR 06", destination_floor=6, stairwell_number=2),
+        OfficeObject("floor07-stairwell-2", "stairs", "STAIRWELL 02", "floor07_business", (12_500, 12_500), "STAIRS / UP TO FLOOR 08", destination_floor=8, stairwell_number=2),
         OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_500, 5_000), "CHECK BANCO OMBRA"),
         OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_500, 8_000), "BUY OFFICE ASSETS"),
         OfficeObject("recreation-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_000), "PRIVATE RESTROOM / RESTORE STAMINA"),
@@ -709,8 +729,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         add_wall(room, tag, "v", x, y + height // 2, height, wall)
         add_wall(room, tag, "v", x + width, y + height // 2, height, wall)
 
-    for floor in range(2, 6):
-        room = f"construction_f{floor:02d}"
+    for floor in (*range(2, 6), *range(8, 13)):
+        room = str(FLOOR_PLAN["playableFloors"][str(floor)]["room"])
         for index, x in enumerate((9_300, 10_000, 11_000, 12_000), start=1):
             registry.add(OfficeObject(
                 f"floor-{floor:02d}-passenger-elevator-{index}",
@@ -732,10 +752,10 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         ))
         lower_floor = floor - 1
         upper_floor = floor + 1
-        for stairwell, x, destination in (
-            (1, 9_500, lower_floor),
-            (2, 12_500, min(6, upper_floor)),
-        ):
+        stairwells = [(1, 9_500, lower_floor)]
+        if upper_floor <= 12:
+            stairwells.append((2, 12_500, upper_floor))
+        for stairwell, x, destination in stairwells:
             registry.add(OfficeObject(
                 f"floor-{floor:02d}-stairwell-{stairwell}",
                 "stairs",
@@ -762,7 +782,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             "SHARED HALLWAY VENDING",
             room,
             (12_790, 8_000),
-            "BUY OFFICE ASSETS",
+            "" if floor == 7 else "BUY OFFICE ASSETS",
+            interactive=floor != 7,
         ))
 
     # The lobby kiosks are the only kiosk-style business locations.
@@ -792,10 +813,12 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
 
     # Standard lower floors use separate office suites, with one set of
     # partitions and a single shared ATM/vending pair along the east hallway wall.
-    standard_units = FLOOR_PLAN["businessSuiteLayout"]["standardFloorUnits"]
-    for floor in (2, 3, 4, 5, 7):
+    floor_layouts = FLOOR_PLAN["businessSuiteLayout"]
+    for floor in (2, 3, 4, 5, 8, 9, 10, 11, 12):
         floor_data = FLOOR_PLAN["playableFloors"][str(floor)]
         room = str(floor_data["room"])
+        layout_key = str(floor_data.get("suiteLayout", "standardFloorUnits"))
+        standard_units = floor_layouts.get(layout_key, floor_layouts["standardFloorUnits"])
         for business in floor_data.get("businesses", []):
             unit_number = int(business["unitNumber"])
             unit = next(
@@ -1015,4 +1038,119 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                         interactive=False,
                     )
                 )
+
+    # Each playable-floor template represents one physical floor at a time.
+    # Floors 13–67 reuse their architectural templates, so a single shared set
+    # here appears once on each instantiated level without opening construction.
+    floor_rooms: dict[str, int] = {}
+    for floor_key, floor_data in FLOOR_PLAN["playableFloors"].items():
+        room = str(floor_data.get("room", ""))
+        if room:
+            floor_rooms.setdefault(room, int(floor_key))
+    for room, floor in floor_rooms.items():
+        if room.startswith("basement_b"):
+            continue
+        if room == "lobby":
+            fixtures = (
+                ("atm", "HALLWAY ATM", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
+                ("vending_machine", "HALLWAY VENDING", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
+                ("pay_phone", "HALLWAY PAY PHONE", (49_976_200, 49_999_300), "OPEN COMMS"),
+                ("trash_can", "HALLWAY TRASH CAN", (49_975_600, 50_002_300), "PICK UP TRASH"),
+                ("fire_extinguisher", "FIRE EXTINGUISHER", (49_975_250, 50_001_000), ""),
+            )
+        else:
+            fixtures = (
+                ("atm", "SHARED HALLWAY ATM", (12_790, 5_000), "CHECK BANCO OMBRA"),
+                ("vending_machine", "SHARED HALLWAY VENDING", (12_790, 8_000), "BUY OFFICE ASSETS"),
+                ("pay_phone", "HALLWAY PAY PHONE", (9_200, 5_000), "OPEN COMMS"),
+                ("trash_can", "HALLWAY TRASH CAN", (9_200, 8_000), "PICK UP TRASH"),
+                ("fire_extinguisher", "FIRE EXTINGUISHER", (9_200, 3_500), ""),
+            )
+        existing_kinds = {
+            item.kind for item in registry.objects if item.room == room
+        }
+        for kind, label, position, prompt in fixtures:
+            if kind in existing_kinds:
+                continue
+            is_vending_fixture = kind == "vending_machine"
+            registry.add(OfficeObject(
+                f"floor-{floor:02d}-hallway-{kind}",
+                kind,  # type: ignore[arg-type]
+                label,
+                room,
+                position,
+                "" if is_vending_fixture else prompt,
+                interactive=kind not in {"fire_extinguisher", "vending_machine"},
+            ))
+            existing_kinds.add(kind)  # type: ignore[arg-type]
+
+    for floor_key, floor_data in FLOOR_PLAN["playableFloors"].items():
+        room = str(floor_data.get("room", ""))
+        for index, prop in enumerate(floor_data.get("interiorProps", []), start=1):
+            position = tuple(int(value) for value in prop.get("position", []))
+            if len(position) != 2:
+                continue
+            raw_extents = prop.get("collisionHalfExtents")
+            extents = (
+                tuple(int(value) for value in raw_extents)
+                if isinstance(raw_extents, list) and len(raw_extents) == 2
+                else None
+            )
+            registry.add(OfficeObject(
+                f"floor-{int(floor_key):02d}-interior-prop-{index:02d}",
+                str(prop.get("kind", "floor_sign")),  # type: ignore[arg-type]
+                str(prop.get("label", "TOWER FIXTURE")),
+                room,
+                position,  # type: ignore[arg-type]
+                "",
+                interactive=bool(prop.get("interactive", False)),
+                solid_half_extents=extents,  # type: ignore[arg-type]
+            ))
+
+    basement_hallway_fixtures = {
+        1: (
+            (6_800, 5_000), (7_600, 5_000), (8_400, 5_000),
+            (9_200, 5_000), (9_600, 5_250),
+        ),
+        2: (
+            (8_600, 4_000), (8_600, 5_000), (8_600, 6_000),
+            (8_600, 7_000), (8_600, 8_000),
+        ),
+        3: (
+            (8_500, 2_000), (8_500, 3_000), (8_500, 4_000),
+            (8_500, 5_000), (8_500, 6_000),
+        ),
+        4: (
+            (1_500, 4_500), (2_500, 4_500), (3_500, 4_500),
+            (4_500, 4_500), (5_500, 5_500),
+        ),
+        5: (
+            (2_500, 6_500), (3_500, 6_500), (4_500, 6_500),
+            (5_500, 6_500), (6_500, 6_500),
+        ),
+        6: (
+            (3_500, 7_500), (4_500, 7_500), (5_500, 7_500),
+            (6_500, 7_500), (7_500, 3_500),
+        ),
+    }
+    fixture_kinds = (
+        ("atm", "SHARED HALLWAY ATM", "CHECK BANCO OMBRA"),
+        ("vending_machine", "SHARED HALLWAY VENDING", "BUY OFFICE ASSETS"),
+        ("pay_phone", "HALLWAY PAY PHONE", "OPEN COMMS"),
+        ("trash_can", "HALLWAY TRASH CAN", "PICK UP TRASH"),
+        ("fire_extinguisher", "FIRE EXTINGUISHER", ""),
+    )
+    for level, positions in basement_hallway_fixtures.items():
+        room = f"basement_b{level}"
+        for (kind, label, prompt), position in zip(fixture_kinds, positions, strict=True):
+            is_vending_fixture = kind == "vending_machine"
+            registry.add(OfficeObject(
+                f"basement-b{level}-hallway-{kind}",
+                kind,  # type: ignore[arg-type]
+                label,
+                room,
+                position,
+                "" if is_vending_fixture else prompt,
+                interactive=kind not in {"fire_extinguisher", "vending_machine"},
+            ))
     return registry

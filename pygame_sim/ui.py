@@ -973,6 +973,83 @@ class SolarPunkRenderer:
                 (body.left + 3, body.bottom - 4),
                 1,
             )
+        elif kind == "fire_extinguisher":
+            width = max(7, int(170 * scale))
+            height = max(12, int(310 * scale))
+            body = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (122, 39, 33), (body.left, body.bottom - 5, width, 10))
+            pygame.draw.rect(self.screen, (181, 54, 45), body, border_radius=max(2, int(5 * scale)))
+            pygame.draw.rect(self.screen, (227, 216, 190), body.inflate(-max(4, width // 3), -max(4, height // 2)))
+            pygame.draw.rect(self.screen, (71, 73, 61), (x - width // 4, body.top - 5, width // 2, 6))
+            pygame.draw.line(self.screen, (47, 51, 44), (body.right, body.top + 5), (body.right + 5, y), 2)
+        elif kind == "temple_tree":
+            planter_radius = max(8, int(180 * scale))
+            pygame.draw.ellipse(
+                self.screen,
+                (91, 67, 48),
+                (x - planter_radius, y + planter_radius // 2, planter_radius * 2, planter_radius // 2),
+            )
+            pygame.draw.line(self.screen, (126, 91, 59), (x, y + 4), (x, y - planter_radius), max(3, int(18 * scale)))
+            canopy = max(14, int(290 * scale))
+            for dx, dy, radius in ((0, -canopy, canopy), (-canopy // 2, -canopy // 2, canopy * 3 // 4), (canopy // 2, -canopy // 2, canopy * 3 // 4), (0, -canopy * 3 // 2, canopy * 2 // 3)):
+                pygame.draw.circle(self.screen, (71, 104, 72), (x + dx, y + dy), radius)
+                pygame.draw.circle(self.screen, (101, 133, 90), (x + dx - radius // 4, y + dy - radius // 4), max(2, radius // 3))
+        elif kind == "reflection_screen":
+            width = max(28, int(760 * scale))
+            height = max(16, int(310 * scale))
+            screen = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (81, 104, 89), screen, border_radius=3)
+            pygame.draw.rect(self.screen, (164, 153, 121), screen, max(2, int(12 * scale)), border_radius=3)
+            pygame.draw.line(self.screen, (189, 192, 165), screen.midtop, screen.midbottom, max(1, int(3 * scale)))
+        elif kind == "meditation_cushion":
+            radius = max(8, int(270 * scale))
+            pygame.draw.ellipse(self.screen, (79, 68, 59), (x - radius, y - radius // 2, radius * 2, radius))
+            pygame.draw.ellipse(self.screen, (147, 128, 100), (x - radius + 2, y - radius // 2, radius * 2 - 4, radius - 5), max(1, int(5 * scale)))
+        elif kind == "temple_audio_control":
+            panel = pygame.Rect(x - max(10, int(170 * scale)), y - max(8, int(110 * scale)), max(20, int(340 * scale)), max(16, int(220 * scale)))
+            pygame.draw.rect(self.screen, (66, 83, 70), panel, border_radius=2)
+            pygame.draw.rect(self.screen, (196, 180, 139), panel, max(1, int(5 * scale)), border_radius=2)
+            pygame.draw.circle(self.screen, (171, 137, 78), (panel.centerx - panel.width // 5, panel.centery), max(2, panel.width // 10))
+            pygame.draw.circle(self.screen, (50, 59, 51), (panel.centerx + panel.width // 5, panel.centery), max(2, panel.width // 10))
+        elif kind == "chapel_pew":
+            width = max(30, int(520 * scale))
+            height = max(12, int(150 * scale))
+            bench = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (114, 78, 51), bench, border_radius=3)
+            pygame.draw.rect(self.screen, (162, 119, 75), (bench.left, bench.top - max(7, height // 2), width, max(8, height // 3)), border_radius=2)
+            for leg_x in (bench.left + width // 6, bench.right - width // 6):
+                pygame.draw.line(self.screen, (80, 57, 42), (leg_x, bench.bottom - 1), (leg_x, bench.bottom + height // 2), max(2, int(8 * scale)))
+        elif kind == "chapel_altar":
+            width = max(40, int(640 * scale))
+            top = pygame.Rect(x - width // 2, y - max(10, int(100 * scale)), width, max(12, int(120 * scale)))
+            pygame.draw.rect(self.screen, (117, 81, 52), top, border_radius=2)
+            pygame.draw.rect(self.screen, (188, 156, 101), top.inflate(5, 3), max(1, int(5 * scale)))
+            pygame.draw.line(self.screen, (224, 211, 177), (top.left + width // 5, top.bottom), (top.right - width // 5, top.bottom), max(2, int(18 * scale)))
+        elif kind == "library_shelf":
+            width = max(30, int(540 * scale))
+            height = max(38, int(520 * scale))
+            shelf = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (105, 73, 49), shelf)
+            colors = ((113, 131, 103), (155, 101, 73), (81, 116, 130))
+            for row in range(4):
+                row_y = shelf.top + 8 + row * (height - 16) // 4
+                pygame.draw.line(self.screen, (188, 153, 102), (shelf.left, row_y), (shelf.right, row_y), max(2, int(8 * scale)))
+                for column in range(6):
+                    book_x = shelf.left + 10 + column * max(3, (width - 20) // 6)
+                    book_height = max(8, int((105 + (row + column) % 3 * 22) * scale))
+                    pygame.draw.rect(self.screen, colors[(row + column) % len(colors)], (book_x, row_y - book_height, max(3, int(42 * scale)), book_height))
+        elif kind == "reading_table":
+            radius = max(18, int(320 * scale))
+            pygame.draw.ellipse(self.screen, (106, 74, 49), (x - radius, y - radius // 2, radius * 2, radius))
+            pygame.draw.ellipse(self.screen, (172, 137, 90), (x - radius + 4, y - radius // 2 + 2, radius * 2 - 8, radius - 8), max(2, int(8 * scale)))
+            pygame.draw.rect(self.screen, (224, 211, 176), (x - radius // 4, y - radius // 5, radius // 2, max(3, int(28 * scale))), border_radius=2)
+        elif kind == "museum_case":
+            width = max(35, int(390 * scale))
+            height = max(24, int(250 * scale))
+            case = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (116, 91, 63), case.inflate(0, max(4, height // 4)), border_radius=2)
+            pygame.draw.rect(self.screen, (153, 184, 173), case, max(1, int(5 * scale)), border_radius=2)
+            pygame.draw.rect(self.screen, (208, 191, 148), (x - width // 8, y - height // 5, width // 4, max(4, height // 3)), border_radius=2)
         elif kind == "restroom_stall":
             width = max(34, int(420 * scale))
             height = max(38, int(520 * scale))

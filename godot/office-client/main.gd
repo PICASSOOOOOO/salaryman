@@ -107,6 +107,10 @@ var danger_audio_rng := RandomNumberGenerator.new()
 var danger_audio_player: AudioStreamPlayer
 var danger_audio_silence_seconds := 0.0
 var danger_audio_current_track := -1
+var temple_music_player: AudioStreamPlayer
+var temple_music_enabled := false
+var temple_music_frame := 0
+const TEMPLE_MIX_RATE := 22050.0
 var structural_wall_thickness := 0.3
 var wall_service_cavity := 0.12
 
@@ -119,6 +123,7 @@ func _ready() -> void:
 	danger_audio_player.name = "BasementDangerAudio"
 	danger_audio_player.volume_db = -45.0
 	add_child(danger_audio_player)
+	_setup_temple_music()
 	camera_sfx = preload("res://camera_sfx.gd").new()
 	camera_sfx.name = "CameraSfx"
 	add_child(camera_sfx)
@@ -132,6 +137,7 @@ func _ready() -> void:
 func _build_materials() -> void:
 	materials["floor"] = _material(Color("#d4b98b"), 0.92)
 	materials["hall_floor"] = _material(Color("#415965"), 0.84)
+	materials["temple_floor"] = _material(Color("#9baa87"), 0.92)
 	materials["construction_floor"] = _material(Color("#70685b"), 0.96)
 	materials["lobby_floor"] = _material(Color("#3d655a"), 0.78)
 	materials["lobby_rug"] = _material(Color("#55433c"), 0.96)
@@ -431,13 +437,15 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 	var layout: Dictionary = floor_plan.get("businessSuiteLayout", {})
 	var standard_units: Array = layout.get("standardFloorUnits", [])
 	var wall_keys: Dictionary = {}
-	for floor_number in [2, 3, 4, 5, 7]:
+	for floor_number in [2, 3, 4, 5, 8, 9, 10, 11, 12]:
 		var floor_data: Dictionary = floor_plan.get("playableFloors", {}).get(str(floor_number), {})
 		var room := str(floor_data.get("room", ""))
+		var suite_layout_key := str(floor_data.get("suiteLayout", "standardFloorUnits"))
+		var floor_units: Array = layout.get(suite_layout_key, standard_units)
 		for raw_business in floor_data.get("businesses", []):
 			var business: Dictionary = raw_business
 			var unit_number := int(business.get("unitNumber", 0))
-			for raw_unit in standard_units:
+			for raw_unit in floor_units:
 				var unit: Dictionary = raw_unit
 				if int(unit.get("unitNumber", 0)) != unit_number:
 					continue
@@ -1315,6 +1323,68 @@ func _process(delta: float) -> void:
 	_update_hud()
 	_update_art_motion(delta)
 	_update_danger_audio(delta)
+	_update_temple_music()
+
+
+func _setup_temple_music() -> void:
+	temple_music_player = AudioStreamPlayer.new()
+	temple_music_player.name = "TempleMeditationMusic"
+	var stream := AudioStreamGenerator.new()
+	stream.mix_rate = TEMPLE_MIX_RATE
+	stream.buffer_length = 1.0
+	temple_music_player.stream = stream
+	temple_music_player.volume_db = -15.0
+	add_child(temple_music_player)
+
+
+func _toggle_temple_music() -> void:
+	temple_music_enabled = not temple_music_enabled
+	if not temple_music_enabled and temple_music_player != null:
+		temple_music_player.stop()
+
+
+func _update_temple_music() -> void:
+	if temple_music_player == null:
+		return
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	var in_temple := int(scene_data.get("floor", 1)) == 7 \
+		and str(scene_data.get("room", "")) == "floor07_business"
+	if not temple_music_enabled or not in_temple:
+		if temple_music_player.playing:
+			temple_music_player.stop()
+		return
+	if not temple_music_player.playing:
+		temple_music_player.play()
+	var playback := temple_music_player.get_stream_playback() as AudioStreamGeneratorPlayback
+	if playback == null:
+		return
+	var frames_available := playback.get_frames_available()
+	for _index in range(frames_available):
+		playback.push_frame(_temple_music_sample(temple_music_frame))
+		temple_music_frame += 1
+
+
+func _temple_music_sample(frame_index: int) -> Vector2:
+	var seconds := float(frame_index) / TEMPLE_MIX_RATE
+	var phrase_time := fposmod(seconds, 32.0)
+	var note_index := int(phrase_time / 4.0)
+	var melody := [261.63, 293.66, 329.63, 392.0, 349.23, 293.66, 261.63, 0.0]
+	var frequency := float(melody[note_index])
+	var note_time := fposmod(phrase_time, 4.0)
+	var envelope := minf(
+		clampf(note_time / 0.65, 0.0, 1.0),
+		clampf((4.0 - note_time) / 1.1, 0.0, 1.0),
+	)
+	var melody_sample := 0.0
+	if frequency > 0.0:
+		melody_sample = (
+			sin(TAU * frequency * seconds) * 0.027
+			+ sin(TAU * frequency * 2.0 * seconds) * 0.004
+		) * envelope
+	var drone := sin(TAU * 146.83 * seconds) * 0.010 \
+		+ sin(TAU * 220.0 * seconds) * 0.005
+	var sample := clampf(melody_sample + drone, -0.045, 0.045)
+	return Vector2(sample, sample)
 
 
 func _update_danger_audio(delta: float) -> void:
@@ -2668,7 +2738,11 @@ func _update_hud() -> void:
 			state_color = Color("#f8b957")
 		controls_label.add_theme_color_override("font_color", state_color)
 	else:
-		controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+		if floor_number == 7 and room_id == "floor07_business":
+			var music_state := "ON" if temple_music_enabled else "OFF"
+			controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · M MEDITATION MUSIC %s · C CLEAN · V REPAIR" % music_state
+		else:
+			controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Waiting for the game simulation to provide the room mission."))
@@ -3098,6 +3172,13 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if elevator_transition_active:
+			get_viewport().set_input_as_handled()
+			return
+		var scene_data: Dictionary = snapshot.get("scene", {})
+		if event.keycode == KEY_M \
+			and int(scene_data.get("floor", 1)) == 7 \
+			and str(scene_data.get("room", "")) == "floor07_business":
+			_toggle_temple_music()
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_O:

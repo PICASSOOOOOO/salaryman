@@ -3,6 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from pygame_sim.building_sync import DesktopBuildingSync
+from pygame_sim.objects import FLOOR_PLAN
 from pygame_sim.scene import TowerScene
 
 
@@ -51,18 +52,84 @@ class TowerFloorTravelTests(unittest.TestCase):
                 self.assertTrue(scene.select_floor(6))
             self.assertTrue(scene._collides_with_object(trash_can.position))
 
-    def test_floors_two_through_seven_remain_open_and_upper_floors_are_closed(self):
+    def test_floors_two_through_twelve_are_open_and_upper_floors_are_closed(self):
         scene = TowerScene()
         self.assertTrue(scene.is_playable_floor(1))
         self.assertTrue(scene.is_playable_floor(6))
         for floor in (2, 3, 4, 5):
             self.assertTrue(scene.is_playable_floor(floor), floor)
             self.assertEqual(scene.floor_status(floor), "construction_open")
-        self.assertTrue(scene.is_playable_floor(7))
-        self.assertEqual(scene.floor_status(7), "open")
-        for floor in (0, 8, 67):
+        for floor in range(6, 13):
+            self.assertTrue(scene.is_playable_floor(floor), floor)
+            self.assertEqual(scene.floor_status(floor), "open")
+        for floor in (0, 13, 67):
             self.assertFalse(scene.is_playable_floor(floor), floor)
-        self.assertEqual(scene.floor_status(8), "under_construction")
+        self.assertEqual(scene.floor_status(13), "under_construction")
+
+    def test_new_floors_have_the_agreed_suite_counts_and_floor_ten_uses_four_large_units(self):
+        scene = TowerScene()
+        expected_counts = {8: 8, 9: 8, 10: 4, 11: 8, 12: 8}
+        for floor, expected_count in expected_counts.items():
+            room = FLOOR_PLAN["playableFloors"][str(floor)]["room"]
+            suites = [
+                obj for obj in scene.objects.objects
+                if obj.kind == "business_suite" and obj.room == room
+            ]
+            self.assertEqual(len(suites), expected_count, floor)
+        floor_ten = [
+            obj for obj in scene.objects.objects
+            if obj.kind == "business_suite" and obj.room == "floor10_business"
+        ]
+        self.assertEqual(
+            {tuple(obj.suite_bounds) for obj in floor_ten},
+            {
+                (0, 0, 9000, 11000),
+                (13000, 0, 9000, 11000),
+                (0, 14000, 9000, 11000),
+                (13000, 14000, 9000, 11000),
+            },
+        )
+
+    def test_every_floor_template_and_basement_has_one_shared_hallway_fixture_set(self):
+        scene = TowerScene()
+        fixture_kinds = {"pay_phone", "trash_can", "atm", "vending_machine", "fire_extinguisher"}
+        floor_seven_vending = scene.objects.get("floor-07-shared-vending")
+        self.assertIsNotNone(floor_seven_vending)
+        self.assertFalse(floor_seven_vending.interactive)
+        self.assertEqual(floor_seven_vending.prompt, "")
+        rooms = {
+            str(data["room"])
+            for data in FLOOR_PLAN["playableFloors"].values()
+        } | {f"basement_b{level}" for level in range(1, 7)}
+        for room in rooms:
+            with self.subTest(room=room):
+                fixtures = [
+                    obj for obj in scene.objects.objects
+                    if obj.room == room and obj.kind in fixture_kinds
+                ]
+                for kind in fixture_kinds:
+                    matching = [obj for obj in fixtures if obj.kind == kind]
+                    if room == "basement_b1" and kind == "trash_can":
+                        matching = [
+                            obj for obj in matching
+                            if obj.id == "basement-b1-hallway-trash_can"
+                        ]
+                    self.assertEqual(len(matching), 1, (room, kind))
+                self.assertTrue(all(obj.kind != "fire_extinguisher" or not obj.interactive for obj in fixtures))
+                for obj in fixtures:
+                    if obj.kind == "vending_machine" and "hallway-vending_machine" in obj.id:
+                        self.assertFalse(obj.interactive)
+                        self.assertEqual(obj.prompt, "")
+                if room in {"basement_b4", "basement_b5", "basement_b6"}:
+                    scene.current_room = room
+                    scene.basement_level = int(room[-1])
+                    hallway_prefix = room.replace("_", "-") + "-hallway-"
+                    for fixture in fixtures:
+                        if hallway_prefix in fixture.id:
+                            self.assertTrue(
+                                scene._room_position_is_walkable(fixture.position),
+                                fixture.id,
+                            )
 
     def test_restrooms_waste_stations_and_daily_utility_stations_exist_in_their_physical_floors(self):
         scene = TowerScene()
@@ -90,7 +157,7 @@ class TowerFloorTravelTests(unittest.TestCase):
         self.assertTrue(scene.select_floor(1))
         self.assertEqual(scene.current_floor, 1)
         self.assertEqual(tuple(scene.player_position), lobby_spawn)
-        for expected_floor in range(2, 8):
+        for expected_floor in range(2, 13):
             self.assertTrue(scene.climb_stairs())
             self.assertEqual(scene.current_floor, expected_floor)
         self.assertFalse(scene.climb_stairs())

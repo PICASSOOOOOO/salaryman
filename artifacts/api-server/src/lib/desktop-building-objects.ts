@@ -31,7 +31,7 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
 export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
 export const BUILDING_PRESENCE_MAX_AGE_MS = 10_000;
 export const PLAYABLE_TOWER_FLOORS: ReadonlySet<number> = new Set(
-  Array.from({ length: 7 }, (_, index) => index + 1),
+  Array.from({ length: 12 }, (_, index) => index + 1),
 );
 export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: number }>> = {
   1: { x: 49_977_000, y: 50_000_000 },
@@ -41,6 +41,11 @@ export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: n
   5: { x: 11_000, y: 1_500 },
   6: { x: 11_000, y: 1_500 },
   7: { x: 11_000, y: 1_500 },
+  8: { x: 11_000, y: 1_500 },
+  9: { x: 11_000, y: 1_500 },
+  10: { x: 11_000, y: 1_500 },
+  11: { x: 11_000, y: 1_500 },
+  12: { x: 11_000, y: 1_500 },
 };
 export const TOWER_PASSENGER_ELEVATOR_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
   1: [
@@ -55,6 +60,11 @@ export const TOWER_PASSENGER_ELEVATOR_POSITIONS: Readonly<Record<number, readonl
   5: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
   6: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
   7: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  8: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  9: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  10: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  11: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  12: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
 };
 export const TOWER_SERVICE_ELEVATOR_POSITIONS: Readonly<Record<number, Position>> = {
   1: TOWER_SERVICE_ELEVATOR_LOBBY,
@@ -64,6 +74,11 @@ export const TOWER_SERVICE_ELEVATOR_POSITIONS: Readonly<Record<number, Position>
   5: { x: 12_500, y: 1_500 },
   6: { x: 12_500, y: 1_500 },
   7: { x: 12_500, y: 1_500 },
+  8: { x: 12_500, y: 1_500 },
+  9: { x: 12_500, y: 1_500 },
+  10: { x: 12_500, y: 1_500 },
+  11: { x: 12_500, y: 1_500 },
+  12: { x: 12_500, y: 1_500 },
 };
 export const TOWER_STAIRWELL_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
   1: [
@@ -76,6 +91,11 @@ export const TOWER_STAIRWELL_POSITIONS: Readonly<Record<number, readonly Positio
   5: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
   6: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
   7: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  8: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  9: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  10: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  11: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
+  12: [{ x: 9_500, y: 12_500 }],
 };
 export const TOWER_ELEVATOR_INTERACTION_RADIUS = 1_250;
 export const TOWER_STAIRWELL_INTERACTION_RADIUS = 1_250;
@@ -244,7 +264,7 @@ export function validateBuildingPresence(
   const canRecoverToLobby = next.floorNumber === 1
     && previousIsStale
     && Math.hypot(next.x - spawn.x, next.y - spawn.y) <= 350;
-  if (next.floorNumber >= 2 && next.floorNumber <= 6
+  if (next.floorNumber >= 2 && next.floorNumber <= 12
     && previous?.floorNumber !== next.floorNumber
     && !elevatorAuthorized && !stairAuthorized) {
     return "Use a passenger elevator or stairwell to enter this floor";
