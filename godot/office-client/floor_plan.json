@@ -101,37 +101,20 @@
         "floor": "B1",
         "room": "basement_b1",
         "objectIds": ["basement-b1-shipping-waste", "basement-b1-loading-gate"]
-      },
-      "maximumSeparateBusinessesByArea": {
-        "1": 4,
-        "2": 4,
-        "3": 4,
-        "4": 4,
-        "5": 4,
-        "6": 4,
-        "7": 4,
-        "B1": 8,
-        "B2": 8,
-        "B3": 5,
-        "B4": 4,
-        "B5": 4,
-        "B6": 4
-      },
-      "minimumBusinessesWhenConsolidated": 1,
-      "adjacentBusinessUnitsCanBeConsolidated": true
+      }
     },
     "floor6Businesses": [
       {"id": "bank-office", "label": "BANCO OMBRA BANK OFFICE", "service": "bank", "floor": 6, "officeNumber": 1, "initialOperator": "PABLO CORP"},
       {"id": "real-estate-office", "label": "PABLO CORP REAL ESTATE", "service": "real_estate", "floor": 6, "officeNumber": 2, "initialOperator": "PABLO CORP"},
       {"id": "fish-store", "label": "FISH STORE", "service": "aquariums", "stock": ["decor_aquarium"], "floor": 6, "officeNumber": 3, "initialOperator": "PABLO CORP"},
       {"id": "furniture-store", "label": "FURNITURE STORE", "service": "furniture", "floor": 6, "officeNumber": 4, "initialOperator": "PABLO CORP"}
-    ],
-    "floor7BusinessUnits": [
-      {"id": "floor07-office-01", "officeNumber": 1, "initialOperator": "PABLO CORP", "businessType": null},
-      {"id": "floor07-office-02", "officeNumber": 2, "initialOperator": "PABLO CORP", "businessType": null},
-      {"id": "floor07-office-03", "officeNumber": 3, "initialOperator": "PABLO CORP", "businessType": null},
-      {"id": "floor07-office-04", "officeNumber": 4, "initialOperator": "PABLO CORP", "businessType": null}
     ]
+  },
+  "businessOpportunityRules": {
+    "defaultBusinessesPerFloor": 4,
+    "maximumBusinessesPerFloorBasedOnSizeAndLocation": 8,
+    "minimumBusinessesWhenConsolidated": 1,
+    "consolidationAllowed": true
   },
   "publicOfficeSales": {
     "floorFrom": 5,
