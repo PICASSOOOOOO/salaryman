@@ -1873,3 +1873,17 @@ mtime_ms = 1791392185842
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/773e7e19-d86f-4013-895e-4f4aa0624661/b959bdee-8265-4915-a7ff-780ed6962fef"
 storage_version_token = "1791392571391840"
 content_type = "image/png"
+
+[[outputs]]
+id = "HCuqcL98_qtt7_5_gdT6u"
+uri = "file://godot/office-client/review/tower-floor-review.html"
+type = "html"
+title = "Tower Floor Visual Review"
+description = "Self-contained gallery of 23 final Godot-native previews for B1–B6 and F1–F12, including the B1 yard and gate details."
+logical_id = "6bf79a47-58fe-4ff5-9bfd-96e202817460"
+content_hash = "sha256:220efbdcffc16ec62a145f0fc8e9cc7c10daf23f39fb5ccbfa010b11d735560e"
+size = 1205478
+mtime_ms = 1791395455294
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6bf79a47-58fe-4ff5-9bfd-96e202817460/9aae9d4c-aab6-4dcd-a391-f8612fb9335a"
+storage_version_token = "1791395510996176"
+content_type = "text/html"

@@ -338,8 +338,8 @@
     ],
     "b1": {
       "bounds": [0, 0, 56569, 28284],
-      "interiorBusinessHalf": [0, 0, 10000, 10000],
-      "exteriorLoadingYardHalf": [10000, 0, 10000, 10000],
+      "interiorBusinessHalf": [0, 0, 28284, 28284],
+      "exteriorLoadingYardHalf": [28284, 0, 28285, 28284],
       "yardAccess": [28284, 14142],
       "exteriorGate": [56569, 19799],
       "businessUnits": [
@@ -812,8 +812,8 @@
     "b1LoadingYard": {
       "clearEnvelopeMeters": [566, 283],
       "clearEnvelopeUnits": [56569, 28284],
-      "interiorBusinessHalf": [0, 0, 10000, 10000],
-      "exteriorLoadingYardHalf": [10000, 0, 10000, 10000],
+      "interiorBusinessHalf": [0, 0, 28284, 28284],
+      "exteriorLoadingYardHalf": [28284, 0, 28285, 28284],
       "wallRoutes": [
         {
           "id": "b1-perimeter-north",

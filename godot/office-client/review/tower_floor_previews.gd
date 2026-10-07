@@ -96,6 +96,14 @@ func _capture_all() -> void:
 	for floor_number in range(1, 13):
 		jobs.append({"id": "F%d" % floor_number, "floor": floor_number, "basement": 0})
 	jobs.append({
+		"id": "B1-YARD",
+		"floor": 0,
+		"basement": 1,
+		"cameraFocus": "b1-yard",
+		"title": "SALARYMAN OS  /  B1 LOADING YARD",
+		"subtitle": "TRUCK · FORKLIFT · PALLETS · SUPPLIES · GARBAGE CANS",
+	})
+	jobs.append({
 		"id": "B1-GATE",
 		"floor": 0,
 		"basement": 1,
@@ -166,7 +174,7 @@ func _create_review_scene() -> void:
 	sunlight.light_energy = 1.05
 	sunlight.shadow_enabled = false
 	scene_world.add_child(sunlight)
-	root.size = Vector2i(1280, 800)
+	root.size = Vector2i(1280, 720)
 
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -193,7 +201,7 @@ func _create_review_scene() -> void:
 	overlay.add_child(subtitle_label)
 	var footer := Label.new()
 	footer.text = "GODOT 3D REVIEW RENDER  ·  NATIVE TOWER PROPS  ·  NOT GAMEPLAY FOOTAGE"
-	footer.position = Vector2(42, 752)
+	footer.position = Vector2(42, 676)
 	footer.add_theme_font_size_override("font_size", 15)
 	footer.add_theme_color_override("font_color", Color("#c9b995"))
 	overlay.add_child(footer)
@@ -298,7 +306,7 @@ func _render_floor(parent: Node3D, job: Dictionary) -> void:
 	elif floor_number >= 8 and floor_number <= 12:
 		_add_business_suites(parent, floor_data, scale_factor, false)
 	elif is_basement and basement_number == 1:
-		_add_b1(parent, floor_data, scale_factor)
+		_add_b1(parent, floor_data, scale_factor, str(job.get("cameraFocus", "")) == "b1-yard")
 	elif is_basement:
 		_add_other_basement(parent, basement_number, scale_factor, room_spec)
 
@@ -677,7 +685,7 @@ func _add_lobby(parent: Node3D, rect: Rect2, scale_factor: float, origin: Vector
 	_add_nameplate(parent, "RECEPTION", Vector3(center.x, 2.25, center.z - 1.55), rect.size.x * 0.35)
 
 
-func _add_b1(parent: Node3D, floor_data: Dictionary, scale_factor: float) -> void:
+func _add_b1(parent: Node3D, floor_data: Dictionary, scale_factor: float, show_yard_annotations: bool = false) -> void:
 	var b1: Dictionary = plan["businessSuiteLayout"]["b1"]
 	var yard: Array = b1["exteriorLoadingYardHalf"]
 	var yard_rect := Rect2(float(yard[0]) * scale_factor, float(yard[1]) * scale_factor, float(yard[2]) * scale_factor, float(yard[3]) * scale_factor)
@@ -690,19 +698,22 @@ func _add_b1(parent: Node3D, floor_data: Dictionary, scale_factor: float) -> voi
 		var business: Dictionary = businesses[index]
 		var bounds: Array = unit.get("bounds", [])
 		_draw_suite(parent, bounds, str(unit.get("doorSide", "south")), scale_factor, str(business.get("label", "")), false)
-		_queue_annotation(
-			str(business.get("label", "BUSINESS")),
-			Vector3(
-				(float(bounds[0]) + float(bounds[2]) * 0.5) * scale_factor,
-				2.55,
-				(float(bounds[1]) + float(bounds[3]) * 0.5) * scale_factor,
-			),
-		)
+		if not show_yard_annotations:
+			_queue_annotation(
+				str(business.get("label", "BUSINESS")),
+				Vector3(
+					(float(bounds[0]) + float(bounds[2]) * 0.5) * scale_factor,
+					2.55,
+					(float(bounds[1]) + float(bounds[3]) * 0.5) * scale_factor,
+				),
+			)
 	for prop_value in b1.get("yardProps", []):
 		var prop_data: Dictionary = prop_value
 		var position: Array = prop_data.get("position", [0, 0])
 		var x := float(position[0]) * scale_factor
 		var z := float(position[1]) * scale_factor
+		if show_yard_annotations:
+			_queue_annotation(str(prop_data.get("label", "YARD PROP")), Vector3(x, 2.55, z))
 		var kind := str(prop_data.get("kind", ""))
 		if kind == "trash_can":
 			_place_prop(parent, "trash_can", Vector3(x, FLOOR_TOP, z), 0.68)
@@ -1017,11 +1028,18 @@ func _draw_review_annotations() -> void:
 	for child in annotation_layer.get_children():
 		child.queue_free()
 	var occupied: Array[Rect2] = []
+	var camera_view_size := camera.get_viewport().get_visible_rect().size
+	var annotation_scale := Vector2.ONE
+	if camera_view_size.x > 0.0 and camera_view_size.y > 0.0:
+		annotation_scale = Vector2(
+			float(root.size.x) / camera_view_size.x,
+			float(root.size.y) / camera_view_size.y,
+		)
 	for annotation in pending_annotations:
 		var world_position: Vector3 = annotation["position"]
 		if camera.is_position_behind(world_position):
 			continue
-		var screen_position := camera.unproject_position(world_position)
+		var screen_position := camera.unproject_position(world_position) * annotation_scale
 		if screen_position.x < 0.0 or screen_position.x > float(root.size.x) \
 				or screen_position.y < 0.0 or screen_position.y > float(root.size.y):
 			continue
@@ -1174,6 +1192,30 @@ func _update_camera(job: Dictionary) -> void:
 			camera.far = 90.0
 			camera.position = gate_target + Vector3(-12.0, 8.0, 0.0)
 			camera.look_at(gate_target, Vector3.UP)
+			return
+	elif camera_focus == "b1-yard":
+		var yard_props: Array = plan.get("businessSuiteLayout", {}).get("b1", {}).get("yardProps", [])
+		if not yard_props.is_empty():
+			var min_x := INF
+			var min_z := INF
+			var max_x := -INF
+			var max_z := -INF
+			for prop_value in yard_props:
+				var prop_data: Dictionary = prop_value
+				var position: Array = prop_data.get("position", [0, 0])
+				min_x = minf(min_x, float(position[0]))
+				min_z = minf(min_z, float(position[1]))
+				max_x = maxf(max_x, float(position[0]))
+				max_z = maxf(max_z, float(position[1]))
+			var focus_center := Vector3(
+				(min_x + max_x) * 0.5 * STANDARD_SCALE,
+				0.8,
+				(min_z + max_z) * 0.5 * STANDARD_SCALE,
+			)
+			camera.size = maxf((max_z - min_z) * STANDARD_SCALE * 1.15, 72.0)
+			camera.far = camera.size * 4.0
+			camera.position = focus_center + Vector3(0.0, camera.size * 1.5, 0.0)
+			camera.look_at(focus_center, Vector3(0.0, 0.0, 1.0))
 			return
 	elif camera_focus == "f2-window":
 		var window_center := Vector3(0.0, 1.35, depth / 7.0)

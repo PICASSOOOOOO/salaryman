@@ -3124,10 +3124,22 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		"utility_work":
 			native_app_title.text = "TOWER INFRASTRUCTURE / REPAIR ROUTES"
 			native_app_body.add_theme_font_size_override("font_size", 12)
-			native_app_body.text = "%s\n\n%s MAINTENANCE\nServer-authoritative repair is running. Remain at the station until it is confirmed complete.\n\nB5 POWER ─────────────┐\nB6 WATER + FIRE PIPE ─┼─ SERVICE-ELEVATOR WALL RISER\nB3 FIRE ALARM ────────┘              │\n                                     ├─ FLOORS 01–67 / 220 × 250 m / OFFICE BRANCHES\n                                     ├─ LOBBY / 40 × 60 m / PERIMETER ROUTE\n                                     └─ B1–B6 / 100 × 100 m / PERIMETER ROUTE\n\nThe 12 cm wall cavity has separate electrical, water, alarm, and suppression lanes." % [
+			native_app_body.text = "\n".join([
 				location,
-				str(office.get("utilityWorkTarget", "TOWER")).to_upper(),
-			]
+				"",
+				"%s MAINTENANCE" % str(office.get("utilityWorkTarget", "TOWER")).to_upper(),
+				"Server-authoritative repair is running. Remain at the station until it is confirmed complete.",
+				"",
+				"B5 POWER ─────────────┐",
+				"B6 WATER + FIRE PIPE ─┼─ SERVICE-ELEVATOR WALL RISER",
+				"B3 FIRE ALARM ────────┘              │",
+				"                                     ├─ FLOORS 01–67 / 622 × 707 m / OFFICE BRANCHES",
+				"                                     ├─ LOBBY / PERIMETER ROUTE",
+				"                                     ├─ B1 / 566 × 283 m / BUSINESS + OPEN-AIR YARD",
+				"                                     └─ B2–B6 / 283 × 283 m / PERIMETER ROUTE",
+				"",
+				"The 12 cm wall cavity has separate electrical, water, alarm, and suppression lanes.",
+			])
 			native_app_footer.text = "TRACE THE SERVICE-ELEVATOR WALL / WAIT FOR SERVER CONFIRMATION"
 		"company_relocation":
 			native_app_title.text = "COMPANY RELOCATION"

@@ -32,6 +32,21 @@ func _run_tests() -> void:
 	var b1_layout: Dictionary = floor_plan["businessSuiteLayout"]["b1"]
 	assert(b1_layout["exteriorLoadingYardHalf"].size() == 4)
 	assert(b1_layout["exteriorGate"].size() == 2)
+	var b1_room_bounds: Array = b1_layout["bounds"]
+	var b1_interior: Array = b1_layout["interiorBusinessHalf"]
+	var b1_yard: Array = b1_layout["exteriorLoadingYardHalf"]
+	assert(b1_room_bounds.size() == 4)
+	assert(int(b1_room_bounds[0]) == 0 and int(b1_room_bounds[1]) == 0)
+	assert(int(b1_room_bounds[2]) == 56_569 and int(b1_room_bounds[3]) == 28_284)
+	assert(b1_interior[0] == b1_room_bounds[0] and b1_interior[1] == b1_room_bounds[1])
+	assert(b1_yard[0] == b1_interior[0] + b1_interior[2])
+	assert(b1_interior[2] + b1_yard[2] == b1_room_bounds[2])
+	assert(b1_interior[3] == b1_room_bounds[3] and b1_yard[3] == b1_room_bounds[3])
+	assert(b1_layout["yardAccess"][0] == b1_yard[0])
+	assert(b1_layout["exteriorGate"][0] == b1_room_bounds[0] + b1_room_bounds[2])
+	var b1_routes: Dictionary = floor_plan["infrastructureMap"]["b1LoadingYard"]
+	assert(b1_routes["interiorBusinessHalf"] == b1_interior)
+	assert(b1_routes["exteriorLoadingYardHalf"] == b1_yard)
 
 	assert(OfficeClient.CAMERA_DISTANCE_LEVELS.size() == 3)
 	assert(is_equal_approx(OfficeClient.camera_distance_for_level(0), 8.0))

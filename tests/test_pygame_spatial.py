@@ -391,6 +391,41 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertTrue(scene._collides_with_object((divider_x, access_y + 1_000)))
         self.assertFalse(scene._collides_with_object((divider_x, access_y)))
 
+    def test_b1_business_and_loading_yard_halves_match_the_floor_footprint(self):
+        b1 = FLOOR_PLAN["businessSuiteLayout"]["b1"]
+        room = next(room for room in FLOOR_PLAN["rooms"] if room["id"] == "basement_b1")
+        room_bounds = room["bounds"]
+        interior = b1["interiorBusinessHalf"]
+        yard = b1["exteriorLoadingYardHalf"]
+
+        self.assertEqual(b1["bounds"], room_bounds)
+        self.assertEqual(interior[:2], room_bounds[:2])
+        self.assertEqual(yard[0], interior[0] + interior[2])
+        self.assertEqual(yard[1], room_bounds[1])
+        self.assertEqual(interior[2] + yard[2], room_bounds[2])
+        self.assertEqual(interior[3], room_bounds[3])
+        self.assertEqual(yard[3], room_bounds[3])
+        self.assertEqual(b1["yardAccess"][0], yard[0])
+        self.assertEqual(b1["exteriorGate"][0], room_bounds[0] + room_bounds[2])
+
+        for unit in b1["businessUnits"]:
+            x, y, width, depth = unit["bounds"]
+            self.assertGreaterEqual(x, interior[0])
+            self.assertGreaterEqual(y, interior[1])
+            self.assertLessEqual(x + width, interior[0] + interior[2])
+            self.assertLessEqual(y + depth, interior[1] + interior[3])
+
+        for prop in b1["yardProps"]:
+            x, y = prop["position"]
+            self.assertGreaterEqual(x, yard[0])
+            self.assertGreaterEqual(y, yard[1])
+            self.assertLess(x, yard[0] + yard[2])
+            self.assertLess(y, yard[1] + yard[3])
+
+        b1_routes = FLOOR_PLAN["infrastructureMap"]["b1LoadingYard"]
+        self.assertEqual(b1_routes["interiorBusinessHalf"], interior)
+        self.assertEqual(b1_routes["exteriorLoadingYardHalf"], yard)
+
     def test_headless_spatial_scene_renders(self):
         screen = pygame.display.set_mode((1180, 720))
         renderer = SolarPunkRenderer(screen)
