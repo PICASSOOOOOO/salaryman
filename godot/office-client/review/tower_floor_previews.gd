@@ -56,6 +56,16 @@ func _capture_all() -> void:
 		quit(1)
 		return
 	output_directory = args[0]
+	if DisplayServer.get_name() == "headless":
+		push_error("Tower review renders require an X11/GL display; the headless dummy renderer has no viewport texture.")
+		quit(1)
+		return
+	var requested_ids: Array[String] = []
+	if args.size() > 1:
+		for requested_id in args[1].split(","):
+			var normalized_id := requested_id.strip_edges().to_upper()
+			if not normalized_id.is_empty():
+				requested_ids.append(normalized_id)
 	DirAccess.make_dir_recursive_absolute(output_directory)
 
 	var raw_plan := FileAccess.get_file_as_string("res://floor_plan.json")
@@ -72,19 +82,41 @@ func _capture_all() -> void:
 		jobs.append({"id": "B%d" % basement, "floor": 0, "basement": basement})
 	for floor_number in range(1, 13):
 		jobs.append({"id": "F%d" % floor_number, "floor": floor_number, "basement": 0})
+	jobs.append({
+		"id": "B1-GATE",
+		"floor": 0,
+		"basement": 1,
+		"cameraFocus": "b1-gate",
+		"title": "SALARYMAN OS  /  B1 OPEN-AIR YARD",
+		"subtitle": "FENCED EXTERIOR GATE  ·  NO ROOF",
+	})
+	jobs.append({
+		"id": "F2-WINDOW",
+		"floor": 2,
+		"basement": 0,
+		"cameraFocus": "f2-window",
+		"title": "SALARYMAN OS  /  F2 EXTERIOR WALL",
+		"subtitle": "VISIBLE GLAZING  ·  30 CM WALL",
+	})
 
 	for job in jobs:
-		print("Preparing native Tower preview: ", job["id"])
+		var floor_id := str(job["id"])
+		if not requested_ids.is_empty() and not requested_ids.has(floor_id):
+			continue
+		print("Preparing native Tower preview: ", floor_id)
 		active_floor = Node3D.new()
 		active_floor.name = "Preview_%s" % job["id"]
 		scene_world.add_child(active_floor)
 		_render_floor(active_floor, job)
+		print("Scene ready for native Tower preview: ", floor_id)
 		_update_camera(job)
-		title_label.text = "SALARYMAN OS  /  TOWER %s" % job["id"]
-		subtitle_label.text = _subtitle_for(job)
+		title_label.text = str(job.get("title", "SALARYMAN OS  /  TOWER %s" % job["id"]))
+		subtitle_label.text = str(job.get("subtitle", _subtitle_for(job)))
 		for frame in range(4):
+			print("Waiting for Tower render frame ", frame + 1, ": ", floor_id)
 			await process_frame
-		await RenderingServer.frame_post_draw
+			print("Tower render frame ready: ", floor_id, " / ", frame + 1)
+		print("Capturing Tower viewport: ", floor_id, " / display=", DisplayServer.get_name())
 		var image := root.get_texture().get_image()
 		var filename := "%s.png" % str(job["id"]).to_lower()
 		var output_path := output_directory.path_join(filename)
@@ -116,8 +148,9 @@ func _create_review_scene() -> void:
 	sunlight.rotation_degrees = Vector3(-55, -28, 0)
 	sunlight.light_color = Color("#ffe2b2")
 	sunlight.light_energy = 1.05
-	sunlight.shadow_enabled = true
+	sunlight.shadow_enabled = false
 	scene_world.add_child(sunlight)
+	root.size = Vector2i(1280, 800)
 
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -140,7 +173,7 @@ func _create_review_scene() -> void:
 	overlay.add_child(subtitle_label)
 	var footer := Label.new()
 	footer.text = "GODOT 3D REVIEW RENDER  ·  NATIVE TOWER PROPS  ·  NOT GAMEPLAY FOOTAGE"
-	footer.position = Vector2(42, 1012)
+	footer.position = Vector2(42, 752)
 	footer.add_theme_font_size_override("font_size", 15)
 	footer.add_theme_color_override("font_color", Color("#c9b995"))
 	overlay.add_child(footer)
@@ -911,6 +944,23 @@ func _update_camera(job: Dictionary) -> void:
 	var z0 := (float(bounds[1]) - origin.y) * scale_factor
 	var center := Vector3(x0 + width * 0.5, 0.0, z0 + depth * 0.5)
 	var dimension := maxf(width, depth)
+	var camera_focus := str(job.get("cameraFocus", ""))
+	if camera_focus == "b1-gate":
+		var gate: Array = plan.get("businessSuiteLayout", {}).get("b1", {}).get("exteriorGate", [])
+		if gate.size() >= 2:
+			var gate_target := Vector3(float(gate[0]) * STANDARD_SCALE, 0.82, float(gate[1]) * STANDARD_SCALE)
+			camera.size = 18.0
+			camera.far = 90.0
+			camera.position = gate_target + Vector3(-12.0, 8.0, 0.0)
+			camera.look_at(gate_target, Vector3.UP)
+			return
+	elif camera_focus == "f2-window":
+		var window_center := Vector3(0.0, 1.35, depth / 7.0)
+		camera.size = 10.0
+		camera.far = 120.0
+		camera.position = window_center + Vector3(10.0, 3.0, 0.0)
+		camera.look_at(window_center, Vector3.UP)
+		return
 	camera.size = maxf(dimension * 1.48, 12.0)
 	camera.far = maxf(dimension * 4.0, 250.0)
 	camera.position = center + Vector3(dimension * 0.70, dimension * 1.25, dimension * 0.95)
