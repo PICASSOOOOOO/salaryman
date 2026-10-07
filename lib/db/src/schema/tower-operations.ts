@@ -64,7 +64,7 @@ export const towerOperationsLedgerTable = pgTable(
     uniqueIndex("tower_operations_ledger_event_unique").on(table.eventKey),
     index("tower_operations_ledger_created_idx").on(table.createdAt),
     index("tower_operations_ledger_user_created_idx").on(table.userId, table.createdAt),
-    check("tower_operations_ledger_event_type_check", sql`${table.eventType} in ('opening_capital', 'service_revenue', 'bill_payment')`),
+    check("tower_operations_ledger_event_type_check", sql`${table.eventType} in ('opening_capital', 'company_revenue', 'bill_payment')`),
     check("tower_operations_ledger_amount_check", sql`${table.amountFiat} > 0`),
     check("tower_operations_ledger_balance_check", sql`${table.balanceAfterFiat} between 0 and 2147483647`),
   ],

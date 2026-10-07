@@ -9,6 +9,10 @@ or exploiting/raiding the game systems through extortion and crimes to get rich
 and powerful. A secret mafia path must be available to any player. Private lending
 needs a system. The ATM must be "iron clad." Higher floors offer more comfortable
 offices and cost more in real estate.
+Pablo Corp owns unpurchased Tower office and lease inventory. Company proceeds
+fund its building operations; after purchase, resale and sublease proceeds
+belong to the new owner. Property purchases must remain server-authoritative
+and support ATM-transferred income, FIAT, and GOLD.
 Wealthier players should receive better treatment and more perks: more money
 should bring more benefits.
 Lower-income players should gain strength, stamina, power, attack and defense,
@@ -70,3 +74,10 @@ and wealth-based power.
 **How to apply:** Keep banking, jobs, private loans, fictional crime, story
 progression, drugs, NPC activity, peacekeeping, and office pricing consistent
 with this wealth-centered direction.
+
+**Why:** The user clarified the ownership and payment rules for Tower office
+inventory.
+
+**How to apply:** Distinguish Pablo-owned inventory from player-owned units when
+settling property transactions; never route an owner's resale proceeds to the
+company.
