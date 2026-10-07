@@ -244,17 +244,19 @@ export const ITEM_CATALOG: CatalogItem[] = [
   consumable({ id: "mat_silicon", type: "material", name: "Silicon Wafer", blurb: "Brains in waiting.", techTier: 2, rarity: "expensive", priceFiat: 3200, icon: "💾" }),
   consumable({ id: "vend_shift_tonic", type: "material", name: "Shift Tonic", blurb: "Restores 30 stamina for another working block.", techTier: 1, rarity: "common", priceFiat: 35000, icon: "🥤", useEffect: { stamina: 30 } }),
   consumable({ id: "vend_foreman_meal", type: "material", name: "Foreman Meal", blurb: "Restores 70 stamina. Dense, hot, and built for overtime.", techTier: 1, rarity: "expensive", priceFiat: 80000, icon: "🍱", useEffect: { stamina: 70 } }),
+  consumable({ id: "vend_water_bottle", type: "material", name: "Bottled Water", blurb: "A cold bottle that restores 8 stamina.", techTier: 1, rarity: "common", priceFiat: 1800, icon: "💧", useEffect: { stamina: 8 } }),
+  consumable({ id: "vend_coffee", type: "material", name: "Tower Coffee", blurb: "A quick caffeine break that restores 12 stamina.", techTier: 1, rarity: "common", priceFiat: 2600, icon: "☕", useEffect: { stamina: 12 } }),
+  consumable({ id: "vend_snack_bar", type: "material", name: "Snack Bar", blurb: "A compact snack that restores 16 stamina.", techTier: 1, rarity: "common", priceFiat: 3200, icon: "🍫", useEffect: { stamina: 16 } }),
   consumable({ id: "vend_interview_drill", type: "material", name: "Interview Drill Set", blurb: "Practice scripts and role drills. +25% income on your next 3 jobs.", techTier: 2, rarity: "rare", priceFiat: 450000, icon: "🎙️", useEffect: { workIncomePct: 25, workIncomeUses: 3, skillGrant: "career.interview_prepared" } }),
   consumable({ id: "vend_trade_cert", type: "material", name: "Certified Trade Course", blurb: "Practical work training. +50% income on your next 5 jobs.", techTier: 3, rarity: "very_rare", priceFiat: 900000, icon: "📐", useEffect: { workIncomePct: 50, workIncomeUses: 5, skillGrant: "work.trade_certified" } }),
 ];
 
 export const PUBLIC_VENDING_ITEM_IDS = [
-  "equip_hardhat",
-  "equip_gasmask",
+  "vend_water_bottle",
+  "vend_coffee",
+  "vend_snack_bar",
   "vend_shift_tonic",
   "vend_foreman_meal",
-  "vend_interview_drill",
-  "vend_trade_cert",
 ] as const;
 
 export function requiresPhysicalBlackMarket(item: CatalogItem): boolean {

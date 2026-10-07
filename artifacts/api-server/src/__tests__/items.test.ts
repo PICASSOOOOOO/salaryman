@@ -20,7 +20,7 @@ import { db, playerInventoryTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
-import { computeGearStats } from "../lib/item-catalog";
+import { computeGearStats, PUBLIC_VENDING_ITEM_IDS } from "../lib/item-catalog";
 import {
   buildApp,
   resetAuthState,
@@ -51,6 +51,19 @@ beforeEach(async () => {
 });
 afterAll(async () => {
   await cleanupTestData();
+});
+
+describe("GET /items/vending-catalog", () => {
+  it("lists ordinary convenience goods, not equipment or location-bound assets", async () => {
+    const res = await request(app).get("/api/items/vending-catalog");
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((item: { id: string }) => item.id);
+    expect(ids).toEqual(expect.arrayContaining(PUBLIC_VENDING_ITEM_IDS));
+    expect(ids).not.toContain("equip_hardhat");
+    expect(ids).not.toContain("equip_gasmask");
+    expect(ids).not.toContain("vend_interview_drill");
+    expect(ids).not.toContain("vend_trade_cert");
+  });
 });
 
 describe("POST /items/buy", () => {
