@@ -1467,7 +1467,7 @@ elif kind == "elevator" or kind == "service_elevator":
 		return _build_staircase(position, object_id)
 elif kind == "construction_task":
 return _build_construction_marker(position, object_id, label, construction_complete, interactive)
-elif kind == "partition_h" or kind == "partition_v":
+elif kind == "partition_h" or kind == "partition_h_short" or kind == "partition_v":
 var half_x := float(collision_extents[0]) if collision_extents.size() > 0 else 750.0
 var half_z := float(collision_extents[1]) if collision_extents.size() > 1 else 60.0
 var partition_size := Vector3(maxf(0.2, half_x * 0.02), 2.4, maxf(0.2, half_z * 0.02))

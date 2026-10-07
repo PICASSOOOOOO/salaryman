@@ -159,15 +159,6 @@ def _request_tower_floor(
     building_sync: Any | None,
     basement_sync: Any | None = None,
 ) -> CommandResult:
-    if scene.is_basement:
-        message = "BASEMENT ACCESS IS STAIRS ONLY / RETURN TO B1 TO EXIT"
-        state.notice = message
-        return CommandResult(False, message)
-    if not scene.is_playable_floor(floor):
-        status = scene.floor_status(floor).replace("_", " ").upper()
-        message = "BASEMENT IS UNDER CONSTRUCTION" if floor < 1 else f"FLOOR {floor:02d} IS {status}"
-        state.notice = message
-        return CommandResult(False, message)
     nearby = scene.nearby_object
     if scene.is_basement:
         if floor == int(scene.basement_level or 1):
@@ -186,10 +177,16 @@ def _request_tower_floor(
             message = "BASEMENT FLOOR REQUEST UNAVAILABLE"
             state.notice = message
             return CommandResult(False, message)
-        message = f"SERVICE ELEVATOR / REQUESTING B{floor}"
+        transit = "STAIRS" if nearby.kind == "basement_stairs" else "SERVICE ELEVATOR"
+        message = f"{transit} / REQUESTING B{floor}"
         state.notice = message
         state.close_page()
         return CommandResult(True, message, destination=f"basement:{floor}")
+    if not scene.is_playable_floor(floor):
+        status = scene.floor_status(floor).replace("_", " ").upper()
+        message = "BASEMENT IS UNDER CONSTRUCTION" if floor < 1 else f"FLOOR {floor:02d} IS {status}"
+        state.notice = message
+        return CommandResult(False, message)
     if floor == scene.current_floor:
         message = f"ALREADY ON FLOOR {floor:02d}"
         state.notice = message
@@ -207,6 +204,7 @@ def _request_tower_floor(
             state.notice = message
             return CommandResult(True, message, destination=f"floor:{floor}")
         if scene.select_floor(floor):
+            state.close_page()
             state.notice = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
             return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
     if nearby is None or nearby.kind not in {"elevator", "service_elevator"}:
@@ -437,6 +435,18 @@ def apply_command(
             scene.set_player_action("maintenance")
             state.notice = f"CONSTRUCTION WORK REQUESTED / {nearby.label}"
             return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "stairs" \
+            and requested_object_id in (None, nearby.id):
+            destination = nearby.destination_floor
+            if destination is None:
+                return CommandResult(False, "STAIR DIRECTION IS NOT AVAILABLE")
+            return _request_tower_floor(
+                destination,
+                state,
+                scene,
+                building_sync,
+                basement_sync,
+            )
         if nearby is not None and nearby.kind in {"elevator", "service_elevator"} \
             and requested_object_id in (None, nearby.id):
             return _request_tower_floor(

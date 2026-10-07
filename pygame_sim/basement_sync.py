@@ -371,11 +371,12 @@ class DesktopBasementSync:
     @staticmethod
     def _success_message(source: str, result: dict[str, Any]) -> str:
         if source == "basement_enter":
-            return "STAIRS / ENTERED B1"
+            mode = result.get("accessMode")
+            return "SERVICE ELEVATOR / ENTERED B1" if mode == "service_elevator" else "STAIRS / ENTERED B1"
         if source == "basement_level":
-            return f"BASEMENT STAIRS / ENTERED B{result.get('level', '')}"
+            return f"BASEMENT TRANSIT / ENTERED B{result.get('level', '')}"
         if source == "basement_exit":
-            return "STAIRS / RETURNED TO THE TOWER LOBBY"
+            return "RETURNED TO THE TOWER LOBBY"
         if source == "basement_attack":
             return "NON-LETHAL MELEE / SERVER RESOLVED"
         if source == "basement_claim":

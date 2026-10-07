@@ -735,6 +735,21 @@ router.post("/desktop-building/stairs", async (req, res): Promise<void> => {
   }
   const now = new Date();
   try {
+    if (destinationFloor === 6) {
+      const currentOrgId = await resolveCurrentOrgId(link.userId);
+      const ownOffice = await resolveUserOffice(
+        link.userId,
+        req.header("x-shadow-tower-password"),
+        destinationFloor,
+      );
+      const assignedWorkstation = ownOffice
+        ? null
+        : await resolveUserWorkstation(link.userId, currentOrgId, destinationFloor);
+      if (!ownOffice && !assignedWorkstation) {
+        res.status(403).json({ error: "An assigned office or workstation is required for Floor 06" });
+        return;
+      }
+    }
     const result = await db.transaction(async (tx) => {
       const [presence] = await tx.select().from(desktopOfficePresenceTable)
         .where(eq(desktopOfficePresenceTable.userId, link.userId))

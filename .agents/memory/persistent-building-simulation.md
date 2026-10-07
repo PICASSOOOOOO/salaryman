@@ -66,6 +66,16 @@ Stairs are direct physical climbs between floors. During the story lockdown,
 the lobby's exterior front door stays locked and the player remains inside to
 finish the work; this is a world-door rule, not a site-wide route gate.
 
+Elevators and stairwells are core building transport for both players and NPCs;
+they must connect people to the building areas they are authorized to reach.
+
+**Why:** The user emphasized that elevators and stairwells transport players and
+NPCs between parts of the building.
+
+**How to apply:** Use the physical elevator/stair network for NPC floor changes
+too; do not implement NPC movement as an unvalidated teleport or treat these
+routes as player-only interactions.
+
 **Why:** the user clarified the lobby layout, required 3D building systems, and
 named below-grade, operational, elevator, stair, and story-lockdown details
 that must remain in the building plan.

@@ -41,6 +41,7 @@ ObjectKind = Literal[
     "desk",
     "chair",
     "partition_h",
+    "partition_h_short",
     "partition_v",
     "window",
     "door",
@@ -99,6 +100,7 @@ class OfficeObject:
             "desk": (300, 150),
             "chair": (180, 130),
             "partition_h": (750, 60),
+            "partition_h_short": (250, 60),
             "partition_v": (60, 750),
             "window": (220, 90),
             "atm": (150, 180),
@@ -351,7 +353,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-elevator-2", "elevator", "PASSENGER ELEVATOR", "lobby", (49_976_300, 50_000_000), "RIDE TO FLOOR 02", destination_floor=2),
         OfficeObject("lobby-elevator-4", "elevator", "PASSENGER ELEVATOR", "lobby", (49_977_900, 50_000_000), "RIDE TO FLOOR 02", destination_floor=2),
         OfficeObject("lobby-service-elevator", "service_elevator", "SERVICE ELEVATOR", "lobby", (49_977_600, 49_999_100), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=2),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "TAKE STAIRS DOWN TO B1 / FLOORS 02–05 SEALED"),
+        OfficeObject("lobby-stairs", "stairs", "STAIRWELL 01", "lobby", (49_978_650, 50_000_800), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=1),
         OfficeObject("lobby-stairwell-2", "stairs", "STAIRWELL 02", "lobby", (49_975_350, 50_000_900), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=2),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "PEST WORK ORDERS"),
@@ -479,12 +481,15 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     # Do not register the old free workstation sets or decorative corridor
     # props. Shared furniture is added only from server-owned office inventory.
     entries = [
-        OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "RIDE TO FLOOR 06", destination_floor=6),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "TAKE STAIRS DOWN TO B1 / FLOORS 02–05 SEALED"),
+        OfficeObject("lobby-elevator-1", "elevator", "PASSENGER ELEVATOR", "lobby", (49_975_500, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
+        OfficeObject("lobby-elevator-2", "elevator", "PASSENGER ELEVATOR", "lobby", (49_976_300, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
+        OfficeObject("lobby-elevator", "elevator", "PASSENGER ELEVATOR", "lobby", (49_977_100, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
+        OfficeObject("lobby-elevator-4", "elevator", "PASSENGER ELEVATOR", "lobby", (49_977_900, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
+        OfficeObject("lobby-service-elevator", "service_elevator", "SERVICE ELEVATOR", "lobby", (49_977_600, 49_999_100), "B1–B6 / OPEN FLOORS", destination_floor=6),
+        OfficeObject("lobby-stairs", "stairs", "STAIRWELL 01", "lobby", (49_978_650, 50_000_800), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=1),
+        OfficeObject("lobby-stairwell-2", "stairs", "STAIRWELL 02", "lobby", (49_975_350, 50_000_900), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=2),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
-        OfficeObject("lobby-pest-job-board", "pest_job_board", "PEST WORK ORDERS", "lobby", (49_979_000, 49_999_100), "W-2 / 1099 LOCAL JOBS"),
-        OfficeObject("lobby-pest-uniform", "pest_uniform_station", "WORK UNIFORM", "lobby", (49_978_300, 50_000_400), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),
@@ -578,11 +583,13 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 "TAKE STAIRS DOWN ONE LANDING",
             ))
         if level == 1:
+            office_rows = (500, 2_100, 6_200, 7_800)
             for office_index in range(20):
                 column = office_index % 5
                 row = office_index // 5
                 x = 1_250 + column * 1_900
-                y = 1_250 + row * 2_100
+                room_top = office_rows[row]
+                y = room_top + 750
                 registry.add(OfficeObject(
                     f"basement-b1-admin-office-{office_index + 1:02d}",
                     "desk",
@@ -593,15 +600,14 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     interactive=False,
                 ))
                 room_left = 500 + column * 1_900
-                room_top = 500 + row * 2_100
                 room_center_x = room_left + 750
                 room_center_y = room_top + 750
                 walls = (
                     ("partition_h", (room_center_x, room_top), "NORTH"),
                     ("partition_v", (room_left, room_center_y), "WEST"),
                     ("partition_v", (room_left + 1_500, room_center_y), "EAST"),
-                    ("partition_h", (room_center_x - 525, room_top + 1_500), "SOUTH LEFT"),
-                    ("partition_h", (room_center_x + 525, room_top + 1_500), "SOUTH RIGHT"),
+                    ("partition_h_short", (room_center_x - 500, room_top + 1_500), "SOUTH LEFT"),
+                    ("partition_h_short", (room_center_x + 500, room_top + 1_500), "SOUTH RIGHT"),
                 )
                 for wall_index, (kind, position, side) in enumerate(walls, start=1):
                     registry.add(OfficeObject(
