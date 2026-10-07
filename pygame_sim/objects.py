@@ -29,8 +29,10 @@ ObjectKind = Literal[
     "atm",
     "vending_machine",
     "elevator",
+    "service_elevator",
     "stairs",
     "basement_stairs",
+    "construction_task",
     "pest_job_board",
     "pest_uniform_station",
     "utility_station",
@@ -74,6 +76,11 @@ class OfficeObject:
     interactive: bool = True
     display_position: tuple[int, int] | None = None
     parent_id: str | None = None
+    construction_plan_id: int | None = None
+    construction_task_id: str | None = None
+    stairwell_number: int | None = None
+    completed: bool = False
+    work_progress: float = 0.0
 
     @property
     def visual_position(self) -> tuple[int, int]:
@@ -93,8 +100,10 @@ class OfficeObject:
             "atm": (150, 180),
             "vending_machine": (150, 180),
             "elevator": (0, 0),
+            "service_elevator": (0, 0),
             "stairs": (0, 0),
             "basement_stairs": (0, 0),
+            "construction_task": (0, 0),
             "pest_job_board": (0, 0),
             "pest_uniform_station": (90, 90),
             "utility_station": (100, 100),
@@ -169,7 +178,7 @@ class OfficeObjectRegistry:
         if not item.interactive:
             return InteractionResult(False, f"{item.label.upper()} IS DECORATIVE")
 
-        if item.kind == "elevator":
+        if item.kind in {"elevator", "service_elevator"}:
             state.close_page()
             floor = item.destination_floor or scene.current_floor
             if not scene.select_floor(floor):
@@ -294,6 +303,10 @@ class OfficeObjectRegistry:
             scene.focus_on_interaction(item)
             state.notice = f"UTILITY WORK / {item.label}"
             return InteractionResult(True, state.notice)
+
+        if item.kind == "construction_task":
+            state.notice = item.prompt
+            return InteractionResult(False, item.prompt)
 
         if item.kind == "carcass_disposal":
             scene.focus_on_interaction(item)

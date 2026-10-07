@@ -14,17 +14,23 @@ Drugs are expensive consumables in the survival game. They can grant stamina,
 speed, faster cooldowns, or other positive and negative powers, while also
 causing altered perception, movement, reading, and menu/terminal use. Addiction,
 thirst, shakes, and sickness can result. Dependence and tolerance build gradually
-with repeated use, with withdrawal after sustained use stops. Impaired work can lead to firing, arrest,
-detention, fines, or death. The cafeteria bar serves beer only for morale. A
-black market can sell weapons, drugs, and alcohol. NPC staffing should stay
-sparse and focused on building operations; they can be targets for restraint,
-robbery, or sabotage. Pablo Corp can offer limited peacekeeping contracts, while
-money and net worth are the main sources of power, balanced against team
-ingenuity and creativity.
+with repeated use, with withdrawal after sustained use stops. Drug-related
+misconduct is lower-tier and can cost a job, but should not be treated as a major
+crime by itself. The cafeteria bar serves beer only for morale. A black market
+can sell weapons, drugs, and alcohol.
+
+Criminal investigations may take time to determine whether someone is using,
+buying, selling, or dealing drugs. Investigators need evidence; accusations alone
+are not enough. Snitches may supply leads, but there are no bounty hunters.
+NPC staffing should stay sparse and focused on building operations; NPCs can be
+targets for restraint, robbery, or sabotage. Pablo Corp can offer limited
+peacekeeping contracts, while money and net worth are the main sources of power,
+balanced against team ingenuity and creativity.
 
 **Why:** The user explicitly said the game is about making money and described
 the three wealth paths, Tower real estate progression, survival-drug effects,
-black-market opportunity, sparse NPC roles, and wealth-based power.
+an evidence-first criminal process, black-market opportunity, sparse NPC roles,
+and wealth-based power.
 
 **How to apply:** Keep banking, jobs, private loans, fictional crime, story
 progression, drugs, NPC activity, peacekeeping, and office pricing consistent

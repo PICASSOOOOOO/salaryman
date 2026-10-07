@@ -81,6 +81,7 @@ class TowerScene:
     idle_seconds: float = 0.0
     seated_chair_id: str | None = None
     building_object_states: dict[str, dict[str, int]] = field(default_factory=dict)
+    _construction_signature: str = field(default="", init=False, repr=False)
     autopilot_snapshot: AutopilotSnapshot = field(
         default_factory=lambda: AutopilotSnapshot("unlinked", {}, "NO DESKTOP LINK", 0)
     )
@@ -273,6 +274,80 @@ class TowerScene:
                     "condition": condition,
                 }
         self.building_object_states = normalized
+
+    def set_construction_plans(self, plans: object) -> None:
+        """Replace only server-provided Tower construction markers."""
+        normalized_plans = plans if isinstance(plans, list) else []
+        signature = json.dumps(normalized_plans, sort_keys=True, separators=(",", ":"))
+        if signature == self._construction_signature:
+            return
+        self._construction_signature = signature
+        self.objects.objects = [
+            item for item in self.objects.objects
+            if not item.id.startswith("tower-construction-")
+        ]
+
+        rooms = {
+            2: "construction_f02",
+            3: "construction_f03",
+            4: "construction_f04",
+            5: "construction_f05",
+        }
+        for plan in normalized_plans:
+            if not isinstance(plan, dict):
+                continue
+            plan_id = plan.get("id")
+            floor_number = plan.get("floorNumber")
+            powered = plan.get("powered") is True
+            tasks = plan.get("tasks")
+            site_room = rooms.get(floor_number) if isinstance(floor_number, int) else None
+            if not isinstance(plan_id, int) or site_room is None or not isinstance(tasks, list):
+                continue
+            for task in tasks:
+                if not isinstance(task, dict):
+                    continue
+                task_id = task.get("id")
+                x, y, label = task.get("x"), task.get("y"), task.get("label")
+                if not isinstance(task_id, str) or not isinstance(x, int) or not isinstance(y, int):
+                    continue
+                if not isinstance(label, str):
+                    label = "PREPARED TOWER WORK"
+                is_power_export = task.get("kind") == "power_export"
+                room = "basement_b5" if is_power_export else site_room
+                completed = task.get("completed") is True
+                working = task.get("working") is True
+                working_by_you = task.get("workingByYou") is True
+                status = (
+                    "COMPLETE"
+                    if completed
+                    else "YOUR WORK IN PROGRESS"
+                    if working and working_by_you
+                    else "WORK IN PROGRESS"
+                    if working
+                    else "POWER EXPORT REQUIRED"
+                    if not is_power_export and not powered
+                    else "READY"
+                )
+                prompt = (
+                    "START THE B5 AREA POWER EXPORT"
+                    if is_power_export and not completed
+                    else "EXPORT POWER FROM B5 BEFORE WORKING HERE"
+                    if not is_power_export and not powered
+                    else "START THE PREPARED ON-SITE CONSTRUCTION TASK"
+                )
+                self.objects.add(OfficeObject(
+                    id=f"tower-construction-{plan_id}-{task_id}",
+                    kind="construction_task",
+                    label=f"{status} / {label}",
+                    room=room,
+                    position=(x, y),
+                    prompt=prompt,
+                    interactive=not completed and not working,
+                    construction_plan_id=plan_id,
+                    construction_task_id=task_id,
+                    completed=completed,
+                    work_progress=1.0 if completed else 0.0,
+                ))
 
     @property
     def floor_bounds(self) -> tuple[int, int, int, int]:
