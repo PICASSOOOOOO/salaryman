@@ -10,7 +10,7 @@ This game client is intentionally separate from `godot/art-dev`.
 
 ## Runtime boundary
 
-- Pygame owns `OfficeState`, `TowerScene`, FIAT, workers, wages, persistence,
+- The Python simulation owns `OfficeState`, `TowerScene`, FIAT, workers, wages, persistence,
   and authoritative interaction validation.
 - Godot receives versioned newline-delimited JSON snapshots over localhost TCP.
 - Godot sends commands back over the same connection.
@@ -20,6 +20,8 @@ This game client is intentionally separate from `godot/art-dev`.
 - A complete downloadable SALARYMAN OS game runs both runtimes together. Neither
   the Godot client without its simulation nor a Python-only desktop bundle
   represents the complete game.
+- Python runs without a visible Pygame window; Godot is the only visible game
+  client. `--headless` is for CI and hides Godot as well.
 
 ## Run in development
 
@@ -45,7 +47,7 @@ experience.
 - `N`: open/close the hiring desk
 - `B`: start a short break
 - `T`: toggle automatic breaks
-- `R`: reconnect to Pygame
+- `R`: reconnect to the game simulation
 
 ## Reference and asset notices
 

@@ -2298,7 +2298,7 @@ func _update_hud() -> void:
 		controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
-	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
+	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Waiting for the game simulation to provide the room mission."))
 	if room_id.begins_with("basement_b"):
 		var basement: Dictionary = scene_data.get("basement", {})
 		var building: Dictionary = basement.get("building", {})
@@ -2328,7 +2328,7 @@ func _update_hud() -> void:
 			int(building.get("upkeepCondition", 0)),
 		]
 	var notice := transient_notice_text if transient_notice_remaining > 0.0 \
-		else str(office.get("notice", "WAITING FOR PYGAME"))
+		else str(office.get("notice", "WAITING FOR GAME SIMULATION"))
 	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), notice]
 	_update_native_app_panel(office, scene_data)
 

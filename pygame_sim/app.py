@@ -1,4 +1,4 @@
-"""Pygame simulation entry point for the SALARYMAN desktop game."""
+"""Headless Python simulation entry point paired with the Godot desktop client."""
 
 from __future__ import annotations
 
@@ -25,7 +25,6 @@ from .godot_runtime import (
     resolve_godot_runtime,
     stop_process,
 )
-from .pablo import fetch_pablo_status
 from .state import OfficeState
 from .scene import build_tower_scene
 from .ui import SolarPunkRenderer
@@ -34,12 +33,20 @@ from .ui import SolarPunkRenderer
 WINDOW_SIZE = (1180, 720)
 
 
+def _initialize_hidden_python_renderer() -> SolarPunkRenderer:
+    """Keep legacy event/UI helpers offscreen; Godot is the only visible client."""
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    pygame.init()
+    pygame.font.init()
+    return SolarPunkRenderer(pygame.Surface(WINDOW_SIZE))
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="SALARYMAN solar-punk office simulation")
     parser.add_argument(
         "--headless",
         action="store_true",
-        help="Hide the Python simulation window; Godot remains the player-facing game.",
+        help="Run Godot without a window (the Python simulation is always hidden).",
     )
     parser.add_argument("--frames", type=int, default=0, help="Exit after N frames; useful for smoke tests.")
     parser.add_argument(
@@ -80,17 +87,10 @@ def run(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.paired_smoke and (not args.headless or args.no_bridge or args.frames < 1):
         raise SystemExit("--paired-smoke requires --headless, --frames N, and the local bridge.")
-    if args.headless:
-        os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-    pygame.init()
-    pygame.font.init()
-    screen = pygame.display.set_mode(WINDOW_SIZE)
-    pygame.display.set_caption("SALARYMAN · Office Ecology")
+    renderer = _initialize_hidden_python_renderer()
     clock = pygame.time.Clock()
     state = OfficeState.load_from_file(args.save_file, real_time=True, role=args.role)
-    renderer = SolarPunkRenderer(screen)
-    renderer.set_pablo_status(fetch_pablo_status(args.server_url))
     scene = build_tower_scene()
     desktop_link = None
     try:
@@ -748,12 +748,6 @@ def run(argv: list[str] | None = None) -> int:
         if state.day != previous_day:
             state.save_to_file(args.save_file)
             previous_day = state.day
-        if not args.headless:
-            if spatial_mode:
-                renderer.draw_tower(state, scene, delta_seconds=delta_seconds)
-            else:
-                renderer.draw(state, coffee_rects)
-            pygame.display.flip()
         frame_count += 1
         if args.frames and frame_count >= args.frames:
             running = False

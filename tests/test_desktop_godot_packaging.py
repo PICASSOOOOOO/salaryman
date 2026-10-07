@@ -73,4 +73,4 @@ class DesktopGodotPackagingTests(unittest.TestCase):
                         launcher = (staging / "launch-salaryman-office.sh").read_text(
                             encoding="utf-8"
                         )
-                    self.assertIn("--headless", launcher)
+                    self.assertNotIn("--headless", launcher)

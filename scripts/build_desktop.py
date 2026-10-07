@@ -192,16 +192,16 @@ def write_release_launchers(staging: Path, system_name: str) -> None:
         launcher.write_text(
             '@echo off\r\n'
             'set "ROOT=%~dp0"\r\n'
-            '"%ROOT%pygame\\SALARYMAN Office.exe" --headless %*\r\n',
+            '"%ROOT%pygame\\SALARYMAN Office.exe" %*\r\n',
             encoding="utf-8",
         )
         return
 
     launcher = staging / "launch-salaryman-office.sh"
     launch_command = (
-        'open "$ROOT/pygame/SALARYMAN Office.app" --args --headless "$@"'
+        'open "$ROOT/pygame/SALARYMAN Office.app" --args "$@"'
         if system_name == "Darwin"
-        else 'exec "$ROOT/pygame/SALARYMAN Office" --headless "$@"'
+        else 'exec "$ROOT/pygame/SALARYMAN Office" "$@"'
     )
     launcher.write_text(
         f"""#!/usr/bin/env sh

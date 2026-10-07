@@ -1,16 +1,9 @@
-import os
 import json
 import unittest
 from types import SimpleNamespace
 
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-
-import pygame
-
 from pygame_sim.building_sync import DesktopBuildingSync
 from pygame_sim.scene import TowerScene
-from pygame_sim.state import OfficeState
-from pygame_sim.ui import SolarPunkRenderer
 
 
 class _Response:
@@ -99,25 +92,6 @@ class TowerFloorTravelTests(unittest.TestCase):
             self.assertTrue(scene.climb_stairs())
             self.assertEqual(scene.current_floor, expected_floor)
         self.assertFalse(scene.climb_stairs())
-
-    def test_lobby_construction_and_open_floors_render_from_the_shared_floor_plan(self):
-        pygame.init()
-        screen = pygame.display.set_mode((900, 600))
-        renderer = SolarPunkRenderer(screen)
-        state = OfficeState.with_default_roster()
-        scene = TowerScene()
-        try:
-            for floor, expected_room in (
-                (1, "lobby"),
-                (2, "construction_f02"),
-                (6, "recreation"),
-            ):
-                if floor != scene.current_floor:
-                    self.assertTrue(scene.select_floor(floor))
-                renderer.draw_tower(state, scene)
-                self.assertEqual(scene.current_room, expected_room)
-        finally:
-            pygame.quit()
 
     def test_linked_elevator_waits_for_server_approval_before_each_floor_change(self):
         scene = TowerScene()

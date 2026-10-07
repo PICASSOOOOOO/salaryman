@@ -4,7 +4,9 @@ import json
 import unittest
 import time
 from pathlib import Path
+from unittest.mock import patch
 
+from pygame_sim.app import _initialize_hidden_python_renderer, parse_args
 from pygame_sim.godot_runtime import (
     GodotRuntime,
     godot_process_exited,
@@ -34,6 +36,24 @@ class GodotRuntimeTests(unittest.TestCase):
         self._temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self._temporary.cleanup)
         self.tmp_path = Path(self._temporary.name)
+
+    def test_python_simulation_stays_offscreen_while_godot_is_visible_by_default(self) -> None:
+        import pygame
+
+        pygame.quit()
+        with patch.object(
+            pygame.display,
+            "set_mode",
+            side_effect=AssertionError("the Python simulation must not open a window"),
+        ):
+            _initialize_hidden_python_renderer()
+        try:
+            self.assertEqual(pygame.display.get_driver(), "dummy")
+            self.assertIsNone(pygame.display.get_surface())
+            self.assertFalse(parse_args([]).headless)
+            pygame.event.get()
+        finally:
+            pygame.quit()
 
     def test_resolves_relocatable_paired_runtime_before_host_godot(self) -> None:
         root = self.tmp_path / "release"
