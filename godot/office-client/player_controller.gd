@@ -26,6 +26,20 @@ var _facing := Vector3.FORWARD
 var _maintenance_clock := 0.0
 
 
+static func sprint_input_active(shift_pressed: bool, mouse_three_pressed: bool) -> bool:
+	return shift_pressed or mouse_three_pressed
+
+
+static func is_jump_input(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		return key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+	return false
+
+
 func configure_character(scene: PackedScene) -> void:
 	character_scene = scene
 
@@ -94,7 +108,10 @@ func requested_movement() -> Vector2:
 func wants_sprint() -> bool:
 	return (
 		not requested_movement().is_zero_approx()
-		and (Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_CTRL))
+		and sprint_input_active(
+			Input.is_key_pressed(KEY_SHIFT),
+			Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE),
+		)
 	)
 
 

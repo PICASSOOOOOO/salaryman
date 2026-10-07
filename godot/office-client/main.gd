@@ -938,7 +938,7 @@ func _build_interface() -> void:
 	controls_label = Label.new()
 	controls_label.position = Vector2(636, 646)
 	controls_label.size = Vector2(512, 48)
-	controls_label.text = "WASD MOVE · SHIFT SPRINT · SPACE JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+	controls_label.text = "WASD MOVE · SHIFT/M3 SPRINT · SPACE/CLICK JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
@@ -1973,7 +1973,7 @@ func _update_hud() -> void:
 					clean_hint = "C CLEAN / ƒ%d" % int(public_work.get("cleanRewardFiat", 0))
 				if bool(public_work.get("repairAvailable", false)):
 					repair_hint = "V REPAIR / ƒ%d" % int(public_work.get("repairRewardFiat", 0))
-			controls_label.text = "WASD MOVE  ·  SHIFT SPRINT  ·  SPACE JUMP\n%s  ·  %s  ·  %s" % [
+			controls_label.text = "WASD MOVE  ·  SHIFT/M3 SPRINT  ·  SPACE/CLICK JUMP\n%s  ·  %s  ·  %s" % [
 				clean_hint,
 				repair_hint,
 				target_name,
@@ -1986,7 +1986,7 @@ func _update_hud() -> void:
 			state_color = Color("#f8b957")
 		controls_label.add_theme_color_override("font_color", state_color)
 	else:
-		controls_label.text = "WASD MOVE · SHIFT SPRINT · SPACE JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+		controls_label.text = "WASD MOVE · SHIFT/M3 SPRINT · SPACE/CLICK JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
@@ -2122,6 +2122,16 @@ func _send_command(name: String, payload: Dictionary = {}) -> String:
 
 
 func _input(event: InputEvent) -> void:
+	if (
+		PlayerController.is_jump_input(event)
+		and _active_page_name().is_empty()
+		and not elevator_transition_active
+		and (native_app_panel == null or not native_app_panel.visible)
+		and (elevator_floor_panel == null or not elevator_floor_panel.visible)
+	):
+		player_root.try_jump()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if _handle_elevator_picker_key(event.keycode):
 			get_viewport().set_input_as_handled()
@@ -2151,8 +2161,6 @@ func _input(event: InputEvent) -> void:
 				_send_command("maintain", {"action": "clean"})
 			KEY_V:
 				_send_command("maintain", {"action": "repair"})
-			KEY_SPACE:
-				player_root.try_jump()
 			KEY_F:
 				player_root.try_fight()
 			KEY_Q:
@@ -2182,9 +2190,7 @@ func _input(event: InputEvent) -> void:
 		):
 			get_viewport().set_input_as_handled()
 			return
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			player_root.try_fight()
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
 			player_root.try_sweep()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_step_camera_zoom(-1)

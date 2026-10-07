@@ -3,6 +3,7 @@ extends SceneTree
 const OfficeClient = preload("res://main.gd")
 const OfficeProp = preload("res://office_prop.gd")
 const CameraSfx = preload("res://camera_sfx.gd")
+const PlayerController = preload("res://player_controller.gd")
 
 
 func _initialize() -> void:
@@ -26,6 +27,21 @@ func _run_tests() -> void:
 	assert(OfficeClient.terminal_choice_for_key(KEY_1) == 1)
 	assert(OfficeClient.terminal_choice_for_key(KEY_9) == 9)
 	assert(OfficeClient.terminal_choice_for_key(KEY_ESCAPE) == 0)
+	assert(PlayerController.sprint_input_active(true, false))
+	assert(PlayerController.sprint_input_active(false, true))
+	assert(not PlayerController.sprint_input_active(false, false))
+	var space_event := InputEventKey.new()
+	space_event.keycode = KEY_SPACE
+	space_event.pressed = true
+	assert(PlayerController.is_jump_input(space_event))
+	var left_click := InputEventMouseButton.new()
+	left_click.button_index = MOUSE_BUTTON_LEFT
+	left_click.pressed = true
+	assert(PlayerController.is_jump_input(left_click))
+	var right_click := InputEventMouseButton.new()
+	right_click.button_index = MOUSE_BUTTON_RIGHT
+	right_click.pressed = true
+	assert(not PlayerController.is_jump_input(right_click))
 	for zooming_in in [true, false]:
 		var tone: AudioStreamWAV = CameraSfx.make_zoom_tone(zooming_in)
 		assert(tone.mix_rate == 22050)

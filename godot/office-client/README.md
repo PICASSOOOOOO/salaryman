@@ -37,10 +37,11 @@ experience.
 ## Controls
 
 - `WASD` / arrows: move
+- `Shift` or middle mouse button (Mouse 3): sprint
+- `Space` or left mouse button: jump
 - `E`: interact with the nearby physical object
 - `1`–`6`: move to the lobby, hallway, or one of the four offices
 - `+` / `-` or mouse wheel: zoom the orthographic isometric camera
-- `Space`: pause/resume the shift
 - `N`: open/close the hiring desk
 - `B`: start a short break
 - `T`: toggle automatic breaks
