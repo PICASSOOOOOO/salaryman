@@ -168,12 +168,12 @@ def _request_tower_floor(
         message = "BASEMENT IS UNDER CONSTRUCTION" if floor < 1 else f"FLOOR {floor:02d} IS {status}"
         state.notice = message
         return CommandResult(False, message)
-    if floor == scene.current_floor:
-        message = f"ALREADY ON FLOOR {floor:02d}"
-        state.notice = message
-        return CommandResult(False, message)
     nearby = scene.nearby_object
     if scene.is_basement:
+        if floor == int(scene.basement_level or 1):
+            message = f"ALREADY ON BASEMENT B{floor}"
+            state.notice = message
+            return CommandResult(False, message)
         if nearby is None or nearby.kind not in {"basement_stairs", "service_elevator"}:
             message = "MOVE TO THE BASEMENT STAIRS OR SERVICE ELEVATOR"
             state.notice = message
@@ -190,6 +190,10 @@ def _request_tower_floor(
         state.notice = message
         state.close_page()
         return CommandResult(True, message, destination=f"basement:{floor}")
+    if floor == scene.current_floor:
+        message = f"ALREADY ON FLOOR {floor:02d}"
+        state.notice = message
+        return CommandResult(False, message)
     if nearby is None or nearby.kind not in {"elevator", "service_elevator"}:
         message = "MOVE TO AN ELEVATOR TO CHANGE FLOORS"
         state.notice = message

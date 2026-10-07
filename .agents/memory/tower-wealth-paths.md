@@ -9,6 +9,8 @@ or exploiting/raiding the game systems through extortion and crimes to get rich
 and powerful. A secret mafia path must be available to any player. Private lending
 needs a system. The ATM must be "iron clad." Higher floors offer more comfortable
 offices and cost more in real estate.
+Wealthier players should receive better treatment and more perks: more money
+should bring more benefits.
 
 Drugs are expensive consumables in the survival game. They can grant stamina,
 speed, faster cooldowns, or other positive and negative powers, while also
@@ -39,6 +41,12 @@ paid, owned offices.
 **How to apply:** Put background checks in the job application flow. Enforce
 authorization on real operations, and give owned paid offices stronger
 anti-harassment controls and security coverage than rented space.
+
+**Why:** The user wants wealth to provide tangible advantages and better
+treatment, not only a larger balance.
+
+**How to apply:** Tie higher-tier service and perks to legitimate wealth or
+ownership progression without weakening safety boundaries or access control.
 NPC staffing should stay sparse and focused on building operations; NPCs can be
 targets for restraint, robbery, or sabotage. Pablo Corp can offer limited
 peacekeeping contracts, while money and net worth are the main sources of power,

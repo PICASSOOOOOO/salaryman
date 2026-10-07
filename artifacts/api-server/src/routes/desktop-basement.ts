@@ -42,7 +42,7 @@ const WORK_DURATION_MS = 8_000;
 const WORK_MAX_AGE_MS = 10 * 60_000;
 const CARCASS_CLAIM_MS = 10 * 60_000;
 const CARCASS_PICKUP_RADIUS = 500;
-const CARCASS_DROP_POINT = { x: 5_000, y: 5_000 };
+const CARCASS_DROP_POINT = { x: 5_000, y: 7_000 };
 const CARCASS_DROP_RADIUS = 650;
 
 const MOVES = {
@@ -748,10 +748,10 @@ router.post("/desktop-building/basement/carcass/sell", async (req, res): Promise
     const result = await db.transaction(async (tx) => {
       const [presence] = await tx.select().from(desktopBasementPresenceTable)
         .where(eq(desktopBasementPresenceTable.userId, link.userId)).for("update").limit(1);
-      if (!presence || presence.linkId !== link.id || presence.level !== 1
+      if (!presence || presence.linkId !== link.id || presence.level !== 3
         || !fresh(presence.lastSeenAt, now)
         || distance(presence, CARCASS_DROP_POINT) > CARCASS_DROP_RADIUS) {
-        return { error: "Bring the carcass to the B1 disposal desk" } as const;
+        return { error: "Bring the carcass to the B3 incinerator" } as const;
       }
       const [pest] = await tx.select().from(desktopBasementPestsTable)
         .where(eq(desktopBasementPestsTable.id, pestId)).for("update").limit(1);
