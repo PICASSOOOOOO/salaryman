@@ -84,6 +84,25 @@ sufficient.
 **How to apply:** Check a server-authoritative building-staff assignment for
 every service-elevator trip, separate from passenger elevator and stair access.
 
+Tower maintenance NPCs must perform recurring daily generator work on B5 and
+water-pumping work on B6 to keep those systems running. Trash accumulates until
+workers take it to the B1 shipping and waste area at the rear of the building;
+shipping receives important incoming supplies through a gated exterior area.
+These operations need staffed positions and NPC incumbents. Human workers earn
+promotion by outperforming the incumbent and take on greater responsibility;
+the same career progression applies to Tower staff and all fictional companies.
+Restrooms provide approximate stall privacy and help restore player stamina.
+
+**Why:** the user specified daily utility upkeep, physical waste removal and
+receiving, incumbent-based promotions across fictional employers, and private
+restrooms with a stamina benefit.
+
+**How to apply:** Keep utility and waste work visible and action-based, use
+server-owned state for system condition and task completion, and make career
+rules reusable across employers instead of creating a Tower-only exception.
+Represent restroom privacy in the physical layout and validate stamina recovery
+through the authenticated game account.
+
 **Why:** the user clarified the lobby layout, required 3D building systems, and
 named below-grade, operational, elevator, stair, and story-lockdown details
 that must remain in the building plan.
