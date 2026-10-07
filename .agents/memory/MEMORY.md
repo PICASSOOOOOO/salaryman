@@ -3,7 +3,7 @@
 - [Office-first restructure + city story-gate](office-first-restructure.md) — onboarded land /office; /game=TERMINAL (Pablo a tile); do NOT hard-lock city behind story.active — story is BEGUN in-city, so gating /world soft-locks; add office begin-story path first.
 - [Browser onboarding work paths](browser-onboarding-work-path.md) — web onboarding offers real business or “LOOKING FOR WORK”; fictional business/immigration stays in the downloadable game.
 - [Site-wide popup boundary](site-wide-popup-boundary.md) — keep alerts opt-in; offer COMMS as a page and user-opened desktop dock, with badges and intentional dialogs preserved.
-- [Phone-system health](phone-system-daily-test.md) — mocked tests and live Twilio probes are separate; SMS rejection must not gate Voice; daily schedule is user-owned.
+- [Phone-system health + tests](phone-system-daily-test.md) — mocked tests and live Twilio probes are separate; SMS rejection must not gate Voice. See [test harness](twilio-phone-tests.md); schedule is user-owned.
 - [Twilio toll-free resubmission](twilio-tollfree-resubmission.md) — use `editExpiration`; after seven days, submit corrections as a new request and keep the rejected record.
 - [Browser phone bridge invariant](browser-phone-bridge.md) — outbound PSTN calls are transactional: Voice ready first, every conference joined before active UI, all legs rolled back on any join failure.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
@@ -15,7 +15,6 @@
 - [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.
 - [Comms outgoing delivery](comms-outgoing-delivery.md) — send ordinary chat over acknowledged HTTP with an optimistic local bubble; keep WebSocket for incoming delivery and private-channel subscriptions.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
-- [Twilio phone tests](twilio-phone-tests.md) — vitest+supertest in api-server; async vi.mock factory + shared mockState; twilio mocked (no real calls); real dev DB scoped by synthetic userId, serial files.
 - [Telephony callback owner resolution](telephony-owner-resolution.md) — active persisted destination-number ownership outranks legacy Twilio user hints; ambiguous/inactive mappings fail closed.
 - [Office player avatar](office-player-avatar.md) — avatar must be OUT of NPC FSM (isPlayer short-circuit) or it auto-wanders; roster polls must NOT be init-effect deps (rebuild teleports player); removeAgent is deferred despawn, use cancelDespawn on re-add.
 - [Global UI sound coalescing](global-ui-sound-coalescing.md) — app-wide capture-phase click sound must DEFER (setTimeout 0 + sound-epoch check), not play immediately, or it double-beeps with handlers that play their own sound.
@@ -110,12 +109,12 @@
 - [Release build heap cap](release-build-heap-cap.md) — keep the 3 GiB Node heap and single-worker Terser; use tracked background builds because legacy minification is slow and memory-heavy.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
-- [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ1,000=0.1 GOLD=$1; live BTC/gold references and conversion controls belong only on Economy; GOLD is in-game wealth, never crypto/cash-out.
+- [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ1,000=0.1 GOLD=$1; GOLD is in-game reserve, never cash-out; browser Credits are a separate Stripe-connected usage rail, deferred until Tower work is done.
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — Pablo must fail closed when ElevenLabs rejects his assigned voice; never substitute generic speech without user approval.
 - [Pablo outbound campaign consent](pablo-outbound-campaign-consent.md) — Campaigns and direct Pablo calls require an owned saved contact with recorded call permission; spoken STOP opts out and the assigned ElevenLabs voice must pass preflight.
 - [Shadow Tower rules](shadow-tower-rules.md) — floor geometry, assignments, services, access, and prices must agree across the playable Tower.
-- [Cross-client economy](cross-client-economy.md) — browser Credits are server FIAT; desktop and browser share ledgers, and rewards require server-verified settlement.
-- [USD paid-service boundary](usd-paid-service-boundary.md) — Phone System and Automation Pixel Agents are separate Stripe-backed USD products; gameplay currency, trials, aliases, and bundles cannot unlock them.
+- [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
+- [USD paid-service boundary](usd-paid-service-boundary.md) — subscriptions remain separate Stripe products; browser Credits can meter eligible usage but do not pay subscription fees or game purchases.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.
@@ -157,3 +156,4 @@
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Tower basement layout and access](tower-basement-layout.md) — B1–B6 departments, one full-height service lift, four lobby passenger lifts, two stairwells, and activity-driven pest pressure.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp owns unpurchased units plus selected floors; preserve private resale proceeds and its intentional economic advantage.
+- [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
