@@ -5,6 +5,7 @@ import {
   integer,
   pgTable,
   primaryKey,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -26,6 +27,11 @@ export const towerOperationsStateTable = pgTable(
     lastSupplyDeliveryAt: timestamp("last_supply_delivery_at", { withTimezone: true }).notNull().defaultNow(),
     lastGeneratorWorkAt: timestamp("last_generator_work_at", { withTimezone: true }).notNull().defaultNow(),
     lastPumpWorkAt: timestamp("last_pump_work_at", { withTimezone: true }).notNull().defaultNow(),
+    operatingBalanceFiat: integer("operating_balance_fiat").notNull().default(250000),
+    powerBillDueFiat: integer("power_bill_due_fiat").notNull().default(0),
+    waterBillDueFiat: integer("water_bill_due_fiat").notNull().default(0),
+    lastUtilityBillAt: timestamp("last_utility_bill_at", { withTimezone: true }).notNull().defaultNow(),
+    backupFuelDays: integer("backup_fuel_days").notNull().default(5),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
@@ -34,6 +40,33 @@ export const towerOperationsStateTable = pgTable(
     check("tower_operations_state_supplies_check", sql`${table.incomingSupplyCrates} between 0 and 1000000`),
     check("tower_operations_state_stored_supplies_check", sql`${table.storedSupplyCrates} between 0 and 1000000`),
     check("tower_operations_state_processed_trash_check", sql`${table.processedTrash} between 0 and 1000000`),
+    check("tower_operations_balance_check", sql`${table.operatingBalanceFiat} between 0 and 2147483647`),
+    check("tower_operations_power_bill_check", sql`${table.powerBillDueFiat} between 0 and 2147483647`),
+    check("tower_operations_water_bill_check", sql`${table.waterBillDueFiat} between 0 and 2147483647`),
+    check("tower_operations_backup_fuel_check", sql`${table.backupFuelDays} between 0 and 5`),
+  ],
+);
+
+export const towerOperationsLedgerTable = pgTable(
+  "tower_operations_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventKey: varchar("event_key", { length: 220 }).notNull(),
+    eventType: varchar("event_type", { length: 24 }).notNull(),
+    category: varchar("category", { length: 32 }).notNull(),
+    userId: varchar("user_id", { length: 256 }),
+    amountFiat: integer("amount_fiat").notNull(),
+    balanceAfterFiat: integer("balance_after_fiat").notNull(),
+    description: text("description").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tower_operations_ledger_event_unique").on(table.eventKey),
+    index("tower_operations_ledger_created_idx").on(table.createdAt),
+    index("tower_operations_ledger_user_created_idx").on(table.userId, table.createdAt),
+    check("tower_operations_ledger_event_type_check", sql`${table.eventType} in ('opening_capital', 'service_revenue', 'bill_payment')`),
+    check("tower_operations_ledger_amount_check", sql`${table.amountFiat} > 0`),
+    check("tower_operations_ledger_balance_check", sql`${table.balanceAfterFiat} between 0 and 2147483647`),
   ],
 );
 
@@ -155,6 +188,7 @@ export const careerPromotionsTable = pgTable(
 );
 
 export type TowerOperationsState = typeof towerOperationsStateTable.$inferSelect;
+export type TowerOperationsLedgerEntry = typeof towerOperationsLedgerTable.$inferSelect;
 export type TowerWasteHaul = typeof towerWasteHaulsTable.$inferSelect;
 export type CareerPosition = typeof careerPositionsTable.$inferSelect;
 export type CareerWorkEvent = typeof careerWorkEventsTable.$inferSelect;
