@@ -75,7 +75,7 @@ class PygameBridgeTests(unittest.TestCase):
             if floor in (2, 3, 4, 5, 7):
                 hallway_machines = [
                     item for item in self.scene.objects.objects
-                    if item.room == room and item.kind in {"atm", "vending_machine"}
+                    if item.room in rooms and item.kind in {"atm", "vending_machine"}
                 ]
                 self.assertEqual(
                     sum(item.kind == "atm" for item in hallway_machines),

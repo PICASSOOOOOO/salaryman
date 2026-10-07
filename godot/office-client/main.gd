@@ -1662,12 +1662,12 @@ collision_extents: Array = [],
 		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
-if kind == "business_suite" or kind == "business_kiosk":
-return _build_business_prop(kind, position, object_id, label)
-if kind == "yard_gate":
-return _build_yard_gate(position, object_id, label)
-if kind == "delivery_truck" or kind == "forklift" or kind == "pallet" or kind == "supply_crate":
-return _build_loading_yard_prop(kind, position, object_id, label)
+	if kind == "business_suite" or kind == "business_kiosk":
+		return _build_business_prop(kind, position, object_id, label)
+	if kind == "yard_gate":
+		return _build_yard_gate(position, object_id, label)
+	if kind == "delivery_truck" or kind == "forklift" or kind == "pallet" or kind == "supply_crate":
+		return _build_loading_yard_prop(kind, position, object_id, label)
 	if kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
