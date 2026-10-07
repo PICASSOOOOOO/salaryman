@@ -18,6 +18,7 @@ var animation_player: AnimationPlayer
 var bridge_connected := false
 var authoritative_action := "stand"
 var authoritative_position_received := false
+var mouse_sprint_toggled := false
 
 var _local_action := ""
 var _action_lock := 0.0
@@ -26,8 +27,13 @@ var _facing := Vector3.FORWARD
 var _maintenance_clock := 0.0
 
 
-static func sprint_input_active(shift_pressed: bool, mouse_three_pressed: bool) -> bool:
-	return shift_pressed or mouse_three_pressed
+static func sprint_input_active(shift_pressed: bool, mouse_three_toggled: bool) -> bool:
+	return shift_pressed or mouse_three_toggled
+
+
+func toggle_mouse_sprint() -> bool:
+	mouse_sprint_toggled = not mouse_sprint_toggled
+	return mouse_sprint_toggled
 
 
 static func is_jump_input(event: InputEvent) -> bool:
@@ -110,7 +116,7 @@ func wants_sprint() -> bool:
 		not requested_movement().is_zero_approx()
 		and sprint_input_active(
 			Input.is_key_pressed(KEY_SHIFT),
-			Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE),
+			mouse_sprint_toggled,
 		)
 	)
 

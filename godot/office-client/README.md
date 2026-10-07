@@ -37,7 +37,7 @@ experience.
 ## Controls
 
 - `WASD` / arrows: move
-- `Shift` or middle mouse button (Mouse 3): sprint
+- Hold `Shift` to sprint; click middle mouse button (Mouse 3) to toggle sprint on/off
 - `Space` or left mouse button: jump
 - `E`: interact with the nearby physical object
 - `1`–`6`: move to the lobby, hallway, or one of the four offices

@@ -30,6 +30,10 @@ func _run_tests() -> void:
 	assert(PlayerController.sprint_input_active(true, false))
 	assert(PlayerController.sprint_input_active(false, true))
 	assert(not PlayerController.sprint_input_active(false, false))
+	var player_controller = PlayerController.new()
+	assert(player_controller.toggle_mouse_sprint())
+	assert(not player_controller.toggle_mouse_sprint())
+	player_controller.free()
 	var space_event := InputEventKey.new()
 	space_event.keycode = KEY_SPACE
 	space_event.pressed = true
