@@ -1279,7 +1279,16 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 			float(object.get("displayY", object.get("y", 0))),
 			object_room,
 		)
-		var marker := _build_bridge_object(kind, render_position, object_id)
+var collision_extents: Array = object.get("collisionHalfExtents", [0, 0])
+var marker := _build_bridge_object(
+kind,
+render_position,
+object_id,
+str(object.get("label", "")),
+bool(object.get("constructionComplete", false)),
+bool(object.get("interactive", false)),
+collision_extents,
+)
 		marker.name = object_id
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
@@ -1420,7 +1429,15 @@ func _upsert_basement_actor(
 	actor_node.position = _pygame_to_world(x, y, room_id)
 
 
-func _build_bridge_object(kind: String, position: Vector3, object_id: String) -> Node3D:
+func _build_bridge_object(
+kind: String,
+position: Vector3,
+object_id: String,
+label: String = "",
+construction_complete: bool = false,
+interactive: bool = true,
+collision_extents: Array = [],
+) -> Node3D:
 	if kind in OfficeProp.SUPPORTED_KINDS:
 		var prop := OfficeProp.create(kind, object_id == "lobby-reception-desk")
 		prop.name = object_id
@@ -1444,13 +1461,55 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 		return window
 	elif kind == "door":
 		return _build_door_visual(position, object_id)
-	elif kind == "elevator":
+elif kind == "elevator" or kind == "service_elevator":
 		return _build_elevator_visual(position, object_id)
 	elif kind == "stairs" or kind == "basement_stairs":
 		return _build_staircase(position, object_id)
+elif kind == "construction_task":
+return _build_construction_marker(position, object_id, label, construction_complete, interactive)
+elif kind == "partition_h" or kind == "partition_v":
+var half_x := float(collision_extents[0]) if collision_extents.size() > 0 else 750.0
+var half_z := float(collision_extents[1]) if collision_extents.size() > 1 else 60.0
+var partition_size := Vector3(maxf(0.2, half_x * 0.02), 2.4, maxf(0.2, half_z * 0.02))
+return _add_box_to_dynamic(object_id, position + Vector3(0.0, 1.1, 0.0), partition_size, materials["wall_trim"])
 	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
+
+
+func _build_construction_marker(
+position: Vector3,
+object_id: String,
+label_text: String,
+completed: bool,
+interactive: bool,
+) -> Node3D:
+var root := Node3D.new()
+root.name = object_id
+root.position = position
+dynamic_root.add_child(root)
+var marker_material := StandardMaterial3D.new()
+marker_material.albedo_color = Color("#49ad79") if completed else (
+Color("#dfa64c") if interactive else Color("#6485a0")
+)
+marker_material.emission_enabled = true
+marker_material.emission = marker_material.albedo_color * 0.35
+var marker_mesh := MeshInstance3D.new()
+var marker_box := BoxMesh.new()
+marker_box.size = Vector3(0.55, 0.85, 0.55)
+marker_box.material = marker_material
+marker_mesh.mesh = marker_box
+marker_mesh.position = Vector3(0.0, 0.43, 0.0)
+root.add_child(marker_mesh)
+var sign := Label3D.new()
+sign.text = label_text
+sign.font_size = 28
+sign.pixel_size = 0.006
+sign.position = Vector3(0.0, 1.45, 0.0)
+sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+sign.modulate = marker_material.albedo_color
+root.add_child(sign)
+return root
 
 
 func _sync_prop_surfaces(objects: Array) -> void:

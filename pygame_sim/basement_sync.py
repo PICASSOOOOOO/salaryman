@@ -379,7 +379,7 @@ class DesktopBasementSync:
         if source == "basement_attack":
             return "NON-LETHAL MELEE / SERVER RESOLVED"
         if source == "basement_claim":
-            return "CARCASS CLAIMED / CARRY IT TO B1"
+            return "CARCASS CLAIMED / CARRY IT TO B3"
         if source == "basement_sell":
             return f"CARCASS SOLD / ƒ{int(result.get('bountyFiat', 0) or 0):,}"
         if source == "basement_uniform":

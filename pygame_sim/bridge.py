@@ -194,6 +194,21 @@ def _request_tower_floor(
         message = f"ALREADY ON FLOOR {floor:02d}"
         state.notice = message
         return CommandResult(False, message)
+    if nearby is not None and nearby.kind == "stairs" \
+        and abs(floor - scene.current_floor) == 1:
+        stairwell = int(nearby.stairwell_number or 0)
+        if building_sync is not None and getattr(building_sync, "link", None) is not None:
+            if not building_sync.queue_stairs(floor, stairwell, scene):
+                message = "STAIRWELL REQUEST UNAVAILABLE"
+                state.notice = message
+                return CommandResult(False, message)
+            state.close_page()
+            message = f"STAIRS / REQUESTING FLOOR {floor:02d}"
+            state.notice = message
+            return CommandResult(True, message, destination=f"floor:{floor}")
+        if scene.select_floor(floor):
+            state.notice = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"
+            return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
     if nearby is None or nearby.kind not in {"elevator", "service_elevator"}:
         message = "MOVE TO AN ELEVATOR TO CHANGE FLOORS"
         state.notice = message
@@ -662,6 +677,10 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "displayX": item.visual_position[0],
                     "displayY": item.visual_position[1],
                     "interactive": item.interactive,
+                    "collisionHalfExtents": list(item.collision_half_extents),
+                    "constructionPlanId": item.construction_plan_id,
+                    "constructionTaskId": item.construction_task_id,
+                    "constructionComplete": item.completed,
                     "cameraFocusEnabled": item.camera_focus_enabled,
                     "nearby": item == scene.nearby_object,
                     "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),

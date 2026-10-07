@@ -40,6 +40,8 @@ ObjectKind = Literal[
     "arcade",
     "desk",
     "chair",
+    "partition_h",
+    "partition_v",
     "window",
     "door",
     "desk_lamp",
@@ -96,6 +98,8 @@ class OfficeObject:
         return {
             "desk": (300, 150),
             "chair": (180, 130),
+            "partition_h": (750, 60),
+            "partition_v": (60, 750),
             "window": (220, 90),
             "atm": (150, 180),
             "vending_machine": (150, 180),
@@ -574,13 +578,11 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 "TAKE STAIRS DOWN ONE LANDING",
             ))
         if level == 1:
-            registry.add(OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"))
-            registry.add(OfficeObject("basement-b1-uniform", "pest_uniform_station", "UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"))
             for office_index in range(20):
                 column = office_index % 5
                 row = office_index // 5
-                x = 900 + column * 1_800
-                y = 700 + row * 2_100
+                x = 1_250 + column * 1_900
+                y = 1_250 + row * 2_100
                 registry.add(OfficeObject(
                     f"basement-b1-admin-office-{office_index + 1:02d}",
                     "desk",
@@ -590,6 +592,27 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     "TOWER ADMINISTRATION",
                     interactive=False,
                 ))
+                room_left = 500 + column * 1_900
+                room_top = 500 + row * 2_100
+                room_center_x = room_left + 750
+                room_center_y = room_top + 750
+                walls = (
+                    ("partition_h", (room_center_x, room_top), "NORTH"),
+                    ("partition_v", (room_left, room_center_y), "WEST"),
+                    ("partition_v", (room_left + 1_500, room_center_y), "EAST"),
+                    ("partition_h", (room_center_x - 525, room_top + 1_500), "SOUTH LEFT"),
+                    ("partition_h", (room_center_x + 525, room_top + 1_500), "SOUTH RIGHT"),
+                )
+                for wall_index, (kind, position, side) in enumerate(walls, start=1):
+                    registry.add(OfficeObject(
+                        f"basement-b1-admin-office-{office_index + 1:02d}-wall-{wall_index}",
+                        kind,
+                        f"ADMIN PARTITION / {side}",
+                        room,
+                        position,
+                        "ADMIN OFFICE PARTITION",
+                        interactive=False,
+                    ))
         elif level == 2:
             for office_index in range(6):
                 registry.add(OfficeObject(
@@ -607,6 +630,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             registry.add(OfficeObject("basement-b2-collections-clerk", "receptionist", "COLLECTIONS CLERK", room, (2_800, 5_400), "COLLECTIONS FACILITY", interactive=False))
             registry.add(OfficeObject("basement-b2-security-patrol", "receptionist", "CORPORATE SECURITY / PATROL", room, (7_800, 6_000), "CORPORATE STAFF / NOT POLICE", interactive=False))
         elif level == 3:
+            registry.add(OfficeObject("basement-b3-job-board", "pest_job_board", "PEST RESPONSE WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"))
+            registry.add(OfficeObject("basement-b3-uniform", "pest_uniform_station", "RESPONSE UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"))
             registry.add(OfficeObject("basement-b3-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"))
             registry.add(OfficeObject("basement-b3-disaster-response", "desk", "DISASTER RESPONSE", room, (2_000, 2_000), "EMERGENCY RESPONSE", interactive=False))
             registry.add(OfficeObject("basement-b3-fire-station", "desk", "FIRE STATION", room, (2_000, 4_000), "TOWER FIRE RESPONSE", interactive=False))

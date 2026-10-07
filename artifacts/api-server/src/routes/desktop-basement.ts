@@ -481,13 +481,13 @@ router.post("/desktop-building/basement/uniform", async (req, res): Promise<void
         .for("update")
         .limit(1);
       const atBasementStation = Boolean(presence && presence.linkId === link.id
-        && presence.level === 1 && fresh(presence.lastSeenAt, now)
+        && presence.level === 3 && fresh(presence.lastSeenAt, now)
         && isNearBasementStairs(presence));
       const atLobbyStation = Boolean(office && office.linkId === link.id && office.room === "lobby"
         && fresh(office.lastSeenAt, now)
         && isNearTowerBasementStairs(office.floorNumber, office));
       if (!atBasementStation && !atLobbyStation) {
-        return { error: "Use the lobby or B1 uniform station" } as const;
+        return { error: "Use the lobby or B3 response uniform station" } as const;
       }
       const [save] = await tx.select().from(salarymanSavesTable).where(and(
         eq(salarymanSavesTable.userId, link.userId),
@@ -804,7 +804,7 @@ router.post("/desktop-building/basement/work/start", async (req, res): Promise<v
         .where(eq(desktopBasementPresenceTable.userId, link.userId)).for("update").limit(1);
       if (!presence || presence.linkId !== link.id || !fresh(presence.lastSeenAt, now)
         || presence.level !== station.level || distance(presence, station) > 500) {
-        return { error: "Move to the B1 utility station first" } as const;
+        return { error: `Move to the B${station.level} utility station first` } as const;
       }
       const [save] = await tx.select({ data: salarymanSavesTable.data }).from(salarymanSavesTable).where(and(
         eq(salarymanSavesTable.userId, link.userId),

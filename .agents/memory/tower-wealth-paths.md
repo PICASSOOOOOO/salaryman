@@ -11,6 +11,9 @@ needs a system. The ATM must be "iron clad." Higher floors offer more comfortabl
 offices and cost more in real estate.
 Wealthier players should receive better treatment and more perks: more money
 should bring more benefits.
+Lower-income players should gain strength, stamina, power, attack and defense,
+better protection from weather and natural disasters, and heightened senses.
+They should have fewer opportunities, and everything should cost them more.
 
 Drugs are expensive consumables in the survival game. They can grant stamina,
 speed, faster cooldowns, or other positive and negative powers, while also
@@ -47,6 +50,13 @@ treatment, not only a larger balance.
 
 **How to apply:** Tie higher-tier service and perks to legitimate wealth or
 ownership progression without weakening safety boundaries or access control.
+
+**Why:** The user wants low-income characters to have meaningful physical and
+survival advantages, balanced against reduced opportunity and higher prices.
+
+**How to apply:** Design income tiers as asymmetric tradeoffs: wealth improves
+treatment and access to perks; low income improves physical resilience and
+senses while opportunities are fewer and prices higher.
 NPC staffing should stay sparse and focused on building operations; NPCs can be
 targets for restraint, robbery, or sabotage. Pablo Corp can offer limited
 peacekeeping contracts, while money and net worth are the main sources of power,

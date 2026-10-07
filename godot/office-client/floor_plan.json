@@ -61,10 +61,10 @@
     },
     "passengerElevators": {
       "count": 4,
-      "positions": [[9500, 1500], [10500, 1500], [11500, 1500], [12500, 1500]]
+      "positions": [[9300, 1500], [10000, 1500], [11000, 1500], [12000, 1500]]
     },
     "serviceElevator": {
-      "position": [15000, 1500],
+      "position": [12500, 1500],
       "stops": ["B6", "B5", "B4", "B3", "B2", "B1", 1, 2, 3, 4, 5, 6],
       "highestOpenFloor": 6
     },
@@ -222,7 +222,7 @@
     },
     {
       "id": "basement_b1",
-      "label": "B1 UTILITIES & PEST RESPONSE",
+      "label": "B1 ADMINISTRATIVE OFFICES",
       "bounds": [0, 0, 10000, 10000],
       "renderOffset": [0, 30000],
       "accent": [63, 111, 93],
@@ -231,7 +231,7 @@
     },
     {
       "id": "basement_b2",
-      "label": "B2 SERVICE LEVEL",
+      "label": "B2 COLLECTIONS / CORPORATE SECURITY",
       "bounds": [0, 0, 10000, 10000],
       "renderOffset": [0, 41000],
       "accent": [78, 105, 91],
@@ -240,7 +240,7 @@
     },
     {
       "id": "basement_b3",
-      "label": "B3 SERVICE LEVEL",
+      "label": "B3 DISASTER RESPONSE / FIRE / MAINTENANCE",
       "bounds": [0, 0, 10000, 10000],
       "renderOffset": [0, 52000],
       "accent": [78, 105, 91],
@@ -249,7 +249,7 @@
     },
     {
       "id": "basement_b4",
-      "label": "B4 SERVICE LEVEL",
+      "label": "B4 VITAL SUPPLIES",
       "bounds": [0, 0, 10000, 10000],
       "renderOffset": [0, 63000],
       "accent": [78, 105, 91],
@@ -258,7 +258,7 @@
     },
     {
       "id": "basement_b5",
-      "label": "B5 SERVICE LEVEL",
+      "label": "B5 POWER / GENERATORS",
       "bounds": [0, 0, 10000, 10000],
       "renderOffset": [0, 74000],
       "accent": [78, 105, 91],
@@ -267,7 +267,7 @@
     },
     {
       "id": "basement_b6",
-      "label": "B6 SERVICE LEVEL",
+      "label": "B6 PUMPING / PLUMBING",
       "bounds": [0, 0, 10000, 10000],
       "renderOffset": [0, 85000],
       "accent": [78, 105, 91],
