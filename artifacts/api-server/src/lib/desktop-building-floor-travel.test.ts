@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   PLAYABLE_TOWER_FLOORS,
   TOWER_ELEVATOR_POSITIONS,
+  TOWER_PASSENGER_ELEVATOR_POSITIONS,
+  TOWER_SERVICE_ELEVATOR_POSITIONS,
   isNearTowerElevator,
+  isNearTowerServiceElevator,
   validateBuildingPresence,
 } from "./desktop-building-objects";
 
@@ -27,16 +30,19 @@ describe("desktop tower floor travel", () => {
     lastSeenAt: now,
   };
 
-  it("opens only the lobby and Floor 6, with both elevator destinations beside their doors", () => {
-    expect([...PLAYABLE_TOWER_FLOORS].sort((a, b) => a - b)).toEqual([1, 6]);
+  it("opens the lobby, construction Floors 2–5, and Floor 6 while keeping upper floors closed", () => {
+    expect([...PLAYABLE_TOWER_FLOORS].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(isNearTowerElevator(1, lobby)).toBe(true);
     expect(isNearTowerElevator(6, floorSixHallway)).toBe(true);
-    expect(isNearTowerElevator(2, lobby)).toBe(false);
+    expect(isNearTowerElevator(2, TOWER_PASSENGER_ELEVATOR_POSITIONS[2][0])).toBe(true);
+    expect(isNearTowerElevator(7, lobby)).toBe(false);
+    expect(isNearTowerServiceElevator(2, TOWER_SERVICE_ELEVATOR_POSITIONS[2])).toBe(true);
+    expect(isNearTowerServiceElevator(2, TOWER_PASSENGER_ELEVATOR_POSITIONS[2][0])).toBe(false);
   });
 
   it("rejects a direct lobby-to-office-floor transition and accepts an authorized elevator trip", () => {
     expect(validateBuildingPresence(lobby, floorSixHallway, now, "executive"))
-      .toBe("Use the elevator to enter Floor 06");
+      .toBe("Use a passenger elevator or stairwell to enter this floor");
     const elevatorAtLobby = {
       ...lobby,
       room: "elevator" as const,
@@ -47,8 +53,8 @@ describe("desktop tower floor travel", () => {
     expect(validateBuildingPresence(elevatorAtLobby, floorSixHallway, now, "executive")).toBeNull();
   });
 
-  it("keeps every other floor locked and permits the authorized return trip", () => {
-    const closedFloor = { ...floorSixHallway, floorNumber: 2 };
+  it("keeps Floors 7–67 locked and permits the authorized return trip", () => {
+    const closedFloor = { ...floorSixHallway, floorNumber: 7 };
     expect(validateBuildingPresence(lobby, closedFloor, now, "executive")).toBe("Floor is under construction");
 
     const elevatorAtFloorSix = {

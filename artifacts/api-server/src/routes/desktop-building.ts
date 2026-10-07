@@ -13,6 +13,7 @@ import {
   organizationsTable,
   shadowTowerFloorsTable,
   shadowTowerOfficeUnitsTable,
+  towerStaffAssignmentsTable,
   shadowTowerWorkstationAssignmentsTable,
   usersTable,
   type OrgRole,
@@ -47,10 +48,12 @@ import {
   buildingObjectsForRoom,
   catalogRoomForPresence,
   isNearTowerElevator,
+  isNearTowerServiceElevator,
   isNearTowerStairwell,
   isWalkableBuildingPosition,
   validateBuildingPresence,
 } from "../lib/desktop-building-objects";
+import { hasTowerStaffAssignment, TOWER_STAFF_ROLES } from "../lib/tower-staff-access";
 
 const router = Router();
 router.use(desktopConstructionRouter);
@@ -73,6 +76,80 @@ const ROOM_LABEL: Record<string, string> = {
 const MAINTENANCE_REACH_PX = 1_250;
 const PUBLIC_WORK_SESSION_MAX_AGE_MS = 15 * 60 * 1_000;
 const PUBLIC_WORK_SLOT_LOCK_KEY = 731_904_218;
+const TOWER_STAFF_ACCESS_ERROR = "The service elevator is restricted to assigned Tower staff";
+
+function isTowerStaffManager(email: string | null | undefined): boolean {
+  const configuredOwners = (process.env.OWNER_EMAILS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return !!email && configuredOwners.includes(email.trim().toLowerCase());
+}
+
+router.put("/desktop-building/staff/:userId", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const userId = typeof req.params.userId === "string" ? req.params.userId.trim() : "";
+  const role = req.body?.role;
+  if (!userId || userId.length > 128
+    || typeof role !== "string"
+    || !TOWER_STAFF_ROLES.includes(role as (typeof TOWER_STAFF_ROLES)[number])) {
+    res.status(400).json({ error: "Provide a user ID and a valid Tower staff role" });
+    return;
+  }
+
+  try {
+    const [manager] = await db.select({ email: usersTable.email }).from(usersTable)
+      .where(eq(usersTable.id, link.userId)).limit(1);
+    if (!isTowerStaffManager(manager?.email)) {
+      res.status(403).json({ error: "Only configured Tower administrators can assign building staff" });
+      return;
+    }
+    const [target] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.id, userId)).limit(1);
+    if (!target) {
+      res.status(404).json({ error: "Tower staff user was not found" });
+      return;
+    }
+    await db.insert(towerStaffAssignmentsTable).values({
+      userId,
+      role,
+      assignedByUserId: link.userId,
+    }).onConflictDoUpdate({
+      target: towerStaffAssignmentsTable.userId,
+      set: { role, assignedByUserId: link.userId, updatedAt: new Date() },
+    });
+    res.json({ ok: true, userId, role });
+  } catch (error) {
+    req.log.error({ err: error }, "Tower staff assignment failed");
+    res.status(500).json({ error: "Could not assign Tower staff" });
+  }
+});
+
+router.delete("/desktop-building/staff/:userId", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const userId = typeof req.params.userId === "string" ? req.params.userId.trim() : "";
+  if (!userId || userId.length > 128) {
+    res.status(400).json({ error: "Provide a valid Tower staff user ID" });
+    return;
+  }
+
+  try {
+    const [manager] = await db.select({ email: usersTable.email }).from(usersTable)
+      .where(eq(usersTable.id, link.userId)).limit(1);
+    if (!isTowerStaffManager(manager?.email)) {
+      res.status(403).json({ error: "Only configured Tower administrators can revoke building staff" });
+      return;
+    }
+    await db.delete(towerStaffAssignmentsTable)
+      .where(eq(towerStaffAssignmentsTable.userId, userId));
+    res.json({ ok: true, userId, revoked: true });
+  } catch (error) {
+    req.log.error({ err: error }, "Tower staff revocation failed");
+    res.status(500).json({ error: "Could not revoke Tower staff" });
+  }
+});
 
 type BuildingScope = {
   presence: typeof desktopOfficePresenceTable.$inferSelect;
@@ -639,24 +716,36 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
           || previousPresence.room !== expectedOriginRoom
           || ageMs == null || ageMs < 0 || ageMs > BUILDING_PRESENCE_MAX_AGE_MS) {
           presenceValidationError = "Approach the elevator from the lobby or Floor 06 hallway";
+        } else if (isNearTowerServiceElevator(floorNumber, previousPresence)
+          !== isNearTowerServiceElevator(floorNumber, { x, y })) {
+          presenceValidationError = "Enter and leave through the same elevator landing";
+        } else if (isNearTowerServiceElevator(floorNumber, previousPresence)
+          && !await hasTowerStaffAssignment(link.userId)) {
+          presenceValidationError = TOWER_STAFF_ACCESS_ERROR;
         } else if (!isNearTowerElevator(floorNumber, previousPresence)
           || !isNearTowerElevator(floorNumber, { x, y })) {
           presenceValidationError = "Stand beside the elevator before selecting a floor";
         }
       } else {
-        presenceValidationError = validateBuildingPresence(
-          previousPresence ?? null,
-          {
-            room: room as "lobby" | "hallway" | "office" | "executive_suite",
-            roomKey,
-            floorNumber,
-            linkId: link.id,
-            x,
-            y,
-          },
-          now,
-          ownOffice?.room ?? null,
-        );
+        const arrivedFromServiceElevator = previousPresence?.room === "elevator"
+          && isNearTowerServiceElevator(previousPresence.floorNumber, previousPresence);
+        if (arrivedFromServiceElevator && !await hasTowerStaffAssignment(link.userId)) {
+          presenceValidationError = TOWER_STAFF_ACCESS_ERROR;
+        } else {
+          presenceValidationError = validateBuildingPresence(
+            previousPresence ?? null,
+            {
+              room: room as "lobby" | "hallway" | "office" | "executive_suite",
+              roomKey,
+              floorNumber,
+              linkId: link.id,
+              x,
+              y,
+            },
+            now,
+            ownOffice?.room ?? null,
+          );
+        }
       }
       if (presenceValidationError) return;
 

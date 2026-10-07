@@ -14,10 +14,12 @@ import {
   deviceLinksTable,
   playerLedgerTable,
   salarymanSavesTable,
+  towerStaffAssignmentsTable,
   towerBuildingVitalsTable,
   usersTable,
 } from "@workspace/db";
 import { TOWER_ELEVATOR_POSITIONS } from "../lib/desktop-building-objects";
+import { TOWER_SERVICE_ELEVATOR_BASEMENT, TOWER_SERVICE_ELEVATOR_LOBBY } from "../lib/tower-basement-layout";
 import desktopBasementRouter from "../routes/desktop-basement";
 
 const app = express();
@@ -129,6 +131,7 @@ describe("desktop basement survival authority", () => {
     }
     await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
     await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
+    await db.delete(towerStaffAssignmentsTable).where(eq(towerStaffAssignmentsTable.userId, userId));
     if (userIds.length) {
       await db.delete(bankTransactionsTable).where(eq(bankTransactionsTable.userId, userId));
       await db.delete(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
@@ -141,20 +144,53 @@ describe("desktop basement survival authority", () => {
     }
   });
 
-  it("allows basement entry only from the lobby stairs", async () => {
+  it("allows stair entry to everyone and limits service-elevator basement entry to assigned staff", async () => {
     await db.update(desktopOfficePresenceTable)
       .set({ x: TOWER_ELEVATOR_POSITIONS[1].x, y: TOWER_ELEVATOR_POSITIONS[1].y, lastSeenAt: new Date() })
       .where(eq(desktopOfficePresenceTable.userId, userId));
     const blocked = await enterBasement(8_000, 8_000);
     expect(blocked.status).toBe(409);
-    expect(blocked.body.error).toContain("Approach the lobby stairs");
+    expect(blocked.body.error).toContain("Approach a lobby stairwell");
     const [presence] = await db.select().from(desktopBasementPresenceTable)
       .where(eq(desktopBasementPresenceTable.userId, userId));
     expect(presence).toBeUndefined();
 
     const elevatorCannotEnter = await enterBasement();
     expect(elevatorCannotEnter.status).toBe(409);
-    expect(elevatorCannotEnter.body.error).toContain("lobby stairs");
+    expect(elevatorCannotEnter.body.error).toContain("service elevator");
+
+    await db.update(desktopOfficePresenceTable)
+      .set({
+        x: TOWER_SERVICE_ELEVATOR_LOBBY.x,
+        y: TOWER_SERVICE_ELEVATOR_LOBBY.y,
+        lastSeenAt: new Date(),
+      })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
+    const unauthorizedServiceEntry = await enterBasement(
+      TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+    );
+    expect(unauthorizedServiceEntry.status).toBe(409);
+    expect(unauthorizedServiceEntry.body.error).toContain("assigned Tower staff");
+    const [blockedPresence] = await db.select().from(desktopBasementPresenceTable)
+      .where(eq(desktopBasementPresenceTable.userId, userId));
+    expect(blockedPresence).toBeUndefined();
+
+    await db.insert(towerStaffAssignmentsTable).values({
+      userId,
+      role: "maintenance",
+      assignedByUserId: userId,
+    });
+    const staffServiceEntry = await enterBasement(
+      TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+    );
+    expect(staffServiceEntry.status).toBe(200);
+    expect(staffServiceEntry.body.accessMode).toBe("service_elevator");
+    await db.delete(towerStaffAssignmentsTable)
+      .where(eq(towerStaffAssignmentsTable.userId, userId));
+    await db.delete(desktopBasementPresenceTable)
+      .where(eq(desktopBasementPresenceTable.userId, userId));
 
     await setLobbyPresence();
     const allowed = await enterBasement();

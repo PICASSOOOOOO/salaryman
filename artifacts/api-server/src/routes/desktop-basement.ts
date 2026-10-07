@@ -13,6 +13,8 @@ import {
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import { isNearTowerServiceElevator as isNearTowerServiceElevatorLanding } from "../lib/desktop-building-objects";
+import { hasTowerStaffAssignment } from "../lib/tower-staff-access";
 import {
   TOWER_SERVICE_ELEVATOR_BASEMENT,
   TOWER_SERVICE_ELEVATOR_LOBBY,
@@ -129,10 +131,6 @@ function isNearBasementServiceElevator(point: { x: number; y: number }): boolean
 function isNearTowerBasementStairs(floorNumber: number, point: { x: number; y: number }): boolean {
   return floorNumber === 1 && TOWER_BASEMENT_STAIRWELLS.some((stairwell) =>
     distance(point, stairwell) <= STAIRS_RADIUS);
-}
-
-function isNearTowerServiceElevator(floorNumber: number, point: { x: number; y: number }): boolean {
-  return floorNumber === 1 && distance(point, TOWER_SERVICE_ELEVATOR_LOBBY) <= STAIRS_RADIUS;
 }
 
 function positionIsValid(x: number, y: number): boolean {
@@ -329,6 +327,9 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
           if (!byStairs && !byServiceElevator) {
             return { error: "Use the basement stairs or service elevator to change levels" } as const;
           }
+          if (byServiceElevator && !await hasTowerStaffAssignment(link.userId)) {
+            return { error: "The service elevator is restricted to assigned Tower staff" } as const;
+          }
           accessMode = byServiceElevator ? "service_elevator" : "stairs";
         } else {
           const elapsedMs = now.getTime() - previous.lastSeenAt.getTime();
@@ -345,10 +346,13 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
         if (!office || office.linkId !== link.id || !fresh(office.lastSeenAt, now)
           || office.room !== "lobby"
           || (!isNearTowerBasementStairs(office.floorNumber, office)
-            && !isNearTowerServiceElevator(office.floorNumber, office))) {
+            && !isNearTowerServiceElevatorLanding(office.floorNumber, office))) {
           return { error: "Approach a lobby stairwell or the service elevator before entering the basement" } as const;
         }
-        const enteredByServiceElevator = isNearTowerServiceElevator(office.floorNumber, office);
+        const enteredByServiceElevator = isNearTowerServiceElevatorLanding(office.floorNumber, office);
+        if (enteredByServiceElevator && !await hasTowerStaffAssignment(link.userId)) {
+          return { error: "The service elevator is restricted to assigned Tower staff" } as const;
+        }
         accessMode = enteredByServiceElevator ? "service_elevator" : "stairs";
         if (enteredByServiceElevator
           ? !isNearBasementServiceElevator({ x, y })
@@ -409,6 +413,9 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
         || !fresh(presence.lastSeenAt, now)
         || (!isNearBasementStairs(presence) && !isNearBasementServiceElevator(presence))) {
         return { error: "Return to B1 and reach the lobby stairs first" } as const;
+      }
+      if (isNearBasementServiceElevator(presence) && !await hasTowerStaffAssignment(link.userId)) {
+        return { error: "The service elevator is restricted to assigned Tower staff" } as const;
       }
       const exitPosition = isNearBasementServiceElevator(presence)
         ? TOWER_SERVICE_ELEVATOR_LOBBY

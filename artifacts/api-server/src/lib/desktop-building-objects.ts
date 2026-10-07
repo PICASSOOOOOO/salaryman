@@ -188,6 +188,23 @@ export function isNearTowerElevator(floorNumber: number, point: Position): boole
     <= TOWER_ELEVATOR_INTERACTION_RADIUS);
 }
 
+export function isNearTowerServiceElevator(floorNumber: number, point: Position): boolean {
+  const service = TOWER_SERVICE_ELEVATOR_POSITIONS[floorNumber];
+  if (!service) return false;
+  const serviceDistance = Math.hypot(point.x - service.x, point.y - service.y);
+  if (serviceDistance > TOWER_ELEVATOR_INTERACTION_RADIUS) return false;
+
+  const passengerPositions = [
+    ...(TOWER_PASSENGER_ELEVATOR_POSITIONS[floorNumber] ?? []),
+    ...(TOWER_ELEVATOR_POSITIONS[floorNumber] ? [TOWER_ELEVATOR_POSITIONS[floorNumber]] : []),
+  ];
+  const nearestPassengerDistance = passengerPositions.length
+    ? Math.min(...passengerPositions.map((position) =>
+      Math.hypot(point.x - position.x, point.y - position.y)))
+    : Number.POSITIVE_INFINITY;
+  return serviceDistance < nearestPassengerDistance;
+}
+
 export function isNearTowerStairwell(floorNumber: number, point: Position, stairwell: number): boolean {
   const position = TOWER_STAIRWELL_POSITIONS[floorNumber]?.[stairwell - 1];
   return position != null && Math.hypot(point.x - position.x, point.y - position.y)
@@ -224,7 +241,7 @@ export function validateBuildingPresence(
   if (next.floorNumber >= 2 && next.floorNumber <= 6
     && previous?.floorNumber !== next.floorNumber
     && !elevatorAuthorized && !stairAuthorized) {
-    return "Use an elevator or stairwell to enter this floor";
+    return "Use a passenger elevator or stairwell to enter this floor";
   }
   if (previous?.room === "elevator" && !elevatorAuthorized && !canRecoverToLobby) {
     return "The elevator is not traveling to this floor";

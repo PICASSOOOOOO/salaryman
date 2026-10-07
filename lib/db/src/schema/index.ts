@@ -140,4 +140,5 @@ export * from "./desktop-work";
 export * from "./desktop-office-presence";
 export * from "./desktop-building-objects";
 export * from "./desktop-basement";
+export * from "./tower-staff";
 export * from "./business-data";
