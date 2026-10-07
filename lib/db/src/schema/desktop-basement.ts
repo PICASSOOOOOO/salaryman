@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
@@ -22,6 +23,7 @@ export const desktopBasementPresenceTable = pgTable(
     x: integer("x").notNull(),
     y: integer("y").notNull(),
     action: varchar("action", { length: 16 }).notNull().default("stand"),
+    uniformWorn: boolean("uniform_worn").notNull().default(false),
     workTarget: varchar("work_target", { length: 16 }),
     workSessionId: uuid("work_session_id"),
     workStartedAt: timestamp("work_started_at", { withTimezone: true }),
@@ -55,6 +57,7 @@ export const desktopBasementPestsTable = pgTable(
     bountyFiat: integer("bounty_fiat").notNull(),
     defeatedByUserId: varchar("defeated_by_user_id", { length: 256 }).references(() => usersTable.id, { onDelete: "set null" }),
     defeatedAt: timestamp("defeated_at", { withTimezone: true }),
+    lastNpcWorkedAt: timestamp("last_npc_worked_at", { withTimezone: true }),
     claimedByUserId: varchar("claimed_by_user_id", { length: 256 }).references(() => usersTable.id, { onDelete: "set null" }),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
     soldByUserId: varchar("sold_by_user_id", { length: 256 }).references(() => usersTable.id, { onDelete: "set null" }),
