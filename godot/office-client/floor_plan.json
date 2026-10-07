@@ -12,7 +12,8 @@
     "2-5": "construction_open",
     "6": "open",
     "7": "open",
-    "8-67": "under_construction"
+    "8-12": "open",
+    "13-67": "under_construction"
   },
   "playableFloors": {
     "1": {"room": "lobby", "label": "TOWER LOBBY", "initialBusinessOperator": "PABLO CORP"},
@@ -65,12 +66,90 @@
       {"businessKey": "study_hall", "label": "STUDY HALL", "unitNumber": 7, "officeRoom": "office_04", "officeHalf": "west"},
       {"businessKey": "flower_shop", "label": "FLOWER SHOP", "unitNumber": 8, "officeRoom": "office_04", "officeHalf": "east"}
     ]},
-    "7": {"room": "floor07_business", "label": "FLOOR 07 / RINSE 67 + PABLO CORP", "initialBusinessOperator": "PABLO CORP", "businesses": [{"businessKey": "tower_laundry", "label": "RINSE 67", "unitNumber": 1}]},
-    "8": {"room": "commercial_floor", "label": "FLOOR 08 / COMMERCIAL OFFICES"},
-    "9": {"room": "commercial_floor", "label": "FLOOR 09 / COMMERCIAL OFFICES"},
-    "10": {"room": "commercial_floor", "label": "FLOOR 10 / COMMERCIAL OFFICES"},
-    "11": {"room": "commercial_floor", "label": "FLOOR 11 / COMMERCIAL OFFICES"},
-    "12": {"room": "commercial_floor", "label": "FLOOR 12 / COMMERCIAL OFFICES"},
+    "7": {
+      "room": "floor07_business",
+      "label": "FLOOR 07 / MEDITATION TEMPLE",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [],
+      "interiorProps": [
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [3000, 7500], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [7000, 13200], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [15000, 7500], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [19000, 13200], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [11000, 22000], "interactive": false},
+        {"kind": "reflection_screen", "label": "REFLECTION ALCOVE SCREEN", "position": [2500, 17300], "collisionHalfExtents": [650, 100], "interactive": false},
+        {"kind": "reflection_screen", "label": "REFLECTION ALCOVE SCREEN", "position": [4500, 17300], "collisionHalfExtents": [650, 100], "interactive": false},
+        {"kind": "reflection_screen", "label": "REFLECTION ALCOVE SCREEN", "position": [9500, 17300], "collisionHalfExtents": [650, 100], "interactive": false},
+        {"kind": "reflection_screen", "label": "REFLECTION ALCOVE SCREEN", "position": [11500, 17300], "collisionHalfExtents": [650, 100], "interactive": false},
+        {"kind": "reflection_screen", "label": "REFLECTION ALCOVE SCREEN", "position": [16500, 17300], "collisionHalfExtents": [650, 100], "interactive": false},
+        {"kind": "reflection_screen", "label": "REFLECTION ALCOVE SCREEN", "position": [18500, 17300], "collisionHalfExtents": [650, 100], "interactive": false},
+        {"kind": "meditation_cushion", "label": "MEDITATION CUSHION", "position": [3500, 19000], "interactive": false},
+        {"kind": "meditation_cushion", "label": "MEDITATION CUSHION", "position": [10500, 19000], "interactive": false},
+        {"kind": "meditation_cushion", "label": "MEDITATION CUSHION", "position": [17500, 19000], "interactive": false},
+        {"kind": "temple_audio_control", "label": "MEDITATION MUSIC / SILENCE · PRESS M", "position": [11000, 6500], "interactive": false}
+      ]
+    },
+    "8": {"room": "floor08_business", "label": "FLOOR 08 / BUSINESS SUITES", "initialBusinessOperator": "PABLO CORP", "businesses": [
+      {"businessKey": "landscaping_company", "label": "LANDSCAPING COMPANY", "unitNumber": 1},
+      {"businessKey": "interior_design", "label": "INTERIOR DESIGN", "unitNumber": 2},
+      {"businessKey": "rug_store", "label": "RUG STORE", "unitNumber": 3},
+      {"businessKey": "android_replicant_repair", "label": "ANDROID / REPLICANT REPAIR · SUPPLIES + BATTERIES", "unitNumber": 4},
+      {"businessKey": "glasses_shop", "label": "GLASSES SHOP", "unitNumber": 5},
+      {"businessKey": "glass_installation", "label": "GLASS INSTALLATION", "unitNumber": 6},
+      {"businessKey": "plumber", "label": "PLUMBER", "unitNumber": 7},
+      {"businessKey": "electrician", "label": "ELECTRICIAN", "unitNumber": 8}
+    ]},
+    "9": {"room": "floor09_business", "label": "FLOOR 09 / BUSINESS SUITES", "initialBusinessOperator": "PABLO CORP", "businesses": [
+      {"businessKey": "karaoke", "label": "KARAOKE", "unitNumber": 1},
+      {"businessKey": "arcade", "label": "ARCADE", "unitNumber": 2},
+      {"businessKey": "plant_store", "label": "PLANT STORE", "unitNumber": 3},
+      {"businessKey": "vespa_shop", "label": "VESPA SHOP", "unitNumber": 4},
+      {"businessKey": "juice_bar", "label": "JUICE BAR", "unitNumber": 5},
+      {"businessKey": "magazine_store", "label": "MAGAZINE STORE", "unitNumber": 6},
+      {"businessKey": "soap_store", "label": "SOAP STORE", "unitNumber": 7},
+      {"businessKey": "janitorial_services", "label": "JANITORIAL SERVICES", "unitNumber": 8}
+    ]},
+    "10": {"room": "floor10_business", "label": "FLOOR 10 / FOUR BUSINESS SUITES", "initialBusinessOperator": "PABLO CORP", "suiteLayout": "fourUnitFloorUnits", "businesses": [
+      {"businessKey": "gym", "label": "GYM", "unitNumber": 1},
+      {"businessKey": "security_station_2", "label": "SECURITY STATION #2", "unitNumber": 2},
+      {"businessKey": "fire_station_2", "label": "FIRE STATION #2", "unitNumber": 3},
+      {"businessKey": "admin_office_2", "label": "ADMIN OFFICE #2", "unitNumber": 4}
+    ]},
+    "11": {"room": "floor11_business", "label": "FLOOR 11 / BUSINESS SUITES", "initialBusinessOperator": "PABLO CORP", "businesses": [
+      {"businessKey": "apartments_8_unit", "label": "8-UNIT APARTMENTS", "unitNumber": 1},
+      {"businessKey": "hotel_f11", "label": "HOTEL", "unitNumber": 2},
+      {"businessKey": "hostel_f11", "label": "HOSTEL", "unitNumber": 3},
+      {"businessKey": "public_workspace_f11", "label": "PUBLIC WORKSPACE", "unitNumber": 4},
+      {"businessKey": "moving_company", "label": "MOVING COMPANY", "unitNumber": 5},
+      {"businessKey": "grocery_store", "label": "GROCERY STORE", "unitNumber": 6},
+      {"businessKey": "kitchen_appliance_store", "label": "KITCHEN APPLIANCE STORE", "unitNumber": 7},
+      {"businessKey": "paint_store", "label": "PAINT STORE", "unitNumber": 8}
+    ]},
+    "12": {"room": "floor12_business", "label": "FLOOR 12 / BUSINESS SUITES", "initialBusinessOperator": "PABLO CORP", "businesses": [
+      {"businessKey": "printer_shop", "label": "PRINTER SHOP", "unitNumber": 1},
+      {"businessKey": "soda_candy_shop", "label": "SODA AND CANDY SHOP", "unitNumber": 2},
+      {"businessKey": "hotel_f12", "label": "HOTEL", "unitNumber": 3},
+      {"businessKey": "bar_f12", "label": "BAR", "unitNumber": 4},
+      {"businessKey": "chapel", "label": "CHAPEL", "unitNumber": 5},
+      {"businessKey": "library", "label": "LIBRARY", "unitNumber": 6},
+      {"businessKey": "pawn_shop", "label": "PAWN SHOP", "unitNumber": 7},
+      {"businessKey": "museum", "label": "MUSEUM", "unitNumber": 8}
+    ], "interiorProps": [
+      {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [1000, 17000], "interactive": false},
+      {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [2200, 17000], "interactive": false},
+      {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [3400, 17000], "interactive": false},
+      {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [1000, 19500], "interactive": false},
+      {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [2200, 19500], "interactive": false},
+      {"kind": "chapel_altar", "label": "CHAPEL ALTAR", "position": [2200, 23500], "interactive": false},
+      {"kind": "library_shelf", "label": "LIBRARY BOOKSHELF", "position": [5000, 16000], "interactive": false},
+      {"kind": "library_shelf", "label": "LIBRARY BOOKSHELF", "position": [6500, 16000], "interactive": false},
+      {"kind": "library_shelf", "label": "LIBRARY BOOKSHELF", "position": [8000, 16000], "interactive": false},
+      {"kind": "reading_table", "label": "READING TABLE", "position": [6000, 20500], "interactive": false},
+      {"kind": "reading_table", "label": "READING TABLE", "position": [8000, 20500], "interactive": false},
+      {"kind": "museum_case", "label": "MUSEUM DISPLAY CASE", "position": [18000, 17000], "interactive": false},
+      {"kind": "museum_case", "label": "MUSEUM DISPLAY CASE", "position": [19750, 17000], "interactive": false},
+      {"kind": "museum_case", "label": "MUSEUM DISPLAY CASE", "position": [21500, 17000], "interactive": false}
+    ]},
     "13": {"room": "commercial_floor", "label": "FLOOR 13 / COMMERCIAL OFFICES"},
     "14": {"room": "commercial_floor", "label": "FLOOR 14 / COMMERCIAL OFFICES"},
     "15": {"room": "commercial_floor", "label": "FLOOR 15 / COMMERCIAL OFFICES"},
