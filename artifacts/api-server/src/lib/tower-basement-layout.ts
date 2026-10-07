@@ -5,3 +5,5 @@ export const TOWER_BASEMENT_STATIONS = {
 } as const;
 
 export const TOWER_POWER_EXPORT_REACH = 800;
+export const TOWER_SERVICE_ELEVATOR_LOBBY = { x: 49_977_600, y: 49_999_100 } as const;
+export const TOWER_SERVICE_ELEVATOR_BASEMENT = { x: 5_000, y: 4_000 } as const;

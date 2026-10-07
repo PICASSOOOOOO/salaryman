@@ -1,3 +1,5 @@
+import { TOWER_SERVICE_ELEVATOR_LOBBY } from "./tower-basement-layout";
+
 export type BuildingObjectAction = "clean" | "repair";
 
 export type BuildingObjectDefinition = {
@@ -37,10 +39,31 @@ export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: n
   5: { x: 11_000, y: 1_500 },
   6: { x: 11_000, y: 1_500 },
 };
+export const TOWER_PASSENGER_ELEVATOR_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
+  1: [
+    { x: 49_975_500, y: 50_000_000 },
+    { x: 49_976_300, y: 50_000_000 },
+    { x: 49_977_100, y: 50_000_000 },
+    { x: 49_977_900, y: 50_000_000 },
+  ],
+  2: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  3: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  4: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  5: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+  6: [{ x: 9_300, y: 1_500 }, { x: 10_000, y: 1_500 }, { x: 11_000, y: 1_500 }, { x: 12_000, y: 1_500 }],
+};
+export const TOWER_SERVICE_ELEVATOR_POSITIONS: Readonly<Record<number, Position>> = {
+  1: TOWER_SERVICE_ELEVATOR_LOBBY,
+  2: { x: 12_500, y: 1_500 },
+  3: { x: 12_500, y: 1_500 },
+  4: { x: 12_500, y: 1_500 },
+  5: { x: 12_500, y: 1_500 },
+  6: { x: 12_500, y: 1_500 },
+};
 export const TOWER_STAIRWELL_POSITIONS: Readonly<Record<number, readonly Position[]>> = {
   1: [
-    { x: 49_978_450, y: 50_000_350 },
-    { x: 49_978_450, y: 50_001_050 },
+    { x: 49_978_650, y: 50_000_800 },
+    { x: 49_975_350, y: 50_000_900 },
   ],
   2: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
   3: [{ x: 9_500, y: 12_500 }, { x: 12_500, y: 12_500 }],
@@ -156,8 +179,13 @@ export function isWalkableBuildingPosition(room: string, point: Position): boole
 
 export function isNearTowerElevator(floorNumber: number, point: Position): boolean {
   const elevator = TOWER_ELEVATOR_POSITIONS[floorNumber];
-  return elevator != null && Math.hypot(point.x - elevator.x, point.y - elevator.y)
-    <= TOWER_ELEVATOR_INTERACTION_RADIUS;
+  const locations = [
+    ...(TOWER_PASSENGER_ELEVATOR_POSITIONS[floorNumber] ?? []),
+    ...(TOWER_SERVICE_ELEVATOR_POSITIONS[floorNumber] ? [TOWER_SERVICE_ELEVATOR_POSITIONS[floorNumber]] : []),
+    ...(elevator ? [elevator] : []),
+  ];
+  return locations.some((location) => Math.hypot(point.x - location.x, point.y - location.y)
+    <= TOWER_ELEVATOR_INTERACTION_RADIUS);
 }
 
 export function isNearTowerStairwell(floorNumber: number, point: Position, stairwell: number): boolean {
