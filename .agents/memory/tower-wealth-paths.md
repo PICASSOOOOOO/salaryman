@@ -13,7 +13,8 @@ offices and cost more in real estate.
 Drugs are expensive consumables in the survival game. They can grant stamina,
 speed, faster cooldowns, or other positive and negative powers, while also
 causing altered perception, movement, reading, and menu/terminal use. Addiction,
-thirst, shakes, and sickness can result; impaired work can lead to firing, arrest,
+thirst, shakes, and sickness can result. Dependence and tolerance build gradually
+with repeated use, with withdrawal after sustained use stops. Impaired work can lead to firing, arrest,
 detention, fines, or death. The cafeteria bar serves beer only for morale. A
 black market can sell weapons, drugs, and alcohol. NPC staffing should stay
 sparse and focused on building operations; they can be targets for restraint,
