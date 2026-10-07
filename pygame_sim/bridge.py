@@ -29,7 +29,10 @@ from .state import OfficeState
 
 PROTOCOL_VERSION = 1
 MAX_LINE_BYTES = 64 * 1024
-ALLOWED_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite"}
+ALLOWED_ROOMS = {
+    "lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite",
+    *(f"construction_f{floor:02d}" for floor in range(2, 6)),
+}
 ALLOWED_VENDING_ITEMS = {"coffee"}
 COMMANDS = {
     "move",
@@ -154,6 +157,7 @@ def _request_tower_floor(
     state: OfficeState,
     scene: TowerScene,
     building_sync: Any | None,
+    basement_sync: Any | None = None,
 ) -> CommandResult:
     if scene.is_basement:
         message = "BASEMENT ACCESS IS STAIRS ONLY / RETURN TO B1 TO EXIT"
@@ -169,7 +173,24 @@ def _request_tower_floor(
         state.notice = message
         return CommandResult(False, message)
     nearby = scene.nearby_object
-    if nearby is None or nearby.kind != "elevator":
+    if scene.is_basement:
+        if nearby is None or nearby.kind not in {"basement_stairs", "service_elevator"}:
+            message = "MOVE TO THE BASEMENT STAIRS OR SERVICE ELEVATOR"
+            state.notice = message
+            return CommandResult(False, message)
+        if nearby.kind == "basement_stairs" and abs(floor - int(scene.basement_level or 1)) != 1:
+            message = "BASEMENT STAIRS CONNECT ONLY ADJACENT LEVELS"
+            state.notice = message
+            return CommandResult(False, message)
+        if basement_sync is None or not basement_sync.queue_level(floor, scene):
+            message = "BASEMENT FLOOR REQUEST UNAVAILABLE"
+            state.notice = message
+            return CommandResult(False, message)
+        message = f"SERVICE ELEVATOR / REQUESTING B{floor}"
+        state.notice = message
+        state.close_page()
+        return CommandResult(True, message, destination=f"basement:{floor}")
+    if nearby is None or nearby.kind not in {"elevator", "service_elevator"}:
         message = "MOVE TO AN ELEVATOR TO CHANGE FLOORS"
         state.notice = message
         return CommandResult(False, message)

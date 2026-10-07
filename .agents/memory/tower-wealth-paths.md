@@ -21,7 +21,10 @@ can sell weapons, drugs, and alcohol.
 
 Criminal investigations may take time to determine whether someone is using,
 buying, selling, or dealing drugs. Investigators need evidence; accusations alone
-are not enough. Snitches may supply leads, but there are no bounty hunters.
+are not enough. Snitches may supply leads. Bounty hunting belongs outside
+workspaces, not inside them.
+Criminals may hide in an ordinary office environment; do not isolate them in a
+visibly criminal workspace.
 NPC staffing should stay sparse and focused on building operations; NPCs can be
 targets for restraint, robbery, or sabotage. Pablo Corp can offer limited
 peacekeeping contracts, while money and net worth are the main sources of power,
