@@ -17,6 +17,7 @@ from .customization import (
     sanitize_room_customizations,
 )
 from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Worker
+from .pest_work import PEST_JOB_BY_ID, PEST_JOBS, normalize_work_orders
 
 
 SECONDS_PER_WORKSPACE_HOUR = 2.0
@@ -28,6 +29,8 @@ GameRole = Literal["player", "moderator", "admin"]
 OverlayPage = Literal[
     "tools", "economy", "customize", "systems", "phone",
     "player", "settings", "inventory", "vending", "bank",
+    "pest_jobs", "pest_uniform", "melee", "basement_stairs",
+    "utility_work", "company_relocation",
 ]
 PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone"})
 RECRUITMENT_REFRESH_COST = 50.0
@@ -120,6 +123,18 @@ class OfficeState:
     fiat_spendable: int | None = None
     selected_vending_index: int = 0
     game_service_loading: set[str] = field(default_factory=set)
+    pest_uniform_worn: bool = False
+    pest_stamina: int = 100
+    pest_work_orders: dict[str, dict[str, int | bool]] = field(
+        default_factory=lambda: normalize_work_orders({})
+    )
+    active_pest_job: str | None = None
+    utility_work_target: str | None = None
+    utility_work_started_at: float = 0.0
+    utility_work_active: bool = False
+    relocation_cutscene_pending: bool = False
+    relocation_cutscene_elapsed: float = 0.0
+    relocation_cutscene_seen: bool = False
 
     @classmethod
     def with_default_roster(
@@ -219,6 +234,63 @@ class OfficeState:
         self.tool_menu_open = False
         self.notice = f"{page.upper()} PAGE / {source}"
         return True
+
+    def start_pest_job(self, job_id: str) -> bool:
+        if job_id not in PEST_JOB_BY_ID:
+            self.notice = "WORK ORDER NOT FOUND"
+            return False
+        if not self.pest_uniform_worn:
+            self.notice = "EQUIP THE PEST-RESPONSE UNIFORM BEFORE DISPATCH"
+            return False
+        order = self.pest_work_orders[job_id]
+        if order["complete"]:
+            self.notice = "WORK ORDER ALREADY COMPLETE"
+            return False
+        self.active_pest_job = job_id
+        self.notice = f"DISPATCHED / {PEST_JOB_BY_ID[job_id]['label']}"
+        return True
+
+    def record_pest_work_progress(self, event: str) -> bool:
+        """Advance one local order step; this never grants FIAT."""
+        if self.active_pest_job is None:
+            return False
+        job = PEST_JOB_BY_ID.get(self.active_pest_job)
+        if job is None or job["event"] != event:
+            return False
+        order = self.pest_work_orders[self.active_pest_job]
+        if order["complete"]:
+            return False
+        order["progress"] = min(int(job["goal"]), int(order["progress"]) + 1)
+        if int(order["progress"]) >= int(job["goal"]):
+            order["complete"] = True
+            self.notice = f"LOCAL ORDER COMPLETE / {job['label']}"
+            self.active_pest_job = None
+            if all(bool(value["complete"]) for value in self.pest_work_orders.values()):
+                self.begin_relocation_cutscene()
+        else:
+            self.notice = f"{job['progressLabel']} / {order['progress']} OF {job['goal']}"
+        return True
+
+    def begin_relocation_cutscene(self) -> None:
+        if self.relocation_cutscene_seen:
+            return
+        self.relocation_cutscene_seen = True
+        self.relocation_cutscene_pending = True
+        self.relocation_cutscene_elapsed = 0.0
+        self.active_page = "company_relocation"
+        self.page_source = "COMPANY GROWTH"
+        self.active_object_id = None
+        self.notice = "COMPANY MOVE APPROVED / DESTINATION WITHHELD"
+
+    def advance_relocation_cutscene(self, delta_seconds: float) -> None:
+        if not self.relocation_cutscene_pending:
+            return
+        self.relocation_cutscene_elapsed = min(
+            6.0, self.relocation_cutscene_elapsed + max(0.0, delta_seconds)
+        )
+        if self.relocation_cutscene_elapsed >= 6.0:
+            self.relocation_cutscene_pending = False
+            self.notice = "MOVE APPROVED / DESTINATION NOT RELEASED"
 
     def get_room_customization(self, room_id: str) -> dict[str, str]:
         """Return a validated room appearance, using defaults for unknown data."""
@@ -388,7 +460,7 @@ class OfficeState:
         destination = Path(path).expanduser()
         destination.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "version": 2,
+            "version": 3,
             "funds": self.funds,
             "day": self.day,
             "hour": self.hour,
@@ -404,6 +476,13 @@ class OfficeState:
                 "show_control_hints": self.show_control_hints,
                 "sprint_toggle_mode": self.sprint_toggle_mode,
                 "movement_speed_preset": self.movement_speed_preset,
+            },
+            "pest_work": {
+                "uniform_worn": self.pest_uniform_worn,
+                "stamina_cache": max(0, min(100, self.pest_stamina)),
+                "orders": self.pest_work_orders,
+                "active_order": self.active_pest_job,
+                "relocation_seen": self.relocation_cutscene_seen,
             },
             "workers": [
                 {
@@ -481,6 +560,25 @@ class OfficeState:
                     )
                 except (TypeError, ValueError):
                     state.movement_speed_preset = 1
+            pest_work = payload.get("pest_work", {})
+            if isinstance(pest_work, dict):
+                state.pest_uniform_worn = pest_work.get("uniform_worn") is True
+                try:
+                    state.pest_stamina = max(
+                        0, min(100, int(pest_work.get("stamina_cache", 100)))
+                    )
+                except (TypeError, ValueError):
+                    state.pest_stamina = 100
+                state.pest_work_orders = normalize_work_orders(pest_work.get("orders"))
+                active_order = pest_work.get("active_order")
+                state.active_pest_job = (
+                    active_order
+                    if isinstance(active_order, str)
+                    and active_order in PEST_JOB_BY_ID
+                    and not bool(state.pest_work_orders[active_order]["complete"])
+                    else None
+                )
+                state.relocation_cutscene_seen = pest_work.get("relocation_seen") is True
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [
