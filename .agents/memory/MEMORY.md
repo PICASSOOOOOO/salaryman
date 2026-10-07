@@ -130,7 +130,7 @@
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Browser API and game scope](browser-game-scope.md) — `/desktop` is the only browser companion; macOS/Windows/Linux builds use native game UI and keep paid gates.
-- [Godot office client runtime](godot-office-client.md) — Godot/Python form the open-world office MMO; make shared player interaction and communication easy to find.
+- [Godot office client runtime](godot-office-client.md) — Godot/Python are one product; keep bridge snapshots under 256 KiB and encode missing basement data safely.
 - [GitHub workflow and file writes](github-workflow-write-scope.md) — use sequential Contents API PUTs for source sync; workflow YAML needs separate permissions, and Git Data POSTs may 500.
 - [Canonical browser navigation](canonical-browser-navigation.md) — boxed header on homepage/workspace: SALARYMAN + numbered ALPHA badge, More dropdown, and only Pablo AI, CALLL HOME, App Download direct.
 - [Shared menu route deduplication](shared-menu-route-dedupe.md) — merge identical paths; preserve same-label destinations with explicit context hints.

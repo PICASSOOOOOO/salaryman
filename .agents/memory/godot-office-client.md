@@ -58,6 +58,20 @@ would have hidden a broken floor scene if the logs were not reviewed.
 **How to apply:** Inspect Godot stdout/stderr for script errors after clean
 imports and paired launches, even when the process and bridge return success.
 
+Paired Godot/Python snapshots serialize static objects across rooms. A full-world
+payload can exceed the bridge's roughly 256 KiB pending-write limit; oversized
+messages are silently dropped. Keep snapshots bounded to the active room or
+introduce chunking, while preserving the data needed for room transitions. The
+basement HUD expects `basement` to be a Dictionary even when no offline snapshot
+exists, so missing data must be encoded as `{}`.
+
+**Why:** Live gameplay capture exposed stale room frames when an oversized
+snapshot was dropped, and `null` basement data caused a repeated Godot script
+error.
+
+**How to apply:** Keep bridge payloads within the queue limit or make rejection
+explicit; test live room transitions and offline basement rendering in Godot.
+
 The product is an open-world office-simulation MMO. Make player interaction and
 communication easy to discover across shared spaces and office devices; preserve
 the distinction between proximity voice/video meetings and phone calls.

@@ -1887,3 +1887,283 @@ mtime_ms = 1791395455294
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6bf79a47-58fe-4ff5-9bfd-96e202817460/9aae9d4c-aab6-4dcd-a391-f8612fb9335a"
 storage_version_token = "1791395510996176"
 content_type = "text/html"
+
+[[outputs]]
+id = "17lFmsRn6Re-RC_6-BQZO"
+uri = "file://godot/office-client/review/gameplay-contact-sheet.png"
+type = "image"
+title = "Tower floors — contact sheet"
+description = "Overview of all 18 full-resolution captures from the actual Godot gameplay camera."
+logical_id = "5617b9d5-bd08-4f67-abfb-5613dbc0474e"
+content_hash = "sha256:6336ec6b2e143c3bd823e0e60c372d81e3f3bdd1d2b3a465dbbe7ac0d3072d70"
+size = 3661997
+mtime_ms = 1791397219203
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/5617b9d5-bd08-4f67-abfb-5613dbc0474e/5f5cd75e-ba16-4013-8254-3e76bde4cc9b"
+storage_version_token = "1791397282223018"
+content_type = "image/png"
+
+[[outputs]]
+id = "CSbJdRAMlJNVMBFGt6T1a"
+uri = "file://godot/office-client/review/gameplay-screenshots.html"
+type = "html"
+title = "Tower floors — downloadable screenshot gallery"
+description = "Self-contained gallery of B1–B6 and F1–F12, with individual PNG download buttons."
+logical_id = "fbe06427-2d9a-4432-bac9-22cce0882c2e"
+content_hash = "sha256:560e22368712ca836a580655ea6d2c8468d037864d05d2033a69cf8d5d1cdfec"
+size = 3868766
+mtime_ms = 1791397214355
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fbe06427-2d9a-4432-bac9-22cce0882c2e/ddd8f35e-560a-4244-af58-313c2583557a"
+storage_version_token = "1791397283441911"
+content_type = "text/html"
+
+[[outputs]]
+id = "FR4BnhH8b5_RKl8RqvVRR"
+uri = "file://godot/office-client/review/gameplay-screenshots/B1.png"
+type = "image"
+title = "Basement 1 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "c4436bb2-8cbe-4b3f-954a-e1256cbdcf34"
+content_hash = "sha256:957cc76d95b5f4ea1449d17cd0ed35afba3458342e8ddcf8c0cadb823c5c24d0"
+size = 115302
+mtime_ms = 1791397156106
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c4436bb2-8cbe-4b3f-954a-e1256cbdcf34/058f4f7c-3ce6-4199-ada0-7d5202b0f3f7"
+storage_version_token = "1791397284408961"
+content_type = "image/png"
+
+[[outputs]]
+id = "BxFh2B7xit1pTCMwd0YLa"
+uri = "file://godot/office-client/review/gameplay-screenshots/B2.png"
+type = "image"
+title = "Basement 2 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "1da1bd73-e442-47d0-bf1b-f64f1e25cca0"
+content_hash = "sha256:b8d58ccbe59af39181032f713a28ac9be39fd4547f531802e550656d809aec67"
+size = 81822
+mtime_ms = 1791397158178
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1da1bd73-e442-47d0-bf1b-f64f1e25cca0/e14a931f-d7e1-479d-abf5-acf7fac329a6"
+storage_version_token = "1791397285215209"
+content_type = "image/png"
+
+[[outputs]]
+id = "fl9jhCg_UJIUtM9fLA3xI"
+uri = "file://godot/office-client/review/gameplay-screenshots/B3.png"
+type = "image"
+title = "Basement 3 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "7c202e79-b99d-4a4d-a586-3ecc28d26e5a"
+content_hash = "sha256:f2d00513d2047831e2e5cb3ab09e782092447c50d44de195cd6192659e5520ca"
+size = 96839
+mtime_ms = 1791397160182
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7c202e79-b99d-4a4d-a586-3ecc28d26e5a/c5ceb70c-4173-458e-ace5-5e90902b58a1"
+storage_version_token = "1791397286024515"
+content_type = "image/png"
+
+[[outputs]]
+id = "-kIwpaPD33Oj8VAgMOLWi"
+uri = "file://godot/office-client/review/gameplay-screenshots/B4.png"
+type = "image"
+title = "Basement 4 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "23fe07d9-f8f8-442e-91f4-fe2efb97816e"
+content_hash = "sha256:472d8b7a9996a0789f09b29e4198ae4bf880dad104763bf08fe13e6be04186e9"
+size = 82748
+mtime_ms = 1791397162634
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/23fe07d9-f8f8-442e-91f4-fe2efb97816e/a93358b0-9051-4a61-bf93-c1b75df0105a"
+storage_version_token = "1791397287228356"
+content_type = "image/png"
+
+[[outputs]]
+id = "1241kVfQJXebUxbBE66QB"
+uri = "file://godot/office-client/review/gameplay-screenshots/B5.png"
+type = "image"
+title = "Basement 5 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "00cc8f08-f93e-4af6-9fc7-714c1b191494"
+content_hash = "sha256:fc78626cb0c202cef89c442a0646d03ec7c0fdae0911494aa519f890e3190b3c"
+size = 106641
+mtime_ms = 1791397165030
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/00cc8f08-f93e-4af6-9fc7-714c1b191494/fdc0684f-bd70-4e35-bdff-3f919e8f47e0"
+storage_version_token = "1791397288102651"
+content_type = "image/png"
+
+[[outputs]]
+id = "REC8KMukW5_GDMoGALuiB"
+uri = "file://godot/office-client/review/gameplay-screenshots/B6.png"
+type = "image"
+title = "Basement 6 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "f21f16a7-9c14-4f8c-9a48-63f4192a2f9d"
+content_hash = "sha256:3542a347cfb35e0f5d07d5dcfd7fb47cef1d45b4abd91df11dc0b7432241a868"
+size = 107243
+mtime_ms = 1791397167674
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f21f16a7-9c14-4f8c-9a48-63f4192a2f9d/b7a5707d-e45e-4c89-89b8-e96c10f8b3cd"
+storage_version_token = "1791397288973616"
+content_type = "image/png"
+
+[[outputs]]
+id = "-7xJIak73YHhp63YDc7Xj"
+uri = "file://godot/office-client/review/gameplay-screenshots/F01.png"
+type = "image"
+title = "Floor 1 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "1981dbd4-2d4c-4c35-b6fc-fe23508825da"
+content_hash = "sha256:df1a042f533bdcf21d8bb51258b7f6a2a2fe16b6edd75763617a9110879d68fe"
+size = 125616
+mtime_ms = 1791396963246
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1981dbd4-2d4c-4c35-b6fc-fe23508825da/66a6a71c-f9ac-4f6e-8e9c-6d8679413f95"
+storage_version_token = "1791397289919301"
+content_type = "image/png"
+
+[[outputs]]
+id = "osDioV0bUAT3r5fWVQNKT"
+uri = "file://godot/office-client/review/gameplay-screenshots/F02.png"
+type = "image"
+title = "Floor 2 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "dc9257a0-d5ff-49a0-bc52-3912d16e5d57"
+content_hash = "sha256:5892d33ec1ea848075aa9664e6537cfcb89534b84a7ddd0695d403df69389e9a"
+size = 206423
+mtime_ms = 1791396965314
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/dc9257a0-d5ff-49a0-bc52-3912d16e5d57/f5b1f0bf-5c60-437b-a707-ae9790f3fa75"
+storage_version_token = "1791397290834701"
+content_type = "image/png"
+
+[[outputs]]
+id = "UNlX_FpURx2OxVzWCvJ8f"
+uri = "file://godot/office-client/review/gameplay-screenshots/F03.png"
+type = "image"
+title = "Floor 3 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "d94e69ff-804d-42e6-9e48-b3b06ba73145"
+content_hash = "sha256:93d6731fb0d35603a0a45887e88ed2acd1e23220a0ec5e02aa866188e64a5e24"
+size = 190265
+mtime_ms = 1791396967658
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d94e69ff-804d-42e6-9e48-b3b06ba73145/d0d8f75d-c6be-4054-9992-333569c80173"
+storage_version_token = "1791397291623889"
+content_type = "image/png"
+
+[[outputs]]
+id = "LaFdhDDpisnuf3GlPfK19"
+uri = "file://godot/office-client/review/gameplay-screenshots/F04.png"
+type = "image"
+title = "Floor 4 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "38cbb0ef-e0e7-43e7-94dd-e65e1bf16f86"
+content_hash = "sha256:4f18276d9eef5deec04b51b0ae3412bb1d41f4b18f62d25825ded4e401fcecfc"
+size = 207945
+mtime_ms = 1791396969558
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/38cbb0ef-e0e7-43e7-94dd-e65e1bf16f86/27bd5dfa-71cc-4b88-9124-3b99b095cbce"
+storage_version_token = "1791397292566338"
+content_type = "image/png"
+
+[[outputs]]
+id = "iYu8JvF9T0andtjPVpJwD"
+uri = "file://godot/office-client/review/gameplay-screenshots/F05.png"
+type = "image"
+title = "Floor 5 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "d04b027b-a806-4206-a9f7-9e551c798b99"
+content_hash = "sha256:c88f1fb724832857dc33c7907a456921750c21d10ca2695d1651891760d4cd53"
+size = 186378
+mtime_ms = 1791396971862
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d04b027b-a806-4206-a9f7-9e551c798b99/39466a74-0cb2-4c91-98e7-a7c61b0dd52b"
+storage_version_token = "1791397293498392"
+content_type = "image/png"
+
+[[outputs]]
+id = "4Tho4qRdYR3wmLgqsNgfu"
+uri = "file://godot/office-client/review/gameplay-screenshots/F06.png"
+type = "image"
+title = "Floor 6 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "6e42be05-46d0-412f-9aae-6b7011793523"
+content_hash = "sha256:230abb062117181a8e334e89e5b89b5816c3fd4f7e95b831d49748958fe835bf"
+size = 187098
+mtime_ms = 1791396973514
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6e42be05-46d0-412f-9aae-6b7011793523/c17f970c-92c3-4faa-890b-b95d6008293d"
+storage_version_token = "1791397294512107"
+content_type = "image/png"
+
+[[outputs]]
+id = "Es-ot2WbHVQwWdltKkDCI"
+uri = "file://godot/office-client/review/gameplay-screenshots/F07.png"
+type = "image"
+title = "Floor 7 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "c25f29a6-a34c-4be8-9db4-47e0dfb06cdf"
+content_hash = "sha256:266894c9712e6eca313c67f4dd2a1f4e97348e19101519fe576f37a0807c58bc"
+size = 192940
+mtime_ms = 1791396975454
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c25f29a6-a34c-4be8-9db4-47e0dfb06cdf/3c5786ae-d856-468f-a6d8-acd6c202eb1d"
+storage_version_token = "1791397295326384"
+content_type = "image/png"
+
+[[outputs]]
+id = "q7xsWlOX8us54qYHfyYF5"
+uri = "file://godot/office-client/review/gameplay-screenshots/F08.png"
+type = "image"
+title = "Floor 8 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "0a77be73-3974-4055-8a55-225988bb6c7b"
+content_hash = "sha256:15c02f062b29422d2c1675b32fa10780ad8c9e7c27b920a5fad656127431ffa1"
+size = 205347
+mtime_ms = 1791396978026
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0a77be73-3974-4055-8a55-225988bb6c7b/4b0ffd32-cd84-41f5-b8c6-24766919e9b9"
+storage_version_token = "1791397296323377"
+content_type = "image/png"
+
+[[outputs]]
+id = "2eXpVQL0FOrde8-eA-noH"
+uri = "file://godot/office-client/review/gameplay-screenshots/F09.png"
+type = "image"
+title = "Floor 9 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "c6e0fba2-f2b1-4f2a-b20d-559d57b9808b"
+content_hash = "sha256:e911dc0e279fd1b0d8d74602cec790b1e5ffa0ee5b5d26e298ea04b103b9e7dd"
+size = 209490
+mtime_ms = 1791396980278
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c6e0fba2-f2b1-4f2a-b20d-559d57b9808b/3f4c39c9-9286-4b77-bdbf-8dde8760c1de"
+storage_version_token = "1791397297497989"
+content_type = "image/png"
+
+[[outputs]]
+id = "x7IQjRlTX5q6ElRnOqeWq"
+uri = "file://godot/office-client/review/gameplay-screenshots/F10.png"
+type = "image"
+title = "Floor 10 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "fc91b864-9d49-400e-8cc9-a9d8e771aff9"
+content_hash = "sha256:7e2938a0a6821d379cf7ecfa232a38750a565b968aee097a8dd05b9f810b6943"
+size = 215720
+mtime_ms = 1791396982166
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fc91b864-9d49-400e-8cc9-a9d8e771aff9/c73b0e09-1b52-4a58-afcc-58f6148ca256"
+storage_version_token = "1791397298515209"
+content_type = "image/png"
+
+[[outputs]]
+id = "lDL7JlsplN0fZs8NxQ74H"
+uri = "file://godot/office-client/review/gameplay-screenshots/F11.png"
+type = "image"
+title = "Floor 11 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "452c0020-b3d7-4add-a3bd-4ffa06cb54ff"
+content_hash = "sha256:323d5efbb2e1a7174041c43452c79a0a7006ebbb90c78ac4f21179f228bfab98"
+size = 192586
+mtime_ms = 1791396985006
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/452c0020-b3d7-4add-a3bd-4ffa06cb54ff/567be896-9e48-4ef1-9051-5a582cace83e"
+storage_version_token = "1791397299444103"
+content_type = "image/png"
+
+[[outputs]]
+id = "RVkVb8SqNXwwHSlTsxwlQ"
+uri = "file://godot/office-client/review/gameplay-screenshots/F12.png"
+type = "image"
+title = "Floor 12 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "4027636f-eb59-42e4-aabf-084ab356e166"
+content_hash = "sha256:3cca4e7f7c11d78a32b68d416d94df1d9315a8e622e13a44c06bebb0483db9b4"
+size = 185770
+mtime_ms = 1791396987778
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/4027636f-eb59-42e4-aabf-084ab356e166/16b187ee-dbca-482d-8e5f-3ec04441b165"
+storage_version_token = "1791397300465530"
+content_type = "image/png"
