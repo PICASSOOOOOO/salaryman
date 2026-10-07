@@ -69,7 +69,6 @@
 - [Platform Connections credentials](platform-connections-credentials.md) — bring-your-own creds in connected-apps config jsonb; list response MUST mask secrets AND free-form notes (return hasNotes flag, never text); merge-on-reconnect, disconnect to clear.
 - [ATM network + BANCO OMBRA](atm-banco-ombra.md) — spendable FIAT is the server bank everywhere; Stripe credits only after paid settlement; Plaid is view-only; client GOLD cash-out stays disabled until authoritative.
 - [Blueprint/CAD decoder](schematic-cad-decoder.md) — /creative/schematic deciphers CAD/schematics; client sends one data URL, server classifies (image/pdf via Responses API input_file, else CAD-text); EVERY credit-burning AI route MUST gate req.isAuthenticated() server-side (front-end gating bypassable).
-- [Gold and real-money boundary](gold-cashout-real-money.md) — FIAT/Credits stay inside SALARYMAN; ATM withdrawal is not allowed, and external payouts require a verified real organization.
 - [Fiat HUD refresh gate](fiat-hud-refresh-gate.md) — "YOU ƒ" HUD refreshes only when apiFetch path matches FIAT_AFFECTING; raw fetch bypasses it entirely; regex was written vs FICTIONAL paths (real spends: items/buy, pledge/vend, cosmetics/buy, subway/travel). Guard test scans source.
 - [gpt-5 migration constraints](gpt5-migration-constraints.md) — gpt-5* chat calls reject max_tokens (use max_completion_tokens) + any temperature≠1; reasoning eats the budget so tiny max_completion_tokens returns EMPTY content (verify live), reasoning_effort:"minimal" for cheap calls; leave gpt-4o* alone.
 - [Starting fiat & quarantine](starting-fiat-and-quarantine.md) — opening ƒ set in 2 places (bank.ts ensureSeeded wallet + onboard-housing cap/debt); quarantineFiat NEVER written so all money already spendable; PICASSO_START_FIAT gated on isPicassoOrgMemberEmail; CurrencyTicker moved nav→WorldPlay HUD (showPlayerFiat).
@@ -109,25 +108,23 @@
 - [Release build heap cap](release-build-heap-cap.md) — keep the 3 GiB Node heap and single-worker Terser; use tracked background builds because legacy minification is slow and memory-heavy.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
-- [Authoritative FIAT/GOLD rail](fiat-gold-rail.md) — canonical ƒ1,000=0.1 GOLD=$1; GOLD is in-game reserve, never cash-out; browser Credits are a separate Stripe-connected usage rail, deferred until Tower work is done.
+- [Currency boundaries](fiat-gold-rail.md) — Keep FIAT, GOLD, and Credits separate; no cash-out or subscription payment from Credits. See [cash-out](gold-cashout-real-money.md) and [USD services](usd-paid-service-boundary.md).
 - [ElevenLabs credential and signature voices](elevenlabs-signature-voices.md) — Pablo must fail closed when ElevenLabs rejects his assigned voice; never substitute generic speech without user approval.
 - [Pablo outbound campaign consent](pablo-outbound-campaign-consent.md) — Campaigns and direct Pablo calls require an owned saved contact with recorded call permission; spoken STOP opts out and the assigned ElevenLabs voice must pass preflight.
-- [Shadow Tower rules](shadow-tower-rules.md) — floor geometry, assignments, services, access, and prices must agree across the playable Tower.
 - [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
-- [USD paid-service boundary](usd-paid-service-boundary.md) — subscriptions remain separate Stripe products; browser Credits can meter eligible usage but do not pay subscription fees or game purchases.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Pablo uses Replit-managed GPT/Claude with runtime fallback; health probes are provider-strict, and navigation authority stays server-owned.
 - [Paid custom phone numbers](paid-custom-phone-numbers.md) — CALLL HOME is fixed; internal employee calls reuse client identities and assigned office lines, never extra numbers.
 - [Replit session identity bridge](replit-session-identity-bridge.md) — OIDC sessions use the database-backed sid cookie; callback matches existing local users by email before creating a new app identity.
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
-- [VendKing utility rule](vendking-utility-rule.md) — vending stock must provide authoritative stamina, work-income, skill, protection, or low-cost automation value; never sell decorative dead items.
-- [Tower physical floor shells](tower-floor-physical-shells.md) — every elevator stop renders a physical shell; vacant/sealed/restricted addresses hold access at the boundary instead of disappearing.
+- [VendKing utility rule](vendking-utility-rule.md) — decorative goods are valid stock; price stronger health, income, skill, net-worth, and operating benefits higher and use only supported prices/effects.
+- [Shadow Tower floor rules](shadow-tower-rules.md) — Keep geometry, access, services, and prices aligned; physical shells remain at restricted floors. See [shell rules](tower-floor-physical-shells.md).
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
 - [Godot and Unreal art development](godot-art-dev.md) — Godot supports world-building contributions from external developers; preserve the shared art pipeline and in-game paid gates.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [Outside-world reset](outside-world-reset.md) — the old exterior gameplay surface is intentionally erased; legacy paths redirect to office and background audio remains radio-only.
-- [NPC economic agents](npc-economic-agents.md) — NPCs need food, income, wealth, routes, breaks, and uneven work quality; keep public maintenance staffing small.
+- [NPC economic agents](npc-economic-agents.md) — purposeful NPCs extend narrowly scoped API automations; each has a job and route, with small-cast economic growth.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
 - [Business data platform](business-data-platform.md) — canonical org entities/relationships/files/documents/activities in Postgres; binary content stays in App Storage and legacy tables migrate incrementally.
@@ -156,4 +153,5 @@
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Tower basement layout and access](tower-basement-layout.md) — B1–B6 departments, one full-height service lift, four lobby passenger lifts, two stairwells, and activity-driven pest pressure.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp owns unpurchased units plus selected floors; preserve private resale proceeds and its intentional economic advantage.
+- [Floor 7 marketplace scope](floor-seven-marketplace-scope.md) — Floor 7 is the first business marketplace; keep later floors under construction and list only supported prices/stock.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.

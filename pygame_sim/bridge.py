@@ -32,6 +32,7 @@ PROTOCOL_VERSION = 1
 MAX_LINE_BYTES = 64 * 1024
 ALLOWED_ROOMS = {
     "lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite",
+    "floor07_marketplace",
     *(f"construction_f{floor:02d}" for floor in range(2, 6)),
 }
 ALLOWED_VENDING_ITEMS = {"coffee"}
@@ -46,6 +47,7 @@ COMMANDS = {
     "climb_stairs",
     "select_worker",
     "buy_coffee",
+    "buy_vending",
     "toggle_running",
     "toggle_auto_breaks",
     "start_break",
@@ -135,6 +137,10 @@ def validate_command(command: object) -> tuple[bool, str]:
         choice = payload.get("choice")
         if not _is_int(choice) or choice not in RECEPTION_SERVICE_ROUTES:
             return False, "RECEPTION SERVICE CHOICE MUST BE 1-4"
+    elif name == "buy_vending":
+        item_id = payload.get("item_id")
+        if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
+            return False, "VENDING ITEM ID NOT VALID"
     elif name == "basement_attack":
         move_id = payload.get("move_id")
         if not isinstance(move_id, str) or move_id not in MELEE_MOVE_BY_ID:
@@ -523,6 +529,29 @@ def apply_command(
         return CommandResult(True, state.notice)
     if name == "select_floor":
         return _request_tower_floor(payload["floor"], state, scene, building_sync, basement_sync)
+    if name == "buy_vending":
+        vending = scene.objects.get(state.active_object_id or "")
+        nearby = scene.nearby_object
+        item_id = payload["item_id"]
+        if (
+            state.active_page != "vending"
+            or vending is None
+            or vending.kind != "vending_machine"
+            or vending.room != scene.current_room
+            or nearby is None
+            or nearby.id != vending.id
+        ):
+            return CommandResult(False, "USE A VENDING MACHINE TO BUY STOCK")
+        if not any(
+            isinstance(entry, dict) and entry.get("id") == item_id
+            for entry in (state.vending_catalog or [])
+        ):
+            return CommandResult(False, "ITEM IS NOT IN THE CURRENT VENDING CATALOG")
+        if building_sync is None or not building_sync.queue_game_request("buy_vending", item_id):
+            return CommandResult(False, "PURCHASE UNAVAILABLE / CHECK GAME LINK")
+        state.game_service_loading.add("buy_vending")
+        state.notice = "PURCHASE SENT / WAITING FOR SERVER"
+        return CommandResult(True, state.notice)
     if name == "climb_stairs":
         basement_result = _handle_basement_interact(
             state,
@@ -798,6 +827,9 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "activePage": state.active_page,
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,
+            "vendingCatalog": state.vending_catalog,
+            "marketplaceListings": state.marketplace_catalog,
+            "ghostListing": state.ghost_listing,
             "pestUniformWorn": state.pest_uniform_worn,
             "pestStamina": state.pest_stamina,
             "pestWorkOrders": state.pest_work_orders,

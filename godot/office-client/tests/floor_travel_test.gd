@@ -64,8 +64,8 @@ func _run_tests() -> void:
 	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -0.42))
 
 	var open_floors: Array[int] = client._available_elevator_floors()
-assert(open_floors.size() == 67)
-for floor_number in range(1, 68):
+assert(open_floors.size() == 7)
+for floor_number in range(1, 8):
 assert(open_floors.has(floor_number))
 	assert(client._tower_floor_status(1) == "open")
 	assert(client._tower_floor_status(2) == "construction_open")
@@ -75,8 +75,9 @@ assert(open_floors.has(floor_number))
 	assert(client._tower_floor_status(6) == "open")
 	assert(client._tower_floor_status(0) == "open")
 	assert(not open_floors.has(0))
-	for floor_number in [7, 67]:
-assert(client._tower_floor_status(floor_number) == "open")
+	assert(client._tower_floor_status(7) == "open")
+	assert(client._tower_floor_status(8) == "under_construction")
+	assert(client._tower_floor_status(67) == "under_construction")
 	client.elevator_floor_panel = ColorRect.new()
 	client.elevator_floor_panel.visible = true
 	client.selected_elevator_floor = 1

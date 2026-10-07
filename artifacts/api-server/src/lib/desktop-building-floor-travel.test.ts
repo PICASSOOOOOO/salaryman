@@ -54,18 +54,30 @@ describe("desktop tower floor travel", () => {
     expect(validateBuildingPresence(elevatorAtLobby, floorSixHallway, now, "executive")).toBeNull();
   });
 
-  it("keeps Floors 7–67 locked and permits the authorized return trip", () => {
-    const closedFloor = { ...floorSixHallway, floorNumber: 7 };
-    expect(validateBuildingPresence(lobby, closedFloor, now, "executive")).toBe("Floor is under construction");
+  it("allows Floor 7 and keeps Floors 8–67 under construction", () => {
+    expect(PLAYABLE_TOWER_FLOORS.has(7)).toBe(true);
+    expect(PLAYABLE_TOWER_FLOORS.has(8)).toBe(false);
+    const floorSevenHallway = { ...floorSixHallway, floorNumber: 7 };
+    const floorEightHallway = { ...floorSixHallway, floorNumber: 8 };
+    const elevatorAtLobby = {
+      ...lobby,
+      room: "elevator" as const,
+      destinationFloor: 7,
+      x: TOWER_ELEVATOR_POSITIONS[1].x,
+      y: TOWER_ELEVATOR_POSITIONS[1].y,
+    };
+    expect(validateBuildingPresence(elevatorAtLobby, floorSevenHallway, now, "executive")).toBeNull();
+    expect(validateBuildingPresence(lobby, floorEightHallway, now, "executive"))
+      .toBe("Floor is under construction");
 
-    const elevatorAtFloorSix = {
-      ...floorSixHallway,
+    const elevatorAtFloorSeven = {
+      ...floorSevenHallway,
       room: "elevator" as const,
       destinationFloor: 1,
-      x: TOWER_ELEVATOR_POSITIONS[6].x,
-      y: TOWER_ELEVATOR_POSITIONS[6].y,
+      x: TOWER_ELEVATOR_POSITIONS[7].x,
+      y: TOWER_ELEVATOR_POSITIONS[7].y,
     };
-    expect(validateBuildingPresence(elevatorAtFloorSix, lobby, now, null)).toBeNull();
+    expect(validateBuildingPresence(elevatorAtFloorSeven, lobby, now, null)).toBeNull();
   });
 
   it("allows stale elevator presence to recover only at the lobby spawn", () => {

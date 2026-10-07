@@ -120,6 +120,8 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "LINK A GAME ACCOUNT TO LOAD INVENTORY"
         elif page == "vending":
             state.vending_catalog = None
+            state.marketplace_catalog = None
+            state.ghost_listing = None
             state.fiat_balance = None
             state.fiat_spendable = None
             if building_sync.queue_game_request("vending_catalog"):
@@ -128,6 +130,14 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "LINK A GAME ACCOUNT TO USE VENDING"
             if building_sync.queue_game_request("bank"):
                 state.game_service_loading.add("bank")
+        elif page == "marketplace":
+            state.vending_catalog = None
+            state.marketplace_catalog = None
+            state.ghost_listing = None
+            if building_sync.queue_game_request("vending_catalog"):
+                state.game_service_loading.add("vending_catalog")
+            else:
+                state.notice = "LINK A GAME ACCOUNT TO LOAD BUSINESS STOCK"
         elif page == "bank":
             state.fiat_balance = None
             state.fiat_spendable = None
@@ -646,11 +656,24 @@ def run(argv: list[str] | None = None) -> int:
                     elif action == "vending_catalog":
                         items = payload.get("items", [])
                         state.vending_catalog = [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+                        marketplace = payload.get("marketplace", {})
+                        listings = marketplace.get("listings", []) if isinstance(marketplace, dict) else []
+                        state.marketplace_catalog = (
+                            [listing for listing in listings if isinstance(listing, dict)]
+                            if isinstance(listings, list)
+                            else []
+                        )
+                        ghost = payload.get("ghost")
+                        state.ghost_listing = ghost if isinstance(ghost, dict) else None
                         state.selected_vending_index = max(
                             0,
                             min(state.selected_vending_index, max(0, len(state.vending_catalog) - 1)),
                         )
-                        state.notice = f"VENDING STOCK LOADED / {len(state.vending_catalog)} ITEMS"
+                        state.notice = (
+                            f"BUSINESS DIRECTORY LOADED / {len(state.marketplace_catalog)} LINES"
+                            if state.active_page == "marketplace"
+                            else f"VENDING STOCK LOADED / {len(state.vending_catalog)} ITEMS"
+                        )
                     elif action == "bank":
                         balance = payload.get("balance")
                         spendable = payload.get("spendable")

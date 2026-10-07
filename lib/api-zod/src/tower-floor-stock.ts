@@ -167,7 +167,7 @@ export const TOWER_FLOOR_MARKETPLACE_LISTINGS: readonly TowerMarketplaceListing[
     label: "ATMs",
     specialty: "banking-equipment",
     sellerBusinessKey: "tower_atm",
-    sellerName: "BANCO OMBRA",
+    sellerName: "OMBRA TOWER CASH",
     itemIds: [],
     quoteCategories: ["ATM equipment"],
     priceSource: "seller_quote",

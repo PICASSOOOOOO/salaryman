@@ -1614,6 +1614,7 @@ class SolarPunkRenderer:
             "bank": ("BANCO OMBRA", "Shared FIAT wallet / read only"),
             "phone": ("PAY PHONE", "CALLL HOME and COMMS entry points"),
             "reception": ("MILA / RECEPTION", "Business marketplace and classified services"),
+            "marketplace": ("FLOOR 07 BUSINESS MARKETPLACE", "Catalog listings / existing prices only / no purchases here"),
         }
         title, subtitle = titles[state.active_page]
         self.text(title, (panel.x + 26, panel.y + 20), self.font_xl, (27, 47, 41))
@@ -1724,6 +1725,55 @@ class SolarPunkRenderer:
                     self.text(description[:58], (row.x + 10, row.y + 25), self.font_sm, (91, 107, 97))
                     buy_rect = pygame.Rect(row.right - 126, row.y + 6, 116, 32)
                     button(f"buy:{entry.get('id', '')}", f"BUY ƒ{price:,}", buy_rect)
+            self.text(
+                "FLOOR 07: FURNITURE · AQUATICS · EDUCATION · BUILDING EQUIPMENT",
+                (panel.x + 28, panel.bottom - 70),
+                self.font_sm,
+                (85, 103, 94),
+            )
+            self.text(
+                "THE GHOST / DIRECT INTERACTION ONLY · ASK IN PERSON",
+                (panel.x + 28, panel.bottom - 48),
+                self.font_sm,
+                (85, 103, 94),
+            )
+        elif state.active_page == "marketplace":
+            listings = state.marketplace_catalog
+            if listings is None:
+                message = "LOADING BUSINESS DIRECTORY…" if "vending_catalog" in state.game_service_loading else "CONNECT A LINKED GAME ACCOUNT TO LOAD THE DIRECTORY"
+                self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            elif not listings:
+                self.text("NO BUSINESS LISTINGS AVAILABLE", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            else:
+                for index, listing in enumerate(listings[:10]):
+                    y = content_y + index * 36
+                    seller = str(listing.get("sellerName") or listing.get("specialty", "SPECIALTY").replace("-", " ")).upper()
+                    items = listing.get("items", [])
+                    if isinstance(items, list) and items:
+                        details = ", ".join(
+                            f"{item.get('name', item.get('id', 'Item'))} ƒ{int(item.get('priceFiat', 0) or 0):,}"
+                            for item in items[:2]
+                            if isinstance(item, dict)
+                        )
+                    else:
+                        categories = listing.get("quoteCategories", [])
+                        details = ", ".join(str(value) for value in categories) if isinstance(categories, list) and categories else "QUOTE REQUIRED"
+                    row = pygame.Rect(panel.x + 26, y, panel.width - 52, 32)
+                    pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
+                    self.text(f"{seller} / {details}"[:78], (row.x + 10, row.y + 9), self.font_sm, (39, 64, 51))
+            ghost = state.ghost_listing or {}
+            self.text(
+                str(ghost.get("notice", "THE GHOST / DIRECT INTERACTION ONLY")).upper()[:90],
+                (panel.x + 28, panel.bottom - 47),
+                self.font_sm,
+                (85, 103, 94),
+            )
+            self.text(
+                "CATALOG ONLY / PURCHASES ARE NOT ENABLED AT THIS COUNTER",
+                (panel.x + 28, panel.bottom - 27),
+                self.font_sm,
+                (85, 103, 94),
+            )
         elif state.active_page == "bank":
             if state.fiat_balance is None or state.fiat_spendable is None:
                 value = "LOADING…" if "bank" in state.game_service_loading else "ACCOUNT LINK REQUIRED"

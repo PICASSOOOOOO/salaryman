@@ -31,7 +31,7 @@ export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] 
 export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
 export const BUILDING_PRESENCE_MAX_AGE_MS = 10_000;
 export const PLAYABLE_TOWER_FLOORS: ReadonlySet<number> = new Set(
-  Array.from({ length: 67 }, (_, index) => index + 1),
+  Array.from({ length: 7 }, (_, index) => index + 1),
 );
 export const TOWER_ELEVATOR_POSITIONS: Readonly<Record<number, { x: number; y: number }>> = {
   1: { x: 49_977_000, y: 50_000_000 },

@@ -204,6 +204,62 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "reception")
         self.assertEqual(self.state.page_source, "MILA / RECEPTION")
 
+    def test_floor_seven_marketplace_counter_opens_business_directory(self):
+        self.assertTrue(self.scene.select_floor(7))
+        counter = self.scene.objects.get("floor07-marketplace-counter")
+        self.assertIsNotNone(counter)
+        self.scene.player_position = counter.position
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "floor07-marketplace",
+                "name": "interact",
+                "payload": {"object_id": counter.id},
+            },
+            self.state,
+            self.scene,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "marketplace")
+        self.assertEqual(self.state.active_object_id, "floor07-marketplace-counter")
+
+    def test_floors_eight_through_sixty_seven_remain_under_construction(self):
+        self.assertFalse(self.scene.select_floor(8))
+        self.assertFalse(self.scene.select_floor(67))
+        self.assertEqual(self.scene.floor_status(8), "under_construction")
+        self.assertEqual(self.scene.floor_status(67), "under_construction")
+
+    def test_godot_vending_purchase_uses_linked_server_stock(self):
+        vending = self.scene.objects.get("lobby-vending")
+        self.assertIsNotNone(vending)
+        self.scene.player_position = vending.position
+        self.state.vending_catalog = [{"id": "vend_coffee"}]
+        self.state.open_page(
+            "vending",
+            from_object=True,
+            source="TOWER VENDING",
+            source_object_id=vending.id,
+        )
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "godot-vending-purchase",
+                "name": "buy_vending",
+                "payload": {"item_id": "vend_coffee"},
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(requests, [("buy_vending", "vend_coffee")])
+
     def test_mila_menu_opens_only_the_selected_existing_service(self):
         self.scene.player_position = (49_978_250, 49_998_600)
         self.state.open_page(

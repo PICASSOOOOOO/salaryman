@@ -859,6 +859,7 @@ class TowerScene:
             "office_03": 6,
             "office_04": 6,
             "executive_suite": 6,
+            "floor07_marketplace": 7,
         }
         if room_id in room_floors and self.current_floor != room_floors[room_id]:
             return False

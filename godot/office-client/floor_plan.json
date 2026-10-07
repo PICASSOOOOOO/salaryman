@@ -11,7 +11,8 @@
     "basement": "open",
     "2-5": "construction_open",
     "6": "open",
-    "7-67": "open"
+    "7": "open",
+    "8-67": "under_construction"
   },
   "playableFloors": {
     "1": {"room": "lobby", "label": "TOWER LOBBY"},
@@ -20,7 +21,7 @@
     "4": {"room": "construction_f04", "label": "FLOOR 04 / CONSTRUCTION"},
     "5": {"room": "construction_f05", "label": "FLOOR 05 / CONSTRUCTION"},
     "6": {"room": "recreation", "label": "OFFICE CONCOURSE"},
-    "7": {"room": "commercial_floor", "label": "FLOOR 07 / COMMERCIAL OFFICES"},
+    "7": {"room": "floor07_marketplace", "label": "FLOOR 07 / BUSINESS MARKETPLACE"},
     "8": {"room": "commercial_floor", "label": "FLOOR 08 / COMMERCIAL OFFICES"},
     "9": {"room": "commercial_floor", "label": "FLOOR 09 / COMMERCIAL OFFICES"},
     "10": {"room": "commercial_floor", "label": "FLOOR 10 / COMMERCIAL OFFICES"},
@@ -133,7 +134,7 @@
     "serviceElevator": {
       "position": [12500, 1500],
       "stops": ["B6", "B5", "B4", "B3", "B2", "B1", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67],
-      "highestOpenFloor": 67
+      "highestOpenFloor": 7
     },
     "elevatorLobby": {
       "bounds": [49975000, 49997000, 4000, 6000],
@@ -168,7 +169,7 @@
       "positions": [[9500, 12500], [12500, 12500]],
       "lobbyNextFloor": 2,
       "basement": "B1-B6",
-      "highestOpenFloor": 67,
+      "highestOpenFloor": 7,
       "restrictedLandings": []
     },
     "basementEntryStairs": {
@@ -204,6 +205,14 @@
       "label": "COMMERCIAL OFFICE FLOOR",
       "bounds": [0, 0, 22000, 25000],
       "accent": [68, 88, 103],
+      "material": "hall_floor",
+      "spawn": [11000, 1500]
+    },
+    {
+      "id": "floor07_marketplace",
+      "label": "FLOOR 07 BUSINESS MARKETPLACE",
+      "bounds": [0, 0, 22000, 25000],
+      "accent": [88, 105, 89],
       "material": "hall_floor",
       "spawn": [11000, 1500]
     },

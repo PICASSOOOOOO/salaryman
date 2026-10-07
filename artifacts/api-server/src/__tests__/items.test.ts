@@ -58,11 +58,57 @@ describe("GET /items/vending-catalog", () => {
     const res = await request(app).get("/api/items/vending-catalog");
     expect(res.status).toBe(200);
     const ids = res.body.items.map((item: { id: string }) => item.id);
-    expect(ids).toEqual(expect.arrayContaining(PUBLIC_VENDING_ITEM_IDS));
+    expect(ids).toEqual(expect.arrayContaining([...PUBLIC_VENDING_ITEM_IDS]));
     expect(ids).not.toContain("equip_hardhat");
     expect(ids).not.toContain("equip_gasmask");
     expect(ids).not.toContain("vend_interview_drill");
     expect(ids).not.toContain("vend_trade_cert");
+    const stockById = new Map<string, number>(
+      res.body.items.map((item: { id: string; priceFiat: number }) => [item.id, item.priceFiat] as const),
+    );
+    expect(stockById.get("vend_foreman_meal")).toBeGreaterThan(stockById.get("vend_shift_tonic")!);
+    expect(stockById.get("vend_shift_tonic")).toBeGreaterThan(stockById.get("vend_snack_bar")!);
+    expect(stockById.get("vend_snack_bar")).toBeGreaterThan(stockById.get("vend_coffee")!);
+  });
+
+  it("adds Floor 07 business listings without making them vending stock", async () => {
+    const res = await request(app).get("/api/items/vending-catalog");
+    expect(res.status).toBe(200);
+    expect(res.body.marketplace.floor).toBe(7);
+    const listings = res.body.marketplace.listings as Array<{
+      id: string;
+      sellerBusinessKey: string | null;
+      npcExpansion: { simulationEnabled: boolean; scope: string };
+      items: Array<{ id: string; priceFiat: number; basePriceFiat: number; useEffect?: { skillGrant?: string } }>;
+    }>;
+    const education = listings.find((listing) => listing.id === "education-books");
+    expect(education?.items.map((item) => item.id)).toEqual([
+      "vend_interview_drill",
+      "vend_trade_cert",
+    ]);
+    expect(education?.items[0].useEffect?.skillGrant).toBe("career.interview_prepared");
+    expect(education?.items[1].useEffect?.skillGrant).toBe("work.trade_certified");
+    expect(education?.items[1].priceFiat).toBeGreaterThan(education!.items[0].priceFiat);
+    expect(education?.items[0].basePriceFiat).toBe(450_000);
+    expect(education?.items[1].basePriceFiat).toBe(900_000);
+    expect(education?.sellerBusinessKey).toBeNull();
+    expect(education?.npcExpansion).toEqual({
+      ready: true,
+      simulationEnabled: false,
+      scope: "specialty_only",
+      improvementAxes: ["effectiveness", "quality"],
+    });
+
+    const aquarium = listings.find((listing) => listing.id === "aquariums-and-fish");
+    expect(aquarium?.sellerBusinessKey).toBe("fish-store");
+    expect(aquarium?.items[0].id).toBe("decor_aquarium");
+    expect(res.body.ghost).toMatchObject({
+      availability: "direct_npc",
+      requiresProximityInteraction: true,
+      itemIds: [],
+      stockStatus: "not_provided",
+      priceSource: "quoted_in_person",
+    });
   });
 });
 

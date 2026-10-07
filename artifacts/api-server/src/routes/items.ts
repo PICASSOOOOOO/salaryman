@@ -40,6 +40,10 @@ import { getResourceDef } from "../lib/resource-catalog";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { getMarketIndex } from "./real-estate";
 import {
+  TOWER_FLOOR_MARKETPLACE_LISTINGS,
+  TOWER_GHOST_LISTING,
+} from "@workspace/api-zod";
+import {
   isBattery,
   batteryCapacity,
   getInstalledBatteries,
@@ -178,7 +182,25 @@ router.get("/items/catalog", async (_req, res) => {
 router.get("/items/vending-catalog", async (_req, res) => {
   const allowed = new Set<string>(PUBLIC_VENDING_ITEM_IDS);
   const catalog = await marketCatalogItems();
-  res.json({ market: catalog.market, items: catalog.items.filter((item) => allowed.has(item.id)) });
+  const catalogById = new Map(catalog.items.map((item) => [item.id, item] as const));
+  const listings = TOWER_FLOOR_MARKETPLACE_LISTINGS.map((listing) => ({
+    ...listing,
+    items: listing.itemIds
+      .map((itemId) => catalogById.get(itemId))
+      .filter((item): item is NonNullable<typeof item> => item != null),
+  }));
+  res.json({
+    market: catalog.market,
+    items: catalog.items
+      .filter((item) => allowed.has(item.id))
+      .map((item) => ({
+        ...item,
+        sellerBusinessKey: "tower_vending",
+        sellerName: "NIGHT PANTRY NETWORK",
+      })),
+    marketplace: { floor: 7, listings },
+    ghost: TOWER_GHOST_LISTING,
+  });
 });
 
 // ─── Inventory for a character save slot ──────────────────────────────────────

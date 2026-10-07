@@ -5,6 +5,8 @@ import {
   getTowerBusinessPlacement,
   sortTowerBusinessesByExitPriority,
   TOWER_INFRASTRUCTURE_BUSINESSES,
+  TOWER_FLOOR_MARKETPLACE_LISTINGS,
+  TOWER_GHOST_LISTING,
 } from "./index";
 
 describe("Tower business exit placement", () => {
@@ -51,5 +53,39 @@ describe("Tower business exit placement", () => {
       offer: business.ad,
     });
     expect(getTowerBusinessConversation("missing-business")).toBeNull();
+  });
+});
+
+describe("Floor 07 marketplace catalog", () => {
+  it("keeps product families specialized and ready for bounded NPC improvements", () => {
+    const listingIds = TOWER_FLOOR_MARKETPLACE_LISTINGS.map((listing) => listing.id);
+    expect(new Set(listingIds).size).toBe(listingIds.length);
+    expect(listingIds).toEqual(
+      expect.arrayContaining([
+        "fine-rugs",
+        "lamps",
+        "desks",
+        "chairs",
+        "terminals",
+        "aquariums-and-fish",
+        "water-coolers",
+        "vending-machines",
+        "atms",
+        "education-books",
+      ]),
+    );
+    for (const listing of TOWER_FLOOR_MARKETPLACE_LISTINGS) {
+      expect(listing.npcProductFamily).toBeTruthy();
+      expect(listing.npcVersion).toBe(1);
+      expect(listing.npcExpansion.scope).toBe("specialty_only");
+      expect(listing.npcExpansion.simulationEnabled).toBe(false);
+    }
+    expect(TOWER_GHOST_LISTING).toMatchObject({
+      availability: "direct_npc",
+      requiresProximityInteraction: true,
+      itemIds: [],
+      stockStatus: "not_provided",
+      priceSource: "quoted_in_person",
+    });
   });
 });

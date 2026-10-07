@@ -1953,7 +1953,7 @@ func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
 	landing_notice.name = object_id + "-construction-sign"
 	landing_notice.text = "UNDER CONSTRUCTION\nBASEMENT + FLOORS 02–05" \
 		if object_id.begins_with("lobby") \
-		else "UNDER CONSTRUCTION\nFLOORS 07–67"
+else "UNDER CONSTRUCTION\nFLOORS 08–67"
 	landing_notice.font_size = 28
 	landing_notice.pixel_size = 0.006
 	landing_notice.position = position + Vector3(0.0, 2.45, 0.58)
@@ -2423,6 +2423,103 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		str(scene_data.get("room", "UNKNOWN")).replace("_", " ").to_upper(),
 	]
 	match page:
+		"vending":
+			native_app_title.text = "TOWER VENDING / BUSINESS DIRECTORY"
+			var vending_lines: Array[String] = []
+			var vending_value: Variant = office.get("vendingCatalog", [])
+			if vending_value is Array:
+				for index in mini(vending_value.size(), 5):
+					var item_value: Variant = vending_value[index]
+					if not item_value is Dictionary:
+						continue
+					var vending_item: Dictionary = item_value
+					vending_lines.append("%d  %s  /  FIAT %s" % [
+						index + 1,
+						"%s · %s" % [
+							str(vending_item.get("name", vending_item.get("id", "ITEM"))),
+							str(vending_item.get("blurb", "")),
+						],
+						str(int(vending_item.get("priceFiat", 0))),
+					])
+			if vending_lines.is_empty():
+				vending_lines.append("VENDING STOCK LOADING OR ACCOUNT LINK REQUIRED")
+			var marketplace_value: Variant = office.get("marketplaceListings", [])
+			var directory_lines: Array[String] = []
+			if marketplace_value is Array:
+				for listing_value in marketplace_value:
+					if not listing_value is Dictionary:
+						continue
+					var listing: Dictionary = listing_value
+					var seller := str(listing.get("sellerName", listing.get("specialty", "SPECIALTY")))
+					var details := ""
+					var products: Variant = listing.get("items", [])
+					if products is Array and not products.is_empty():
+						var product_names: Array[String] = []
+						for product_value in products:
+							if product_value is Dictionary:
+								product_names.append("%s ƒ%s" % [
+									"%s · %s" % [
+										str(product_value.get("name", product_value.get("id", "ITEM"))),
+										str(product_value.get("blurb", "")),
+									],
+									str(int(product_value.get("priceFiat", 0))),
+								])
+						details = ", ".join(product_names)
+					else:
+						var quotes: Variant = listing.get("quoteCategories", [])
+						details = ", ".join(quotes) if quotes is Array and not quotes.is_empty() else "QUOTE REQUIRED"
+					directory_lines.append("%s / %s" % [seller, details])
+			var ghost_value: Variant = office.get("ghostListing", {})
+			var ghost_notice := "THE GHOST / ASK IN PERSON"
+			if ghost_value is Dictionary:
+				ghost_notice = str(ghost_value.get("notice", ghost_notice))
+			native_app_body.text = "BUYABLE VENDING STOCK\n%s\n\nBUSINESS LISTINGS · NOT BUYABLE HERE\n%s\n\n%s" % [
+				"\n".join(vending_lines),
+				"\n".join(directory_lines) if not directory_lines.is_empty() else "DIRECTORY LOADING",
+				ghost_notice,
+			]
+			native_app_footer.text = "1–5 BUY SERVER-PRICED STOCK  ·  ESC CLOSE"
+		"marketplace":
+			native_app_title.text = "FLOOR 07 / BUSINESS MARKETPLACE"
+			var marketplace_lines: Array[String] = []
+			var listings_value: Variant = office.get("marketplaceListings", [])
+			if listings_value is Array:
+				for listing_value in listings_value:
+					if not listing_value is Dictionary:
+						continue
+					var listing: Dictionary = listing_value
+					var seller := str(listing.get("sellerName", ""))
+					if seller.is_empty():
+						seller = str(listing.get("specialty", "SPECIALTY")).replace("-", " ").to_upper()
+					var detail := ""
+					var products_value: Variant = listing.get("items", [])
+					if products_value is Array and not products_value.is_empty():
+						var product_lines: Array[String] = []
+						for product_value in products_value:
+							if product_value is Dictionary:
+								product_lines.append("%s ƒ%s" % [
+									"%s · %s" % [
+										str(product_value.get("name", product_value.get("id", "ITEM"))),
+										str(product_value.get("blurb", "")),
+									],
+									str(int(product_value.get("priceFiat", 0))),
+								])
+						detail = ", ".join(product_lines)
+					else:
+						var categories: Variant = listing.get("quoteCategories", [])
+						detail = ", ".join(categories) if categories is Array and not categories.is_empty() else "QUOTE REQUIRED"
+					marketplace_lines.append("%s / %s" % [seller, detail])
+			if marketplace_lines.is_empty():
+				marketplace_lines.append("DIRECTORY LOADING OR ACCOUNT LINK REQUIRED")
+			var ghost_value: Variant = office.get("ghostListing", {})
+			var ghost_notice := "THE GHOST / DIRECT INTERACTION ONLY"
+			if ghost_value is Dictionary:
+				ghost_notice = str(ghost_value.get("notice", ghost_notice))
+			native_app_body.text = "SPECIALIST STOCK · LISTINGS ONLY\n%s\n\n%s" % [
+				"\n".join(marketplace_lines),
+				ghost_notice,
+			]
+			native_app_footer.text = "PURCHASES ARE NOT ENABLED AT THIS COUNTER  ·  ESC CLOSE"
 		"merchant":
 			native_app_panel.color = Color("#f0eee8")
 			native_app_title.add_theme_color_override("font_color", Color("#171717"))
@@ -2647,6 +2744,16 @@ func _input(event: InputEvent) -> void:
 				var choice := terminal_choice_for_key(event.keycode)
 				if choice > 0:
 					_send_command("terminal_choice", {"choice": choice})
+			elif active_page == "vending" and event.keycode in [
+				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5
+			]:
+				var item_index := int(event.keycode) - KEY_1
+				var office: Dictionary = snapshot.get("office", {})
+				var vending_value: Variant = office.get("vendingCatalog", [])
+				if vending_value is Array and item_index < vending_value.size():
+					var item_value: Variant = vending_value[item_index]
+					if item_value is Dictionary:
+						_send_command("buy_vending", {"item_id": str(item_value.get("id", ""))})
 			elif active_page == "reception" and event.keycode in [KEY_1, KEY_2, KEY_3, KEY_4]:
 				_send_command("reception_choice", {"choice": event.keycode - KEY_0})
 			elif active_page == "pest_jobs" and event.keycode in [KEY_1, KEY_2]:
