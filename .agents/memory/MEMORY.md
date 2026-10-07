@@ -156,4 +156,4 @@
 - [Tower building vitality](tower-building-vitality.md) — shared Tower utility costs belong to Pablo Corp; outages, price pressure, and customer-first backup apply only to the current building.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Tower basement layout and access](tower-basement-layout.md) — B1–B6 departments, one full-height service lift, four lobby passenger lifts, two stairwells, and activity-driven pest pressure.
-- [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp owns unpurchased offices; owner resale proceeds stay private, and purchases support ATM-funded income, FIAT, and GOLD.
+- [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp owns unpurchased units plus selected floors; preserve private resale proceeds and its intentional economic advantage.

@@ -13,6 +13,9 @@ Pablo Corp owns unpurchased Tower office and lease inventory. Company proceeds
 fund its building operations; after purchase, resale and sublease proceeds
 belong to the new owner. Property purchases must remain server-authoritative
 and support ATM-transferred income, FIAT, and GOLD.
+Pablo Corp may also take possession of a selective set of additional floors for
+its businesses; do not treat every floor as company-occupied. Pablo businesses
+should receive intentional economic and service priority over player businesses.
 Wealthier players should receive better treatment and more perks: more money
 should bring more benefits.
 Lower-income players should gain strength, stamina, power, attack and defense,
@@ -81,3 +84,11 @@ inventory.
 **How to apply:** Distinguish Pablo-owned inventory from player-owned units when
 settling property transactions; never route an owner's resale proceeds to the
 company.
+
+**Why:** The user clarified that Pablo Corp will selectively take additional
+floors and that its businesses should have an advantage over players because
+Pablo Corp is the villain.
+
+**How to apply:** Keep company occupancy selective, and design Tower investment,
+service priority, and business economics to favor Pablo Corp without removing
+player ownership or investment paths.
