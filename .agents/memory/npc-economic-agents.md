@@ -33,3 +33,21 @@ backends.
 
 **How to apply:** record the named receptionist as the payment agent, but settle
 money from the authoritative public pool or the owning organization's funds.
+
+## NPCs as purposeful automation characters
+
+NPCs should extend existing API automations rather than use separate game-only
+assistant backends. Each should be a useful, recognizable character with a real
+job, a destination or route, and a concrete responsibility. Prefer a small cast
+with meaningful roles over many generic background NPCs. NPC-operated businesses
+may grow into specialized sellers and develop improved versions of their products;
+do not imply that this progression is active until it has a real simulation.
+
+**Why:** the user wants NPCs to be useful characters with purpose and ongoing
+activity, not decorative population, and wants business growth to produce better
+products.
+
+**How to apply:** reuse the corresponding API automation as the source of truth
+for NPC work; keep identity, job, goal, and route connected. Structure business
+stock with stable product families and version metadata so future NPC growth can
+build on it, while clearly distinguishing data readiness from live behavior.
