@@ -30,18 +30,23 @@ from Tower sales. Early-game prices and sales volume must keep ordinary
 operations able to cover those bills; utility disasters should arise only much
 later if sustained sales fail to meet costs.
 
-Pablo Corp currently owns all shops, stores, and services in this environment.
-Survival-related goods and services require payment from both players and NPCs;
-their purchases are company sales that help fund Tower operations. This current
+Pablo Corp owns the initial shops, stores, and services the user has named so
+far. Survival-related goods and services require payment from both players and
+NPCs; their purchases are sales for the current business owner. This initial
 ownership is not a permanent monopoly: outside businesses may enter, and
 disruptors may dynamically change competitive conditions.
 
-**Why:** The user wants a viable capitalist economy where survival commerce is
-paid, current businesses belong to Pablo Corp, outside businesses can enter and
-change competition, and early play remains affordable.
+NPCs should develop AI-driven creative and innovative ambitions. They may leave
+a job, join another employer, or start a business when they have enough capital.
+
+**Why:** The user wants a creativity- and innovation-friendly economy where NPCs
+can pursue new work or start businesses with capital. Pablo owns the initial
+named businesses, while outside entrants can change competition; survival
+commerce remains paid and early play remains affordable.
 
 **How to apply:** Credit paid sales to the business's current owner. Allow outside
 entry and dynamic competitive changes rather than hardcoding a permanent Pablo
-monopoly. Balance early sales against recurring power and water costs; allow
-price pressure or outages only after a sustained, market-driven shortfall, not
-simply because the server economy is new.
+monopoly. Let NPC ambitions affect career choices and entrepreneurship, but
+require capital to start a business. Balance early sales against recurring power
+and water costs; allow price pressure or outages only after a sustained,
+market-driven shortfall, not simply because the server economy is new.
