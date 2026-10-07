@@ -145,6 +145,7 @@
 - [SALARYMAN legal entity](salaryman-legal-entity.md) — Picasso AI, LLC is the confirmed legal entity, formed in California, United States.
 - [SALARYMAN support routing](salaryman-support-routing.md) — public support uses salaryman.io Contact Us; submissions go privately to OWNER_EMAILS until an official support inbox exists.
 - [Godot visual continuity](godot-visual-continuity.md) — preserve visual/gameplay continuity; elevator zoom SFX and active-room fog reinforce the Tower's playable space.
+- [Tower floor previews](tower-floor-previews.md) — use Godot-native 3D for B1–B6/F1–F12; do not show Pygame Tower art, and treat layout/door/object/control tests as gameplay checks.
 - [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
 - [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
 - [Desktop release packaging](desktop-release-packaging.md) — macOS-first testing, Windows required; retain Linux unless its separate workload warrants discussing removal.

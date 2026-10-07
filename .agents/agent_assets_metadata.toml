@@ -1775,3 +1775,59 @@ mtime_ms = 1791384161170
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1270a8f2-28b5-4d54-b292-ce513141d7bc/e75e70b1-bfd3-4308-ad1e-3896ed55017a"
 storage_version_token = "1791384183072972"
 content_type = "image/png"
+
+[[outputs]]
+id = "r6wELNsXzWgiTxVZOofWT"
+uri = "file://screenshots/tower-godot-floor-previews.html"
+type = "html"
+title = "Tower Godot 3D Floor Gallery"
+description = "Self-contained gallery of all 18 native Godot isometric previews: B1–B6 and F1–F12."
+logical_id = "d03725b9-6598-4a80-a87f-ee3a537dda4e"
+content_hash = "sha256:dcbaf7ddb1a3bcadec3bf01771020eb541873ad4f2b9a975053e4314fd5c216a"
+size = 3318488
+mtime_ms = 1791385411638
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d03725b9-6598-4a80-a87f-ee3a537dda4e/14a59a70-a39c-4bd7-b983-9ff08f90f6d4"
+storage_version_token = "1791385952592921"
+content_type = "text/html"
+
+[[outputs]]
+id = "wO1QfE4UBdZponPXWqbeF"
+uri = "file://screenshots/tower-godot-basements.png"
+type = "image"
+title = "Tower Basements B1–B6"
+description = "Godot-rendered isometric 3D review sheet for all six basement layouts."
+logical_id = "39133612-7915-4c6d-9e23-677da1ca5462"
+content_hash = "sha256:7e00444395c5051e555918ec040bc592600c4f825687d96c73f3f4dde78953c3"
+size = 489728
+mtime_ms = 1791385407958
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/39133612-7915-4c6d-9e23-677da1ca5462/efb1857f-547c-47c2-972a-ea912a6fd581"
+storage_version_token = "1791385953826468"
+content_type = "image/png"
+
+[[outputs]]
+id = "GKchfZLm3Dhq3quNNO3RE"
+uri = "file://screenshots/tower-godot-floors-01-06.png"
+type = "image"
+title = "Tower Floors F1–F6"
+description = "Godot-rendered isometric 3D review sheet for the lobby, construction suites, and office concourse."
+logical_id = "563d43f3-fc49-413c-8f61-190bd7ceb1d2"
+content_hash = "sha256:a1eea39f5e5e8a6bb6f1c7c2df9290f86defa79da9e647425bec3178619585bd"
+size = 544008
+mtime_ms = 1791385409982
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/563d43f3-fc49-413c-8f61-190bd7ceb1d2/55e064dc-0848-4d3c-857e-954b1d275718"
+storage_version_token = "1791385954956821"
+content_type = "image/png"
+
+[[outputs]]
+id = "9p_u5BoTjd5Ej43KitdZu"
+uri = "file://screenshots/tower-godot-floors-07-12.png"
+type = "image"
+title = "Tower Floors F7–F12"
+description = "Godot-rendered isometric 3D review sheet for the meditation temple and upper business floors."
+logical_id = "b48861a4-b412-49ab-a776-b3ee1e15aa4b"
+content_hash = "sha256:c567d224dd5a9aec0f8491c8976c4a1a2575b0b0c193d0f12700848679402072"
+size = 555556
+mtime_ms = 1791385411462
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b48861a4-b412-49ab-a776-b3ee1e15aa4b/582a581d-8bcc-49ad-abe0-91cb520341d4"
+storage_version_token = "1791385956310288"
+content_type = "image/png"
