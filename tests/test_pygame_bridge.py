@@ -29,6 +29,43 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(decoded["scene"]["navigation"]["room"], "lobby")
         self.assertIn("mission", decoded["scene"]["navigation"])
         self.assertIsInstance(decoded["scene"]["navigation"]["exits"], list)
+        self.assertFalse(decoded["office"]["musicEnabled"])
+
+    def test_basement_cannot_be_left_by_room_or_floor_selection(self):
+        self.assertTrue(self.scene.select_basement_level(1))
+        self.assertFalse(self.scene.select_room("lobby"))
+        self.assertFalse(self.scene.select_floor(1))
+        self.assertEqual(self.scene.current_room, "basement_b1")
+        self.assertEqual(self.scene.basement_level, 1)
+
+    def test_basement_stair_registry_has_one_valid_exit_per_landing(self):
+        for level in range(1, 7):
+            room_id = f"basement_b{level}"
+            up_stairs = [
+                item for item in self.scene.objects.objects
+                if item.room == room_id and item.id == f"basement-stairs-up-b{level}"
+            ]
+            down_stairs = [
+                item for item in self.scene.objects.objects
+                if item.room == room_id and item.id == f"basement-stairs-down-b{level}"
+            ]
+            self.assertEqual(len(up_stairs), 1)
+            self.assertEqual(len(down_stairs), 1 if level < 6 else 0)
+
+    def test_music_toggle_is_in_the_bridge_snapshot_and_is_opt_in(self):
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "music-1",
+                "name": "toggle_music",
+                "payload": {},
+            },
+            self.state,
+            self.scene,
+        )
+        self.assertTrue(result.ok)
+        self.assertTrue(build_snapshot(self.state, self.scene, sequence=8)["office"]["musicEnabled"])
 
     def test_validated_move_routes_through_tower_scene(self):
         before = self.scene.player_position
@@ -178,7 +215,7 @@ class PygameBridgeTests(unittest.TestCase):
         command["payload"]["choice"] = 7
         result = apply_command(command, self.state, self.scene)
         self.assertTrue(result.ok)
-        self.assertEqual(self.state.active_page, "economy")
+        self.assertEqual(self.state.active_page, "bank")
 
         self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
         command["payload"]["choice"] = 8

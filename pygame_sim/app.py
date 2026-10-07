@@ -9,7 +9,7 @@ import sys
 
 import pygame
 
-from .bridge import OfficeBridge, apply_command
+from .bridge import OfficeBridge, PROTOCOL_VERSION, apply_command
 from .automation import (
     AUTOMATION_CHARACTERS,
     AutopilotPoller,
@@ -17,6 +17,7 @@ from .automation import (
     load_desktop_link,
 )
 from .building_sync import DesktopBuildingSync
+from .basement_sync import DesktopBasementSync
 from .godot_runtime import (
     GodotRuntime,
     godot_process_exited,
@@ -104,6 +105,8 @@ def run(argv: list[str] | None = None) -> int:
     autopilot_poller.start()
     building_sync = DesktopBuildingSync(desktop_link)
     building_sync.start()
+    basement_sync = DesktopBasementSync(desktop_link)
+    basement_sync.start()
     if scene.autopilot_snapshot.state != "error":
         scene.set_autopilot_snapshot(autopilot_poller.current())
     last_autopilot_revision = scene.autopilot_snapshot.revision
@@ -133,15 +136,105 @@ def run(argv: list[str] | None = None) -> int:
             else:
                 state.notice = "LINK A GAME ACCOUNT TO VIEW BANCO OMBRA"
 
+    def dispatch_game_command(name: str, payload: dict[str, object] | None = None) -> None:
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": name,
+            "payload": payload or {},
+        }
+        result = apply_command(command, state, scene, building_sync, basement_sync)
+        state.notice = result.message
+
+    def process_basement_events() -> None:
+        for event in basement_sync.drain_events():
+            data = event.data or {}
+            if event.source == "basement_snapshot":
+                if not event.ok:
+                    state.notice = event.message.upper()
+                continue
+            if not event.ok:
+                if event.source in {"basement_work_start", "basement_work_complete"}:
+                    state.utility_work_active = False
+                    state.utility_work_target = None
+                    if state.active_page == "utility_work":
+                        state.close_page()
+                    scene.set_player_action("stand", duration=0.0)
+                state.notice = event.message.upper()
+                continue
+
+            if event.source == "basement_enter":
+                if scene.select_basement_level(1):
+                    scene.player_position = (5_000, 5_000)
+                    state.notice = "STAIRS / ENTERED B1"
+            elif event.source == "basement_level":
+                level = data.get("level")
+                if isinstance(level, int) and scene.select_basement_level(level):
+                    state.notice = f"STAIRS / ENTERED B{level}"
+            elif event.source == "basement_exit":
+                if scene.leave_basement():
+                    state.notice = "STAIRS / RETURNED TO THE TOWER LOBBY"
+            elif event.source == "basement_uniform":
+                state.pest_uniform_worn = data.get("uniformWorn") is True
+                state.notice = "PEST RESPONSE UNIFORM / " + (
+                    "WORN" if state.pest_uniform_worn else "REMOVED"
+                )
+                state.save_to_file(args.save_file)
+            elif event.source == "basement_attack":
+                pest = data.get("pest")
+                if isinstance(pest, dict):
+                    stamina = data.get("stamina")
+                    if isinstance(stamina, int):
+                        state.pest_stamina = max(0, min(100, stamina))
+                    if pest.get("status") == "carcass" and pest.get("defeatedByYou") is True:
+                        if state.record_pest_work_progress("defeat"):
+                            state.save_to_file(args.save_file)
+                scene.set_player_action("fight", duration=0.65)
+                state.notice = event.message.upper()
+            elif event.source == "basement_sell":
+                state.record_pest_work_progress("sale")
+                state.save_to_file(args.save_file)
+                state.fiat_balance = None
+                state.fiat_spendable = None
+                request_page_data("bank")
+                state.game_inventory = None
+                request_page_data("inventory")
+                state.notice = event.message.upper()
+            elif event.source == "basement_work_start":
+                state.utility_work_active = True
+                state.utility_work_target = str(data.get("target", state.utility_work_target or ""))
+                state.utility_work_started_at = __import__("time").monotonic()
+                state.notice = event.message.upper()
+            elif event.source == "basement_work_complete":
+                state.utility_work_active = False
+                state.utility_work_target = None
+                if state.active_page == "utility_work":
+                    state.close_page()
+                scene.set_player_action("stand", duration=0.0)
+                state.notice = event.message.upper()
+            else:
+                state.notice = event.message.upper()
+
     def open_player_page(page: str) -> None:
         if state.open_page(page, source="PLAYER MENU"):
             request_page_data(page)
 
     def activate_game_page_action(action: str) -> None:
-        if action.startswith("nav:"):
+        if action.startswith("pest_job:"):
+            dispatch_game_command("start_pest_job", {"job_id": action.split(":", 1)[1]})
+        elif action.startswith("pest_move:"):
+            dispatch_game_command("basement_attack", {"move_id": action.split(":", 1)[1]})
+        elif action == "pest_uniform:toggle":
+            dispatch_game_command("toggle_pest_uniform")
+        elif action.startswith("supply:"):
+            dispatch_game_command("use_pest_supply", {"item_id": action.split(":", 1)[1]})
+        elif action.startswith("nav:"):
             open_player_page(action.split(":", 1)[1])
         elif action.startswith("action:"):
             character_action = action.split(":", 1)[1]
+            if character_action == "fight" and scene.is_basement:
+                dispatch_game_command("open_melee_menu")
+                return
             duration = {"jump": 0.9, "fight": 0.7, "sweep": 0.85}.get(character_action, 0.0)
             scene.set_player_action(character_action, duration=duration)
             state.notice = character_action.upper()
@@ -159,6 +252,10 @@ def run(argv: list[str] | None = None) -> int:
         elif action == "setting:hints":
             state.show_control_hints = not state.show_control_hints
             state.notice = f"CONTROL HINTS / {'ON' if state.show_control_hints else 'OFF'}"
+            state.save_to_file(args.save_file)
+        elif action == "setting:music":
+            state.music_enabled = not state.music_enabled
+            state.notice = f"MUSIC / {'ON' if state.music_enabled else 'OFF'}"
             state.save_to_file(args.save_file)
         elif action.startswith("buy:"):
             item_id = action.split(":", 1)[1]
@@ -182,6 +279,8 @@ def run(argv: list[str] | None = None) -> int:
 
     def handle_page_key(key: int) -> bool:
         if key == pygame.K_ESCAPE:
+            if state.utility_work_active or state.relocation_cutscene_pending:
+                return True
             if state.active_page != "player" and state.page_source == "PLAYER MENU":
                 open_player_page("player")
             else:
@@ -203,7 +302,12 @@ def run(argv: list[str] | None = None) -> int:
                 activate_game_page_action(destinations[key])
                 return True
         elif page == "settings":
-            actions = {pygame.K_1: "setting:sprint", pygame.K_2: "setting:speed", pygame.K_3: "setting:hints"}
+            actions = {
+                pygame.K_1: "setting:sprint",
+                pygame.K_2: "setting:speed",
+                pygame.K_3: "setting:hints",
+                pygame.K_4: "setting:music",
+            }
             if key in actions:
                 activate_game_page_action(actions[key])
                 return True
@@ -231,6 +335,18 @@ def run(argv: list[str] | None = None) -> int:
             if key == pygame.K_2:
                 activate_game_page_action("phone:comms")
                 return True
+        elif page == "pest_jobs":
+            if key in (pygame.K_1, pygame.K_2):
+                job_id = ("pest_w2", "pest_1099")[key - pygame.K_1]
+                activate_game_page_action(f"pest_job:{job_id}")
+                return True
+        elif page == "pest_uniform" and key == pygame.K_1:
+            activate_game_page_action("pest_uniform:toggle")
+            return True
+        elif page == "melee" and pygame.K_1 <= key <= pygame.K_9:
+            from .pest_work import MELEE_MOVES
+            activate_game_page_action(f"pest_move:{MELEE_MOVES[key - pygame.K_1]['id']}")
+            return True
         return False
 
     coffee_rects: dict[int, pygame.Rect] = {}
@@ -272,7 +388,9 @@ def run(argv: list[str] | None = None) -> int:
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_m:
+                if event.key == pygame.K_m and not (
+                    state.utility_work_active or state.relocation_cutscene_pending
+                ):
                     state.toggle_tool_menu()
                 elif state.active_page is not None:
                     if handle_page_key(event.key):
@@ -291,23 +409,17 @@ def run(argv: list[str] | None = None) -> int:
                     state.sprint_toggled = not state.sprint_toggled
                     state.notice = "SPRINT ON" if state.sprint_toggled else "SPRINT OFF"
                 elif spatial_mode and event.key == pygame.K_e:
-                    nearby = scene.nearby_object
-                    if nearby is not None and nearby.kind == "elevator" and building_sync.link is not None:
-                        state.close_page()
-                        target_floor = nearby.destination_floor or scene.current_floor
-                        if building_sync.queue_elevator(target_floor, scene):
-                            state.notice = f"ELEVATOR REQUESTED / FLOOR {target_floor:02d}"
-                        else:
-                            state.notice = "ELEVATOR REQUEST UNAVAILABLE"
-                    else:
-                        scene.interact(state)
-                        request_page_data(state.active_page)
+                    dispatch_game_command("interact")
+                    request_page_data(state.active_page)
                 elif spatial_mode and event.key == pygame.K_SPACE:
                     scene.set_player_action("jump", duration=0.9)
                     state.notice = "JUMP"
                 elif spatial_mode and event.key == pygame.K_f:
-                    scene.set_player_action("fight", duration=0.7)
-                    state.notice = "FIGHT"
+                    if scene.is_basement:
+                        dispatch_game_command("open_melee_menu")
+                    else:
+                        scene.set_player_action("fight", duration=0.7)
+                        state.notice = "FIGHT"
                 elif spatial_mode and event.key == pygame.K_g:
                     scene.set_player_action("sweep", duration=0.85)
                     state.notice = "SWEEP"
@@ -361,7 +473,9 @@ def run(argv: list[str] | None = None) -> int:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if state.active_page is not None:
                     if renderer.overlay_close_rect.collidepoint(event.pos):
-                        if state.active_page != "player" and state.page_source == "PLAYER MENU":
+                        if state.utility_work_active or state.relocation_cutscene_pending:
+                            state.notice = "WAIT FOR THE CURRENT SEQUENCE TO FINISH"
+                        elif state.active_page != "player" and state.page_source == "PLAYER MENU":
                             open_player_page("player")
                         else:
                             state.close_page()
@@ -452,7 +566,9 @@ def run(argv: list[str] | None = None) -> int:
 
         if not args.no_bridge:
             for command in bridge.poll_commands():
-                result = apply_command(command, state, scene, building_sync)
+                result = apply_command(command, state, scene, building_sync, basement_sync)
+                if isinstance(command, dict) and command.get("name") == "toggle_music":
+                    state.save_to_file(args.save_file)
                 bridge.send_result(command, result)
             if bridge.connected:
                 pair_connected = True
@@ -486,6 +602,17 @@ def run(argv: list[str] | None = None) -> int:
             scene.set_motion_input(0.0, 0.0)
         scene.update_motion(delta_seconds)
         scene.update_npc_motion(delta_seconds)
+        basement_sync.update_scene(scene)
+        basement_snapshot = basement_sync.latest_snapshot()
+        scene.set_basement_snapshot(basement_snapshot)
+        if isinstance(basement_snapshot, dict):
+            player_snapshot = basement_snapshot.get("player")
+            if isinstance(player_snapshot, dict):
+                stamina = player_snapshot.get("stamina")
+                if isinstance(stamina, int):
+                    state.pest_stamina = max(0, min(100, stamina))
+                state.pest_uniform_worn = player_snapshot.get("uniformWorn") is True
+        process_basement_events()
         building_sync.update_scene(scene)
         scene.set_building_object_states(building_sync.object_states())
         for sync_event in building_sync.drain_events():
@@ -527,6 +654,13 @@ def run(argv: list[str] | None = None) -> int:
                         state.fiat_spendable = None
                         request_page_data("inventory")
                         request_page_data("bank")
+                    elif action == "consume_supply":
+                        energy = payload.get("energy")
+                        if isinstance(energy, int):
+                            state.pest_stamina = max(0, min(100, energy))
+                        state.notice = "SUPPLY USED / STAMINA UPDATED"
+                        state.game_inventory = None
+                        request_page_data("inventory")
                 else:
                     error_payload = data.get("errorPayload")
                     if sync_event.code == "HTTP_402" and isinstance(error_payload, dict):
@@ -581,6 +715,7 @@ def run(argv: list[str] | None = None) -> int:
             scene.set_autopilot_snapshot(autopilot_snapshot)
             last_autopilot_revision = autopilot_snapshot.revision
         state.update(delta_seconds)
+        state.advance_relocation_cutscene(delta_seconds)
         if not args.no_bridge:
             bridge_elapsed += delta_seconds
             if bridge.connected and bridge_elapsed >= 0.1:
@@ -605,6 +740,7 @@ def run(argv: list[str] | None = None) -> int:
     finally:
         if godot_process is not None:
             stop_process(godot_process)
+        basement_sync.close()
         building_sync.close()
         autopilot_poller.close()
         bridge.close()

@@ -11,9 +11,18 @@ from __future__ import annotations
 import json
 import socket
 from dataclasses import dataclass
+from math import hypot
+from time import monotonic
 from typing import Any
 
 from .automation import AUTOMATION_CHARACTERS
+from .pest_work import (
+    MELEE_MOVES,
+    MELEE_MOVE_BY_ID,
+    PEST_JOBS,
+    PEST_JOB_BY_ID,
+    STAMINA_SUPPLY_ITEMS,
+)
 from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
 
@@ -41,6 +50,13 @@ COMMANDS = {
     "hire_candidate",
     "terminal_choice",
     "toggle_drawer",
+    "close_page",
+    "toggle_music",
+    "open_melee_menu",
+    "basement_attack",
+    "start_pest_job",
+    "toggle_pest_uniform",
+    "use_pest_supply",
 }
 
 
@@ -103,6 +119,18 @@ def validate_command(command: object) -> tuple[bool, str]:
         choice = payload.get("choice")
         if not _is_int(choice) or not 1 <= choice <= 9:
             return False, "TERMINAL CHOICE MUST BE 1-9"
+    elif name == "basement_attack":
+        move_id = payload.get("move_id")
+        if not isinstance(move_id, str) or move_id not in MELEE_MOVE_BY_ID:
+            return False, "MELEE MOVE NOT ALLOWED"
+    elif name == "start_pest_job":
+        job_id = payload.get("job_id")
+        if not isinstance(job_id, str) or job_id not in PEST_JOB_BY_ID:
+            return False, "PEST WORK ORDER NOT ALLOWED"
+    elif name == "use_pest_supply":
+        item_id = payload.get("item_id")
+        if not isinstance(item_id, str) or item_id not in STAMINA_SUPPLY_ITEMS:
+            return False, "SUPPLY NOT ALLOWED"
     elif name == "interact":
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
@@ -127,6 +155,10 @@ def _request_tower_floor(
     scene: TowerScene,
     building_sync: Any | None,
 ) -> CommandResult:
+    if scene.is_basement:
+        message = "BASEMENT ACCESS IS STAIRS ONLY / RETURN TO B1 TO EXIT"
+        state.notice = message
+        return CommandResult(False, message)
     if not scene.is_playable_floor(floor):
         status = scene.floor_status(floor).replace("_", " ").upper()
         message = "BASEMENT IS UNDER CONSTRUCTION" if floor < 1 else f"FLOOR {floor:02d} IS {status}"
@@ -160,11 +192,128 @@ def _request_tower_floor(
     return CommandResult(True, state.notice, destination=f"floor:{scene.current_floor}")
 
 
+def _handle_basement_interact(
+    state: OfficeState,
+    scene: TowerScene,
+    building_sync: Any | None,
+    basement_sync: Any | None,
+    requested_object_id: object,
+) -> CommandResult | None:
+    nearby = scene.nearby_object
+    if requested_object_id is not None and (
+        nearby is None or requested_object_id != nearby.id
+    ):
+        return None
+
+    if (
+        not scene.is_basement
+        and scene.current_room == "lobby"
+        and nearby is not None
+        and nearby.id == "lobby-stairs"
+    ):
+        if basement_sync is None or not basement_sync.queue_enter(scene):
+            return CommandResult(False, "BASEMENT STAIRS REQUIRE A LIVE GAME LINK")
+        state.close_page()
+        state.notice = "STAIRS / REQUESTING B1 ACCESS"
+        return CommandResult(True, state.notice)
+
+    if not scene.is_basement:
+        return None
+
+    if nearby is not None and nearby.kind == "carcass_disposal":
+        snapshot = scene.basement_snapshot or {}
+        pests = snapshot.get("pests", [])
+        carried = [
+            pest for pest in pests
+            if isinstance(pest, dict)
+            and pest.get("status") == "carcass"
+            and pest.get("claimedByYou") is True
+        ] if isinstance(pests, list) else []
+        if not carried:
+            return CommandResult(False, "CLAIM A CARCASS BEFORE USING THE B1 DISPOSAL DESK")
+        if basement_sync is None or not basement_sync.queue_sell(str(carried[0]["id"])):
+            return CommandResult(False, "CARCASS SALE UNAVAILABLE / CHECK GAME LINK")
+        state.notice = "CARCASS SALE REQUESTED"
+        return CommandResult(True, state.notice)
+
+    carcass = scene.nearest_carcass
+    if carcass is not None:
+        carcass_distance = hypot(
+            int(carcass["x"]) - scene.player_position[0],
+            int(carcass["y"]) - scene.player_position[1],
+        )
+        object_distance = (
+            hypot(
+                nearby.position[0] - scene.player_position[0],
+                nearby.position[1] - scene.player_position[1],
+            )
+            if nearby is not None
+            else float("inf")
+        )
+        if carcass_distance <= object_distance:
+            if basement_sync is None or not basement_sync.queue_claim(str(carcass["id"])):
+                return CommandResult(False, "CARCASS CLAIM UNAVAILABLE / CHECK GAME LINK")
+            state.notice = "CARCASS CLAIM REQUESTED"
+            return CommandResult(True, state.notice)
+
+    if nearby is None:
+        return None
+
+    if nearby.kind == "basement_stairs":
+        level = int(scene.basement_level or 1)
+        if nearby.id == "basement-stairs-up-b1":
+            if basement_sync is None or not basement_sync.queue_exit(scene):
+                return CommandResult(False, "RETURN TO B1 STAIRS TO EXIT THE BASEMENT")
+            message = "STAIRS / REQUESTING LOBBY EXIT"
+        elif nearby.id.startswith("basement-stairs-up-b"):
+            destination = level - 1
+            if destination < 1 or basement_sync is None or not basement_sync.queue_level(destination, scene):
+                return CommandResult(False, "UPPER STAIR TRANSITION UNAVAILABLE")
+            message = f"STAIRS / REQUESTING B{destination}"
+        elif nearby.id.startswith("basement-stairs-down-b"):
+            destination = level + 1
+            if destination > 6 or basement_sync is None or not basement_sync.queue_level(destination, scene):
+                return CommandResult(False, "B6 IS THE LOWEST OPEN LANDING")
+            message = f"STAIRS / REQUESTING B{destination}"
+        else:
+            return CommandResult(False, "STAIR LANDING NOT AVAILABLE")
+        state.close_page()
+        state.notice = message
+        return CommandResult(True, message)
+
+    if nearby.kind == "utility_station":
+        targets = {
+            "basement-b1-power": "power",
+            "basement-b1-plumbing": "plumbing",
+            "basement-b1-upkeep": "upkeep",
+        }
+        target = targets.get(nearby.id)
+        if target is None:
+            return CommandResult(False, "UTILITY STATION NOT AVAILABLE")
+        if basement_sync is None or not basement_sync.queue_work(target):
+            return CommandResult(False, "UTILITY WORK REQUIRES A LIVE GAME LINK")
+        state.utility_work_target = target
+        state.utility_work_active = True
+        state.utility_work_started_at = monotonic()
+        state.open_page(
+            "utility_work",
+            from_object=True,
+            source=f"{target.upper()} MAINTENANCE",
+            source_object_id=nearby.id,
+        )
+        scene.set_player_action("maintenance")
+        state.notice = f"{target.upper()} WORK REQUESTED"
+        return CommandResult(True, state.notice)
+
+    return None
+
+
 def apply_command(
     command: object,
     state: OfficeState,
     scene: TowerScene,
     building_sync: Any | None = None,
+    basement_sync: Any | None = None,
 ) -> CommandResult:
     """Apply one validated renderer command through existing domain methods."""
     valid, reason = validate_command(command)
@@ -173,6 +322,11 @@ def apply_command(
     assert isinstance(command, dict)
     name = command["name"]
     payload = command.get("payload", {})
+
+    if state.relocation_cutscene_pending:
+        return CommandResult(False, "WAIT FOR THE RELOCATION SEQUENCE TO FINISH")
+    if state.utility_work_active:
+        return CommandResult(False, "FINISH THE CURRENT UTILITY TASK FIRST")
 
     if name == "move":
         scene.move(payload["dx"], payload["dy"])
@@ -183,6 +337,8 @@ def apply_command(
         return CommandResult(True, "MOTION INPUT ACCEPTED")
     if name == "set_action":
         action = payload["action"]
+        if scene.is_basement and action == "fight":
+            return CommandResult(False, "OPEN THE MELEE MENU TO CHOOSE A SERVER-RESOLVED MOVE")
         duration = (
             0.9
             if action == "jump"
@@ -201,6 +357,15 @@ def apply_command(
     if name == "interact":
         nearby = scene.nearby_object
         requested_object_id = payload.get("object_id")
+        basement_result = _handle_basement_interact(
+            state,
+            scene,
+            building_sync,
+            basement_sync,
+            requested_object_id,
+        )
+        if basement_result is not None:
+            return basement_result
         if nearby is not None and nearby.kind == "elevator" \
             and requested_object_id in (None, nearby.id):
             return _request_tower_floor(
@@ -238,9 +403,23 @@ def apply_command(
     if name == "select_floor":
         return _request_tower_floor(payload["floor"], state, scene, building_sync)
     if name == "climb_stairs":
+        basement_result = _handle_basement_interact(
+            state,
+            scene,
+            building_sync,
+            basement_sync,
+            None,
+        )
+        if basement_result is not None:
+            return basement_result
         nearby = scene.nearby_object
         if nearby is None or nearby.kind != "stairs":
             return CommandResult(False, "NO STAIRCASE IN RANGE")
+        if scene.current_room == "lobby":
+            if basement_sync is None or not basement_sync.queue_enter(scene):
+                return CommandResult(False, "BASEMENT STAIRS REQUIRE A LIVE GAME LINK")
+            state.notice = "STAIRS / REQUESTING B1 ACCESS"
+            return CommandResult(True, state.notice)
         state.close_page()
         if not scene.climb_stairs():
             next_floor = scene.current_floor + 1
@@ -279,6 +458,51 @@ def apply_command(
         return CommandResult(ok, state.notice if not ok else state.notice)
     if name == "toggle_drawer":
         state.toggle_drawer()
+        return CommandResult(True, state.notice)
+    if name == "toggle_music":
+        state.music_enabled = not state.music_enabled
+        state.notice = f"MUSIC / {'ON' if state.music_enabled else 'OFF'}"
+        return CommandResult(True, state.notice)
+    if name == "open_melee_menu":
+        if not scene.is_basement:
+            return CommandResult(False, "MELEE IS AVAILABLE ONLY FOR BASEMENT PESTS")
+        state.open_page("melee", from_object=True, source="NON-GRAPHIC MELEE")
+        return CommandResult(True, "MELEE MENU OPEN")
+    if name == "basement_attack":
+        if not scene.is_basement or scene.nearest_hostile is None:
+            return CommandResult(False, "NO ACTIVE PEST IN RANGE")
+        move_id = payload["move_id"]
+        if basement_sync is None or not basement_sync.queue_attack(
+            str(scene.nearest_hostile["id"]),
+            move_id,
+        ):
+            return CommandResult(False, "MELEE REQUEST UNAVAILABLE / CHECK GAME LINK")
+        state.close_page()
+        state.notice = f"{MELEE_MOVE_BY_ID[move_id]['label']} / SERVER REQUESTED"
+        return CommandResult(True, state.notice)
+    if name == "start_pest_job":
+        if state.active_page != "pest_jobs" or not state.start_pest_job(payload["job_id"]):
+            return CommandResult(False, state.notice)
+        state.close_page()
+        return CommandResult(True, state.notice)
+    if name == "toggle_pest_uniform":
+        nearby = scene.nearby_object
+        if state.active_page != "pest_uniform" or nearby is None \
+            or nearby.kind != "pest_uniform_station":
+            return CommandResult(False, "MOVE TO A PEST UNIFORM STATION")
+        worn = not state.pest_uniform_worn
+        if basement_sync is None or not basement_sync.queue_uniform(worn):
+            return CommandResult(False, "UNIFORM SERVICE REQUIRES A LIVE GAME LINK")
+        state.notice = "UNIFORM CHANGE REQUESTED"
+        return CommandResult(True, state.notice)
+    if name == "use_pest_supply":
+        if state.active_page != "inventory":
+            return CommandResult(False, "OPEN INVENTORY TO USE A SUPPLY")
+        item_id = payload["item_id"]
+        if building_sync is None or not building_sync.queue_game_request("consume_supply", item_id):
+            return CommandResult(False, "SUPPLY USE UNAVAILABLE / CHECK GAME LINK")
+        state.game_service_loading.add("consume_supply")
+        state.notice = "SUPPLY USE REQUESTED"
         return CommandResult(True, state.notice)
     if name == "terminal_choice":
         if state.active_page != "systems":
@@ -332,7 +556,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "destination_floor": item.destination_floor,
         }
         for item in scene.objects.objects
-        if item.room == scene.current_room and item.kind in {"door", "elevator", "stairs"}
+        if item.room == scene.current_room and item.kind in {"door", "elevator", "stairs", "basement_stairs"}
     ]
     return {
         "type": "snapshot",
@@ -350,7 +574,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                 "x": scene.player_position[0],
                 "y": scene.player_position[1],
                 "action": scene.player_action,
+                "inDanger": scene.danger_intensity > 0,
+                "dangerIntensity": scene.danger_intensity,
             },
+            "basementLevel": scene.basement_level,
+            "basement": scene.basement_snapshot,
             "rooms": [
                 {
                     "id": room.id,
@@ -387,7 +615,9 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                 "state": scene.autopilot_snapshot.state,
                 "message": scene.autopilot_snapshot.message,
             },
-            "automationCharacters": scene.automation_character_states(),
+            "automationCharacters": (
+                [] if scene.is_basement else scene.automation_character_states()
+            ),
             "cameraFocusObjectId": (
                 state.active_object_id or scene.camera_focus_object_id
             ),
@@ -415,6 +645,27 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "activePage": state.active_page,
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,
+            "pestUniformWorn": state.pest_uniform_worn,
+            "pestStamina": state.pest_stamina,
+            "pestWorkOrders": state.pest_work_orders,
+            "activePestJob": state.active_pest_job,
+            "utilityWorkActive": state.utility_work_active,
+            "utilityWorkTarget": state.utility_work_target,
+            "utilityWorkStartedAt": state.utility_work_started_at,
+            "relocationCutscenePending": state.relocation_cutscene_pending,
+            "relocationCutsceneElapsed": state.relocation_cutscene_elapsed,
+            "relocationCutsceneSeen": state.relocation_cutscene_seen,
+            "pestJobs": PEST_JOBS,
+            "meleeMoves": MELEE_MOVES,
+            "staminaSupplies": [
+                {
+                    "itemId": str(entry.get("itemId", "")),
+                    "quantity": max(1, int(entry.get("quantity", 1) or 1)),
+                }
+                for entry in (state.game_inventory or [])
+                if str(entry.get("itemId", "")) in STAMINA_SUPPLY_ITEMS
+            ],
+            "musicEnabled": state.music_enabled,
             "drawer_open": state.drawer_open,
             "recruitment_open": state.recruitment_open,
             "selected_worker": state.selected_worker,

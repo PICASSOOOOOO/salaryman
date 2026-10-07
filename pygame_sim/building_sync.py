@@ -11,6 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .automation import DesktopLink
+from .pest_work import STAMINA_SUPPLY_ITEMS
 from .scene import FLOOR_PLAN, TowerScene
 
 BUILDING_ROOMS = {"lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite"}
@@ -81,6 +82,14 @@ class DesktopBuildingSync:
                 "POST",
                 "/items/buy",
                 {"slot": 0, "itemId": item_id, "qty": 1, "source": "tower_vending"},
+            )
+        elif action == "consume_supply":
+            if item_id not in STAMINA_SUPPLY_ITEMS:
+                return False
+            request = (
+                "POST",
+                "/items/consume",
+                {"slot": 0, "itemId": item_id, "qty": 1},
             )
         else:
             request = requests.get(action)

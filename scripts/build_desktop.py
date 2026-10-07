@@ -336,6 +336,15 @@ def main() -> int:
         godot_bundle,
         ignore=shutil.ignore_patterns(".godot", "*.uid"),
     )
+    callhome_assets = ROOT / "artifacts" / "interview-helper" / "public" / "callhome"
+    packaged_callhome = godot_bundle / "callhome"
+    packaged_callhome.mkdir(parents=True, exist_ok=True)
+    for track_id in (11, 17):
+        track_name = f"track-{track_id:02d}.mp3"
+        track_source = callhome_assets / track_name
+        if not track_source.is_file():
+            raise RuntimeError(f"Desktop release is missing soundtrack asset {track_name}.")
+        shutil.copy2(track_source, packaged_callhome / track_name)
     required_godot_files = (
         "project.godot",
         "Main.tscn",
@@ -344,6 +353,8 @@ def main() -> int:
         "agentshire-assets/characters/character-male-a.glb",
         "agentshire-assets/furniture/couch.gltf",
         "pixel-agents/assets/characters/char_0.png",
+        "callhome/track-11.mp3",
+        "callhome/track-17.mp3",
     )
     missing_godot_files = [
         path for path in required_godot_files if not (godot_bundle / path).exists()

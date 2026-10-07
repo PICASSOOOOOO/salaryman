@@ -18,6 +18,7 @@ from .customization import (
     room_decor_placements,
 )
 from .models import Worker
+from .pest_work import MELEE_MOVES, PEST_JOBS, STAMINA_SUPPLY_ITEMS
 from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
 
@@ -311,7 +312,12 @@ class SolarPunkRenderer:
             lower_beam.topright,
             2,
         )
-        self.text(f"FLOOR {scene.current_floor:02d} / BASE", (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
+        location_label = (
+            f"BASEMENT B{scene.basement_level}"
+            if scene.is_basement
+            else f"FLOOR {scene.current_floor:02d} / BASE"
+        )
+        self.text(location_label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
 
         content_clip = pygame.Rect(
             viewport.x,
@@ -346,6 +352,7 @@ class SolarPunkRenderer:
         self._draw_office_workstations(point, scene, scale)
         self._draw_office_npcs(point, scene, state, scale)
         self._draw_automation_npcs(point, scene, scale)
+        self._draw_basement_actors(point, scene)
         if scene.velocity != (0.0, 0.0):
             vx, vy = scene.velocity
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
@@ -504,6 +511,60 @@ class SolarPunkRenderer:
             label_y = y - 52
         pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
         self.text(name.upper()[:14], (x - 34, label_y - 8), self.font_mono, accent)
+
+    def _draw_basement_actors(self, point: object, scene: TowerScene) -> None:
+        if not scene.is_basement or scene.basement_snapshot is None:
+            return
+        snapshot = scene.basement_snapshot
+        building = snapshot.get("building")
+        if isinstance(building, dict):
+            vitals = (
+                f"POWER {building.get('powerCondition', 0)}%"
+                f"  WATER {building.get('plumbingCondition', 0)}%"
+                f"  UPKEEP {building.get('upkeepCondition', 0)}%"
+            )
+            self.text(vitals, (28, 122), self.font_mono, Palette.MATRIX_GREEN)
+
+        crew = snapshot.get("npcCrew", [])
+        if isinstance(crew, list):
+            for member in crew:
+                if not isinstance(member, dict):
+                    continue
+                x, y = point((int(member["x"]), int(member["y"])))
+                pygame.draw.ellipse(self.screen, (17, 22, 20), (x - 10, y + 6, 20, 7))
+                pygame.draw.circle(self.screen, (217, 176, 130), (x, y - 7), 5)
+                pygame.draw.rect(self.screen, (82, 145, 112), (x - 6, y - 2, 12, 14), border_radius=3)
+                self.text("STAFF", (x - 24, y - 25), self.font_mono, Palette.MATRIX_DIM)
+
+        pests = snapshot.get("pests", [])
+        if isinstance(pests, list):
+            for pest in pests:
+                if not isinstance(pest, dict) or pest.get("status") == "sold":
+                    continue
+                x, y = point((int(pest["x"]), int(pest["y"])))
+                active = pest.get("status") == "active"
+                claimed = pest.get("claimedByYou") is True
+                color = Palette.CORAL if active else (
+                    Palette.MATRIX_GREEN if claimed else (132, 143, 137)
+                )
+                width = max(12, int(22 * max(0.5, min(1.5, self._camera_scale))))
+                pygame.draw.ellipse(
+                    self.screen,
+                    (15, 18, 17),
+                    (x - width // 2, y + 3, width, max(6, width // 3)),
+                )
+                pygame.draw.ellipse(
+                    self.screen,
+                    color,
+                    (x - width // 2, y - width // 3, width, max(8, width // 2)),
+                )
+                label = (
+                    f"{str(pest.get('kind', 'pest')).upper()} "
+                    f"{pest.get('health', 0)}/{pest.get('maxHealth', 0)}"
+                    if active
+                    else ("CARRY" if claimed else "CARCASS")
+                )
+                self.text(label, (x - 42, y - width // 2 - 20), self.font_mono, color)
 
     def _draw_office_workstations(
         self,
@@ -1528,10 +1589,11 @@ class SolarPunkRenderer:
                 ("setting:sprint", f"SPRINT / {'TOGGLE' if state.sprint_toggle_mode else 'HOLD'}"),
                 ("setting:speed", f"MOVEMENT / {speed_names[state.movement_speed_preset]}"),
                 ("setting:hints", f"CONTROL HINTS / {'ON' if state.show_control_hints else 'OFF'}"),
+                ("setting:music", f"MUSIC / {'ON' if state.music_enabled else 'OFF'}"),
             )
             for index, (key, label) in enumerate(rows):
                 button(key, label, pygame.Rect(panel.x + 26, content_y + index * 62, panel.width - 52, 46))
-            self.text("SHIFT toggles sprint in TOGGLE mode; otherwise hold it while moving.", (panel.x + 28, panel.bottom - 47), self.font_sm, (85, 103, 94))
+            self.text("MUSIC is opt-in; nearby pests trigger a quiet cue when enabled.", (panel.x + 28, panel.bottom - 47), self.font_sm, (85, 103, 94))
         elif state.active_page == "inventory":
             entries = state.game_inventory
             if entries is None:
@@ -1541,12 +1603,22 @@ class SolarPunkRenderer:
                 self.text("NO ITEMS IN THIS CHARACTER SLOT", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
             else:
                 for index, entry in enumerate(entries[:8]):
-                    item_id = str(entry.get("itemId", "unknown")).replace("_", " ").upper()
+                    raw_item_id = str(entry.get("itemId", "unknown"))
+                    item_id = raw_item_id.replace("_", " ").upper()
                     quantity = max(1, int(entry.get("quantity", 1) or 1))
                     row = pygame.Rect(panel.x + 26, content_y + index * 39, panel.width - 52, 32)
                     pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
-                    self.text(item_id[:54], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
-                    self.text(f"×{quantity}", (row.right - 42, row.y + 9), self.font_sm, (61, 100, 74))
+                    if raw_item_id in STAMINA_SUPPLY_ITEMS:
+                        self.text(item_id[:32], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
+                        self.text(f"×{quantity}", (row.right - 128, row.y + 9), self.font_sm, (61, 100, 74))
+                        button(
+                            f"supply:{raw_item_id}",
+                            "USE",
+                            pygame.Rect(row.right - 82, row.y + 3, 70, 26),
+                        )
+                    else:
+                        self.text(item_id[:54], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
+                        self.text(f"×{quantity}", (row.right - 42, row.y + 9), self.font_sm, (61, 100, 74))
         elif state.active_page == "vending":
             entries = state.vending_catalog
             if entries is None:
@@ -1587,14 +1659,26 @@ class SolarPunkRenderer:
             )
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
+        self.game_page_actions = {}
         veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         pygame.draw.rect(veil, (2, 8, 10, 255), pygame.Rect(0, 58, self.width, self.height - 58))
         self.screen.blit(veil, (0, 0))
         page = pygame.Rect(42, 76, self.width - 84, 514)
-        accent = Palette.MATRIX_AMBER if state.active_page == "economy" else Palette.MATRIX_GREEN
+        accent = Palette.MATRIX_AMBER if state.active_page in {
+            "economy", "company_relocation"
+        } else Palette.MATRIX_GREEN
         self.matrix_panel(page, accent)
+        custom_titles = {
+            "pest_jobs": "LOCAL PEST WORK ORDERS",
+            "pest_uniform": "PEST RESPONSE UNIFORM",
+            "melee": "NON-GRAPHIC MELEE",
+            "utility_work": "TOWER UTILITY WORK",
+            "company_relocation": "COMPANY GROWTH",
+        }
         self.text(
-            "ECONOMIC CONTROL" if state.active_page == "economy" else "TOOLS / MAINTENANCE",
+            "ECONOMIC CONTROL" if state.active_page == "economy" else custom_titles.get(
+                state.active_page or "", "TOOLS / MAINTENANCE"
+            ),
             (page.x + 24, page.y + 18),
             self.font_xl,
             Palette.MATRIX_BRIGHT,
@@ -1604,10 +1688,211 @@ class SolarPunkRenderer:
         self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
         self.panel(self.overlay_close_rect, Palette.MATRIX_PANEL_2, accent, radius=2, width=1)
         self.text("CLOSE  ESC", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_mono, accent)
-        if state.active_page == "economy":
+        if state.active_page in custom_titles:
+            self._draw_basement_page(state, scene, page)
+        elif state.active_page == "economy":
             self.draw_economy_page(state, page)
         else:
             self.draw_tools_page(state, page)
+
+    def _draw_basement_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        page: pygame.Rect,
+    ) -> None:
+        content = page.y + 92
+        if state.active_page == "pest_jobs":
+            for index, job in enumerate(PEST_JOBS):
+                x = page.x + 24 + index * ((page.width - 60) // 2 + 12)
+                card = pygame.Rect(x, content, (page.width - 60) // 2, 250)
+                self.panel(card, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=4, width=1)
+                order = state.pest_work_orders[job["id"]]
+                self.text(job["label"], (card.x + 16, card.y + 14), self.font_lg, Palette.MATRIX_BRIGHT)
+                self.text(job["description"], (card.x + 16, card.y + 51), self.font_sm, Palette.MATRIX_DIM)
+                progress = int(order["progress"])
+                self.text(
+                    f"{job['progressLabel']} / {progress} OF {job['goal']}",
+                    (card.x + 16, card.y + 100),
+                    self.font_mono,
+                    Palette.MATRIX_GREEN,
+                )
+                bar = pygame.Rect(card.x + 16, card.y + 133, card.width - 32, 12)
+                pygame.draw.rect(self.screen, (20, 34, 30), bar)
+                filled = int(bar.width * progress / max(1, int(job["goal"])))
+                pygame.draw.rect(self.screen, Palette.MATRIX_GREEN, (bar.x, bar.y, filled, bar.height))
+                label = "COMPLETE" if order["complete"] else (
+                    "CONTINUE ORDER" if state.active_pest_job == job["id"] else "START ORDER"
+                )
+                button = pygame.Rect(card.x + 16, card.y + 177, card.width - 32, 46)
+                self._draw_basement_action(
+                    f"pest_job:{job['id']}",
+                    label,
+                    button,
+                    disabled=bool(order["complete"]) or not state.pest_uniform_worn,
+                )
+            warning = (
+                "Equip the uniform at the lobby or B1 station before starting."
+                if not state.pest_uniform_worn
+                else "Progress is saved on this computer. Orders grant no separate payout."
+            )
+            self.text(warning, (page.x + 28, page.bottom - 42), self.font_sm, Palette.MATRIX_AMBER)
+            return
+
+        if state.active_page == "pest_uniform":
+            worn = state.pest_uniform_worn
+            self.text(
+                "UNIFORM STATUS / " + ("WORN" if worn else "NOT WORN"),
+                (page.x + 28, content + 12),
+                self.font_lg,
+                Palette.MATRIX_GREEN if worn else Palette.MATRIX_AMBER,
+            )
+            self.text(
+                "The uniform is required for Tower utility shifts. Its saved state is account-wide.",
+                (page.x + 28, content + 58),
+                self.font_md,
+                Palette.MATRIX_DIM,
+            )
+            self._draw_basement_action(
+                "pest_uniform:toggle",
+                "REMOVE UNIFORM" if worn else "EQUIP UNIFORM",
+                pygame.Rect(page.x + 28, content + 112, page.width - 56, 54),
+            )
+            return
+
+        if state.active_page == "melee":
+            snapshot = scene.basement_snapshot or {}
+            pests = snapshot.get("pests", [])
+            active_count = sum(
+                1 for pest in pests
+                if isinstance(pest, dict) and pest.get("status") == "active"
+            ) if isinstance(pests, list) else 0
+            stamina = int(snapshot.get("player", {}).get("stamina", state.pest_stamina)) \
+                if isinstance(snapshot.get("player"), dict) else state.pest_stamina
+            self.text(
+                f"SERVER STAMINA / {stamina}%    ACTIVE PESTS / {active_count}",
+                (page.x + 28, content + 2),
+                self.font_mono,
+                Palette.MATRIX_GREEN,
+            )
+            self.text(
+                "Humanoid targets are not spawned. Any future humanoid moves stay nonlethal; stabbing is pest-only.",
+                (page.x + 28, content + 27),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            cols = 3
+            gap = 12
+            button_w = (page.width - 56 - gap * (cols - 1)) // cols
+            for index, move in enumerate(MELEE_MOVES):
+                row, col = divmod(index, cols)
+                rect = pygame.Rect(
+                    page.x + 28 + col * (button_w + gap),
+                    content + 66 + row * 72,
+                    button_w,
+                    58,
+                )
+                suffix = " / TOOL" if move.get("toolRequired") else ""
+                label = f"{index + 1}. {move['label']} / {move['stamina']} STA{suffix}"
+                self._draw_basement_action(
+                    f"pest_move:{move['id']}",
+                    label,
+                    rect,
+                    disabled=active_count == 0 or stamina < move["stamina"],
+                )
+            return
+
+        if state.active_page == "utility_work":
+            elapsed = max(0.0, __import__("time").monotonic() - state.utility_work_started_at)
+            progress = min(1.0, elapsed / 8.0)
+            label = (state.utility_work_target or "TOWER").replace("_", " ").upper()
+            self.text(
+                f"{label} / SHARED TOWER MAINTENANCE",
+                (page.x + 28, content + 10),
+                self.font_lg,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                "The server settles the utility work. Stay at the panel until it confirms completion.",
+                (page.x + 28, content + 54),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            bar = pygame.Rect(page.x + 28, content + 106, page.width - 56, 22)
+            pygame.draw.rect(self.screen, Palette.MATRIX_PANEL_2, bar)
+            pygame.draw.rect(
+                self.screen,
+                Palette.MATRIX_GREEN,
+                (bar.x, bar.y, int(bar.width * progress), bar.height),
+            )
+            self.text(
+                "WAITING FOR SERVER CONFIRMATION" if state.utility_work_active else "WORK COMPLETE",
+                (page.x + 28, content + 146),
+                self.font_mono,
+                Palette.MATRIX_AMBER if state.utility_work_active else Palette.MATRIX_GREEN,
+            )
+            return
+
+        if state.active_page == "company_relocation":
+            elapsed = state.relocation_cutscene_elapsed
+            beats = (
+                (1.2, "THE CREW FINISHES ITS TOWER SERVICE ORDERS."),
+                (2.6, "A COMPANY RELOCATION IS APPROVED."),
+                (4.3, "THE NEW ADDRESS IS SEALED."),
+                (6.0, "DESTINATION WITHHELD / NO NEW AREA UNLOCKED."),
+            )
+            message = next((text for end, text in beats if elapsed < end), beats[-1][1])
+            frame = pygame.Rect(page.x + 74, content + 32, page.width - 148, 230)
+            self.panel(frame, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=3, width=2)
+            self.text(
+                "OPERATIONS MOVE / APPROVED",
+                (frame.x + 24, frame.y + 34),
+                self.font_lg,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                message,
+                (frame.x + 24, frame.y + 96),
+                self.font_md,
+                Palette.MATRIX_AMBER,
+            )
+            pygame.draw.rect(
+                self.screen,
+                Palette.MATRIX_DIM,
+                pygame.Rect(frame.x + 24, frame.y + 147, frame.width - 48, 4),
+            )
+            fill = int((frame.width - 48) * min(1.0, elapsed / 6.0))
+            pygame.draw.rect(
+                self.screen,
+                Palette.MATRIX_AMBER,
+                pygame.Rect(frame.x + 24, frame.y + 147, fill, 4),
+            )
+            if state.relocation_cutscene_pending:
+                self.text(
+                    "CUTSCENE / DESTINATION NOT SHOWN",
+                    (page.x + 28, page.bottom - 40),
+                    self.font_mono,
+                    Palette.MATRIX_DIM,
+                )
+            return
+
+    def _draw_basement_action(
+        self,
+        key: str,
+        label: str,
+        rect: pygame.Rect,
+        *,
+        disabled: bool = False,
+    ) -> None:
+        self.game_page_actions[key] = rect
+        color = Palette.MATRIX_DIM if disabled else Palette.MATRIX_GREEN
+        self.panel(rect, Palette.MATRIX_PANEL_2, color, radius=3, width=1)
+        self.text(
+            label,
+            (rect.x + 10, rect.y + (rect.height - self.font_mono.get_height()) // 2),
+            self.font_mono,
+            color,
+        )
 
     def draw_customization_page(self, state: OfficeState, scene: TowerScene) -> None:
         """Present saved, non-interactive wall and decor choices for this room."""

@@ -45,7 +45,6 @@ function desktopGet(path: string) {
 }
 
 async function setLobbyPresence() {
-  const elevator = TOWER_ELEVATOR_POSITIONS[1];
   const now = new Date();
   await db.insert(desktopOfficePresenceTable).values({
     userId,
@@ -54,8 +53,8 @@ async function setLobbyPresence() {
     roomKey: "lobby:minx_city",
     room: "lobby",
     floorNumber: 1,
-    x: elevator.x,
-    y: elevator.y,
+    x: 49_978_650,
+    y: 50_000_800,
     action: "stand",
     lastSeenAt: now,
   }).onConflictDoUpdate({
@@ -65,8 +64,8 @@ async function setLobbyPresence() {
       roomKey: "lobby:minx_city",
       room: "lobby",
       floorNumber: 1,
-      x: elevator.x,
-      y: elevator.y,
+      x: 49_978_650,
+      y: 50_000_800,
       action: "stand",
       lastSeenAt: now,
     },
@@ -142,16 +141,50 @@ describe("desktop basement survival authority", () => {
     }
   });
 
-  it("rejects off-elevator entry and does not create presence", async () => {
+  it("allows basement entry only from the lobby stairs", async () => {
+    await db.update(desktopOfficePresenceTable)
+      .set({ x: TOWER_ELEVATOR_POSITIONS[1].x, y: TOWER_ELEVATOR_POSITIONS[1].y, lastSeenAt: new Date() })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
     const blocked = await enterBasement(8_000, 8_000);
     expect(blocked.status).toBe(409);
-    expect(blocked.body.error).toContain("beside the B1 elevator");
+    expect(blocked.body.error).toContain("Approach the lobby stairs");
     const [presence] = await db.select().from(desktopBasementPresenceTable)
       .where(eq(desktopBasementPresenceTable.userId, userId));
     expect(presence).toBeUndefined();
 
+    const elevatorCannotEnter = await enterBasement();
+    expect(elevatorCannotEnter.status).toBe(409);
+    expect(elevatorCannotEnter.body.error).toContain("lobby stairs");
+
+    await setLobbyPresence();
     const allowed = await enterBasement();
     expect(allowed.status).toBe(200);
+    expect(allowed.body.accessMode).toBe("stairs");
+    expect(allowed.body.accessModeTemporary).toBe(true);
+  });
+
+  it("requires adjacent stair landings and returns to the lobby only from B1", async () => {
+    await setLobbyPresence();
+    expect((await enterBasement()).status).toBe(200);
+    const skipLevel = await desktopPost("/api/desktop-building/basement/presence")
+      .send({ level: 3, x: 5_000, y: 5_000, action: "stand" });
+    expect(skipLevel.status).toBe(409);
+
+    const b2 = await desktopPost("/api/desktop-building/basement/presence")
+      .send({ level: 2, x: 5_000, y: 5_000, action: "stand" });
+    expect(b2.status).toBe(200);
+    const b4 = await desktopPost("/api/desktop-building/basement/presence")
+      .send({ level: 4, x: 5_000, y: 5_000, action: "stand" });
+    expect(b4.status).toBe(409);
+
+    const exitFromB2 = await desktopPost("/api/desktop-building/basement/exit").send({});
+    expect(exitFromB2.status).toBe(409);
+    const b1 = await desktopPost("/api/desktop-building/basement/presence")
+      .send({ level: 1, x: 5_000, y: 5_000, action: "stand" });
+    expect(b1.status).toBe(200);
+    const exit = await desktopPost("/api/desktop-building/basement/exit").send({});
+    expect(exit.status).toBe(200);
+    expect(exit.body.floor).toBe(1);
   });
 
   it("stores uniform state in the character save without creating basement presence", async () => {

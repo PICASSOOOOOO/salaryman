@@ -13,13 +13,14 @@ import {
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
-import { isNearTowerElevator, TOWER_ELEVATOR_POSITIONS } from "../lib/desktop-building-objects";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
 const BASEMENT_SIZE = 10_000;
 const BASEMENT_STAIRS = { x: 5_000, y: 5_000 };
 const TOWER_BASEMENT_STAIRS = { x: 49_978_650, y: 50_000_800 };
+const BASEMENT_ACCESS_MODE = "stairs";
+const BASEMENT_ACCESS_MODE_TEMPORARY = true;
 const STAIRS_RADIUS = 800;
 const PRESENCE_MAX_AGE_MS = 15_000;
 const MAX_MOVEMENT_PER_SECOND = 750;
@@ -265,6 +266,7 @@ function serializePest(pest: PestRow, currentUserId: string, now: Date) {
     bountyFiat: pest.bountyFiat,
     claimedByYou: pest.claimedByUserId === currentUserId && !claimExpired,
     carcassClaimed: pest.claimedByUserId != null && !claimExpired,
+    defeatedByYou: pest.defeatedByUserId === currentUserId,
     defeatedAt: pest.defeatedAt?.toISOString() ?? null,
   };
 }
@@ -355,7 +357,12 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
       res.status(409).json({ error: result.error });
       return;
     }
-    res.json({ ok: true, observedAt: now.toISOString() });
+    res.json({
+      ok: true,
+      observedAt: now.toISOString(),
+      accessMode: BASEMENT_ACCESS_MODE,
+      accessModeTemporary: BASEMENT_ACCESS_MODE_TEMPORARY,
+    });
   } catch (error) {
     req.log.error({ err: error }, "Desktop basement presence update failed");
     res.status(500).json({ error: "Could not update basement presence" });
@@ -510,6 +517,8 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
     const vitals = vitalsRow ? vitalValues(vitalsRow, now) : null;
     res.json({
       buildingKey: BUILDING_KEY,
+      accessMode: BASEMENT_ACCESS_MODE,
+      accessModeTemporary: BASEMENT_ACCESS_MODE_TEMPORARY,
       level,
       observedAt: now.toISOString(),
       player: {

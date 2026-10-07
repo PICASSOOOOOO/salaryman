@@ -114,6 +114,7 @@ class OfficeState:
     decay: float = 8.0
     maintenance_runs: int = 0
     show_control_hints: bool = True
+    music_enabled: bool = False
     sprint_toggle_mode: bool = False
     sprint_toggled: bool = False
     movement_speed_preset: int = 1
@@ -474,6 +475,7 @@ class OfficeState:
             "maintenance_runs": self.maintenance_runs,
             "player_settings": {
                 "show_control_hints": self.show_control_hints,
+                "music_enabled": self.music_enabled,
                 "sprint_toggle_mode": self.sprint_toggle_mode,
                 "movement_speed_preset": self.movement_speed_preset,
             },
@@ -553,6 +555,7 @@ class OfficeState:
             player_settings = payload.get("player_settings", {})
             if isinstance(player_settings, dict):
                 state.show_control_hints = player_settings.get("show_control_hints") is not False
+                state.music_enabled = player_settings.get("music_enabled") is True
                 state.sprint_toggle_mode = player_settings.get("sprint_toggle_mode") is True
                 try:
                     state.movement_speed_preset = max(

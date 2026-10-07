@@ -268,7 +268,7 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(False, message)
 
-        if item.kind == "pest_job_board":
+        if item.kind in {"pest_job_board", "receptionist"}:
             scene.focus_on_interaction(item)
             if state.open_page(
                 "pest_jobs",
@@ -334,7 +334,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "PEST WORK ORDERS"),
         OfficeObject("lobby-pest-job-board", "pest_job_board", "PEST WORK ORDERS", "lobby", (49_979_000, 49_999_100), "W-2 / 1099 LOCAL JOBS"),
-        OfficeObject("lobby-pest-uniform", "pest_uniform_station", "WORK UNIFORM", "lobby", (49_978_200, 50_000_100), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
+        OfficeObject("lobby-pest-uniform", "pest_uniform_station", "WORK UNIFORM", "lobby", (49_978_300, 50_000_400), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE SUPPLIES"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "CALLL HOME / COMMS ONLY"),
@@ -429,6 +429,10 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     (4_400, 5_000),
                     "TAKE STAIRS UP ONE LANDING",
                 ),
+            ]
+        )
+        if level < 6:
+            entries.append(
                 OfficeObject(
                     f"basement-stairs-down-b{level}",
                     "basement_stairs",
@@ -436,9 +440,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     room,
                     (5_600, 5_000),
                     "TAKE STAIRS DOWN ONE LANDING",
-                ),
-            ]
-        )
+                )
+            )
         if level == 1:
             entries.extend(
                 [
@@ -447,7 +450,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     OfficeObject("basement-b1-power", "utility_station", "POWER PANEL", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"),
                     OfficeObject("basement-b1-plumbing", "utility_station", "PLUMBING PANEL", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"),
                     OfficeObject("basement-b1-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"),
-                    OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_800), "SELL A CLAIMED CARCASS"),
+                    OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_500), "SELL A CLAIMED CARCASS"),
                 ]
             )
     """
@@ -455,9 +458,11 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     # props. Shared furniture is added only from server-owned office inventory.
     entries = [
         OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "RIDE TO FLOOR 06", destination_floor=6),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "BASEMENT & FLOORS 02–05 UNDER CONSTRUCTION"),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "TAKE STAIRS DOWN TO B1 / FLOORS 02–05 SEALED"),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
         OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
+        OfficeObject("lobby-pest-job-board", "pest_job_board", "PEST WORK ORDERS", "lobby", (49_979_000, 49_999_100), "W-2 / 1099 LOCAL JOBS"),
+        OfficeObject("lobby-pest-uniform", "pest_uniform_station", "WORK UNIFORM", "lobby", (49_978_300, 50_000_400), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),
@@ -480,4 +485,33 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     ]
     for entry in entries:
         registry.add(entry)
+    for level in range(1, 7):
+        room = f"basement_b{level}"
+        registry.add(OfficeObject(
+            f"basement-stairs-up-b{level}",
+            "basement_stairs",
+            "STAIRS / UP",
+            room,
+            (4_400, 5_000),
+            "RETURN TO LOBBY" if level == 1 else "TAKE STAIRS UP ONE LANDING",
+        ))
+        if level < 6:
+            registry.add(OfficeObject(
+                f"basement-stairs-down-b{level}",
+                "basement_stairs",
+                "STAIRS / DOWN",
+                room,
+                (5_600, 5_000),
+                "TAKE STAIRS DOWN ONE LANDING",
+            ))
+        if level == 1:
+            for service in (
+                OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"),
+                OfficeObject("basement-b1-uniform", "pest_uniform_station", "UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
+                OfficeObject("basement-b1-power", "utility_station", "POWER PANEL", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"),
+                OfficeObject("basement-b1-plumbing", "utility_station", "PLUMBING PANEL", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"),
+                OfficeObject("basement-b1-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"),
+                OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_500), "SELL A CLAIMED CARCASS"),
+            ):
+                registry.add(service)
     return registry

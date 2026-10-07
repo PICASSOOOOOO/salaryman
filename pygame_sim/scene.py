@@ -703,6 +703,8 @@ class TowerScene:
             self.camera_focus_seconds = 0.0
 
     def select_room(self, room_id: str) -> bool:
+        if self.is_basement:
+            return False
         if not any(room.id == room_id for room in self.rooms):
             return False
         if room_id.startswith("basement_b"):
@@ -743,6 +745,7 @@ class TowerScene:
         return True
 
     def _place_at_room_spawn(self, room_id: str) -> None:
+        previous_room = self.current_room
         self.camera_focus_object_id = None
         self.camera_focus_seconds = 0.0
         self.current_room = room_id
@@ -751,7 +754,7 @@ class TowerScene:
             if room_id.startswith("basement_b")
             else None
         )
-        if self.basement_level is None:
+        if self.basement_level is None or previous_room != room_id:
             self.basement_snapshot = None
         self.player_position = self.room_spawn(room_id)
         self.input_vector = (0.0, 0.0)
@@ -763,8 +766,19 @@ class TowerScene:
         """Apply only a server-authorized B-level transition."""
         if not isinstance(level, int) or isinstance(level, bool) or not 1 <= level <= 6:
             return False
+        previous_position = self.player_position if self.is_basement else None
         if not self._place_basement_level(level):
             return False
+        if previous_position is not None:
+            self.player_position = previous_position
+        return True
+
+    def leave_basement(self) -> bool:
+        if not self.is_basement or self.basement_level != 1:
+            return False
+        self.current_floor = 1
+        self._place_at_room_spawn("lobby")
+        self.player_position = (49_978_650, 50_000_800)
         return True
 
     def _place_basement_level(self, level: int) -> bool:

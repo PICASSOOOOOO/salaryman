@@ -67,7 +67,8 @@ func _run_tests() -> void:
 	assert(open_floors == [1, 6])
 	assert(client._tower_floor_status(1) == "open")
 	assert(client._tower_floor_status(6) == "open")
-	assert(client._tower_floor_status(0) == "under_construction")
+	assert(client._tower_floor_status(0) == "open")
+	assert(not open_floors.has(0))
 	for floor_number in [2, 3, 4, 5, 7, 67]:
 		assert(client._tower_floor_status(floor_number) == "under_construction")
 	client.elevator_floor_panel = ColorRect.new()

@@ -86,5 +86,9 @@ APPROVED_CAMERA_FOCUS_KINDS = frozenset(
         "atm",
         "vending_machine",
         "arcade",
+        "pest_job_board",
+        "pest_uniform_station",
+        "utility_station",
+        "carcass_disposal",
     }
 )

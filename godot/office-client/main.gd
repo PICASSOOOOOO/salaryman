@@ -18,6 +18,7 @@ const FLOOR_HEIGHT := 0.08
 const WALL_HEIGHT := 2.7
 const CAMERA_DISTANCE_MIN := 8.0
 const CAMERA_DISTANCE_MAX := 22.0
+const DANGER_AUDIO_TRACK_IDS: Array[int] = [11, 17]
 const CAMERA_DISTANCE_LEVELS := [8.0, 13.0, 21.0]
 const CAMERA_ORTHO_SIZE_MIN := 9.0
 const CAMERA_ORTHO_SIZE_MAX := 18.0
@@ -54,6 +55,7 @@ var interaction_rings: Array[MeshInstance3D] = []
 var world_root: Node3D
 var dynamic_root: Node3D
 var automation_root: Node3D
+var basement_actor_root: Node3D
 var player_root: PlayerController
 var player_shadow: MeshInstance3D
 var camera: Camera3D
@@ -98,6 +100,11 @@ var imported_scenes: Dictionary = {}
 var automation_actors: Dictionary = {}
 var automation_animations: Dictionary = {}
 var automation_targets: Dictionary = {}
+var basement_actor_nodes: Dictionary = {}
+var danger_audio_rng := RandomNumberGenerator.new()
+var danger_audio_player: AudioStreamPlayer
+var danger_audio_silence_seconds := 0.0
+var danger_audio_current_track := -1
 var structural_wall_thickness := 0.3
 var wall_service_cavity := 0.12
 
@@ -105,6 +112,11 @@ var wall_service_cavity := 0.12
 func _ready() -> void:
 	_build_materials()
 	_build_lighting()
+	danger_audio_rng.randomize()
+	danger_audio_player = AudioStreamPlayer.new()
+	danger_audio_player.name = "BasementDangerAudio"
+	danger_audio_player.volume_db = -45.0
+	add_child(danger_audio_player)
 	camera_sfx = preload("res://camera_sfx.gd").new()
 	camera_sfx.name = "CameraSfx"
 	add_child(camera_sfx)
@@ -225,6 +237,10 @@ func _build_building_shell() -> void:
 	automation_root.name = "AutomationCharacters"
 	world_root.add_child(automation_root)
 
+	basement_actor_root = Node3D.new()
+	basement_actor_root.name = "BasementPestsAndCrew"
+	world_root.add_child(basement_actor_root)
+
 	floor_plan_data = _load_floor_plan()
 	var floor_plan := floor_plan_data
 	var base_layout: Dictionary = floor_plan.get("baseLayout", {})
@@ -249,6 +265,7 @@ func _build_building_shell() -> void:
 			"id": room_data["id"],
 			"label": room_data["label"],
 			"rect": Rect2(bounds[0], bounds[1], bounds[2], bounds[3]),
+			"renderOffset": room_data.get("renderOffset", [0, 0]),
 			"material": room_data["material"],
 			"doorSide": room_data.get("doorSide", ""),
 			"entrance": room_data.get("entrance", []),
@@ -282,6 +299,9 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var room_id: String = spec["id"]
 	var rect_size_px := Vector2i(roundi(rect.size.x), roundi(rect.size.y))
 	var render_position_px := Vector2i(roundi(rect.position.x), roundi(rect.position.y))
+	var render_offset: Array = spec.get("renderOffset", [0, 0])
+	if render_offset.size() >= 2:
+		render_position_px += Vector2i(int(render_offset[0]), int(render_offset[1]))
 	if room_id == "lobby":
 		render_position_px -= lobby_render_origin_px
 		for room_data in floor_plan["rooms"]:
@@ -627,6 +647,22 @@ func _build_room_lighting(floor_plan: Dictionary) -> void:
 	_add_wall_sconce("HallwaySconceWest", Vector3(0.15, 2.25, 125.0))
 	_add_wall_sconce("HallwaySconceEast", Vector3(219.85, 2.25, 125.0))
 	for room_data in floor_plan["rooms"]:
+		if str(room_data["id"]).begins_with("basement_b"):
+			var basement_bounds: Array = room_data["bounds"]
+			var basement_offset: Array = room_data.get("renderOffset", [0, 0])
+			var basement_center_x := (float(basement_bounds[0]) + float(basement_bounds[2]) / 2.0) * WORLD_SCALE
+			var basement_center_z := (float(basement_bounds[1]) + float(basement_bounds[3]) / 2.0) * WORLD_SCALE
+			if basement_offset.size() >= 2:
+				basement_center_x += float(basement_offset[0]) * WORLD_SCALE
+				basement_center_z += float(basement_offset[1]) * WORLD_SCALE
+			_add_room_light(
+				"BasementLight%s" % str(room_data["id"]),
+				Vector3(basement_center_x, 3.0, basement_center_z),
+				Color("#d8c69c"),
+				0.38,
+				34.0,
+			)
+			continue
 		if room_data["id"] not in ["executive", "public", "office_03", "office_04"]:
 			continue
 		var bounds: Array = room_data["bounds"]
@@ -1072,6 +1108,66 @@ func _process(delta: float) -> void:
 	_update_camera(delta)
 	_update_hud()
 	_update_art_motion(delta)
+	_update_danger_audio(delta)
+
+
+func _update_danger_audio(delta: float) -> void:
+	if danger_audio_player == null:
+		return
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	var player_data: Dictionary = scene_data.get("player", {})
+	var office: Dictionary = snapshot.get("office", {})
+	var enabled := bool(office.get("musicEnabled", false))
+	var in_basement := str(scene_data.get("room", "")).begins_with("basement_b")
+	var intensity := clampf(float(player_data.get("dangerIntensity", 0.0)), 0.0, 1.0)
+	if not enabled:
+		if danger_audio_player.playing:
+			danger_audio_player.stop()
+		danger_audio_player.volume_db = -45.0
+		danger_audio_current_track = -1
+		danger_audio_silence_seconds = 0.0
+		return
+	if not in_basement or intensity < 0.02:
+		danger_audio_silence_seconds += delta
+		danger_audio_player.volume_db = move_toward(danger_audio_player.volume_db, -45.0, delta * 18.0)
+		if danger_audio_silence_seconds >= 0.8 and danger_audio_player.playing:
+			danger_audio_player.stop()
+			danger_audio_current_track = -1
+		return
+	danger_audio_silence_seconds = 0.0
+	if not danger_audio_player.playing:
+		var selected_index := danger_audio_rng.randi_range(0, DANGER_AUDIO_TRACK_IDS.size() - 1)
+		danger_audio_current_track = DANGER_AUDIO_TRACK_IDS[selected_index]
+		var stream := _load_danger_audio_track(danger_audio_current_track)
+		if stream == null:
+			danger_audio_current_track = -1
+			return
+		danger_audio_player.stream = stream
+		danger_audio_player.play()
+	var quiet_gain := 0.06 * intensity
+	danger_audio_player.volume_db = move_toward(
+		danger_audio_player.volume_db,
+		linear_to_db(maxf(quiet_gain, 0.001)),
+		delta * 18.0,
+	)
+
+
+func _load_danger_audio_track(track_id: int) -> AudioStreamMP3:
+	var filename := "track-%02d.mp3" % track_id
+	var paths := [
+		"res://callhome/" + filename,
+		ProjectSettings.globalize_path("res://../../artifacts/interview-helper/public/callhome/" + filename),
+	]
+	for path in paths:
+		if not FileAccess.file_exists(path):
+			continue
+		var audio_file := FileAccess.open(path, FileAccess.READ)
+		if audio_file == null:
+			continue
+		var stream := AudioStreamMP3.new()
+		stream.data = audio_file.get_buffer(audio_file.get_length())
+		return stream
+	return null
 
 
 func _read_messages() -> void:
@@ -1112,8 +1208,8 @@ func _apply_snapshot(message: Dictionary) -> void:
 	var scene_data: Dictionary = message.get("scene", {})
 	var player: Dictionary = scene_data.get("player", {})
 	player_root.set_danger_state(bool(player.get("inDanger", false)))
-	var target := _pygame_to_world(float(player.get("x", 0)), float(player.get("y", 0)))
 	var room_id := str(scene_data.get("room", ""))
+	var target := _pygame_to_world(float(player.get("x", 0)), float(player.get("y", 0)), room_id)
 	var floor_number := int(scene_data.get("floor", 1))
 	if elevator_transition_active:
 		if elevator_transition_phase == "waiting_destination" \
@@ -1135,11 +1231,23 @@ func _apply_snapshot(message: Dictionary) -> void:
 	_sync_prop_surfaces(scene_data.get("objects", []))
 	_sync_door_states(scene_data.get("objects", []))
 	_sync_automation_characters(scene_data.get("automationCharacters", []))
+	_sync_basement_actors(scene_data.get("basement", {}), room_id)
 
 
-func _pygame_to_world(x: float, y: float) -> Vector3:
+func _pygame_to_world(x: float, y: float, room_id: String = "") -> Vector3:
 	var render_position_px := Vector2i(roundi(x), roundi(y))
-	if maxf(absf(x), absf(y)) >= WORLD_ORIGIN_REBASE_THRESHOLD:
+	var resolved_room_id := room_id
+	if resolved_room_id.is_empty():
+		resolved_room_id = str(snapshot.get("scene", {}).get("room", ""))
+	if resolved_room_id.begins_with("basement_b"):
+		for room_data in floor_plan_data.get("rooms", []):
+			if str(room_data.get("id", "")) != resolved_room_id:
+				continue
+			var render_offset: Array = room_data.get("renderOffset", [0, 0])
+			if render_offset.size() >= 2:
+				render_position_px += Vector2i(int(render_offset[0]), int(render_offset[1]))
+			break
+	elif maxf(absf(x), absf(y)) >= WORLD_ORIGIN_REBASE_THRESHOLD:
 		# The lobby uses large Pygame world coordinates. Rebase only the view;
 		# snapshots and all commands remain in Pygame's authoritative space.
 		render_position_px -= lobby_render_origin_px
@@ -1162,17 +1270,154 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 	interaction_rings.clear()
 	for item in objects:
 		var object: Dictionary = item
-		var position := _pygame_to_world(float(object.get("x", 0)), float(object.get("y", 0)))
+		var object_room := str(object.get("room", ""))
+		var position := _pygame_to_world(float(object.get("x", 0)), float(object.get("y", 0)), object_room)
 		var kind := str(object.get("kind", ""))
 		var object_id := str(object.get("id", "bridge-object"))
 		var render_position := _pygame_to_world(
 			float(object.get("displayX", object.get("x", 0))),
 			float(object.get("displayY", object.get("y", 0))),
+			object_room,
 		)
 		var marker := _build_bridge_object(kind, render_position, object_id)
 		marker.name = object_id
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
+
+
+func _sync_basement_actors(basement_value: Variant, room_id: String) -> void:
+	var keep: Dictionary = {}
+	if not room_id.begins_with("basement_b") or not basement_value is Dictionary:
+		for actor_node in basement_actor_nodes.values():
+			if is_instance_valid(actor_node):
+				actor_node.queue_free()
+		basement_actor_nodes.clear()
+		return
+
+	var basement: Dictionary = basement_value
+	var pests: Variant = basement.get("pests", [])
+	if pests is Array:
+		for pest_value in pests:
+			if not pest_value is Dictionary:
+				continue
+			var pest: Dictionary = pest_value
+			var pest_status := str(pest.get("status", ""))
+			if pest_status not in ["active", "carcass"]:
+				continue
+			var pest_id := str(pest.get("id", ""))
+			if pest_id.is_empty():
+				continue
+			var actor_key := "pest_" + pest_id
+			keep[actor_key] = true
+			var pest_color := Color("#8f9c83") if pest_status == "active" else Color("#76776d")
+			_upsert_basement_actor(
+				actor_key,
+				str(pest.get("species", "PEST")).to_upper(),
+				float(pest.get("x", 0)),
+				float(pest.get("y", 0)),
+				room_id,
+				pest_color,
+				false,
+				pest_status == "carcass",
+			)
+
+	var crew: Variant = basement.get("npcCrew", [])
+	if crew is Array:
+		for index in crew.size():
+			var member_value: Variant = crew[index]
+			if not member_value is Dictionary:
+				continue
+			var member: Dictionary = member_value
+			var member_id := str(member.get("id", "crew-%d" % index))
+			var actor_key := "crew_" + member_id
+			keep[actor_key] = true
+			_upsert_basement_actor(
+				actor_key,
+				str(member.get("label", member.get("name", "TOWER STAFF"))).to_upper(),
+				float(member.get("x", 0)),
+				float(member.get("y", 0)),
+				room_id,
+				Color("#769a79"),
+				true,
+				false,
+			)
+
+	for actor_key in basement_actor_nodes.keys():
+		if keep.has(actor_key):
+			continue
+		var stale_node: Node3D = basement_actor_nodes[actor_key]
+		if is_instance_valid(stale_node):
+			stale_node.queue_free()
+		basement_actor_nodes.erase(actor_key)
+
+
+func _upsert_basement_actor(
+	actor_key: String,
+	label_text: String,
+	x: float,
+	y: float,
+	room_id: String,
+	color: Color,
+	is_staff: bool,
+	is_carcass: bool,
+) -> void:
+	var actor_node := basement_actor_nodes.get(actor_key) as Node3D
+	if actor_node == null or not is_instance_valid(actor_node):
+		actor_node = Node3D.new()
+		actor_node.name = actor_key.validate_node_name()
+		var body := MeshInstance3D.new()
+		body.name = "Body"
+		if is_staff:
+			var capsule := CapsuleMesh.new()
+			capsule.radius = 0.27
+			capsule.height = 1.05
+			body.mesh = capsule
+			body.position.y = 0.62
+		else:
+			var pest_mesh := SphereMesh.new()
+			pest_mesh.radius = 0.28
+			pest_mesh.height = 0.44
+			body.mesh = pest_mesh
+			body.scale = Vector3(1.2, 0.65, 1.65) if not is_carcass else Vector3(1.45, 0.35, 1.8)
+			body.position.y = 0.18
+		var body_material := StandardMaterial3D.new()
+		body_material.albedo_color = color
+		body_material.roughness = 0.88
+		body.material_override = body_material
+		actor_node.add_child(body)
+		if is_staff:
+			var head := MeshInstance3D.new()
+			head.name = "Head"
+			var head_mesh := SphereMesh.new()
+			head_mesh.radius = 0.18
+			head_mesh.height = 0.36
+			head.mesh = head_mesh
+			head.position.y = 1.28
+			head.material_override = body_material
+			actor_node.add_child(head)
+		var actor_label := Label3D.new()
+		actor_label.name = "Label"
+		actor_label.text = label_text
+		actor_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		actor_label.font_size = 22
+		actor_label.pixel_size = 0.004
+		actor_label.position.y = 1.65 if is_staff else 0.72
+		actor_label.modulate = Color("#f0e9d7")
+		actor_node.add_child(actor_label)
+		basement_actor_root.add_child(actor_node)
+		basement_actor_nodes[actor_key] = actor_node
+	else:
+		var actor_label := actor_node.get_node_or_null("Label") as Label3D
+		if actor_label != null:
+			actor_label.text = label_text
+		var body := actor_node.get_node_or_null("Body") as MeshInstance3D
+		if body != null:
+			var body_material := body.material_override as StandardMaterial3D
+			if body_material != null:
+				body_material.albedo_color = color
+			if not is_staff:
+				body.scale = Vector3(1.45, 0.35, 1.8) if is_carcass else Vector3(1.2, 0.65, 1.65)
+	actor_node.position = _pygame_to_world(x, y, room_id)
 
 
 func _build_bridge_object(kind: String, position: Vector3, object_id: String) -> Node3D:
@@ -1201,7 +1446,7 @@ func _build_bridge_object(kind: String, position: Vector3, object_id: String) ->
 		return _build_door_visual(position, object_id)
 	elif kind == "elevator":
 		return _build_elevator_visual(position, object_id)
-	elif kind == "stairs":
+	elif kind == "stairs" or kind == "basement_stairs":
 		return _build_staircase(position, object_id)
 	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
@@ -1938,7 +2183,11 @@ func _update_hud() -> void:
 	var room_name := room_id.replace("_", " ").to_upper()
 	if room_id == str(floor_stop.get("room", "")):
 		room_name = str(floor_stop.get("label", room_name))
-	room_label.text = "FLOOR %02d  ·  %s" % [floor_number, room_name]
+	if room_id.begins_with("basement_b"):
+		room_name = "BASEMENT B%s" % room_id.trim_prefix("basement_b")
+		room_label.text = room_name
+	else:
+		room_label.text = "FLOOR %02d  ·  %s" % [floor_number, room_name]
 	var maintenance_status := _nearby_maintenance_status(scene_data)
 	if not maintenance_status.is_empty():
 		var cleanliness := int(maintenance_status.get("cleanliness", 0))
@@ -1991,6 +2240,34 @@ func _update_hud() -> void:
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Connect to Pygame to receive the room mission."))
+	if room_id.begins_with("basement_b"):
+		var basement: Dictionary = scene_data.get("basement", {})
+		var building: Dictionary = basement.get("building", {})
+		var pests: Variant = basement.get("pests", [])
+		var active_pests := 0
+		var carcasses := 0
+		if pests is Array:
+			for pest_value in pests:
+				if not pest_value is Dictionary:
+					continue
+				var pest_status := str(pest_value.get("status", ""))
+				active_pests += 1 if pest_status == "active" else 0
+				carcasses += 1 if pest_status == "carcass" else 0
+		var stamina := clampi(int(office.get("pestStamina", 0)), 0, 100)
+		var uniform_label := "UNIFORM ON" if bool(office.get("pestUniformWorn", false)) else "UNIFORM OFF"
+		controls_label.text = "WASD MOVE · F MELEE · E PICK UP / USE · O MUSIC %s\nSTAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES" % [
+			"ON" if bool(office.get("musicEnabled", false)) else "OFF",
+			stamina,
+			uniform_label,
+			active_pests,
+			carcasses,
+		]
+		controls_label.add_theme_color_override("font_color", Color("#d9ddc7"))
+		mission_label.text = "TOWER SYSTEMS  ·  POWER %d%%  ·  WATER %d%%  ·  UPKEEP %d%%" % [
+			int(building.get("powerCondition", 0)),
+			int(building.get("plumbingCondition", 0)),
+			int(building.get("upkeepCondition", 0)),
+		]
 	var notice := transient_notice_text if transient_notice_remaining > 0.0 \
 		else str(office.get("notice", "WAITING FOR PYGAME"))
 	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), notice]
@@ -2071,6 +2348,94 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = "ROOM CUSTOMIZATION"
 			native_app_body.text = "Room finishes and decor are part of the game world. Editing is disabled in this read-only view."
 			native_app_footer.text = "READ-ONLY  ·  ESC CLOSE"
+		"pest_jobs":
+			native_app_title.text = "BASEMENT PEST WORK"
+			var jobs: Variant = office.get("pestJobs", [])
+			var orders: Dictionary = office.get("pestWorkOrders", {})
+			var job_lines: Array[String] = []
+			if jobs is Array:
+				for index in jobs.size():
+					var job_value: Variant = jobs[index]
+					if not job_value is Dictionary:
+						continue
+					var job: Dictionary = job_value
+					var progress: Dictionary = orders.get(str(job.get("id", "")), {})
+					job_lines.append("%d  %s  ·  %d/%d" % [
+						index + 1,
+						str(job.get("label", "WORK ORDER")),
+						int(progress.get("progress", 0)),
+						int(job.get("goal", 0)),
+					])
+			native_app_body.text = "%s\n\nLOCAL WORK ORDERS\n%s\n\nProgress is saved locally; work orders have no separate payout." % [
+				location,
+				"\n".join(job_lines),
+			]
+			native_app_footer.text = "1–2 START / SWITCH ORDER  ·  ESC CLOSE"
+		"pest_uniform":
+			native_app_title.text = "PEST RESPONSE UNIFORM"
+			native_app_body.text = "%s\n\nUNIFORM %s\nStamina  %d%%\n\nWear the issued uniform before starting a pest work order." % [
+				location,
+				"ON" if bool(office.get("pestUniformWorn", false)) else "OFF",
+				int(office.get("pestStamina", 0)),
+			]
+			native_app_footer.text = "1 TOGGLE UNIFORM  ·  ESC CLOSE"
+		"melee":
+			native_app_title.text = "NON-GRAPHIC MELEE"
+			var moves: Variant = office.get("meleeMoves", [])
+			var move_lines: Array[String] = []
+			if moves is Array:
+				for index in moves.size():
+					var move_value: Variant = moves[index]
+					if not move_value is Dictionary:
+						continue
+					var move: Dictionary = move_value
+					var cost := "%d STA" % int(move.get("stamina", 0))
+					if bool(move.get("toolRequired", false)):
+						cost = "REQUIRES EQUIPPED TOOL"
+					move_lines.append("%d  %s  ·  %s" % [
+						index + 1,
+						str(move.get("label", "MOVE")),
+						cost,
+					])
+			native_app_body.text = "Choose a move for the nearest active pest.\n\n%s\n\nNo graphic effects are shown." % "\n".join(move_lines)
+			native_app_footer.text = "1–9 SELECT MOVE  ·  ESC CLOSE"
+		"inventory":
+			native_app_title.text = "STAMINA SUPPLIES"
+			var supplies: Variant = office.get("staminaSupplies", [])
+			var supply_lines: Array[String] = []
+			if supplies is Array:
+				for index in supplies.size():
+					var supply_value: Variant = supplies[index]
+					if not supply_value is Dictionary:
+						continue
+					var supply: Dictionary = supply_value
+					supply_lines.append("%d  %s  ×%d" % [
+						index + 1,
+						str(supply.get("itemId", "SUPPLY")).replace("_", " ").to_upper(),
+						int(supply.get("quantity", 0)),
+					])
+			native_app_body.text = "Linked game inventory · stamina items\n\n%s" % (
+				"\n".join(supply_lines) if not supply_lines.is_empty() else "No stamina supplies in this character slot."
+			)
+			native_app_footer.text = "SELECT A NUMBER TO USE  ·  ESC CLOSE"
+		"settings":
+			native_app_title.text = "PLAYER SETTINGS"
+			native_app_body.text = "%s\n\nMUSIC %s\nNearby basement pests trigger a quiet, distance-faded cue when enabled.\n\nMUSIC starts OFF." % [
+				location,
+				"ON" if bool(office.get("musicEnabled", false)) else "OFF",
+			]
+			native_app_footer.text = "4 OR O TO TOGGLE MUSIC  ·  ESC CLOSE"
+		"utility_work":
+			native_app_title.text = "TOWER UTILITY WORK"
+			native_app_body.text = "%s\n\n%s MAINTENANCE\nServer-authoritative work is running. Remain at the station until it is confirmed complete." % [
+				location,
+				str(office.get("utilityWorkTarget", "TOWER")).to_upper(),
+			]
+			native_app_footer.text = "WAIT FOR SERVER CONFIRMATION"
+		"company_relocation":
+			native_app_title.text = "COMPANY RELOCATION"
+			native_app_body.text = "Your team is preparing to move.\n\nDESTINATION NOT DISCLOSED\n\nThe location will not be shown in this sequence."
+			native_app_footer.text = "WAIT FOR THE RELOCATION SEQUENCE"
 		_:
 			native_app_title.text = page_source.to_upper() if not page_source.is_empty() else page.to_upper()
 			native_app_body.text = location + "\n\nThis view is rendered by the game client."
@@ -2137,16 +2502,47 @@ func _input(event: InputEvent) -> void:
 		if _handle_elevator_picker_key(event.keycode):
 			get_viewport().set_input_as_handled()
 			return
-		if not _active_page_name().is_empty():
+		var active_page := _active_page_name()
+		if not active_page.is_empty():
 			if event.keycode == KEY_ESCAPE:
-				_send_command("close_page")
-			elif _active_page_name() == "systems":
+				var office: Dictionary = snapshot.get("office", {})
+				if (
+					not bool(office.get("utilityWorkActive", false))
+					and not bool(office.get("relocationCutscenePending", false))
+				):
+					_send_command("close_page")
+			elif active_page == "systems":
 				var choice := terminal_choice_for_key(event.keycode)
 				if choice > 0:
 					_send_command("terminal_choice", {"choice": choice})
+			elif active_page == "pest_jobs" and event.keycode in [KEY_1, KEY_2]:
+				var job_id := "pest_w2" if event.keycode == KEY_1 else "pest_1099"
+				_send_command("start_pest_job", {"job_id": job_id})
+			elif active_page == "pest_uniform" and event.keycode == KEY_1:
+				_send_command("toggle_pest_uniform")
+			elif active_page == "melee":
+				var move_index: int = int(event.keycode) - KEY_1
+				var office: Dictionary = snapshot.get("office", {})
+				var moves: Variant = office.get("meleeMoves", [])
+				if moves is Array and move_index >= 0 and move_index < moves.size():
+					var move: Variant = moves[move_index]
+					if move is Dictionary:
+						_send_command("basement_attack", {"move_id": str(move.get("id", ""))})
+			elif active_page == "inventory" and event.keycode in [
+				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8
+			]:
+				var item_id := _stamina_supply_item_at(event.keycode - KEY_1)
+				if not item_id.is_empty():
+					_send_command("use_pest_supply", {"item_id": item_id})
+			elif active_page == "settings" and event.keycode in [KEY_4, KEY_O]:
+				_send_command("toggle_music")
 			get_viewport().set_input_as_handled()
 			return
 		if elevator_transition_active:
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_O:
+			_send_command("toggle_music")
 			get_viewport().set_input_as_handled()
 			return
 		match event.keycode:
@@ -2163,7 +2559,10 @@ func _input(event: InputEvent) -> void:
 			KEY_V:
 				_send_command("maintain", {"action": "repair"})
 			KEY_F:
-				player_root.try_fight()
+				if str(snapshot.get("scene", {}).get("room", "")).begins_with("basement_b"):
+					_send_command("open_melee_menu")
+				else:
+					player_root.try_fight()
 			KEY_Q:
 				player_root.try_sweep()
 			KEY_P:
@@ -2192,7 +2591,10 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if event.button_index == MOUSE_BUTTON_LEFT and _active_page_name().is_empty():
-			player_root.try_fight()
+			if str(snapshot.get("scene", {}).get("room", "")).begins_with("basement_b"):
+				_send_command("open_melee_menu")
+			else:
+				player_root.try_fight()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			player_root.try_sweep()
 		elif event.button_index == MOUSE_BUTTON_MIDDLE and _active_page_name().is_empty():
@@ -2200,6 +2602,17 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_step_camera_zoom(-1)
+
+
+func _stamina_supply_item_at(index: int) -> String:
+	var office: Dictionary = snapshot.get("office", {})
+	var supplies: Variant = office.get("staminaSupplies", [])
+	if not supplies is Array or index < 0 or index >= supplies.size():
+		return ""
+	var supply: Variant = supplies[index]
+	if not supply is Dictionary:
+		return ""
+	return str(supply.get("itemId", ""))
 
 
 func _send_current_input() -> void:
