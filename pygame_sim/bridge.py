@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import socket
+import webbrowser
 from dataclasses import dataclass
 from math import hypot
 from time import monotonic
@@ -52,6 +53,7 @@ COMMANDS = {
     "refresh_recruitment",
     "hire_candidate",
     "terminal_choice",
+    "reception_choice",
     "toggle_drawer",
     "close_page",
     "toggle_music",
@@ -60,6 +62,13 @@ COMMANDS = {
     "start_pest_job",
     "toggle_pest_uniform",
     "use_pest_supply",
+}
+
+RECEPTION_SERVICE_ROUTES = {
+    1: ("FLOOR 07 BUSINESS MARKETPLACE", "/business/marketplace"),
+    2: ("JOB OPPORTUNITIES", "/business/jobs"),
+    3: ("BUSINESS CONTRACTS", "/business/contracts"),
+    4: ("REAL ESTATE / LEASING", "/store/realty"),
 }
 
 
@@ -122,6 +131,10 @@ def validate_command(command: object) -> tuple[bool, str]:
         choice = payload.get("choice")
         if not _is_int(choice) or not 1 <= choice <= 9:
             return False, "TERMINAL CHOICE MUST BE 1-9"
+    elif name == "reception_choice":
+        choice = payload.get("choice")
+        if not _is_int(choice) or choice not in RECEPTION_SERVICE_ROUTES:
+            return False, "RECEPTION SERVICE CHOICE MUST BE 1-4"
     elif name == "basement_attack":
         move_id = payload.get("move_id")
         if not isinstance(move_id, str) or move_id not in MELEE_MOVE_BY_ID:
@@ -615,6 +628,31 @@ def apply_command(
         state.game_service_loading.add("consume_supply")
         state.notice = "SUPPLY USE REQUESTED"
         return CommandResult(True, state.notice)
+    if name == "reception_choice":
+        receptionist = scene.objects.get("lobby-receptionist")
+        if (
+            state.active_page != "reception"
+            or state.active_object_id != "lobby-receptionist"
+            or scene.current_room != "lobby"
+            or receptionist is None
+            or hypot(
+                scene.player_position[0] - receptionist.position[0],
+                scene.player_position[1] - receptionist.position[1],
+            ) > 1_250
+        ):
+            return CommandResult(False, "MOVE TO MILA AT THE LOBBY RECEPTION")
+        link = getattr(building_sync, "link", None)
+        if link is None:
+            return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN RECEPTION SERVICES")
+        label, route = RECEPTION_SERVICE_ROUTES[payload["choice"]]
+        try:
+            opened = webbrowser.open(f"{link.server_url.rstrip('/')}{route}")
+        except Exception:
+            opened = False
+        if not opened:
+            return CommandResult(False, "COULD NOT OPEN THE SELECTED SERVICE")
+        state.close_page()
+        return CommandResult(True, f"OPENING {label}")
     if name == "terminal_choice":
         if state.active_page != "systems":
             return CommandResult(False, "SYSTEMS TERMINAL NOT ACTIVE")

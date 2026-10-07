@@ -233,6 +233,13 @@ def run(argv: list[str] | None = None) -> int:
             dispatch_game_command("toggle_pest_uniform")
         elif action.startswith("supply:"):
             dispatch_game_command("use_pest_supply", {"item_id": action.split(":", 1)[1]})
+        elif action.startswith("reception:"):
+            try:
+                choice = int(action.split(":", 1)[1])
+            except ValueError:
+                state.notice = "RECEPTION SERVICE NOT AVAILABLE"
+                return
+            dispatch_game_command("reception_choice", {"choice": choice})
         elif action.startswith("nav:"):
             open_player_page(action.split(":", 1)[1])
         elif action.startswith("action:"):
@@ -340,6 +347,9 @@ def run(argv: list[str] | None = None) -> int:
             if key == pygame.K_2:
                 activate_game_page_action("phone:comms")
                 return True
+        elif page == "reception" and pygame.K_1 <= key <= pygame.K_4:
+            activate_game_page_action(f"reception:{key - pygame.K_0}")
+            return True
         elif page == "pest_jobs":
             if key in (pygame.K_1, pygame.K_2):
                 job_id = ("pest_w2", "pest_1099")[key - pygame.K_1]

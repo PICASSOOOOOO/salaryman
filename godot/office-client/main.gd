@@ -2438,6 +2438,14 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = "TOWER PAY PHONE"
 			native_app_body.text = "CALLL HOME\nCOMMS\n\nThis line is limited to those two services. The game screen is read-only in this pass."
 			native_app_footer.text = "CALLS AND MESSAGES ARE NOT STARTED HERE  ·  ESC CLOSE"
+		"reception":
+			native_app_panel.color = Color("#f0eee8")
+			native_app_title.add_theme_color_override("font_color", Color("#171717"))
+			native_app_body.add_theme_color_override("font_color", Color("#30302d"))
+			native_app_footer.add_theme_color_override("font_color", Color("#76543d"))
+			native_app_title.text = "MILA  /  RECEPTION SERVICES"
+			native_app_body.text = "%s\n\nCLASSIFIEDS & BUSINESS SERVICES\n1  FLOOR 07 BUSINESS MARKETPLACE\n2  JOB OPPORTUNITIES\n3  BUSINESS CONTRACTS\n4  REAL ESTATE / LEASING\n\nSelected services open their existing SALARYMAN screens." % location
+			native_app_footer.text = "1–4 OPEN A SERVICE  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
 			native_app_body.text = "CONNECTED GAME MODULES\n%s  /  TEAM %d  /  FIAT ƒ%.2f\n1 JOB COMMAND  2 ACCOUNTING  3 CONTACTS\n4 MARKETING  5 DARKROOM  6 INTELLIGENCE\n7 BANK VIEW  8 CALLL HOME / COMMS  9 CLOSE" % [
@@ -2639,6 +2647,8 @@ func _input(event: InputEvent) -> void:
 				var choice := terminal_choice_for_key(event.keycode)
 				if choice > 0:
 					_send_command("terminal_choice", {"choice": choice})
+			elif active_page == "reception" and event.keycode in [KEY_1, KEY_2, KEY_3, KEY_4]:
+				_send_command("reception_choice", {"choice": event.keycode - KEY_0})
 			elif active_page == "pest_jobs" and event.keycode in [KEY_1, KEY_2]:
 				var job_id := "pest_w2" if event.keycode == KEY_1 else "pest_1099"
 				_send_command("start_pest_job", {"job_id": job_id})

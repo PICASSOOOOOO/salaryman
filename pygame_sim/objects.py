@@ -319,7 +319,18 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(False, message)
 
-        if item.kind in {"pest_job_board", "receptionist"}:
+        if item.id == "lobby-receptionist":
+            scene.focus_on_interaction(item)
+            if state.open_page(
+                "reception",
+                from_object=True,
+                source="MILA / RECEPTION",
+                source_object_id=item.id,
+            ):
+                return InteractionResult(True, "MILA / BUSINESS SERVICES AND CLASSIFIEDS")
+            return InteractionResult(False, "MILA IS UNAVAILABLE")
+
+        if item.kind == "pest_job_board":
             scene.focus_on_interaction(item)
             if state.open_page(
                 "pest_jobs",
@@ -542,7 +553,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-stairs", "stairs", "STAIRWELL 01", "lobby", (49_978_650, 50_000_800), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=1),
         OfficeObject("lobby-stairwell-2", "stairs", "STAIRWELL 02", "lobby", (49_975_350, 50_000_900), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=2),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
-        OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
+        OfficeObject("lobby-receptionist", "receptionist", "MILA / RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "BUSINESS SERVICES / CLASSIFIEDS"),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),

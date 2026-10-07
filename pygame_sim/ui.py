@@ -197,7 +197,7 @@ class SolarPunkRenderer:
                 self.draw_customization_page(state, scene)
             elif state.active_page == "systems":
                 self.draw_device_page(state, scene)
-            elif state.active_page in {"player", "settings", "inventory", "vending", "bank", "phone"}:
+            elif state.active_page in {"player", "settings", "inventory", "vending", "bank", "phone", "reception"}:
                 self.draw_player_service_page(state, scene)
             else:
                 self.draw_game_page(state, scene)
@@ -1613,6 +1613,7 @@ class SolarPunkRenderer:
             "vending": ("TOWER VENDING", "Server-priced stock / purchases debit shared FIAT"),
             "bank": ("BANCO OMBRA", "Shared FIAT wallet / read only"),
             "phone": ("PAY PHONE", "CALLL HOME and COMMS entry points"),
+            "reception": ("MILA / RECEPTION", "Business marketplace and classified services"),
         }
         title, subtitle = titles[state.active_page]
         self.text(title, (panel.x + 26, panel.y + 20), self.font_xl, (27, 47, 41))
@@ -1739,6 +1740,25 @@ class SolarPunkRenderer:
             self.text(
                 "Select a service to open its connected SALARYMAN screen.",
                 (panel.x + 28, content_y + 152),
+                self.font_sm,
+                (85, 103, 94),
+            )
+        elif state.active_page == "reception":
+            services = (
+                ("reception:1", "1  FLOOR 07 BUSINESS MARKETPLACE"),
+                ("reception:2", "2  JOB OPPORTUNITIES"),
+                ("reception:3", "3  CONTRACTS"),
+                ("reception:4", "4  REAL ESTATE / LEASING"),
+            )
+            for index, (key, label) in enumerate(services):
+                button(
+                    key,
+                    label,
+                    pygame.Rect(panel.x + 26, content_y + index * 57, panel.width - 52, 45),
+                )
+            self.text(
+                "Choose a service to open its existing SALARYMAN screen.",
+                (panel.x + 28, panel.bottom - 44),
                 self.font_sm,
                 (85, 103, 94),
             )

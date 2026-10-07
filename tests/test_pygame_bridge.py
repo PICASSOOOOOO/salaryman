@@ -1,6 +1,8 @@
 import json
 import socket
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from pygame_sim.bridge import (
     OfficeBridge,
@@ -182,6 +184,72 @@ class PygameBridgeTests(unittest.TestCase):
         )
         self.assertTrue(result.ok)
         self.assertIn("RECEPTION", result.message)
+
+    def test_mila_reception_opens_a_unified_services_menu(self):
+        receptionist = self.scene.objects.get("lobby-receptionist")
+        self.assertIsNotNone(receptionist)
+        self.scene.player_position = receptionist.position
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "mila-interact",
+                "name": "interact",
+                "payload": {"object_id": "lobby-receptionist"},
+            },
+            self.state,
+            self.scene,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "reception")
+        self.assertEqual(self.state.page_source, "MILA / RECEPTION")
+
+    def test_mila_menu_opens_only_the_selected_existing_service(self):
+        self.scene.player_position = (49_978_250, 49_998_600)
+        self.state.open_page(
+            "reception",
+            from_object=True,
+            source="MILA / RECEPTION",
+            source_object_id="lobby-receptionist",
+        )
+        building_sync = SimpleNamespace(
+            link=SimpleNamespace(server_url="https://salaryman.example")
+        )
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "mila-business-market",
+            "name": "reception_choice",
+            "payload": {"choice": 1},
+        }
+        with patch("pygame_sim.bridge.webbrowser.open", return_value=True) as open_browser:
+            result = apply_command(command, self.state, self.scene, building_sync)
+        self.assertTrue(result.ok)
+        open_browser.assert_called_once_with(
+            "https://salaryman.example/business/marketplace"
+        )
+        self.assertIsNone(self.state.active_page)
+
+    def test_mila_menu_rejects_invalid_choice_and_requires_link(self):
+        self.scene.player_position = (49_978_250, 49_998_600)
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "mila-invalid",
+            "name": "reception_choice",
+            "payload": {"choice": 5},
+        }
+        self.assertFalse(validate_command(command)[0])
+        self.state.open_page(
+            "reception",
+            from_object=True,
+            source="MILA / RECEPTION",
+            source_object_id="lobby-receptionist",
+        )
+        command["payload"]["choice"] = 2
+        result = apply_command(command, self.state, self.scene)
+        self.assertFalse(result.ok)
+        self.assertIn("LINK A GAME ACCOUNT", result.message)
 
     def test_systems_terminal_numbered_choices_open_only_existing_game_panels(self):
         command = {
