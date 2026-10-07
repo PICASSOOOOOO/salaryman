@@ -1719,3 +1719,59 @@ mtime_ms = 1791303348453
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/28e28a8f-319d-464f-b3b8-6da79d496969/49593e5e-d0c9-4839-b561-810c3f1c34fb"
 storage_version_token = "1791303364687643"
 content_type = "image/png"
+
+[[outputs]]
+id = "OONbYxHYN9B7KwBZz3kyi"
+uri = "file://screenshots/tower-open-floor-layouts.html"
+type = "html"
+title = "Open Tower floor gallery · B1–F12"
+description = "Self-contained gallery with one static Pygame layout screenshot for every accessible level: B1–B6 and F1–F12. Floors 2–5 are marked construction-open; Floors 13–67 are excluded."
+logical_id = "d8dec92c-26ec-4eb2-9fef-cb3a1a208636"
+content_hash = "sha256:cc210f163d6a73291a75a05b1ea33430b049e63c5543824e2f853d36bf5b8b5a"
+size = 481968
+mtime_ms = 1791384161174
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d8dec92c-26ec-4eb2-9fef-cb3a1a208636/ff034218-db29-4bed-8c0f-c0b742915986"
+storage_version_token = "1791384179731367"
+content_type = "text/html"
+
+[[outputs]]
+id = "maaTWNmHc393JAYz6_9sM"
+uri = "file://screenshots/tower-open-layouts-b1-b6.png"
+type = "image"
+title = "Basement layouts · B1–B6"
+description = "Six labeled static floor-layout screenshots from the current Pygame renderer."
+logical_id = "6754074e-9e54-490f-a8ad-9693585a82fe"
+content_hash = "sha256:0c32b11bef509a8595c04bf80cbf79f1be36bde14de9535081c5af072baf5a97"
+size = 107609
+mtime_ms = 1791384160794
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6754074e-9e54-490f-a8ad-9693585a82fe/04ad388c-e0c0-4822-aef2-4477673a3d09"
+storage_version_token = "1791384181200332"
+content_type = "image/png"
+
+[[outputs]]
+id = "kHNhtm0Is4_I-B_0cgW_l"
+uri = "file://screenshots/tower-open-layouts-f1-f6.png"
+type = "image"
+title = "Tower layouts · F1–F6"
+description = "Six labeled static floor-layout screenshots, including construction-open Floors 2–5."
+logical_id = "b63e8bee-18d9-4c29-acd8-9f0c46b8ed4b"
+content_hash = "sha256:0196337193c2184488b6986359e02b96a995f1b77e574d896cd5a47ae2e3c451"
+size = 118332
+mtime_ms = 1791384160994
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b63e8bee-18d9-4c29-acd8-9f0c46b8ed4b/67a35307-f851-4d1d-ab7d-99ab45d91148"
+storage_version_token = "1791384182053537"
+content_type = "image/png"
+
+[[outputs]]
+id = "-vGM447AkqT5qt5rX_BV2"
+uri = "file://screenshots/tower-open-layouts-f7-f12.png"
+type = "image"
+title = "Tower layouts · F7–F12"
+description = "Six labeled static floor-layout screenshots, including the meditation temple and business floors."
+logical_id = "1270a8f2-28b5-4d54-b292-ce513141d7bc"
+content_hash = "sha256:d0111892a3ac65d8c014d771a78d96251643ee807c66f46a6d7ca5aaaca7538c"
+size = 111374
+mtime_ms = 1791384161170
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1270a8f2-28b5-4d54-b292-ce513141d7bc/e75e70b1-bfd3-4308-ad1e-3896ed55017a"
+storage_version_token = "1791384183072972"
+content_type = "image/png"
