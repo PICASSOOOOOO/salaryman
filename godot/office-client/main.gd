@@ -130,6 +130,7 @@ func _ready() -> void:
 func _build_materials() -> void:
 	materials["floor"] = _material(Color("#d4b98b"), 0.92)
 	materials["hall_floor"] = _material(Color("#415965"), 0.84)
+	materials["construction_floor"] = _material(Color("#70685b"), 0.96)
 	materials["lobby_floor"] = _material(Color("#3d655a"), 0.78)
 	materials["lobby_rug"] = _material(Color("#55433c"), 0.96)
 	materials["lobby_rug_field"] = _material(Color("#705949"), 0.96)
@@ -1279,16 +1280,16 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 			float(object.get("displayY", object.get("y", 0))),
 			object_room,
 		)
-var collision_extents: Array = object.get("collisionHalfExtents", [0, 0])
-var marker := _build_bridge_object(
-kind,
-render_position,
-object_id,
-str(object.get("label", "")),
-bool(object.get("constructionComplete", false)),
-bool(object.get("interactive", false)),
-collision_extents,
-)
+		var collision_extents: Array = object.get("collisionHalfExtents", [0, 0])
+		var marker := _build_bridge_object(
+			kind,
+			render_position,
+			object_id,
+			str(object.get("label", "")),
+			bool(object.get("constructionComplete", false)),
+			bool(object.get("interactive", false)),
+			collision_extents,
+		)
 		marker.name = object_id
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
@@ -1461,17 +1462,17 @@ collision_extents: Array = [],
 		return window
 	elif kind == "door":
 		return _build_door_visual(position, object_id)
-elif kind == "elevator" or kind == "service_elevator":
+	elif kind == "elevator" or kind == "service_elevator":
 		return _build_elevator_visual(position, object_id)
 	elif kind == "stairs" or kind == "basement_stairs":
 		return _build_staircase(position, object_id)
-elif kind == "construction_task":
-return _build_construction_marker(position, object_id, label, construction_complete, interactive)
-elif kind == "partition_h" or kind == "partition_h_short" or kind == "partition_v":
-var half_x := float(collision_extents[0]) if collision_extents.size() > 0 else 750.0
-var half_z := float(collision_extents[1]) if collision_extents.size() > 1 else 60.0
-var partition_size := Vector3(maxf(0.2, half_x * 0.02), 2.4, maxf(0.2, half_z * 0.02))
-return _add_box_to_dynamic(object_id, position + Vector3(0.0, 1.1, 0.0), partition_size, materials["wall_trim"])
+	elif kind == "construction_task":
+		return _build_construction_marker(position, object_id, label, construction_complete, interactive)
+	elif kind == "partition_h" or kind == "partition_h_short" or kind == "partition_v":
+		var half_x := float(collision_extents[0]) if collision_extents.size() > 0 else 750.0
+		var half_z := float(collision_extents[1]) if collision_extents.size() > 1 else 60.0
+		var partition_size := Vector3(maxf(0.2, half_x * 0.02), 2.4, maxf(0.2, half_z * 0.02))
+		return _add_box_to_dynamic(object_id, position + Vector3(0.0, 1.1, 0.0), partition_size, materials["wall_trim"])
 	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
@@ -1484,32 +1485,32 @@ label_text: String,
 completed: bool,
 interactive: bool,
 ) -> Node3D:
-var root := Node3D.new()
-root.name = object_id
-root.position = position
-dynamic_root.add_child(root)
-var marker_material := StandardMaterial3D.new()
-marker_material.albedo_color = Color("#49ad79") if completed else (
-Color("#dfa64c") if interactive else Color("#6485a0")
-)
-marker_material.emission_enabled = true
-marker_material.emission = marker_material.albedo_color * 0.35
-var marker_mesh := MeshInstance3D.new()
-var marker_box := BoxMesh.new()
-marker_box.size = Vector3(0.55, 0.85, 0.55)
-marker_box.material = marker_material
-marker_mesh.mesh = marker_box
-marker_mesh.position = Vector3(0.0, 0.43, 0.0)
-root.add_child(marker_mesh)
-var sign := Label3D.new()
-sign.text = label_text
-sign.font_size = 28
-sign.pixel_size = 0.006
-sign.position = Vector3(0.0, 1.45, 0.0)
-sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-sign.modulate = marker_material.albedo_color
-root.add_child(sign)
-return root
+	var root := Node3D.new()
+	root.name = object_id
+	root.position = position
+	dynamic_root.add_child(root)
+	var marker_material := StandardMaterial3D.new()
+	marker_material.albedo_color = Color("#49ad79") if completed else (
+		Color("#dfa64c") if interactive else Color("#6485a0")
+	)
+	marker_material.emission_enabled = true
+	marker_material.emission = marker_material.albedo_color * 0.35
+	var marker_mesh := MeshInstance3D.new()
+	var marker_box := BoxMesh.new()
+	marker_box.size = Vector3(0.55, 0.85, 0.55)
+	marker_box.material = marker_material
+	marker_mesh.mesh = marker_box
+	marker_mesh.position = Vector3(0.0, 0.43, 0.0)
+	root.add_child(marker_mesh)
+	var sign := Label3D.new()
+	sign.text = label_text
+	sign.font_size = 28
+	sign.pixel_size = 0.006
+	sign.position = Vector3(0.0, 1.45, 0.0)
+	sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sign.modulate = marker_material.albedo_color
+	root.add_child(sign)
+	return root
 
 
 func _sync_prop_surfaces(objects: Array) -> void:
@@ -1590,7 +1591,7 @@ func _available_elevator_floors() -> Array[int]:
 	var floors: Array[int] = []
 	for floor_key in playable.keys():
 		var floor_number := int(str(floor_key))
-if _tower_floor_status(floor_number) in ["open", "construction_open"]:
+		if _tower_floor_status(floor_number) in ["open", "construction_open"]:
 			floors.append(floor_number)
 	floors.sort()
 	return floors

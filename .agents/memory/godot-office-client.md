@@ -46,6 +46,18 @@ virtual screen at least as large as the configured game window.
 Locate Xvfb in the Nix store if it is not on PATH, and verify that the selected
 screenshot tool supports X11 capture rather than assuming FFmpeg has x11grab.
 
+Godot 4.4.1 can print `SCRIPT ERROR` during a headless runtime and still exit
+with status 0, so a successful process result alone does not prove a clean
+launch. Headless editor asset imports may also log `texture_2d_get` null errors
+from the dummy renderer; distinguish those import messages from runtime script
+errors.
+
+**Why:** A paired smoke returned success despite runtime script errors, which
+would have hidden a broken floor scene if the logs were not reviewed.
+
+**How to apply:** Inspect Godot stdout/stderr for script errors after clean
+imports and paired launches, even when the process and bridge return success.
+
 The product is an open-world office-simulation MMO. Make player interaction and
 communication easy to discover across shared spaces and office devices; preserve
 the distinction between proximity voice/video meetings and phone calls.
