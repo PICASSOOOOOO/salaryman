@@ -22,7 +22,12 @@ import {
   usersTable,
 } from "@workspace/db";
 import { TOWER_ELEVATOR_POSITIONS } from "../lib/desktop-building-objects";
-import { TOWER_SERVICE_ELEVATOR_BASEMENT, TOWER_SERVICE_ELEVATOR_LOBBY } from "../lib/tower-basement-layout";
+import {
+  TOWER_BASEMENT_BACK_ENTRANCE,
+  TOWER_LOBBY_BACK_ENTRANCE,
+  TOWER_SERVICE_ELEVATOR_BASEMENT,
+  TOWER_SERVICE_ELEVATOR_LOBBY,
+} from "../lib/tower-basement-layout";
 import desktopBasementRouter from "../routes/desktop-basement";
 
 const app = express();
@@ -209,6 +214,42 @@ describe("desktop basement survival authority", () => {
     expect(allowed.status).toBe(200);
     expect(allowed.body.accessMode).toBe("stairs");
     expect(allowed.body.accessModeTemporary).toBe(true);
+  });
+
+  it("connects the B1 rear gate to the lobby and requires proximity at both ends", async () => {
+    await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
+    await db.update(desktopOfficePresenceTable)
+      .set({
+        x: TOWER_LOBBY_BACK_ENTRANCE.x,
+        y: TOWER_LOBBY_BACK_ENTRANCE.y,
+        lastSeenAt: new Date(),
+      })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
+
+    const entered = await enterBasement(
+      TOWER_BASEMENT_BACK_ENTRANCE.x,
+      TOWER_BASEMENT_BACK_ENTRANCE.y,
+    );
+    expect(entered.status).toBe(200);
+    expect(entered.body.accessMode).toBe("back_entrance");
+
+    const awayFromGate = await moveBasement(1, 5_000, 5_000);
+    expect(awayFromGate.status).toBe(200);
+    const blockedExit = await desktopPost("/api/desktop-building/basement/exit").send({});
+    expect(blockedExit.status).toBe(409);
+
+    const returnToGate = await moveBasement(
+      1,
+      TOWER_BASEMENT_BACK_ENTRANCE.x,
+      TOWER_BASEMENT_BACK_ENTRANCE.y,
+    );
+    expect(returnToGate.status).toBe(200);
+    const exited = await desktopPost("/api/desktop-building/basement/exit").send({});
+    expect(exited.status).toBe(200);
+    expect(exited.body.exitVia).toBe("back_entrance");
+    expect(exited.body.x).toBe(TOWER_LOBBY_BACK_ENTRANCE.x);
+    expect(exited.body.y).toBe(TOWER_LOBBY_BACK_ENTRANCE.y);
+    await setLobbyPresence();
   });
 
   it("reaches B4-B6 through each stair landing and returns to the lobby only from B1", async () => {

@@ -15,6 +15,7 @@ from .approved_content import (
     APPROVED_CAMERA_FOCUS_KINDS,
     APPROVED_INTERACTIVE_OBJECT_KINDS,
 )
+from .business_services import actions_for_business
 from .world_layout import FLOOR_PLAN
 
 if TYPE_CHECKING:
@@ -55,6 +56,13 @@ ObjectKind = Literal[
     "receptionist",
     "floor_sign",
     "trash_can",
+    "business_suite",
+    "business_kiosk",
+    "yard_gate",
+    "delivery_truck",
+    "forklift",
+    "pallet",
+    "supply_crate",
 ]
 
 VENDING_ITEMS: dict[str, tuple[str, float]] = {
@@ -90,6 +98,11 @@ class OfficeObject:
     stairwell_number: int | None = None
     completed: bool = False
     work_progress: float = 0.0
+    business_key: str | None = None
+    unit_number: int | None = None
+    service_actions: tuple[str, ...] = ()
+    suite_bounds: tuple[int, int, int, int] | None = None
+    solid_half_extents: tuple[int, int] | None = None
 
     @property
     def visual_position(self) -> tuple[int, int]:
@@ -102,6 +115,8 @@ class OfficeObject:
     @property
     def collision_half_extents(self) -> tuple[int, int]:
         """Return the solid footprint in world units; tabletop props use zero."""
+        if self.solid_half_extents is not None:
+            return self.solid_half_extents
         return {
             "desk": (300, 150),
             "chair": (180, 130),
@@ -135,6 +150,13 @@ class OfficeObject:
             "tv": (140, 100),
             "arcade": (140, 160),
             "trash_can": (300, 300),
+            "business_suite": (0, 0),
+            "business_kiosk": (110, 140),
+            "yard_gate": (0, 0),
+            "delivery_truck": (900, 1_500),
+            "forklift": (300, 450),
+            "pallet": (300, 220),
+            "supply_crate": (250, 250),
         }.get(self.kind, (120, 120))
 
 
@@ -282,6 +304,28 @@ class OfficeObjectRegistry:
             message = "TOWER VENDING / SERVER-PRICED STOCK"
             state.notice = message
             return InteractionResult(True, message, route="tower-vending")
+
+        if item.kind in {"business_suite", "business_kiosk"}:
+            scene.focus_on_interaction(item)
+            page = "reception" if item.business_key == "tower_reception_kiosk" else "business"
+            state.open_page(
+                page,
+                from_object=True,
+                source=item.label,
+                source_object_id=item.id,
+            )
+            return InteractionResult(True, f"{item.label.upper()} / OFFICE SERVICES")
+
+        if item.kind == "yard_gate":
+            scene.focus_on_interaction(item)
+            state.notice = (
+                "REAR ENTRANCE / B1 LOADING YARD"
+                if item.id == "lobby-back-entrance"
+                else "B1 REAR ENTRANCE / TOWER LOBBY"
+                if item.id == "basement-b1-back-entrance"
+                else "B1 LOADING YARD / STAFF ACCESS"
+            )
+            return InteractionResult(True, state.notice)
 
         if item.kind == "crt_terminal":
             permission_message = scene.workstation_permission(item.parent_id)
@@ -592,6 +636,79 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     ]
     for entry in entries:
         registry.add(entry)
+    def add_wall(
+        room: str,
+        tag: str,
+        orientation: str,
+        x: int,
+        y: int,
+        length: int,
+        thickness: int = 60,
+    ) -> None:
+        kind: ObjectKind = "partition_h" if orientation == "h" else "partition_v"
+        object_id = f"{tag}-wall-{orientation}-{x}-{y}-{length}"
+        if registry.get(object_id) is not None:
+            return
+        half_extents = (
+            (length // 2, thickness // 2)
+            if orientation == "h"
+            else (thickness // 2, length // 2)
+        )
+        registry.add(OfficeObject(
+            object_id,
+            kind,
+            "BUSINESS SUITE PARTITION",
+            room,
+            (x, y),
+            "",
+            interactive=False,
+            solid_half_extents=half_extents,
+        ))
+
+    def add_suite(
+        room: str,
+        tag: str,
+        business: dict[str, object],
+        bounds: tuple[int, int, int, int],
+        door_side: str,
+        *,
+        build_walls: bool,
+    ) -> None:
+        business_key = str(business.get("businessKey", ""))
+        label = str(business.get("label", "BUSINESS OFFICE"))
+        unit_number = int(business.get("unitNumber", 0))
+        x, y, width, height = bounds
+        registry.add(OfficeObject(
+            f"{tag}-business-{unit_number:02d}",
+            "business_suite",
+            label,
+            room,
+            (x + width // 2, y + height // 2),
+            f"ENTER {label}",
+            business_key=business_key,
+            unit_number=unit_number,
+            service_actions=actions_for_business(business_key),
+            suite_bounds=bounds,
+        ))
+        if not build_walls:
+            return
+
+        wall = 60
+        gap = 600
+        mid_x = x + width // 2
+        north_y = y
+        south_y = y + height
+        if door_side == "south":
+            add_wall(room, tag, "h", x + width // 4, north_y, width // 2, wall)
+            add_wall(room, tag, "h", x + (width - gap) // 4, south_y, (width - gap) // 2, wall)
+            add_wall(room, tag, "h", x + (width + gap) // 2 + (width - gap) // 4, south_y, (width - gap) // 2, wall)
+        else:
+            add_wall(room, tag, "h", x + (width - gap) // 4, north_y, (width - gap) // 2, wall)
+            add_wall(room, tag, "h", x + (width + gap) // 2 + (width - gap) // 4, north_y, (width - gap) // 2, wall)
+            add_wall(room, tag, "h", x + width // 4, south_y, width // 2, wall)
+        add_wall(room, tag, "v", x, y + height // 2, height, wall)
+        add_wall(room, tag, "v", x + width, y + height // 2, height, wall)
+
     for floor in range(2, 6):
         room = f"construction_f{floor:02d}"
         for index, x in enumerate((9_300, 10_000, 11_000, 12_000), start=1):
@@ -629,6 +746,122 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 destination_floor=destination,
                 stairwell_number=stairwell,
             ))
+    for floor in (2, 3, 4, 5, 7):
+        room = str(FLOOR_PLAN["playableFloors"][str(floor)]["room"])
+        registry.add(OfficeObject(
+            f"floor-{floor:02d}-shared-atm",
+            "atm",
+            "SHARED HALLWAY ATM",
+            room,
+            (12_790, 5_000),
+            "CHECK BANCO OMBRA",
+        ))
+        registry.add(OfficeObject(
+            f"floor-{floor:02d}-shared-vending",
+            "vending_machine",
+            "SHARED HALLWAY VENDING",
+            room,
+            (12_790, 8_000),
+            "BUY OFFICE ASSETS",
+        ))
+
+    # The lobby kiosks are the only kiosk-style business locations.
+    for kiosk in FLOOR_PLAN["businessSuiteLayout"]["lobbyKiosks"]:
+        business_key = str(kiosk["businessKey"])
+        label = str(kiosk["label"])
+        position = tuple(int(value) for value in kiosk["position"])
+        registry.add(OfficeObject(
+            f"lobby-kiosk-{business_key}",
+            "business_kiosk",
+            label,
+            "lobby",
+            position,  # type: ignore[arg-type]
+            f"OPEN {label}",
+            business_key=business_key,
+            service_actions=actions_for_business(business_key),
+        ))
+    lobby_back_entry = FLOOR_PLAN["businessSuiteLayout"]["lobbyBackEntrance"]
+    registry.add(OfficeObject(
+        "lobby-back-entrance",
+        "yard_gate",
+        "REAR ENTRANCE",
+        "lobby",
+        tuple(int(value) for value in lobby_back_entry),  # type: ignore[arg-type]
+        "ENTER B1 LOADING YARD",
+    ))
+
+    # Standard lower floors use separate office suites, with one set of
+    # partitions and a single shared ATM/vending pair along the east hallway wall.
+    standard_units = FLOOR_PLAN["businessSuiteLayout"]["standardFloorUnits"]
+    for floor in (2, 3, 4, 5, 7):
+        floor_data = FLOOR_PLAN["playableFloors"][str(floor)]
+        room = str(floor_data["room"])
+        for business in floor_data.get("businesses", []):
+            unit_number = int(business["unitNumber"])
+            unit = next(
+                (item for item in standard_units if int(item["unitNumber"]) == unit_number),
+                None,
+            )
+            if unit is None:
+                continue
+            raw_bounds = unit["bounds"]
+            bounds = tuple(int(value) for value in raw_bounds)
+            add_suite(
+                room,
+                f"floor-{floor:02d}",
+                business,
+                bounds,  # type: ignore[arg-type]
+                str(unit["doorSide"]),
+                build_walls=True,
+            )
+
+    # Floor 6 keeps its four existing offices; each houses two business areas
+    # separated by a partition with an open shared entry.
+    floor_six = FLOOR_PLAN["playableFloors"]["6"]
+    office_bounds = {
+        str(item["id"]): tuple(int(value) for value in item["bounds"])
+        for item in FLOOR_PLAN["baseLayout"]["offices"]
+    }
+    for business in floor_six.get("businesses", []):
+        room = str(business["officeRoom"])
+        office = office_bounds[room]
+        x, y, width, height = office
+        half_width = width // 2
+        half_x = x if business["officeHalf"] == "west" else x + half_width
+        bounds = (half_x, y, half_width, height)
+        add_suite(
+            room,
+            "floor-06",
+            business,
+            bounds,
+            "south" if y == 0 else "north",
+            build_walls=False,
+        )
+    for office_id, bounds in office_bounds.items():
+        x, y, width, height = bounds
+        divider_x = x + width // 2
+        gap = 2_000
+        door_side = "south" if y == 0 else "north"
+        if door_side == "south":
+            add_wall(
+                office_id,
+                "floor-06",
+                "v",
+                divider_x,
+                y + (height - gap) // 2,
+                height - gap,
+                60,
+            )
+        else:
+            add_wall(
+                office_id,
+                "floor-06",
+                "v",
+                divider_x,
+                y + gap + (height - gap) // 2,
+                height - gap,
+                60,
+            )
     for level in range(1, 7):
         room = f"basement_b{level}"
         registry.add(OfficeObject(
@@ -659,50 +892,64 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             ))
         if level == 1:
             for entry in (
-                OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"),
+                OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 4_650), "W-2 / 1099 LOCAL JOBS"),
                 OfficeObject("basement-b1-uniform", "pest_uniform_station", "UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
-                OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_500), "SELL A CLAIMED CARCASS"),
-                OfficeObject("basement-b1-shipping-waste", "shipping_station", "SHIPPING / WASTE", room, (9_000, 9_000), "DELIVER CARRIED TRASH"),
-                OfficeObject("basement-b1-loading-gate", "loading_gate", "GATED LOADING ZONE", room, (9_000, 7_000), "RECEIVE TOWER SUPPLIES"),
+                OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_700, 5_000), "SELL A CLAIMED CARCASS"),
+                OfficeObject("basement-b1-shipping-waste", "shipping_station", "SHIPPING / WASTE", room, (15_000, 9_000), "DELIVER CARRIED TRASH"),
+                OfficeObject("basement-b1-loading-gate", "loading_gate", "GATED LOADING ZONE", room, (18_500, 7_000), "RECEIVE TOWER SUPPLIES"),
             ):
                 registry.add(entry)
-        if level == 1:
-            office_rows = (500, 2_100, 6_200, 7_800)
-            for office_index in range(20):
-                column = office_index % 5
-                row = office_index // 5
-                x = 1_250 + column * 1_900
-                room_top = office_rows[row]
-                y = room_top + 750
-                registry.add(OfficeObject(
-                    f"basement-b1-admin-office-{office_index + 1:02d}",
-                    "desk",
-                    f"ADMIN OFFICE {office_index + 1:02d}",
+            basement_program = FLOOR_PLAN["floorProgram"]["pabloCorpBusinessArea"]
+            b1_businesses = basement_program["b1Businesses"]
+            b1_layout = FLOOR_PLAN["businessSuiteLayout"]["b1"]
+            for business in b1_businesses:
+                unit_number = int(business["unitNumber"])
+                unit = next(
+                    (item for item in b1_layout["businessUnits"] if int(item["unitNumber"]) == unit_number),
+                    None,
+                )
+                if unit is None:
+                    continue
+                add_suite(
                     room,
-                    (x, y),
-                    "TOWER ADMINISTRATION",
+                    "b1",
+                    business,
+                    tuple(int(value) for value in unit["bounds"]),  # type: ignore[arg-type]
+                    str(unit["doorSide"]),
+                    build_walls=True,
+                )
+            for y_center in (2_150, 7_850):
+                add_wall(room, "b1-yard-divider", "v", 10_000, y_center, 4_300, 60)
+            yard_access = tuple(int(value) for value in b1_layout["yardAccess"])
+            gate_position = tuple(int(value) for value in b1_layout["exteriorGate"])
+            registry.add(OfficeObject(
+                "basement-b1-yard-access",
+                "yard_gate",
+                "LOADING YARD ACCESS",
+                room,
+                yard_access,  # type: ignore[arg-type]
+                "CROSS TO THE REAR LOADING YARD",
+            ))
+            registry.add(OfficeObject(
+                "basement-b1-back-entrance",
+                "yard_gate",
+                "REAR ENTRANCE / LEVEL 01",
+                room,
+                gate_position,  # type: ignore[arg-type]
+                "ENTER THE TOWER THROUGH THE REAR LOBBY DOOR",
+            ))
+            for index, prop in enumerate(b1_layout["yardProps"], start=1):
+                kind = str(prop["kind"])
+                position = tuple(int(value) for value in prop["position"])
+                registry.add(OfficeObject(
+                    f"basement-b1-yard-prop-{index:02d}",
+                    kind,  # type: ignore[arg-type]
+                    str(prop["label"]),
+                    room,
+                    position,  # type: ignore[arg-type]
+                    "",
                     interactive=False,
                 ))
-                room_left = 500 + column * 1_900
-                room_center_x = room_left + 750
-                room_center_y = room_top + 750
-                walls = (
-                    ("partition_h", (room_center_x, room_top), "NORTH"),
-                    ("partition_v", (room_left, room_center_y), "WEST"),
-                    ("partition_v", (room_left + 1_500, room_center_y), "EAST"),
-                    ("partition_h_short", (room_center_x - 500, room_top + 1_500), "SOUTH LEFT"),
-                    ("partition_h_short", (room_center_x + 500, room_top + 1_500), "SOUTH RIGHT"),
-                )
-                for wall_index, (kind, position, side) in enumerate(walls, start=1):
-                    registry.add(OfficeObject(
-                        f"basement-b1-admin-office-{office_index + 1:02d}-wall-{wall_index}",
-                        kind,
-                        f"ADMIN PARTITION / {side}",
-                        room,
-                        position,
-                        "ADMIN OFFICE PARTITION",
-                        interactive=False,
-                    ))
         elif level == 2:
             for office_index in range(6):
                 registry.add(OfficeObject(

@@ -151,7 +151,7 @@
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
 - [Tower building vitality](tower-building-vitality.md) — Pablo owns initial stores; AI-driven NPCs pursue creative work; repeat businesses require net worth above ƒ1B.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
-- [Tower basement layout and access](tower-basement-layout.md) — B1–B6 departments, one full-height service lift, four lobby passenger lifts, two stairwells, and activity-driven pest pressure.
+- [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp owns unpurchased units plus selected floors; preserve private resale proceeds and its intentional economic advantage.
-- [Tower business locations and stock](floor-seven-marketplace-scope.md) — no Tower marketplace or directory; capacity is floor-dependent, and only confirmed business assignments appear.
+- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Floors 2–7 support up to eight suites; preserve named assignments, shared hallway machines, and no-directory/read-only-stock boundaries.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.

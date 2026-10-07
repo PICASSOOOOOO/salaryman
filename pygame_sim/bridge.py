@@ -268,6 +268,7 @@ def _handle_basement_interact(
         and nearby is not None
         and (
             nearby.kind == "service_elevator"
+            or nearby.id == "lobby-back-entrance"
             or nearby.kind == "stairs" and (
                 nearby.id == "lobby-stairs" or nearby.id.startswith("lobby-stairwell-")
             )
@@ -276,7 +277,12 @@ def _handle_basement_interact(
         if basement_sync is None or not basement_sync.queue_enter(scene):
             return CommandResult(False, "BASEMENT ACCESS REQUIRES A LIVE GAME LINK")
         state.close_page()
-        state.notice = "SERVICE ELEVATOR / REQUESTING B1 ACCESS" if nearby.kind == "service_elevator" else "STAIRS / REQUESTING B1 ACCESS"
+        if nearby.kind == "service_elevator":
+            state.notice = "SERVICE ELEVATOR / REQUESTING B1 ACCESS"
+        elif nearby.id == "lobby-back-entrance":
+            state.notice = "REAR ENTRANCE / REQUESTING B1 ACCESS"
+        else:
+            state.notice = "STAIRS / REQUESTING B1 ACCESS"
         return CommandResult(True, state.notice)
 
     if not scene.is_basement:
@@ -320,6 +326,13 @@ def _handle_basement_interact(
 
     if nearby is None:
         return None
+
+    if nearby.id == "basement-b1-back-entrance":
+        if basement_sync is None or not basement_sync.queue_exit(scene):
+            return CommandResult(False, "B1 REAR ENTRANCE EXIT UNAVAILABLE")
+        state.close_page()
+        state.notice = "REAR ENTRANCE / REQUESTING TOWER LOBBY"
+        return CommandResult(True, state.notice)
 
     if nearby.kind == "service_elevator":
         level = int(scene.basement_level or 1)

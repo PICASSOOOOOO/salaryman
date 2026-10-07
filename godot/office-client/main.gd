@@ -277,6 +277,7 @@ func _build_building_shell() -> void:
 		})
 	for spec in room_specs:
 		_add_room_shell(spec, floor_plan)
+	_build_business_suite_layout(floor_plan)
 	_build_underfloor_structure(base_layout)
 	_build_room_lighting(floor_plan)
 	_build_lobby_building_services()
@@ -351,7 +352,19 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 			false,
 		)
 	elif room_id == "lobby":
-		_add_structural_wall("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
+		var lobby_suite_layout: Dictionary = floor_plan.get("businessSuiteLayout", {})
+		var lobby_back_entry: Array = lobby_suite_layout.get("lobbyBackEntrance", [])
+		if lobby_back_entry.size() >= 2:
+			var lobby_door_z := float(int(lobby_back_entry[1]) - lobby_render_origin_px.y) * WORLD_SCALE
+			_add_vertical_opening_wall(
+				"%sWallLeft" % room_id,
+				left,
+				top,
+				bottom,
+				[{"center": lobby_door_z, "kind": "door"}],
+			)
+		else:
+			_add_structural_wall("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
 		_add_structural_wall("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
 		_add_structural_wall("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), float(rect_size_px.x) * WORLD_SCALE, true)
 		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, [float(floor_plan["lobbyHallwayOpening"]) * WORLD_SCALE], 1.8)
@@ -370,6 +383,23 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 		])
 		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
 		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
+	elif room_id == "basement_b1":
+		_add_structural_wall("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
+		_add_structural_wall("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), float(rect_size_px.x) * WORLD_SCALE, true)
+		_add_structural_wall("%sWallBottom" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), float(rect_size_px.x) * WORLD_SCALE, true)
+		var b1_layout: Dictionary = floor_plan.get("businessSuiteLayout", {}).get("b1", {})
+		var b1_gate: Array = b1_layout.get("exteriorGate", [])
+		if b1_gate.size() >= 2:
+			var gate_z := float(render_position_px.y + int(b1_gate[1])) * WORLD_SCALE
+			_add_vertical_opening_wall(
+				"%sWallRight" % room_id,
+				right,
+				top,
+				bottom,
+				[{"center": gate_z, "kind": "door"}],
+			)
+		else:
+			_add_structural_wall("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
 	elif room_id in ["executive", "public", "office_03", "office_04"]:
 		var outer_left := left - wall_half
 		var outer_right := right + wall_half
@@ -395,6 +425,179 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 		_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
 		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
 		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
+
+
+func _build_business_suite_layout(floor_plan: Dictionary) -> void:
+	var layout: Dictionary = floor_plan.get("businessSuiteLayout", {})
+	var standard_units: Array = layout.get("standardFloorUnits", [])
+	var wall_keys: Dictionary = {}
+	for floor_number in [2, 3, 4, 5, 7]:
+		var floor_data: Dictionary = floor_plan.get("playableFloors", {}).get(str(floor_number), {})
+		var room := str(floor_data.get("room", ""))
+		for raw_business in floor_data.get("businesses", []):
+			var business: Dictionary = raw_business
+			var unit_number := int(business.get("unitNumber", 0))
+			for raw_unit in standard_units:
+				var unit: Dictionary = raw_unit
+				if int(unit.get("unitNumber", 0)) != unit_number:
+					continue
+				var bounds: Array = unit.get("bounds", [])
+				if bounds.size() < 4:
+					break
+				_add_business_suite_walls(
+					room,
+					"Floor%02dUnit%02d" % [floor_number, unit_number],
+					bounds,
+					str(unit.get("doorSide", "south")),
+					wall_keys,
+				)
+				_add_business_suite_sign(room, business, bounds)
+				break
+
+	var base_layout: Dictionary = floor_plan.get("baseLayout", {})
+	var office_bounds: Dictionary = {}
+	for raw_office in base_layout.get("offices", []):
+		var office: Dictionary = raw_office
+		office_bounds[str(office.get("id", ""))] = office.get("bounds", [])
+	var floor_six: Dictionary = floor_plan.get("playableFloors", {}).get("6", {})
+	for raw_business in floor_six.get("businesses", []):
+		var business: Dictionary = raw_business
+		var room := str(business.get("officeRoom", ""))
+		var bounds: Array = office_bounds.get(room, [])
+		if bounds.size() < 4:
+			continue
+		var half_width := int(int(bounds[2]) / 2.0)
+		var half_x := int(bounds[0])
+		if str(business.get("officeHalf", "west")) == "east":
+			half_x += half_width
+		var half_bounds: Array = [half_x, bounds[1], half_width, bounds[3]]
+		_add_business_suite_sign(room, business, half_bounds)
+
+	for room in ["executive", "public", "office_03", "office_04"]:
+		var bounds: Array = office_bounds.get(room, [])
+		if bounds.size() < 4:
+			continue
+		var x := int(bounds[0]) + int(int(bounds[2]) / 2.0)
+		var y := int(bounds[1])
+		var height := int(bounds[3])
+		var gap := 600
+		if y == 0:
+			_add_business_wall(
+				room,
+				"Floor06Divider_%s" % room,
+				false,
+				x,
+				y + int((height - gap) / 2.0),
+				height - gap,
+				wall_keys,
+			)
+		else:
+			_add_business_wall(
+				room,
+				"Floor06Divider_%s" % room,
+				false,
+				x,
+				y + gap + int((height - gap) / 2.0),
+				height - gap,
+				wall_keys,
+			)
+
+	var basement: Dictionary = layout.get("b1", {})
+	var b1_units: Array = basement.get("businessUnits", [])
+	var b1_businesses: Array = floor_plan.get("floorProgram", {}).get("pabloCorpBusinessArea", {}).get("b1Businesses", [])
+	for raw_business in b1_businesses:
+		var business: Dictionary = raw_business
+		var unit_number := int(business.get("unitNumber", 0))
+		for raw_unit in b1_units:
+			var unit: Dictionary = raw_unit
+			if int(unit.get("unitNumber", 0)) != unit_number:
+				continue
+			var bounds: Array = unit.get("bounds", [])
+			if bounds.size() < 4:
+				break
+			_add_business_suite_walls(
+				"basement_b1",
+				"B1Unit%02d" % unit_number,
+				bounds,
+				str(unit.get("doorSide", "south")),
+				wall_keys,
+			)
+			_add_business_suite_sign("basement_b1", business, bounds)
+			break
+
+	for segment in [[2150, 4300], [7850, 4300]]:
+		_add_business_wall(
+			"basement_b1",
+			"B1YardDivider%d" % int(segment[0]),
+			false,
+			10000,
+			int(segment[0]),
+			int(segment[1]),
+			wall_keys,
+		)
+
+
+func _add_business_suite_walls(
+	room: String,
+	tag: String,
+	bounds: Array,
+	door_side: String,
+	wall_keys: Dictionary,
+) -> void:
+	var x := int(bounds[0])
+	var y := int(bounds[1])
+	var width := int(bounds[2])
+	var height := int(bounds[3])
+	var gap := 600
+	var left_width := int((width - gap) / 2.0)
+	var left_center := x + int(left_width / 2.0)
+	var right_center := x + width - int(left_width / 2.0)
+	if door_side == "south":
+		_add_business_wall(room, "%sNorth" % tag, true, x + int(width / 2.0), y, width, wall_keys)
+		_add_business_wall(room, "%sSouthL" % tag, true, left_center, y + height, left_width, wall_keys)
+		_add_business_wall(room, "%sSouthR" % tag, true, right_center, y + height, left_width, wall_keys)
+	else:
+		_add_business_wall(room, "%sNorthL" % tag, true, left_center, y, left_width, wall_keys)
+		_add_business_wall(room, "%sNorthR" % tag, true, right_center, y, left_width, wall_keys)
+		_add_business_wall(room, "%sSouth" % tag, true, x + int(width / 2.0), y + height, width, wall_keys)
+	_add_business_wall(room, "%sWest" % tag, false, x, y + int(height / 2.0), height, wall_keys)
+	_add_business_wall(room, "%sEast" % tag, false, x + width, y + int(height / 2.0), height, wall_keys)
+
+
+func _add_business_wall(
+	room: String,
+	tag: String,
+	horizontal: bool,
+	x: int,
+	y: int,
+	length: int,
+	wall_keys: Dictionary,
+) -> void:
+	var key := "%s|%s|%d|%d|%d" % [room, "h" if horizontal else "v", x, y, length]
+	if wall_keys.has(key):
+		return
+	wall_keys[key] = true
+	var center := _pygame_to_world(x, y, room)
+	center.y = WALL_HEIGHT / 2.0
+	_add_structural_wall(tag, center, float(length) * WORLD_SCALE, horizontal)
+
+
+func _add_business_suite_sign(room: String, business: Dictionary, bounds: Array) -> void:
+	if bounds.size() < 4:
+		return
+	var center := _pygame_to_world(
+		int(bounds[0]) + int(int(bounds[2]) / 2.0),
+		int(bounds[1]) + int(int(bounds[3]) / 2.0),
+		room,
+	)
+	var sign := Label3D.new()
+	sign.name = "BusinessSign_%s" % str(business.get("businessKey", "unit"))
+	sign.text = str(business.get("label", "BUSINESS OFFICE"))
+	sign.font_size = 24
+	sign.pixel_size = 0.006
+	sign.modulate = Color("#e8dfc8")
+	sign.position = center + Vector3(0.0, 2.25, 0.0)
+	add_child(sign)
 
 
 func _add_floor_region(node_name: String, bounds: Array, material: Material) -> void:
@@ -1459,6 +1662,12 @@ collision_extents: Array = [],
 		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
+if kind == "business_suite" or kind == "business_kiosk":
+return _build_business_prop(kind, position, object_id, label)
+if kind == "yard_gate":
+return _build_yard_gate(position, object_id, label)
+if kind == "delivery_truck" or kind == "forklift" or kind == "pallet" or kind == "supply_crate":
+return _build_loading_yard_prop(kind, position, object_id, label)
 	if kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
@@ -1486,6 +1695,131 @@ collision_extents: Array = [],
 	elif kind == "tv" or kind == "arcade":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
+
+
+func _build_business_prop(kind: String, position: Vector3, object_id: String, label_text: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = object_id
+	root.position = position
+	dynamic_root.add_child(root)
+	var body := MeshInstance3D.new()
+	body.name = "Body"
+	var body_mesh := BoxMesh.new()
+	body_mesh.size = Vector3(1.9, 0.9, 0.72) if kind == "business_suite" else Vector3(0.72, 1.45, 0.62)
+	body.mesh = body_mesh
+	var body_material := StandardMaterial3D.new()
+	body_material.albedo_color = Color("#765b3c") if kind == "business_suite" else Color("#557b68")
+	body_material.roughness = 0.82
+	body.material_override = body_material
+	body.position.y = body_mesh.size.y / 2.0
+	root.add_child(body)
+	var trim := MeshInstance3D.new()
+	trim.name = "ServiceSurface"
+	var trim_mesh := BoxMesh.new()
+	trim_mesh.size = Vector3(body_mesh.size.x * 0.88, 0.08, body_mesh.size.z * 1.08)
+	trim_mesh.material = materials["wall_trim"]
+	trim.mesh = trim_mesh
+	trim.position.y = body_mesh.size.y + 0.035
+	root.add_child(trim)
+	if kind == "business_kiosk":
+		var screen := MeshInstance3D.new()
+		screen.name = "KioskScreen"
+		var screen_mesh := BoxMesh.new()
+		screen_mesh.size = Vector3(0.48, 0.55, 0.035)
+		screen_mesh.material = materials["glass"]
+		screen.mesh = screen_mesh
+		screen.position = Vector3(0.0, 1.0, 0.33)
+		root.add_child(screen)
+	var nameplate := Label3D.new()
+	nameplate.name = "BusinessLabel"
+	nameplate.text = label_text
+	nameplate.font_size = 20
+	nameplate.pixel_size = 0.006
+	nameplate.modulate = Color("#f0e7d0")
+	nameplate.position = Vector3(0.0, body_mesh.size.y + 0.45, 0.0)
+	root.add_child(nameplate)
+	return root
+
+
+func _build_yard_gate(position: Vector3, object_id: String, label_text: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = object_id
+	root.position = position
+	dynamic_root.add_child(root)
+	var metal := StandardMaterial3D.new()
+	metal.albedo_color = Color("#687d6e")
+	metal.metallic = 0.45
+	metal.roughness = 0.55
+	for side in [-1.0, 1.0]:
+		var post := MeshInstance3D.new()
+		post.name = "GatePost"
+		var post_mesh := BoxMesh.new()
+		post_mesh.size = Vector3(0.12, 2.25, 0.16)
+		post_mesh.material = materials["wall_trim"]
+		post.mesh = post_mesh
+		post.position = Vector3(side * 1.35, 1.12, 0.0)
+		root.add_child(post)
+	var gate := MeshInstance3D.new()
+	gate.name = "Gate"
+	var gate_mesh := BoxMesh.new()
+	gate_mesh.size = Vector3(2.55, 1.35, 0.09)
+	gate_mesh.material = metal
+	gate.mesh = gate_mesh
+	gate.position.y = 0.9
+	root.add_child(gate)
+	var gate_label := Label3D.new()
+	gate_label.name = "GateLabel"
+	gate_label.text = label_text
+	gate_label.font_size = 18
+	gate_label.pixel_size = 0.006
+	gate_label.modulate = Color("#e7dfc8")
+	gate_label.position.y = 2.2
+	root.add_child(gate_label)
+	return root
+
+
+func _build_loading_yard_prop(kind: String, position: Vector3, object_id: String, label_text: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = object_id
+	root.position = position
+	dynamic_root.add_child(root)
+	var body := MeshInstance3D.new()
+	body.name = "Body"
+	var mesh := BoxMesh.new()
+	if kind == "delivery_truck":
+		mesh.size = Vector3(3.2, 1.9, 5.4)
+	elif kind == "forklift":
+		mesh.size = Vector3(1.1, 1.5, 1.8)
+	elif kind == "pallet":
+		mesh.size = Vector3(1.2, 0.18, 0.9)
+	else:
+		mesh.size = Vector3(0.9, 0.9, 0.75)
+	body.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("#5c846d") if kind == "delivery_truck" else (
+		Color("#d6a54d") if kind == "forklift" else Color("#ad8150")
+	)
+	material.roughness = 0.85
+	body.material_override = material
+	body.position.y = mesh.size.y / 2.0
+	root.add_child(body)
+	if kind == "delivery_truck":
+		var cargo := MeshInstance3D.new()
+		cargo.name = "CargoBox"
+		var cargo_mesh := BoxMesh.new()
+		cargo_mesh.size = Vector3(2.85, 1.05, 3.5)
+		cargo_mesh.material = materials["wall_trim"]
+		cargo.mesh = cargo_mesh
+		cargo.position = Vector3(0.0, 2.0, -0.65)
+		root.add_child(cargo)
+	var prop_label := Label3D.new()
+	prop_label.text = label_text
+	prop_label.font_size = 18
+	prop_label.pixel_size = 0.006
+	prop_label.modulate = Color("#e7dfc8")
+	prop_label.position.y = mesh.size.y + 0.25
+	root.add_child(prop_label)
+	return root
 
 
 func _build_construction_marker(

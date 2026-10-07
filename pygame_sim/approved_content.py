@@ -79,6 +79,9 @@ APPROVED_INTERACTIVE_OBJECT_KINDS = frozenset(
         "chair",
         "window",
         "door",
+        "business_suite",
+        "business_kiosk",
+        "yard_gate",
     }
 )
 
@@ -96,5 +99,7 @@ APPROVED_CAMERA_FOCUS_KINDS = frozenset(
         "pest_uniform_station",
         "utility_station",
         "carcass_disposal",
+        "business_suite",
+        "business_kiosk",
     }
 )

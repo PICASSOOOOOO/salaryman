@@ -54,6 +54,40 @@ class PygameBridgeTests(unittest.TestCase):
             self.assertEqual(len(up_stairs), 1)
             self.assertEqual(len(down_stairs), 1 if level < 6 else 0)
 
+    def test_business_rosters_have_one_suite_per_assignment_and_shared_hallway_machines(self):
+        for floor in (2, 3, 4, 5, 6, 7):
+            floor_data = FLOOR_PLAN["playableFloors"][str(floor)]
+            rooms = (
+                {str(business["officeRoom"]) for business in floor_data.get("businesses", [])}
+                if floor == 6
+                else {str(floor_data["room"])}
+            )
+            expected = [
+                str(business["businessKey"])
+                for business in floor_data.get("businesses", [])
+            ]
+            actual = [
+                item.business_key
+                for item in self.scene.objects.objects
+                if item.room in rooms and item.kind == "business_suite"
+            ]
+            self.assertCountEqual(actual, expected, f"floor {floor} roster")
+            if floor in (2, 3, 4, 5, 7):
+                hallway_machines = [
+                    item for item in self.scene.objects.objects
+                    if item.room == room and item.kind in {"atm", "vending_machine"}
+                ]
+                self.assertEqual(
+                    sum(item.kind == "atm" for item in hallway_machines),
+                    1,
+                    f"floor {floor} hallway ATM count",
+                )
+                self.assertEqual(
+                    sum(item.kind == "vending_machine" for item in hallway_machines),
+                    1,
+                    f"floor {floor} hallway vending count",
+                )
+
     def test_music_toggle_is_in_the_bridge_snapshot_and_is_opt_in(self):
         result = apply_command(
             {
@@ -185,6 +219,49 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertIn("RECEPTION", result.message)
 
+    def test_rear_entrance_interactions_request_authoritative_b1_transitions(self):
+        calls = []
+        basement_sync = SimpleNamespace(
+            queue_enter=lambda _scene: calls.append("enter") or True,
+            queue_exit=lambda _scene: calls.append("exit") or True,
+        )
+        lobby_entry = self.scene.objects.get("lobby-back-entrance")
+        self.assertIsNotNone(lobby_entry)
+        self.scene.player_position = lobby_entry.position
+        enter = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "rear-enter",
+                "name": "interact",
+                "payload": {"object_id": "lobby-back-entrance"},
+            },
+            self.state,
+            self.scene,
+            basement_sync=basement_sync,
+        )
+        self.assertTrue(enter.ok)
+        self.assertEqual(calls, ["enter"])
+
+        self.assertTrue(self.scene.select_basement_level(1))
+        b1_entry = self.scene.objects.get("basement-b1-back-entrance")
+        self.assertIsNotNone(b1_entry)
+        self.scene.player_position = b1_entry.position
+        exit_result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "rear-exit",
+                "name": "interact",
+                "payload": {"object_id": "basement-b1-back-entrance"},
+            },
+            self.state,
+            self.scene,
+            basement_sync=basement_sync,
+        )
+        self.assertTrue(exit_result.ok)
+        self.assertEqual(calls, ["enter", "exit"])
+
     def test_mila_reception_opens_a_unified_services_menu(self):
         receptionist = self.scene.objects.get("lobby-receptionist")
         self.assertIsNotNone(receptionist)
@@ -250,14 +327,18 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(business_area["floors"], list(range(1, 8)))
         self.assertEqual(business_area["basementFloors"], [f"B{level}" for level in range(1, 7)])
         self.assertEqual(business_area["rearShipping"]["floor"], "B1")
-        known_floor_six = FLOOR_PLAN["floorProgram"]["floor6Businesses"]
+        known_floor_six = FLOOR_PLAN["playableFloors"]["6"]["businesses"]
         self.assertEqual(
-            [(entry["label"], entry["officeNumber"]) for entry in known_floor_six],
+            [entry["businessKey"] for entry in known_floor_six],
             [
-                ("BANCO OMBRA BANK OFFICE", 1),
-                ("PABLO CORP REAL ESTATE", 2),
-                ("FISH STORE", 3),
-                ("FURNITURE STORE", 4),
+                "radio_station",
+                "music_studio",
+                "school",
+                "art_supply_store",
+                "meeting_room",
+                "public_workspace",
+                "study_hall",
+                "flower_shop",
             ],
         )
 

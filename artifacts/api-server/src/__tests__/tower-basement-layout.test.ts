@@ -5,10 +5,18 @@ import {
   isTowerBasementMazePointWalkable,
   isTowerBasementMazeSegmentWalkable,
   TOWER_BASEMENT_MAZES,
+  TOWER_BASEMENT_BACK_ENTRANCE,
   TOWER_GHOST_HIDEOUTS,
+  TOWER_LOBBY_BACK_ENTRANCE,
 } from "../lib/tower-basement-layout";
 
-type FloorPlan = { rooms: Array<{ id: string; mazeCells?: number[][] }> };
+type FloorPlan = {
+  rooms: Array<{ id: string; mazeCells?: number[][] }>;
+  businessSuiteLayout: {
+    lobbyBackEntrance: number[];
+    b1: { exteriorGate: number[] };
+  };
+};
 
 const floorPlan = JSON.parse(
   readFileSync(new URL("../../../../godot/office-client/floor_plan.json", import.meta.url), "utf8"),
@@ -19,6 +27,23 @@ function key([x, y]: readonly [number, number]): string {
 }
 
 describe("Tower basement maze layout", () => {
+  it("keeps the B1 exterior gate and lobby rear door aligned with the server route", () => {
+    expect(TOWER_BASEMENT_BACK_ENTRANCE).toEqual({
+      level: 1,
+      x: floorPlan.businessSuiteLayout.b1.exteriorGate[0],
+      y: floorPlan.businessSuiteLayout.b1.exteriorGate[1],
+    });
+    expect(TOWER_LOBBY_BACK_ENTRANCE).toEqual({
+      x: floorPlan.businessSuiteLayout.lobbyBackEntrance[0],
+      y: floorPlan.businessSuiteLayout.lobbyBackEntrance[1],
+    });
+    expect(isTowerBasementMazePointWalkable(
+      TOWER_BASEMENT_BACK_ENTRANCE.level,
+      TOWER_BASEMENT_BACK_ENTRANCE.x,
+      TOWER_BASEMENT_BACK_ENTRANCE.y,
+    )).toBe(true);
+  });
+
   it("matches the Godot floor plan and keeps every corridor connected to the stair landing", () => {
     for (const [levelText, cells] of Object.entries(TOWER_BASEMENT_MAZES)) {
       const level = Number(levelText);

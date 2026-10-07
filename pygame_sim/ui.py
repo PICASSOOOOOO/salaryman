@@ -11,6 +11,7 @@ import pygame
 
 from .animation import character_pose
 from .automation import AUTOMATION_CHARACTERS
+from .business_services import BUSINESS_ACTION_LABELS
 from .customization import (
     DECOR_PRESETS,
     WALL_FINISHES,
@@ -346,6 +347,13 @@ class SolarPunkRenderer:
             ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
             self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
+            if item.kind in {"business_suite", "business_kiosk"}:
+                label = item.label.upper()[:27]
+                label_surface = self.font_sm.render(label, True, Palette.INK)
+                tag = pygame.Rect(ix - label_surface.get_width() // 2 - 5, iy - 40, label_surface.get_width() + 10, 18)
+                pygame.draw.rect(self.screen, (228, 234, 211), tag, border_radius=3)
+                pygame.draw.rect(self.screen, (73, 109, 94), tag, 1, border_radius=3)
+                self.screen.blit(label_surface, (tag.x + 5, tag.y + 2))
             if item == scene.nearby_object:
                 pygame.draw.circle(self.screen, (255, 224, 112), (ix, iy), 20, 2)
                 self.text("[E] " + item.label, (ix + 18, iy - 24), self.font_sm, Palette.SUN)
@@ -1026,6 +1034,68 @@ class SolarPunkRenderer:
                 (194, 147, 69) if not nearby else Palette.SUN,
                 (gate.left, gate.bottom - max(6, int(13 * scale)), width, max(3, int(6 * scale))),
             )
+        elif kind == "business_suite":
+            width = max(38, int(520 * scale))
+            height = max(24, int(300 * scale))
+            desk = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (66, 79, 62), (desk.x - 2, desk.bottom - 3, desk.width + 4, 9))
+            pygame.draw.rect(self.screen, (150, 116, 76), desk, border_radius=3)
+            pygame.draw.rect(self.screen, (74, 66, 51), desk, 2, border_radius=3)
+            sign = pygame.Rect(desk.x + 5, desk.y - max(12, int(20 * scale)), max(18, width - 10), max(12, int(17 * scale)))
+            pygame.draw.rect(self.screen, (47, 94, 81), sign, border_radius=2)
+            pygame.draw.rect(self.screen, (197, 179, 124) if not nearby else Palette.SUN, sign, 1, border_radius=2)
+        elif kind == "business_kiosk":
+            width = max(18, int(250 * scale))
+            height = max(32, int(470 * scale))
+            kiosk = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (68, 78, 64), (kiosk.x - 4, kiosk.bottom - 5, kiosk.width + 8, 10))
+            pygame.draw.rect(self.screen, (71, 108, 91), kiosk, border_radius=4)
+            pygame.draw.rect(self.screen, (33, 60, 55), kiosk, 2, border_radius=4)
+            screen = pygame.Rect(kiosk.x + 4, kiosk.y + 5, kiosk.width - 8, max(10, int(175 * scale)))
+            pygame.draw.rect(self.screen, (175, 206, 172), screen, border_radius=2)
+            pygame.draw.rect(self.screen, (46, 80, 67), screen, 1, border_radius=2)
+            pygame.draw.circle(self.screen, Palette.SUN if nearby else (198, 185, 134), (kiosk.centerx, kiosk.bottom - 9), 3)
+        elif kind == "yard_gate":
+            width = max(40, int(800 * scale))
+            height = max(20, int(260 * scale))
+            gate = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (120, 137, 114), gate, border_radius=2)
+            pygame.draw.rect(self.screen, (50, 77, 64), gate, 2, border_radius=2)
+            for offset in range(8, width - 3, max(10, int(75 * scale))):
+                pygame.draw.line(self.screen, (54, 82, 68), (gate.x + offset, gate.y + 3), (gate.x + offset, gate.bottom - 3), 1)
+            pygame.draw.line(self.screen, Palette.SUN if nearby else (193, 161, 91), gate.midleft, gate.midright, 2)
+        elif kind == "delivery_truck":
+            width = max(42, int(1_050 * scale))
+            height = max(58, int(1_750 * scale))
+            truck = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (44, 58, 48), (truck.x - 5, truck.bottom - 8, truck.width + 10, 16))
+            pygame.draw.rect(self.screen, (66, 107, 84), truck, border_radius=7)
+            cargo = pygame.Rect(truck.x + 5, truck.y + 7, truck.width - 10, int(truck.height * 0.65))
+            pygame.draw.rect(self.screen, (166, 151, 112), cargo, border_radius=4)
+            pygame.draw.rect(self.screen, (60, 75, 59), cargo, 2, border_radius=4)
+            pygame.draw.rect(self.screen, (117, 162, 171), (truck.x + 6, cargo.bottom + 4, truck.width - 12, truck.height - cargo.height - 12), border_radius=3)
+            for wheel_y in (truck.y + 18, truck.bottom - 18):
+                pygame.draw.rect(self.screen, (35, 42, 36), (truck.left - 4, wheel_y, 7, 16), border_radius=2)
+                pygame.draw.rect(self.screen, (35, 42, 36), (truck.right - 3, wheel_y, 7, 16), border_radius=2)
+        elif kind == "forklift":
+            width = max(30, int(470 * scale))
+            height = max(38, int(680 * scale))
+            body = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (43, 54, 45), (body.x - 3, body.bottom - 5, body.width + 6, 10))
+            pygame.draw.rect(self.screen, (215, 169, 73), body, border_radius=5)
+            pygame.draw.rect(self.screen, (55, 68, 52), body, 2, border_radius=5)
+            pygame.draw.rect(self.screen, (62, 86, 74), (body.x + 7, body.y + 8, body.width - 14, int(body.height * 0.43)), border_radius=3)
+            pygame.draw.line(self.screen, (66, 72, 55), (body.left - 7, body.bottom - 7), (body.left - 7, body.bottom + 22), 3)
+            pygame.draw.line(self.screen, (66, 72, 55), (body.left - 7, body.bottom + 20), (body.centerx + 8, body.bottom + 20), 3)
+        elif kind in {"pallet", "supply_crate"}:
+            size = max(18, int(440 * scale))
+            height = max(14, int((260 if kind == "pallet" else 400) * scale))
+            box = pygame.Rect(x - size // 2, y - height // 2, size, height)
+            fill = (127, 92, 58) if kind == "pallet" else (171, 126, 75)
+            pygame.draw.ellipse(self.screen, (51, 56, 43), (box.x - 3, box.bottom - 4, box.width + 6, 9))
+            pygame.draw.rect(self.screen, fill, box, border_radius=2)
+            pygame.draw.rect(self.screen, (66, 59, 43), box, 1, border_radius=2)
+            pygame.draw.line(self.screen, (206, 169, 106), box.midleft, box.midright, 1)
         elif kind in ("elevator", "stairs"):
             pygame.draw.rect(self.screen, (121, 150, 151), (x - 10, y - 12, 20, 24), border_radius=2)
             if kind == "elevator":
@@ -1827,6 +1897,7 @@ class SolarPunkRenderer:
             "melee": "NON-GRAPHIC MELEE",
             "utility_work": "TOWER UTILITY WORK",
             "company_relocation": "COMPANY GROWTH",
+            "business": "TOWER BUSINESS OFFICE",
         }
         self.text(
             "ECONOMIC CONTROL" if state.active_page == "economy" else custom_titles.get(
@@ -1841,12 +1912,65 @@ class SolarPunkRenderer:
         self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
         self.panel(self.overlay_close_rect, Palette.MATRIX_PANEL_2, accent, radius=2, width=1)
         self.text("CLOSE  ESC", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_mono, accent)
-        if state.active_page in custom_titles:
+        if state.active_page == "business":
+            self._draw_business_page(state, scene, page)
+        elif state.active_page in custom_titles:
             self._draw_basement_page(state, scene, page)
         elif state.active_page == "economy":
             self.draw_economy_page(state, page)
         else:
             self.draw_tools_page(state, page)
+
+    def _draw_business_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        page: pygame.Rect,
+    ) -> None:
+        item = scene.objects.get(state.active_object_id or "")
+        if item is None:
+            item = scene.nearby_object
+        business_name = item.label if item is not None else "BUSINESS OFFICE"
+        self.text(
+            business_name.upper()[:62],
+            (page.x + 26, page.y + 103),
+            self.font_lg,
+            Palette.MATRIX_BRIGHT,
+        )
+        self.text(
+            f"FLOOR {scene.current_floor:02d} / UNIT {item.unit_number:02d}" if item and item.unit_number else f"FLOOR {scene.current_floor:02d} / PUBLIC LOBBY KIOSK",
+            (page.x + 26, page.y + 137),
+            self.font_mono,
+            Palette.MATRIX_DIM,
+        )
+        actions = item.service_actions if item is not None else ()
+        if not actions:
+            self.text(
+                "NO CONNECTED SERVICE SCREEN",
+                (page.x + 26, page.y + 193),
+                self.font_lg,
+                Palette.MATRIX_AMBER,
+            )
+            self.text(
+                "This location has no live stock or purchase flow. No sale was recorded.",
+                (page.x + 26, page.y + 230),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            return
+        for index, action in enumerate(actions):
+            y = page.y + 180 + index * 54
+            button = pygame.Rect(page.x + 26, y, min(page.width - 52, 590), 42)
+            self.game_page_actions[f"business:{action}"] = button
+            self.panel(button, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+            label = BUSINESS_ACTION_LABELS.get(action, action.replace("_", " ").upper())
+            self.text(label, (button.x + 14, button.y + 13), self.font_md, Palette.MATRIX_BRIGHT)
+        self.text(
+            "Existing SALARYMAN screens only. FIAT, GOLD, and inventory rules are unchanged.",
+            (page.x + 26, page.bottom - 36),
+            self.font_sm,
+            Palette.MATRIX_DIM,
+        )
 
     def _draw_basement_page(
         self,

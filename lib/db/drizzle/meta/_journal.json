@@ -519,6 +519,13 @@
       "when": 1791358326553,
       "tag": "0073_tower_operations_and_careers",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1791380203995,
+      "tag": "0074_b1_loading_yard_presence_bounds",
+      "breakpoints": true
     }
   ]
 }

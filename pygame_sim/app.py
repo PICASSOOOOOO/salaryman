@@ -176,7 +176,11 @@ def run(argv: list[str] | None = None) -> int:
                     x, y = data.get("x"), data.get("y")
                     if isinstance(x, int) and isinstance(y, int):
                         scene.player_position = (x, y)
-                    state.notice = "BASEMENT ACCESS / ENTERED B1"
+                    state.notice = (
+                        "REAR ENTRANCE / ENTERED B1"
+                        if data.get("accessMode") == "back_entrance"
+                        else "BASEMENT ACCESS / ENTERED B1"
+                    )
             elif event.source == "basement_level":
                 level = data.get("level")
                 if isinstance(level, int) and scene.select_basement_level(level):
@@ -186,7 +190,11 @@ def run(argv: list[str] | None = None) -> int:
                     x, y = data.get("x"), data.get("y")
                     if isinstance(x, int) and isinstance(y, int):
                         scene.player_position = (x, y)
-                    state.notice = "STAIRS / RETURNED TO THE TOWER LOBBY"
+                    state.notice = (
+                        "REAR ENTRANCE / ENTERED THE TOWER LOBBY"
+                        if data.get("exitVia") == "back_entrance"
+                        else "STAIRS / RETURNED TO THE TOWER LOBBY"
+                    )
             elif event.source == "basement_uniform":
                 state.pest_uniform_worn = data.get("uniformWorn") is True
                 state.notice = "PEST RESPONSE UNIFORM / " + (
@@ -250,6 +258,26 @@ def run(argv: list[str] | None = None) -> int:
             dispatch_game_command("reception_choice", {"choice": choice})
         elif action == "vending:business-stock":
             dispatch_game_command("toggle_business_stock")
+        elif action.startswith("business:"):
+            service = action.split(":", 1)[1]
+            service_pages = {
+                "bank_balance": "bank",
+                "read_only_stock": "business_stock",
+                "phone": "phone",
+            }
+            if service == "gold_exchange":
+                state.open_page(
+                    "economy",
+                    from_object=True,
+                    source="BANCO OMBRA / FIAT + GOLD",
+                    source_object_id=state.active_object_id,
+                )
+            elif service == "real_estate":
+                dispatch_game_command("reception_choice", {"choice": 3})
+            elif service in service_pages:
+                open_player_page(service_pages[service])
+            else:
+                state.notice = "BUSINESS SERVICE NOT AVAILABLE"
         elif action.startswith("nav:"):
             open_player_page(action.split(":", 1)[1])
         elif action.startswith("action:"):

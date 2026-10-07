@@ -18,6 +18,7 @@ from .scene import TowerScene
 
 BASEMENT_PATH = "/desktop-building/basement"
 BASEMENT_SERVICE_ELEVATOR_POSITION = (5_000, 4_000)
+BASEMENT_BACK_ENTRANCE_POSITION = (20_000, 7_000)
 WORK_TARGETS = frozenset({"power", "plumbing", "upkeep"})
 MELEE_MOVES = frozenset({
     "stomp_kick", "punch", "side_kick", "roundhouse_kick", "elbow",
@@ -94,15 +95,22 @@ class DesktopBasementSync:
         using_stairs = nearby is not None and nearby.kind == "stairs" and (
             nearby.id == "lobby-stairs" or nearby.id.startswith("lobby-stairwell-")
         )
+        using_back_entrance = nearby is not None and nearby.id == "lobby-back-entrance"
         if (
             self.link is None
             or scene.is_basement
             or scene.current_room != "lobby"
             or nearby is None
-            or not (using_service_elevator or using_stairs)
+            or not (using_service_elevator or using_stairs or using_back_entrance)
         ):
             return False
-        x, y = BASEMENT_SERVICE_ELEVATOR_POSITION if using_service_elevator else (5_000, 5_000)
+        x, y = (
+            BASEMENT_SERVICE_ELEVATOR_POSITION
+            if using_service_elevator
+            else BASEMENT_BACK_ENTRANCE_POSITION
+            if using_back_entrance
+            else (5_000, 5_000)
+        )
         return self._queue(
             "basement_enter",
             f"{BASEMENT_PATH}/presence",
@@ -144,6 +152,7 @@ class DesktopBasementSync:
             or nearby is None
             or not (
                 nearby.id == "basement-stairs-up-b1"
+                or nearby.id == "basement-b1-back-entrance"
                 or nearby.kind == "service_elevator"
             )
         ):
@@ -372,11 +381,19 @@ class DesktopBasementSync:
     def _success_message(source: str, result: dict[str, Any]) -> str:
         if source == "basement_enter":
             mode = result.get("accessMode")
-            return "SERVICE ELEVATOR / ENTERED B1" if mode == "service_elevator" else "STAIRS / ENTERED B1"
+            if mode == "service_elevator":
+                return "SERVICE ELEVATOR / ENTERED B1"
+            if mode == "back_entrance":
+                return "REAR ENTRANCE / ENTERED B1"
+            return "STAIRS / ENTERED B1"
         if source == "basement_level":
             return f"BASEMENT TRANSIT / ENTERED B{result.get('level', '')}"
         if source == "basement_exit":
-            return "RETURNED TO THE TOWER LOBBY"
+            return (
+                "REAR ENTRANCE / RETURNED TO THE TOWER LOBBY"
+                if result.get("exitVia") == "back_entrance"
+                else "RETURNED TO THE TOWER LOBBY"
+            )
         if source == "basement_attack":
             return "NON-LETHAL MELEE / SERVER RESOLVED"
         if source == "basement_claim":

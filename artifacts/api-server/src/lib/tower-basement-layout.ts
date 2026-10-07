@@ -18,7 +18,8 @@ export const TOWER_BASEMENT_MAZES: Record<number, readonly (readonly [number, nu
 };
 
 export function isTowerBasementMazePointWalkable(level: number, x: number, y: number): boolean {
-  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > 10_000 || y < 0 || y > 10_000) {
+  const maxX = level === 1 ? 20_000 : 10_000;
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > maxX || y < 0 || y > 10_000) {
     return false;
   }
   if (!Number.isInteger(level) || level < 1 || level > 6) return false;
@@ -50,7 +51,7 @@ export const TOWER_GHOST_HIDEOUTS = [
   { level: 5, x: 8_500, y: 3_500, location: "GENERATOR PASSAGE" },
   { level: 6, x: 6_500, y: 6_500, location: "PUMP ACCESS" },
   { level: 2, x: 5_000, y: 5_000, location: "STAIRWELL" },
-  { level: 1, x: 9_500, y: 9_000, location: "REAR SHIPPING" },
+  { level: 1, x: 17_000, y: 9_000, location: "LOADING YARD" },
 ] as const;
 
 export function getTowerGhostHideout(now: Date = new Date()) {
@@ -63,9 +64,12 @@ export const TOWER_BASEMENT_STATIONS = {
   power: { level: 5, x: 7_500, y: 2_000 },
   plumbing: { level: 6, x: 2_500, y: 7_500 },
   upkeep: { level: 3, x: 7_500, y: 7_500 },
-  shippingWaste: { level: 1, x: 9_000, y: 9_000 },
-  loadingGate: { level: 1, x: 9_000, y: 7_000 },
+  shippingWaste: { level: 1, x: 15_000, y: 9_000 },
+  loadingGate: { level: 1, x: 18_500, y: 7_000 },
 } as const;
+
+export const TOWER_BASEMENT_BACK_ENTRANCE = { level: 1, x: 20_000, y: 7_000 } as const;
+export const TOWER_LOBBY_BACK_ENTRANCE = { x: 49_975_250, y: 50_000_800 } as const;
 
 export const TOWER_TRASH_BINS = {
   1: { room: "lobby", x: 49_975_600, y: 50_002_300 },

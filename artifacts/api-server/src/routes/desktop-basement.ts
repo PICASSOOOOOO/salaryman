@@ -30,7 +30,11 @@ import {
   TOWER_SERVICE_ELEVATOR_LOBBY,
   TOWER_TRASH_BINS,
 } from "../lib/tower-basement-layout";
-import { TOWER_BASEMENT_STATIONS } from "../lib/tower-basement-layout";
+import {
+  TOWER_BASEMENT_BACK_ENTRANCE,
+  TOWER_BASEMENT_STATIONS,
+  TOWER_LOBBY_BACK_ENTRANCE,
+} from "../lib/tower-basement-layout";
 import {
   getTowerGhostHideout,
   isTowerBasementMazePointWalkable,
@@ -47,6 +51,7 @@ import { recordVerifiedCareerWork } from "../lib/career-progression";
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
 const BASEMENT_SIZE = 10_000;
+const B1_WIDTH = 20_000;
 const BASEMENT_STAIRS = { x: 5_000, y: 5_000 };
 const TOWER_BASEMENT_STAIRWELLS = [
   { x: 49_978_650, y: 50_000_800 },
@@ -158,14 +163,23 @@ function isNearBasementServiceElevator(point: { x: number; y: number }): boolean
   return distance(point, TOWER_SERVICE_ELEVATOR_BASEMENT) <= STAIRS_RADIUS;
 }
 
+function isNearBasementBackEntrance(point: { x: number; y: number }): boolean {
+  return distance(point, TOWER_BASEMENT_BACK_ENTRANCE) <= STAIRS_RADIUS;
+}
+
 function isNearTowerBasementStairs(floorNumber: number, point: { x: number; y: number }): boolean {
   return floorNumber === 1 && TOWER_BASEMENT_STAIRWELLS.some((stairwell) =>
     distance(point, stairwell) <= STAIRS_RADIUS);
 }
 
+function isNearTowerBackEntrance(floorNumber: number, point: { x: number; y: number }): boolean {
+  return floorNumber === 1 && distance(point, TOWER_LOBBY_BACK_ENTRANCE) <= STAIRS_RADIUS;
+}
+
 function positionIsValid(level: number, x: number, y: number): boolean {
+  const maxX = level === 1 ? B1_WIDTH : BASEMENT_SIZE;
   return Number.isInteger(x) && Number.isInteger(y)
-    && x >= 0 && x <= BASEMENT_SIZE && y >= 0 && y <= BASEMENT_SIZE
+    && x >= 0 && x <= maxX && y >= 0 && y <= BASEMENT_SIZE
     && isTowerBasementMazePointWalkable(level, x, y);
 }
 
@@ -371,7 +385,7 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
 
   const now = new Date();
   try {
-    let accessMode: "stairs" | "service_elevator" = "stairs";
+    let accessMode: "stairs" | "service_elevator" | "back_entrance" = "stairs";
     const result = await db.transaction(async (tx) => {
       const [previous] = await tx.select().from(desktopBasementPresenceTable)
         .where(eq(desktopBasementPresenceTable.userId, link.userId))
@@ -409,18 +423,26 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
         if (!office || office.linkId !== link.id || !fresh(office.lastSeenAt, now)
           || office.room !== "lobby"
           || (!isNearTowerBasementStairs(office.floorNumber, office)
-            && !isNearTowerServiceElevatorLanding(office.floorNumber, office))) {
-          return { error: "Approach a lobby stairwell or the service elevator before entering the basement" } as const;
+            && !isNearTowerServiceElevatorLanding(office.floorNumber, office)
+            && !isNearTowerBackEntrance(office.floorNumber, office))) {
+          return { error: "Approach a lobby stairwell, rear entrance, or service elevator before entering the basement" } as const;
         }
         const enteredByServiceElevator = isNearTowerServiceElevatorLanding(office.floorNumber, office);
+        const enteredByBackEntrance = isNearTowerBackEntrance(office.floorNumber, office);
         if (enteredByServiceElevator && !await hasTowerStaffAssignment(link.userId)) {
           return { error: "The service elevator is restricted to assigned Tower staff" } as const;
         }
-        accessMode = enteredByServiceElevator ? "service_elevator" : "stairs";
+        accessMode = enteredByServiceElevator
+          ? "service_elevator"
+          : enteredByBackEntrance
+            ? "back_entrance"
+            : "stairs";
         if (enteredByServiceElevator
           ? !isNearBasementServiceElevator({ x, y })
-          : !isNearBasementStairs({ x, y })) {
-          return { error: "Enter B1 beside the selected stairwell or service elevator" } as const;
+          : enteredByBackEntrance
+            ? !isNearBasementBackEntrance({ x, y })
+            : !isNearBasementStairs({ x, y })) {
+          return { error: "Enter B1 beside the selected stairwell, rear entrance, or service elevator" } as const;
         }
       }
 
@@ -474,15 +496,20 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
         .limit(1);
       if (!presence || presence.linkId !== link.id || presence.level !== 1
         || !fresh(presence.lastSeenAt, now)
-        || (!isNearBasementStairs(presence) && !isNearBasementServiceElevator(presence))) {
-        return { error: "Return to B1 and reach the lobby stairs first" } as const;
+        || (!isNearBasementStairs(presence)
+          && !isNearBasementServiceElevator(presence)
+          && !isNearBasementBackEntrance(presence))) {
+        return { error: "Return to B1 stairs, the service elevator, or the rear entrance" } as const;
       }
       if (isNearBasementServiceElevator(presence) && !await hasTowerStaffAssignment(link.userId)) {
         return { error: "The service elevator is restricted to assigned Tower staff" } as const;
       }
+      const exitsByBackEntrance = isNearBasementBackEntrance(presence);
       const exitPosition = isNearBasementServiceElevator(presence)
         ? TOWER_SERVICE_ELEVATOR_LOBBY
-        : TOWER_BASEMENT_STAIRWELLS[0];
+        : exitsByBackEntrance
+          ? TOWER_LOBBY_BACK_ENTRANCE
+          : TOWER_BASEMENT_STAIRWELLS[0];
       const [office] = await tx.select().from(desktopOfficePresenceTable)
         .where(eq(desktopOfficePresenceTable.userId, link.userId))
         .for("update")
@@ -522,7 +549,13 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
       });
       await tx.delete(desktopBasementPresenceTable)
         .where(eq(desktopBasementPresenceTable.userId, link.userId));
-      return { ok: true as const, floor: 1, x: exitPosition.x, y: exitPosition.y };
+      return {
+        ok: true as const,
+        floor: 1,
+        x: exitPosition.x,
+        y: exitPosition.y,
+        exitVia: exitsByBackEntrance ? "back_entrance" : "lobby",
+      };
     });
     if ("error" in result) {
       res.status(409).json({ error: result.error });

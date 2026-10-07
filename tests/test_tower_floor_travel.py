@@ -51,16 +51,18 @@ class TowerFloorTravelTests(unittest.TestCase):
                 self.assertTrue(scene.select_floor(6))
             self.assertTrue(scene._collides_with_object(trash_can.position))
 
-    def test_construction_floors_and_floor_six_are_open_but_upper_floors_are_closed(self):
+    def test_floors_two_through_seven_remain_open_and_upper_floors_are_closed(self):
         scene = TowerScene()
         self.assertTrue(scene.is_playable_floor(1))
         self.assertTrue(scene.is_playable_floor(6))
         for floor in (2, 3, 4, 5):
             self.assertTrue(scene.is_playable_floor(floor), floor)
             self.assertEqual(scene.floor_status(floor), "construction_open")
-        for floor in (0, 7, 67):
+        self.assertTrue(scene.is_playable_floor(7))
+        self.assertEqual(scene.floor_status(7), "open")
+        for floor in (0, 8, 67):
             self.assertFalse(scene.is_playable_floor(floor), floor)
-        self.assertEqual(scene.floor_status(7), "under_construction")
+        self.assertEqual(scene.floor_status(8), "under_construction")
 
     def test_restrooms_waste_stations_and_daily_utility_stations_exist_in_their_physical_floors(self):
         scene = TowerScene()
@@ -88,7 +90,7 @@ class TowerFloorTravelTests(unittest.TestCase):
         self.assertTrue(scene.select_floor(1))
         self.assertEqual(scene.current_floor, 1)
         self.assertEqual(tuple(scene.player_position), lobby_spawn)
-        for expected_floor in range(2, 7):
+        for expected_floor in range(2, 8):
             self.assertTrue(scene.climb_stairs())
             self.assertEqual(scene.current_floor, expected_floor)
         self.assertFalse(scene.climb_stairs())
