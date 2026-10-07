@@ -18,8 +18,9 @@ import { isNearTowerElevator, TOWER_ELEVATOR_POSITIONS } from "../lib/desktop-bu
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
 const BASEMENT_SIZE = 10_000;
-const BASEMENT_ELEVATOR = { x: 5_000, y: 5_000 };
-const ELEVATOR_RADIUS = 800;
+const BASEMENT_STAIRS = { x: 5_000, y: 5_000 };
+const TOWER_BASEMENT_STAIRS = { x: 49_978_650, y: 50_000_800 };
+const STAIRS_RADIUS = 800;
 const PRESENCE_MAX_AGE_MS = 15_000;
 const MAX_MOVEMENT_PER_SECOND = 750;
 const ATTACK_RANGE = 500;
@@ -31,6 +32,7 @@ const NPC_WORK_DAMAGE = 3;
 const WORK_DURATION_MS = 8_000;
 const WORK_MAX_AGE_MS = 10 * 60_000;
 const CARCASS_CLAIM_MS = 10 * 60_000;
+const CARCASS_PICKUP_RADIUS = 500;
 const CARCASS_DROP_POINT = { x: 5_000, y: 5_000 };
 const CARCASS_DROP_RADIUS = 650;
 
@@ -107,8 +109,12 @@ function distance(a: { x: number; y: number }, b: { x: number; y: number }): num
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function isNearBasementElevator(point: { x: number; y: number }): boolean {
-  return distance(point, BASEMENT_ELEVATOR) <= ELEVATOR_RADIUS;
+function isNearBasementStairs(point: { x: number; y: number }): boolean {
+  return distance(point, BASEMENT_STAIRS) <= STAIRS_RADIUS;
+}
+
+function isNearTowerBasementStairs(floorNumber: number, point: { x: number; y: number }): boolean {
+  return floorNumber === 1 && distance(point, TOWER_BASEMENT_STAIRS) <= STAIRS_RADIUS;
 }
 
 function positionIsValid(x: number, y: number): boolean {
@@ -140,6 +146,10 @@ function getEnergy(data: Record<string, unknown>, now: Date): { stamina: number;
       energyUpdatedAt: new Date(nextUpdateMs).toISOString(),
     },
   };
+}
+
+function hasPestResponseUniform(data: Record<string, unknown>): boolean {
+  return data.pestResponseUniformWorn === true;
 }
 
 function vitalValues(row: VitalRow, now: Date) {
@@ -291,8 +301,11 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
         .limit(1);
       if (previous && previous.linkId === link.id && fresh(previous.lastSeenAt, now)) {
         if (previous.level !== level) {
-          if (!isNearBasementElevator(previous) || !isNearBasementElevator({ x, y })) {
-            return { error: "Use the basement elevator to change levels" } as const;
+          if (Math.abs(previous.level - level) !== 1) {
+            return { error: "Use each basement stair landing in order" } as const;
+          }
+          if (!isNearBasementStairs(previous) || !isNearBasementStairs({ x, y })) {
+            return { error: "Use the basement stairs to change levels" } as const;
           }
         } else {
           const elapsedMs = now.getTime() - previous.lastSeenAt.getTime();
@@ -307,9 +320,12 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
           .for("update")
           .limit(1);
         if (!office || office.linkId !== link.id || !fresh(office.lastSeenAt, now)
-          || !["lobby", "hallway"].includes(office.room)
-          || !isNearTowerElevator(office.floorNumber, office)) {
-          return { error: "Approach an authorized Tower elevator before entering the basement" } as const;
+          || office.room !== "lobby"
+          || !isNearTowerBasementStairs(office.floorNumber, office)) {
+          return { error: "Approach the lobby stairs before entering the basement" } as const;
+        }
+        if (!isNearBasementStairs({ x, y })) {
+          return { error: "Enter B1 beside the basement stairs" } as const;
         }
       }
 
@@ -356,15 +372,14 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
         .where(eq(desktopBasementPresenceTable.userId, link.userId))
         .for("update")
         .limit(1);
-      if (!presence || presence.linkId !== link.id || !fresh(presence.lastSeenAt, now)
-        || !isNearBasementElevator(presence)) {
-        return { error: "Reach the basement elevator before returning to the lobby" } as const;
+      if (!presence || presence.linkId !== link.id || presence.level !== 1
+        || !fresh(presence.lastSeenAt, now) || !isNearBasementStairs(presence)) {
+        return { error: "Return to B1 and reach the lobby stairs first" } as const;
       }
       const [office] = await tx.select().from(desktopOfficePresenceTable)
         .where(eq(desktopOfficePresenceTable.userId, link.userId))
         .for("update")
         .limit(1);
-      const floorOneElevator = TOWER_ELEVATOR_POSITIONS[1];
       const city = office?.city ?? "minx_city";
       await tx.insert(desktopOfficePresenceTable).values({
         userId: link.userId,
@@ -376,8 +391,8 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
         roomKey: `lobby:${city}`,
         room: "lobby",
         floorNumber: 1,
-        x: floorOneElevator.x,
-        y: floorOneElevator.y,
+        x: TOWER_BASEMENT_STAIRS.x,
+        y: TOWER_BASEMENT_STAIRS.y,
         action: "stand",
         destinationFloor: null,
         lastSeenAt: now,
@@ -391,8 +406,8 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
           roomKey: `lobby:${city}`,
           room: "lobby",
           floorNumber: 1,
-          x: floorOneElevator.x,
-          y: floorOneElevator.y,
+          x: TOWER_BASEMENT_STAIRS.x,
+          y: TOWER_BASEMENT_STAIRS.y,
           action: "stand",
           destinationFloor: null,
           lastSeenAt: now,
@@ -421,35 +436,41 @@ router.post("/desktop-building/basement/uniform", async (req, res): Promise<void
     return;
   }
   try {
-    const presence = await activePresence(link.userId, link.id);
     const now = new Date();
-    if (presence && presence.level === 1 && isNearBasementElevator(presence)) {
-      await db.update(desktopBasementPresenceTable).set({ uniformWorn: req.body.worn })
-        .where(eq(desktopBasementPresenceTable.userId, link.userId));
-      res.json({ ok: true, uniformWorn: req.body.worn });
-      return;
-    }
-    const [office] = await db.select().from(desktopOfficePresenceTable)
-      .where(eq(desktopOfficePresenceTable.userId, link.userId)).limit(1);
-    if (!office || office.linkId !== link.id || office.room !== "lobby"
-      || !fresh(office.lastSeenAt, now) || !isNearTowerElevator(1, office)) {
-      res.status(409).json({ error: "Use the lobby or B1 uniform station" });
-      return;
-    }
-    await db.insert(desktopBasementPresenceTable).values({
-      userId: link.userId,
-      linkId: link.id,
-      level: 1,
-      x: BASEMENT_ELEVATOR.x,
-      y: BASEMENT_ELEVATOR.y,
-      action: "stand",
-      uniformWorn: req.body.worn,
-      lastSeenAt: now,
-    }).onConflictDoUpdate({
-      target: desktopBasementPresenceTable.userId,
-      set: { linkId: link.id, uniformWorn: req.body.worn, lastSeenAt: now },
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopBasementPresenceTable)
+        .where(eq(desktopBasementPresenceTable.userId, link.userId))
+        .for("update")
+        .limit(1);
+      const [office] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId))
+        .for("update")
+        .limit(1);
+      const atBasementStation = Boolean(presence && presence.linkId === link.id
+        && presence.level === 1 && fresh(presence.lastSeenAt, now)
+        && isNearBasementStairs(presence));
+      const atLobbyStation = Boolean(office && office.linkId === link.id && office.room === "lobby"
+        && fresh(office.lastSeenAt, now)
+        && isNearTowerBasementStairs(office.floorNumber, office));
+      if (!atBasementStation && !atLobbyStation) {
+        return { error: "Use the lobby or B1 uniform station" } as const;
+      }
+      const [save] = await tx.select().from(salarymanSavesTable).where(and(
+        eq(salarymanSavesTable.userId, link.userId),
+        eq(salarymanSavesTable.slotIndex, 0),
+      )).for("update").limit(1);
+      if (!save) return { error: "Create a character before equipping the uniform" } as const;
+      const data = save.data as Record<string, unknown>;
+      await tx.update(salarymanSavesTable).set({
+        data: { ...data, pestResponseUniformWorn: req.body.worn },
+      }).where(eq(salarymanSavesTable.id, save.id));
+      return { ok: true as const, uniformWorn: req.body.worn };
     });
-    res.json({ ok: true, uniformWorn: req.body.worn });
+    if ("error" in result) {
+      res.status(409).json({ error: result.error });
+      return;
+    }
+    res.json(result);
   } catch (error) {
     req.log.error({ err: error }, "Desktop pest-response uniform update failed");
     res.status(500).json({ error: "Could not update uniform" });
@@ -493,7 +514,7 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
       observedAt: now.toISOString(),
       player: {
         stamina: save ? getEnergy(save.data as Record<string, unknown>, now).stamina : 100,
-        uniformWorn: presence.uniformWorn,
+        uniformWorn: save ? hasPestResponseUniform(save.data as Record<string, unknown>) : false,
         x: presence.x,
         y: presence.y,
       },
@@ -522,7 +543,7 @@ router.post("/desktop-building/basement/attack", async (req, res): Promise<void>
   const requestId = req.body?.requestId;
   const moveId = req.body?.moveId;
   if (!isUuid(pestId) || !isUuid(requestId) || typeof moveId !== "string"
-    || !(moveId in MOVES)) {
+    || !Object.prototype.hasOwnProperty.call(MOVES, moveId)) {
     res.status(400).json({ error: "Provide a pest ID, request ID, and supported melee move" });
     return;
   }
@@ -557,7 +578,7 @@ router.post("/desktop-building/basement/attack", async (req, res): Promise<void>
         return { error: "Basement presence expired" } as const;
       }
       if (presence.workSessionId) return { error: "Finish or leave the current maintenance work first" } as const;
-      if (move.toolRequired) {
+      if ("toolRequired" in move && move.toolRequired) {
         const [weapon] = await tx.select({ itemId: playerLoadoutTable.itemId })
           .from(playerLoadoutTable).where(and(
             eq(playerLoadoutTable.userId, link.userId),
@@ -652,6 +673,9 @@ router.post("/desktop-building/basement/carcass/claim", async (req, res): Promis
       if (!pest || pest.status !== "carcass" || pest.level !== presence.level) {
         return { error: "That carcass is not available here" } as const;
       }
+      if (distance(presence, pest) > CARCASS_PICKUP_RADIUS) {
+        return { error: "Move closer to the carcass to pick it up" } as const;
+      }
       const claimActive = pest.claimedByUserId != null && pest.claimedAt != null
         && now.getTime() - pest.claimedAt.getTime() <= CARCASS_CLAIM_MS;
       if (claimActive && pest.claimedByUserId !== link.userId) {
@@ -731,7 +755,7 @@ router.post("/desktop-building/basement/work/start", async (req, res): Promise<v
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   const target = req.body?.target;
-  if (typeof target !== "string" || !(target in WORK_STATIONS)) {
+  if (typeof target !== "string" || !Object.prototype.hasOwnProperty.call(WORK_STATIONS, target)) {
     res.status(400).json({ error: "Choose power, plumbing, or upkeep work" });
     return;
   }
@@ -746,7 +770,13 @@ router.post("/desktop-building/basement/work/start", async (req, res): Promise<v
         || presence.level !== station.level || distance(presence, station) > 500) {
         return { error: "Move to the B1 utility station first" } as const;
       }
-      if (!presence.uniformWorn) return { error: "Wear the pest-response work uniform" } as const;
+      const [save] = await tx.select({ data: salarymanSavesTable.data }).from(salarymanSavesTable).where(and(
+        eq(salarymanSavesTable.userId, link.userId),
+        eq(salarymanSavesTable.slotIndex, 0),
+      )).for("update").limit(1);
+      if (!save || !hasPestResponseUniform(save.data as Record<string, unknown>)) {
+        return { error: "Wear the pest-response work uniform" } as const;
+      }
       if (presence.workSessionId && presence.workStartedAt
         && now.getTime() - presence.workStartedAt.getTime() <= WORK_MAX_AGE_MS) {
         return { error: "Finish the current maintenance task first" } as const;
@@ -795,7 +825,6 @@ router.post("/desktop-building/basement/work/complete", async (req, res): Promis
       if (presence.workSessionId !== sessionId || !presence.workTarget || !presence.workStartedAt) {
         return { error: "That maintenance session is not active" } as const;
       }
-      if (!presence.uniformWorn) return { error: "Wear the pest-response work uniform" } as const;
       const target = presence.workTarget as WorkTarget;
       const station = WORK_STATIONS[target];
       if (presence.level !== station.level || distance(presence, station) > 500) {
@@ -813,6 +842,9 @@ router.post("/desktop-building/basement/work/complete", async (req, res): Promis
       )).for("update").limit(1);
       if (!save) return { error: "Create a character before doing utility work" } as const;
       const energy = getEnergy(save.data as Record<string, unknown>, now);
+      if (!hasPestResponseUniform(save.data as Record<string, unknown>)) {
+        return { error: "Wear the pest-response work uniform" } as const;
+      }
       if (energy.stamina < 6) return { error: "Not enough stamina" } as const;
       const staminaAfter = energy.stamina - 6;
       await tx.update(salarymanSavesTable).set({

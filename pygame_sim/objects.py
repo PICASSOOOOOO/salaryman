@@ -30,6 +30,11 @@ ObjectKind = Literal[
     "vending_machine",
     "elevator",
     "stairs",
+    "basement_stairs",
+    "pest_job_board",
+    "pest_uniform_station",
+    "utility_station",
+    "carcass_disposal",
     "arcade",
     "desk",
     "chair",
@@ -89,6 +94,11 @@ class OfficeObject:
             "vending_machine": (150, 180),
             "elevator": (0, 0),
             "stairs": (0, 0),
+            "basement_stairs": (0, 0),
+            "pest_job_board": (0, 0),
+            "pest_uniform_station": (90, 90),
+            "utility_station": (100, 100),
+            "carcass_disposal": (100, 100),
             "door": (0, 0),
             "telephone": (0, 0),
             "crt_terminal": (0, 0),
@@ -179,6 +189,10 @@ class OfficeObjectRegistry:
 
         if item.kind == "stairs":
             state.close_page()
+            if scene.current_room == "lobby":
+                message = "STAIRS DOWN / B1 ENTRY REQUIRES THE TOWER STAIR"
+                state.notice = message
+                return InteractionResult(False, message)
             if not scene.climb_stairs():
                 next_floor = scene.current_floor + 1
                 message = (
@@ -248,6 +262,44 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(True, message)
 
+        if item.kind == "basement_stairs":
+            state.close_page()
+            message = "BASEMENT STAIRS / USE THE STAIRWELL TO CHANGE LEVELS"
+            state.notice = message
+            return InteractionResult(False, message)
+
+        if item.kind == "pest_job_board":
+            scene.focus_on_interaction(item)
+            if state.open_page(
+                "pest_jobs",
+                from_object=True,
+                source="PEST WORK ORDERS",
+                source_object_id=item.id,
+            ):
+                return InteractionResult(True, "PEST WORK ORDERS / LOCAL PROGRESS ONLY")
+            return InteractionResult(False, "WORK ORDER BOARD UNAVAILABLE")
+
+        if item.kind == "pest_uniform_station":
+            scene.focus_on_interaction(item)
+            if state.open_page(
+                "pest_uniform",
+                from_object=True,
+                source="PEST RESPONSE UNIFORM",
+                source_object_id=item.id,
+            ):
+                return InteractionResult(True, "UNIFORM ISSUE STATION")
+            return InteractionResult(False, "UNIFORM STATION UNAVAILABLE")
+
+        if item.kind == "utility_station":
+            scene.focus_on_interaction(item)
+            state.notice = f"UTILITY WORK / {item.label}"
+            return InteractionResult(True, state.notice)
+
+        if item.kind == "carcass_disposal":
+            scene.focus_on_interaction(item)
+            state.notice = "CARCASS DISPOSAL / CLAIMED RECOVERY ONLY"
+            return InteractionResult(True, state.notice)
+
         messages = {
             "telephone": ("TELEPHONE READY / PHONE CENTER", "phone-center"),
             "crt_terminal": ("SYSTEMS TERMINAL / FULL WORKSPACE", "systems-terminal"),
@@ -278,9 +330,11 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     """
     entries = [
         OfficeObject("lobby-elevator", "elevator", "ELEVATOR", "lobby", (49_977_000, 50_000_000), "RIDE TO FLOOR 06", destination_floor=6),
-        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "BASEMENT & FLOORS 02–05 UNDER CONSTRUCTION"),
+        OfficeObject("lobby-stairs", "stairs", "STAIRS", "lobby", (49_978_650, 50_000_800), "TAKE STAIRS DOWN TO B1 / FLOORS 02–05 SEALED"),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
-        OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "RECEPTION", interactive=False),
+        OfficeObject("lobby-receptionist", "receptionist", "RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "PEST WORK ORDERS"),
+        OfficeObject("lobby-pest-job-board", "pest_job_board", "PEST WORK ORDERS", "lobby", (49_979_000, 49_999_100), "W-2 / 1099 LOCAL JOBS"),
+        OfficeObject("lobby-pest-uniform", "pest_uniform_station", "WORK UNIFORM", "lobby", (49_978_200, 50_000_100), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE SUPPLIES"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "CALLL HOME / COMMS ONLY"),
@@ -363,6 +417,39 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("office4b-crt", "crt_terminal", "SYSTEMS TERMINAL", "office_04", (8_100, 6_500), "SIT TO USE COMPUTER", display_position=(8_100, 6_100), parent_id="office4b-desk"),
         OfficeObject("office4b-telephone", "telephone", "TELEPHONE", "office_04", (7_700, 6_250), "OPEN PHONE CENTER"),
     ]
+    for level in range(1, 7):
+        room = f"basement_b{level}"
+        entries.extend(
+            [
+                OfficeObject(
+                    f"basement-stairs-up-b{level}",
+                    "basement_stairs",
+                    "STAIRS / UP",
+                    room,
+                    (4_400, 5_000),
+                    "TAKE STAIRS UP ONE LANDING",
+                ),
+                OfficeObject(
+                    f"basement-stairs-down-b{level}",
+                    "basement_stairs",
+                    "STAIRS / DOWN",
+                    room,
+                    (5_600, 5_000),
+                    "TAKE STAIRS DOWN ONE LANDING",
+                ),
+            ]
+        )
+        if level == 1:
+            entries.extend(
+                [
+                    OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"),
+                    OfficeObject("basement-b1-uniform", "pest_uniform_station", "UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
+                    OfficeObject("basement-b1-power", "utility_station", "POWER PANEL", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"),
+                    OfficeObject("basement-b1-plumbing", "utility_station", "PLUMBING PANEL", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"),
+                    OfficeObject("basement-b1-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"),
+                    OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_800), "SELL A CLAIMED CARCASS"),
+                ]
+            )
     """
     # Do not register the old free workstation sets or decorative corridor
     # props. Shared furniture is added only from server-owned office inventory.

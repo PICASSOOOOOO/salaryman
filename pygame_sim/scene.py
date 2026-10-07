@@ -54,6 +54,8 @@ class TowerScene:
     height: int = int(FLOOR_PLAN["world"]["height"])
     current_floor: int = 1
     current_room: str = "lobby"
+    basement_level: int | None = None
+    basement_snapshot: dict[str, object] | None = None
     player_position: tuple[int, int] = tuple(FLOOR_PLAN["rooms"][0]["spawn"])
     rooms: tuple[Room, ...] = field(
         default_factory=lambda: tuple(
@@ -96,6 +98,161 @@ class TowerScene:
     def room(self) -> Room:
         return next(room for room in self.rooms if room.id == self.current_room)
 
+    @property
+    def is_basement(self) -> bool:
+        return (
+            self.basement_level is not None
+            and 1 <= self.basement_level <= 6
+            and self.current_room == f"basement_b{self.basement_level}"
+        )
+
+    def set_basement_snapshot(self, snapshot: object) -> None:
+        """Keep only bounded fields consumed by local game rendering and actions."""
+        if not self.is_basement or not isinstance(snapshot, dict):
+            self.basement_snapshot = None
+            return
+        level = snapshot.get("level")
+        if level != self.basement_level:
+            self.basement_snapshot = None
+            return
+        player = snapshot.get("player")
+        building = snapshot.get("building")
+        pests = snapshot.get("pests")
+        crew = snapshot.get("npcCrew")
+        normalized_pests: list[dict[str, object]] = []
+        if isinstance(pests, list):
+            for pest in pests:
+                if not isinstance(pest, dict):
+                    continue
+                if (
+                    not isinstance(pest.get("id"), str)
+                    or pest.get("kind") not in {"rat", "snake"}
+                    or not all(isinstance(pest.get(key), int) for key in ("x", "y", "health", "maxHealth"))
+                    or pest.get("status") not in {"active", "carcass", "sold"}
+                ):
+                    continue
+                x, y = int(pest["x"]), int(pest["y"])
+                if not 0 <= x <= 10_000 or not 0 <= y <= 10_000:
+                    continue
+                normalized_pests.append({
+                    "id": pest["id"][:64],
+                    "kind": pest["kind"],
+                    "x": x,
+                    "y": y,
+                    "health": max(0, int(pest["health"])),
+                    "maxHealth": max(1, int(pest["maxHealth"])),
+                    "status": pest["status"],
+                    "bountyFiat": max(0, int(pest.get("bountyFiat", 0) or 0)),
+                    "claimedByYou": pest.get("claimedByYou") is True,
+                    "carcassClaimed": pest.get("carcassClaimed") is True,
+                    "defeatedByYou": pest.get("defeatedByYou") is True,
+                })
+        normalized_crew: list[dict[str, object]] = []
+        if isinstance(crew, list):
+            for member in crew:
+                if not isinstance(member, dict):
+                    continue
+                if not all(isinstance(member.get(key), int) for key in ("x", "y")):
+                    continue
+                normalized_crew.append({
+                    "id": str(member.get("id", ""))[:64],
+                    "label": str(member.get("label", "TOWER STAFF"))[:48],
+                    "x": max(0, min(10_000, int(member["x"]))),
+                    "y": max(0, min(10_000, int(member["y"]))),
+                    "action": "working",
+                })
+        safe_building: dict[str, object] | None = None
+        if isinstance(building, dict):
+            safe_building = {}
+            for key in ("powerCondition", "plumbingCondition", "upkeepCondition"):
+                value = building.get(key)
+                if isinstance(value, int) and not isinstance(value, bool):
+                    safe_building[key] = max(0, min(100, value))
+            safe_building["powerOperational"] = building.get("powerOperational") is True
+            safe_building["waterOperational"] = building.get("waterOperational") is True
+        safe_player: dict[str, object] = {}
+        if isinstance(player, dict):
+            stamina = player.get("stamina")
+            if isinstance(stamina, int) and not isinstance(stamina, bool):
+                safe_player["stamina"] = max(0, min(100, stamina))
+            safe_player["uniformWorn"] = player.get("uniformWorn") is True
+        drop_point = snapshot.get("carcassDropPoint")
+        if not (
+            isinstance(drop_point, dict)
+            and isinstance(drop_point.get("x"), int)
+            and isinstance(drop_point.get("y"), int)
+        ):
+            drop_point = {"x": 5_000, "y": 5_000}
+        self.basement_snapshot = {
+            "level": self.basement_level,
+            "player": safe_player,
+            "building": safe_building,
+            "pests": normalized_pests,
+            "npcCrew": normalized_crew,
+            "carcassDropPoint": {
+                "x": max(0, min(10_000, int(drop_point["x"]))),
+                "y": max(0, min(10_000, int(drop_point["y"]))),
+            },
+        }
+
+    @property
+    def nearest_hostile(self) -> dict[str, object] | None:
+        if not self.is_basement or self.basement_snapshot is None:
+            return None
+        pests = self.basement_snapshot.get("pests", [])
+        if not isinstance(pests, list):
+            return None
+        targets = [
+            pest for pest in pests
+            if isinstance(pest, dict) and pest.get("status") == "active"
+        ]
+        if not targets:
+            return None
+        return min(
+            targets,
+            key=lambda pest: hypot(
+                int(pest["x"]) - self.player_position[0],
+                int(pest["y"]) - self.player_position[1],
+            ),
+        )
+
+    @property
+    def nearest_carcass(self) -> dict[str, object] | None:
+        if not self.is_basement or self.basement_snapshot is None:
+            return None
+        pests = self.basement_snapshot.get("pests", [])
+        if not isinstance(pests, list):
+            return None
+        targets = [
+            pest for pest in pests
+            if isinstance(pest, dict) and pest.get("status") == "carcass"
+        ]
+        if not targets:
+            return None
+        nearest = min(
+            targets,
+            key=lambda pest: hypot(
+                int(pest["x"]) - self.player_position[0],
+                int(pest["y"]) - self.player_position[1],
+            ),
+        )
+        distance = hypot(
+            int(nearest["x"]) - self.player_position[0],
+            int(nearest["y"]) - self.player_position[1],
+        )
+        return nearest if distance <= 500 else None
+
+    @property
+    def danger_intensity(self) -> float:
+        target = self.nearest_hostile
+        if target is None:
+            return 0.0
+        distance = hypot(
+            int(target["x"]) - self.player_position[0],
+            int(target["y"]) - self.player_position[1],
+        )
+        return max(0.0, min(1.0, (1_800.0 - distance) / 1_800.0))
+
     def set_building_object_states(self, states: dict[str, dict[str, object]]) -> None:
         normalized: dict[str, dict[str, int]] = {}
         for object_id, state in states.items():
@@ -119,6 +276,8 @@ class TowerScene:
 
     @property
     def floor_bounds(self) -> tuple[int, int, int, int]:
+        if self.is_basement:
+            return self.room.bounds
         return (0, 0, self.width, self.height)
 
     @property
@@ -219,9 +378,13 @@ class TowerScene:
         containing_rooms = [
             candidate
             for candidate in self.rooms
-            if candidate.id != "lobby" and candidate.contains(self.player_position)
+            if candidate.id != "lobby"
+            and not candidate.id.startswith("basement_b")
+            and candidate.contains(self.player_position)
         ]
-        if containing_rooms:
+        if self.is_basement:
+            pass
+        elif containing_rooms:
             self.current_room = min(
                 containing_rooms,
                 key=lambda candidate: candidate.bounds[2] * candidate.bounds[3],
@@ -542,6 +705,8 @@ class TowerScene:
     def select_room(self, room_id: str) -> bool:
         if not any(room.id == room_id for room in self.rooms):
             return False
+        if room_id.startswith("basement_b"):
+            return False
         room_floors = {
             "lobby": 1,
             "recreation": 6,
@@ -581,14 +746,36 @@ class TowerScene:
         self.camera_focus_object_id = None
         self.camera_focus_seconds = 0.0
         self.current_room = room_id
+        self.basement_level = (
+            int(room_id.removeprefix("basement_b"))
+            if room_id.startswith("basement_b")
+            else None
+        )
+        if self.basement_level is None:
+            self.basement_snapshot = None
         self.player_position = self.room_spawn(room_id)
         self.input_vector = (0.0, 0.0)
         self.velocity = (0.0, 0.0)
         self.motion_remainder = (0.0, 0.0)
         self.set_player_action("stand")
 
+    def select_basement_level(self, level: int) -> bool:
+        """Apply only a server-authorized B-level transition."""
+        if not isinstance(level, int) or isinstance(level, bool) or not 1 <= level <= 6:
+            return False
+        if not self._place_basement_level(level):
+            return False
+        return True
+
+    def _place_basement_level(self, level: int) -> bool:
+        room_id = f"basement_b{level}"
+        if not any(room.id == room_id for room in self.rooms):
+            return False
+        self._place_at_room_spawn(room_id)
+        return True
+
     def select_floor(self, floor: int) -> bool:
-        if not self.is_playable_floor(floor):
+        if self.is_basement or not self.is_playable_floor(floor):
             return False
         floor_data: dict[str, dict[str, str]] = FLOOR_PLAN["playableFloors"][str(floor)]
         destination_room = floor_data["room"]

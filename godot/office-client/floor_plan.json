@@ -8,7 +8,7 @@
   "officesPerFloor": 4,
   "floorBuildStatus": {
     "1": "open",
-    "basement": "under_construction",
+    "basement": "open",
     "2-5": "under_construction",
     "6": "open",
     "7-67": "under_construction"
@@ -89,7 +89,13 @@
       "position": [11000, 23500],
       "lobbyNextFloor": 2,
       "officeFloorNextFloor": 7,
-      "basement": "under_construction"
+      "basement": "stairs_only",
+      "restrictedLandings": [2, 3, 4, 5]
+    },
+    "basementEntryStairs": {
+      "room": "lobby",
+      "position": [49978650, 50000800],
+      "destination": "basement_b1"
     },
     "walkableHallways": [
       [9030, 0, 3940, 25000],
@@ -169,6 +175,60 @@
       "isLockable": true,
       "outsideWindow": [0, 5500],
       "officeWindow": [2500, 6400]
+    },
+    {
+      "id": "basement_b1",
+      "label": "B1 UTILITIES & PEST RESPONSE",
+      "bounds": [0, 0, 10000, 10000],
+      "renderOffset": [0, 30000],
+      "accent": [63, 111, 93],
+      "material": "hall_floor",
+      "spawn": [5000, 5000]
+    },
+    {
+      "id": "basement_b2",
+      "label": "B2 SERVICE LEVEL",
+      "bounds": [0, 0, 10000, 10000],
+      "renderOffset": [0, 41000],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [5000, 5000]
+    },
+    {
+      "id": "basement_b3",
+      "label": "B3 SERVICE LEVEL",
+      "bounds": [0, 0, 10000, 10000],
+      "renderOffset": [0, 52000],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [5000, 5000]
+    },
+    {
+      "id": "basement_b4",
+      "label": "B4 SERVICE LEVEL",
+      "bounds": [0, 0, 10000, 10000],
+      "renderOffset": [0, 63000],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [5000, 5000]
+    },
+    {
+      "id": "basement_b5",
+      "label": "B5 SERVICE LEVEL",
+      "bounds": [0, 0, 10000, 10000],
+      "renderOffset": [0, 74000],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [5000, 5000]
+    },
+    {
+      "id": "basement_b6",
+      "label": "B6 SERVICE LEVEL",
+      "bounds": [0, 0, 10000, 10000],
+      "renderOffset": [0, 85000],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [5000, 5000]
     }
   ],
   "lobbyHallwayOpening": 1800,

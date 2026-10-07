@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import {
-  boolean,
   check,
   index,
   integer,
@@ -23,7 +22,6 @@ export const desktopBasementPresenceTable = pgTable(
     x: integer("x").notNull(),
     y: integer("y").notNull(),
     action: varchar("action", { length: 16 }).notNull().default("stand"),
-    uniformWorn: boolean("uniform_worn").notNull().default(false),
     workTarget: varchar("work_target", { length: 16 }),
     workSessionId: uuid("work_session_id"),
     workStartedAt: timestamp("work_started_at", { withTimezone: true }),
@@ -44,7 +42,7 @@ export const desktopBasementPresenceTable = pgTable(
 export const desktopBasementPestsTable = pgTable(
   "desktop_basement_pests",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: uuid("id").notNull().defaultRandom(),
     buildingKey: varchar("building_key", { length: 64 }).notNull().default("shadow_tower"),
     level: integer("level").notNull(),
     spawnNumber: integer("spawn_number").notNull(),
@@ -66,6 +64,7 @@ export const desktopBasementPestsTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
+    primaryKey({ name: "desktop_basement_pests_id_pk", columns: [table.id] }),
     uniqueIndex("desktop_basement_pests_spawn_unique").on(table.buildingKey, table.level, table.spawnNumber),
     index("desktop_basement_pests_level_status_idx").on(table.buildingKey, table.level, table.status),
     check("desktop_basement_pests_level_check", sql`${table.level} between 1 and 6`),
@@ -81,7 +80,7 @@ export const desktopBasementPestsTable = pgTable(
 export const desktopBasementAttackEventsTable = pgTable(
   "desktop_basement_attack_events",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: uuid("id").notNull().defaultRandom(),
     userId: varchar("user_id", { length: 256 }).notNull().references(() => usersTable.id, { onDelete: "cascade" }),
     requestId: uuid("request_id").notNull(),
     pestId: uuid("pest_id").notNull().references(() => desktopBasementPestsTable.id, { onDelete: "cascade" }),
@@ -91,6 +90,7 @@ export const desktopBasementAttackEventsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    primaryKey({ name: "desktop_basement_attack_events_id_pk", columns: [table.id] }),
     uniqueIndex("desktop_basement_attack_user_request_unique").on(table.userId, table.requestId),
     index("desktop_basement_attack_pest_created_idx").on(table.pestId, table.createdAt),
     check("desktop_basement_attack_damage_check", sql`${table.damage} between 0 and 100`),
