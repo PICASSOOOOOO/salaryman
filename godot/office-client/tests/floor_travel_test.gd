@@ -30,6 +30,8 @@ func _run_tests() -> void:
 	assert(PlayerController.sprint_input_active(true, false))
 	assert(PlayerController.sprint_input_active(false, true))
 	assert(not PlayerController.sprint_input_active(false, false))
+	assert(not PlayerController.weapon_action_allowed(false))
+	assert(PlayerController.weapon_action_allowed(true))
 	var player_controller = PlayerController.new()
 	assert(player_controller.toggle_mouse_sprint())
 	assert(not player_controller.toggle_mouse_sprint())
@@ -41,11 +43,19 @@ func _run_tests() -> void:
 	var left_click := InputEventMouseButton.new()
 	left_click.button_index = MOUSE_BUTTON_LEFT
 	left_click.pressed = true
-	assert(PlayerController.is_jump_input(left_click))
+	assert(not PlayerController.is_jump_input(left_click))
 	var right_click := InputEventMouseButton.new()
 	right_click.button_index = MOUSE_BUTTON_RIGHT
 	right_click.pressed = true
 	assert(not PlayerController.is_jump_input(right_click))
+	var wheel_down := InputEventMouseButton.new()
+	wheel_down.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel_down.pressed = true
+	assert(PlayerController.is_jump_input(wheel_down))
+	var wheel_up := InputEventMouseButton.new()
+	wheel_up.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel_up.pressed = true
+	assert(not PlayerController.is_jump_input(wheel_up))
 	for zooming_in in [true, false]:
 		var tone: AudioStreamWAV = CameraSfx.make_zoom_tone(zooming_in)
 		assert(tone.mix_rate == 22050)

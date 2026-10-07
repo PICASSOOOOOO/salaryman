@@ -38,10 +38,10 @@ experience.
 
 - `WASD` / arrows: move
 - Hold `Shift` to sprint; click middle mouse button (Mouse 3) to toggle sprint on/off
-- `Space` or left mouse button: jump
+- `Space` or scroll wheel down: jump
 - `E`: interact with the nearby physical object
 - `1`–`6`: move to the lobby, hallway, or one of the four offices
-- `+` / `-` or mouse wheel: zoom the orthographic isometric camera
+- `Z` / `X`, `+` / `-`, or mouse wheel up: zoom the orthographic isometric camera
 - `N`: open/close the hiring desk
 - `B`: start a short break
 - `T`: toggle automatic breaks

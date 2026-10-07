@@ -19,6 +19,7 @@ var bridge_connected := false
 var authoritative_action := "stand"
 var authoritative_position_received := false
 var mouse_sprint_toggled := false
+var in_danger := false
 
 var _local_action := ""
 var _action_lock := 0.0
@@ -29,6 +30,10 @@ var _maintenance_clock := 0.0
 
 static func sprint_input_active(shift_pressed: bool, mouse_three_toggled: bool) -> bool:
 	return shift_pressed or mouse_three_toggled
+
+
+static func weapon_action_allowed(danger_active: bool) -> bool:
+	return danger_active
 
 
 func toggle_mouse_sprint() -> bool:
@@ -42,7 +47,7 @@ static func is_jump_input(event: InputEvent) -> bool:
 		return key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
-		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN
 	return false
 
 
@@ -155,7 +160,13 @@ func try_jump() -> void:
 
 
 func try_fight() -> void:
+	if not weapon_action_allowed(in_danger):
+		return
 	_try_combat_action("fight", "attack-melee-right", 0.4)
+
+
+func set_danger_state(danger_active: bool) -> void:
+	in_danger = danger_active
 
 
 func try_sweep() -> void:
