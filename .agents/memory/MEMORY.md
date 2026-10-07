@@ -152,3 +152,4 @@
 - [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
 - [Desktop release packaging](desktop-release-packaging.md) — macOS-first testing, Windows required; retain Linux unless its separate workload warrants discussing removal.
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
+- [Tower building vitality](tower-building-vitality.md) — treat the Tower as a character-like entity with distinct electrical power, plumbing, and ongoing upkeep needs.
