@@ -41,6 +41,8 @@ var active_floor: Node3D
 var camera: Camera3D
 var title_label: Label
 var subtitle_label: Label
+var annotation_layer: Control
+var pending_annotations: Array[Dictionary] = []
 var output_directory := ""
 var failed := false
 
@@ -79,7 +81,18 @@ func _capture_all() -> void:
 	_create_review_scene()
 	var jobs: Array[Dictionary] = []
 	for basement in range(1, 7):
-		jobs.append({"id": "B%d" % basement, "floor": 0, "basement": basement})
+		var basement_job: Dictionary = {"id": "B%d" % basement, "floor": 0, "basement": basement}
+		if basement == 2 or basement == 3:
+			basement_job["cameraFocus"] = "basement-department"
+		jobs.append(basement_job)
+		if basement == 2 or basement == 3:
+			jobs.append({
+				"id": "B%d-OVERVIEW" % basement,
+				"floor": 0,
+				"basement": basement,
+				"title": "SALARYMAN OS  /  TOWER B%d OVERVIEW" % basement,
+				"subtitle": "FULL 282.84 M × 282.84 M FLOOR FOOTPRINT",
+			})
 	for floor_number in range(1, 13):
 		jobs.append({"id": "F%d" % floor_number, "floor": floor_number, "basement": 0})
 	jobs.append({
@@ -107,6 +120,7 @@ func _capture_all() -> void:
 		active_floor = Node3D.new()
 		active_floor.name = "Preview_%s" % job["id"]
 		scene_world.add_child(active_floor)
+		pending_annotations.clear()
 		_render_floor(active_floor, job)
 		print("Scene ready for native Tower preview: ", floor_id)
 		_update_camera(job)
@@ -115,6 +129,8 @@ func _capture_all() -> void:
 		for frame in range(4):
 			print("Waiting for Tower render frame ", frame + 1, ": ", floor_id)
 			await process_frame
+			if frame == 0:
+				_draw_review_annotations()
 			print("Tower render frame ready: ", floor_id, " / ", frame + 1)
 		print("Capturing Tower viewport: ", floor_id, " / display=", DisplayServer.get_name())
 		var image := root.get_texture().get_image()
@@ -161,6 +177,10 @@ func _create_review_scene() -> void:
 
 	var overlay := CanvasLayer.new()
 	root.add_child(overlay)
+	annotation_layer = Control.new()
+	annotation_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	annotation_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(annotation_layer)
 	title_label = Label.new()
 	title_label.position = Vector2(42, 32)
 	title_label.add_theme_font_size_override("font_size", 27)
@@ -219,6 +239,8 @@ func _render_floor(parent: Node3D, job: Dictionary) -> void:
 		push_error("Missing floor-plan room: " + room_id)
 		failed = true
 		return
+	if is_basement and basement_number > 1:
+		floor_data = room_spec
 	bounds = room_spec.get("bounds", [])
 	if bounds.size() < 4:
 		push_error("Missing bounds for floor-plan room: " + room_id)
@@ -258,6 +280,8 @@ func _render_floor(parent: Node3D, job: Dictionary) -> void:
 		_add_lobby_shell(parent, floor_rect)
 	elif is_basement and basement_number == 1:
 		_add_b1_shell(parent, floor_rect, scale_factor)
+	elif is_basement:
+		_add_basement_shell(parent, floor_rect)
 	else:
 		_add_outer_shell(parent, floor_rect)
 
@@ -276,7 +300,7 @@ func _render_floor(parent: Node3D, job: Dictionary) -> void:
 	elif is_basement and basement_number == 1:
 		_add_b1(parent, floor_data, scale_factor)
 	elif is_basement:
-		_add_other_basement(parent, basement_number, scale_factor)
+		_add_other_basement(parent, basement_number, scale_factor, room_spec)
 
 	if floor_number != 1 and floor_number != 6:
 		_add_hall_fixtures(parent, floor_number, basement_number, scale_factor, origin)
@@ -331,6 +355,18 @@ func _add_outer_shell(parent: Node3D, rect: Rect2) -> void:
 	_add_box(parent, Vector3(right, WALL_HEIGHT + 0.02, (back + front) * 0.5), Vector3(0.18, 0.055, rect.size.y), Color(PALETTE["brass"]), "right_brass_cap")
 	for x in [left + 0.14, right - 0.14]:
 		_add_box(parent, Vector3(x, 1.1, back + 0.14), Vector3(0.055, 2.1, 0.055), Color("#78917b"), "wall_rib")
+
+
+func _add_basement_shell(parent: Node3D, rect: Rect2) -> void:
+	var left := rect.position.x
+	var right := rect.position.x + rect.size.x
+	var back := rect.position.y
+	var front := rect.position.y + rect.size.y
+	_wall_h(parent, left, right, back, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "basement_rear_wall")
+	_wall_v(parent, left, back, front, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "basement_left_wall")
+	_wall_v(parent, right, back, front, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "basement_right_wall")
+	# Keep the near wall low so underground rooms and maze paths remain visible.
+	_wall_h(parent, left, right, front, Color(PALETTE["wall_dark"]), 0.52, "basement_cutaway_wall")
 
 
 func _add_windowed_side_wall(parent: Node3D, x: float, back: float, front: float, key: String) -> void:
@@ -470,6 +506,14 @@ func _add_business_suites(parent: Node3D, floor_data: Dictionary, scale_factor: 
 		if bounds.size() < 4:
 			continue
 		_draw_suite(parent, bounds, str(unit.get("doorSide", "south")), scale_factor, str(business.get("label", "BUSINESS")), under_construction)
+		_queue_annotation(
+			str(business.get("label", "BUSINESS")),
+			Vector3(
+				(float(bounds[0]) + float(bounds[2]) * 0.5) * scale_factor,
+				2.55,
+				(float(bounds[1]) + float(bounds[3]) * 0.5) * scale_factor,
+			),
+		)
 
 
 func _draw_suite(parent: Node3D, bounds: Array, door_side: String, scale_factor: float, label: String, under_construction: bool) -> void:
@@ -544,6 +588,7 @@ func _add_first_office_floor(parent: Node3D, scale_factor: float) -> void:
 			_place_prop(parent, "desk", Vector3(center_x, FLOOR_TOP, patch.position.y + patch.size.y * 0.56), 0.72)
 			_place_prop(parent, "chair", Vector3(center_x, FLOOR_TOP, patch.position.y + patch.size.y * 0.72), 0.7)
 			_add_nameplate(parent, str(business.get("label", "")), Vector3(center_x, 2.25, patch.position.y + (0.15 if office.get("doorSide", "south") == "south" else patch.size.y - 0.15)), half_width)
+			_queue_annotation(str(business.get("label", "BUSINESS")), Vector3(center_x, 2.55, patch.position.y + patch.size.y * 0.5))
 
 	# The central elevator court is a clear, darker concourse.
 	for position in plan["baseLayout"]["stairs"]["positions"]:
@@ -569,17 +614,31 @@ func _draw_office_shell(parent: Node3D, rect: Rect2, door_side: String) -> void:
 
 
 func _add_temple(parent: Node3D, floor_data: Dictionary, scale_factor: float) -> void:
-	for x in [5.5, 11.0, 16.5]:
-		_add_box(parent, Vector3(x, FLOOR_TOP + 0.02, 12.5), Vector3(0.05, 0.04, 23.5), Color("#526b5b"), "temple_walkway")
-	_add_box(parent, Vector3(11.0, FLOOR_TOP + 0.035, 12.5), Vector3(20.5, 0.035, 0.05), Color("#ad884e"), "temple_brass_axis")
-	for tree_position in [Vector2(11.0, 5.0), Vector2(11.0, 21.5)]:
-		_add_box(parent, Vector3(tree_position.x, FLOOR_TOP + 0.03, tree_position.y), Vector3(5.0, 0.045, 3.0), Color("#c0b18d"), "quiet_garden_pad")
+	var room_spec := _find_room(str(floor_data.get("room", "floor07_business")))
+	var bounds: Array = room_spec.get("bounds", [0, 0, 62225, 70711])
+	var width := float(bounds[2]) * scale_factor
+	var depth := float(bounds[3]) * scale_factor
+	var center_x := width * 0.5
+	var center_z := depth * 0.5
+	_add_box(parent, Vector3(center_x, FLOOR_TOP + 0.02, center_z), Vector3(1.8, 0.04, depth - 12.0), Color("#526b5b"), "temple_north_south_walkway")
+	_add_box(parent, Vector3(center_x, FLOOR_TOP + 0.035, center_z), Vector3(width - 12.0, 0.035, 1.8), Color("#ad884e"), "temple_east_west_axis")
+	for prop_value in floor_data.get("interiorProps", []):
+		var prop_data: Dictionary = prop_value
+		if str(prop_data.get("kind", "")) != "temple_tree":
+			continue
+		var point: Array = prop_data.get("position", [0, 0])
+		var garden_center := Vector3(float(point[0]) * scale_factor, FLOOR_TOP + 0.03, float(point[1]) * scale_factor)
+		_add_box(parent, garden_center, Vector3(6.0, 0.045, 6.0), Color("#c0b18d"), "quiet_garden_pad")
+	_queue_annotation("MEDITATION TEMPLE", Vector3(center_x, 2.55, center_z))
+	_queue_annotation("REFLECTION ALCOVES", Vector3(center_x, 2.55, depth * 0.69))
+	_queue_annotation("QUIET GARDENS", Vector3(center_x, 2.55, depth * 0.30))
 
 
 func _add_lobby(parent: Node3D, rect: Rect2, scale_factor: float, origin: Vector2) -> void:
 	var center := Vector3(rect.position.x + rect.size.x * 0.5, FLOOR_TOP + 0.015, rect.position.y + rect.size.y * 0.52)
 	_add_box(parent, center, Vector3(rect.size.x * 0.58, 0.045, rect.size.y * 0.60), Color(PALETTE["rug"]), "lobby_rug")
 	_place_prop(parent, "desk", Vector3(center.x, FLOOR_TOP, center.z - 0.15), 1.05, true)
+	_queue_annotation("RECEPTION", center + Vector3(0, 2.55, -1.0))
 	var base_layout: Dictionary = plan.get("baseLayout", {})
 	var lobby_data: Dictionary = base_layout.get("elevatorLobby", {})
 	var lobby_bounds: Array = lobby_data.get("bounds", [])
@@ -601,6 +660,17 @@ func _add_lobby(parent: Node3D, rect: Rect2, scale_factor: float, origin: Vector
 	_place_prop(parent, "vending_machine", Vector3(rect.position.x + rect.size.x - 2.1, FLOOR_TOP, rect.position.y + rect.size.y - 1.1), 0.8)
 	_place_prop(parent, "pay_phone", Vector3(rect.position.x + 3.8, FLOOR_TOP, rect.position.y + rect.size.y - 1.1), 0.8)
 	_place_prop(parent, "trash_can", Vector3(rect.position.x + rect.size.x - 4.0, FLOOR_TOP, rect.position.y + rect.size.y - 1.1), 0.8)
+	for kiosk_value in plan.get("businessSuiteLayout", {}).get("lobbyKiosks", []):
+		var kiosk: Dictionary = kiosk_value
+		var point: Array = kiosk.get("position", [0, 0])
+		var kiosk_at := Vector3(
+			(float(point[0]) - origin.x) * scale_factor,
+			FLOOR_TOP,
+			(float(point[1]) - origin.y) * scale_factor,
+		)
+		_add_box(parent, kiosk_at + Vector3(0, 0.08, 0), Vector3(1.6, 0.16, 1.1), Color(PALETTE["brass"]), "lobby_kiosk_podium")
+		_place_prop(parent, "desk", kiosk_at, 0.72)
+		_queue_annotation(str(kiosk.get("label", "LOBBY KIOSK")), kiosk_at + Vector3(0, 2.55, 0))
 	for stair_x in [rect.position.x + 1.0, rect.position.x + rect.size.x - 1.0]:
 		_add_box(parent, Vector3(stair_x, 0.42, center.z), Vector3(1.05, 0.72, 1.6), Color(PALETTE["wall"]), "lobby_stair")
 		_add_box(parent, Vector3(stair_x, 0.83, center.z), Vector3(1.15, 0.06, 1.7), Color(PALETTE["brass"]), "lobby_stair_rail")
@@ -620,6 +690,14 @@ func _add_b1(parent: Node3D, floor_data: Dictionary, scale_factor: float) -> voi
 		var business: Dictionary = businesses[index]
 		var bounds: Array = unit.get("bounds", [])
 		_draw_suite(parent, bounds, str(unit.get("doorSide", "south")), scale_factor, str(business.get("label", "")), false)
+		_queue_annotation(
+			str(business.get("label", "BUSINESS")),
+			Vector3(
+				(float(bounds[0]) + float(bounds[2]) * 0.5) * scale_factor,
+				2.55,
+				(float(bounds[1]) + float(bounds[3]) * 0.5) * scale_factor,
+			),
+		)
 	for prop_value in b1.get("yardProps", []):
 		var prop_data: Dictionary = prop_value
 		var position: Array = prop_data.get("position", [0, 0])
@@ -636,41 +714,132 @@ func _add_b1(parent: Node3D, floor_data: Dictionary, scale_factor: float) -> voi
 			_add_forklift(parent, Vector3(x, FLOOR_TOP, z))
 
 
-func _add_other_basement(parent: Node3D, basement_number: int, scale_factor: float) -> void:
-	var extent := 20.0
+func _add_other_basement(parent: Node3D, basement_number: int, scale_factor: float, room_spec: Dictionary) -> void:
+	if basement_number >= 4:
+		_add_basement_maze(parent, room_spec, scale_factor)
 	match basement_number:
 		2:
-			_add_cells(parent, 1.2, 2.2)
-			_add_workstation_row(parent, 8.0, 4, "#78523b")
-			_add_security_office(parent, 15.3, 4.0)
-			_add_nameplate(parent, "COLLECTIONS", Vector3(10.1, 2.05, 9.2), 6.5)
+			# These points match the live Pygame basement object layout.
+			for index in range(6):
+				var point_x := 1700.0 + float(index % 3) * 1750.0
+				var point_z := 1800.0 + float(index / 3) * 1900.0
+				var desk_at := Vector3(point_x * scale_factor, FLOOR_TOP, point_z * scale_factor)
+				_place_prop(parent, "desk", desk_at, 0.76)
+				_place_prop(parent, "chair", desk_at + Vector3(0.52, 0.0, 0.82), 0.70)
+			_add_cells(parent, 7300.0, 2200.0, scale_factor)
+			_add_security_office(parent, 7200.0 * scale_factor, 5000.0 * scale_factor)
+			_place_prop(parent, "desk", Vector3(7200.0 * scale_factor, FLOOR_TOP, 7100.0 * scale_factor), 0.76)
+			_add_nameplate(parent, "COLLECTIONS FACILITY", Vector3(3500.0 * scale_factor, 2.05, 4300.0 * scale_factor), 9.0)
+			_add_nameplate(parent, "CORPORATE SECURITY", Vector3(7200.0 * scale_factor, 2.05, 5000.0 * scale_factor), 7.0)
+			_add_nameplate(parent, "INVESTIGATIONS", Vector3(7200.0 * scale_factor, 2.05, 7100.0 * scale_factor), 6.0)
+			_queue_annotation("COLLECTIONS", Vector3(3500.0 * scale_factor, 2.55, 2500.0 * scale_factor))
+			_queue_annotation("CORPORATE DETENTION", Vector3(7300.0 * scale_factor, 2.55, 2200.0 * scale_factor))
+			_queue_annotation("CORPORATE SECURITY", Vector3(7200.0 * scale_factor, 2.55, 5000.0 * scale_factor))
+			_queue_annotation("INVESTIGATIONS", Vector3(7200.0 * scale_factor, 2.55, 7100.0 * scale_factor))
 		3:
-			_add_workstation_row(parent, 3.0, 3, "#8b5d49")
-			_add_fire_bay(parent, 14.4, 4.2)
-			_add_incinerator(parent, 17.5, 14.0)
-			_add_nameplate(parent, "DISASTER RESPONSE", Vector3(10.0, 2.15, 10.4), 8.0)
+			_add_workstation_row(parent, 2000.0, 1, "#8b5d49", scale_factor, 2000.0)
+			_add_fire_bay(parent, 2000.0 * scale_factor, 4000.0 * scale_factor)
+			_place_prop(parent, "desk", Vector3(2000.0 * scale_factor, FLOOR_TOP, 6000.0 * scale_factor), 0.76)
+			_place_prop(parent, "desk", Vector3(5000.0 * scale_factor, FLOOR_TOP, 3200.0 * scale_factor), 0.72)
+			_place_prop(parent, "desk", Vector3(4300.0 * scale_factor, FLOOR_TOP, 5000.0 * scale_factor), 0.72)
+			_add_incinerator(parent, 5000.0 * scale_factor, 7000.0 * scale_factor)
+			_add_nameplate(parent, "DISASTER RESPONSE", Vector3(2000.0 * scale_factor, 2.15, 2000.0 * scale_factor), 6.0)
+			_add_nameplate(parent, "FIRE STATION", Vector3(2000.0 * scale_factor, 2.15, 4000.0 * scale_factor), 6.0)
+			_add_nameplate(parent, "MAINTENANCE BAY", Vector3(2000.0 * scale_factor, 2.15, 6000.0 * scale_factor), 6.0)
+			_add_nameplate(parent, "WORK ORDERS / UNIFORM", Vector3(4600.0 * scale_factor, 2.15, 4200.0 * scale_factor), 8.0)
+			_add_nameplate(parent, "INCINERATOR / CLAIMS", Vector3(5000.0 * scale_factor, 2.15, 7000.0 * scale_factor), 7.0)
+			_queue_annotation("DISASTER RESPONSE", Vector3(2000.0 * scale_factor, 2.55, 2000.0 * scale_factor))
+			_queue_annotation("FIRE STATION", Vector3(2000.0 * scale_factor, 2.55, 4000.0 * scale_factor))
+			_queue_annotation("MAINTENANCE BAY", Vector3(2000.0 * scale_factor, 2.55, 6000.0 * scale_factor))
+			_queue_annotation("WORK ORDERS / UNIFORM", Vector3(4600.0 * scale_factor, 2.55, 4200.0 * scale_factor))
+			_queue_annotation("INCINERATOR / CLAIMS", Vector3(5000.0 * scale_factor, 2.55, 7000.0 * scale_factor))
 		4:
-			for row in range(3):
-				for column in range(4):
-					_add_crate(parent, Vector3(3.0 + column * 3.2, FLOOR_TOP, 4.0 + row * 5.0), false)
-			_add_nameplate(parent, "VITAL SUPPLIES", Vector3(10.0, 2.1, 10.2), 7.0)
+			var supply_center := Vector3(5000.0 * scale_factor, FLOOR_TOP, 6500.0 * scale_factor)
+			for row in range(2):
+				for column in range(3):
+					var at := supply_center + Vector3((float(column) - 1.0) * 1.5, 0.0, (float(row) - 0.5) * 1.5)
+					_add_crate(parent, at, false)
+			_add_nameplate(parent, "VITAL SUPPLIES", supply_center + Vector3(0, 2.1, -2.0), 7.0)
+			_queue_annotation("VITAL SUPPLIES", supply_center + Vector3(0, 2.55, 0))
 		5:
-			_add_generator(parent, Vector3(5.3, FLOOR_TOP, 5.3))
-			_add_generator(parent, Vector3(13.2, FLOOR_TOP, 5.3))
-			_add_pipe_run(parent, 3.0, 17.0, 17.0, Color(PALETTE["power"]))
-			_add_nameplate(parent, "POWER STATION", Vector3(10.0, 2.1, 13.8), 7.0)
+			var power_source: Array = _basement_utility_position("electrical", [21213, 5657])
+			var generator_a := Vector3(float(power_source[0]) * scale_factor, FLOOR_TOP, float(power_source[1]) * scale_factor)
+			var generator_b := generator_a + Vector3(4.4, 0.0, 3.5)
+			_add_generator(parent, generator_a)
+			_add_generator(parent, generator_b)
+			_add_pipe_run(parent, generator_a.x - 2.0, generator_b.x + 2.0, generator_a.z + 1.4, Color(PALETTE["power"]))
+			_add_nameplate(parent, "POWER STATION / BACKUP GENERATORS", generator_a + Vector3(0, 2.1, 5.0), 10.0)
+			_queue_annotation("POWER / BACKUP GENERATORS", generator_a + Vector3(0, 2.55, 0))
 		6:
-			_add_water_tank(parent, Vector3(5.0, FLOOR_TOP, 5.2))
-			_add_water_tank(parent, Vector3(14.2, FLOOR_TOP, 5.2))
-			_add_pipe_run(parent, 3.0, 17.0, 15.0, Color(PALETTE["water"]))
-			_add_pump(parent, Vector3(10.0, FLOOR_TOP, 12.4))
-			_add_nameplate(parent, "WATER / PLUMBING", Vector3(10.0, 2.1, 17.1), 7.0)
-	_add_box(parent, Vector3(extent * 0.5, FLOOR_TOP + 0.01, extent * 0.52), Vector3(1.05, 0.035, 18.0), Color("#344b4b"), "service_aisle")
+			var water_source: Array = _basement_utility_position("water", [7071, 21213])
+			var tank_a := Vector3(float(water_source[0]) * scale_factor, FLOOR_TOP, float(water_source[1]) * scale_factor)
+			var tank_b := tank_a + Vector3(3.8, 0.0, -2.8)
+			var pump_at := tank_a + Vector3(7.0, 0.0, 0.0)
+			_add_water_tank(parent, tank_a)
+			_add_water_tank(parent, tank_b)
+			_add_pipe_run(parent, tank_a.x - 2.0, pump_at.x + 1.0, tank_a.z + 2.0, Color(PALETTE["water"]))
+			_add_pump(parent, pump_at)
+			_add_nameplate(parent, "WATER / PLUMBING", pump_at + Vector3(0, 2.1, 2.0), 7.0)
+			_queue_annotation("WATER / PLUMBING", pump_at + Vector3(0, 2.55, 0))
 
 
-func _add_cells(parent: Node3D, start_x: float, start_z: float) -> void:
+func _basement_utility_position(system_id: String, fallback: Array) -> Array:
+	for system_value in plan.get("infrastructureMap", {}).get("systems", []):
+		var system_data: Dictionary = system_value
+		if str(system_data.get("id", "")) == system_id:
+			var source: Dictionary = system_data.get("source", {})
+			if str(source.get("room", "")) == "basement_b5" and system_id == "electrical":
+				return source.get("position", fallback)
+			if str(source.get("room", "")) == "basement_b6" and system_id == "water":
+				return source.get("position", fallback)
+	return fallback
+
+
+func _add_basement_maze(parent: Node3D, room_spec: Dictionary, scale_factor: float) -> void:
+	var cell_size := float(room_spec.get("mazeCellUnits", 0))
+	var cells: Array = room_spec.get("mazeCells", [])
+	if cell_size <= 0.0 or cells.is_empty():
+		push_error("Missing basement maze cells for " + str(room_spec.get("id", "unknown")))
+		failed = true
+		return
+
+	var walkable: Dictionary = {}
+	for cell_value in cells:
+		var cell: Array = cell_value
+		if cell.size() == 2:
+			walkable[Vector2i(int(cell[0]), int(cell[1]))] = true
+
+	var world_cell_size := cell_size * scale_factor
+	var wall_color := Color("#43504a")
+	var wall_height := 1.65
+	for cell_value in cells:
+		var cell: Array = cell_value
+		if cell.size() != 2:
+			continue
+		var coordinate := Vector2i(int(cell[0]), int(cell[1]))
+		var left := float(coordinate.x) * world_cell_size
+		var back := float(coordinate.y) * world_cell_size
+		var center := Vector3(left + world_cell_size * 0.5, FLOOR_TOP + 0.015, back + world_cell_size * 0.5)
+		var tile_color := Color("#4b6258") if (coordinate.x + coordinate.y) % 2 == 0 else Color("#42584f")
+		_add_box(parent, center, Vector3(world_cell_size - 0.12, 0.028, world_cell_size - 0.12), tile_color, "maze_walkable_cell")
+		_add_basement_maze_wall(parent, walkable, coordinate, Vector2i(0, -1), left, back, world_cell_size, wall_height, wall_color)
+		_add_basement_maze_wall(parent, walkable, coordinate, Vector2i(1, 0), left + world_cell_size, back, world_cell_size, wall_height, wall_color)
+		_add_basement_maze_wall(parent, walkable, coordinate, Vector2i(0, 1), left, back + world_cell_size, world_cell_size, wall_height, wall_color)
+		_add_basement_maze_wall(parent, walkable, coordinate, Vector2i(-1, 0), left, back, world_cell_size, wall_height, wall_color)
+
+
+func _add_basement_maze_wall(parent: Node3D, walkable: Dictionary, coordinate: Vector2i, delta: Vector2i, edge_x: float, edge_z: float, length: float, wall_height: float, color: Color) -> void:
+	if walkable.has(coordinate + delta):
+		return
+	var horizontal := delta.y != 0
+	var size := Vector3(length, wall_height, WALL_THICKNESS) if horizontal else Vector3(WALL_THICKNESS, wall_height, length)
+	_add_box(parent, Vector3(edge_x + (length * 0.5 if horizontal else 0.0), wall_height * 0.5, edge_z + (length * 0.5 if not horizontal else 0.0)), size, color, "tunnel_wall")
+
+
+func _add_cells(parent: Node3D, start_x_units: float, start_z_units: float, scale_factor: float) -> void:
 	for index in range(3):
-		var x := start_x + float(index) * 2.45
+		var x := start_x_units * scale_factor + float(index) * 2.45
+		var start_z := start_z_units * scale_factor
 		_add_box(parent, Vector3(x, 0.55, start_z), Vector3(2.15, 0.8, 2.2), Color("#394944"), "cell")
 		_wall_h(parent, x - 1.08, x + 1.08, start_z - 1.1, Color(PALETTE["wall"]), 1.8, "cell_back")
 		_wall_v(parent, x - 1.08, start_z - 1.1, start_z + 1.1, Color(PALETTE["wall"]), 1.8, "cell_side")
@@ -687,9 +856,10 @@ func _add_security_office(parent: Node3D, x: float, z: float) -> void:
 	_add_box(parent, Vector3(x + 1.4, 0.72, z - 0.55), Vector3(0.6, 1.3, 0.32), Color(PALETTE["metal"]), "armory_cabinet")
 
 
-func _add_workstation_row(parent: Node3D, z: float, count: int, color: String) -> void:
+func _add_workstation_row(parent: Node3D, z_units: float, count: int, color: String, scale_factor: float = 1.0, start_x_units: float = 300.0) -> void:
 	for index in range(count):
-		var x := 3.0 + float(index) * 3.0
+		var x := start_x_units * scale_factor + float(index) * 3.0
+		var z := z_units * scale_factor
 		_place_prop(parent, "desk", Vector3(x, FLOOR_TOP, z), 0.63)
 		_place_prop(parent, "chair", Vector3(x, FLOOR_TOP, z + 1.0), 0.62)
 		_place_prop(parent, "telephone", Vector3(x - 0.7, FLOOR_TOP, z), 0.55)
@@ -769,17 +939,15 @@ func _add_hall_fixtures(parent: Node3D, floor_number: int, basement_number: int,
 	var kinds := ["atm", "vending_machine", "pay_phone", "trash_can", "fire_extinguisher"]
 	var positions: Array = []
 	if basement_number > 0:
-		var basement_positions := {
-			1: [[6800, 5000], [7600, 5000], [8400, 5000], [9200, 5000], [9600, 5250]],
-			2: [[8600, 4000], [8600, 5000], [8600, 6000], [8600, 7000], [8600, 8000]],
-			3: [[8500, 2000], [8500, 3000], [8500, 4000], [8500, 5000], [8500, 6000]],
-			4: [[1500, 4500], [2500, 4500], [3500, 4500], [4500, 4500], [5500, 5500]],
-			5: [[2500, 6500], [3500, 6500], [4500, 6500], [5500, 6500], [6500, 6500]],
-			6: [[3500, 7500], [4500, 7500], [5500, 7500], [6500, 7500], [7500, 3500]],
-		}
-		positions = basement_positions[basement_number]
+		var basement_room := _find_room("basement_b%d" % basement_number)
+		positions = basement_room.get("hallwayFixtures", [])
 	elif floor_number >= 2:
-		positions = [[12790, 5000], [12790, 8000], [9200, 5000], [9200, 8000], [9200, 3500]]
+		var hallways: Array = plan.get("baseLayout", {}).get("hallways", [])
+		if not hallways.is_empty():
+			var main_hall: Array = hallways[0]
+			var hall_center_x := float(main_hall[0]) + float(main_hall[2]) * 0.5
+			for index in range(kinds.size()):
+				positions.append([hall_center_x, 3000 + index * 3000])
 	else:
 		return
 	for index in range(kinds.size()):
@@ -839,6 +1007,59 @@ func _add_floor_marker(parent: Node3D, text: String, at: Vector2) -> void:
 	var base := Vector3(at.x, FLOOR_TOP + 0.04, at.y)
 	_add_box(parent, base, Vector3(1.6, 0.08, 0.62), Color(PALETTE["wall_dark"]), "floor_marker")
 	_add_box(parent, base + Vector3(0, 0.045, 0.0), Vector3(1.48, 0.025, 0.035), Color(PALETTE["brass"]), "floor_marker_trim")
+
+
+func _queue_annotation(text: String, world_position: Vector3) -> void:
+	pending_annotations.append({"text": text, "position": world_position})
+
+
+func _draw_review_annotations() -> void:
+	for child in annotation_layer.get_children():
+		child.queue_free()
+	var occupied: Array[Rect2] = []
+	for annotation in pending_annotations:
+		var world_position: Vector3 = annotation["position"]
+		if camera.is_position_behind(world_position):
+			continue
+		var screen_position := camera.unproject_position(world_position)
+		if screen_position.x < 0.0 or screen_position.x > float(root.size.x) \
+				or screen_position.y < 0.0 or screen_position.y > float(root.size.y):
+			continue
+		var label_size := Vector2(176.0, 38.0)
+		var label_position := Vector2(
+			clampf(screen_position.x - label_size.x * 0.5, 8.0, float(root.size.x) - label_size.x - 8.0),
+			clampf(screen_position.y - label_size.y * 0.5, 108.0, float(root.size.y) - label_size.y - 58.0),
+		)
+		var candidate := Rect2(label_position, label_size)
+		for attempt in range(8):
+			var overlaps := false
+			for existing in occupied:
+				if candidate.intersects(existing):
+					overlaps = true
+					break
+			if not overlaps:
+				break
+			label_position.y += label_size.y + 3.0
+			if label_position.y + label_size.y > float(root.size.y) - 54.0:
+				label_position.y = 108.0
+			candidate = Rect2(label_position, label_size)
+		var label := Label.new()
+		label.text = str(annotation["text"])
+		label.position = label_position
+		label.size = label_size
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 12)
+		label.add_theme_color_override("font_color", Color("#f0e3c7"))
+		var panel := StyleBoxFlat.new()
+		panel.bg_color = Color("#1a2623", 0.94)
+		panel.border_color = Color(PALETTE["brass"])
+		panel.set_border_width_all(1)
+		panel.set_content_margin_all(4.0)
+		label.add_theme_stylebox_override("normal", panel)
+		annotation_layer.add_child(label)
+		occupied.append(candidate)
 
 
 func _add_box(parent: Node3D, at: Vector3, size: Vector3, color: Color, key: String = "custom") -> MeshInstance3D:
@@ -961,10 +1182,22 @@ func _update_camera(job: Dictionary) -> void:
 		camera.position = window_center + Vector3(10.0, 3.0, 0.0)
 		camera.look_at(window_center, Vector3.UP)
 		return
-	camera.size = maxf(dimension * 1.48, 12.0)
+	elif camera_focus == "basement-department":
+		var focus_center := Vector3(50.0, 0.0, 45.0)
+		camera.size = 112.0
+		camera.far = 280.0
+		camera.position = focus_center + Vector3(70.0, 125.0, 95.0)
+		camera.look_at(focus_center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
+		return
+	var camera_center := center
+	var framing_scale := 1.30
+	if floor_number == 1:
+		camera_center.z += depth * 0.27
+		framing_scale = 1.20
+	camera.size = maxf(dimension * framing_scale, 12.0)
 	camera.far = maxf(dimension * 4.0, 250.0)
-	camera.position = center + Vector3(dimension * 0.70, dimension * 1.25, dimension * 0.95)
-	camera.look_at(center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
+	camera.position = camera_center + Vector3(dimension * 0.70, dimension * 1.25, dimension * 0.95)
+	camera.look_at(camera_center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
 
 
 func _subtitle_for(job: Dictionary) -> String:
