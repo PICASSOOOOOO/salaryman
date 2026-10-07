@@ -16,12 +16,12 @@
   },
   "playableFloors": {
     "1": {"room": "lobby", "label": "TOWER LOBBY", "initialBusinessOperator": "PABLO CORP"},
-    "2": {"room": "construction_f02", "label": "FLOOR 02 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
-    "3": {"room": "construction_f03", "label": "FLOOR 03 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
-    "4": {"room": "construction_f04", "label": "FLOOR 04 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
+    "2": {"room": "construction_f02", "label": "FLOOR 02 / COMMON TABLE 67 + CONSTRUCTION", "initialBusinessOperator": "PABLO CORP", "businesses": [{"businessKey": "shadow_cafeteria", "label": "COMMON TABLE 67", "service": "Meals, catering, and shift trays", "counterPosition": [2500, 6500]}]},
+    "3": {"room": "construction_f03", "label": "FLOOR 03 / CARE COMMONS + CONSTRUCTION", "initialBusinessOperator": "PABLO CORP", "businesses": [{"businessKey": "tower_clinic", "label": "LUMEN CARE CLINIC", "service": "Open the care services board", "counterPosition": [2500, 6500]}, {"businessKey": "tower_pharmacy", "label": "THIRD SHIFT PHARMACY", "service": "Open the care services board", "counterPosition": [19500, 6500]}]},
+    "4": {"room": "construction_f04", "label": "FLOOR 04 / SECURITY DESK + SERVICE BAY / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP", "businesses": [{"businessKey": "tower_weapons_licensing", "label": "CIVIC ARMORY LICENSING", "service": "Open the licensing services board", "counterPosition": [2500, 6500]}, {"businessKey": "tower_terminal_repair", "label": "MENDER-9 TERMINAL WORKS", "service": "Open the repair services board", "counterPosition": [19500, 6500]}]},
     "5": {"room": "construction_f05", "label": "FLOOR 05 / CONSTRUCTION", "initialBusinessOperator": "PABLO CORP"},
     "6": {"room": "recreation", "label": "OFFICE CONCOURSE", "initialBusinessOperator": "PABLO CORP"},
-    "7": {"room": "floor07_business", "label": "FLOOR 07 / PABLO CORP BUSINESS FLOOR", "initialBusinessOperator": "PABLO CORP"},
+    "7": {"room": "floor07_business", "label": "FLOOR 07 / RINSE 67 + PABLO CORP", "initialBusinessOperator": "PABLO CORP", "businesses": [{"businessKey": "tower_laundry", "label": "RINSE 67", "service": "Open the laundry services board", "counterPosition": [2500, 6500]}]},
     "8": {"room": "commercial_floor", "label": "FLOOR 08 / COMMERCIAL OFFICES"},
     "9": {"room": "commercial_floor", "label": "FLOOR 09 / COMMERCIAL OFFICES"},
     "10": {"room": "commercial_floor", "label": "FLOOR 10 / COMMERCIAL OFFICES"},
@@ -105,9 +105,9 @@
     },
     "floor6Businesses": [
       {"id": "bank-office", "label": "BANCO OMBRA BANK OFFICE", "service": "bank", "floor": 6, "officeNumber": 1, "initialOperator": "PABLO CORP"},
-      {"id": "real-estate-office", "label": "PABLO CORP REAL ESTATE", "service": "real_estate", "floor": 6, "officeNumber": 2, "initialOperator": "PABLO CORP"},
-      {"id": "fish-store", "label": "FISH STORE", "service": "aquariums", "stock": ["decor_aquarium"], "floor": 6, "officeNumber": 3, "initialOperator": "PABLO CORP"},
-      {"id": "furniture-store", "label": "FURNITURE STORE", "service": "furniture", "floor": 6, "officeNumber": 4, "initialOperator": "PABLO CORP"}
+      {"id": "real-estate-office", "businessKey": "tower_realty", "label": "PABLO CORP REAL ESTATE", "service": "real_estate", "floor": 6, "officeNumber": 2, "initialOperator": "PABLO CORP", "counterRoom": "recreation", "counterPosition": [11000, 8500]},
+      {"id": "fish-store", "businessKey": "fish-store", "label": "FISH STORE", "service": "aquariums", "stock": ["decor_aquarium"], "floor": 6, "officeNumber": 3, "initialOperator": "PABLO CORP", "counterRoom": "recreation", "counterPosition": [2500, 12400]},
+      {"id": "furniture-store", "businessKey": "furniture-store", "label": "FURNITURE STORE", "service": "furniture", "floor": 6, "officeNumber": 4, "initialOperator": "PABLO CORP", "counterRoom": "recreation", "counterPosition": [19500, 12400]}
     ]
   },
   "businessOpportunityRules": {
