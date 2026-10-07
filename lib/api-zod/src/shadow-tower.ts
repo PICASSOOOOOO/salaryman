@@ -571,42 +571,48 @@ export function getShadowTowerCommercialTenants(floorNumber: number): ShadowTowe
   const businesses = TOWER_INFRASTRUCTURE_BUSINESSES.filter((business) =>
     business.coverage === "single_suite" && businessFloorNumber(business) === floorNumber,
   );
-  return businesses.map((business, index) => {
-    const unitNumber = index + 1;
-    const unitCol = 5 + (unitNumber - 1) * 12;
-    const residentId = 1400 + TOWER_INFRASTRUCTURE_BUSINESSES.indexOf(business);
-    const residentName = `${business.name} OPERATOR`;
-    return {
-      business,
-      businessKey: business.key,
-      floorNumber,
-      unitNumber,
-      fitoutKind: resolveBusinessFloorKind(business.category),
-      fitout: BUSINESS_FLOOR_TEMPLATES[resolveBusinessFloorKind(business.category)],
-      resident: {
-        id: residentId,
-        name: residentName,
-        role: `${business.category.toUpperCase()} · ${business.operatorCode}`,
-        color: business.color,
-        logo: business.logo,
-        col: unitCol,
-        row: 8,
-        path: [
-          { col: unitCol, row: 8 },
-          { col: Math.min(unitCol + 3, 26), row: 8 },
-          { col: Math.min(unitCol + 3, 26), row: 12 },
-          { col: unitCol, row: 12 },
-        ],
-        speed: 0.12 + (residentId % 7) * 0.025,
-      },
-      service: {
-        label: business.service,
-        description: business.ad,
-        settlementPath: "/business/services",
-      },
-      conversation: getTowerBusinessConversation(business)!,
-    };
-  });
+  return businesses.map((business, index) =>
+    createShadowTowerServiceTenant(business, floorNumber, index + 1),
+  );
+}
+
+function createShadowTowerServiceTenant(
+  business: TowerInfrastructureBusiness,
+  floorNumber: number,
+  unitNumber: number,
+): ShadowTowerCommercialTenant {
+  const unitCol = 5 + (unitNumber - 1) * 12;
+  const residentId = 1400 + TOWER_INFRASTRUCTURE_BUSINESSES.indexOf(business);
+  return {
+    business,
+    businessKey: business.key,
+    floorNumber,
+    unitNumber,
+    fitoutKind: resolveBusinessFloorKind(business.category),
+    fitout: BUSINESS_FLOOR_TEMPLATES[resolveBusinessFloorKind(business.category)],
+    resident: {
+      id: residentId,
+      name: `${business.name} OPERATOR`,
+      role: `${business.category.toUpperCase()} · ${business.operatorCode}`,
+      color: business.color,
+      logo: business.logo,
+      col: unitCol,
+      row: 8,
+      path: [
+        { col: unitCol, row: 8 },
+        { col: Math.min(unitCol + 3, 26), row: 8 },
+        { col: Math.min(unitCol + 3, 26), row: 12 },
+        { col: unitCol, row: 12 },
+      ],
+      speed: 0.12 + (residentId % 7) * 0.025,
+    },
+    service: {
+      label: business.service,
+      description: business.ad,
+      settlementPath: "/business/services",
+    },
+    conversation: getTowerBusinessConversation(business)!,
+  };
 }
 
 /**
@@ -619,8 +625,20 @@ export function getShadowTowerServiceTenant(businessKey: string): ShadowTowerCom
   if (!business || business.coverage !== "single_suite") return null;
   const placement = getTowerBusinessPlacement(business);
   if (placement?.floorNumber == null || placement.unitNumber == null) return null;
-  return getShadowTowerCommercialTenants(placement.floorNumber)
-    .find((tenant) => tenant.businessKey === business.key) ?? null;
+  const commercialTenant = getShadowTowerCommercialTenants(placement.floorNumber)
+    .find((tenant) => tenant.businessKey === business.key);
+  if (commercialTenant) return commercialTenant;
+
+  // F2–F4 remain construction sites; only their explicitly operational,
+  // named businesses may expose their own service board before fit-out is done.
+  if (
+    placement.floorNumber >= 2
+    && placement.floorNumber <= 4
+    && business.physicalState === "operational"
+  ) {
+    return createShadowTowerServiceTenant(business, placement.floorNumber, placement.unitNumber);
+  }
+  return null;
 }
 
 export type ShadowTowerCommercialFloor = {
