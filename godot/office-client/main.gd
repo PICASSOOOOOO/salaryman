@@ -2413,6 +2413,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	native_app_panel.color = Color("#07151af5")
 	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
 	native_app_body.add_theme_color_override("font_color", Color("#c4ddcb"))
+	native_app_body.add_theme_font_size_override("font_size", 16)
 	native_app_footer.add_theme_color_override("font_color", Color("#f8b957"))
 
 	var page_source_value: Variant = office.get("pageSource")
@@ -2424,7 +2425,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	]
 	match page:
 		"vending":
-native_app_title.text = "TOWER VENDING / SERVER-PRICED STOCK"
+			native_app_title.text = "TOWER VENDING / SERVER-PRICED STOCK"
 			var vending_lines: Array[String] = []
 			var vending_value: Variant = office.get("vendingCatalog", [])
 			if vending_value is Array:
@@ -2443,55 +2444,29 @@ native_app_title.text = "TOWER VENDING / SERVER-PRICED STOCK"
 					])
 			if vending_lines.is_empty():
 				vending_lines.append("VENDING STOCK LOADING OR ACCOUNT LINK REQUIRED")
-var business_stock_value: Variant = office.get("businessStockLines", [])
-var stock_lines: Array[String] = []
-if business_stock_value is Array:
-for listing_value in business_stock_value:
-					if not listing_value is Dictionary:
-						continue
-					var listing: Dictionary = listing_value
-					var seller := str(listing.get("sellerName", listing.get("specialty", "SPECIALTY")))
-var seller_location := str(listing.get("sellerLocationLabel", "LOCATION NOT ASSIGNED"))
-					var details := ""
-					var products: Variant = listing.get("items", [])
-					if products is Array and not products.is_empty():
-						var product_names: Array[String] = []
-						for product_value in products:
-							if product_value is Dictionary:
-								product_names.append("%s ƒ%s" % [
-									"%s · %s" % [
-										str(product_value.get("name", product_value.get("id", "ITEM"))),
-										str(product_value.get("blurb", "")),
-									],
-									str(int(product_value.get("priceFiat", 0))),
-								])
-						details = ", ".join(product_names)
-					else:
-						var quotes: Variant = listing.get("quoteCategories", [])
-						details = ", ".join(quotes) if quotes is Array and not quotes.is_empty() else "QUOTE REQUIRED"
-stock_lines.append("%s · %s / %s" % [seller, seller_location, details])
-			var ghost_value: Variant = office.get("ghostListing", {})
-			var ghost_notice := "THE GHOST / ASK IN PERSON"
-			if ghost_value is Dictionary:
-				ghost_notice = str(ghost_value.get("notice", ghost_notice))
-native_app_body.text = "BUYABLE VENDING STOCK\n%s\n\nPRESS B FOR BUSINESS STOCK + GHOST CONTACT\n%s" % [
+			native_app_body.text = "BUYABLE VENDING STOCK\n%s\n\nPRESS B FOR BUSINESS STOCK + GHOST CONTACT\n%s" % [
 				"\n".join(vending_lines),
-"THE GHOST REQUIRES DIRECT INTERACTION.",
+				"The Ghost has no published items or prices. Ask in person.",
 			]
-native_app_footer.text = "1–5 BUY SERVER-PRICED STOCK  ·  B BUSINESS STOCK  ·  ESC CLOSE"
-"business_stock":
-native_app_title.text = "TOWER VENDING / BUSINESS STOCK"
-var business_stock_lines: Array[String] = []
-var listings_value: Variant = office.get("businessStockLines", [])
-if listings_value is Array:
-for listing_value in listings_value:
+			native_app_footer.text = "1–5 BUY SERVER-PRICED STOCK  ·  B BUSINESS STOCK  ·  ESC CLOSE"
+		"business_stock":
+			native_app_title.text = "TOWER VENDING / BUSINESS STOCK"
+			var business_stock_lines: Array[String] = []
+			var listings_value: Variant = office.get("businessStockLines", [])
+			if listings_value is Array:
+				for listing_value in listings_value:
 					if not listing_value is Dictionary:
 						continue
 					var listing: Dictionary = listing_value
-					var seller := str(listing.get("sellerName", ""))
+					var seller := ""
+					if listing.get("sellerName") is String:
+						seller = str(listing.get("sellerName"))
 					if seller.is_empty():
 						seller = str(listing.get("specialty", "SPECIALTY")).replace("-", " ").to_upper()
-var seller_location := str(listing.get("sellerLocationLabel", "LOCATION NOT ASSIGNED"))
+					var seller_location := "LOCATION NOT ASSIGNED"
+					var seller_location_value: Variant = listing.get("sellerLocationLabel")
+					if seller_location_value is String and not seller_location_value.is_empty():
+						seller_location = str(seller_location_value)
 					var detail := ""
 					var products_value: Variant = listing.get("items", [])
 					if products_value is Array and not products_value.is_empty():
@@ -2508,19 +2483,24 @@ var seller_location := str(listing.get("sellerLocationLabel", "LOCATION NOT ASSI
 						detail = ", ".join(product_lines)
 					else:
 						var categories: Variant = listing.get("quoteCategories", [])
-						detail = ", ".join(categories) if categories is Array and not categories.is_empty() else "QUOTE REQUIRED"
-business_stock_lines.append("%s · %s / %s" % [seller, seller_location, detail])
-if business_stock_lines.is_empty():
-business_stock_lines.append("BUSINESS STOCK LOADING OR ACCOUNT LINK REQUIRED")
+						var category_names: Array[String] = []
+						if categories is Array:
+							for category_value in categories:
+								if category_value is String:
+									category_names.append(category_value)
+						detail = ", ".join(category_names) if not category_names.is_empty() else "QUOTE REQUIRED"
+					business_stock_lines.append("%s · %s / %s" % [seller, seller_location, detail])
+			if business_stock_lines.is_empty():
+				business_stock_lines.append("BUSINESS STOCK LOADING OR ACCOUNT LINK REQUIRED")
 			var ghost_value: Variant = office.get("ghostListing", {})
 			var ghost_notice := "THE GHOST / DIRECT INTERACTION ONLY"
 			if ghost_value is Dictionary:
 				ghost_notice = str(ghost_value.get("notice", ghost_notice))
-native_app_body.text = "SELLER LOCATIONS ARE SHOWN ONLY WHEN KNOWN\n%s\n\n%s\nDIRECT, PROXIMITY-VERIFIED INTERACTION ONLY FOR THE GHOST." % [
-"\n".join(business_stock_lines),
-ghost_notice
+			native_app_body.text = "SELLER LOCATIONS ARE SHOWN ONLY WHEN KNOWN\n%s\n\n%s\nDIRECT, PROXIMITY-VERIFIED INTERACTION ONLY FOR THE GHOST." % [
+				"\n".join(business_stock_lines),
+				ghost_notice
 			]
-native_app_footer.text = "B RETURN TO VENDING STOCK  ·  ESC CLOSE"
+			native_app_footer.text = "B RETURN TO VENDING STOCK  ·  ESC CLOSE"
 		"merchant":
 			native_app_panel.color = Color("#f0eee8")
 			native_app_title.add_theme_color_override("font_color", Color("#171717"))
@@ -2542,8 +2522,8 @@ native_app_footer.text = "B RETURN TO VENDING STOCK  ·  ESC CLOSE"
 			native_app_body.add_theme_color_override("font_color", Color("#30302d"))
 			native_app_footer.add_theme_color_override("font_color", Color("#76543d"))
 			native_app_title.text = "MILA  /  RECEPTION SERVICES"
-native_app_body.text = "%s\n\nCLASSIFIEDS & BUSINESS SERVICES\n1  JOB OPPORTUNITIES\n2  BUSINESS CONTRACTS\n3  REAL ESTATE / LEASING\n\nSelected services open their existing SALARYMAN screens." % location
-native_app_footer.text = "1–3 OPEN A SERVICE  ·  ESC CLOSE"
+			native_app_body.text = "%s\n\nCLASSIFIEDS & BUSINESS SERVICES\n1  JOB OPPORTUNITIES\n2  BUSINESS CONTRACTS\n3  REAL ESTATE / LEASING\n\nSelected services open their existing SALARYMAN screens." % location
+			native_app_footer.text = "1–3 OPEN A SERVICE  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
 			native_app_body.text = "CONNECTED GAME MODULES\n%s  /  TEAM %d  /  FIAT ƒ%.2f\n1 JOB COMMAND  2 ACCOUNTING  3 CONTACTS\n4 MARKETING  5 DARKROOM  6 INTELLIGENCE\n7 BANK VIEW  8 CALLL HOME / COMMS  9 CLOSE" % [
@@ -2649,12 +2629,13 @@ native_app_footer.text = "1–3 OPEN A SERVICE  ·  ESC CLOSE"
 			]
 			native_app_footer.text = "4 OR O TO TOGGLE MUSIC  ·  ESC CLOSE"
 		"utility_work":
-			native_app_title.text = "TOWER UTILITY WORK"
-			native_app_body.text = "%s\n\n%s MAINTENANCE\nServer-authoritative work is running. Remain at the station until it is confirmed complete." % [
+			native_app_title.text = "TOWER INFRASTRUCTURE / REPAIR ROUTES"
+			native_app_body.add_theme_font_size_override("font_size", 12)
+			native_app_body.text = "%s\n\n%s MAINTENANCE\nServer-authoritative repair is running. Remain at the station until it is confirmed complete.\n\nB5 POWER ─────────────┐\nB6 WATER + FIRE PIPE ─┼─ SERVICE-ELEVATOR WALL RISER\nB3 FIRE ALARM ────────┘              │\n                                     ├─ FLOORS 01–67 / 220 × 250 m / OFFICE BRANCHES\n                                     ├─ LOBBY / 40 × 60 m / PERIMETER ROUTE\n                                     └─ B1–B6 / 100 × 100 m / PERIMETER ROUTE\n\nThe 12 cm wall cavity has separate electrical, water, alarm, and suppression lanes." % [
 				location,
 				str(office.get("utilityWorkTarget", "TOWER")).to_upper(),
 			]
-			native_app_footer.text = "WAIT FOR SERVER CONFIRMATION"
+			native_app_footer.text = "TRACE THE SERVICE-ELEVATOR WALL / WAIT FOR SERVER CONFIRMATION"
 		"company_relocation":
 			native_app_title.text = "COMPANY RELOCATION"
 			native_app_body.text = "Your team is preparing to move.\n\nDESTINATION NOT DISCLOSED\n\nThe location will not be shown in this sequence."
@@ -2745,6 +2726,8 @@ func _input(event: InputEvent) -> void:
 				var choice := terminal_choice_for_key(event.keycode)
 				if choice > 0:
 					_send_command("terminal_choice", {"choice": choice})
+			elif active_page in ["vending", "business_stock"] and event.keycode == KEY_B:
+				_send_command("toggle_business_stock")
 			elif active_page == "vending" and event.keycode in [
 				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5
 			]:
@@ -2755,7 +2738,7 @@ func _input(event: InputEvent) -> void:
 					var item_value: Variant = vending_value[item_index]
 					if item_value is Dictionary:
 						_send_command("buy_vending", {"item_id": str(item_value.get("id", ""))})
-			elif active_page == "reception" and event.keycode in [KEY_1, KEY_2, KEY_3, KEY_4]:
+			elif active_page == "reception" and event.keycode in [KEY_1, KEY_2, KEY_3]:
 				_send_command("reception_choice", {"choice": event.keycode - KEY_0})
 			elif active_page == "pest_jobs" and event.keycode in [KEY_1, KEY_2]:
 				var job_id := "pest_w2" if event.keycode == KEY_1 else "pest_1099"

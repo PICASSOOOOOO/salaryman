@@ -57,6 +57,19 @@ include the hallway or elevator.
 **How to apply:** preserve 90 × 110 m interior bounds for every unit; add wall,
 crawl/service, and foundation geometry outside or below those bounds.
 
+The standard floor clear envelope is 220 × 250 m. Map water pipes, electrical
+conduits, and fire-safety runs through the 12 cm wall service cavity in separate
+lanes, with a traceable route and repair access across the lobby, basements,
+and Tower floors. Tie the route chart to the known B5 power, B6 pumping, and B3
+fire-response areas; do not place infrastructure runs through usable room space.
+
+**Why:** The user confirmed the total floor footprint and said wall-routed pipes
+and electrical conduits must be mapped for repairs during outages and fires.
+
+**How to apply:** Keep the route graph in the canonical building plan and expose
+it at maintenance/repair views. Preserve the distinct lobby and basement
+footprints while using the standard 220 × 250 m floor map elsewhere.
+
 Elevator travel should show entry from the lobby, a short camera zoom into a
 transparent isometric elevator interior, and arrival in the selected floor's
 hallway.

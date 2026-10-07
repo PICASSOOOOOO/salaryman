@@ -11,7 +11,7 @@ from pygame_sim.bridge import (
     build_snapshot,
     validate_command,
 )
-from pygame_sim.scene import build_tower_scene
+from pygame_sim.scene import FLOOR_PLAN, build_tower_scene
 from pygame_sim.state import OfficeState
 
 
@@ -204,25 +204,93 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "reception")
         self.assertEqual(self.state.page_source, "MILA / RECEPTION")
 
-    def test_floor_seven_marketplace_counter_opens_business_directory(self):
+    def test_floor_seven_is_a_pablo_business_floor_without_a_directory_counter(self):
         self.assertTrue(self.scene.select_floor(7))
-        counter = self.scene.objects.get("floor07-marketplace-counter")
-        self.assertIsNotNone(counter)
-        self.scene.player_position = counter.position
-        result = apply_command(
-            {
-                "type": "command",
-                "version": PROTOCOL_VERSION,
-                "id": "floor07-marketplace",
-                "name": "interact",
-                "payload": {"object_id": counter.id},
-            },
-            self.state,
-            self.scene,
+        self.assertEqual(self.scene.current_room, "floor07_business")
+        self.assertIsNotNone(self.scene.objects.get("floor07-elevator"))
+        self.assertIsNotNone(self.scene.objects.get("floor07-stairs"))
+        self.assertIsNone(self.scene.objects.get("floor07-marketplace-counter"))
+
+    def test_vending_page_switches_to_read_only_business_stock_and_back(self):
+        vending = self.scene.objects.get("lobby-vending")
+        self.assertIsNotNone(vending)
+        self.state.open_page(
+            "vending",
+            from_object=True,
+            source="TOWER VENDING",
+            source_object_id=vending.id,
         )
+
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "business-stock-from-vending",
+            "name": "toggle_business_stock",
+            "payload": {},
+        }
+        result = apply_command(command, self.state, self.scene)
         self.assertTrue(result.ok)
-        self.assertEqual(self.state.active_page, "marketplace")
-        self.assertEqual(self.state.active_object_id, "floor07-marketplace-counter")
+        self.assertEqual(self.state.active_page, "business_stock")
+        self.assertEqual(self.state.active_object_id, vending.id)
+
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "vending")
+
+    def test_tower_floor_plan_keeps_capacity_rules_and_wall_cavity_routes_mapped(self):
+        rules = FLOOR_PLAN["businessOpportunityRules"]
+        self.assertEqual(rules["defaultBusinessesPerFloor"], 4)
+        self.assertEqual(rules["maximumBusinessesOnLowerFloors"], 8)
+        self.assertTrue(rules["higherFloorCapacityDecreasesWithAvailableRoom"])
+        self.assertTrue(rules["capacityDependsOnFloorSizeAndLocation"])
+        self.assertEqual(rules["minimumBusinessesWhenConsolidated"], 1)
+        self.assertNotIn("floorBusinessCounts", FLOOR_PLAN)
+        self.assertNotIn("businessUnits", FLOOR_PLAN)
+        business_area = FLOOR_PLAN["floorProgram"]["pabloCorpBusinessArea"]
+        self.assertEqual(business_area["floors"], list(range(1, 8)))
+        self.assertEqual(business_area["basementFloors"], [f"B{level}" for level in range(1, 7)])
+        self.assertEqual(business_area["rearShipping"]["floor"], "B1")
+        known_floor_six = FLOOR_PLAN["floorProgram"]["floor6Businesses"]
+        self.assertEqual(
+            [(entry["label"], entry["officeNumber"]) for entry in known_floor_six],
+            [
+                ("BANCO OMBRA BANK OFFICE", 1),
+                ("PABLO CORP REAL ESTATE", 2),
+                ("FISH STORE", 3),
+                ("FURNITURE STORE", 4),
+            ],
+        )
+
+        infra = FLOOR_PLAN["infrastructureMap"]
+        self.assertEqual(infra["standardFloor"]["clearEnvelopeMeters"], [220, 250])
+        self.assertEqual(infra["wallServiceCavityMeters"], 0.12)
+        self.assertEqual(infra["lobby"]["bounds"][2:], [4000, 6000])
+        self.assertEqual(infra["lobby"]["clearEnvelopeMeters"], [40, 60])
+        self.assertEqual(infra["basements"]["clearEnvelopeMeters"], [100, 100])
+        systems = infra["systems"]
+        route_ids = {route["id"] for route in infra["standardFloor"]["wallRoutes"]}
+        self.assertTrue(systems)
+        for system in systems:
+            self.assertTrue(set(system["wallRouteIds"]).issubset(route_ids))
+            self.assertIsNotNone(self.scene.objects.get(system["source"]["objectId"]))
+            self.assertIsNotNone(self.scene.objects.get(system["repairStation"]["objectId"]))
+        for route in infra["standardFloor"]["wallRoutes"]:
+            for x, y in route["points"]:
+                self.assertGreaterEqual(x, 0)
+                self.assertGreaterEqual(y, 0)
+                self.assertLessEqual(x, 22_000)
+                self.assertLessEqual(y, 25_000)
+        lobby_x, lobby_y, lobby_w, lobby_h = infra["lobby"]["bounds"]
+        for route in infra["lobby"]["wallRoutes"]:
+            for x, y in route["points"]:
+                self.assertTrue(lobby_x <= x <= lobby_x + lobby_w)
+                self.assertTrue(lobby_y <= y <= lobby_y + lobby_h)
+        for route in infra["basements"]["wallRoutes"]:
+            for x, y in route["points"]:
+                self.assertTrue(0 <= x <= 10_000)
+                self.assertTrue(0 <= y <= 10_000)
+        for object_id in infra["lobby"]["branchAccessObjectIds"]:
+            self.assertIsNotNone(self.scene.objects.get(object_id))
 
     def test_floors_eight_through_sixty_seven_remain_under_construction(self):
         self.assertFalse(self.scene.select_floor(8))
@@ -274,7 +342,7 @@ class PygameBridgeTests(unittest.TestCase):
         command = {
             "type": "command",
             "version": PROTOCOL_VERSION,
-            "id": "mila-business-market",
+            "id": "mila-job-service",
             "name": "reception_choice",
             "payload": {"choice": 1},
         }
@@ -282,7 +350,7 @@ class PygameBridgeTests(unittest.TestCase):
             result = apply_command(command, self.state, self.scene, building_sync)
         self.assertTrue(result.ok)
         open_browser.assert_called_once_with(
-            "https://salaryman.example/business/marketplace"
+            "https://salaryman.example/business/jobs"
         )
         self.assertIsNone(self.state.active_page)
 

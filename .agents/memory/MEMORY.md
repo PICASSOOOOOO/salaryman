@@ -6,7 +6,7 @@
 - [Phone-system health + tests](phone-system-daily-test.md) — mocked tests and live Twilio probes are separate; SMS rejection must not gate Voice. See [test harness](twilio-phone-tests.md); schedule is user-owned.
 - [Twilio toll-free resubmission](twilio-tollfree-resubmission.md) — use `editExpiration`; after seven days, submit corrections as a new request and keep the rejected record.
 - [Browser phone bridge invariant](browser-phone-bridge.md) — outbound PSTN calls are transactional: Voice ready first, every conference joined before active UI, all legs rolled back on any join failure.
-- [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
+- [Composite workspace-library declarations](composite-workspace-library-builds.md) — consumers may read stale emitted types; rebuild composite libraries after adding exports or schemas.
 - [DB migration mechanism](db-migration-mechanism.md) — dev schema uses push-force; production schema is applied by Publish, never a deployment post-build hook. Drizzle generate is broken.
 - [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
 - [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
@@ -153,5 +153,5 @@
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Tower basement layout and access](tower-basement-layout.md) — B1–B6 departments, one full-height service lift, four lobby passenger lifts, two stairwells, and activity-driven pest pressure.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp owns unpurchased units plus selected floors; preserve private resale proceeds and its intentional economic advantage.
-- [Floor 7 marketplace scope](floor-seven-marketplace-scope.md) — Floor 7 is the first business marketplace; keep later floors under construction and list only supported prices/stock.
+- [Tower business locations and stock](floor-seven-marketplace-scope.md) — no Tower marketplace or directory; capacity is floor-dependent, and only confirmed business assignments appear.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.

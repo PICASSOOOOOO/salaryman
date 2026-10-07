@@ -1,10 +1,14 @@
 ---
-name: Floor 7 marketplace scope
-description: Floor order, stock/pricing truth, Ghost trade boundary, and game-only scope for the Shadow Tower marketplace.
+name: Tower business locations and stock
+description: Pablo Corp's initial Tower footprint, non-instantiated floor capacity, vending information boundary, and confirmed businesses.
 ---
 
-Floor 7 is the first business marketplace floor; Floors 8–67 remain under construction. Keep this marketplace within the downloadable game, not the browser UI. List goods using verified live catalog items and prices; categories without verified stock or prices must say quote required rather than inventing offers. Decorative goods are valid. Price products with stronger health, income, skill, net-worth, or operating potential higher. The Ghost has no published item-level inventory or prices and remains available only through direct, proximity-verified interaction. Product-family/version metadata may prepare future specialist businesses, but it does not mean NPC product-growth simulation is active. Do not add art or tutorials before the user tests normal business operation.
+Pablo Corp is the initial operator of the lobby, Floors 1–7, and basements B1–B6, including B1 rear shipping. The Tower has no marketplace and Floor 7 has no directory. Do not instantiate unknown businesses or assign exact per-floor counts. Capacity defaults to four businesses per floor; lower floors can fit up to eight, upper-floor capacity decreases with available room, and areas can consolidate to one business.
 
-**Why:** The user wants one floor at a time, truthful listings, direct-only Ghost trade, and purposeful NPC specialists without prematurely widening the game or changing its browser experience.
+Floor 6's confirmed businesses are Banco Ombra (Office 1), Pablo Corp real estate (Office 2), Fish Store (Office 3), and Furniture Store (Office 4). Keep unconfirmed locations unassigned.
 
-**How to apply:** Keep Floor 7 as the last open floor until the user asks for later floors. Reuse catalog IDs and live prices; mark unknown inventory/prices as quote-only. Keep Ghost purchases out of catalogs, and preserve server-side proximity checks for future direct offers. Treat future NPC product improvements as narrow extensions of each NPC's existing automation/job.
+Vending shows read-only stock and seller locations only where confirmed. It does not sell business listings. The Ghost has no published item-level inventory or prices; contact and trade require direct, proximity-verified interaction. Mila's lobby menu offers existing job, contract, and real-estate services, not a Tower marketplace. Keep unrelated browser features unchanged.
+
+**Why:** The user corrected the Tower business model and explicitly limited known assignments to confirmed locations.
+
+**How to apply:** Keep floor-opportunity capacity as rules, not physical unit records. Preserve the Floor 6 roster, vending information boundary, and Ghost proximity requirement; don't add a directory or invent tenants.

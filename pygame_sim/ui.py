@@ -1966,7 +1966,7 @@ class SolarPunkRenderer:
                 Palette.MATRIX_BRIGHT,
             )
             self.text(
-                "The server settles the utility work. Stay at the panel until it confirms completion.",
+                "The server settles the repair. Use this wall-cavity chart to trace the affected system.",
                 (page.x + 28, content + 54),
                 self.font_sm,
                 Palette.MATRIX_DIM,
@@ -1983,6 +1983,119 @@ class SolarPunkRenderer:
                 (page.x + 28, content + 146),
                 self.font_mono,
                 Palette.MATRIX_AMBER if state.utility_work_active else Palette.MATRIX_GREEN,
+            )
+            infra = FLOOR_PLAN.get("infrastructureMap", {})
+            standard = infra.get("standardFloor", {}) if isinstance(infra, dict) else {}
+            wall_routes = standard.get("wallRoutes", []) if isinstance(standard, dict) else []
+            systems = infra.get("systems", []) if isinstance(infra, dict) else []
+            diagram_top = content + 184
+            diagram = pygame.Rect(
+                page.x + 28,
+                diagram_top,
+                page.width - 56,
+                max(118, page.bottom - diagram_top - 18),
+            )
+            self.panel(diagram, Palette.MATRIX_PANEL_2, Palette.MATRIX_GRID, radius=3, width=1)
+            self.text(
+                "TOWER UTILITY ROUTE / SEPARATE LANES IN THE SHARED WALL CAVITY",
+                (diagram.x + 10, diagram.y + 8),
+                self.font_sm,
+                Palette.MATRIX_BRIGHT,
+            )
+
+            colors = {
+                "electrical": Palette.MATRIX_AMBER,
+                "water": (89, 174, 231),
+                "fire_alarm": (241, 106, 93),
+                "fire_suppression": (247, 145, 89),
+            }
+            map_height = max(76, diagram.height - 48)
+            floor_map = pygame.Rect(diagram.x + 12, diagram.y + 34, 180, map_height)
+            pygame.draw.rect(self.screen, Palette.MATRIX_PANEL, floor_map, border_radius=2)
+            envelope = standard.get("clearEnvelopeUnits", [22_000, 25_000])
+            envelope_w = max(1, int(envelope[0]))
+            envelope_h = max(1, int(envelope[1]))
+            scale = min((floor_map.width - 12) / envelope_w, (floor_map.height - 12) / envelope_h)
+            route_w = max(1, int(envelope_w * scale))
+            route_h = max(1, int(envelope_h * scale))
+            route_x = floor_map.x + (floor_map.width - route_w) // 2
+            route_y = floor_map.y + (floor_map.height - route_h) // 2
+            floor_rect = pygame.Rect(route_x, route_y, route_w, route_h)
+            pygame.draw.rect(self.screen, Palette.MATRIX_GRID, floor_rect, width=1)
+
+            if isinstance(systems, list) and isinstance(wall_routes, list):
+                for system_index, system in enumerate(systems):
+                    if not isinstance(system, dict):
+                        continue
+                    color = colors.get(str(system.get("id")), Palette.MATRIX_GREEN)
+                    route_ids = set(system.get("wallRouteIds", []))
+                    lane_offset = system_index - (len(systems) - 1) / 2
+                    for route in wall_routes:
+                        if not isinstance(route, dict) or route.get("id") not in route_ids:
+                            continue
+                        raw_points = route.get("points", [])
+                        if not isinstance(raw_points, list) or len(raw_points) < 2:
+                            continue
+                        points = [
+                            (
+                                route_x + int(float(point[0]) / envelope_w * route_w),
+                                route_y + int(float(point[1]) / envelope_h * route_h + lane_offset),
+                            )
+                            for point in raw_points
+                            if isinstance(point, list) and len(point) == 2
+                        ]
+                        if len(points) >= 2:
+                            pygame.draw.lines(self.screen, color, False, points, 2)
+
+            offices = FLOOR_PLAN.get("baseLayout", {}).get("offices", [])
+            if isinstance(offices, list):
+                for office in offices:
+                    entrance = office.get("entrance") if isinstance(office, dict) else None
+                    if not isinstance(entrance, list) or len(entrance) != 2:
+                        continue
+                    marker = (
+                        route_x + int(float(entrance[0]) / envelope_w * route_w),
+                        route_y + int(float(entrance[1]) / envelope_h * route_h),
+                    )
+                    pygame.draw.circle(self.screen, Palette.MATRIX_BRIGHT, marker, 3)
+
+            riser_x = floor_map.right + 26
+            riser_top = diagram.y + 47
+            riser_bottom = diagram.bottom - 26
+            for system_index, (system_id, color) in enumerate(colors.items()):
+                x = riser_x + system_index * 4
+                pygame.draw.line(self.screen, color, (x, riser_top), (x, riser_bottom), 2)
+            levels = [
+                ("67", 0.0),
+                ("07", 0.20),
+                ("06", 0.29),
+                ("01", 0.40),
+                ("B1", 0.52),
+                ("B3", 0.67),
+                ("B5", 0.82),
+                ("B6", 0.95),
+            ]
+            for level, ratio in levels:
+                y = riser_top + int((riser_bottom - riser_top) * ratio)
+                pygame.draw.circle(self.screen, Palette.MATRIX_BRIGHT, (riser_x + 6, y), 3)
+                self.text(level, (riser_x + 16, y - 6), self.font_sm, Palette.MATRIX_DIM)
+            legend_x = riser_x + 58
+            legend_y = diagram.y + 43
+            labels = (
+                ("POWER / B5", colors["electrical"]),
+                ("WATER / B6", colors["water"]),
+                ("FIRE ALARM / B3", colors["fire_alarm"]),
+                ("FIRE PIPE / B6", colors["fire_suppression"]),
+            )
+            for index, (legend, color) in enumerate(labels):
+                y = legend_y + index * 22
+                pygame.draw.line(self.screen, color, (legend_x, y + 6), (legend_x + 16, y + 6), 3)
+                self.text(legend, (legend_x + 22, y), self.font_sm, Palette.MATRIX_DIM)
+            self.text(
+                "STANDARD FLOOR 220 × 250 M / LOBBY + B1–B6 USE THEIR OWN FOOTPRINTS",
+                (diagram.x + 202, diagram.bottom - 19),
+                self.font_sm,
+                Palette.MATRIX_DIM,
             )
             return
 

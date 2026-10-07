@@ -56,7 +56,7 @@ describe("Tower business exit placement", () => {
   });
 });
 
-describe("Floor 07 marketplace catalog", () => {
+describe("Tower business stock catalog", () => {
   it("keeps product families specialized and ready for bounded NPC improvements", () => {
     const listingIds = TOWER_BUSINESS_STOCK_LINES.map((listing) => listing.id);
     expect(new Set(listingIds).size).toBe(listingIds.length);
