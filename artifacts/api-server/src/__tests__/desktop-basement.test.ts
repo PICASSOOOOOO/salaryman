@@ -16,6 +16,9 @@ import {
   salarymanSavesTable,
   towerStaffAssignmentsTable,
   towerBuildingVitalsTable,
+  towerOperationsStateTable,
+  towerRestroomSessionsTable,
+  towerWasteHaulsTable,
   usersTable,
 } from "@workspace/db";
 import { TOWER_ELEVATOR_POSITIONS } from "../lib/desktop-building-objects";
@@ -81,6 +84,15 @@ async function setUniform(worn: boolean) {
 async function enterBasement(x = 5_000, y = 5_000) {
   return desktopPost("/api/desktop-building/basement/presence").send({
     level: 1,
+    x,
+    y,
+    action: "stand",
+  });
+}
+
+async function moveBasement(level: number, x: number, y: number) {
+  return desktopPost("/api/desktop-building/basement/presence").send({
+    level,
     x,
     y,
     action: "stand",
@@ -240,6 +252,7 @@ describe("desktop basement survival authority", () => {
   });
 
   it("charges stamina once and pays a carcass bounty only once after pickup", async () => {
+    await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
     const [pest] = await db.insert(desktopBasementPestsTable).values({
       buildingKey: "shadow_tower",
       level: 1,
@@ -288,12 +301,23 @@ describe("desktop basement survival authority", () => {
     expect(tooFar.status).toBe(409);
     expect(tooFar.body.error).toContain("closer to the carcass");
 
-    await db.update(desktopBasementPresenceTable).set({ x: 5_000, y: 5_000 })
+    await db.update(desktopBasementPresenceTable).set({
+      level: 1,
+      x: 5_000,
+      y: 5_000,
+      lastSeenAt: new Date(),
+    })
       .where(eq(desktopBasementPresenceTable.userId, userId));
     const claim = await desktopPost("/api/desktop-building/basement/carcass/claim")
       .send({ pestId: pest.id });
     expect(claim.status).toBe(200);
 
+    await db.update(desktopBasementPresenceTable).set({
+      level: 3,
+      x: 5_000,
+      y: 7_000,
+      lastSeenAt: new Date(),
+    }).where(eq(desktopBasementPresenceTable.userId, userId));
     const sale = await desktopPost("/api/desktop-building/basement/carcass/sell")
       .send({ pestId: pest.id });
     expect(sale.status).toBe(200);
@@ -318,22 +342,23 @@ describe("desktop basement survival authority", () => {
       .send({ target: "toString" });
     expect(blockedTarget.status).toBe(400);
 
+    await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
     await setLobbyPresence();
     expect((await enterBasement()).status).toBe(200);
     await setUniform(false);
     await db.update(desktopBasementPresenceTable)
-      .set({ x: 7_500, y: 2_000 })
+      .set({ level: 5, x: 7_500, y: 2_000, lastSeenAt: new Date() })
       .where(eq(desktopBasementPresenceTable.userId, userId));
     const noUniform = await desktopPost("/api/desktop-building/basement/work/start")
       .send({ target: "power" });
     expect(noUniform.status).toBe(409);
 
     await db.update(desktopBasementPresenceTable)
-      .set({ x: 5_000, y: 5_000 })
+      .set({ level: 1, x: 5_000, y: 5_000, lastSeenAt: new Date() })
       .where(eq(desktopBasementPresenceTable.userId, userId));
     await setUniform(true);
     await db.update(desktopBasementPresenceTable)
-      .set({ x: 7_500, y: 2_000 })
+      .set({ level: 5, x: 7_500, y: 2_000, lastSeenAt: new Date() })
       .where(eq(desktopBasementPresenceTable.userId, userId));
     const started = await desktopPost("/api/desktop-building/basement/work/start")
       .send({ target: "power" });
@@ -356,5 +381,223 @@ describe("desktop basement survival authority", () => {
     const [vitals] = await db.select().from(towerBuildingVitalsTable)
       .where(eq(towerBuildingVitalsTable.buildingKey, "shadow_tower"));
     expect(vitals).toBeDefined();
+  });
+
+  it("limits basement service-elevator travel to assigned Tower staff", async () => {
+    await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
+    await db.delete(towerStaffAssignmentsTable).where(eq(towerStaffAssignmentsTable.userId, userId));
+    await setLobbyPresence();
+    await db.update(desktopOfficePresenceTable).set({
+      x: TOWER_SERVICE_ELEVATOR_LOBBY.x,
+      y: TOWER_SERVICE_ELEVATOR_LOBBY.y,
+      lastSeenAt: new Date(),
+    }).where(eq(desktopOfficePresenceTable.userId, userId));
+
+    try {
+      const blockedEntry = await enterBasement(
+        TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      );
+      expect(blockedEntry.status).toBe(409);
+      expect(blockedEntry.body.error).toContain("restricted to assigned Tower staff");
+
+      await db.insert(towerStaffAssignmentsTable).values({
+        userId,
+        role: "maintenance",
+        assignedByUserId: userId,
+      });
+      const entered = await enterBasement(
+        TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      );
+      expect(entered.status).toBe(200);
+      expect(entered.body.accessMode).toBe("service_elevator");
+
+      const up = await moveBasement(
+        5,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      );
+      expect(up.status).toBe(200);
+      expect(up.body.accessMode).toBe("service_elevator");
+      expect((await moveBasement(
+        1,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      )).status).toBe(200);
+
+      await db.delete(towerStaffAssignmentsTable).where(eq(towerStaffAssignmentsTable.userId, userId));
+      const blockedTravel = await moveBasement(
+        5,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+        TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      );
+      expect(blockedTravel.status).toBe(409);
+    } finally {
+      await db.delete(towerStaffAssignmentsTable).where(eq(towerStaffAssignmentsTable.userId, userId));
+      await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
+    }
+  });
+
+  it("times private restroom recovery and settles physical waste and staff-only supply intake", async () => {
+    await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
+    const originalOperations = (await db.select().from(towerOperationsStateTable)
+      .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower")).limit(1))[0];
+    const now = new Date();
+    const testOperations = {
+      accumulatedTrash: 4,
+      incomingSupplyCrates: 1,
+      storedSupplyCrates: 2,
+      processedTrash: 0,
+      lastTrashTickAt: now,
+      lastTrashHaulAt: now,
+      lastSupplyDeliveryAt: now,
+      lastGeneratorWorkAt: now,
+      lastPumpWorkAt: now,
+      updatedAt: now,
+    };
+    await db.insert(towerOperationsStateTable).values({
+      buildingKey: "shadow_tower",
+      ...testOperations,
+    }).onConflictDoUpdate({
+      target: towerOperationsStateTable.buildingKey,
+      set: testOperations,
+    });
+
+    try {
+      await db.update(salarymanSavesTable).set({
+        data: { energy: 80, energyUpdatedAt: new Date().toISOString() },
+      }).where(and(
+        eq(salarymanSavesTable.userId, userId),
+        eq(salarymanSavesTable.slotIndex, 0),
+      ));
+      await db.update(desktopOfficePresenceTable).set({
+        roomKey: "lobby:minx_city",
+        room: "lobby",
+        floorNumber: 1,
+        x: 49_978_300,
+        y: 50_002_200,
+        action: "stand",
+        lastSeenAt: new Date(),
+      }).where(eq(desktopOfficePresenceTable.userId, userId));
+
+      const restroom = await desktopPost("/api/desktop-building/restroom/start")
+        .send({ stallKey: "lobby-restroom-stall-1" });
+      expect(restroom.status).toBe(200);
+      expect((await desktopPost("/api/desktop-building/restroom/complete").send({
+        stallKey: "lobby-restroom-stall-1",
+        sessionId: restroom.body.sessionId,
+      })).status).toBe(409);
+      await db.update(towerRestroomSessionsTable).set({
+        startedAt: new Date(Date.now() - 10_000),
+      }).where(eq(towerRestroomSessionsTable.userId, userId));
+      const recovered = await desktopPost("/api/desktop-building/restroom/complete").send({
+        stallKey: "lobby-restroom-stall-1",
+        sessionId: restroom.body.sessionId,
+      });
+      expect(recovered.status).toBe(200);
+      expect(recovered.body.stamina).toBe(100);
+
+      await db.update(salarymanSavesTable).set({
+        data: { energy: 80, energyUpdatedAt: new Date().toISOString() },
+      }).where(and(
+        eq(salarymanSavesTable.userId, userId),
+        eq(salarymanSavesTable.slotIndex, 0),
+      ));
+      await db.update(desktopOfficePresenceTable).set({
+        roomKey: "hallway:minx_city:6",
+        room: "hallway",
+        floorNumber: 6,
+        x: 10_000,
+        y: 18_000,
+        action: "stand",
+        lastSeenAt: new Date(),
+      }).where(eq(desktopOfficePresenceTable.userId, userId));
+      const recreationRestroom = await desktopPost("/api/desktop-building/restroom/start")
+        .send({ stallKey: "recreation-restroom-stall-1" });
+      expect(recreationRestroom.status).toBe(200);
+      await db.update(towerRestroomSessionsTable).set({
+        startedAt: new Date(Date.now() - 10_000),
+      }).where(eq(towerRestroomSessionsTable.userId, userId));
+      const recreationRecovery = await desktopPost("/api/desktop-building/restroom/complete").send({
+        stallKey: "recreation-restroom-stall-1",
+        sessionId: recreationRestroom.body.sessionId,
+      });
+      expect(recreationRecovery.status).toBe(200);
+      expect(recreationRecovery.body.stamina).toBe(100);
+
+      await db.update(desktopOfficePresenceTable).set({
+        roomKey: "hallway:minx_city:6",
+        room: "hallway",
+        floorNumber: 6,
+        x: 9_550,
+        y: 9_000,
+        action: "stand",
+        lastSeenAt: new Date(),
+      }).where(eq(desktopOfficePresenceTable.userId, userId));
+      const pickedUp = await desktopPost("/api/desktop-building/waste/pickup")
+        .send({ binId: "recreation-trash-can" });
+      expect(pickedUp.status).toBe(200);
+      expect(pickedUp.body.units).toBe(4);
+
+      await setLobbyPresence();
+      expect((await enterBasement()).status).toBe(200);
+      await db.update(desktopBasementPresenceTable).set({
+        x: 9_000,
+        y: 9_000,
+        lastSeenAt: new Date(),
+      }).where(eq(desktopBasementPresenceTable.userId, userId));
+      await db.update(towerWasteHaulsTable).set({
+        pickedUpAt: new Date(Date.now() - 6_000),
+      }).where(and(
+        eq(towerWasteHaulsTable.userId, userId),
+        eq(towerWasteHaulsTable.linkId, linkId),
+      ));
+      const delivered = await desktopPost("/api/desktop-building/waste/deliver").send({});
+      expect(delivered.status).toBe(200);
+      expect(delivered.body.deliveredUnits).toBe(4);
+
+      await db.update(desktopBasementPresenceTable).set({
+        x: 9_000,
+        y: 7_000,
+        lastSeenAt: new Date(),
+      }).where(eq(desktopBasementPresenceTable.userId, userId));
+      const denied = await desktopPost("/api/desktop-building/supplies/receive").send({});
+      expect(denied.status).toBe(403);
+      await db.insert(towerStaffAssignmentsTable).values({
+        userId,
+        role: "maintenance",
+        assignedByUserId: userId,
+      }).onConflictDoUpdate({
+        target: towerStaffAssignmentsTable.userId,
+        set: { role: "maintenance", assignedByUserId: userId },
+      });
+      const received = await desktopPost("/api/desktop-building/supplies/receive").send({});
+      expect(received.status).toBe(200);
+      expect(received.body.receivedCrates).toBe(1);
+      const [operations] = await db.select().from(towerOperationsStateTable)
+        .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
+      expect(operations.processedTrash).toBe(4);
+      expect(operations.incomingSupplyCrates).toBe(0);
+      expect(operations.storedSupplyCrates).toBe(3);
+    } finally {
+      if (originalOperations) {
+        await db.update(towerOperationsStateTable).set({
+          accumulatedTrash: originalOperations.accumulatedTrash,
+          incomingSupplyCrates: originalOperations.incomingSupplyCrates,
+          storedSupplyCrates: originalOperations.storedSupplyCrates,
+          processedTrash: originalOperations.processedTrash,
+          lastTrashTickAt: originalOperations.lastTrashTickAt,
+          lastTrashHaulAt: originalOperations.lastTrashHaulAt,
+          lastSupplyDeliveryAt: originalOperations.lastSupplyDeliveryAt,
+          lastGeneratorWorkAt: originalOperations.lastGeneratorWorkAt,
+          lastPumpWorkAt: originalOperations.lastPumpWorkAt,
+          updatedAt: originalOperations.updatedAt,
+        }).where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
+      } else {
+        await db.delete(towerOperationsStateTable)
+          .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
+      }
+    }
   });
 });

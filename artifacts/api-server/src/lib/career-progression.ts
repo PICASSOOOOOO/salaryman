@@ -16,6 +16,10 @@ const ABANDONED_SESSION_MS = 24 * 60 * 60 * 1_000;
 const NPC_FIRST_NAMES = ["Ari", "Bao", "Cora", "Dara", "Eli", "Hanh", "Ivo", "June", "Khai", "Linh", "Mika", "Niko"];
 const NPC_LAST_NAMES = ["An", "Bui", "Dao", "Do", "Le", "Mai", "Nguyen", "Pham", "Tran", "Vu"];
 
+function randomIndex(random: () => number, length: number): number {
+  return Math.min(length - 1, Math.max(0, Math.floor(random() * length)));
+}
+
 export type CareerPositionSpec = {
   positionKey: string;
   employerKey: string;
@@ -46,8 +50,8 @@ export function nextRandomTurnoverAt(
     targetMonth.getUTCMonth() + 1,
     0,
   )).getUTCDate();
-  const day = randomInt(daysInMonth);
-  const minute = randomInt(24 * 60);
+  const day = randomIndex(random, daysInMonth);
+  const minute = randomIndex(random, 24 * 60);
   return new Date(Date.UTC(
     targetMonth.getUTCFullYear(),
     targetMonth.getUTCMonth(),
@@ -215,7 +219,10 @@ async function evaluatePosition(
       await tx.update(towerStaffAssignmentsTable).set({
         careerLevel: nextLevel,
         updatedAt: now,
-      }).where(eq(towerStaffAssignmentsTable.userId, userId));
+      }).where(and(
+        eq(towerStaffAssignmentsTable.userId, userId),
+        eq(towerStaffAssignmentsTable.role, towerRole),
+      ));
     }
   }
 
@@ -225,7 +232,6 @@ async function evaluatePosition(
     title: position.title,
     incumbent: position.incumbentName,
     incumbentSince: position.incumbentSince.toISOString(),
-    nextTurnoverAt: position.nextTurnoverAt.toISOString(),
     benchmarks: {
       verifiedOutput: position.baselineOutputUnits,
       reliabilityPct: position.baselineReliabilityPct,
@@ -272,6 +278,16 @@ export async function completeCareerWorkSession(
       outputUnits: Math.max(1, Math.trunc(input.outputUnits)),
       completedAt: now,
     }).where(eq(careerWorkEventsTable.id, event.id));
+  } else if (!event) {
+    await tx.insert(careerWorkEventsTable).values({
+      eventKey: input.eventKey,
+      positionKey: position.positionKey,
+      userId: input.userId,
+      status: "completed",
+      outputUnits: Math.max(1, Math.trunc(input.outputUnits)),
+      startedAt: now,
+      completedAt: now,
+    }).onConflictDoNothing({ target: careerWorkEventsTable.eventKey });
   }
   return evaluatePosition(tx, position, input.userId, now);
 }

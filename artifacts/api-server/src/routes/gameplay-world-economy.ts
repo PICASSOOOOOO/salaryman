@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, gt, gte, isNull, sql } from "drizzle-orm";
 import { creditFiat, getSpendableFiat, spendFiat } from "../lib/fiat-wallet";
+import { completeCareerWorkSession, startCareerWorkSession } from "../lib/career-progression";
 import { getPlayerPosition } from "../worldServer";
 
 const router = Router();
@@ -204,6 +205,21 @@ router.post("/gameplay/jobs/start", async (req: Request, res: Response) => {
       res.status(409).json({ error: result.kind === "active" ? "job_already_active" : "job_on_cooldown", job: publicJob(result.run) });
       return;
     }
+    const careerJob = QUICK_JOBS[result.run.jobId as keyof typeof QUICK_JOBS];
+    if (careerJob) {
+      try {
+        await db.transaction((tx) => startCareerWorkSession(tx, {
+          employerKey: "pablo-corp",
+          positionKey: `pablo-corp:fictional-job:${result.run.jobId}`,
+          title: careerJob.label,
+          department: `PABLO CORP / ${careerJob.buildingId}`,
+          userId,
+          eventKey: `quick-job:${result.run.id}`,
+        }, result.run.startedAt));
+      } catch (error) {
+        req.log?.warn({ err: error, runId: result.run.id }, "Quick-job career start could not be recorded");
+      }
+    }
     res.json({ ok: true, duplicate: result.duplicate, job: publicJob(result.run) });
   } catch {
     res.status(500).json({ error: "job_start_failed" });
@@ -251,7 +267,24 @@ router.post("/gameplay/jobs/:runId/complete", async (req: Request, res: Response
     if (result.kind === "missing") { res.status(404).json({ error: "job_not_found" }); return; }
     if (result.kind === "early") { res.status(409).json({ error: "job_not_ready", job: publicJob(result.run) }); return; }
     if (result.kind === "consumed") { res.status(409).json({ error: "job_already_completed", job: publicJob(result.run) }); return; }
-    res.json({ ok: true, duplicate: result.duplicate, job: publicJob(result.run), wallet: result.wallet });
+    let career: Awaited<ReturnType<typeof completeCareerWorkSession>> | null = null;
+    const careerJob = QUICK_JOBS[result.run.jobId as keyof typeof QUICK_JOBS];
+    if (careerJob) {
+      try {
+        career = await db.transaction((tx) => completeCareerWorkSession(tx, {
+          employerKey: "pablo-corp",
+          positionKey: `pablo-corp:fictional-job:${result.run.jobId}`,
+          title: careerJob.label,
+          department: `PABLO CORP / ${careerJob.buildingId}`,
+          userId,
+          eventKey: `quick-job:${result.run.id}`,
+          outputUnits: 1,
+        }));
+      } catch (error) {
+        req.log?.warn({ err: error, runId: result.run.id }, "Quick-job career completion could not be recorded");
+      }
+    }
+    res.json({ ok: true, duplicate: result.duplicate, job: publicJob(result.run), wallet: result.wallet, career });
   } catch {
     res.status(500).json({ error: "job_completion_failed" });
   }

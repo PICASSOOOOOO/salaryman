@@ -512,6 +512,13 @@
       "when": 1791352800000,
       "tag": "0072_tower_construction_contracts",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791358326553,
+      "tag": "0073_tower_operations_and_careers",
+      "breakpoints": true
     }
   ]
 }

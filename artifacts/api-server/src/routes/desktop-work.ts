@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { creditFiat } from "../lib/fiat-wallet";
+import { recordVerifiedCareerWork } from "../lib/career-progression";
 
 const router: IRouter = Router();
 const WORK_TYPE = "office_shift";
@@ -90,6 +91,7 @@ router.post("/desktop-work/claims", async (req, res): Promise<void> => {
           kind: "duplicate" as const,
           status: existing.status,
           amountFiat: existing.amountFiat,
+          startedAt: existing.settledAt ?? existing.reportedAt,
         };
       }
 
@@ -162,7 +164,12 @@ router.post("/desktop-work/claims", async (req, res): Promise<void> => {
         reportedAt,
         settledAt: now,
       });
-      return { kind: "accepted" as const, amountFiat, balance: wallet.newBalance };
+      return {
+        kind: "accepted" as const,
+        amountFiat,
+        balance: wallet.newBalance,
+        startedAt: new Date(lease.issuedAt.getTime() + lease.consumedMinutes * 60_000),
+      };
     });
 
     if (result.kind === "conflict") {
@@ -170,14 +177,46 @@ router.post("/desktop-work/claims", async (req, res): Promise<void> => {
       return;
     }
     if (result.kind === "duplicate") {
-      res.json({ ok: true, duplicate: true, status: result.status, amountFiat: result.amountFiat });
+      let career: Awaited<ReturnType<typeof recordVerifiedCareerWork>> | null = null;
+      if (result.status === "accepted") {
+        try {
+          career = await db.transaction((tx) => recordVerifiedCareerWork(tx, {
+            employerKey: "pablo-corp",
+            positionKey: "pablo-corp:fictional-job:office-shift",
+            title: "Pablo Corp Office Associate",
+            department: "PABLO CORP / OFFICE",
+            userId: link.userId,
+            eventKey: `desktop-office-shift:${eventId}`,
+            outputUnits: workMinutes,
+            startedAt: result.startedAt,
+          }));
+        } catch (error) {
+          req.log?.warn({ err: error, eventId }, "Office-shift career event could not be recorded");
+        }
+      }
+      res.json({ ok: true, duplicate: true, status: result.status, amountFiat: result.amountFiat, career });
       return;
     }
     if (result.kind === "rejected") {
       res.status(422).json({ ok: false, status: "rejected", reason: result.reason });
       return;
     }
-    res.json({ ok: true, status: "accepted", amountFiat: result.amountFiat, balance: result.balance });
+    let career: Awaited<ReturnType<typeof recordVerifiedCareerWork>> | null = null;
+    try {
+      career = await db.transaction((tx) => recordVerifiedCareerWork(tx, {
+        employerKey: "pablo-corp",
+        positionKey: "pablo-corp:fictional-job:office-shift",
+        title: "Pablo Corp Office Associate",
+        department: "PABLO CORP / OFFICE",
+        userId: link.userId,
+        eventKey: `desktop-office-shift:${eventId}`,
+        outputUnits: workMinutes,
+        startedAt: result.startedAt,
+      }));
+    } catch (error) {
+      req.log?.warn({ err: error, eventId }, "Office-shift career event could not be recorded");
+    }
+    res.json({ ok: true, status: "accepted", amountFiat: result.amountFiat, balance: result.balance, career });
   } catch (error) {
     req.log.error({ err: error }, "Desktop work claim failed");
     res.status(500).json({ error: "Could not settle desktop work" });

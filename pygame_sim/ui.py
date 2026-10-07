@@ -525,6 +525,18 @@ class SolarPunkRenderer:
             )
             self.text(vitals, (28, 122), self.font_mono, Palette.MATRIX_GREEN)
 
+        operations = snapshot.get("towerOperations")
+        if isinstance(operations, dict):
+            player = snapshot.get("player")
+            carried = player.get("carriedTrash", 0) if isinstance(player, dict) else 0
+            status = (
+                f"TRASH {operations.get('accumulatedTrash', 0)}"
+                f"  LOADING {operations.get('incomingSupplyCrates', 0)}"
+                f"  B4 STOCK {operations.get('storedSupplyCrates', 0)}"
+                f"  CARRY {carried}"
+            )
+            self.text(status, (28, 146), self.font_mono, Palette.MATRIX_DIM)
+
         crew = snapshot.get("npcCrew", [])
         if isinstance(crew, list):
             for member in crew:
@@ -534,7 +546,8 @@ class SolarPunkRenderer:
                 pygame.draw.ellipse(self.screen, (17, 22, 20), (x - 10, y + 6, 20, 7))
                 pygame.draw.circle(self.screen, (217, 176, 130), (x, y - 7), 5)
                 pygame.draw.rect(self.screen, (82, 145, 112), (x - 6, y - 2, 12, 14), border_radius=3)
-                self.text("STAFF", (x - 24, y - 25), self.font_mono, Palette.MATRIX_DIM)
+                label = str(member.get("label", "STAFF")).split(" / ", 1)[0][:14].upper()
+                self.text(label, (x - 34, y - 25), self.font_mono, Palette.MATRIX_DIM)
 
         pests = snapshot.get("pests", [])
         if isinstance(pests, list):
@@ -755,11 +768,22 @@ class SolarPunkRenderer:
                 continue
             draw_persian_rug((vertical_x, rug_y - 600, 700, 1_200))
 
-        elevator_lobby = world_rect(tuple(base_layout["elevatorLobby"]["bounds"]))
+        if is_lobby:
+            elevator_lobby_bounds = tuple(base_layout["elevatorLobby"]["bounds"])
+            elevator_x, elevator_y = center_x, center_y
+        else:
+            elevator_x, elevator_y = tuple(base_layout["elevator"]["position"])
+            elevator_lobby_bounds = (
+                elevator_x - 1_800,
+                elevator_y - 2_200,
+                3_600,
+                4_400,
+            )
+        elevator_lobby = world_rect(elevator_lobby_bounds)
         pygame.draw.rect(self.screen, (145, 153, 149), elevator_lobby)
         pygame.draw.rect(self.screen, (92, 104, 100), elevator_lobby, max(1, int(20 * scale)))
 
-        elevator = world_rect(tuple(base_layout["elevator"]["bounds"]))
+        elevator = world_rect((elevator_x - 650, elevator_y - 700, 1_300, 1_400))
         pygame.draw.rect(self.screen, (48, 63, 62), elevator)
         pygame.draw.rect(self.screen, (202, 211, 202), elevator, max(1, int(18 * scale)))
         door_split = elevator.centerx
@@ -940,6 +964,67 @@ class SolarPunkRenderer:
                 (body.left + 3, body.top + 5),
                 (body.left + 3, body.bottom - 4),
                 1,
+            )
+        elif kind == "restroom_stall":
+            width = max(34, int(420 * scale))
+            height = max(38, int(520 * scale))
+            stall = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (115, 118, 98), stall, border_radius=3)
+            pygame.draw.rect(self.screen, (42, 57, 49), stall, 2, border_radius=3)
+            door = pygame.Rect(stall.x + 4, stall.y + 5, width - 8, height - 10)
+            pygame.draw.rect(self.screen, (154, 144, 111), door, border_radius=2)
+            pygame.draw.rect(self.screen, (63, 76, 62), door, 1, border_radius=2)
+            pygame.draw.line(
+                self.screen,
+                (204, 193, 153),
+                (door.x + 5, door.y + 4),
+                (door.right - 5, door.y + 4),
+                1,
+            )
+            pygame.draw.circle(self.screen, (54, 72, 56), (door.right - 5, door.centery), 2)
+            pygame.draw.rect(
+                self.screen,
+                (96, 124, 92) if not nearby else Palette.SUN,
+                (stall.left + 4, stall.top - 5, max(8, width - 8), 3),
+            )
+        elif kind == "shipping_station":
+            width = max(38, int(520 * scale))
+            height = max(30, int(380 * scale))
+            pallet = pygame.Rect(x - width // 2, y + height // 5, width, max(5, int(12 * scale)))
+            pygame.draw.rect(self.screen, (104, 76, 53), pallet, border_radius=2)
+            for offset in (-0.3, 0.0, 0.3):
+                crate_width = max(12, int(width * 0.31))
+                crate_height = max(18, int(height * 0.7))
+                crate_x = int(x + width * offset - crate_width / 2)
+                crate_y = pallet.top - crate_height
+                crate = pygame.Rect(crate_x, crate_y, crate_width, crate_height)
+                pygame.draw.rect(self.screen, (157, 113, 70), crate, border_radius=2)
+                pygame.draw.rect(self.screen, (74, 64, 48), crate, 1, border_radius=2)
+                pygame.draw.line(
+                    self.screen,
+                    (198, 157, 96),
+                    (crate.centerx, crate.top + 2),
+                    (crate.centerx, crate.bottom - 2),
+                    1,
+                )
+        elif kind == "loading_gate":
+            width = max(40, int(600 * scale))
+            height = max(34, int(460 * scale))
+            gate = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (49, 65, 59), gate, border_radius=2)
+            pygame.draw.rect(self.screen, (143, 149, 125), gate, 2, border_radius=2)
+            for offset in range(8, width - 3, max(8, int(22 * scale))):
+                pygame.draw.line(
+                    self.screen,
+                    (117, 130, 111),
+                    (gate.x + offset, gate.y + 4),
+                    (gate.x + offset, gate.bottom - 4),
+                    1,
+                )
+            pygame.draw.rect(
+                self.screen,
+                (194, 147, 69) if not nearby else Palette.SUN,
+                (gate.left, gate.bottom - max(6, int(13 * scale)), width, max(3, int(6 * scale))),
             )
         elif kind in ("elevator", "stairs"):
             pygame.draw.rect(self.screen, (121, 150, 151), (x - 10, y - 12, 20, 24), border_radius=2)

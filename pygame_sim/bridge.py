@@ -423,6 +423,32 @@ def apply_command(
         )
         if basement_result is not None:
             return basement_result
+        if nearby is not None and nearby.kind == "restroom_stall" \
+            and requested_object_id in (None, nearby.id):
+            if building_sync is None or not building_sync.queue_game_request("restroom", nearby.id):
+                return CommandResult(False, "RESTROOM REQUEST UNAVAILABLE / WAIT OR MOVE TO AN OPEN STALL")
+            scene.set_player_action("sit", duration=9.0)
+            state.notice = "PRIVATE RESTROOM / PRESS E AGAIN AFTER 8 SECONDS"
+            return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "trash_can" \
+            and requested_object_id in (None, nearby.id):
+            if building_sync is None or not building_sync.queue_game_request("waste_pickup", nearby.id):
+                return CommandResult(False, "TRASH PICKUP UNAVAILABLE / LINK A GAME ACCOUNT")
+            scene.set_player_action("maintenance", duration=1.0)
+            state.notice = "PICKING UP TRASH"
+            return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "shipping_station" \
+            and requested_object_id in (None, nearby.id):
+            if building_sync is None or not building_sync.queue_game_request("waste_deliver"):
+                return CommandResult(False, "B1 SHIPPING IS UNAVAILABLE / CARRY A TRASH LOAD")
+            state.notice = "DELIVERING TRASH TO B1"
+            return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "loading_gate" \
+            and requested_object_id in (None, nearby.id):
+            if building_sync is None or not building_sync.queue_game_request("supply_receive"):
+                return CommandResult(False, "LOADING ZONE IS UNAVAILABLE / TOWER STAFF ONLY")
+            state.notice = "RECEIVING TOWER SUPPLIES"
+            return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "construction_task" \
             and requested_object_id in (None, nearby.id):
             if building_sync is None or not building_sync.queue_construction_work(

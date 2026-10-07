@@ -6,7 +6,10 @@ import {
   towerOperationsStateTable,
 } from "@workspace/db";
 import { ensureCareerPosition } from "./career-progression";
-import { TOWER_BASEMENT_STATIONS } from "./tower-basement-layout";
+import {
+  TOWER_BASEMENT_STATIONS,
+  TOWER_SERVICE_ELEVATOR_BASEMENT,
+} from "./tower-basement-layout";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -15,7 +18,9 @@ const DAY_MS = 24 * 60 * 60 * 1_000;
 const SUPPLY_DELIVERY_MS = 7 * DAY_MS;
 const NPC_UTILITY_REPAIR = 4;
 const TRASH_PER_DAY = 2;
+const NPC_TRASH_HAUL_PER_DAY = 1;
 const SUPPLY_CRATES_PER_DELIVERY = 1;
+const TOWER_B1_WASTE_STATION = { x: 9_000, y: 9_000 };
 
 function wholeIntervals(now: Date, last: Date, intervalMs: number): number {
   return Math.max(0, Math.floor((now.getTime() - last.getTime()) / intervalMs));
@@ -23,6 +28,16 @@ function wholeIntervals(now: Date, last: Date, intervalMs: number): number {
 
 export function utilityNpcLocation(now: Date) {
   const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  if (minutes >= 7 * 60 + 30 && minutes < 8 * 60) {
+    return {
+      floorNumber: 1,
+      x: TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      y: TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      action: "traveling",
+      route: "service_elevator",
+      destinationFloor: 5,
+    } as const;
+  }
   if (minutes >= 8 * 60 && minutes < 12 * 60) {
     return {
       floorNumber: 5,
@@ -35,8 +50,8 @@ export function utilityNpcLocation(now: Date) {
   if (minutes >= 12 * 60 && minutes < 13 * 60) {
     return {
       floorNumber: 5,
-      x: 9_950,
-      y: 1_500,
+      x: TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      y: TOWER_SERVICE_ELEVATOR_BASEMENT.y,
       action: "traveling",
       route: "service_elevator",
       destinationFloor: 6,
@@ -51,12 +66,62 @@ export function utilityNpcLocation(now: Date) {
       route: "at_station",
     } as const;
   }
+  if (minutes >= 17 * 60 && minutes < 18 * 60) {
+    return {
+      floorNumber: 6,
+      x: TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      y: TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      action: "traveling",
+      route: "service_elevator",
+      destinationFloor: 1,
+    } as const;
+  }
   return {
-    floorNumber: 1,
-    x: 5_000,
-    y: 4_000,
+    floorNumber: null,
+    x: 0,
+    y: 0,
     action: "off_shift",
-    route: "service_elevator",
+    route: "off_shift",
+  } as const;
+}
+
+export function wasteNpcLocation(now: Date) {
+  const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  if (minutes >= 9 * 60 && minutes < 10 * 60) {
+    return {
+      floorNumber: 6,
+      x: TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      y: TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      action: "traveling",
+      route: "service_elevator",
+      destinationFloor: 1,
+    } as const;
+  }
+  if (minutes >= 10 * 60 && minutes < 12 * 60) {
+    return {
+      floorNumber: 1,
+      x: TOWER_B1_WASTE_STATION.x,
+      y: TOWER_B1_WASTE_STATION.y,
+      action: "hauling_trash",
+      route: "waste_station",
+    } as const;
+  }
+  if (minutes >= 12 * 60 && minutes < 13 * 60) {
+    return {
+      floorNumber: 1,
+      x: TOWER_SERVICE_ELEVATOR_BASEMENT.x,
+      y: TOWER_SERVICE_ELEVATOR_BASEMENT.y,
+      action: "traveling",
+      route: "service_elevator",
+      destinationFloor: 6,
+    } as const;
+  }
+  return {
+    floorNumber: null,
+    x: 0,
+    y: 0,
+    action: "off_shift",
+    route: "off_shift",
   } as const;
 }
 
@@ -73,7 +138,13 @@ export async function advanceTowerOperations(tx: DbTx, now = new Date()) {
   const generatorDays = wholeIntervals(now, state.lastGeneratorWorkAt, DAY_MS);
   const pumpDays = wholeIntervals(now, state.lastPumpWorkAt, DAY_MS);
   const trashDays = wholeIntervals(now, state.lastTrashTickAt, DAY_MS);
+  const trashHaulDays = wholeIntervals(now, state.lastTrashHaulAt, DAY_MS);
   const supplyDeliveries = wholeIntervals(now, state.lastSupplyDeliveryAt, SUPPLY_DELIVERY_MS);
+  const generatedTrash = trashDays * TRASH_PER_DAY;
+  const npcHauledTrash = Math.min(
+    state.accumulatedTrash + generatedTrash,
+    trashHaulDays * NPC_TRASH_HAUL_PER_DAY,
+  );
 
   if (generatorDays || pumpDays) {
     await tx.insert(towerBuildingVitalsTable)
@@ -98,10 +169,12 @@ export async function advanceTowerOperations(tx: DbTx, now = new Date()) {
   }
 
   await tx.update(towerOperationsStateTable).set({
-    accumulatedTrash: Math.min(1_000_000, state.accumulatedTrash + trashDays * TRASH_PER_DAY),
+    accumulatedTrash: Math.min(1_000_000, state.accumulatedTrash + generatedTrash - npcHauledTrash),
+    processedTrash: Math.min(1_000_000, state.processedTrash + npcHauledTrash),
     incomingSupplyCrates: Math.min(1_000_000,
       state.incomingSupplyCrates + supplyDeliveries * SUPPLY_CRATES_PER_DELIVERY),
     lastTrashTickAt: new Date(state.lastTrashTickAt.getTime() + trashDays * DAY_MS),
+    lastTrashHaulAt: new Date(state.lastTrashHaulAt.getTime() + trashHaulDays * DAY_MS),
     lastSupplyDeliveryAt: new Date(state.lastSupplyDeliveryAt.getTime() + supplyDeliveries * SUPPLY_DELIVERY_MS),
     lastGeneratorWorkAt: new Date(state.lastGeneratorWorkAt.getTime() + generatorDays * DAY_MS),
     lastPumpWorkAt: new Date(state.lastPumpWorkAt.getTime() + pumpDays * DAY_MS),
@@ -127,6 +200,7 @@ export async function advanceTowerOperations(tx: DbTx, now = new Date()) {
   const [updatedVitals] = await tx.select().from(towerBuildingVitalsTable)
     .where(eq(towerBuildingVitalsTable.buildingKey, BUILDING_KEY))
     .limit(1);
+  if (!updatedState) throw new Error("Tower operations state disappeared during update");
 
   return {
     state: updatedState,
@@ -150,10 +224,11 @@ export async function advanceTowerOperations(tx: DbTx, now = new Date()) {
         id: "tower-waste-porter",
         name: operationsPosition.incumbentName,
         role: operationsPosition.title,
-        floorNumber: 1,
+        floorNumber: wasteNpcLocation(now).floorNumber,
         action: "shipping_and_waste",
       },
       maintenanceRoute: utilityNpcLocation(now),
+      wasteRoute: wasteNpcLocation(now),
     },
   };
 }

@@ -56,6 +56,52 @@ class BuildingSyncTests(unittest.TestCase):
             ),
         )
 
+    def test_restroom_trash_and_supply_interactions_use_only_the_expected_server_routes(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            path = request.full_url.rsplit("/api", 1)[-1]
+            body = json.loads(request.data.decode("utf-8")) if request.data else None
+            requests.append((request.get_method(), path, body))
+            if path == "/desktop-building/restroom/start":
+                return FakeResponse({"ok": True, "sessionId": "restroom-session"})
+            return FakeResponse({"ok": True})
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        self.assertTrue(sync.queue_game_request("restroom", "lobby-restroom-stall-1"))
+        sync._sync_once()
+        self.assertTrue(sync.drain_events()[0].ok)
+        self.assertTrue(sync.queue_game_request("restroom", "lobby-restroom-stall-1"))
+        sync._sync_once()
+        self.assertTrue(sync.drain_events()[0].ok)
+        self.assertTrue(sync.queue_game_request("waste_pickup", "recreation-trash-can"))
+        sync._sync_once()
+        self.assertTrue(sync.drain_events()[0].ok)
+        self.assertTrue(sync.queue_game_request("waste_deliver"))
+        sync._sync_once()
+        self.assertTrue(sync.drain_events()[0].ok)
+        self.assertTrue(sync.queue_game_request("supply_receive"))
+        sync._sync_once()
+        self.assertTrue(sync.drain_events()[0].ok)
+
+        self.assertEqual(
+            requests,
+            [
+                ("POST", "/desktop-building/restroom/start", {"stallKey": "lobby-restroom-stall-1"}),
+                ("POST", "/desktop-building/restroom/complete", {
+                    "stallKey": "lobby-restroom-stall-1",
+                    "sessionId": "restroom-session",
+                }),
+                ("POST", "/desktop-building/waste/pickup", {"binId": "recreation-trash-can"}),
+                ("POST", "/desktop-building/waste/deliver", {}),
+                ("POST", "/desktop-building/supplies/receive", {}),
+            ],
+        )
+
     def test_floor_state_is_scoped_and_queued_maintenance_cannot_follow_player(self):
         requests = []
 
@@ -74,6 +120,8 @@ class BuildingSyncTests(unittest.TestCase):
                         "condition": 85,
                     }],
                 })
+            if path == "/desktop-building/construction":
+                return FakeResponse({"plans": []})
             return FakeResponse({
                 "ok": True,
                 "message": "Object cleaned",
@@ -99,6 +147,7 @@ class BuildingSyncTests(unittest.TestCase):
         sync._sync_once()
 
         self.assertEqual(requests, [
+            ("GET", "/desktop-building/construction"),
             ("POST", "/desktop-building/presence"),
             ("GET", "/desktop-building/objects"),
         ])

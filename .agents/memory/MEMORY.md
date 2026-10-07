@@ -10,6 +10,7 @@
 - [DB migration mechanism](db-migration-mechanism.md) — dev schema uses push-force; production schema is applied by Publish, never a deployment post-build hook. Drizzle generate is broken.
 - [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
 - [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
+- [Pablo Corp atmosphere](pablo-corp-atmosphere.md) — there is always an air of corruption at Pablo Corp; you never know what's happening behind the scenes.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.
 - [Comms outgoing delivery](comms-outgoing-delivery.md) — send ordinary chat over acknowledged HTTP with an optimistic local bubble; keep WebSocket for incoming delivery and private-channel subscriptions.

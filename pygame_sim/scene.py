@@ -120,6 +120,7 @@ class TowerScene:
         building = snapshot.get("building")
         pests = snapshot.get("pests")
         crew = snapshot.get("npcCrew")
+        operations = snapshot.get("towerOperations")
         normalized_pests: list[dict[str, object]] = []
         if isinstance(pests, list):
             for pest in pests:
@@ -177,6 +178,24 @@ class TowerScene:
             if isinstance(stamina, int) and not isinstance(stamina, bool):
                 safe_player["stamina"] = max(0, min(100, stamina))
             safe_player["uniformWorn"] = player.get("uniformWorn") is True
+            carried_trash = player.get("carriedTrash", 0)
+            safe_player["carriedTrash"] = (
+                max(0, min(5, int(carried_trash)))
+                if isinstance(carried_trash, int) and not isinstance(carried_trash, bool)
+                else 0
+            )
+        safe_operations: dict[str, int] | None = None
+        if isinstance(operations, dict):
+            safe_operations = {
+                key: max(0, min(1_000_000, int(operations[key])))
+                for key in (
+                    "accumulatedTrash",
+                    "incomingSupplyCrates",
+                    "storedSupplyCrates",
+                    "processedTrash",
+                )
+                if isinstance(operations.get(key), int) and not isinstance(operations.get(key), bool)
+            }
         drop_point = snapshot.get("carcassDropPoint")
         if not (
             isinstance(drop_point, dict)
@@ -188,6 +207,7 @@ class TowerScene:
             "level": self.basement_level,
             "player": safe_player,
             "building": safe_building,
+            "towerOperations": safe_operations,
             "pests": normalized_pests,
             "npcCrew": normalized_crew,
             "carcassDropPoint": {

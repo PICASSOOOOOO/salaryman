@@ -1,9 +1,16 @@
+import os
 import json
 import unittest
 from types import SimpleNamespace
 
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+
+import pygame
+
 from pygame_sim.building_sync import DesktopBuildingSync
 from pygame_sim.scene import TowerScene
+from pygame_sim.state import OfficeState
+from pygame_sim.ui import SolarPunkRenderer
 
 
 class _Response:
@@ -28,11 +35,13 @@ class _FakeOpener:
         method = request.get_method()
         body = json.loads(request.data) if request.data else {}
         self.requests.append((method, request.full_url, body))
+        if method == "GET" and request.full_url.endswith("/desktop-building/construction"):
+            return _Response({"plans": []})
         return _Response({"objects": []} if method == "GET" else {})
 
 
 class TowerFloorTravelTests(unittest.TestCase):
-    def test_open_areas_have_solid_noninteractive_trash_cans(self):
+    def test_open_areas_have_solid_interactive_trash_cans(self):
         scene = TowerScene()
         for object_id, expected_room, floor in (
             ("lobby-trash-can", "lobby", 1),
@@ -42,23 +51,42 @@ class TowerFloorTravelTests(unittest.TestCase):
             self.assertIsNotNone(trash_can)
             self.assertEqual(trash_can.kind, "trash_can")
             self.assertEqual(trash_can.room, expected_room)
-            self.assertFalse(trash_can.interactive)
+            self.assertTrue(trash_can.interactive)
             self.assertTrue(all(extent > 0 for extent in trash_can.collision_half_extents))
 
             if floor == 6:
                 self.assertTrue(scene.select_floor(6))
             self.assertTrue(scene._collides_with_object(trash_can.position))
 
-    def test_only_lobby_and_first_office_floor_are_open(self):
+    def test_construction_floors_and_floor_six_are_open_but_upper_floors_are_closed(self):
         scene = TowerScene()
         self.assertTrue(scene.is_playable_floor(1))
         self.assertTrue(scene.is_playable_floor(6))
-        for floor in (0, 2, 3, 4, 5, 7, 67):
+        for floor in (2, 3, 4, 5):
+            self.assertTrue(scene.is_playable_floor(floor), floor)
+            self.assertEqual(scene.floor_status(floor), "construction_open")
+        for floor in (0, 7, 67):
             self.assertFalse(scene.is_playable_floor(floor), floor)
-        self.assertEqual(scene.floor_status(0), "under_construction")
-        self.assertEqual(scene.floor_status(2), "under_construction")
+        self.assertEqual(scene.floor_status(7), "under_construction")
 
-    def test_offline_elevator_completes_a_round_trip_and_stairs_stay_locked(self):
+    def test_restrooms_waste_stations_and_daily_utility_stations_exist_in_their_physical_floors(self):
+        scene = TowerScene()
+        expected = {
+            "lobby-restroom-stall-1": ("restroom_stall", "lobby"),
+            "recreation-restroom-stall-1": ("restroom_stall", "recreation"),
+            "basement-b1-shipping-waste": ("shipping_station", "basement_b1"),
+            "basement-b1-loading-gate": ("loading_gate", "basement_b1"),
+            "basement-b5-power": ("utility_station", "basement_b5"),
+            "basement-b6-plumbing": ("utility_station", "basement_b6"),
+        }
+        for object_id, (kind, room) in expected.items():
+            obj = scene.objects.get(object_id)
+            self.assertIsNotNone(obj, object_id)
+            self.assertEqual(obj.kind, kind)
+            self.assertEqual(obj.room, room)
+            self.assertTrue(all(extent > 0 for extent in obj.collision_half_extents))
+
+    def test_elevator_round_trip_and_stairs_connect_only_open_adjacent_floors(self):
         scene = TowerScene()
         lobby_spawn = tuple(scene.player_position)
         self.assertTrue(scene.select_floor(6))
@@ -67,9 +95,29 @@ class TowerFloorTravelTests(unittest.TestCase):
         self.assertTrue(scene.select_floor(1))
         self.assertEqual(scene.current_floor, 1)
         self.assertEqual(tuple(scene.player_position), lobby_spawn)
+        for expected_floor in range(2, 7):
+            self.assertTrue(scene.climb_stairs())
+            self.assertEqual(scene.current_floor, expected_floor)
         self.assertFalse(scene.climb_stairs())
-        self.assertTrue(scene.select_floor(6))
-        self.assertFalse(scene.climb_stairs())
+
+    def test_lobby_construction_and_open_floors_render_from_the_shared_floor_plan(self):
+        pygame.init()
+        screen = pygame.display.set_mode((900, 600))
+        renderer = SolarPunkRenderer(screen)
+        state = OfficeState.with_default_roster()
+        scene = TowerScene()
+        try:
+            for floor, expected_room in (
+                (1, "lobby"),
+                (2, "construction_f02"),
+                (6, "recreation"),
+            ):
+                if floor != scene.current_floor:
+                    self.assertTrue(scene.select_floor(floor))
+                renderer.draw_tower(state, scene)
+                self.assertEqual(scene.current_room, expected_room)
+        finally:
+            pygame.quit()
 
     def test_linked_elevator_waits_for_server_approval_before_each_floor_change(self):
         scene = TowerScene()

@@ -22,6 +22,7 @@ export const towerOperationsStateTable = pgTable(
     storedSupplyCrates: integer("stored_supply_crates").notNull().default(0),
     processedTrash: integer("processed_trash").notNull().default(0),
     lastTrashTickAt: timestamp("last_trash_tick_at", { withTimezone: true }).notNull().defaultNow(),
+    lastTrashHaulAt: timestamp("last_trash_haul_at", { withTimezone: true }).notNull().defaultNow(),
     lastSupplyDeliveryAt: timestamp("last_supply_delivery_at", { withTimezone: true }).notNull().defaultNow(),
     lastGeneratorWorkAt: timestamp("last_generator_work_at", { withTimezone: true }).notNull().defaultNow(),
     lastPumpWorkAt: timestamp("last_pump_work_at", { withTimezone: true }).notNull().defaultNow(),

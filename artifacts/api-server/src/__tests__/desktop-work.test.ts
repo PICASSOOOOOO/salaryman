@@ -332,7 +332,7 @@ describe("desktop office work settlement", () => {
     expect(account.balance).toBe(15);
   });
 
-  it("keeps only Floor 6 open for office work and locks every other tower floor", async () => {
+  it("allows only observed physical floor changes and keeps office work on Floor 6", async () => {
     await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
     expect((await reportPresence("lobby", 1)).status).toBe(200);
     expect((await reportElevator(1, 6)).status).toBe(200);
@@ -372,8 +372,8 @@ describe("desktop office work settlement", () => {
       cleanliness: 0,
     });
 
-    for (const closedFloor of [2, 3, 4, 5, 7, 67]) {
-      expect((await reportPresence("hallway", closedFloor)).status).toBe(403);
+    for (const otherFloor of [2, 3, 4, 5, 7, 67]) {
+      expect((await reportPresence("hallway", otherFloor)).status).not.toBe(200);
     }
     const stillOnFloorSix = await desktopGet("/api/desktop-building/objects");
     expect(stillOnFloorSix.status).toBe(200);

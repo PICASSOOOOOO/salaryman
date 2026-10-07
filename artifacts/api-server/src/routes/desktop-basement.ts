@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import {
   db,
   desktopBasementAttackEventsTable,
@@ -8,18 +8,30 @@ import {
   desktopBasementPresenceTable,
   desktopOfficePresenceTable,
   playerLoadoutTable,
+  towerOperationsStateTable,
+  towerRestroomSessionsTable,
   salarymanSavesTable,
+  towerStaffAssignmentsTable,
   towerBuildingVitalsTable,
+  towerWasteHaulsTable,
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
-import { isNearTowerServiceElevator as isNearTowerServiceElevatorLanding } from "../lib/desktop-building-objects";
+import {
+  BUILDING_PRESENCE_MAX_AGE_MS,
+  isNearTowerServiceElevator as isNearTowerServiceElevatorLanding,
+  isWalkableBuildingPosition,
+} from "../lib/desktop-building-objects";
 import { hasTowerStaffAssignment } from "../lib/tower-staff-access";
 import {
+  TOWER_RESTROOM_STALLS,
   TOWER_SERVICE_ELEVATOR_BASEMENT,
   TOWER_SERVICE_ELEVATOR_LOBBY,
+  TOWER_TRASH_BINS,
 } from "../lib/tower-basement-layout";
 import { TOWER_BASEMENT_STATIONS } from "../lib/tower-basement-layout";
+import { advanceTowerOperations, wasteNpcLocation, utilityNpcLocation } from "../lib/tower-operations";
+import { recordVerifiedCareerWork } from "../lib/career-progression";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
@@ -46,6 +58,13 @@ const CARCASS_CLAIM_MS = 10 * 60_000;
 const CARCASS_PICKUP_RADIUS = 500;
 const CARCASS_DROP_POINT = { x: 5_000, y: 7_000 };
 const CARCASS_DROP_RADIUS = 650;
+const RESTROOM_USE_DURATION_MS = 8_000;
+const RESTROOM_MAX_AGE_MS = 10 * 60_000;
+const RESTROOM_STAMINA_RESTORE = 20;
+const TRASH_PICKUP_RADIUS = 500;
+const TRASH_DELIVERY_RADIUS = 650;
+const TRASH_CARRY_MAX = 5;
+const LOADING_GATE_RADIUS = 650;
 
 const MOVES = {
   stomp_kick: { damage: 18, stamina: 7, range: 500 },
@@ -141,6 +160,26 @@ function positionIsValid(x: number, y: number): boolean {
 function fresh(lastSeenAt: Date, now: Date): boolean {
   const ageMs = now.getTime() - lastSeenAt.getTime();
   return ageMs >= 0 && ageMs <= PRESENCE_MAX_AGE_MS;
+}
+
+function hasFreshOfficePresence(
+  presence: typeof desktopOfficePresenceTable.$inferSelect | undefined,
+  linkId: string,
+  floorNumber: number,
+  room: string,
+  point: { x: number; y: number },
+  now: Date,
+  radius: number,
+): boolean {
+  const ageMs = presence ? now.getTime() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  return Boolean(presence
+    && presence.linkId === linkId
+    && presence.floorNumber === floorNumber
+    && presence.room === room
+    && ageMs >= 0
+    && ageMs <= BUILDING_PRESENCE_MAX_AGE_MS
+    && isWalkableBuildingPosition(room === "hallway" ? "recreation" : room, presence)
+    && distance(presence, point) <= radius);
 }
 
 function getEnergy(data: Record<string, unknown>, now: Date): { stamina: number; nextData: Record<string, unknown> } {
@@ -536,9 +575,10 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
       res.status(409).json({ error: "Basement presence is missing or expired" });
       return;
     }
-    await db.transaction(async (tx) => {
+    const operations = await db.transaction(async (tx) => {
       await ensurePestWave(tx, level, now);
       await ensureVitals(tx);
+      return advanceTowerOperations(tx, now);
     });
     const [vitalsRow] = await db.select().from(towerBuildingVitalsTable)
       .where(eq(towerBuildingVitalsTable.buildingKey, BUILDING_KEY)).limit(1);
@@ -551,7 +591,32 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         eq(salarymanSavesTable.userId, link.userId),
         eq(salarymanSavesTable.slotIndex, 0),
       )).limit(1);
+    const [activeHaul] = await db.select({ units: towerWasteHaulsTable.units })
+      .from(towerWasteHaulsTable).where(and(
+        eq(towerWasteHaulsTable.userId, link.userId),
+        eq(towerWasteHaulsTable.linkId, link.id),
+        isNull(towerWasteHaulsTable.deliveredAt),
+      )).limit(1);
     const vitals = vitalsRow ? vitalValues(vitalsRow, now) : null;
+    const npcCrew: Array<{ id: string; label: string; x: number; y: number }> = [...API_NPC_CREW];
+    const maintenanceRoute = operations.npcs.maintenanceRoute;
+    if (maintenanceRoute.floorNumber === level) {
+      npcCrew.push({
+        id: operations.npcs.generator.id,
+        label: `${operations.npcs.generator.name} / ${maintenanceRoute.action}`,
+        x: maintenanceRoute.x,
+        y: maintenanceRoute.y,
+      });
+    }
+    const wasteRoute = operations.npcs.wasteRoute;
+    if (wasteRoute.floorNumber === level) {
+      npcCrew.push({
+        id: operations.npcs.waste.id,
+        label: `${operations.npcs.waste.name} / ${wasteRoute.action}`,
+        x: wasteRoute.x,
+        y: wasteRoute.y,
+      });
+    }
     res.json({
       buildingKey: BUILDING_KEY,
       accessMode: BASEMENT_ACCESS_MODE,
@@ -563,6 +628,7 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         uniformWorn: save ? hasPestResponseUniform(save.data as Record<string, unknown>) : false,
         x: presence.x,
         y: presence.y,
+        carriedTrash: activeHaul?.units ?? 0,
       },
       building: vitals ? {
         powerCondition: vitals.powerCondition,
@@ -571,14 +637,323 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         powerOperational: vitals.powerCondition > 0,
         waterOperational: vitals.plumbingCondition > 0,
       } : null,
+      towerOperations: {
+        accumulatedTrash: operations.state.accumulatedTrash,
+        incomingSupplyCrates: operations.state.incomingSupplyCrates,
+        storedSupplyCrates: operations.state.storedSupplyCrates,
+        processedTrash: operations.state.processedTrash,
+      },
       pests: pests.map((pest) => serializePest(pest, link.userId, now)),
-      npcCrew: API_NPC_CREW,
+      npcCrew,
       carcassDropPoint: CARCASS_DROP_POINT,
       workStations: WORK_STATIONS,
     });
   } catch (error) {
     req.log.error({ err: error }, "Desktop basement snapshot failed");
     res.status(500).json({ error: "Could not load basement state" });
+  }
+});
+
+router.post("/desktop-building/restroom/start", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const stallKey = req.body?.stallKey;
+  const stall = typeof stallKey === "string"
+    ? TOWER_RESTROOM_STALLS[stallKey as keyof typeof TOWER_RESTROOM_STALLS]
+    : undefined;
+  if (!stall) {
+    res.status(400).json({ error: "Choose a Tower restroom stall" });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.delete(towerRestroomSessionsTable).where(lt(
+        towerRestroomSessionsTable.startedAt,
+        new Date(now.getTime() - RESTROOM_MAX_AGE_MS),
+      ));
+      const [presence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId)).for("update").limit(1);
+      const presenceRoom = stall.room === "recreation" ? "hallway" : "lobby";
+      if (!hasFreshOfficePresence(
+        presence,
+        link.id,
+        stall.floorNumber,
+        presenceRoom,
+        stall,
+        now,
+        550,
+      )) {
+        return { error: "Move beside an open restroom stall first" } as const;
+      }
+      const [existing] = await tx.select().from(towerRestroomSessionsTable)
+        .where(eq(towerRestroomSessionsTable.userId, link.userId)).for("update").limit(1);
+      if (existing) {
+        if (existing.linkId === link.id && existing.stallKey === stallKey) {
+          return {
+            ok: true as const,
+            sessionId: existing.sessionId,
+            startedAt: existing.startedAt.toISOString(),
+            durationMs: RESTROOM_USE_DURATION_MS,
+            resumed: true,
+          };
+        }
+        return { error: "Finish the active restroom session on its original device" } as const;
+      }
+      const [session] = await tx.insert(towerRestroomSessionsTable).values({
+        userId: link.userId,
+        linkId: link.id,
+        floorNumber: stall.floorNumber,
+        stallKey,
+        startedAt: now,
+      }).onConflictDoNothing().returning();
+      if (!session) return { error: "That stall is occupied; choose another one" } as const;
+      return {
+        ok: true as const,
+        sessionId: session.sessionId,
+        startedAt: session.startedAt.toISOString(),
+        durationMs: RESTROOM_USE_DURATION_MS,
+        resumed: false,
+      };
+    });
+    if ("error" in result) {
+      res.status(409).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop restroom session start failed");
+    res.status(500).json({ error: "Could not start restroom session" });
+  }
+});
+
+router.post("/desktop-building/restroom/complete", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const sessionId = req.body?.sessionId;
+  const stallKey = req.body?.stallKey;
+  if (!isUuid(sessionId) || typeof stallKey !== "string"
+    || !Object.prototype.hasOwnProperty.call(TOWER_RESTROOM_STALLS, stallKey)) {
+    res.status(400).json({ error: "Provide the active restroom session and stall" });
+    return;
+  }
+  const stall = TOWER_RESTROOM_STALLS[stallKey as keyof typeof TOWER_RESTROOM_STALLS];
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId)).for("update").limit(1);
+      const presenceRoom = stall.room === "recreation" ? "hallway" : "lobby";
+      if (!hasFreshOfficePresence(
+        presence,
+        link.id,
+        stall.floorNumber,
+        presenceRoom,
+        stall,
+        now,
+        550,
+      )) {
+        return { error: "Stay inside the same restroom stall until finished" } as const;
+      }
+      const [session] = await tx.select().from(towerRestroomSessionsTable)
+        .where(and(
+          eq(towerRestroomSessionsTable.userId, link.userId),
+          eq(towerRestroomSessionsTable.linkId, link.id),
+          eq(towerRestroomSessionsTable.sessionId, sessionId),
+          eq(towerRestroomSessionsTable.stallKey, stallKey),
+        )).for("update").limit(1);
+      if (!session) return { error: "That restroom session is no longer active" } as const;
+      const elapsedMs = now.getTime() - session.startedAt.getTime();
+      if (elapsedMs < RESTROOM_USE_DURATION_MS) {
+        return {
+          error: "Restroom session is not finished yet",
+          remainingMs: RESTROOM_USE_DURATION_MS - elapsedMs,
+        } as const;
+      }
+      if (elapsedMs > RESTROOM_MAX_AGE_MS) {
+        await tx.delete(towerRestroomSessionsTable)
+          .where(eq(towerRestroomSessionsTable.userId, link.userId));
+        return { error: "Restroom session expired; start again" } as const;
+      }
+      const [save] = await tx.select().from(salarymanSavesTable).where(and(
+        eq(salarymanSavesTable.userId, link.userId),
+        eq(salarymanSavesTable.slotIndex, 0),
+      )).for("update").limit(1);
+      if (!save) return { error: "Create a character before using the restroom" } as const;
+      const energy = getEnergy(save.data as Record<string, unknown>, now);
+      const staminaAfter = Math.min(100, energy.stamina + RESTROOM_STAMINA_RESTORE);
+      await tx.update(salarymanSavesTable).set({
+        data: { ...energy.nextData, energy: staminaAfter, energyUpdatedAt: now.toISOString() },
+      }).where(eq(salarymanSavesTable.id, save.id));
+      await tx.delete(towerRestroomSessionsTable)
+        .where(eq(towerRestroomSessionsTable.userId, link.userId));
+      return {
+        ok: true as const,
+        completed: true as const,
+        staminaBefore: energy.stamina,
+        stamina: staminaAfter,
+        restored: staminaAfter - energy.stamina,
+      };
+    });
+    if ("error" in result) {
+      res.status(result.error === "Create a character before using the restroom" ? 404 : 409).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop restroom session completion failed");
+    res.status(500).json({ error: "Could not complete restroom session" });
+  }
+});
+
+router.post("/desktop-building/waste/pickup", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const binId = req.body?.binId;
+  if (binId !== "lobby-trash-can" && binId !== "recreation-trash-can") {
+    res.status(400).json({ error: "Choose a Tower trash bin" });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId)).for("update").limit(1);
+      const floorNumber = presence?.floorNumber;
+      const expectedFloor: 1 | 6 = binId === "lobby-trash-can" ? 1 : 6;
+      const bin = TOWER_TRASH_BINS[expectedFloor];
+      const room = expectedFloor === 1 ? "lobby" : "hallway";
+      if (floorNumber !== expectedFloor || !presence
+        || !hasFreshOfficePresence(presence, link.id, expectedFloor, room, bin, now, TRASH_PICKUP_RADIUS)) {
+        return { error: "Move beside the correct floor's trash bin first" } as const;
+      }
+      const [activeHaul] = await tx.select().from(towerWasteHaulsTable).where(and(
+        eq(towerWasteHaulsTable.userId, link.userId),
+        isNull(towerWasteHaulsTable.deliveredAt),
+      )).for("update").limit(1);
+      if (activeHaul) return { error: "Deliver the trash you are already carrying" } as const;
+      const operations = await advanceTowerOperations(tx, now);
+      const units = Math.min(TRASH_CARRY_MAX, operations.state.accumulatedTrash);
+      if (units < 1) return { error: "The bin is empty" } as const;
+      const [haul] = await tx.insert(towerWasteHaulsTable).values({
+        userId: link.userId,
+        linkId: link.id,
+        units,
+        pickedUpFloor: expectedFloor,
+        pickedUpAt: now,
+      }).onConflictDoNothing().returning();
+      if (!haul) return { error: "Deliver the trash you are already carrying" } as const;
+      await tx.update(towerOperationsStateTable).set({
+        accumulatedTrash: operations.state.accumulatedTrash - units,
+        updatedAt: now,
+      }).where(eq(towerOperationsStateTable.buildingKey, BUILDING_KEY));
+      return { ok: true as const, haulId: haul.id, units, pickedUpFloor: expectedFloor };
+    });
+    if ("error" in result) {
+      res.status(409).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop waste pickup failed");
+    res.status(500).json({ error: "Could not pick up Tower trash" });
+  }
+});
+
+router.post("/desktop-building/waste/deliver", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopBasementPresenceTable)
+        .where(eq(desktopBasementPresenceTable.userId, link.userId)).for("update").limit(1);
+      if (!presence || presence.linkId !== link.id || !fresh(presence.lastSeenAt, now)
+        || presence.level !== TOWER_BASEMENT_STATIONS.shippingWaste.level
+        || distance(presence, TOWER_BASEMENT_STATIONS.shippingWaste) > TRASH_DELIVERY_RADIUS) {
+        return { error: "Carry the trash to the rear B1 shipping and waste station" } as const;
+      }
+      const [haul] = await tx.select().from(towerWasteHaulsTable).where(and(
+        eq(towerWasteHaulsTable.userId, link.userId),
+        eq(towerWasteHaulsTable.linkId, link.id),
+        isNull(towerWasteHaulsTable.deliveredAt),
+      )).for("update").limit(1);
+      if (!haul) return { error: "You are not carrying a trash load" } as const;
+      if (now.getTime() - haul.pickedUpAt.getTime() < 5_000) {
+        return { error: "Take the physical route to B1 before delivering" } as const;
+      }
+      const operations = await advanceTowerOperations(tx, now);
+      await tx.update(towerWasteHaulsTable).set({ deliveredAt: now })
+        .where(eq(towerWasteHaulsTable.id, haul.id));
+      await tx.update(towerOperationsStateTable).set({
+        processedTrash: Math.min(1_000_000, operations.state.processedTrash + haul.units),
+        updatedAt: now,
+      }).where(eq(towerOperationsStateTable.buildingKey, BUILDING_KEY));
+      const progression = await recordVerifiedCareerWork(tx, {
+        employerKey: "pablo-corp",
+        positionKey: "pablo-corp:tower:operations",
+        title: "Tower Operations",
+        department: "PABLO CORP / SHADOW TOWER",
+        userId: link.userId,
+        eventKey: `tower-waste-haul:${haul.id}`,
+        outputUnits: haul.units,
+        startedAt: haul.pickedUpAt,
+      }, now);
+      return { ok: true as const, deliveredUnits: haul.units, career: progression };
+    });
+    if ("error" in result) {
+      res.status(409).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop waste delivery failed");
+    res.status(500).json({ error: "Could not deliver Tower trash" });
+  }
+});
+
+router.post("/desktop-building/supplies/receive", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopBasementPresenceTable)
+        .where(eq(desktopBasementPresenceTable.userId, link.userId)).for("update").limit(1);
+      if (!presence || presence.linkId !== link.id || !fresh(presence.lastSeenAt, now)
+        || presence.level !== TOWER_BASEMENT_STATIONS.loadingGate.level
+        || distance(presence, TOWER_BASEMENT_STATIONS.loadingGate) > LOADING_GATE_RADIUS) {
+        return { error: "Move to the gated rear B1 loading area" } as const;
+      }
+      const [assignment] = await tx.select().from(towerStaffAssignmentsTable)
+        .where(eq(towerStaffAssignmentsTable.userId, link.userId)).limit(1);
+      if (!assignment || !["operations", "maintenance"].includes(assignment.role)) {
+        return { error: "The loading gate is restricted to assigned operations or maintenance staff" } as const;
+      }
+      const operations = await advanceTowerOperations(tx, now);
+      if (operations.state.incomingSupplyCrates < 1) {
+        return { error: "No incoming supply crates are waiting at the gate" } as const;
+      }
+      await tx.update(towerOperationsStateTable).set({
+        incomingSupplyCrates: operations.state.incomingSupplyCrates - 1,
+        storedSupplyCrates: Math.min(1_000_000, operations.state.storedSupplyCrates + 1),
+        updatedAt: now,
+      }).where(eq(towerOperationsStateTable.buildingKey, BUILDING_KEY));
+      return {
+        ok: true as const,
+        receivedCrates: 1,
+        storedSupplyCrates: operations.state.storedSupplyCrates + 1,
+        storageLevel: 4,
+      };
+    });
+    if ("error" in result && typeof result.error === "string") {
+      res.status(result.error.startsWith("The loading gate") ? 403 : 409).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop supplies receiving failed");
+    res.status(500).json({ error: "Could not receive Tower supplies" });
   }
 });
 
@@ -917,12 +1292,29 @@ router.post("/desktop-building/basement/work/complete", async (req, res): Promis
       }).where(eq(desktopBasementPresenceTable.userId, link.userId));
       const [updated] = await tx.select().from(towerBuildingVitalsTable)
         .where(eq(towerBuildingVitalsTable.buildingKey, BUILDING_KEY)).limit(1);
+      const [staffAssignment] = await tx.select().from(towerStaffAssignmentsTable)
+        .where(eq(towerStaffAssignmentsTable.userId, link.userId)).limit(1);
+      const careerRole = staffAssignment?.role === "maintenance"
+        ? "maintenance"
+        : "maintenance-worker";
+      const careerTitle = careerRole === "maintenance" ? "Tower Maintenance" : "Tower Utility Worker";
+      const career = await recordVerifiedCareerWork(tx, {
+        employerKey: "pablo-corp",
+        positionKey: `pablo-corp:tower:${careerRole}`,
+        title: careerTitle,
+        department: "PABLO CORP / SHADOW TOWER",
+        userId: link.userId,
+        eventKey: `tower-utility-work:${sessionId}`,
+        outputUnits: delta,
+        startedAt: presence.workStartedAt,
+      }, now);
       return {
         ok: true as const,
         duplicate: false,
         stamina: staminaAfter,
         target,
         building: updated ? vitalValues(updated, now) : null,
+        career,
       };
     });
     if ("error" in result) {

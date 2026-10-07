@@ -37,6 +37,9 @@ ObjectKind = Literal[
     "pest_uniform_station",
     "utility_station",
     "carcass_disposal",
+    "restroom_stall",
+    "shipping_station",
+    "loading_gate",
     "arcade",
     "desk",
     "chair",
@@ -114,6 +117,9 @@ class OfficeObject:
             "pest_uniform_station": (90, 90),
             "utility_station": (100, 100),
             "carcass_disposal": (100, 100),
+            "restroom_stall": (240, 300),
+            "shipping_station": (320, 220),
+            "loading_gate": (240, 180),
             "door": (0, 0),
             "telephone": (0, 0),
             "crt_terminal": (0, 0),
@@ -319,6 +325,21 @@ class OfficeObjectRegistry:
             state.notice = "CARCASS DISPOSAL / CLAIMED RECOVERY ONLY"
             return InteractionResult(True, state.notice)
 
+        if item.kind == "restroom_stall":
+            scene.focus_on_interaction(item)
+            state.notice = "PRIVATE RESTROOM / USE STALL"
+            return InteractionResult(True, state.notice)
+
+        if item.kind == "shipping_station":
+            scene.focus_on_interaction(item)
+            state.notice = "B1 SHIPPING / DELIVER CARRIED TRASH"
+            return InteractionResult(True, state.notice)
+
+        if item.kind == "loading_gate":
+            scene.focus_on_interaction(item)
+            state.notice = "GATED LOADING ZONE / TOWER STAFF ONLY"
+            return InteractionResult(True, state.notice)
+
         messages = {
             "telephone": ("TELEPHONE READY / PHONE CENTER", "phone-center"),
             "crt_terminal": ("SYSTEMS TERMINAL / FULL WORKSPACE", "systems-terminal"),
@@ -475,6 +496,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     OfficeObject("basement-b1-plumbing", "utility_station", "PLUMBING PANEL", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"),
                     OfficeObject("basement-b1-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"),
                     OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_500), "SELL A CLAIMED CARCASS"),
+                    OfficeObject("basement-b1-shipping-waste", "shipping_station", "SHIPPING / WASTE", room, (9_000, 9_000), "DELIVER CARRIED TRASH"),
+                    OfficeObject("basement-b1-loading-gate", "loading_gate", "GATED LOADING ZONE", room, (9_000, 7_000), "RECEIVE TOWER SUPPLIES"),
                 ]
             )
     """
@@ -493,7 +516,9 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),
-        OfficeObject("lobby-trash-can", "trash_can", "TRASH CAN", "lobby", (49_975_600, 50_002_300), "TRASH CAN", interactive=False),
+        OfficeObject("lobby-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "lobby", (49_978_300, 50_002_200), "PRIVATE RESTROOM / RESTORE STAMINA"),
+        OfficeObject("lobby-restroom-stall-2", "restroom_stall", "RESTROOM STALL", "lobby", (49_978_300, 50_001_600), "PRIVATE RESTROOM / RESTORE STAMINA"),
+        OfficeObject("lobby-trash-can", "trash_can", "TRASH CAN", "lobby", (49_975_600, 50_002_300), "PICK UP TRASH"),
         OfficeObject("recreation-elevator", "elevator", "PASSENGER ELEVATOR", "recreation", (11_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("recreation-elevator-1", "elevator", "PASSENGER ELEVATOR", "recreation", (9_300, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
         OfficeObject("recreation-elevator-2", "elevator", "PASSENGER ELEVATOR", "recreation", (10_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
@@ -503,7 +528,9 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("recreation-stairwell-2", "stairs", "STAIRWELL 02", "recreation", (12_500, 12_500), "STAIRS / DOWN TO FLOOR 05", destination_floor=5, stairwell_number=2),
         OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_500, 5_000), "CHECK BANCO OMBRA"),
         OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_500, 8_000), "BUY OFFICE ASSETS"),
-        OfficeObject("recreation-trash-can", "trash_can", "TRASH CAN", "recreation", (9_550, 9_000), "TRASH CAN", interactive=False),
+        OfficeObject("recreation-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_000), "PRIVATE RESTROOM / RESTORE STAMINA"),
+        OfficeObject("recreation-restroom-stall-2", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_600), "PRIVATE RESTROOM / RESTORE STAMINA"),
+        OfficeObject("recreation-trash-can", "trash_can", "TRASH CAN", "recreation", (9_550, 9_000), "PICK UP TRASH"),
         OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (4_500, 11_000), "ENTER OFFICE 01", destination_room="executive"),
         OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (17_500, 11_000), "ENTER OFFICE 02", destination_room="public"),
         OfficeObject("hall-office-3-door", "door", "OFFICE 03", "recreation", (4_500, 14_000), "ENTER OFFICE 03", destination_room="office_03"),
@@ -582,6 +609,15 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 (5_600, 5_000),
                 "TAKE STAIRS DOWN ONE LANDING",
             ))
+        if level == 1:
+            for entry in (
+                OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"),
+                OfficeObject("basement-b1-uniform", "pest_uniform_station", "UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"),
+                OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_000, 5_500), "SELL A CLAIMED CARCASS"),
+                OfficeObject("basement-b1-shipping-waste", "shipping_station", "SHIPPING / WASTE", room, (9_000, 9_000), "DELIVER CARRIED TRASH"),
+                OfficeObject("basement-b1-loading-gate", "loading_gate", "GATED LOADING ZONE", room, (9_000, 7_000), "RECEIVE TOWER SUPPLIES"),
+            ):
+                registry.add(entry)
         if level == 1:
             office_rows = (500, 2_100, 6_200, 7_800)
             for office_index in range(20):

@@ -68,6 +68,7 @@ class DesktopBuildingSync:
         self._actions: queue.Queue[tuple[int, str, str, str]] = queue.Queue()
         self._game_requests: queue.Queue[tuple[str, str, str, dict[str, Any] | None]] = queue.Queue()
         self._pending_game_actions: set[str] = set()
+        self._restroom_sessions: dict[str, str] = {}
         self._events: queue.Queue[BuildingSyncEvent] = queue.Queue()
         self._active_action: tuple[int, str, str, str, str | None] | None = None
         self._elevator_request: tuple[int, str, int, int, int] | None = None
@@ -91,8 +92,35 @@ class DesktopBuildingSync:
             "inventory": ("GET", "/items/inventory", None),
             "vending_catalog": ("GET", "/items/vending-catalog", None),
             "bank": ("GET", "/desktop-game/bank", None),
+            "waste_deliver": ("POST", "/desktop-building/waste/deliver", {}),
+            "supply_receive": ("POST", "/desktop-building/supplies/receive", {}),
         }
-        if action == "buy_vending":
+        if action == "restroom":
+            if not isinstance(item_id, str) or len(item_id) > 48:
+                return False
+            with self._lock:
+                session_id = self._restroom_sessions.get(item_id)
+            if session_id:
+                request = (
+                    "POST",
+                    "/desktop-building/restroom/complete",
+                    {"stallKey": item_id, "sessionId": session_id},
+                )
+            else:
+                request = (
+                    "POST",
+                    "/desktop-building/restroom/start",
+                    {"stallKey": item_id},
+                )
+        elif action == "waste_pickup":
+            if not isinstance(item_id, str) or len(item_id) > 80:
+                return False
+            request = (
+                "POST",
+                "/desktop-building/waste/pickup",
+                {"binId": item_id},
+            )
+        elif action == "buy_vending":
             if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
                 return False
             request = (
@@ -249,9 +277,24 @@ class DesktopBuildingSync:
         else:
             try:
                 response = self._request_json(game_method, game_path, game_body)
+                if game_action == "restroom":
+                    stall_key = (game_body or {}).get("stallKey")
+                    session_id = response.get("sessionId")
+                    if isinstance(stall_key, str):
+                        with self._lock:
+                            if isinstance(session_id, str):
+                                self._restroom_sessions[stall_key] = session_id
+                            elif response.get("completed") is True:
+                                self._restroom_sessions.pop(stall_key, None)
+                message = {
+                    "restroom": "RESTROOM / SESSION UPDATED",
+                    "waste_pickup": "TRASH PICKED UP / TAKE IT TO B1 SHIPPING",
+                    "waste_deliver": "TRASH DELIVERED TO B1",
+                    "supply_receive": "SUPPLIES RECEIVED AT B1",
+                }.get(game_action, f"GAME SERVICE / {game_action.upper()}")
                 self._events.put(BuildingSyncEvent(
                     True,
-                    f"GAME SERVICE / {game_action.upper()}",
+                    message,
                     source="game_service",
                     data={"action": game_action, "payload": response},
                 ))
