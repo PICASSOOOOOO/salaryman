@@ -659,6 +659,14 @@ class DesktopBuildingSync:
         return payload
 
 
+def _sync_error_message(error: RuntimeError) -> str:
+    if isinstance(error, _HttpJsonError) and error.payload:
+        message = error.payload.get("error")
+        if isinstance(message, str) and message.strip():
+            return message.strip().upper()
+    return _friendly_sync_error(str(error))
+
+
 def _friendly_sync_error(code: str) -> str:
     if code == "NETWORK_UNAVAILABLE":
         return "BUILDING SERVER OFFLINE"

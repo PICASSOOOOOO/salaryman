@@ -230,12 +230,17 @@ def _handle_basement_interact(
         not scene.is_basement
         and scene.current_room == "lobby"
         and nearby is not None
-        and nearby.id == "lobby-stairs"
+        and (
+            nearby.kind == "service_elevator"
+            or nearby.kind == "stairs" and (
+                nearby.id == "lobby-stairs" or nearby.id.startswith("lobby-stairwell-")
+            )
+        )
     ):
         if basement_sync is None or not basement_sync.queue_enter(scene):
-            return CommandResult(False, "BASEMENT STAIRS REQUIRE A LIVE GAME LINK")
+            return CommandResult(False, "BASEMENT ACCESS REQUIRES A LIVE GAME LINK")
         state.close_page()
-        state.notice = "STAIRS / REQUESTING B1 ACCESS"
+        state.notice = "SERVICE ELEVATOR / REQUESTING B1 ACCESS" if nearby.kind == "service_elevator" else "STAIRS / REQUESTING B1 ACCESS"
         return CommandResult(True, state.notice)
 
     if not scene.is_basement:
@@ -251,7 +256,7 @@ def _handle_basement_interact(
             and pest.get("claimedByYou") is True
         ] if isinstance(pests, list) else []
         if not carried:
-            return CommandResult(False, "CLAIM A CARCASS BEFORE USING THE B1 DISPOSAL DESK")
+            return CommandResult(False, "CLAIM A CARCASS BEFORE TAKING IT TO B3")
         if basement_sync is None or not basement_sync.queue_sell(str(carried[0]["id"])):
             return CommandResult(False, "CARCASS SALE UNAVAILABLE / CHECK GAME LINK")
         state.notice = "CARCASS SALE REQUESTED"
@@ -280,6 +285,20 @@ def _handle_basement_interact(
     if nearby is None:
         return None
 
+    if nearby.kind == "service_elevator":
+        level = int(scene.basement_level or 1)
+        if level == 1:
+            if basement_sync is None or not basement_sync.queue_exit(scene):
+                return CommandResult(False, "BASEMENT SERVICE ELEVATOR EXIT UNAVAILABLE")
+            message = "SERVICE ELEVATOR / REQUESTING LOBBY"
+        elif basement_sync is None or not basement_sync.queue_level(1, scene):
+            return CommandResult(False, "SERVICE ELEVATOR REQUEST UNAVAILABLE")
+        else:
+            message = "SERVICE ELEVATOR / REQUESTING B1"
+        state.close_page()
+        state.notice = message
+        return CommandResult(True, message)
+
     if nearby.kind == "basement_stairs":
         level = int(scene.basement_level or 1)
         if nearby.id == "basement-stairs-up-b1":
@@ -304,9 +323,9 @@ def _handle_basement_interact(
 
     if nearby.kind == "utility_station":
         targets = {
-            "basement-b1-power": "power",
-            "basement-b1-plumbing": "plumbing",
-            "basement-b1-upkeep": "upkeep",
+            "basement-b5-power": "power",
+            "basement-b6-plumbing": "plumbing",
+            "basement-b3-upkeep": "upkeep",
         }
         target = targets.get(nearby.id)
         if target is None:
@@ -387,13 +406,26 @@ def apply_command(
         )
         if basement_result is not None:
             return basement_result
-        if nearby is not None and nearby.kind == "elevator" \
+        if nearby is not None and nearby.kind == "construction_task" \
+            and requested_object_id in (None, nearby.id):
+            if building_sync is None or not building_sync.queue_construction_work(
+                int(nearby.construction_plan_id or 0),
+                nearby.construction_task_id or "",
+                scene,
+            ):
+                return CommandResult(False, "CONSTRUCTION TASK UNAVAILABLE / CHECK THE B5 POWER EXPORT")
+            state.close_page()
+            scene.set_player_action("maintenance")
+            state.notice = f"CONSTRUCTION WORK REQUESTED / {nearby.label}"
+            return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind in {"elevator", "service_elevator"} \
             and requested_object_id in (None, nearby.id):
             return _request_tower_floor(
                 nearby.destination_floor or scene.current_floor,
                 state,
                 scene,
                 building_sync,
+                basement_sync,
             )
         result = scene.interact(
             state,
@@ -422,7 +454,7 @@ def apply_command(
         state.notice = f"ROOM / {scene.room.label}"
         return CommandResult(True, state.notice)
     if name == "select_floor":
-        return _request_tower_floor(payload["floor"], state, scene, building_sync)
+        return _request_tower_floor(payload["floor"], state, scene, building_sync, basement_sync)
     if name == "climb_stairs":
         basement_result = _handle_basement_interact(
             state,
@@ -438,17 +470,20 @@ def apply_command(
             return CommandResult(False, "NO STAIRCASE IN RANGE")
         if scene.current_room == "lobby":
             if basement_sync is None or not basement_sync.queue_enter(scene):
-                return CommandResult(False, "BASEMENT STAIRS REQUIRE A LIVE GAME LINK")
+                return CommandResult(False, "BASEMENT ACCESS REQUIRES A LIVE GAME LINK")
             state.notice = "STAIRS / REQUESTING B1 ACCESS"
             return CommandResult(True, state.notice)
-        state.close_page()
-        if not scene.climb_stairs():
-            next_floor = scene.current_floor + 1
-            message = (
-                f"FLOOR {next_floor:02d} IS UNDER CONSTRUCTION"
-                if next_floor <= scene.floor_count
-                else "NO STAIR ACCESS ABOVE THIS FLOOR"
-            )
+        destination = nearby.destination_floor
+        if destination is None:
+            return CommandResult(False, "STAIR DIRECTION IS NOT AVAILABLE")
+        if building_sync is not None and getattr(building_sync, "link", None) is not None:
+            if not building_sync.queue_stairs(destination, int(nearby.stairwell_number or 0), scene):
+                return CommandResult(False, "STAIRWELL REQUEST UNAVAILABLE")
+            state.close_page()
+            state.notice = f"STAIRS / REQUESTING FLOOR {destination:02d}"
+            return CommandResult(True, state.notice, destination=f"floor:{destination}")
+        if not scene.select_floor(destination):
+            message = f"FLOOR {destination:02d} IS UNDER CONSTRUCTION"
             state.notice = message
             return CommandResult(False, message)
         state.notice = f"STAIRS / CLIMBED TO FLOOR {scene.current_floor:02d}"

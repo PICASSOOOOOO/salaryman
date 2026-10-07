@@ -24,7 +24,8 @@ buying, selling, or dealing drugs. Investigators need evidence; accusations alon
 are not enough. Snitches may supply leads. Bounty hunting belongs outside
 workspaces, not inside them.
 Criminals may hide in an ordinary office environment; do not isolate them in a
-visibly criminal workspace.
+visibly criminal workspace. The product should include a background-check
+system for this workplace setting.
 NPC staffing should stay sparse and focused on building operations; NPCs can be
 targets for restraint, robbery, or sabotage. Pablo Corp can offer limited
 peacekeeping contracts, while money and net worth are the main sources of power,

@@ -165,14 +165,19 @@ def run(argv: list[str] | None = None) -> int:
 
             if event.source == "basement_enter":
                 if scene.select_basement_level(1):
-                    scene.player_position = (5_000, 5_000)
-                    state.notice = "STAIRS / ENTERED B1"
+                    x, y = data.get("x"), data.get("y")
+                    if isinstance(x, int) and isinstance(y, int):
+                        scene.player_position = (x, y)
+                    state.notice = "BASEMENT ACCESS / ENTERED B1"
             elif event.source == "basement_level":
                 level = data.get("level")
                 if isinstance(level, int) and scene.select_basement_level(level):
                     state.notice = f"STAIRS / ENTERED B{level}"
             elif event.source == "basement_exit":
                 if scene.leave_basement():
+                    x, y = data.get("x"), data.get("y")
+                    if isinstance(x, int) and isinstance(y, int):
+                        scene.player_position = (x, y)
                     state.notice = "STAIRS / RETURNED TO THE TOWER LOBBY"
             elif event.source == "basement_uniform":
                 state.pest_uniform_worn = data.get("uniformWorn") is True
@@ -615,6 +620,7 @@ def run(argv: list[str] | None = None) -> int:
         process_basement_events()
         building_sync.update_scene(scene)
         scene.set_building_object_states(building_sync.object_states())
+        scene.set_construction_plans(building_sync.construction_plans())
         for sync_event in building_sync.drain_events():
             if sync_event.source == "game_service":
                 data = sync_event.data or {}
@@ -673,10 +679,27 @@ def run(argv: list[str] | None = None) -> int:
                     else:
                         state.notice = sync_event.message.upper()
                 continue
-            if sync_event.source == "elevator":
+            if sync_event.source == "construction_snapshot":
+                if not sync_event.ok:
+                    state.notice = sync_event.message.upper()
+                continue
+            if sync_event.source == "construction":
+                state.notice = sync_event.message.upper()
+                if sync_event.ok:
+                    data = sync_event.data or {}
+                    if isinstance(data.get("rewardFiat"), int):
+                        state.fiat_balance = None
+                        state.fiat_spendable = None
+                        request_page_data("bank")
+                        scene.set_player_action("stand", duration=0.0)
+                else:
+                    scene.set_player_action("stand", duration=0.0)
+                continue
+            if sync_event.source in {"elevator", "stairs"}:
                 if sync_event.ok and sync_event.destination_floor is not None:
                     if scene.select_floor(sync_event.destination_floor):
-                        state.notice = f"ELEVATOR ARRIVED / FLOOR {scene.current_floor:02d}"
+                        travel_type = "STAIRS" if sync_event.source == "stairs" else "ELEVATOR"
+                        state.notice = f"{travel_type} ARRIVED / FLOOR {scene.current_floor:02d}"
                     else:
                         state.notice = f"FLOOR {sync_event.destination_floor:02d} IS UNDER CONSTRUCTION"
                 else:

@@ -13,13 +13,20 @@ import {
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import {
+  TOWER_SERVICE_ELEVATOR_BASEMENT,
+  TOWER_SERVICE_ELEVATOR_LOBBY,
+} from "../lib/tower-basement-layout";
 import { TOWER_BASEMENT_STATIONS } from "../lib/tower-basement-layout";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
 const BASEMENT_SIZE = 10_000;
 const BASEMENT_STAIRS = { x: 5_000, y: 5_000 };
-const TOWER_BASEMENT_STAIRS = { x: 49_978_650, y: 50_000_800 };
+const TOWER_BASEMENT_STAIRWELLS = [
+  { x: 49_978_650, y: 50_000_800 },
+  { x: 49_975_350, y: 50_000_900 },
+] as const;
 const BASEMENT_ACCESS_MODE = "stairs";
 const BASEMENT_ACCESS_MODE_TEMPORARY = true;
 const STAIRS_RADIUS = 800;
@@ -115,8 +122,17 @@ function isNearBasementStairs(point: { x: number; y: number }): boolean {
   return distance(point, BASEMENT_STAIRS) <= STAIRS_RADIUS;
 }
 
+function isNearBasementServiceElevator(point: { x: number; y: number }): boolean {
+  return distance(point, TOWER_SERVICE_ELEVATOR_BASEMENT) <= STAIRS_RADIUS;
+}
+
 function isNearTowerBasementStairs(floorNumber: number, point: { x: number; y: number }): boolean {
-  return floorNumber === 1 && distance(point, TOWER_BASEMENT_STAIRS) <= STAIRS_RADIUS;
+  return floorNumber === 1 && TOWER_BASEMENT_STAIRWELLS.some((stairwell) =>
+    distance(point, stairwell) <= STAIRS_RADIUS);
+}
+
+function isNearTowerServiceElevator(floorNumber: number, point: { x: number; y: number }): boolean {
+  return floorNumber === 1 && distance(point, TOWER_SERVICE_ELEVATOR_LOBBY) <= STAIRS_RADIUS;
 }
 
 function positionIsValid(x: number, y: number): boolean {
@@ -304,11 +320,13 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
         .limit(1);
       if (previous && previous.linkId === link.id && fresh(previous.lastSeenAt, now)) {
         if (previous.level !== level) {
-          if (Math.abs(previous.level - level) !== 1) {
-            return { error: "Use each basement stair landing in order" } as const;
-          }
-          if (!isNearBasementStairs(previous) || !isNearBasementStairs({ x, y })) {
-            return { error: "Use the basement stairs to change levels" } as const;
+          const byStairs = Math.abs(previous.level - level) === 1
+            && isNearBasementStairs(previous)
+            && isNearBasementStairs({ x, y });
+          const byServiceElevator = isNearBasementServiceElevator(previous)
+            && isNearBasementServiceElevator({ x, y });
+          if (!byStairs && !byServiceElevator) {
+            return { error: "Use the basement stairs or service elevator to change levels" } as const;
           }
         } else {
           const elapsedMs = now.getTime() - previous.lastSeenAt.getTime();
@@ -324,11 +342,15 @@ router.post("/desktop-building/basement/presence", async (req, res): Promise<voi
           .limit(1);
         if (!office || office.linkId !== link.id || !fresh(office.lastSeenAt, now)
           || office.room !== "lobby"
-          || !isNearTowerBasementStairs(office.floorNumber, office)) {
-          return { error: "Approach the lobby stairs before entering the basement" } as const;
+          || (!isNearTowerBasementStairs(office.floorNumber, office)
+            && !isNearTowerServiceElevator(office.floorNumber, office))) {
+          return { error: "Approach a lobby stairwell or the service elevator before entering the basement" } as const;
         }
-        if (!isNearBasementStairs({ x, y })) {
-          return { error: "Enter B1 beside the basement stairs" } as const;
+        const enteredByServiceElevator = isNearTowerServiceElevator(office.floorNumber, office);
+        if (enteredByServiceElevator
+          ? !isNearBasementServiceElevator({ x, y })
+          : !isNearBasementStairs({ x, y })) {
+          return { error: "Enter B1 beside the selected stairwell or service elevator" } as const;
         }
       }
 
@@ -381,9 +403,13 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
         .for("update")
         .limit(1);
       if (!presence || presence.linkId !== link.id || presence.level !== 1
-        || !fresh(presence.lastSeenAt, now) || !isNearBasementStairs(presence)) {
+        || !fresh(presence.lastSeenAt, now)
+        || (!isNearBasementStairs(presence) && !isNearBasementServiceElevator(presence))) {
         return { error: "Return to B1 and reach the lobby stairs first" } as const;
       }
+      const exitPosition = isNearBasementServiceElevator(presence)
+        ? TOWER_SERVICE_ELEVATOR_LOBBY
+        : TOWER_BASEMENT_STAIRWELLS[0];
       const [office] = await tx.select().from(desktopOfficePresenceTable)
         .where(eq(desktopOfficePresenceTable.userId, link.userId))
         .for("update")
@@ -399,8 +425,8 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
         roomKey: `lobby:${city}`,
         room: "lobby",
         floorNumber: 1,
-        x: TOWER_BASEMENT_STAIRS.x,
-        y: TOWER_BASEMENT_STAIRS.y,
+        x: exitPosition.x,
+        y: exitPosition.y,
         action: "stand",
         destinationFloor: null,
         lastSeenAt: now,
@@ -414,8 +440,8 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
           roomKey: `lobby:${city}`,
           room: "lobby",
           floorNumber: 1,
-          x: TOWER_BASEMENT_STAIRS.x,
-          y: TOWER_BASEMENT_STAIRS.y,
+          x: exitPosition.x,
+          y: exitPosition.y,
           action: "stand",
           destinationFloor: null,
           lastSeenAt: now,
@@ -423,7 +449,7 @@ router.post("/desktop-building/basement/exit", async (req, res): Promise<void> =
       });
       await tx.delete(desktopBasementPresenceTable)
         .where(eq(desktopBasementPresenceTable.userId, link.userId));
-      return { ok: true as const, floor: 1 };
+      return { ok: true as const, floor: 1, x: exitPosition.x, y: exitPosition.y };
     });
     if ("error" in result) {
       res.status(409).json({ error: result.error });

@@ -17,6 +17,7 @@ from .scene import TowerScene
 
 
 BASEMENT_PATH = "/desktop-building/basement"
+BASEMENT_SERVICE_ELEVATOR_POSITION = (5_000, 4_000)
 WORK_TARGETS = frozenset({"power", "plumbing", "upkeep"})
 MELEE_MOVES = frozenset({
     "stomp_kick", "punch", "side_kick", "roundhouse_kick", "elbow",
@@ -89,19 +90,23 @@ class DesktopBasementSync:
 
     def queue_enter(self, scene: TowerScene) -> bool:
         nearby = scene.nearby_object
+        using_service_elevator = nearby is not None and nearby.kind == "service_elevator"
+        using_stairs = nearby is not None and nearby.kind == "stairs" and (
+            nearby.id == "lobby-stairs" or nearby.id.startswith("lobby-stairwell-")
+        )
         if (
             self.link is None
             or scene.is_basement
             or scene.current_room != "lobby"
             or nearby is None
-            or nearby.kind != "stairs"
-            or nearby.id != "lobby-stairs"
+            or not (using_service_elevator or using_stairs)
         ):
             return False
+        x, y = BASEMENT_SERVICE_ELEVATOR_POSITION if using_service_elevator else (5_000, 5_000)
         return self._queue(
             "basement_enter",
             f"{BASEMENT_PATH}/presence",
-            {"level": 1, "x": 5_000, "y": 5_000, "action": "stand"},
+            {"level": 1, "x": x, "y": y, "action": "stand"},
         )
 
     def queue_level(self, level: int, scene: TowerScene) -> bool:
@@ -111,16 +116,21 @@ class DesktopBasementSync:
             or not scene.is_basement
             or not 1 <= level <= 6
             or nearby is None
-            or nearby.kind != "basement_stairs"
+            or nearby.kind not in {"basement_stairs", "service_elevator"}
         ):
             return False
+        x, y = (
+            BASEMENT_SERVICE_ELEVATOR_POSITION
+            if nearby.kind == "service_elevator"
+            else (int(scene.player_position[0]), int(scene.player_position[1]))
+        )
         return self._queue(
             "basement_level",
             f"{BASEMENT_PATH}/presence",
             {
                 "level": level,
-                "x": int(scene.player_position[0]),
-                "y": int(scene.player_position[1]),
+                "x": x,
+                "y": y,
                 "action": "stand",
             },
         )
@@ -132,7 +142,10 @@ class DesktopBasementSync:
             or not scene.is_basement
             or scene.basement_level != 1
             or nearby is None
-            or nearby.id != "basement-stairs-up-b1"
+            or not (
+                nearby.id == "basement-stairs-up-b1"
+                or nearby.kind == "service_elevator"
+            )
         ):
             return False
         return self._queue("basement_exit", f"{BASEMENT_PATH}/exit", None)
