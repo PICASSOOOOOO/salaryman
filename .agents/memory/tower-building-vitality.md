@@ -38,15 +38,20 @@ disruptors may dynamically change competitive conditions.
 
 NPCs should develop AI-driven creative and innovative ambitions. They may leave
 a job, join another employer, or start a business when they have enough capital.
+Players and NPCs with sufficient funds may purchase a business. Business concepts
+must remain unique by default; opening duplicate locations as a chain or franchise
+requires the owner, player or NPC, to have net worth above ƒ1,000,000,000.
 
 **Why:** The user wants a creativity- and innovation-friendly economy where NPCs
-can pursue new work or start businesses with capital. Pablo owns the initial
-named businesses, while outside entrants can change competition; survival
-commerce remains paid and early play remains affordable.
+can pursue new work or start businesses with capital. Business entry is open to
+buyers who can afford it, while uniqueness and a net-worth threshold regulate
+chains and franchises.
 
 **How to apply:** Credit paid sales to the business's current owner. Allow outside
 entry and dynamic competitive changes rather than hardcoding a permanent Pablo
 monopoly. Let NPC ambitions affect career choices and entrepreneurship, but
-require capital to start a business. Balance early sales against recurring power
-and water costs; allow price pressure or outages only after a sustained,
-market-driven shortfall, not simply because the server economy is new.
+require capital to start a business. Enforce unique businesses by default and
+allow chains or franchises only above the ƒ1,000,000,000 net-worth threshold for
+either players or NPCs. Balance early sales against recurring power and water
+costs; allow price pressure or outages only after a sustained, market-driven
+shortfall, not simply because the server economy is new.
